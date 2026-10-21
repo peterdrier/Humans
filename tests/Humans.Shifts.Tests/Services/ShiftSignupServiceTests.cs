@@ -37,7 +37,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     private readonly ShiftSignupService _service;
     private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
-    private readonly IShiftViewInvalidator _viewInvalidator;
+    private readonly ShiftViewProbe _views = new();
     private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
     private readonly IUserService _users = Substitute.For<IUserService>();
 
@@ -68,13 +68,12 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             AdminAuthorization,
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
-            Substitute.For<IShiftViewInvalidator>(),
+            new ShiftViewProbe().Cache,
             NewCalendarResolver(),
             Clock,
             Substitute.For<IEarlyEntryInvalidator>(), NullLogger<ShiftManagementService>.Instance);
 
         _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
-        _viewInvalidator = Substitute.For<IShiftViewInvalidator>();
         _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var resources = new ResourceManager(typeof(ShiftsResource));
         var english = CultureInfo.GetCultureInfo("en");
@@ -101,7 +100,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             AuditLog,
             Notifier,
             AdminAuthorization,
-            _viewInvalidator,
+            _views.Cache,
             EarlyEntryInvalidator,
             serviceProvider,
             Clock,
@@ -229,7 +228,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         ShiftSignupService NewService(ShiftsDbContext db) => new(
             new ShiftRepository(factory, db, Clock), new VolunteerTrackingRepository(db),
             Substitute.For<IShiftManagement>(), NewCalendarResolver(), AuditLog, Notifier,
-            AdminAuthorization, _viewInvalidator, EarlyEntryInvalidator, services, Clock,
+            AdminAuthorization, _views.Cache, EarlyEntryInvalidator, services, Clock,
             NullLogger<ShiftSignupService>.Instance, _users, _localizer);
         Task<SignupResult> Enroll(ShiftSignupService service, string path, Guid userId) => path switch
         {
@@ -357,6 +356,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
                 ? UserInfoStubHelpers.MakeUserInfo(userId) with { State = actualState }
                 : null);
         await SaveAllAsync(TestContext.Current.CancellationToken);
+        await _views.PrimeUserAsync(userId, shift);
+        await _views.PrimeRotaAsync(rota.Id, shift);
 
         foreach (var flags in new[]
         {
@@ -375,7 +376,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             (await ShiftsDb.ShiftSignups.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
             AuditLog.ReceivedCalls().Should().BeEmpty();
             Notifier.ReceivedCalls().Should().BeEmpty();
-            _viewInvalidator.ReceivedCalls().Should().BeEmpty();
+            _views.Evictions.Should().Be(0);
         }
     }
 
@@ -740,6 +741,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             signups.Add(second);
         }
         await SaveAllAsync(ct);
+        await _views.PrimeUserAsync(userId, shift);
+        await _views.PrimeRotaAsync(rota.Id, shift);
         var reason = new string('x', length);
         bool success;
         string? error;
@@ -774,7 +777,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
                 s.StatusReason.Should().BeNull();
             });
             AuditLog.ReceivedCalls().Should().BeEmpty();
-            _viewInvalidator.ReceivedCalls().Should().BeEmpty();
+            _views.Evictions.Should().Be(0);
             Notifier.ReceivedCalls().Should().BeEmpty();
         }
         else
@@ -1770,7 +1773,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             .With(_roleAssignmentService).With(_users).Build();
         var service = new ShiftSignupService(
             repo, Substitute.For<IVolunteerTrackingRepository>(), _shiftMgmt, NewCalendarResolver(),
-            AuditLog, Notifier, AdminAuthorization, _viewInvalidator, earlyEntry, serviceProvider,
+            AuditLog, Notifier, AdminAuthorization, _views.Cache, earlyEntry, serviceProvider,
             Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
         Func<Task> mutate = async () =>
         {
@@ -1844,7 +1847,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             .With(_roleAssignmentService).With(_users).Build();
         var service = new ShiftSignupService(
             _repo, Substitute.For<IVolunteerTrackingRepository>(), _shiftMgmt, new EventCalendarResolver(settings),
-            AuditLog, Notifier, AdminAuthorization, _viewInvalidator, Substitute.For<IEarlyEntryInvalidator>(),
+            AuditLog, Notifier, AdminAuthorization, _views.Cache, Substitute.For<IEarlyEntryInvalidator>(),
             serviceProvider, Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
 
         var result = await service.BailRangeAsync(signup.SignupBlockId.Value, userId);
@@ -2271,15 +2274,20 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [HumansFact]
     public async Task SignUp_EvictsUserAndShiftViewCache()
     {
-        var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var (_, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
         var userId = Guid.NewGuid();
         await SaveAllAsync(TestContext.Current.CancellationToken);
+        var viewer = Guid.NewGuid();
+        await _views.PrimeUserAsync(userId);
+        await _views.PrimeUserAsync(viewer, shift);
+        await _views.PrimeRotaAsync(rota.Id, shift);
 
         var result = await _service.SignUpAsync(userId, shift.Id);
 
         result.Success.Should().BeTrue();
-        _viewInvalidator.Received(1).InvalidateUser(userId);
-        _viewInvalidator.Received(1).InvalidateShift(shift.Id);
+        (await _views.IsUserCachedAsync(userId)).Should().BeFalse();
+        (await _views.IsUserCachedAsync(viewer)).Should().BeFalse();
+        (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
     }
 
     [HumansFact]
@@ -2305,16 +2313,21 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [HumansFact]
     public async Task Bail_EvictsUserAndShiftViewCache()
     {
-        var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var (_, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
         var userId = Guid.NewGuid();
         var signup = SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
         await SaveAllAsync(TestContext.Current.CancellationToken);
+        var viewer = Guid.NewGuid();
+        await _views.PrimeUserAsync(userId);
+        await _views.PrimeUserAsync(viewer, shift);
+        await _views.PrimeRotaAsync(rota.Id, shift);
 
         var result = await _service.BailAsync(signup.Id, userId, null);
 
         result.Success.Should().BeTrue();
-        _viewInvalidator.Received(1).InvalidateUser(userId);
-        _viewInvalidator.Received(1).InvalidateShift(shift.Id);
+        (await _views.IsUserCachedAsync(userId)).Should().BeFalse();
+        (await _views.IsUserCachedAsync(viewer)).Should().BeFalse();
+        (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
     }
 
     [HumansFact]

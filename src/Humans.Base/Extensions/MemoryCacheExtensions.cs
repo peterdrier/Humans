@@ -87,15 +87,11 @@ public static class MemoryCacheExtensions
     public static void InvalidateCampContactRateLimit(this IMemoryCache cache, Guid userId, Guid campId) =>
         cache.Remove(CacheKeys.CampContactRateLimit(userId, campId));
 
-    public static void InvalidateShiftAuthorization(this IMemoryCache cache, Guid userId) =>
-        cache.Remove(CacheKeys.ShiftAuthorization(userId));
-
     public static void InvalidateCampLeadJoinRequestsBadge(this IMemoryCache cache, Guid userId) =>
         cache.Remove(CacheKeys.CampLeadJoinRequestsBadge(userId));
 
     public static void InvalidateUserAccess(this IMemoryCache cache, Guid userId)
     {
-        cache.InvalidateShiftAuthorization(userId);
     }
 
 }

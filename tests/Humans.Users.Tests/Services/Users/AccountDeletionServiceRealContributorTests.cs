@@ -70,8 +70,6 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
             gdprService,
             _ticketQueryService,
             Substitute.For<IUserInfoInvalidator>(),
-            Substitute.For<IShiftAuthorizationInvalidator>(),
-            Substitute.For<IShiftViewInvalidator>(),
             Substitute.For<IAuditLogService>(),
             Substitute.For<IEmailService>(),
             TestUsersEmails.Create(),

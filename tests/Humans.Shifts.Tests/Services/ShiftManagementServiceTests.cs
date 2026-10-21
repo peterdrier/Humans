@@ -69,7 +69,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             AdminAuthorization,
             serviceProvider,
             Cache,
-            Substitute.For<IShiftViewInvalidator>(),
+            new ShiftViewProbe().Cache,
             NewCalendarResolver(),
             Clock,
             EarlyEntryInvalidator, Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
@@ -119,13 +119,12 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         repo.SetRotaTagsAsync(rota.Id, Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(failure));
         repo.GetRotaAsync(rota.Id, RotaReadShape.None, Arg.Any<CancellationToken>()).Returns(rota);
-        string? cachedName = "Old snapshot";
-        var invalidator = Substitute.For<IShiftViewInvalidator>();
-        invalidator.When(x => x.InvalidateRota(rota.Id)).Do(_ => cachedName = null);
+        var views = new ShiftViewProbe();
+        await views.PrimeRotaAsync(rota.Id);
         using var cache = new MemoryCache(new MemoryCacheOptions());
         var service = new ShiftManagementService(
             repo, AuditLog, AdminAuthorization, new ServiceLocatorBuilder().With(_teamService).Build(),
-            cache, invalidator, NewCalendarResolver(), Clock,
+            cache, views.Cache, NewCalendarResolver(), Clock,
             Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
         Func<Task> mutate = () => create
             ? service.CreateRotaAsync(rota, [Guid.NewGuid()])
@@ -134,9 +133,10 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
                 rota.Policy, rota.Period, rota.IsVisibleToVolunteers, [Guid.NewGuid()]));
 
         (await mutate.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
-        cachedName ??= (await real.GetRotaAsync(
-            rota.Id, RotaReadShape.None, Xunit.TestContext.Current.CancellationToken))!.Name;
-        cachedName.Should().Be("Changed rota");
+        (await views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
+        (await real.GetRotaAsync(
+            rota.Id, RotaReadShape.None, Xunit.TestContext.Current.CancellationToken))!.Name
+            .Should().Be("Changed rota");
     }
 
     [HumansTheory]
@@ -149,15 +149,18 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         var pending = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
         repo.DeleteEventCascadeAsync(eventId, Arg.Any<CancellationToken>()).Returns(pending.Task);
         var ee = Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>();
-        var views = Substitute.For<IShiftViewInvalidator>();
+        var views = new ShiftViewProbe();
+        await views.PrimeUserAsync(Guid.NewGuid());
+        await views.PrimeRotaAsync(Guid.NewGuid());
         using var cache = new MemoryCache(new MemoryCacheOptions());
         cache.Set(ShiftManagementService.OverviewCacheKey(eventId, null), new object());
         var service = new ShiftManagementService(repo, AuditLog, AdminAuthorization,
-            new ServiceLocatorBuilder().Build(), cache, views, NewCalendarResolver(), Clock, ee, Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+            new ServiceLocatorBuilder().Build(), cache, views.Cache, NewCalendarResolver(), Clock, ee, Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
         var failure = new IOException("Delete completion is uncertain");
 
         var deletion = service.DeleteEventAsync(eventId, Xunit.TestContext.Current.CancellationToken);
         ee.DidNotReceive().InvalidateAll();
+        views.Evictions.Should().Be(0);
         cache.TryGetValue(ShiftManagementService.OverviewCacheKey(eventId, null), out _).Should().BeTrue();
         if (saveFails) pending.SetException(failure);
         else pending.SetResult(1);
@@ -168,7 +171,8 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         if (saveFails) error.Should().BeSameAs(failure);
         else { error.Should().BeNull(); (await deletion).Should().Be(1); }
         ee.Received(1).InvalidateAll();
-        views.Received(1).InvalidateAll();
+        views.Cache.UserCacheStats.BulkInvalidations.Should().Be(1);
+        views.Cache.RotaCacheStats.BulkInvalidations.Should().Be(1);
         cache.TryGetValue(ShiftManagementService.OverviewCacheKey(eventId, null), out _).Should().BeFalse();
     }
 
@@ -196,7 +200,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             AdminAuthorization,
             new ServiceLocatorBuilder().Build(),
             cache,
-            Substitute.For<IShiftViewInvalidator>(),
+            new ShiftViewProbe().Cache,
             NewCalendarResolver(),
             Clock,
             Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
@@ -551,7 +555,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         var service = new ShiftManagementService(
             new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock), AuditLog, AdminAuthorization,
             new ServiceLocatorBuilder().With(_teamService).Build(), Cache,
-            Substitute.For<IShiftViewInvalidator>(),
+            new ShiftViewProbe().Cache,
             new EventCalendarResolver(Substitute.For<Humans.Settings.Contracts.ISettingsService>()), Clock,
             EarlyEntryInvalidator, Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
@@ -1074,6 +1078,22 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
+    public async Task GetCoordinatorTeamIdsAsync_ReadsTeamsEveryCall_SoACoordinatorChangeShowsImmediately()
+    {
+        // No Shifts-side cache: Teams' in-RAM read model answers and Teams keeps it current
+        // on its own writes, so no other section has to evict anything in Shifts.
+        var userId = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
+        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromResult<IReadOnlyList<Guid>>([teamId]),
+                Task.FromResult<IReadOnlyList<Guid>>([]));
+
+        (await _service.GetCoordinatorTeamIdsAsync(userId)).Should().Equal(teamId);
+        (await _service.GetCoordinatorTeamIdsAsync(userId)).Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task IsDeptCoordinatorAsync_SubTeamManager_ReturnsTrue_ForOwnSubTeam()
     {
         var userId = Guid.NewGuid();
@@ -1453,7 +1473,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             AdminAuthorization,
             new ServiceLocatorBuilder().Build(),
             Cache,
-            Substitute.For<IShiftViewInvalidator>(),
+            new ShiftViewProbe().Cache,
             NewCalendarResolver(),
             Clock, Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 }

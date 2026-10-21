@@ -57,7 +57,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
             AdminAuthorization,
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
-            Substitute.For<IShiftViewInvalidator>(),
+            new ShiftViewProbe().Cache,
             NewCalendarResolver(),
             Clock,
             Substitute.For<IEarlyEntryInvalidator>(), NullLogger<ShiftManagementService>.Instance);
@@ -71,7 +71,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
             AuditLog,
             _notificationService,
             AdminAuthorization,
-            Substitute.For<IShiftViewInvalidator>(),
+            new ShiftViewProbe().Cache,
             Substitute.For<IEarlyEntryInvalidator>(),
             serviceProvider,
             Clock,

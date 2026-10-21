@@ -5,6 +5,7 @@ using AwesomeAssertions;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Services;
+using Humans.Shifts.Tests.Infrastructure;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -33,7 +34,7 @@ public class VolunteerTrackingServiceTests
         var service = new VolunteerTrackingService(
             repo, Substitute.For<IShiftManagementRepository>(),
             new EventCalendarResolver(Substitute.For<ISettingsService>()),
-            Substitute.For<IUserService>(), Substitute.For<ITicketService>(), Substitute.For<IShiftViewInvalidator>(),
+            Substitute.For<IUserService>(), Substitute.For<ITicketService>(), new ShiftViewProbe().Cache,
             new FakeClock(TestNow), Substitute.For<IAuditLogService>());
 
         Func<Task> read = () => service.GetAvailableForDayAsync(eventId, -1, cancellation.Token);
@@ -788,7 +789,7 @@ public class VolunteerTrackingServiceTests
             availabilities ?? []);
 
         return new VolunteerTrackingService(
-            trackingRepo, shiftMgmt, calendarResolver, userService, tickets, Substitute.For<IShiftViewInvalidator>(), clock,
+            trackingRepo, shiftMgmt, calendarResolver, userService, tickets, new ShiftViewProbe().Cache, clock,
             Substitute.For<IAuditLogService>());
     }
 
