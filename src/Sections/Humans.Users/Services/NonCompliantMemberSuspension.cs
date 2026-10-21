@@ -9,7 +9,6 @@ using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Users.Services;
@@ -29,7 +28,6 @@ namespace Humans.Users.Services;
 /// </remarks>
 internal sealed class NonCompliantMemberSuspension(
     IUserManagement userService,
-    IActiveTeamsCacheInvalidator activeTeamsCacheInvalidator,
     IMembershipCalculator membershipCalculator,
     IEmailService emailService,
     UsersEmails emailMessages,
@@ -144,7 +142,6 @@ internal sealed class NonCompliantMemberSuspension(
 
             roleAssignmentClaimsInvalidator.Invalidate(user.Id);
             shiftAuthorizationInvalidator.Invalidate(user.Id);
-            activeTeamsCacheInvalidator.Invalidate();
         }
 
         metrics.RecordJobRun("suspend_noncompliant_members", "success");

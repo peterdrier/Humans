@@ -35,7 +35,7 @@ internal sealed class TeamService(
     IEarlyEntryInvalidator earlyEntryInvalidator,
     IServiceProvider serviceProvider,
     IClock clock,
-    ILogger<TeamService> logger) : ITeamManagementService, ITeamSeeding, IGoogleGroupMembershipSource, IUserDataContributor, IUserMerge, IEarlyEntryProvider
+    ILogger<TeamService> logger) : ITeamManagementService, ITeamSeeding, IGoogleGroupMembershipSource, IUserMerge, IEarlyEntryProvider
 {
     private static readonly ResourceManager NoticeResources = new(typeof(TeamsResource));
     private static readonly TrackedLock JoinRequestLock = new("Teams.JoinRequest");
@@ -1844,18 +1844,10 @@ internal sealed class TeamService(
     }
 
     // Cache mutation/invalidation are owned by CachingTeamService.
-    public void RemoveMemberFromAllTeamsCache(Guid userId) { }
-
     public void InvalidateActiveTeamsCache() { }
 
-    public async Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default)
-    {
-        var now = clock.GetCurrentInstant();
-        var count = await repo.RevokeAllMembershipsAsync(userId, now, cancellationToken);
-        if (count > 0)
-            RemoveMemberFromAllTeamsCache(userId);
-        return count;
-    }
+    public Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        repo.RevokeAllMembershipsAsync(userId, clock.GetCurrentInstant(), cancellationToken);
 
     public async Task ReassignAsync(
         Guid sourceUserId,
@@ -1958,20 +1950,6 @@ internal sealed class TeamService(
         return [membershipSlice, joinRequestSlice, earlyEntrySlice];
     }
 
-    private static readonly IReadOnlyDictionary<string, string?> Erasure =
-        new Dictionary<string, string?>(StringComparer.Ordinal)
-        {
-            [TeamMemberships] =
-                "Partially retained: the membership row (team, role, joined/left dates, keyed to " +
-                "the user id the Users section tombstones) is the association's record of who " +
-                "worked on what — Ley Orgánica 1/2002 Art. 14, GDPR Art. 17(3)(b). Every still-" +
-                "active membership is ended immediately.",
-            [TeamJoinRequests] = null,
-            [TeamEarlyEntry] = null
-        };
-
-    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
-
     /// <summary>
     /// Ends live memberships, then hard-deletes the join requests (they carry the
     /// applicant's free-text message) and the early-entry grants.
@@ -1983,9 +1961,7 @@ internal sealed class TeamService(
         notificationMeterInvalidator.Invalidate();
         await DeleteEarlyEntryGrantsForUserAsync(userId, ct);
 
-        // No cache call here: this type is the inner service, where the invalidation
-        // methods are empty bodies — the real ones live on CachingTeamService. The
-        // deletion orchestrator drops both team caches through the decorator instead.
+        // No cache call here: Gdpr reaches this through CachingTeamService, which evicts.
     }
 
     // ==========================================================================

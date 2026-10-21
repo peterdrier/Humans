@@ -60,13 +60,7 @@ public static class InfrastructureServiceCollectionExtensions
         // (nobodies-collective/Humans#866).
         services.AddAdminSection();
 
-        // ActiveTeamsCacheInvalidator used to be registered here as a Base collaborator Teams'
-        // section file registered on the way past. G5 lane 3a-1 re-measured that: its six
-        // IMemoryCache-backed siblings moved to Base, but this one injects ITeamService and so
-        // had to land in Humans.Teams — where HUM0034 makes it internal and therefore
-        // unreachable from Web. Both the type and its registration are now Teams' (Section.cs).
-        //
-        // SystemTeamSyncJob left this list the same way at G5 lane 4b-2e — system-team
+        // SystemTeamSyncJob left this list at G5 lane 4b-2e — system-team
         // membership is a Teams invariant. Its interface followed at lane 5c and now lives on
         // Humans.Teams.Contracts.
 

@@ -1,5 +1,6 @@
 using Humans.Base.Attributes;
 using Humans.Base.Enums;
+using Humans.Gdpr.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Teams.Domain;
 using NodaTime;
@@ -91,6 +92,12 @@ internal sealed record TeamEarlyEntryGrantInfo(
 /// </remarks>
 internal interface ITeamManagementService : ITeamManagement
 {
+    /// <summary>GDPR export slices; <c>CachingTeamService</c> is the registered contributor.</summary>
+    Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct);
+
+    /// <summary>GDPR erasure; reached through <c>CachingTeamService</c>, which evicts after it.</summary>
+    Task EraseForUserAsync(Guid userId, CancellationToken ct);
+
     /// <summary>
     /// Creates a new team.
     /// </summary>

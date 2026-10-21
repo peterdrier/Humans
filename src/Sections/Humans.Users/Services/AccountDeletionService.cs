@@ -133,9 +133,6 @@ internal sealed class AccountDeletionService(
         // tombstone instead of the real name and break IsGdprAnonymized.
         await EraseEverySectionAsync(userId, ct);
 
-        // Drop ActiveTeams cache so consumers don't expose pre-purge identity until TTL.
-        teamService.InvalidateActiveTeamsCache();
-
         // Match AnonymizeExpiredAccountAsync's invalidation surface — contributors
         // run against the inner UserService, so nothing behind the caching
         // decorator has seen the collapse yet.
@@ -185,8 +182,6 @@ internal sealed class AccountDeletionService(
         // UserService, so nothing behind the caching decorator has seen these writes
         // and admin search would keep matching the erased human by their real name.
         await userInfoInvalidator.InvalidateAsync(userId, ct);
-        teamService.RemoveMemberFromAllTeamsCache(userId);
-        teamService.InvalidateActiveTeamsCache();
         roleAssignmentClaimsInvalidator.Invalidate(userId);
         shiftAuthorizationInvalidator.Invalidate(userId);
         shiftViewInvalidator.InvalidateUser(userId);

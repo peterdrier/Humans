@@ -63,6 +63,58 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
+    public async Task EraseForUserAsync_ErasesThroughInnerAndEvictsTeamGraph()
+    {
+        var userId = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
+        _innerTeamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
+        {
+            [teamId] = MakeTeam(teamId, "Kitchen", parentTeamId: null, isActive: true,
+                members: [MakeMember(userId, TeamMemberRole.Member)]),
+        });
+        (await _service.GetUserTeamMembershipsAsync(userId, Xunit.TestContext.Current.CancellationToken))
+            .Should().HaveCount(1);
+        // The inner erase ends the membership in the database.
+        _innerTeamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
+        {
+            [teamId] = MakeTeam(teamId, "Kitchen", parentTeamId: null, isActive: true),
+        });
+
+        await _service.EraseForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        await _innerTeamService.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
+        (await _service.GetUserTeamMembershipsAsync(userId, Xunit.TestContext.Current.CancellationToken))
+            .Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task EraseForUserAsync_InnerThrows_StillEvictsTeamGraph()
+    {
+        var userId = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
+        _innerTeamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
+        {
+            [teamId] = MakeTeam(teamId, "Kitchen", parentTeamId: null, isActive: true,
+                members: [MakeMember(userId, TeamMemberRole.Member)]),
+        });
+        (await _service.GetUserTeamMembershipsAsync(userId, Xunit.TestContext.Current.CancellationToken))
+            .Should().HaveCount(1);
+        // Memberships ended and committed before a later erase step failed.
+        _innerTeamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
+        {
+            [teamId] = MakeTeam(teamId, "Kitchen", parentTeamId: null, isActive: true),
+        });
+        _innerTeamService.EraseForUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("boom")));
+
+        var act = () => _service.EraseForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await _service.GetUserTeamMembershipsAsync(userId, Xunit.TestContext.Current.CancellationToken))
+            .Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task GetEffectiveBudgetCoordinatorTeamIdsAsync_IncludesDepartmentAndActiveChildren_ForDirectCoordinator()
     {
         var userId = Guid.NewGuid();
