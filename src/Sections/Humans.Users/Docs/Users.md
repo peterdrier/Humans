@@ -380,7 +380,7 @@ A contact is identified by `ContactSource != null && LastLoginAt == null`. When 
 | EmergencyContactName | string? (256) | null | Private — self + Board. |
 | EmergencyContactPhone | string? (50) | null | Private — self + Board. |
 | EmergencyContactRelationship | string? (100) | null | Private — self + Board. |
-| DietaryPreference | string? (200) | null | **Legacy, no longer written.** Food answers moved to Cantina's `cantina_dietary_profiles` (Users decomposition commit 10). Carried on `ProfileInfo` as `[Obsolete]` (`HUM_PROFILE_DIETARY`) for Cantina's read fallback and the `cantina.profile-dietary` copy only; still exported and erased here until the column is dropped. |
+| DietaryPreference | string? (200) | null | **Legacy, no longer written.** Food answers moved to Cantina's `cantina_dietary_profiles` (Users decomposition commit 10). No longer read: `cantina.profile-dietary` is retired and the `ProfileInfo` food fields are gone. Still exported and erased here until the column is dropped. |
 | Allergies / Intolerances | List&lt;string&gt; (jsonb) | [] | Food allergies / intolerances (+ `AllergyOtherText` / `IntoleranceOtherText` for free-text "Other"). **Legacy, no longer written** — same as `DietaryPreference`. |
 | MedicalConditions | string? (4000) | null | **GDPR Art. 9** health data. On the cached `UserInfo` but gated at every render/serialize surface by the `MedicalDataViewer` policy (Admin / NoInfoAdmin). Owner edits their own on `/Profile/Me/Medical`. |
 | ProfilePictureContentType | string? (100) | null | MIME type of the stored picture. Doubles as the "has custom picture?" predicate (`HasCustomProfilePicture`) and supplies the file extension — the picture bytes themselves live on the filesystem. |
@@ -548,7 +548,7 @@ Nothing here is written. Each row is read only by its new owner's fallback and d
 | Legacy object | Replaced by | Migration key | Drop row |
 |---|---|---|---|
 | `profiles.Iban` | Finance `finance_payment_details` | `finance.iban-to-payment-details` (retired, no reader left) | USERS-15 |
-| `profiles` food columns (`DietaryPreference`, `Allergies`, `AllergyOtherText`, `Intolerances`, `IntoleranceOtherText`) | Cantina `cantina_dietary_profiles` | `cantina.profile-dietary` | USERS-16 |
+| `profiles` food columns (`DietaryPreference`, `Allergies`, `AllergyOtherText`, `Intolerances`, `IntoleranceOtherText`) | Cantina `cantina_dietary_profiles` | `cantina.profile-dietary` (retired, no reader left) | USERS-16 |
 | `profiles.MembershipTier` | Governance `governance_membership_tiers` | `governance.profile-tier` (retired, no reader left) | USERS-17 |
 | `profiles` review columns (`ConsentCheck*`, `RejectionReason`, `RejectedAt`, `RejectedByUserId`, `IsApproved`) and the `ConsentCheckStatus` index | Consent `consent_reviews` | `consent.profile-review` | USERS-18 |
 | `event_participations` table | Tickets `tickets_event_participations` | `tickets.event-participations` | USERS-19 |

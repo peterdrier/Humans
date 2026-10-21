@@ -39,10 +39,4 @@ signups through the same `IShiftManagementService` surface, one call
 per day from build start through `min(StrikeEndOffset, the last day the
 caller needs)` — not the whole event every time.
 
-### Data migrations
-
-`cantina.profile-dietary` (`SectionDataMigrations`) copies the legacy
-`profiles` food columns into rows for members without one; Apply is
-idempotent.
-
 ---

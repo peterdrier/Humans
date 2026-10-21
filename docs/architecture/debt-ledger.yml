@@ -277,10 +277,6 @@ inbox:
     what: "CacheKeys.MagicLinkUsed in Humans.Base names its parameter tokenPrefix, but its only caller (Auth's MagicLinkRateLimiter) passes a SHA-256 digest of the whole token. Rename the parameter. Found by section-doctor on Auth."
     review: light
   - added: 2026-10-21
-    id: CENTRAL-90
-    what: "Retirement PR for data migration cantina.profile-dietary (Users decomposition, Cantina): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: DietaryProfileService's legacy fallback and the five ProfileInfo food fields (DietaryPreference, Allergies, AllergyOtherText, Intolerances, IntoleranceOtherText; HUM_PROFILE_DIETARY). Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
-    review: panel
-  - added: 2026-10-21
     id: CENTRAL-92
     what: "Retirement PR for data migration consent.profile-review (Users decomposition, Consent): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: ConsentReviewService's LegacyReview fallback, UserInfo.IsRejected's legacy arm and the UserStateClassifier profile.RejectedAt arm, the obsolete ProfileInfo review fields (HUM_PROFILE_REVIEW), LegacyConsentCheckStatus, the UserFixtures.StateFor pragma, and Users' export/erase of the legacy review columns. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
     review: panel

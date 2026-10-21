@@ -4,8 +4,8 @@ namespace Humans.Cantina.Domain;
 
 /// <summary>
 /// What a member can and cannot eat, one row per member (<c>cantina_dietary_profiles</c>).
-/// Replaces the five food columns on <c>profiles</c>, which Users keeps unwritten until the
-/// <c>cantina.profile-dietary</c> data migration is done in production. Medical conditions are
+/// Replaces the five food columns on <c>profiles</c>, which Users keeps unwritten and unread until
+/// their drop. Medical conditions are
 /// not here: they are GDPR Art. 9 data and stay in Users.
 /// </summary>
 internal sealed class DietaryProfile

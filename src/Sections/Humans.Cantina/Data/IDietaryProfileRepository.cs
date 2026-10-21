@@ -11,14 +11,8 @@ internal interface IDietaryProfileRepository : IRepository
 
     Task<IReadOnlyList<DietaryProfile>> GetManyAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
-    /// <summary>Every row, for the data migration's pending list.</summary>
-    Task<IReadOnlyList<DietaryProfile>> GetAllAsync(CancellationToken ct = default);
-
     /// <summary>Inserts the member's row or overwrites every food field on it.</summary>
     Task UpsertAsync(DietaryProfile values, CancellationToken ct = default);
-
-    /// <summary>Inserts the row unless the member has one. False when it existed and nothing was written.</summary>
-    Task<bool> TryInsertAsync(DietaryProfile values, CancellationToken ct = default);
 
     /// <summary>Deletes the member's row. False when there was none.</summary>
     Task<bool> DeleteAsync(Guid userId, CancellationToken ct = default);

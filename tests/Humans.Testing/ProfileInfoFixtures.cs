@@ -55,11 +55,6 @@ public static class UserFixtures
         string? emergencyContactName = null,
         string? emergencyContactPhone = null,
         string? emergencyContactRelationship = null,
-        string? dietaryPreference = null,
-        IReadOnlyList<string>? allergies = null,
-        string? allergyOtherText = null,
-        IReadOnlyList<string>? intolerances = null,
-        string? intoleranceOtherText = null,
         string? medicalConditions = null,
         string? profilePictureContentType = null,
         Instant? createdAt = null,
@@ -96,11 +91,6 @@ public static class UserFixtures
             EmergencyContactName: emergencyContactName,
             EmergencyContactPhone: emergencyContactPhone,
             EmergencyContactRelationship: emergencyContactRelationship,
-            DietaryPreference: dietaryPreference,
-            Allergies: allergies ?? [],
-            AllergyOtherText: allergyOtherText,
-            Intolerances: intolerances ?? [],
-            IntoleranceOtherText: intoleranceOtherText,
             MedicalConditions: medicalConditions,
             // Derived exactly as UserInfoFactory derives it from the entity, so no fixture
             // can build the impossible "has a picture with no content type" combination.

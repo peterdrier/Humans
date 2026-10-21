@@ -18,9 +18,8 @@ using NSubstitute;
 namespace Humans.Cantina.Tests;
 
 /// <summary>
-/// cantina_dietary_profiles (Users decomposition commit 10): the read with its legacy fallback,
-/// the member's save, the cantina.profile-dietary copy, merge, export and erasure, and the
-/// dashboard nudge.
+/// cantina_dietary_profiles (Users decomposition commit 10): the read, the member's save, merge,
+/// export and erasure, and the dashboard nudge.
 /// </summary>
 public class DietaryProfileTests
 {
@@ -51,14 +50,12 @@ public class DietaryProfileTests
 
     private readonly List<UserInfo> _all = [];
 
-    /// <summary>A member whose legacy profiles columns hold the given food answers.</summary>
-    private UserInfo SeedUser(Guid id, string? legacyPreference = null, IReadOnlyList<string>? legacyAllergies = null,
-        string? legacyMedical = null, Guid? resolvesTo = null)
+    private UserInfo SeedUser(Guid id, string? medical = null, Guid? resolvesTo = null)
     {
         var info = UserInfo.Create(
             new User { Id = resolvesTo ?? id, BurnerName = "Ana", CreatedAt = Now },
             [], [], [],
-            UserFixtures.Profile(dietaryPreference: legacyPreference, allergies: legacyAllergies, medicalConditions: legacyMedical),
+            UserFixtures.Profile(medicalConditions: medical),
             []);
         _users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(info);
         _users.GetRawUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(info);
@@ -78,14 +75,12 @@ public class DietaryProfileTests
     // ─── Read and save ──────────────────────────────────────────────────────────
 
     [HumansFact]
-    public async Task Read_FallsBackToTheLegacyProfile_UntilARowExists()
+    public async Task Read_IsNull_UntilARowExists()
     {
         var id = Guid.NewGuid();
-        SeedUser(id, legacyPreference: "Omnivore", legacyAllergies: ["Egg"]);
+        SeedUser(id, medical: "Epilepsy");
 
-        var legacy = await _sut.GetDietaryProfileAsync(id, Ct);
-        legacy!.DietaryPreference.Should().Be("Omnivore");
-        legacy.Allergies.Should().Equal("Egg");
+        (await _sut.GetDietaryProfileAsync(id, Ct)).Should().BeNull("medical conditions are not a food answer");
 
         (await _sut.SaveAsync(id, Answers(id), Ct)).Should().BeNull();
         var saved = await _sut.GetDietaryProfileAsync(id, Ct);
@@ -94,19 +89,11 @@ public class DietaryProfileTests
     }
 
     [HumansFact]
-    public async Task Read_NoRowAndNoLegacyAnswers_IsNull()
+    public async Task Save_ClearingThePreference_RecordsIt()
     {
         var id = Guid.NewGuid();
-        SeedUser(id, legacyMedical: "Epilepsy");
-
-        (await _sut.GetDietaryProfileAsync(id, Ct)).Should().BeNull("medical conditions are not a food answer");
-    }
-
-    [HumansFact]
-    public async Task Save_ClearingThePreference_RecordsIt_SoTheLegacyValueDoesNotComeBack()
-    {
-        var id = Guid.NewGuid();
-        SeedUser(id, legacyPreference: "Omnivore");
+        SeedUser(id);
+        await _sut.SaveAsync(id, Answers(id, preference: "Omnivore"), Ct);
 
         await _sut.SaveAsync(id, Answers(id, preference: "  "), Ct);
 
@@ -161,52 +148,23 @@ public class DietaryProfileTests
     }
 
     [HumansFact]
-    public async Task BulkRead_IsKeyedByTheRequestedId_RowsThenLegacy_MembersWithNothingAbsent()
+    public async Task BulkRead_IsKeyedByTheRequestedId_MembersWithNoRowAbsent()
     {
         var withRow = Guid.NewGuid();
-        var legacyOnly = Guid.NewGuid();
         var nothing = Guid.NewGuid();
         var infos = new Dictionary<Guid, UserInfo>
         {
-            [withRow] = SeedUser(withRow, legacyPreference: "Omnivore"),
-            [legacyOnly] = SeedUser(legacyOnly, legacyPreference: "Vegetarian"),
+            [withRow] = SeedUser(withRow),
             [nothing] = SeedUser(nothing),
         };
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(infos));
         await _sut.SaveAsync(withRow, Answers(withRow), Ct);
 
-        var read = await _sut.GetDietaryProfilesAsync([withRow, legacyOnly, nothing], Ct);
+        var read = await _sut.GetDietaryProfilesAsync([withRow, nothing], Ct);
 
-        read.Keys.Should().BeEquivalentTo([withRow, legacyOnly]);
+        read.Keys.Should().BeEquivalentTo([withRow]);
         read[withRow].DietaryPreference.Should().Be("Vegan");
-        read[legacyOnly].DietaryPreference.Should().Be("Vegetarian");
-    }
-
-    // ─── cantina.profile-dietary ────────────────────────────────────────────────
-
-    [HumansFact]
-    public async Task Migration_ListsMembersWithLegacyAnswersAndNoRow_CopiesThem_AndIsIdempotent()
-    {
-        var pending = Guid.NewGuid();
-        var alreadyCopied = Guid.NewGuid();
-        SeedUser(pending, legacyPreference: "Vegan", legacyAllergies: ["Soy"]);
-        SeedUser(alreadyCopied, legacyPreference: "Omnivore");
-        SeedUser(Guid.NewGuid(), legacyMedical: "Diabetes");
-        await _sut.SaveAsync(alreadyCopied, Answers(alreadyCopied, preference: "Pescatarian"), Ct);
-        var migration = new SectionDataMigrations().Migrations().Single();
-        var sp = new ServiceCollection().AddSingleton<IDietaryProfileManagement>(_sut).BuildServiceProvider();
-
-        migration.Key.Should().Be("cantina.profile-dietary");
-        var status = await migration.Status(sp, Ct);
-        status.PendingRows.Should().ContainSingle().Which[0].Should().Be(pending.ToString());
-        status.Columns.Should().NotContain(c => c.Contains("Medical", StringComparison.OrdinalIgnoreCase));
-
-        (await migration.Apply(sp, Guid.NewGuid(), Ct)).Should().Be(1);
-        (await _repo.GetAsync(pending, Ct))!.Allergies.Should().Equal("Soy");
-        (await _repo.GetAsync(alreadyCopied, Ct))!.DietaryPreference.Should().Be("Pescatarian", "a saved row is never overwritten");
-        (await migration.Status(sp, Ct)).Done.Should().BeTrue();
-        (await migration.Apply(sp, Guid.NewGuid(), Ct)).Should().Be(0);
     }
 
     // ─── Merge, export, erase ───────────────────────────────────────────────────
@@ -227,12 +185,13 @@ public class DietaryProfileTests
     }
 
     [HumansFact]
-    public async Task Merge_TheSurvivorWins_IncludingAnswersStillOnItsLegacyProfile()
+    public async Task Merge_TheSurvivorWins()
     {
         var from = Guid.NewGuid();
         var to = Guid.NewGuid();
         SeedUser(from);
-        SeedUser(to, legacyPreference: "Omnivore");
+        SeedUser(to);
+        await _sut.SaveAsync(to, Answers(to, preference: "Omnivore"), Ct);
         await _sut.SaveAsync(from, Answers(from, preference: "Vegetarian"), Ct);
 
         await _sut.ReassignAsync(from, to, Guid.NewGuid(), Now, Ct);
@@ -245,7 +204,7 @@ public class DietaryProfileTests
     public async Task Export_CarriesTheFoodAnswers_NeverMedical_AndEraseDeletesTheRow()
     {
         var id = Guid.NewGuid();
-        SeedUser(id, legacyMedical: "Asthma");
+        SeedUser(id, medical: "Asthma");
         await _sut.SaveAsync(id, Answers(id, allergies: ["Egg"]), Ct);
 
         var slice = (await _sut.ContributeForUserAsync(id, Ct)).Single();

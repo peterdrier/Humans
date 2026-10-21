@@ -84,7 +84,7 @@ A shift qualifies when `Shift.IsAllDay` (08:00–18:00) **or** `Shift.Duration �
 | `IntoleranceOtherText` | `varchar(500)?` | Only with `Other` |
 | `UpdatedAt` | `timestamptz` | |
 
-The legacy `profiles` food columns are read only by Cantina's fallback and the `cantina.profile-dietary` copy; a later retirement PR drops them. `MedicalConditions` (`varchar(4000)?`) stays on `profiles`.
+The legacy `profiles` food columns are no longer read by Cantina (the `cantina.profile-dietary` copy is retired); Users' USERS-16 drops them. `MedicalConditions` (`varchar(4000)?`) stays on `profiles`.
 
 ## Triggers
 
@@ -98,7 +98,7 @@ The legacy `profiles` food columns are read only by Cantina's fallback and the `
 ## Cross-section dependencies
 
 - **Shifts** → Cantina: `ICantinaService` for the gate, banner, volunteer search and admin badges. Cantina → Shifts: `IShiftManagementService.HasQualifyingCantinaSignupAsync` (nudge copy) and `IShiftSignups` (replay).
-- **Users** → Cantina: `ICantinaService` for the medical prompt's "dietary still open" check. Cantina → Users: `IUserService` for the merge chain and legacy fallback.
+- **Users** → Cantina: `ICantinaService` for the medical prompt's "dietary still open" check. Cantina → Users: `IUserService` for the merge chain.
 
 ## Negative access rules
 

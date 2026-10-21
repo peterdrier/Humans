@@ -254,7 +254,7 @@ public class CantinaDailyRosterServiceTests
                         userEmails: [],
                         eventParticipations: [],
                         externalLogins: [],
-                        profile: UserFixtures.Profile(burnerName: "", dietaryPreference: "Vegan"),
+                        profile: UserFixtures.Profile(burnerName: ""),
                         communicationPreferences: []),
                 }));
 

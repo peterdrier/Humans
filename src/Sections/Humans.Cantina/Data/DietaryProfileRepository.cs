@@ -21,12 +21,6 @@ internal sealed class DietaryProfileRepository(IDbContextFactory<CantinaDbContex
         return await ctx.DietaryProfiles.AsNoTracking().Where(x => userIds.Contains(x.UserId)).ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<DietaryProfile>> GetAllAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.DietaryProfiles.AsNoTracking().ToListAsync(ct);
-    }
-
     public async Task UpsertAsync(DietaryProfile values, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -45,15 +39,6 @@ internal sealed class DietaryProfileRepository(IDbContextFactory<CantinaDbContex
             row.UpdatedAt = values.UpdatedAt;
         }
         await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task<bool> TryInsertAsync(DietaryProfile values, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        if (await ctx.DietaryProfiles.AnyAsync(x => x.UserId == values.UserId, ct)) return false;
-        ctx.DietaryProfiles.Add(Copy(values, values.UserId));
-        await ctx.SaveChangesAsync(ct);
-        return true;
     }
 
     public async Task<bool> DeleteAsync(Guid userId, CancellationToken ct = default)

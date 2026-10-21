@@ -54,7 +54,7 @@ The roster is a read-side aggregator; the dietary store is a small owned table b
   take a finished payload and arrange it.
 - **Two payload records**, one per real question, plus the small row/rollup records they carry.
 - **One dietary store**: `cantina_dietary_profiles` behind `DietaryProfileRepository` and
-  `DietaryProfileService` (reads, save, merge, export/erase, legacy fallback and copy), one
+  `DietaryProfileService` (reads, save, merge, export/erase), one
   member-facing controller and one things-to-do contributor.
 
 The layout matches. Each entry point takes a nullable offset and resolves the default itself
@@ -75,7 +75,6 @@ through and owns nothing but sorting and file naming.
 - **`MedicalConditions` is never read, never mapped, never rendered** — no viewer role changes
   this. The payload records have no such property, and that absence is pinned by a test.
 - **The roster writes nothing.** Its only side effect: weekly/daily CSV disclosures append AuditLog entries with actor, scope and person-row count. The only domain write is a member saving their own dietary answers.
-- **A saved row always beats the legacy fallback**, even an emptied one — a cleared answer never resurrects from the old `profiles` columns.
 - **Live on every request.** No cached aggregate and no cache on the dietary reads; burner names
   ride the Users section's cache, behind `IUserService`.
 - **Access is `Admin` or `CantinaAdmin`, by policy.** An authenticated human without either is
@@ -102,10 +101,8 @@ through and owns nothing but sorting and file naming.
   Cantina's source (and this section's freshness triggers) should be re-checked in the same pass.
 - **The legacy food columns on `profiles` are still there.** Users decomposition commit 10
   (nobodies-collective/Humans#1113) moved the answers into `cantina_dietary_profiles`; the old
-  columns stay, `[Obsolete]` on `ProfileInfo` (`HUM_PROFILE_DIETARY`), read only by
-  `DietaryProfileService.LegacyProfile` and the `cantina.profile-dietary` copy, and still exported
-  and erased by Users. A retirement PR, after prod has run the copy, removes the fallback and drops
-  the columns.
+  columns stay, unread by Cantina since the `cantina.profile-dietary` retirement, and still exported
+  and erased by Users until Users' USERS-16 drops them.
 
 ## 6. Deliberately not done
 

@@ -88,16 +88,6 @@ public sealed record ProfileInfo(
     string? EmergencyContactName,
     string? EmergencyContactPhone,
     string? EmergencyContactRelationship,
-    [property: Obsolete("Moved to Cantina's cantina_dietary_profiles (Users decomposition commit 10). Read ICantinaService; the one reader left is Cantina's legacy fallback and the cantina.profile-dietary copy.", DiagnosticId = "HUM_PROFILE_DIETARY")]
-    string? DietaryPreference,
-    [property: Obsolete("Moved to Cantina's cantina_dietary_profiles (Users decomposition commit 10). Read ICantinaService; the one reader left is Cantina's legacy fallback and the cantina.profile-dietary copy.", DiagnosticId = "HUM_PROFILE_DIETARY")]
-    IReadOnlyList<string> Allergies,
-    [property: Obsolete("Moved to Cantina's cantina_dietary_profiles (Users decomposition commit 10). Read ICantinaService; the one reader left is Cantina's legacy fallback and the cantina.profile-dietary copy.", DiagnosticId = "HUM_PROFILE_DIETARY")]
-    string? AllergyOtherText,
-    [property: Obsolete("Moved to Cantina's cantina_dietary_profiles (Users decomposition commit 10). Read ICantinaService; the one reader left is Cantina's legacy fallback and the cantina.profile-dietary copy.", DiagnosticId = "HUM_PROFILE_DIETARY")]
-    IReadOnlyList<string> Intolerances,
-    [property: Obsolete("Moved to Cantina's cantina_dietary_profiles (Users decomposition commit 10). Read ICantinaService; the one reader left is Cantina's legacy fallback and the cantina.profile-dietary copy.", DiagnosticId = "HUM_PROFILE_DIETARY")]
-    string? IntoleranceOtherText,
     // GDPR Art. 9 — present on the cached read-model, but every render/serialize
     // surface MUST gate this behind the MedicalDataViewer policy. Never expose unscoped.
     string? MedicalConditions,
