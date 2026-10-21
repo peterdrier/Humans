@@ -277,10 +277,6 @@ inbox:
     what: "CacheKeys.MagicLinkUsed in Humans.Base names its parameter tokenPrefix, but its only caller (Auth's MagicLinkRateLimiter) passes a SHA-256 digest of the whole token. Rename the parameter. Found by section-doctor on Auth."
     review: light
   - added: 2026-10-21
-    id: CENTRAL-89
-    what: "Retirement PR for data migration finance.iban-to-payment-details (Users decomposition, Finance): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: PaymentDetailsService's legacy fallback (LegacyIban) and ProfileInfo.Iban with its HUM_PROFILE_IBAN obsolete; Users' erase line that nulls Profile.Iban stays until the USERS drop row. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
-    review: panel
-  - added: 2026-10-21
     id: CENTRAL-90
     what: "Retirement PR for data migration cantina.profile-dietary (Users decomposition, Cantina): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: DietaryProfileService's legacy fallback and the five ProfileInfo food fields (DietaryPreference, Allergies, AllergyOtherText, Intolerances, IntoleranceOtherText; HUM_PROFILE_DIETARY). Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
     review: panel

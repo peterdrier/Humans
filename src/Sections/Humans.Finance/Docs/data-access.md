@@ -120,11 +120,9 @@ Repository: `IPaymentDetailsRepository`.
 
 Implements the public `IFinanceService` (`GetIbanAsync`) and `IFinanceWrite` (`SetIbanAsync`), both
 called by Expenses; the internal `IPaymentDetailsManagement` (`RevealIbanAsync` for
-`PaymentDetailsAdminController`, and the `finance.iban-to-payment-details` copy for
-`SectionDataMigrations`); `IUserDataContributor` (slice `PaymentDetails`, masked IBAN; erasure
+`PaymentDetailsAdminController`); `IUserDataContributor` (slice `PaymentDetails`, masked IBAN; erasure
 deletes the row) and `IUserMerge` (the survivor's IBAN wins, else the source's row moves).
-Cross-section calls: `IUserService` (merge-chain resolution, the user-exists check, and the
-`[Obsolete]` `ProfileInfo.Iban` read fallback until the copy is done in production) and
+Cross-section calls: `IUserService` (merge-chain resolution and the user-exists check) and
 `IAuditLogService` (`IbanReveal`). Uncached: each read is one keyed row.
 
 `PaymentDetailsViewComponent` (the Payment Details card, contributed to `/Users/Admin/{id}` by

@@ -11,8 +11,6 @@ namespace Humans.Finance.Services;
 /// <summary>
 /// The member payment details Finance owns (<c>finance_payment_details</c>): the IBAN reads and
 /// writes other sections make, the admin reveal, the Article 15/17 slice and the account-merge fold.
-/// Until <c>finance.iban-to-payment-details</c> has run, a member without a row reads their legacy
-/// <c>profiles.Iban</c> through <see cref="UserInfo"/> (Users decomposition plan §3.1 step 4).
 /// </summary>
 internal sealed class PaymentDetailsService(
     IPaymentDetailsRepository repo,
@@ -26,7 +24,7 @@ internal sealed class PaymentDetailsService(
     {
         var info = await users.GetUserInfoAsync(userId, ct);
         var row = await repo.GetAsync(info?.Id ?? userId, ct);
-        return row is not null ? row.Iban : LegacyIban(info);
+        return row?.Iban;
     }
 
     public async Task<bool> SetIbanAsync(Guid userId, string? iban, CancellationToken ct = default)
@@ -50,54 +48,13 @@ internal sealed class PaymentDetailsService(
         return iban;
     }
 
-    // ─── finance.iban-to-payment-details ─────────────────────────────────────────
-
-    public async Task<IReadOnlyList<LegacyIbanRow>> GetUncopiedLegacyIbansAsync(CancellationToken ct = default)
-    {
-        var copied = (await repo.GetAllAsync(ct)).Select(r => r.UserId).ToHashSet();
-        return [.. (await users.GetAllUserInfosAsync(ct))
-            .Where(u => !copied.Contains(u.Id))
-            .Select(u => (User: u, Iban: LegacyIban(u)))
-            .Where(x => x.Iban is not null)
-            .OrderBy(x => x.User.CreatedAt)
-            .Select(x => new LegacyIbanRow(x.User.Id, x.User.BurnerName, x.Iban!))];
-    }
-
-    public async Task<int> CopyLegacyIbansAsync(CancellationToken ct = default)
-    {
-        var now = clock.GetCurrentInstant();
-        var written = 0;
-        foreach (var row in await GetUncopiedLegacyIbansAsync(ct))
-        {
-            if (await repo.TryInsertAsync(row.UserId, row.Iban, now, ct))
-                written++;
-        }
-        return written;
-    }
-
-    /// <summary>The one reader of the obsolete legacy field: the read fallback and the copy above.
-    /// Deleted with the migration once production reports it done.</summary>
-    private static string? LegacyIban(UserInfo? info)
-    {
-#pragma warning disable HUM_PROFILE_IBAN // the fallback and copy the field is kept for (plan §3.1)
-        var iban = info?.Profile?.Iban;
-#pragma warning restore HUM_PROFILE_IBAN
-        return string.IsNullOrWhiteSpace(iban) ? null : iban;
-    }
-
     // ─── IUserMerge ──────────────────────────────────────────────────────────────
 
     public async Task ReassignAsync(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)
     {
         _ = actorUserId;
-        // The survivor's IBAN wins. One still only on its legacy profile counts as its own, so it is
-        // copied first rather than overwritten by the source's row.
-        if (await repo.GetAsync(mergedToUserId, ct) is null
-            && LegacyIban(await users.GetRawUserInfoAsync(mergedToUserId, ct)) is { } legacy)
-        {
-            await repo.TryInsertAsync(mergedToUserId, legacy, now, ct);
-        }
+        // The survivor's IBAN wins.
         await repo.ReassignAsync(mergedFromUserId, mergedToUserId, now, ct);
     }
 

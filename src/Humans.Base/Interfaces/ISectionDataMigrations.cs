@@ -19,7 +19,7 @@ public interface ISectionDataMigrations : ISectionContribution
 }
 
 /// <summary>One registered data migration.</summary>
-/// <param name="Key">Stable, published id, section-first: <c>finance.iban-to-payment-details</c>.</param>
+/// <param name="Key">Stable, published id, section-first: <c>users.stub-profiles</c>.</param>
 /// <param name="Section">The owning section's name.</param>
 /// <param name="Title">What the copy does, for the operator.</param>
 /// <param name="Retires">What the retirement PR deletes once the migration reports done.</param>

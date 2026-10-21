@@ -4,8 +4,7 @@ namespace Humans.Finance.Domain;
 
 /// <summary>
 /// The bank account a member is reimbursed to, one row per member (<c>finance_payment_details</c>).
-/// Replaces <c>profiles.Iban</c>, which Users keeps unwritten until the
-/// <c>finance.iban-to-payment-details</c> data migration is done in production.
+/// Replaces <c>profiles.Iban</c>, which Users keeps unwritten and unread until its drop.
 /// </summary>
 internal sealed class PaymentDetails
 {

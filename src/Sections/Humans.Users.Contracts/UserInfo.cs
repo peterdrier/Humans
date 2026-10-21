@@ -108,8 +108,6 @@ public sealed record ProfileInfo(
     string? AdminNotes,
     string? ContributionInterests,
     string? BoardNotes,
-    [property: Obsolete("Moved to Finance's finance_payment_details (Users decomposition commit 1). Read IFinanceService.GetIbanAsync; the one reader left is Finance's legacy fallback and the finance.iban-to-payment-details copy.", DiagnosticId = "HUM_PROFILE_IBAN")]
-    string? Iban,
     [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
     bool IsApproved,
     [property: Obsolete("Moved to Governance's governance_membership_tiers (Users decomposition commit 11). Read IGovernanceService.GetMembershipTierAsync / GetMembershipTiersAsync; the one reader left is Governance's legacy fallback and the governance.profile-tier copy.", DiagnosticId = "HUM_PROFILE_TIER")]

@@ -388,7 +388,7 @@ A contact is identified by `ContactSource != null && LastLoginAt == null`. When 
 | ContributionInterests | string? | null | Skills / availability statement (publicly visible on profile). |
 | BoardNotes | string? | null | Notes from the human intended for the Board (self + Board only). |
 | AdminNotes | string? (4000) | null | Admin-only notes (not visible to the human). |
-| Iban | string? (34) | null | **Legacy, no longer written.** The member's IBAN moved to Finance's `finance_payment_details` (Users decomposition commit 1). Carried on `ProfileInfo.Iban` as `[Obsolete]` (`HUM_PROFILE_IBAN`) for Finance's read fallback and the `finance.iban-to-payment-details` copy only; still erased by `EraseProfileExtrasForUserAsync` until the column is dropped. |
+| Iban | string? (34) | null | **Legacy, no longer written.** The member's IBAN moved to Finance's `finance_payment_details` (Users decomposition commit 1). No longer read: `finance.iban-to-payment-details` is retired and `ProfileInfo.Iban` is gone. Still erased by `EraseProfileExtrasForUserAsync` until the column is dropped. |
 | IsApproved | bool | false | **Legacy, no longer written.** Moved to Consent's `consent_reviews` (Users decomposition commit 12). Carried on `ProfileInfo` as `[Obsolete]` (`HUM_PROFILE_REVIEW`) for Consent's read fallback and the `consent.profile-review` copy only; still exported and erased here until the column is dropped. |
 | MembershipTier | LegacyMembershipTier | Volunteer | **Legacy, no longer written.** The tier moved to Governance's `governance_membership_tiers` (Users decomposition commit 11). Carried on `ProfileInfo` as `[Obsolete]` (`HUM_PROFILE_TIER`) for Governance's read fallback and the `governance.profile-tier` copy only; still exported here until the column is dropped. |
 | ConsentCheckStatus | LegacyConsentCheckStatus? | null | Legacy, as `IsApproved`. |
@@ -547,7 +547,7 @@ Nothing here is written. Each row is read only by its new owner's fallback and d
 
 | Legacy object | Replaced by | Migration key | Drop row |
 |---|---|---|---|
-| `profiles.Iban` | Finance `finance_payment_details` | `finance.iban-to-payment-details` | USERS-15 |
+| `profiles.Iban` | Finance `finance_payment_details` | `finance.iban-to-payment-details` (retired, no reader left) | USERS-15 |
 | `profiles` food columns (`DietaryPreference`, `Allergies`, `AllergyOtherText`, `Intolerances`, `IntoleranceOtherText`) | Cantina `cantina_dietary_profiles` | `cantina.profile-dietary` | USERS-16 |
 | `profiles.MembershipTier` | Governance `governance_membership_tiers` | `governance.profile-tier` | USERS-17 |
 | `profiles` review columns (`ConsentCheck*`, `RejectionReason`, `RejectedAt`, `RejectedByUserId`, `IsApproved`) and the `ConsentCheckStatus` index | Consent `consent_reviews` | `consent.profile-review` | USERS-18 |
