@@ -31,7 +31,8 @@ internal interface IBackdoorApiKeyService : IApplicationService
     Task<BackdoorKeyIssueResult> RotateAsync(
         Guid keyId, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Every key, including revoked ones. Ordering is the caller's business.</summary>
+    /// <summary>Every key, including revoked ones, each flagged with whether its owner still passes
+    /// the eligibility test <see cref="ResolveOwnerAsync"/> applies. Ordering is the caller's business.</summary>
     Task<IReadOnlyList<BackdoorKeyRow>> ListAsync(CancellationToken ct = default);
 
     /// <summary>
@@ -65,4 +66,5 @@ internal sealed record BackdoorKeyRow(
     string DisplayPrefix,
     Instant CreatedAt,
     Instant? LastUsedAt,
-    Instant? RevokedAt);
+    Instant? RevokedAt,
+    bool IsOwnerEligible);

@@ -103,8 +103,16 @@ internal sealed class BackdoorApiKeyService(
     public async Task<IReadOnlyList<BackdoorKeyRow>> ListAsync(CancellationToken ct = default)
     {
         var keys = await repository.GetAllAsync(ct);
+        var eligibleOwners = new HashSet<Guid>();
+        foreach (var ownerId in keys.Select(k => k.UserId).Distinct())
+        {
+            if (await GetEligibleOwnerAsync(ownerId, ct) is not null)
+                eligibleOwners.Add(ownerId);
+        }
+
         return [.. keys.Select(k => new BackdoorKeyRow(
-            k.Id, k.UserId, k.Label, k.DisplayPrefix, k.CreatedAt, k.LastUsedAt, k.RevokedAt))];
+            k.Id, k.UserId, k.Label, k.DisplayPrefix, k.CreatedAt, k.LastUsedAt, k.RevokedAt,
+            eligibleOwners.Contains(k.UserId)))];
     }
 
     /// <summary>Resolves an active key whose owner remains eligible.</summary>
