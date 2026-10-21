@@ -493,7 +493,7 @@ Accessible to TeamsAdmin, Board, and Admin. Shows drift across all active resour
 | Route | Method | Auth | Action |
 |-------|--------|------|--------|
 | `/Google/Sync` | GET | TeamsAdmin, Board, Admin | Sync status page |
-| `/Google/Sync/Preview/{resourceType}` | GET | TeamsAdmin, Board, Admin | AJAX: preview drift for resource type |
+| `/Google/Sync/Preview/{resourceType}` | POST | TeamsAdmin, Board, Admin | AJAX: preview drift for resource type |
 | `/Google/Sync/Execute/{resourceId}` | POST | Admin only | Execute sync for one resource |
 | `/Google/Sync/ExecuteAll/{resourceType}` | POST | Admin only | Execute sync for all resources of a type |
 

@@ -13,7 +13,7 @@
 
 # Roslyn Analyzer Candidates
 
-Forward-looking inventory of *additional* in-repo analyzer rules beyond the currently-shipped set — 26 live rules: `HUM0001`–`HUM0003`, `HUM0005`–`HUM0011`, `HUM0014`–`HUM0016`, `HUM0019`–`HUM0020`, `HUM0025`–`HUM0028`, `HUM0030`–`HUM0031`, `HUM0033`–`HUM0037`, catalogued in [`code-analysis.md`](code-analysis.md). **Retired ids are never reassigned:** `HUM0004` (Profile.IsSuspended write guard, dropped with the column in nobodies-collective/Humans#1217), `HUM0017`/`HUM0018` (cross-section repository injection and "cannot determine the section", retired in nobodies-collective/Humans#1064 — the assembly boundary makes the first a compile error and `[Section]` no longer exists to be missing), `HUM0022`/`HUM0023` (the per-section Notification and Event DbSet-write analyzers, subsumed by the universal `HUM0025`), `HUM0021`/`HUM0024` (retired in nobodies-collective/Humans#1278), `HUM0012`/`HUM0013`/`HUM0029` (all keyed on a `Humans.Application.*` namespace layout the section assemblies replaced), and `HUM0032` (cross-section injection of a write-capable `I*Service`, retired with the `I<Section>ServiceRead` rule). **IDs are assigned at ship time from the next free slot in `AnalyzerReleases.Unshipped.md` — currently `HUM0038`.** The candidate headings below are deliberately *un-numbered*: several once carried provisional `HUM00xx` numbers that later shipped for unrelated rules, so do not pre-claim an id here. This file is the queue we draw from when adding the next analyzer; do not start writing one without checking here first.
+Forward-looking inventory of *additional* in-repo analyzer rules beyond the currently-shipped set — 27 live rules: `HUM0001`–`HUM0003`, `HUM0005`–`HUM0011`, `HUM0014`–`HUM0016`, `HUM0019`–`HUM0020`, `HUM0025`–`HUM0028`, `HUM0030`–`HUM0031`, `HUM0033`–`HUM0038`, catalogued in [`code-analysis.md`](code-analysis.md). **Retired ids are never reassigned:** `HUM0004` (Profile.IsSuspended write guard, dropped with the column in nobodies-collective/Humans#1217), `HUM0017`/`HUM0018` (cross-section repository injection and "cannot determine the section", retired in nobodies-collective/Humans#1064 — the assembly boundary makes the first a compile error and `[Section]` no longer exists to be missing), `HUM0022`/`HUM0023` (the per-section Notification and Event DbSet-write analyzers, subsumed by the universal `HUM0025`), `HUM0021`/`HUM0024` (retired in nobodies-collective/Humans#1278), `HUM0012`/`HUM0013`/`HUM0029` (all keyed on a `Humans.Application.*` namespace layout the section assemblies replaced), and `HUM0032` (cross-section injection of a write-capable `I*Service`, retired with the `I<Section>ServiceRead` rule). **IDs are assigned at ship time from the next free slot in `AnalyzerReleases.Unshipped.md` — currently `HUM0039`.** The candidate headings below are deliberately *un-numbered*: several once carried provisional `HUM00xx` numbers that later shipped for unrelated rules, so do not pre-claim an id here. This file is the queue we draw from when adding the next analyzer; do not start writing one without checking here first.
 
 ## Framing
 
@@ -319,30 +319,32 @@ HUM0031 counts statements and branches; the intent question ("is this a domain
 decision?") belongs to section-doctor. Each candidate below is one narrow,
 intent-shaped pattern from the 2026-06-12 controller-intent audit
 (`docs/debt/controller-intent-audit-2026-06-12.md`) that an analyzer could own
-outright, taking that slice off the judgment pass. None is approved; each needs
-Peter's call before it is built.
+outright, taking that slice off the judgment pass. The first shipped; the other two
+were surveyed and left with section-doctor.
 
-- **A read action that writes.** An `[HttpGet]` action (or a view component's
-  `InvokeAsync`) that reaches a member of an `I<Section>Write` interface or a
-  mutating `I<Section>Management` member. Audit finding: the onboarding widget's
-  self-heal moved Suspended→Active from a GET. **Needs:** a way to tell a
-  mutating member from a read on `*Management` interfaces (the `I*Service` /
-  `I*Write` split already does it for the published surface), plus a baseline
-  for the legitimate cases (a GET that stamps a last-seen time).
+- **A read action that writes** — **shipped as `HUM0038`** for the mechanical slice: a GET
+  action or view component calling an `I*Write` member or an `[ExternalWrite]` method. It shipped
+  at one violation, fixed in the same PR (`GoogleController.SyncPreview`, now a POST). Mutating
+  `I*Service` / `I*Management` members are still the doctor's call: a method-name verb list was
+  surveyed (2026-10-21) and was mostly noise (`SetError`, CSV `Write*`, `Record*` metrics).
 
 - **Post-mutation sequencing.** One action that calls two or more distinct
   write members across services, so the controller decides which domain side
   effects follow a mutation. Audit theme 1 (Teams coordinator-sync trio, event
   lifecycle emails, the profile save chain); which consequences follow a
-  change is a fact, not presentation. **Needs:** the same mutating-member
-  classification, and a baseline.
+  change is a fact, not presentation. **Needs:** a mutating-member
+  classification for `I*Service` / `I*Management`. Surveyed 2026-10-21 with only the HUM0038
+  signals (`I*Write`, `[ExternalWrite]`): two actions call two writes, and both branch between
+  them rather than sequence them, so the analyzer would catch nothing real. Not built.
 
 - **Status predicates in controllers.** A comparison, `is` pattern or switch
   arm against a member of a section's `*Status` / `*State` contract enum inside
   a controller method. Audit theme 2 (`CanEdit`/`CanWithdraw` predicates
   re-derived beside the service's own rule). **Needs:** a carve-out for pure
   display mapping (status → badge CSS class), which is presentation; expect
-  this one to stay advisory (Warning) because that line is fuzzy.
+  this one to stay advisory (Warning) because that line is fuzzy. Surveyed 2026-10-21: ~85
+  comparisons in ~50 controller methods, most of them result-status switches or display filters,
+  so no syntax shape separates the facts. Not built; stays with section-doctor.
 
 Patterns that stay with section-doctor because no syntax shape separates them
 from honest presentation: the same rule written twice in one controller, and

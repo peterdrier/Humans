@@ -81,7 +81,7 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 | `/Google/Sync` | GET | TeamsAdmin, Board, Admin | Resource sync status dashboard |
 | `/Google/Resource/{id}` | GET | Board, Admin | Sync history for one resource |
 | `/Google/Human/{id}` | GET | HumanAdmin, Board, Admin | Sync history for one human |
-| `/Google/Sync/Preview/{resourceType}` | GET | TeamsAdmin, Board, Admin | AJAX: drift preview for resource type |
+| `/Google/Sync/Preview/{resourceType}` | POST | TeamsAdmin, Board, Admin | AJAX: drift preview for resource type |
 | `/Google/Sync/Execute/{resourceId}` | POST | Admin | Execute sync for one resource |
 | `/Google/Sync/ExecuteAll/{resourceType}` | POST | Admin | Execute sync for all resources of a type |
 | `/Google/SyncOutbox` | GET | Admin | Recent outbox events with user/team/resource display |

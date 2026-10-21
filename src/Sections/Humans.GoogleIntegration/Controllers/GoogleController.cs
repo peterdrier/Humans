@@ -287,13 +287,17 @@ internal sealed class GoogleController(
         return View();
     }
 
-    [HttpGet("Sync/Preview/{resourceType}")]
+    // POST, not GET (HUM0038): a preview stamps the resource's error column
+    // when a Google lookup fails, so it writes. CancellationToken.None, as on
+    // the execute paths (HUM0033).
+    [HttpPost("Sync/Preview/{resourceType}")]
     [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncPreview(GoogleResourceType resourceType)
     {
         var result = resourceType == GoogleResourceType.Group
-            ? await googleGroupSync.ReconcileAllAsync(SyncAction.Preview, HttpContext.RequestAborted, GoogleSyncSource.ManualSync)
-            : await googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Preview, HttpContext.RequestAborted);
+            ? await googleGroupSync.ReconcileAllAsync(SyncAction.Preview, CancellationToken.None, GoogleSyncSource.ManualSync)
+            : await googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Preview, CancellationToken.None);
 
         result.Diffs.Sort((a, b) =>
             string.Compare(a.ResourceName, b.ResourceName, StringComparison.Ordinal));
