@@ -3,7 +3,6 @@ using Humans.AuditLog.Contracts;
 using System.ComponentModel.DataAnnotations;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
-using Humans.Base.Interfaces.Caching;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Domain;

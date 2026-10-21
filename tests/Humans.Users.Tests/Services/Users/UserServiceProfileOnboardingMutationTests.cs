@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Base.Extensions;
-using Humans.Base.Interfaces.Caching;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
 using Humans.Users.Data.Repositories;

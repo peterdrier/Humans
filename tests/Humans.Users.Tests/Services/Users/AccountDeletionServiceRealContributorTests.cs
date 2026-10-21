@@ -3,7 +3,6 @@ using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base.Interfaces;
-using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Shifts.Contracts;

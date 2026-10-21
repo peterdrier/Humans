@@ -3,7 +3,6 @@ using System.Resources;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;

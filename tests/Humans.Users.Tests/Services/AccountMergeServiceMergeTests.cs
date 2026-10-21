@@ -1,7 +1,6 @@
 using Xunit;
 using Microsoft.EntityFrameworkCore;
 using Humans.Users.Data;
-using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.Consent.Contracts;
 using Humans.Users.Tests.Infrastructure;

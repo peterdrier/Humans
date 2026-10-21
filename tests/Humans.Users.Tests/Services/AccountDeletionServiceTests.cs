@@ -4,7 +4,6 @@ using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;

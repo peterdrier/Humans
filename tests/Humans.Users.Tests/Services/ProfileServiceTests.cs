@@ -7,7 +7,6 @@ using NodaTime;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Humans.Base.Interfaces;
-using Humans.Base.Interfaces.Caching;
 using ProfileService = Humans.Users.Services.ProfileService;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;

@@ -1,4 +1,3 @@
-using Humans.Auth.Contracts;
 using System.Transactions;
 using NodaTime;
 using Humans.Base.Extensions;

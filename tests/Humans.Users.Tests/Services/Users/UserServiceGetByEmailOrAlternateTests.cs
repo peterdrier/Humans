@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
-using Humans.Base.Interfaces.Caching;
 using Humans.Users.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Services;

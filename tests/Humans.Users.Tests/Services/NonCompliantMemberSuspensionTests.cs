@@ -5,7 +5,6 @@ using NodaTime.Testing;
 using NSubstitute;
 using Humans.Web.Services;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Notifications.Contracts;
