@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Events.Services;
+using Humans.Events.Services.Dtos;
 using Humans.Events.Contracts;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
@@ -186,12 +187,14 @@ public class CachingEventServiceTests(HumansTestDatabase database) : Integration
 
         (await svc.GetApprovedEventByIdAsync(ev.Id, TestContext.Current.CancellationToken))!.Title.Should().Be("Original title");
 
-        // Mirror the controller: re-load fresh, mutate, save in place.
-        var loaded = await svc.GetEventForModerationAsync(ev.Id, TestContext.Current.CancellationToken);
-        loaded!.Title = "Edited title";
-        await svc.AdminUpdateAsync(loaded, Guid.NewGuid(), "fixed typo", TestContext.Current.CancellationToken);
+        // Mirror the controller: send the edited fields by id; the service edits in place.
+        var edit = new EventEdit(
+            ev.CategoryId, ev.GuideSharedVenueId, "Edited title", ev.Description, ev.StartAt, ev.DurationMinutes,
+            ev.LocationNote, ev.Host, ev.IsRecurring, ev.RecurrenceDays, ev.PriorityRank);
+        await svc.AdminUpdateAsync(ev.Id, edit, Guid.NewGuid(), "fixed typo", TestContext.Current.CancellationToken);
 
-        loaded.Status.Should().Be(EventStatus.Approved);
+        var loaded = await svc.GetEventForModerationAsync(ev.Id, TestContext.Current.CancellationToken);
+        loaded!.Status.Should().Be(EventStatus.Approved);
         var cached = await svc.GetApprovedEventByIdAsync(ev.Id, TestContext.Current.CancellationToken);
         cached.Should().NotBeNull("an edited Approved event stays approved and in the cache");
         cached.Title.Should().Be("Edited title");

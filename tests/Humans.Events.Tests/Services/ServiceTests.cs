@@ -659,11 +659,13 @@ public sealed class EventServiceTests
         {
             Id = Guid.NewGuid(),
             Status = EventStatus.Pending,
+            GuideSharedVenueId = Guid.NewGuid(),
             SubmittedAt = submittedAt,
             LastUpdatedAt = Instant.FromUtc(2026, 5, 1, 13, 0)
         };
+        _repo.Events.Add(guideEvent);
 
-        await _service.UpdateAndResubmitAsync(guideEvent, TestContext.Current.CancellationToken);
+        await _service.UpdateAndResubmitAsync(guideEvent.Id, EditOf(guideEvent), TestContext.Current.CancellationToken);
 
         guideEvent.Status.Should().Be(EventStatus.Pending);
         guideEvent.SubmittedAt.Should().Be(submittedAt);
@@ -677,13 +679,19 @@ public sealed class EventServiceTests
         var guideEvent = new Event
         {
             Id = Guid.NewGuid(),
+            CampId = Guid.NewGuid(),
             Status = EventStatus.Approved,
             SubmittedAt = Instant.FromUtc(2026, 5, 1, 12, 0),
             LastUpdatedAt = Instant.FromUtc(2026, 5, 2, 12, 0)
         };
+        _repo.Events.Add(guideEvent);
 
-        await _service.UpdateAndResubmitAsync(guideEvent, TestContext.Current.CancellationToken);
+        await _service.UpdateAndResubmitAsync(
+            guideEvent.Id, EditOf(guideEvent) with { Title = "Edited", PriorityRank = 3 },
+            TestContext.Current.CancellationToken);
 
+        guideEvent.Title.Should().Be("Edited");
+        guideEvent.PriorityRank.Should().Be(3);
         guideEvent.Status.Should().Be(EventStatus.Pending);
         guideEvent.SubmittedAt.Should().Be(_clock.GetCurrentInstant());
         guideEvent.LastUpdatedAt.Should().Be(_clock.GetCurrentInstant());
@@ -697,7 +705,8 @@ public sealed class EventServiceTests
         var guideEvent = new Event
         {
             Id = Guid.NewGuid(),
-            Title = "Fixed title",
+            Title = "Old title",
+            GuideSharedVenueId = Guid.NewGuid(),
             Status = EventStatus.Approved,
             SubmittedAt = submittedAt,
             LastUpdatedAt = Instant.FromUtc(2026, 5, 2, 12, 0)
@@ -705,8 +714,11 @@ public sealed class EventServiceTests
         _repo.Events.Add(guideEvent);
         var actorUserId = Guid.NewGuid();
 
-        await _service.AdminUpdateAsync(guideEvent, actorUserId, "fixed the start time", TestContext.Current.CancellationToken);
+        await _service.AdminUpdateAsync(
+            guideEvent.Id, EditOf(guideEvent) with { Title = "Fixed title" }, actorUserId,
+            "fixed the start time", TestContext.Current.CancellationToken);
 
+        guideEvent.Title.Should().Be("Fixed title");
         guideEvent.Status.Should().Be(EventStatus.Approved); // never re-queued to Pending
         guideEvent.SubmittedAt.Should().Be(submittedAt);     // submission timestamp untouched
         guideEvent.LastUpdatedAt.Should().Be(_clock.GetCurrentInstant());
@@ -726,7 +738,7 @@ public sealed class EventServiceTests
         _repo.Events.Add(guideEvent);
         var actorUserId = Guid.NewGuid();
 
-        await _service.ModeratorWithdrawAsync(guideEvent, actorUserId, TestContext.Current.CancellationToken);
+        await _service.ModeratorWithdrawAsync(guideEvent.Id, actorUserId, TestContext.Current.CancellationToken);
 
         guideEvent.Status.Should().Be(EventStatus.Withdrawn);
         _repo.EventModerationActions.Should().ContainSingle(action =>
@@ -743,16 +755,20 @@ public sealed class EventServiceTests
     [InlineData("   ")]
     public async Task AdminUpdateAsync_BlankNote_AppendsEditedActionWithNullReason_AnyStatePreserved(string note)
     {
-        var guideEvent = new Event { Id = Guid.NewGuid(), Status = EventStatus.Withdrawn };
+        var guideEvent = new Event { Id = Guid.NewGuid(), CampId = Guid.NewGuid(), Status = EventStatus.Withdrawn };
         _repo.Events.Add(guideEvent);
 
-        await _service.AdminUpdateAsync(guideEvent, Guid.NewGuid(), note, TestContext.Current.CancellationToken);
+        await _service.AdminUpdateAsync(guideEvent.Id, EditOf(guideEvent), Guid.NewGuid(), note, TestContext.Current.CancellationToken);
 
         guideEvent.Status.Should().Be(EventStatus.Withdrawn); // any state edited in place
         _repo.EventModerationActions.Should().ContainSingle(a =>
             a.Action == EventModerationActionType.Edited && a.Reason == null);
         _repo.SaveChangesCount.Should().Be(1);
     }
+
+    private static EventEdit EditOf(Event e) => new(
+        e.CategoryId, e.GuideSharedVenueId, e.Title, e.Description, e.StartAt, e.DurationMinutes,
+        e.LocationNote, e.Host, e.IsRecurring, e.RecurrenceDays, e.PriorityRank);
 
     [HumansFact]
     public async Task ContributeForUserAsync_EmitsEventsSliceWithFavouritesAndPreference()
