@@ -112,7 +112,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         _accountDeletionService.AnonymizeExpiredAccountAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new AnonymizedAccountSummary(
                 OriginalEmail: "test@example.com",
-                OriginalDisplayName: "Test User",
+                OriginalBurnerName: "Test User",
                 PreferredLanguage: language));
 
         await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
@@ -171,7 +171,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         _accountDeletionService.AnonymizeExpiredAccountAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new AnonymizedAccountSummary(
                 OriginalEmail: null,
-                OriginalDisplayName: "Orphan User",
+                OriginalBurnerName: "Orphan User",
                 PreferredLanguage: "en"));
 
         await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);

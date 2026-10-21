@@ -127,7 +127,7 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
             user.Id, TestContext.Current.CancellationToken);
 
         summary.Should().NotBeNull();
-        summary.OriginalDisplayName.Should().Be("Expired Human");
+        summary.OriginalBurnerName.Should().Be("Expired Human");
 
         ClearAllTrackers();
         var anonymized = await Db.Users.AsNoTracking()

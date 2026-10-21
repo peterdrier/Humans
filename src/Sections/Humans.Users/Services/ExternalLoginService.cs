@@ -242,7 +242,6 @@ internal sealed class ExternalLoginService(
         var user = new User
         {
             Id = Guid.NewGuid(),
-            DisplayName = attempt.DisplayName ?? attempt.Email,
             BurnerName = attempt.DisplayName ?? attempt.Email,
             CreatedAt = now,
             LastLoginAt = now
