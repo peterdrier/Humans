@@ -395,7 +395,9 @@ public sealed class WorkspaceIdentityServiceTests
         var slice = (await _sut.ContributeForUserAsync(info.Id, Ct)).Should().ContainSingle().Subject;
         slice.Data.Should().BeEquivalentTo(new
         {
-            Email = "alice+burn@example.org", Status = "Unknown", DriveEmail = "alice@example.org"
+            Email = "alice+burn@example.org",
+            Status = "Unknown",
+            DriveEmail = "alice@example.org"
         });
     }
 

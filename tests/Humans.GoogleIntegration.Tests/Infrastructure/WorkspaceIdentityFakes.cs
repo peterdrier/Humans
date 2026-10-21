@@ -60,7 +60,11 @@ internal sealed class InMemoryWorkspaceIdentityRepository : IWorkspaceIdentityRe
             : null;
         Rows[userId] = new WorkspaceIdentityRecord
         {
-            UserId = userId, Email = email, Status = status, DriveEmail = driveEmail, UpdatedAt = now
+            UserId = userId,
+            Email = email,
+            Status = status,
+            DriveEmail = driveEmail,
+            UpdatedAt = now
         };
         return Task.CompletedTask;
     }
@@ -70,7 +74,11 @@ internal sealed class InMemoryWorkspaceIdentityRepository : IWorkspaceIdentityRe
     {
         Rows[userId] = new WorkspaceIdentityRecord
         {
-            UserId = userId, Email = email, Status = status, DriveEmail = driveEmail, UpdatedAt = now
+            UserId = userId,
+            Email = email,
+            Status = status,
+            DriveEmail = driveEmail,
+            UpdatedAt = now
         };
         return Task.CompletedTask;
     }
