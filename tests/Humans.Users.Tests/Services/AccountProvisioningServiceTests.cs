@@ -166,7 +166,7 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task AddAsync(Profile profile, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task UpdateAsync(Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null, string? displayName = null) =>
+        public Task UpdateAsync(Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null) =>
             throw new NotSupportedException();
         public Task<bool> AnonymizeForDeletionByUserIdAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
@@ -543,7 +543,7 @@ public class AccountProvisioningServiceTests
         result.Created.Should().BeTrue();
         // User.Email is no longer the identity — the verified row is.
         result.User.Email.Should().BeNull();
-        result.User.DisplayName.Should().Be("Alice Smith");
+        result.User.BurnerName.Should().Be("Alice Smith");
         result.User.ContactSource.Should().Be(ContactSource.TicketTailor);
 
         // Verify UserEmail was created
@@ -712,7 +712,7 @@ public class AccountProvisioningServiceTests
             "grace@example.com", null, ContactSource.MailerLite, Xunit.TestContext.Current.CancellationToken);
 
         result.Created.Should().BeTrue();
-        result.User.DisplayName.Should().Be("grace");
+        result.User.BurnerName.Should().Be("grace");
     }
 
     [HumansFact]
@@ -887,7 +887,7 @@ public class AccountProvisioningServiceTests
 
         result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.Created);
         result.User.Should().NotBeNull();
-        result.User!.DisplayName.Should().Be("Magic Human");
+        result.User!.BurnerName.Should().Be("Magic Human");
         result.User.LastLoginAt.Should().Be(_clock.GetCurrentInstant());
         _userEmailFake.All.Should().ContainSingle(ue =>
             ue.UserId == result.User.Id

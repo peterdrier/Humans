@@ -86,7 +86,6 @@ internal sealed class GateTerminalAccountSeeder(
         var user = new User
         {
             Id = SystemUserIds.GateTerminal,
-            DisplayName = SystemUserIds.GateTerminalDisplayName,
             BurnerName = SystemUserIds.GateTerminalDisplayName,
             CreatedAt = now
         };
@@ -103,7 +102,6 @@ internal sealed class GateTerminalAccountSeeder(
         // (the membership filter requires it); no email, no teams, no roles.
         var profileSave = await profileEditorService.SaveProfileAsync(
             SystemUserIds.GateTerminal,
-            SystemUserIds.GateTerminalDisplayName,
             new ProfileSaveRequest(
                 BurnerName: SystemUserIds.GateTerminalDisplayName,
                 FirstName: "Gate",

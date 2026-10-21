@@ -437,7 +437,7 @@ public class AccountDeletionServiceTests
 
         result.Should().NotBeNull();
         result.OriginalEmail.Should().Be("expired@example.com");
-        result.OriginalDisplayName.Should().Be("Expired Human");
+        result.OriginalBurnerName.Should().Be("Expired Human");
         result.PreferredLanguage.Should().Be("es");
 
         await _gdprService.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
