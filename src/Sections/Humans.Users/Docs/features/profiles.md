@@ -285,7 +285,7 @@ This two-step approach ensures Google deprovisioning uses the same tested code p
 
 | Route | Method | Purpose |
 |-------|--------|---------|
-| `/Profile/Me/Privacy` | GET | View deletion status, data export link |
+| `/Profile/Me/Privacy` | GET | View deletion status, data export link (Consent's `MyDataController`) |
 | `/Profile/Me/Privacy/RequestDeletion` | POST | Start 30-day deletion countdown (Gdpr's `MemberDataController`) |
 | `/User/Deletion/Cancel` | POST | Cancel pending deletion (Gdpr's `UserController`) |
 | `/Profile/Me/DownloadData` | GET | Download personal data as JSON (Gdpr's `MemberDataController`) |

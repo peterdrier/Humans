@@ -195,36 +195,6 @@
   <!-- Privacy / My Data        -->
   <!-- ======================== -->
   <data name="ProfilePrivacy_Title" xml:space="preserve"><value>My Data</value></data>
-  <data name="ProfilePrivacy_Lead" xml:space="preserve"><value>Manage your personal data and privacy settings.</value></data>
-  <data name="ProfilePrivacy_ExportTitle" xml:space="preserve"><value>Export Your Data</value></data>
-  <data name="ProfilePrivacy_ExportDescription" xml:space="preserve"><value>Download a copy of all your personal data in JSON format. This includes:</value></data>
-  <data name="ProfilePrivacy_ExportAccountInfo" xml:space="preserve"><value>Account information</value></data>
-  <data name="ProfilePrivacy_ExportProfileDetails" xml:space="preserve"><value>Profile details</value></data>
-  <data name="ProfilePrivacy_ExportContactFields" xml:space="preserve"><value>Contact fields</value></data>
-  <data name="ProfilePrivacy_ExportApplications" xml:space="preserve"><value>Membership applications</value></data>
-  <data name="ProfilePrivacy_ExportConsents" xml:space="preserve"><value>Consent records</value></data>
-  <data name="ProfilePrivacy_ExportTeams" xml:space="preserve"><value>Team memberships</value></data>
-  <data name="ProfilePrivacy_ExportRoles" xml:space="preserve"><value>Role assignments</value></data>
-  <data name="ProfilePrivacy_DownloadMyData" xml:space="preserve"><value>Download My Data</value></data>
-  <data name="ProfilePrivacy_DeleteTitle" xml:space="preserve"><value>Delete Your Account</value></data>
-  <data name="ProfilePrivacy_DeleteDescription" xml:space="preserve"><value>Request deletion of your account and personal data.</value></data>
-  <data name="ProfilePrivacy_DeleteImmediateRevocation" xml:space="preserve"><value>Your team memberships, role assignments, and access to shared resources (Google Drive, Groups) will be revoked immediately</value></data>
-  <data name="ProfilePrivacy_DeleteGracePeriod" xml:space="preserve"><value>A 30-day grace period allows you to cancel the request</value></data>
-  <data name="ProfilePrivacy_DeleteAnonymized" xml:space="preserve"><value>After 30 days, your personal information will be anonymized and access permanently blocked</value></data>
-  <data name="ProfilePrivacy_DeleteRetained" xml:space="preserve"><value>Anonymized records are retained for legal compliance and audit purposes but cannot be linked to your identity</value></data>
-  <data name="ProfilePrivacy_RequestDeletion" xml:space="preserve"><value>Request Account Deletion</value></data>
-  <data name="ProfilePrivacy_DeletionPending" xml:space="preserve"><value>Deletion Pending</value></data>
-  <data name="ProfilePrivacy_DeletionScheduledFor" xml:space="preserve"><value>Your account is scheduled for deletion on {0}.</value><comment>{0} = deletion date</comment></data>
-  <data name="ProfilePrivacy_DeletionCancelInfo" xml:space="preserve"><value>You can cancel this request before the deletion date if you change your mind.</value></data>
-  <data name="ProfilePrivacy_CancelDeletion" xml:space="preserve"><value>Cancel Deletion Request</value></data>
-  <data name="ProfilePrivacy_DPOContact" xml:space="preserve"><value>For questions about your data or privacy rights, contact our Data Protection Officer:</value></data>
-  <data name="ProfilePrivacy_Email" xml:space="preserve"><value>Email:</value></data>
-  <data name="ProfilePrivacy_ViewFullPolicy" xml:space="preserve"><value>View Full Privacy Policy</value></data>
-  <data name="ProfilePrivacy_ConfirmDeletion" xml:space="preserve"><value>Confirm Account Deletion</value></data>
-  <data name="ProfilePrivacy_ConfirmDeletionQuestion" xml:space="preserve"><value>Are you sure you want to request deletion of your account?</value></data>
-  <data name="ProfilePrivacy_YesDeleteMyAccount" xml:space="preserve"><value>Yes, Delete My Account</value></data>
-  <data name="ProfilePrivacy_DeletionAccessRevoked" xml:space="preserve"><value>Your team memberships and role assignments have been revoked.</value></data>
-  <data name="ProfilePrivacy_CancelNoRestore" xml:space="preserve"><value>Cancelling will not restore your previous team memberships. You will need to rejoin teams.</value></data>
 
   <!-- ======================== -->
   <!-- Communication prefs      -->

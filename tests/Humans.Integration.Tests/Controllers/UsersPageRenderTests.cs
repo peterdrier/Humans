@@ -80,7 +80,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
     [
         ("/Profile/Me/Edit", "Edit Profile"),                                // ProfileEdit_Title
         ("/Profile/Me/Emails", "Email Addresses"),                           // Emails_Title
-        ("/Profile/Me/Privacy", "My Data"),                                  // ProfilePrivacy_Title
+        ("/Profile/Me/Privacy", "My Data"),                                  // Consent_MyData_Title (served by Consent)
         ("/Profile/Me/DietaryMedical", "Dietary"),                           // Profile_DietaryMedical_PageTitle
         ("/Profile/Me/CommunicationPreferences", "Communication Preferences"),// CommPrefs_Title
         ("/Profile/Me/Outbox", "My Emails"),                                 // Email_Outbox_MyTitle (served by Email)
@@ -242,7 +242,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
                  {
                      ("/Profile/Me/Edit", "Editar perfil"),          // ProfileEdit_Title
                      ("/Profile/Me/Emails", "Direcciones de correo"),// Emails_Title
-                     ("/Profile/Me/Privacy", "Mis datos"),           // ProfilePrivacy_Title
+                     ("/Profile/Me/Privacy", "Mis datos"),           // Consent_MyData_Title (served by Consent)
                  })
         {
             var response = await Client.GetAsync(url, ct);

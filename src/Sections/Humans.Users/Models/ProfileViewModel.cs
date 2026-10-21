@@ -514,13 +514,6 @@ internal sealed class ProfileLanguageDisplayViewModel
     };
 }
 
-internal sealed class PrivacyViewModel
-{
-    public bool IsDeletionPending { get; set; }
-    public DateTime? DeletionRequestedAt { get; set; }
-    public DateTime? DeletionScheduledFor { get; set; }
-}
-
 /// <summary>
 /// One no-show row. Built from <c>IShiftSignups.GetNoShowHistoryAsync</c>;
 /// this page is the only consumer.

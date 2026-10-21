@@ -62,7 +62,7 @@ Three controllers and two views (`Views/User/Status`, `Views/User/Deletion`), so
 
 The views' copy lives in `GdprResource` (six cultures; keys `Gdpr_AccountStatus_*`, `Gdpr_AccountDeletion_*`, `Gdpr_Deletion_*`). Users keeps its own copies of the deletion flash keys (the guest dashboard still uses them) and of the suspension keys its notification text reads.
 
-The `/Profile/Me/Privacy` page itself is still Users' (it moves to Consent) and links to the two
+The `/Profile/Me/Privacy` page itself is Consent's (`MyDataController`) and links to the two
 `MemberData` actions. The `User` controller and the two `MemberData` actions are exempt from
 `MembershipRequiredFilter` — they are its redirect targets and the recovery actions a non-Active
 account keeps (terminal states are denied everything but `Status`).

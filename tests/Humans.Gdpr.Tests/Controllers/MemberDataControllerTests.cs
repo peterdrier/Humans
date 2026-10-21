@@ -69,8 +69,8 @@ public class MemberDataControllerTests
         var result = await ctrl.DownloadData(TestContext.Current.CancellationToken);
 
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
-        redirect.ActionName.Should().Be("Privacy");
-        redirect.ControllerName.Should().Be("Profile");
+        redirect.ActionName.Should().Be("Index");
+        redirect.ControllerName.Should().Be("MyData");
         ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("Error_TryAgainLater");
     }
 
@@ -97,7 +97,7 @@ public class MemberDataControllerTests
 
         var result = await ctrl.RequestDeletion();
 
-        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Privacy");
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Index");
         ctrl.TempData.ContainsKey(TempDataKeys.SuccessMessage).Should().BeTrue();
     }
 
@@ -110,7 +110,7 @@ public class MemberDataControllerTests
 
         var result = await ctrl.RequestDeletion();
 
-        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Privacy");
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Index");
         ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("Gdpr_Deletion_AlreadyPending");
     }
 

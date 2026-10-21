@@ -26,3 +26,15 @@ internal sealed class ConsentSubmitModel
     public Guid DocumentVersionId { get; set; }
     public bool ExplicitConsent { get; set; }
 }
+
+/// <summary>
+/// The member's own My Data page (<c>/Profile/Me/Privacy</c>): deletion status from the cached
+/// <c>UserInfo</c> plus the legal documents they have signed.
+/// </summary>
+internal sealed class MyDataViewModel
+{
+    public bool IsDeletionPending { get; set; }
+    public DateTime? DeletionRequestedAt { get; set; }
+    public DateTime? DeletionScheduledFor { get; set; }
+    public IReadOnlyList<ConsentDashboardHistoryItem> SignedDocuments { get; set; } = [];
+}

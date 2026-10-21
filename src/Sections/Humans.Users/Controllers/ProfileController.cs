@@ -603,24 +603,6 @@ internal sealed class ProfileController(
         SetError(localizer["Profile_NotAttending_UndoFailed"].Value);
     }
 
-    [HttpGet("Me/Privacy")]
-    public async Task<IActionResult> Privacy()
-    {
-        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
-        if (user is null)
-            return NotFound();
-
-        var viewModel = new PrivacyViewModel
-        {
-            IsDeletionPending = user.IsDeletionPending,
-            DeletionRequestedAt = user.DeletionRequestedAt?.ToDateTimeUtc(),
-            DeletionScheduledFor = user.EffectiveDeletionDate?.ToDateTimeUtc()
-        };
-
-        ViewData["DpoEmail"] = configuration.GetOptionalSetting(configRegistry, "Email:DpoAddress", "Email", importance: ConfigurationImportance.Recommended);
-        return View(viewModel);
-    }
-
     [HttpGet("Me/DietaryMedical")]
     public async Task<IActionResult> DietaryMedical(
         string? returnAction = null,

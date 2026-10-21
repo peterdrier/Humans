@@ -502,7 +502,6 @@ public class ProfileControllerEditTests
     }
 
     [HumansTheory]
-    [InlineData("Privacy")]
     [InlineData("DietaryMedical")]
     [InlineData("CommunicationPreferences")]
     public async Task ProfileReadPages_StopLoadingAfterRequestCancellation(string page)
@@ -518,35 +517,12 @@ public class ProfileControllerEditTests
             .Returns(call => ReadViewer(call.Arg<CancellationToken>()));
         Func<Task<IActionResult>> load = page switch
         {
-            "Privacy" => () => _controller.Privacy(),
             "DietaryMedical" => () => _controller.DietaryMedical(),
             _ => () => _controller.CommunicationPreferences(),
         };
         (await load()).Should().BeOfType<ViewResult>();
         await request.CancelAsync();
         await load.Should().ThrowAsync<OperationCanceledException>();
-    }
-
-    [HumansTheory]
-    [InlineData(null)]
-    [InlineData(10)]
-    [InlineData(30)]
-    [InlineData(60)]
-    public async Task Privacy_reports_the_later_of_grace_deadline_and_ticket_hold(int? holdDays)
-    {
-        var now = Instant.FromUtc(2026, 10, 3, 0, 0);
-        var user = new User
-        {
-            Id = _userId,
-            DeletionRequestedAt = now,
-            DeletionScheduledFor = now + Duration.FromDays(30),
-            DeletionEligibleAfter = holdDays is { } days ? now + Duration.FromDays(days) : null,
-        }.ToUserInfo();
-        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(user);
-        var expectedDate = (now + Duration.FromDays(Math.Max(30, holdDays ?? 0))).ToDateTimeUtc();
-
-        var privacy = (await _controller.Privacy()).Should().BeOfType<ViewResult>().Subject;
-        privacy.Model.Should().BeOfType<PrivacyViewModel>().Which.DeletionScheduledFor.Should().Be(expectedDate);
     }
 
     [HumansFact]

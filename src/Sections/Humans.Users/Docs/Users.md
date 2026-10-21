@@ -178,7 +178,7 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 - `GET /Guest/CommunicationPreferences`, `POST /Guest/CommunicationPreferences/Update` — `[AllowAnonymous]`; accept an unsubscribe token in place of a session
 - `POST /Guest/RequestDeletion`, `POST /Guest/CancelDeletion` — `[Authorize]`; same orchestrator as the `/Profile/Me/Privacy` flow
 - Member profile, email, search, messaging and guest-preferences pages localize their breadcrumb navigation landmark in all six cultures. The profile’s application contribution prompt uses the shared six-culture Elsewhere wording.
-- The `/Profile/Me/Privacy` account-deletion dialog uses the shared localized Close label for its accessible dismiss button.
+- The `/Profile/Me/Privacy` page (Consent's) is not served by this section; its `ProfilePrivacy_Title` key stays here only for the profile-hub link.
 
 ## Actors & Roles
 
@@ -615,9 +615,9 @@ Self-service profile functionality lives under `/Profile`, split by shape across
 | `/Profile/Me/CommunicationPreferences` | Per-category email/in-app communication preferences |
 | `/Profile/Me/CommunicationPreferences/Update` | POST — save one category's preference |
 | `/Profile/Me/Notifications` | Permanent redirect to `/Profile/Me/CommunicationPreferences` |
-| `/Profile/Me/Privacy` | Privacy / deletion status |
-| `/Profile/Me/Privacy/RequestDeletion` | POST — start the 30-day deletion countdown — served by Gdpr's `MemberDataController`; the Privacy page's form posts to it |
-| `/Profile/Me/DownloadData` | GDPR Article 15 JSON export download — served by Gdpr's `MemberDataController`; linked from the Privacy page |
+| `/Profile/Me/Privacy` | My Data page — served by Consent's `MyDataController`; Users supplies the deletion timestamps through `UserInfo` and links to it from the profile hub |
+| `/Profile/Me/Privacy/RequestDeletion` | POST — start the 30-day deletion countdown — served by Gdpr's `MemberDataController`; the My Data page's form posts to it |
+| `/Profile/Me/DownloadData` | GDPR Article 15 JSON export download — served by Gdpr's `MemberDataController`; linked from the My Data page |
 | `/Profile/Me/Outbox` | Own email outbox — served by Email's `MemberOutboxController`, linked from the Profile page |
 | `/Profile/{id}` | View another human's profile |
 | `/Profile/{id}/Popover` | Quick profile popup |

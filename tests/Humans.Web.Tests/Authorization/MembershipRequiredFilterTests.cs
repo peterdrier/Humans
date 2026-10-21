@@ -48,12 +48,16 @@ public class MembershipRequiredFilterTests
     // export/deletion-request actions and the account-status wall / pending-deletion landing.
     private static readonly Type MemberDataControllerType = GdprControllerType("MemberDataController");
     private static readonly Type UserControllerType = GdprControllerType("UserController");
+    // MyDataController is internal to Humans.Consent: the My Data page shell at /Profile/Me/Privacy.
+    private static readonly Type MyDataControllerType = SectionControllerType("Humans.Consent", "MyDataController");
 
-    private static Type GdprControllerType(string name) =>
+    private static Type GdprControllerType(string name) => SectionControllerType("Humans.Gdpr", name);
+
+    private static Type SectionControllerType(string ns, string name) =>
         SectionDiscoveryExtensions.SectionAssemblies()
-            .Select(a => a.GetType($"Humans.Gdpr.Controllers.{name}", throwOnError: false))
+            .Select(a => a.GetType($"{ns}.Controllers.{name}", throwOnError: false))
             .FirstOrDefault(t => t is not null)
-        ?? throw new InvalidOperationException($"Humans.Gdpr.Controllers.{name} not found in any section assembly.");
+        ?? throw new InvalidOperationException($"{ns}.Controllers.{name} not found in any section assembly.");
     [HumansFact]
     public async Task Active_user_reaches_a_non_exempt_controller()
     {
@@ -152,7 +156,7 @@ public class MembershipRequiredFilterTests
             (typeof(ProfileController), nameof(ProfileController.DeclareNotAttending)),
             (typeof(ProfileController), nameof(ProfileController.UndoNotAttending)),
             (MemberOutboxControllerType, "MyOutbox"),
-            (typeof(ProfileController), nameof(ProfileController.Privacy)),
+            (MyDataControllerType, "Index"),
             (typeof(ProfileController), nameof(ProfileController.DietaryMedical)),
             (typeof(ProfileController), nameof(ProfileController.CommunicationPreferences)),
             (typeof(ProfileController), nameof(ProfileController.UpdatePreference)),
@@ -195,7 +199,7 @@ public class MembershipRequiredFilterTests
         {
             typeof(ProfileController), typeof(ProfileEmailsController),
             OnboardingWidgetControllerType, UserControllerType, MemberOutboxControllerType,
-            MemberDataControllerType,
+            MemberDataControllerType, MyDataControllerType,
         })
         {
             var methods = type.GetMethods().Where(m => m.DeclaringType == type

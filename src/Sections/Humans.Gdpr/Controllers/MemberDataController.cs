@@ -14,7 +14,7 @@ namespace Humans.Gdpr.Controllers;
 /// <summary>
 /// A member's own subject-rights actions from the My Data page: the Article 15 data export and
 /// the Article 17 deletion request. Both act on the signed-in member only and never take a
-/// user id. The page itself (<c>/Profile/Me/Privacy</c>) is still Users' and links here; the
+/// user id. The page itself (<c>/Profile/Me/Privacy</c>) is Consent's (<c>MyDataController</c>) and links here; the
 /// routes keep the <c>Profile/Me</c> prefix so member URLs do not change, as Shifts'
 /// <c>ShiftProfileController</c> does. The landing pages for the pending deletion are
 /// <see cref="UserController"/>.
@@ -42,13 +42,13 @@ internal sealed class MemberDataController(
         {
             if (string.Equals(result.ErrorKey, "AlreadyPending", StringComparison.Ordinal))
                 SetError(localizer["Gdpr_Deletion_AlreadyPending"].Value);
-            return RedirectToAction("Privacy", "Profile");
+            return RedirectToAction("Index", "MyData");
         }
 
         SetSuccess(string.Format(CultureInfo.CurrentCulture,
             localizer["Gdpr_Deletion_Requested"].Value,
             result.EffectiveDeletionDate?.ToDateTimeUtc().ToDate() ?? ""));
-        return RedirectToAction("Privacy", "Profile");
+        return RedirectToAction("Index", "MyData");
     }
 
     [HttpGet("Profile/Me/DownloadData")]
@@ -76,7 +76,7 @@ internal sealed class MemberDataController(
         {
             logger.LogError(ex, "Failed to export data for user {UserId}", user.Id);
             SetError(sharedLocalizer["Error_TryAgainLater"].Value);
-            return RedirectToAction("Privacy", "Profile");
+            return RedirectToAction("Index", "MyData");
         }
     }
 }

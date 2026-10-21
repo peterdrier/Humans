@@ -94,6 +94,7 @@ Three controllers serve this section.
 |------------|-------------|------|
 | `LegalController` | `/Legal/{slug?}` | `[AllowAnonymous]` — Statutes page only |
 | `ConsentController` | `/Consent` (conventional) | `[Authorize]` |
+| `MyDataController` | `/Profile/Me/Privacy` (URL kept; `Profile/Me` prefix as Shifts does) | `[Authorize]` |
 | `AdminLegalDocumentsController` | `/Legal/Admin/Documents` | `[Authorize(Policy = PolicyNames.BoardOrAdmin)]` |
 
 **Consent routes:**
@@ -103,6 +104,7 @@ Three controllers serve this section.
 | `/Consent` | GET | Dashboard (team-grouped document status) |
 | `/Consent/Review?id={versionId}` | GET | Document review before consent |
 | `/Consent/Submit` | POST | Record consent |
+| `/Profile/Me/Privacy` | GET | My Data page shell: Gdpr's export/deletion actions, the pending-deletion status (read from `UserInfo`) and the member's signed documents (consent history). Exempt from `MembershipRequiredFilter` so non-Active members reach it |
 
 **Admin routes:**
 
@@ -201,6 +203,7 @@ GitHub document discovery, metadata/raw content, commit-summary and prefix-conte
 - **Notifications:** `Humans.Notifications.Contracts.INotificationEmitter` (in-app fan-out from `LegalDocumentSyncService`) and `INotificationAutoResolve.ResolveBySourceAsync` (auto-resolve `AccessSuspended` notifications from `ConsentService` once all required consents are complete — the narrow auto-resolve contract, not the full inbox service).
 - **Human Lifecycle:** `IHumanLifecycleService.RestoreConsentSuspensionAsync` — `ConsentService` lifts a consent suspension once all required consents are complete (alongside resolving the `AccessSuspended` notification). `ConsentService` no longer depends on `ISystemTeamSync` — after the name-only access switch, a consent submit does not provision system-team membership; the scheduled `SystemTeamSyncJob` reconciles Volunteers/Coordinators on name + consents.
 - **Governance:** `IMembershipCalculator.GetRequiredTeamIdsForUserAsync` / `HasAllRequiredConsentsAsync` — `ConsentService` resolves which teams' documents apply to a given user and whether all required consents are complete.
+- **Gdpr:** the My Data page posts to Gdpr's `MemberDataController` (export, request deletion) and `UserController` (cancel deletion); Consent references Gdpr's project only for those routes and its existing contributor types. Pending-deletion dates come from `UserInfo`.
 - **Users/Identity:** `IUserService.GetUserInfoAsync` / `GetUserInfosAsync`, the returned `UserInfo.AllUserIds` chain-follows merge tombstones on every per-user consent read so consents signed under a source id surface for the fold target, and the read resolves a tombstone id forward to its survivor. Consent records are immutable per §12 and stay at source. `IUserService.GetAllUserInfosAsync` (filtered to `IsActive`) is the in-app notification fan-out list when `LegalDocumentSyncService` publishes a new / re-consent-required version; notices are grouped by supported recipient language in all six cultures (English fallback), with delivery failures isolated per group. Only the email pass (`LegalDocumentSyncRunner`) narrows to affected team members.
 
 `IGitHubLegalDocumentConnector` is owned by this section (interface and implementation both `internal` in `Humans.Consent.Services`); not a cross-section dependency.

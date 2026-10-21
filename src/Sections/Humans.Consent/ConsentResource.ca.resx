@@ -175,4 +175,98 @@
   <data name="Consent_Notification_PublishedBody" xml:space="preserve"><value>S’ha publicat un nou document legal obligatori. Revisa’l i signa’l.</value></data>
   <data name="Consent_Notification_ReConsentRequired" xml:space="preserve"><value>{0} s’ha actualitzat — cal tornar a donar el consentiment</value></data>
   <data name="Consent_Notification_ReConsentRequiredBody" xml:space="preserve"><value>S’ha actualitzat un document legal obligatori. Revisa i signa la nova versió.</value></data>
+  <data name="Consent_MyData_Title" xml:space="preserve">
+    <value>Les meves dades</value>
+  </data>
+  <data name="Consent_MyData_Lead" xml:space="preserve">
+    <value>Gestiona les teves dades personals i configuració de privacitat.</value>
+  </data>
+  <data name="Consent_MyData_ExportTitle" xml:space="preserve">
+    <value>Exporta les teves dades</value>
+  </data>
+  <data name="Consent_MyData_ExportDescription" xml:space="preserve">
+    <value>Descarrega una còpia de totes les teves dades personals en format JSON. Això inclou:</value>
+  </data>
+  <data name="Consent_MyData_ExportAccountInfo" xml:space="preserve">
+    <value>Informació del compte</value>
+  </data>
+  <data name="Consent_MyData_ExportProfileDetails" xml:space="preserve">
+    <value>Dades del perfil</value>
+  </data>
+  <data name="Consent_MyData_ExportContactFields" xml:space="preserve">
+    <value>Camps de contacte</value>
+  </data>
+  <data name="Consent_MyData_ExportApplications" xml:space="preserve">
+    <value>Sol·licituds de membres</value>
+  </data>
+  <data name="Consent_MyData_ExportConsents" xml:space="preserve">
+    <value>Registres de consentiment</value>
+  </data>
+  <data name="Consent_MyData_ExportTeams" xml:space="preserve">
+    <value>Pertinences a equips</value>
+  </data>
+  <data name="Consent_MyData_ExportRoles" xml:space="preserve">
+    <value>Assignacions de rols</value>
+  </data>
+  <data name="Consent_MyData_DownloadMyData" xml:space="preserve">
+    <value>Descarrega les meves dades</value>
+  </data>
+  <data name="Consent_MyData_DeleteTitle" xml:space="preserve">
+    <value>Eliminar el teu compte</value>
+  </data>
+  <data name="Consent_MyData_DeleteDescription" xml:space="preserve">
+    <value>Sol·licita l'eliminació del teu compte i dades personals.</value>
+  </data>
+  <data name="Consent_MyData_DeleteImmediateRevocation" xml:space="preserve">
+    <value>Les teves pertinences a equips, assignacions de rols i accés a recursos compartits (Google Drive, Groups) seran revocats immediatament</value>
+  </data>
+  <data name="Consent_MyData_DeleteGracePeriod" xml:space="preserve">
+    <value>Un període de gràcia de 30 dies et permet cancel·lar la sol·licitud</value>
+  </data>
+  <data name="Consent_MyData_DeleteAnonymized" xml:space="preserve">
+    <value>Després de 30 dies, la teva informació personal serà anonimitzada i l'accés bloquejat permanentment</value>
+  </data>
+  <data name="Consent_MyData_DeleteRetained" xml:space="preserve">
+    <value>Els registres anonimitzats es conserven per compliment legal i auditoria, però no poden vincular-se a la teva identitat</value>
+  </data>
+  <data name="Consent_MyData_RequestDeletion" xml:space="preserve">
+    <value>Sol·licitar eliminació de compte</value>
+  </data>
+  <data name="Consent_MyData_DeletionPending" xml:space="preserve">
+    <value>Eliminació pendent</value>
+  </data>
+  <data name="Consent_MyData_DeletionScheduledFor" xml:space="preserve">
+    <value>El teu compte està programat per ser eliminat el {0}.</value>
+    <comment>{0} = deletion date</comment>
+  </data>
+  <data name="Consent_MyData_DeletionCancelInfo" xml:space="preserve">
+    <value>Pots cancel·lar aquesta sol·licitud abans de la data d'eliminació si canvies d'opinió.</value>
+  </data>
+  <data name="Consent_MyData_CancelDeletion" xml:space="preserve">
+    <value>Cancel·la la sol·licitud d'eliminació</value>
+  </data>
+  <data name="Consent_MyData_DPOContact" xml:space="preserve">
+    <value>Si tens preguntes sobre les teves dades o drets de privacitat, contacta amb el nostre Delegat de Protecció de Dades:</value>
+  </data>
+  <data name="Consent_MyData_Email" xml:space="preserve">
+    <value>Correu electrònic:</value>
+  </data>
+  <data name="Consent_MyData_ViewFullPolicy" xml:space="preserve">
+    <value>Veure política de privacitat completa</value>
+  </data>
+  <data name="Consent_MyData_ConfirmDeletion" xml:space="preserve">
+    <value>Confirmar eliminació de compte</value>
+  </data>
+  <data name="Consent_MyData_ConfirmDeletionQuestion" xml:space="preserve">
+    <value>Segur que vols sol·licitar l'eliminació del teu compte?</value>
+  </data>
+  <data name="Consent_MyData_YesDeleteMyAccount" xml:space="preserve">
+    <value>Sí, eliminar el meu compte</value>
+  </data>
+  <data name="Consent_MyData_DeletionAccessRevoked" xml:space="preserve">
+    <value>Les teves pertinences a equips i assignacions de rols han estat revocades.</value>
+  </data>
+  <data name="Consent_MyData_CancelNoRestore" xml:space="preserve">
+    <value>Cancel·lar no restaurarà les teves pertinences a equips anteriors. Hauràs de tornar a unir-te als equips.</value>
+  </data>
 </root>
