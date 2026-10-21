@@ -2,7 +2,14 @@
 @* Admin-only card on /Users/Admin/{id}: no localization keys (memory/code/localization-admin-exempt.md). *@
 @{
     Func<GrantInfo, IHtmlContent> stateCell = @<text><span class="badge @EnumBadgeMap.For(item.State(Model.Today))">@item.State(Model.Today)</span></text>;
-    Func<GrantInfo, IHtmlContent> programCell = @<text><a asp-controller="GrantsAdmin" asp-action="Program" asp-route-programId="@item.ProgramId">@item.ProgramName</a></text>;
+    Func<GrantInfo, IHtmlContent> programCell = @<text>@if (Model.LinkablePrograms.Contains(item.ProgramId))
+        {
+            <a asp-controller="GrantsAdmin" asp-action="Program" asp-route-programId="@item.ProgramId">@item.ProgramName</a>
+        }
+        else
+        {
+            @item.ProgramName
+        }</text>;
     var grantsTable = TableModel.For(Model.Grants)
         .Template("Program", programCell)
         .Column("Year", g => g.Year)

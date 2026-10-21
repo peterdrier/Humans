@@ -31,6 +31,6 @@ internal sealed class MyGrantsViewComponent(IGrantManagement grants) : ViewCompo
             .ToList();
         if (mine.Count == 0) return Content(string.Empty);
 
-        return View(new GrantsCardViewModel(mine, today));
+        return View(new GrantsCardViewModel(mine, today, new HashSet<Guid>()));
     }
 }

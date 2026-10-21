@@ -68,7 +68,7 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 | Grant holder | Sees their own grants on their profile; gets an email and in-app notice on issue, resend and revoke |
 | Program manager | Sees the programs they manage; issues (managers' programs only), revokes, resends notices on them |
 | Board, Admin | All manager capabilities on every program. Additionally creates and edits programs and names their managers |
-| HumanAdmin, Board, Admin | See a person's grants on the admin human-detail card |
+| HumanAdmin, Board, Admin | See a person's grants on the admin human-detail card (a program name links to its admin page only when the viewer may open it) |
 | A source section (Low Income) | Issues and revokes under programs whose source key it passes, through `IGrantWrite` |
 
 ## Invariants
