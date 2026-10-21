@@ -73,11 +73,12 @@ internal sealed class ConsentReminderService(
     }
 
     /// <summary>The one reader of the obsolete legacy field: the read fallback, the copy and the
-    /// export. Deleted with the migration once production reports it done.</summary>
+    /// export. A tombstone reads null: members erased before Users' erasure cleared the column
+    /// still hold a stamp there. Deleted with the migration once production reports it done.</summary>
     private static Instant? LegacyLastSent(UserInfo? info)
     {
 #pragma warning disable HUM_USER_CONSENT_REMINDER // the fallback and copy the field is kept for (plan §3.1)
-        return info?.LastConsentReminderSentAt;
+        return info is { IsTombstone: false } ? info.LastConsentReminderSentAt : null;
 #pragma warning restore HUM_USER_CONSENT_REMINDER
     }
 
@@ -108,7 +109,7 @@ internal sealed class ConsentReminderService(
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
-    /// <summary>Deletes the member's row. The legacy <c>users</c> column stays with Users, which
-    /// still owns it until the drop.</summary>
+    /// <summary>Deletes the member's row. Users' erasure clears the legacy <c>users</c> column it
+    /// owns, and the fallback reads null for a tombstone.</summary>
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) => repo.DeleteAsync(userId, ct);
 }

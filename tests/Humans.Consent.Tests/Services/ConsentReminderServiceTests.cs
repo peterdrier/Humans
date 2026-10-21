@@ -39,10 +39,15 @@ public sealed class ConsentReminderServiceTests : IDisposable
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     /// <summary>A member whose frozen <c>users.LastConsentReminderSentAt</c> holds <paramref name="legacy"/>.</summary>
-    private UserInfo SeedUser(Instant? legacy = null, Instant? mergedAt = null)
+    private UserInfo SeedUser(Instant? legacy = null, Instant? mergedAt = null, bool erased = false)
     {
+        var id = Guid.NewGuid();
         var info = UserInfo.Create(
-            new User { Id = Guid.NewGuid(), BurnerName = "Ana", CreatedAt = Now, LastConsentReminderSentAt = legacy, MergedAt = mergedAt },
+            new User
+            {
+                Id = id, BurnerName = "Ana", CreatedAt = Now, LastConsentReminderSentAt = legacy, MergedAt = mergedAt,
+                Email = erased ? $"deleted-{id:N}@deleted.local" : null,
+            },
             [], [], [], null, []);
         _users.GetUserInfoAsync(info.Id, Arg.Any<CancellationToken>()).Returns(info);
         _all.Add(info);
@@ -141,6 +146,17 @@ public sealed class ConsentReminderServiceTests : IDisposable
         (await _sut.ContributeForUserAsync(legacyOnly.Id, Ct)).Single().Data
             .Should().BeEquivalentTo(new[] { new { UserId = legacyOnly.Id, LastSentAt = "2026-10-01T09:00:00Z" } });
         (await _sut.ContributeForUserAsync(never.Id, Ct)).Single().Data.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task ErasedMember_ExportsAndReadsNoLegacyStamp()
+    {
+        // Erased before Users' erasure cleared the frozen column: the stamp is still there.
+        var erased = SeedUser(legacy: Earlier, erased: true);
+        erased.IsTombstone.Should().BeTrue();
+
+        (await _sut.ContributeForUserAsync(erased.Id, Ct)).Single().Data.Should().BeNull();
+        (await _sut.GetLastSentAsync([erased], Ct)).Should().BeEmpty();
     }
 
     [HumansFact]

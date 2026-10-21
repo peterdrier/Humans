@@ -206,7 +206,7 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 | UserId | Guid | PK; FK-only → Users section |
 | LastSentAt | Instant | The cooldown anchor; stamped after each successful enqueue |
 
-- **Legacy fallback.** Until the `consent.reminder-stamps` data migration reports done in production, a member with no row reads the frozen `users.LastConsentReminderSentAt` through `UserInfo` (`[Obsolete(HUM_USER_CONSENT_REMINDER)]`, one suppressed reader, `ConsentReminderService.LegacyLastSent`). The copy skips tombstones.
+- **Legacy fallback.** Until the `consent.reminder-stamps` data migration reports done in production, a member with no row reads the frozen `users.LastConsentReminderSentAt` through `UserInfo` (`[Obsolete(HUM_USER_CONSENT_REMINDER)]`, one suppressed reader, `ConsentReminderService.LegacyLastSent`). The copy skips tombstones, and the fallback reads nothing for one, so a member erased before Users' erasure cleared that column exports no stamp.
 - **Merge.** No `IUserMerge`: rows stay keyed to the id they were written for; the job reads by the resolved survivor id.
 - **GDPR.** Export slice `ConsentReminder` (the stamps of every id in the member's merge chain, the survivor's legacy stamp until copied). Erasure deletes the member's row.
 

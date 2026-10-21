@@ -366,6 +366,9 @@ internal sealed partial class UserRepository : IUserRepository
         user.PhoneNumber = null;
         user.PhoneNumberConfirmed = false;
 
+        // The frozen re-consent stamp (Consent's consent_reminders replaced it) goes with the rest.
+        user.LastConsentReminderSentAt = null;
+
         // Drop external logins for the same reason — see nobodies-collective/Humans#661.
         var logins = await ctx.Set<IdentityUserLogin<Guid>>()
             .Where(l => l.UserId == userId)
