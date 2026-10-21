@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
 using Humans.GoogleIntegration.Contracts;
 using NodaTime;
@@ -7,11 +8,42 @@ namespace Humans.GoogleIntegration.Services;
 /// <summary>
 /// Full team-resource surface, and the sole owner of the <c>google_resources</c> table: callers
 /// must never access <c>DbSet&lt;GoogleResource&gt;</c> directly. Other sections depend on
-/// <see cref="ITeamResourceService"/> for reads and <see cref="ITeamResourceWrite"/> for the
-/// link/unlink writes; this adds the sync bookkeeping and aggregates used inside the section.
+/// <see cref="ITeamResourceService"/> for reads; every write — link, unlink, permission level,
+/// inherited-access restriction, sync bookkeeping — is internal to the section.
 /// </summary>
-internal interface ITeamResourceManagement : ITeamResourceService, ITeamResourceWrite, IApplicationService
+internal interface ITeamResourceManagement : ITeamResourceService, IApplicationService
 {
+    /// <summary>
+    /// Links an existing Google Drive folder or file (Sheet, Doc, etc.) to a team by URL.
+    /// Detects the resource type from the URL. The item must be on a Shared Drive
+    /// pre-shared with the service account as Editor.
+    /// </summary>
+    Task<LinkResourceResult> LinkDriveResourceAsync(Guid teamId, string url, DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor, Guid? actorUserId = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Links an existing Google Group to a team by email address.
+    /// The service account must be added as a Group Manager.
+    /// </summary>
+    Task<LinkResourceResult> LinkGroupAsync(Guid teamId, string groupEmail, Guid? actorUserId = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Unlinks a resource from a team (soft-delete: sets IsActive = false).
+    /// </summary>
+    Task UnlinkResourceAsync(Guid resourceId, Guid? actorUserId = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Updates the Drive permission level for a resource.
+    /// </summary>
+    Task UpdatePermissionLevelAsync(Guid resourceId, DrivePermissionLevel level, Guid? actorUserId = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets the RestrictInheritedAccess flag on a Drive folder resource and immediately
+    /// enforces the corresponding inheritedPermissionsDisabled setting on Google Drive,
+    /// returning a result that captures any Google Drive mutation failure.
+    /// </summary>
+    [ExternalWrite]
+    Task<TeamResourceMutationResult> SetRestrictInheritedAccessWithResultAsync(Guid resourceId, bool restrict, Guid? actorUserId = null, CancellationToken ct = default);
+
     /// <summary>
     /// Returns the total active-resource count for every team that currently has any,
     /// regardless of resource type. Used by admin aggregates (e.g. email rename impact).
@@ -66,4 +98,11 @@ internal interface ITeamResourceManagement : ITeamResourceService, ITeamResource
     Task<IReadOnlyDictionary<Guid, string>> GetResourceNamesByIdsAsync(
         IReadOnlyCollection<Guid> resourceIds,
         CancellationToken ct = default);
+}
+
+internal sealed record TeamResourceMutationResult(bool Succeeded, string? ErrorMessage)
+{
+    public static TeamResourceMutationResult Success() => new(true, null);
+
+    public static TeamResourceMutationResult Failed(string message) => new(false, message);
 }

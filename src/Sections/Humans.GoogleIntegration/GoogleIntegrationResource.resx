@@ -78,4 +78,31 @@
   <data name="GoogleIntegration_Identity_Google" xml:space="preserve"><value>Google</value></data>
   <data name="GoogleIntegration_Identity_VerifyFirst" xml:space="preserve"><value>Verify first</value></data>
   <data name="GoogleIntegration_Identity_Locked" xml:space="preserve"><value>Locked by the Workspace email row</value></data>
+  <data name="GoogleIntegration_TeamResources_Heading" xml:space="preserve"><value>Manage Resources</value></data>
+  <data name="GoogleIntegration_TeamResources_Team" xml:space="preserve"><value>Team</value></data>
+  <data name="GoogleIntegration_TeamResources_Name" xml:space="preserve"><value>Name</value></data>
+  <data name="GoogleIntegration_TeamResources_Type" xml:space="preserve"><value>Type</value></data>
+  <data name="GoogleIntegration_TeamResources_Actions" xml:space="preserve"><value>Actions</value></data>
+  <data name="GoogleIntegration_TeamResources_BackToTeam" xml:space="preserve"><value>Back to Team</value></data>
+  <data name="GoogleIntegration_TeamResources_ManageMembers" xml:space="preserve"><value>Manage Members</value></data>
+  <data name="GoogleIntegration_TeamResources_Title" xml:space="preserve"><value>Manage Resources - {0}</value><comment>{0} = team name</comment></data>
+  <data name="GoogleIntegration_TeamResources_Breadcrumb" xml:space="preserve"><value>Resources</value></data>
+  <data name="GoogleIntegration_TeamResources_ServiceAccountTitle" xml:space="preserve"><value>Service Account</value></data>
+  <data name="GoogleIntegration_TeamResources_ShareWithServiceAccount" xml:space="preserve"><value>To link a Google resource, you must first share it with the service account:</value></data>
+  <data name="GoogleIntegration_TeamResources_Copy" xml:space="preserve"><value>Copy</value></data>
+  <data name="GoogleIntegration_TeamResources_DriveFolders" xml:space="preserve"><value>Drive folders</value></data>
+  <data name="GoogleIntegration_TeamResources_DriveFoldersHelp" xml:space="preserve"><value>Share the folder with this email as Editor</value></data>
+  <data name="GoogleIntegration_TeamResources_GoogleGroups" xml:space="preserve"><value>Google Groups</value></data>
+  <data name="GoogleIntegration_TeamResources_GoogleGroupsHelp" xml:space="preserve"><value>Add this email as a Manager of the group</value></data>
+  <data name="GoogleIntegration_TeamResources_LinkedResources" xml:space="preserve"><value>Linked Resources</value></data>
+  <data name="GoogleIntegration_TeamResources_LastSynced" xml:space="preserve"><value>Last Synced</value></data>
+  <data name="GoogleIntegration_TeamResources_NoResources" xml:space="preserve"><value>No resources linked to this team yet. Use the forms below to link a Google Drive folder or Google Group.</value></data>
+  <data name="GoogleIntegration_TeamResources_InvalidDriveUrl" xml:space="preserve"><value>Please enter a valid Google Drive folder URL.</value></data>
+  <data name="GoogleIntegration_TeamResources_InvalidGroupEmail" xml:space="preserve"><value>Please enter a valid Google Group email address.</value></data>
+  <data name="GoogleIntegration_TeamResources_GroupLinked" xml:space="preserve"><value>Google Group "{0}" linked successfully.</value><comment>{0} = group name</comment></data>
+  <data name="GoogleIntegration_TeamResources_GroupLinkFailed" xml:space="preserve"><value>Failed to link Google Group.</value></data>
+  <data name="GoogleIntegration_TeamResources_ResourceUnlinked" xml:space="preserve"><value>Resource unlinked from team.</value></data>
+  <data name="GoogleIntegration_TeamResources_ResourceSynced" xml:space="preserve"><value>Resource permissions synced successfully.</value></data>
+  <data name="GoogleIntegration_TeamResources_ResourceSyncFailed" xml:space="preserve"><value>Failed to sync resource permissions: {0}</value><comment>{0} = error message</comment></data>
+  <data name="GoogleIntegration_TeamResources_ServiceAccount" xml:space="preserve"><value>Service account: {0}</value><comment>{0} = service account email</comment></data>
 </root>

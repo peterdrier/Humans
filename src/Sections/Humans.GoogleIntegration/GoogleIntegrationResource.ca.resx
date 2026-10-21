@@ -125,4 +125,31 @@
     <value>Verifica primer</value>
   </data>
   <data name="GoogleIntegration_Identity_Locked" xml:space="preserve"><value>Bloquejat per la fila del correu de Workspace</value></data>
+  <data name="GoogleIntegration_TeamResources_Heading" xml:space="preserve"><value>Gestionar recursos</value></data>
+  <data name="GoogleIntegration_TeamResources_Team" xml:space="preserve"><value>Equip</value></data>
+  <data name="GoogleIntegration_TeamResources_Name" xml:space="preserve"><value>Nom</value></data>
+  <data name="GoogleIntegration_TeamResources_Type" xml:space="preserve"><value>Tipus</value></data>
+  <data name="GoogleIntegration_TeamResources_Actions" xml:space="preserve"><value>Accions</value></data>
+  <data name="GoogleIntegration_TeamResources_BackToTeam" xml:space="preserve"><value>Torna a l'equip</value></data>
+  <data name="GoogleIntegration_TeamResources_ManageMembers" xml:space="preserve"><value>Gestiona membres</value></data>
+  <data name="GoogleIntegration_TeamResources_Title" xml:space="preserve"><value>Gestionar recursos - {0}</value><comment>{0} = team name</comment></data>
+  <data name="GoogleIntegration_TeamResources_Breadcrumb" xml:space="preserve"><value>Recursos</value></data>
+  <data name="GoogleIntegration_TeamResources_ServiceAccountTitle" xml:space="preserve"><value>Compte de servei</value></data>
+  <data name="GoogleIntegration_TeamResources_ShareWithServiceAccount" xml:space="preserve"><value>Per vincular un recurs de Google, primer has de compartir-lo amb el compte de servei:</value></data>
+  <data name="GoogleIntegration_TeamResources_Copy" xml:space="preserve"><value>Copia</value></data>
+  <data name="GoogleIntegration_TeamResources_DriveFolders" xml:space="preserve"><value>Carpetes de Drive</value></data>
+  <data name="GoogleIntegration_TeamResources_DriveFoldersHelp" xml:space="preserve"><value>Comparteix la carpeta amb aquest correu com a Editor</value></data>
+  <data name="GoogleIntegration_TeamResources_GoogleGroups" xml:space="preserve"><value>Google Groups</value></data>
+  <data name="GoogleIntegration_TeamResources_GoogleGroupsHelp" xml:space="preserve"><value>Afegeix aquest correu com a Administrador del grup</value></data>
+  <data name="GoogleIntegration_TeamResources_LinkedResources" xml:space="preserve"><value>Recursos vinculats</value></data>
+  <data name="GoogleIntegration_TeamResources_LastSynced" xml:space="preserve"><value>Última sincronització</value></data>
+  <data name="GoogleIntegration_TeamResources_NoResources" xml:space="preserve"><value>Encara no hi ha recursos vinculats a aquest equip. Fes servir els formularis de sota per vincular una carpeta de Google Drive o un Google Group.</value></data>
+  <data name="GoogleIntegration_TeamResources_InvalidDriveUrl" xml:space="preserve"><value>Si us plau, introdueix una URL vàlida de carpeta de Google Drive.</value></data>
+  <data name="GoogleIntegration_TeamResources_InvalidGroupEmail" xml:space="preserve"><value>Si us plau, introdueix una adreça de correu vàlida de Google Group.</value></data>
+  <data name="GoogleIntegration_TeamResources_GroupLinked" xml:space="preserve"><value>Google Group "{0}" vinculat correctament.</value><comment>{0} = group name</comment></data>
+  <data name="GoogleIntegration_TeamResources_GroupLinkFailed" xml:space="preserve"><value>No s'ha pogut vincular el Google Group.</value></data>
+  <data name="GoogleIntegration_TeamResources_ResourceUnlinked" xml:space="preserve"><value>Recurs desvinculat de l'equip.</value></data>
+  <data name="GoogleIntegration_TeamResources_ResourceSynced" xml:space="preserve"><value>Permisos del recurs sincronitzats correctament.</value></data>
+  <data name="GoogleIntegration_TeamResources_ResourceSyncFailed" xml:space="preserve"><value>Error al sincronitzar els permisos del recurs: {0}</value><comment>{0} = error message</comment></data>
+  <data name="GoogleIntegration_TeamResources_ServiceAccount" xml:space="preserve"><value>Compte de servei: {0}</value><comment>{0} = service account email</comment></data>
 </root>

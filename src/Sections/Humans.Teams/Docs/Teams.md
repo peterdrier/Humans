@@ -119,7 +119,7 @@ One early-entry (EE) grant: a human may enter on a `LocalDate` for a named proje
 
 ## Routing
 
-This section's controllers. `TeamController` (`[Route("Teams")]`) handles both anonymous/member-facing and TeamsAdmin-gated actions. `TeamAdminController` (`[Route("Teams/{slug}")]`) handles per-team management under coordinator/admin authorization via `HumansTeamControllerBase.ResolveTeamManagementAsync` (which calls `TeamAuthorizationHandler` + `TeamOperationRequirement.ManageCoordinators`). Routes that go through `CanManageResourcesAsync` (coordinator-of-department check) are marked separately.
+This section's controllers. `TeamController` (`[Route("Teams")]`) handles both anonymous/member-facing and TeamsAdmin-gated actions. `TeamAdminController` (`[Route("Teams/{slug}")]`) handles per-team management under coordinator/admin authorization via `HumansTeamControllerBase.ResolveTeamManagementAsync` (which calls `TeamAuthorizationHandler` + `TeamOperationRequirement.ManageCoordinators`). A team's Google resources page is GoogleIntegration's (`/Google/Teams/{slug}/Resources`); the team page and the Members page link to it.
 
 | Route | Method | Controller | Auth |
 |-------|--------|------------|------|
@@ -151,13 +151,6 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 | `GET /Teams/{slug}/Roster` | `Roster` | `TeamAdminController` | `[Authorize(Policy = BoardOrAdmin)]` + `ResolveTeamManagementAsync` — burner name + legal name; policy narrows the coordinator-inclusive resolver to Board/Admin |
 | `POST /Teams/{slug}/Requests/{requestId}/Approve` | `ApproveRequest` | `TeamAdminController` | `ResolveTeamManagementAsync` |
 | `POST /Teams/{slug}/Requests/{requestId}/Reject` | `RejectRequest` | `TeamAdminController` | `ResolveTeamManagementAsync` |
-| `GET /Teams/{slug}/Resources` | `Resources` | `TeamAdminController` | `[Authorize]` + `CanManageResourcesAsync` (Coordinator of dept or TeamsAdmin/Admin) |
-| `POST /Teams/{slug}/Resources/LinkDrive` | `LinkDriveResource` | `TeamAdminController` | `[Authorize]` + `CanManageResourcesAsync` |
-| `POST /Teams/{slug}/Resources/LinkGroup` | `LinkGroup` | `TeamAdminController` | `[Authorize]` + `CanManageResourcesAsync` |
-| `POST /Teams/{slug}/Resources/{resourceId}/PermissionLevel` | `UpdatePermissionLevel` | `TeamAdminController` | `[Authorize]` + `CanManageResourcesAsync` |
-| `POST /Teams/{slug}/Resources/{resourceId}/RestrictInheritedAccess` | `ToggleRestrictInheritedAccess` | `TeamAdminController` | `[Authorize]` + `CanManageResourcesAsync` |
-| `POST /Teams/{slug}/Resources/{resourceId}/Unlink` | `UnlinkResource` | `TeamAdminController` | `[Authorize]` + `CanManageResourcesAsync` |
-| `POST /Teams/{slug}/Resources/{resourceId}/Sync` | `SyncResource` | `TeamAdminController` | `[Authorize]` + `CanManageResourcesAsync` |
 | `GET /Teams/{slug}/Roles` | `Roles` | `TeamAdminController` | `ResolveTeamManagementAsync` |
 | `POST /Teams/{slug}/Roles/Create` | `CreateRole` | `TeamAdminController` | `ResolveTeamManagementAsync` |
 | `POST /Teams/{slug}/Roles/{roleId}/Edit` | `EditRole` | `TeamAdminController` | `ResolveTeamManagementAsync` (IsManagement field additionally gated to TeamsAdmin/Admin) |
@@ -174,7 +167,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 | `POST /Teams/{slug}/EarlyEntry/Remove` | `RemoveEarlyEntry` | `TeamAdminController` | `ResolveEarlyEntryManagementAsync` |
 | `GET /Teams/{slug}/EarlyEntry/LookupTicket` | `LookupTicket` | `TeamAdminController` | `ResolveEarlyEntryManagementAsync` — AJAX ticket-barcode lookup; returns 0-or-1 `HumanLookupSearchResult` |
 
-`ResolveTeamManagementAsync` authorizes via `TeamAuthorizationHandler` + `TeamOperationRequirement.ManageCoordinators`; `ResolveEarlyEntryManagementAsync` authorizes the same handler with `TeamOperationRequirement.ManageEarlyEntry`. `CanManageResourcesAsync` checks coordinator-of-department specifically (sub-team managers cannot manage Google resources).
+`ResolveTeamManagementAsync` authorizes via `TeamAuthorizationHandler` + `TeamOperationRequirement.ManageCoordinators`; `ResolveEarlyEntryManagementAsync` authorizes the same handler with `TeamOperationRequirement.ManageEarlyEntry`.
 
 ## Actors & Roles
 
@@ -248,7 +241,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - Coordinator notifications after a saved join request or direct join are best-effort, including display-name lookup. Notification preparation failures are logged and do not fail the committed operation.
 - Coordinators can approve/reject join requests for their own department and any sub-teams within that department (enforced by `IsUserCoordinatorOfTeamAsync`).
 - All member additions and removals are audit-logged via `AuditLogEntry`. Direct addition resolves an existing pending join request on the reloaded request, saving its review fields together with the membership.
-- Team pages, membership email preparation and system-team sync read Google resources through `ITeamResourceService`; resource administration mutates through `ITeamResourceWrite`.
+- Team pages, membership email preparation and system-team sync read Google resources through `ITeamResourceService`; resource administration is GoogleIntegration's own page, which this section only links to.
 - Google resource access changes triggered by membership changes (Drive folder permissions, Group memberships) are logged in the audit trail.
 - Removing a member from a team also removes all their role assignments on that team.
 - Each team has a unique slug used for URL routing. A custom slug can override the auto-generated one. Team creation retries only slug/custom-slug constraint collisions; unrelated failures, including a duplicate Google group prefix, propagate.
@@ -306,7 +299,7 @@ A coordinator can relay a one-off message to another member on behalf of a team,
 
 - **Users.Contracts**: `IUserService.GetUserInfosAsync` batch-resolves `UserInfo` for nav-stripped reads, projected straight into DTOs; `IUserService` feeds the reconciler.
 - **Auth:** `IRoleAssignmentService` for role-holder reads and `IAdminAuthorizationService` for the actor checks; `IRoleAssignmentClaimsCacheInvalidator` after Coordinators reconciliation.
-- **GoogleIntegration:** each team can have linked Google resources (Drive folders, Groups). Membership changes append events through `IGoogleSyncOutboxService`, whose processor calls `IGoogleSyncWrite.AddUserToTeamResourcesAsync` for joins (a leave event needs no call: reconciliation removes the access); `TeamDriveAccessSource` supplies expected Drive access; `ITeamResourceService` / `ITeamResourceWrite` for the Resources page, the Google-group reconciliation and send as team's linked-and-synced group check.
+- **GoogleIntegration:** each team can have linked Google resources (Drive folders, Groups). Membership changes append events through `IGoogleSyncOutboxService`, whose processor calls `IGoogleSyncWrite.AddUserToTeamResourcesAsync` for joins (a leave event needs no call: reconciliation removes the access); `TeamDriveAccessSource` supplies expected Drive access; `ITeamResourceService` for the Members page resource list, the Google-group reconciliation and send as team's linked-and-synced group check.
 - **Shifts.Contracts:** `IShiftService` for the team page's shifts card; `IShiftAuthorizationInvalidator` after coordinator changes. Rotas belong to a department or sub-team, and coordinator/manager status is what scopes their shift management.
 - **Notifications.Contracts:** `INotificationEmitter` on join-request events; `INotificationMeterCacheInvalidator`.
 - **AuditLog:** `IAuditLogService` for every membership and EE mutation, and `<vc:audit-log>` in `TeamAdmin/Members`.

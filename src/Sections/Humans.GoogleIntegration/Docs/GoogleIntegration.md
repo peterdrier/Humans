@@ -61,7 +61,7 @@ The rows written before the split are still on `audit_log`. **`/Google/Admin/Syn
 
 **Table:** `google_resources`
 
-`GoogleResource` rows are owned by this section's `TeamResourceService`; `TeamId` is a bare Guid column with no FK constraint and no nav. Google Integration services call `ITeamResourceManagement` (internal) rather than querying the table. Cross-section readers use the public `ITeamResourceService`; the link, unlink, permission-level and restrict-inherited-access writes Teams makes live on `ITeamResourceWrite`. All three interfaces resolve to the same scoped service.
+`GoogleResource` rows are owned by this section's `TeamResourceService`; `TeamId` is a bare Guid column with no FK constraint and no nav. Google Integration services call `ITeamResourceManagement` (internal) rather than querying the table. Cross-section readers use the public `ITeamResourceService`; the link, unlink, permission-level and restrict-inherited-access writes are internal (`ITeamResourceManagement`), called only by this section's `TeamResourcesController`. Both interfaces resolve to the same scoped service.
 
 ### External-API surfaces
 
@@ -69,7 +69,7 @@ The rows written before the split are still on `audit_log`. **`/Google/Admin/Syn
 
 ## Routing
 
-All Google integration management is consolidated in `GoogleController` (`[Route("Google")]`). Team-level resource linking stays in `TeamAdminController` (now in `src/Sections/Humans.Teams/Controllers/`) at `/Teams/{slug}/Resources`.
+Google integration management is consolidated in `GoogleController` (`[Route("Google")]`). A team's linked resources are managed by `TeamResourcesController` at `/Google/Teams/{slug}/Resources`, linked from the team page and the team Members page.
 
 | Route | Method | Auth | Purpose |
 |-------|--------|------|---------|
@@ -106,6 +106,13 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 | `/Google/Accounts/ResetPasswordAndGenerate2Fa` | POST | Admin | Reset password + issue one backup 2FA code |
 | `/Google/Accounts/Link` | POST | Admin | Link existing Workspace account to a human |
 | `/Google/WorkspaceEmail` | POST | Signed-in member (self) | `WorkspaceIdentityController.Set`: designate one of the member's own verified addresses as their Google identity (antiforgery; exempt from `MembershipRequiredFilter` like the rest of the Emails grid) |
+| `/Google/Teams/{slug}/Resources` | GET | TeamsAdmin, Board, Admin, or a resource manager of the team's department | `TeamResourcesController.Index`: linked resources + link form |
+| `/Google/Teams/{slug}/Resources/LinkDrive` | POST | same | Link a Drive folder or file by URL |
+| `/Google/Teams/{slug}/Resources/LinkGroup` | POST | same | Link a Google Group by email |
+| `/Google/Teams/{slug}/Resources/{resourceId}/PermissionLevel` | POST | same; resource must belong to the team (else 404) | Change a Drive resource's permission level |
+| `/Google/Teams/{slug}/Resources/{resourceId}/RestrictInheritedAccess` | POST | same; resource must belong to the team | Toggle inherited-access restriction on a Drive folder |
+| `/Google/Teams/{slug}/Resources/{resourceId}/Unlink` | POST | same; resource must belong to the team | Soft-unlink (IsActive = false) |
+| `/Google/Teams/{slug}/Resources/{resourceId}/Sync` | POST | same; resource must belong to the team | Reconcile one resource now |
 | `/Google/Admin/{id}/WorkspaceEmail` | POST | HumanAdmin, Board, Admin (`HumanAdminBoardOrAdmin`) | `WorkspaceIdentityController.AdminSet`: same, on another member's grid; a merged-away `{id}` is 404 |
 
 ## Actors & Roles
@@ -113,8 +120,8 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 | Actor | Capabilities |
 |-------|--------------|
 | Admin | Manage sync settings (per-service mode). Trigger manual syncs and execute sync actions. View reconciliation results. Check and remediate Google Group settings drift. Link unlinked groups to teams. Review and apply email backfill corrections. Manage @nobodies.team Workspace accounts (provision, suspend, reactivate, link, reset password, combined Reset + 2FA recovery for locked-out humans). Provision per-human @nobodies.team email. Requeue permanently-failed outbox events (individually or all at once). Re-enqueue Google sync for a specific user across all their current teams. |
-| TeamsAdmin, Board, Admin | View resource sync status dashboard. Link and unlink Google resources (Drive folders, Groups) to teams via `TeamAdminController`. View resource status. Trigger per-resource sync |
-| Coordinator | Link and unlink Google resources for their own department (via `TeamAdminController`). Trigger per-resource sync for their own department |
+| TeamsAdmin, Board, Admin | View resource sync status dashboard. Link and unlink Google resources (Drive folders, Groups) to teams via `TeamResourcesController`. View resource status. Trigger per-resource sync |
+| Coordinator | Link and unlink Google resources for their own department (via `TeamResourcesController`). Trigger per-resource sync for their own department |
 | Board, Admin | View Drive activity anomaly check results. View sync audit logs |
 | HumanAdmin, Board, Admin | View per-human Google sync audit |
 | Background jobs | Automated sync: system team sync (hourly), resource reconciliation (daily at 03:00), sync outbox processing, resource provisioning |
@@ -222,11 +229,10 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 | Public interface | Methods | Notes |
 |---|---:|---|
 | `IGoogleSyncService` | 2 | Read contract: `GetFailedSyncEventCountAsync` (Notifications meter), `IsFolderReachableAsync` (Workgroups root-folder check). |
-| `IGoogleSyncWrite` | 5 | `AddUserToTeamResourcesAsync` (Teams system-team sync), `SyncSingleResourceAsync` (Teams admin), `EnsureTeamGroupAsync` (Teams), `CreateSubfolderAsync` / `RequestSyncAsync` (Workgroups). Each provisions or reconciles a Google resource on another section's behalf. |
+| `IGoogleSyncWrite` | 4 | `AddUserToTeamResourcesAsync` (Teams system-team sync), `EnsureTeamGroupAsync` (Teams), `CreateSubfolderAsync` / `RequestSyncAsync` (Workgroups). Each provisions or reconciles a Google resource on another section's behalf. |
 | `ITeamResourceService` | 7 | Read contract: team-resource snapshots and summaries (Teams, Users, Monitor), `CanManageTeamResourcesAsync`, `GetServiceAccountEmailAsync`. |
 | `IGoogleIntegrationService` | 2 | Read contract: `GetWorkspaceIdentityAsync` / `GetWorkspaceIdentitiesAsync` — a member's effective Workspace identity (`WorkspaceIdentity(UserId, Email, Status)`), keyed by the requested id (merge-aware). Teams, Camps, Users' admin list. |
 | `IGoogleIntegrationWrite` | 1 | `ClearIfAddressAsync` — Users reports an address leaving an account. |
-| `ITeamResourceWrite` | 5 | `LinkDriveResourceAsync`, `LinkGroupAsync`, `UnlinkResourceAsync`, `UpdatePermissionLevelAsync`, `SetRestrictInheritedAccessWithResultAsync` — Teams' team-admin resource pages. |
 
 `GoogleWorkspaceSyncService` (or `StubGoogleSyncService`) implements the internal `IGoogleSyncManagement`; `TeamResourceService` implements the internal `ITeamResourceManagement`; `WorkspaceIdentityService` implements the internal `IWorkspaceIdentityManagement` (reads + `ClearIfAddressAsync` + `SetAsync`, `SetStatusFromSyncAsync` and the copy). DI registers each face to the same instance. Everything else (sync-by-type, drift checks, outbox requeue, metrics counts) is internal.
 
@@ -250,7 +256,7 @@ The GDPR sync-log export preserves the viewer fields and resolves resource names
 - **`ISyncSettingsRepository`** — owns `sync_service_settings`. Unique index on `ServiceType` (`SyncServiceSettingsConfiguration.cs:31`). One row per `SyncServiceType`, seeded (reserved GUID block 0002).
 - **`IGoogleSyncOutboxRepository`** — owns `google_sync_outbox`. Entity holds `TeamId`/`UserId` scalars only; no entity-level navs and no FK constraint — bare Guid columns. Indexes on `(ProcessedAt, OccurredAt)`, `(TeamId, UserId, ProcessedAt)`, and `DeduplicationKey` (unique). Enqueue writes live here (`AddAsync` / `AddRangeAsync`) and are surfaced to producers through `IGoogleSyncOutboxService`. When an enqueue must be atomic with another section's mutation — e.g. `TeamService` queuing an event on a `TeamMember` change — the producer wraps the team-repository call and `IGoogleSyncOutboxService.AddAsync` in an ambient `TransactionScope` rather than folding the outbox write into `TeamRepository`.
 - **`IGoogleSyncLogRepository`** — owns `google_sync_log`. Append + three top-N reads (by resource, by user ids at 200 rows each; recent-across-resources for the Activity Log, limit set by the caller) + the distinct resource ids it references + the GDPR paths (`DeleteByUserIdsAsync` erasure, `GetAllByUserIdsContributorAsync` export). Its main caller is `GoogleSyncLogService`, which writes best-effort (a failed log is swallowed after an Error, never failing the sync) and reads for `<vc:google-sync-log>`. `AddRangeAsync` + `GetExistingIdsAsync` exist for the one-time history migration and go with it.
-- **`IGoogleResourceRepository`** — owns `google_resources`. `TeamResourceService` is the main caller; `GoogleWorkspaceSyncService` and `GoogleDriveAccessSyncService` use it for resource reads and reconciliation-loop atomic writes. Other sections read through `ITeamResourceService` and write through `ITeamResourceWrite`.
+- **`IGoogleResourceRepository`** — owns `google_resources`. `TeamResourceService` is the main caller; `GoogleWorkspaceSyncService` and `GoogleDriveAccessSyncService` use it for resource reads and reconciliation-loop atomic writes. Other sections read through `ITeamResourceService`; writes stay inside the section.
 
 > `DriveActivityMonitorService` moved to the **Monitor** section (`src/Sections/Humans.Monitor`) — it injects five sections' services and calls no repository, so it is a cross-section orchestrator rather than GoogleIntegration's. It reads this section through `IGoogleDriveActivityClient` and `ITeamResourceService`, and persists its `DriveActivityMonitor:LastRunAt` marker through `ISettingsService`. See [Monitor.md](../../Humans.Monitor/Docs/Monitor.md).
 

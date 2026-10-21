@@ -12,8 +12,8 @@
   src/Sections/Humans.GoogleIntegration/Jobs/GoogleResourceReconciliationJob.cs
   src/Sections/Humans.GoogleIntegration/Jobs/ProcessGoogleSyncOutboxJob.cs
   src/Sections/Humans.Teams/Services/SystemTeamSyncJob.cs
-  src/Sections/Humans.Teams/Controllers/TeamAdminController.cs
-  src/Sections/Humans.Teams/Views/TeamAdmin/Resources.cshtml
+  src/Sections/Humans.GoogleIntegration/Controllers/TeamResourcesController.cs
+  src/Sections/Humans.GoogleIntegration/Views/TeamResources/Index.cshtml
 -->
 <!-- freshness:flag-on-change
   IGoogleSyncService/Write/Management surface, ITeamResourceService/Write/Management, sync mode/action enums, drift detection, error classification, and /Google routes — review when Google integration services, jobs, or controllers change.
@@ -40,7 +40,7 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 - All API calls use `SupportsAllDrives = true`
 
 > Linking is the only way a team Drive resource enters the system
-> (`ITeamResourceWrite.LinkDriveResourceAsync`); only Google Groups are
+> (`ITeamResourceManagement.LinkDriveResourceAsync`); only Google Groups are
 > provisioned automatically. Workgroups is the exception: it creates its
 > group's subfolder through `IGoogleSyncWrite.CreateSubfolderAsync` and claims
 > it as a Drive access source, with no `GoogleResource` row.
@@ -210,11 +210,10 @@ Public writes (`IGoogleSyncWrite`, only what other sections call):
 ```csharp
 Task<GoogleResourceGrantResult> AddUserToTeamResourcesAsync(Guid teamId, Guid userId, ...);
 Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, ...);
-Task<ResourceSyncDiff> SyncSingleResourceAsync(Guid resourceId, SyncAction action, ...);
 Task<string> CreateSubfolderAsync(string parentFolderId, string name, ...);
 Task RequestSyncAsync(string folderId, ...);
 ```
-Internal (`IGoogleSyncManagement : IGoogleSyncService, IGoogleSyncWrite`, used by the section's own controllers, jobs and services): `SyncResourcesByTypeAsync`, `CheckGroupSettingsAsync`, `RemediateGroupSettingsAsync`, `GetAllDomainGroupsAsync`, `UpdateDriveFolderPathsAsync`, `SetInheritedPermissionsDisabledAsync`, `EnforceInheritedAccessRestrictionsAsync`, `RequeueOutboxEventAsync`, `RequeueAllFailedOutboxEventsAsync`, `EnqueueUserSyncAsync`, `GetPendingSyncEventCountAsync`, `GetRecentOutboxEventsAsync`.
+Internal (`IGoogleSyncManagement : IGoogleSyncService, IGoogleSyncWrite`, used by the section's own controllers, jobs and services): `SyncSingleResourceAsync`, `SyncResourcesByTypeAsync`, `CheckGroupSettingsAsync`, `RemediateGroupSettingsAsync`, `GetAllDomainGroupsAsync`, `UpdateDriveFolderPathsAsync`, `SetInheritedPermissionsDisabledAsync`, `EnforceInheritedAccessRestrictionsAsync`, `RequeueOutboxEventAsync`, `RequeueAllFailedOutboxEventsAsync`, `EnqueueUserSyncAsync`, `GetPendingSyncEventCountAsync`, `GetRecentOutboxEventsAsync`.
 
 ### IGoogleGroupSync
 ```csharp
@@ -414,11 +413,10 @@ Instead of creating resources with domain-wide delegation, admins can link exist
 - **Google Groups**: Admin adds the service account as a Group Manager
 - The service account authenticates as itself (no impersonation) for validation/linking
 
-### ITeamResourceService / ITeamResourceWrite / ITeamResourceManagement
+### ITeamResourceService / ITeamResourceManagement
 Separate from the IGoogleSync* interfaces: linking/validation, not provisioning.
 - `ITeamResourceService` (public reads): `GetTeamResourcesAsync`, `GetResourcesByTeamIdsAsync`, `GetTeamResourceSummariesAsync`, `GetActiveDriveFoldersAsync`, `CanManageTeamResourcesAsync`, `GetServiceAccountEmailAsync`, `GetResourceByIdAsync`.
-- `ITeamResourceWrite` (public writes): `LinkDriveResourceAsync`, `LinkGroupAsync`, `UnlinkResourceAsync`, `UpdatePermissionLevelAsync`, `SetRestrictInheritedAccessWithResultAsync`.
-- `ITeamResourceManagement : ITeamResourceService, ITeamResourceWrite` (internal): `GetActiveResourceCountsByTeamAsync`, `MarkResourceSyncedAsync`, `RecordResourceErrorAsync`, `GetUserTeamResourcesAsync`, `GetResourceCountAsync`, `DeactivateResourcesForTeamAsync`, `GetResourceNamesByIdsAsync`.
+- `ITeamResourceManagement : ITeamResourceService` (internal): `LinkDriveResourceAsync`, `LinkGroupAsync`, `UnlinkResourceAsync`, `UpdatePermissionLevelAsync`, `SetRestrictInheritedAccessWithResultAsync`, `GetActiveResourceCountsByTeamAsync`, `MarkResourceSyncedAsync`, `RecordResourceErrorAsync`, `GetUserTeamResourcesAsync`, `GetResourceCountAsync`, `DeactivateResourcesForTeamAsync`, `GetResourceNamesByIdsAsync`.
 
 ### Resource Linking Flow
 ```
@@ -473,17 +471,17 @@ Supports multiple Google Drive/Docs URL formats:
 - Board members and TeamsAdmins: can manage resources for any team
 - Coordinators: controlled by `TeamResourceManagement:AllowCoordinatorsToManageResources` (default: false)
 
-### Route: `/Teams/{slug}/Resources`
-Actions (on `TeamAdminController`, `src/Sections/Humans.Teams/Controllers/`):
+### Route: `/Google/Teams/{slug}/Resources`
+Actions (on `TeamResourcesController`, `src/Sections/Humans.GoogleIntegration/Controllers/`). Every action 404s an unknown slug and 403s a caller who is neither TeamsAdmin/Board/Admin nor a resource manager of the team's department (sub-teams are gated at their department); every `{resourceId}` action 404s a resource that belongs to another team:
 | Route | Method | Action |
 |-------|--------|--------|
-| `Resources` | GET | View linked resources + link forms |
-| `Resources/LinkDrive` | POST | Link a Shared Drive folder **or** file by URL — one form, one route; `LinkDriveResourceAsync` dispatches to the folder or file path by inspecting the URL (there is no separate "link file" route) |
-| `Resources/LinkGroup` | POST | Link a Google Group by email |
-| `Resources/{resourceId}/PermissionLevel` | POST | Change the permission level granted for a linked resource |
-| `Resources/{resourceId}/RestrictInheritedAccess` | POST | Toggle `RestrictInheritedAccess` on a linked Drive folder |
-| `Resources/{resourceId}/Unlink` | POST | Soft-unlink (IsActive = false) |
-| `Resources/{resourceId}/Sync` | POST | Trigger permission sync |
+| `` (index) | GET | View linked resources + link forms |
+| `LinkDrive` | POST | Link a Shared Drive folder **or** file by URL — one form, one route; `LinkDriveResourceAsync` dispatches to the folder or file path by inspecting the URL (there is no separate "link file" route) |
+| `LinkGroup` | POST | Link a Google Group by email |
+| `{resourceId}/PermissionLevel` | POST | Change the permission level granted for a linked resource |
+| `{resourceId}/RestrictInheritedAccess` | POST | Toggle `RestrictInheritedAccess` on a linked Drive folder |
+| `{resourceId}/Unlink` | POST | Soft-unlink (IsActive = false) |
+| `{resourceId}/Sync` | POST | Trigger permission sync |
 
 ## Sync Status Page
 
