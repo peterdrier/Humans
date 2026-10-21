@@ -12,7 +12,6 @@ using Humans.CityPlanning.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using NodaTime;
 
@@ -50,7 +49,6 @@ internal sealed class DevPersonaSeeder(
     IMembershipCalculator membershipCalculator,
     IHumanLifecycleService humanLifecycleService,
     IClock clock,
-    IMemoryCache cache,
     IOptions<CityPlanningOptions> cityPlanningOptions,
     ILogger<DevPersonaSeeder> logger)
 {
@@ -194,7 +192,6 @@ internal sealed class DevPersonaSeeder(
         // document's grace period lapses (#867).
         await EnsureActiveAsync(id);
 
-        cache.InvalidateUserAccess(id);
         await userInfoInvalidator.InvalidateAsync(id);
 
         logger.LogInformation(
@@ -574,7 +571,6 @@ internal sealed class DevPersonaSeeder(
 
         if (changed)
         {
-            cache.InvalidateUserAccess(coordinatorUserId);
             // Team membership changes ripple into UserInfo (active-teams shape)
             await userInfoInvalidator.InvalidateAsync(coordinatorUserId);
             logger.LogInformation(
@@ -640,7 +636,6 @@ internal sealed class DevPersonaSeeder(
 
         if (changed)
         {
-            cache.InvalidateUserAccess(userId);
             // Team membership changes ripple into UserInfo (active-teams shape)
             await userInfoInvalidator.InvalidateAsync(userId);
         }

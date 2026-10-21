@@ -11,7 +11,6 @@ using Humans.Teams.Contracts;
 using Humans.Base.Enums;
 using Humans.Development.Services;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -49,7 +48,6 @@ public class DevPersonaSeederTests
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly IHumanLifecycleService _humanLifecycle = Substitute.For<IHumanLifecycleService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 7, 13, 12, 0));
-    private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
 
     public DevPersonaSeederTests()
     {
@@ -78,7 +76,6 @@ public class DevPersonaSeederTests
         _membershipCalculator,
         _humanLifecycle,
         _clock,
-        _cache,
         Options.Create(new CityPlanningOptions()),
         NullLogger<DevPersonaSeeder>.Instance);
 

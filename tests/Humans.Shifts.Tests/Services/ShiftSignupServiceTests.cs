@@ -709,7 +709,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         stored.StatusReason.Should().Be("Previous decision");
         AuditLog.ReceivedCalls().Should().BeEmpty();
         Notifier.ReceivedCalls().Should().BeEmpty();
-        _viewInvalidator.ReceivedCalls().Should().BeEmpty();
+        _views.Evictions.Should().Be(0);
     }
 
     [HumansTheory]
@@ -2388,7 +2388,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         repo.DeleteAllForUsersAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(1);
         var management = Substitute.For<IShiftManagement>();
         var service = new ShiftSignupService(repo, Substitute.For<IVolunteerTrackingRepository>(), management,
-            NewCalendarResolver(), AuditLog, Notifier, AdminAuthorization, _viewInvalidator,
+            NewCalendarResolver(), AuditLog, Notifier, AdminAuthorization, _views.Cache,
             Substitute.For<IEarlyEntryInvalidator>(), new ServiceLocatorBuilder().Build(),
             Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
 
