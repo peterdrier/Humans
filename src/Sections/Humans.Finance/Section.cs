@@ -79,5 +79,8 @@ public sealed class Section : ISection
         // (memory/architecture/email-templates-live-in-sender.md).
         services.AddScoped<FinanceEmails>();
         services.AddScoped<IEmailPreviewContributor, FinanceEmailPreviews>();
+
+        // /Finance/CashFlow: reads Budget and Tickets through their public contracts; no tables.
+        services.AddScoped<CashFlowService>();
     }
 }

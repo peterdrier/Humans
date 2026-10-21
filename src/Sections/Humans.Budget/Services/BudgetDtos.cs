@@ -64,19 +64,6 @@ internal sealed record CoordinatorCategoryDetailViewData(
 internal sealed record EnsureTicketingGroupResult(bool Created, string Message);
 
 /// <summary>
-/// A synthetic VAT cash flow entry computed from a line item with VatRate &gt; 0.
-/// Amount is signed: negative = expense (VAT liability from income), positive = income
-/// (VAT credit from expenses). SettlementDate is ~45 days after the quarter end containing
-/// the source item's ExpectedDate.
-/// </summary>
-internal sealed class VatCashFlowEntry
-{
-    public required string CategoryName { get; init; }
-    public decimal Amount { get; init; }
-    public required LocalDate SettlementDate { get; init; }
-}
-
-/// <summary>
 /// A projected week of ticket sales — virtual line items not yet materialized.
 /// </summary>
 internal sealed class TicketingWeekProjection

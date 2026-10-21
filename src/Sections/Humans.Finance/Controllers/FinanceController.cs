@@ -13,8 +13,8 @@ namespace Humans.Finance.Controllers;
 
 /// <summary>
 /// Finance's own pages: the Holded connector, account provisioning, the unmatched-document queue,
-/// creditor accounts and SEPA payouts. Budget's admin surface shares the <c>Finance</c> route
-/// prefix from its own <c>BudgetAdminController</c>.
+/// creditor accounts, SEPA payouts and cash flow. Budget's admin surface shares the <c>Finance</c>
+/// route prefix from its own <c>BudgetAdminController</c>.
 /// </summary>
 [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
 [Route("Finance")]
@@ -22,8 +22,27 @@ internal sealed class FinanceController(
     IUserService userService,
     IHoldedFinanceManagement holdedFinance,
     IHoldedFinanceAdminService holdedConnector,
+    CashFlowService cashFlow,
     ILogger<FinanceController> logger) : HumansControllerBase(userService)
 {
+    [HttpGet("CashFlow")]
+    public async Task<IActionResult> CashFlow(string period = "monthly")
+    {
+        try
+        {
+            var model = await cashFlow.GetActiveYearCashFlowAsync(period, HttpContext.RequestAborted);
+            if (model is not null) return View(model);
+            SetInfo("No active budget year.");
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Error loading cash flow view");
+            SetError("Failed to load cash flow data.");
+        }
+        // The budget overview at /Finance, served by Budget's BudgetAdminController.
+        return RedirectToAction("Index", "BudgetAdmin");
+    }
+
     /// <summary>The connector index: what Finance's half of the Holded integration is doing, and a
     /// way into every screen that already covers a piece of it. Cache reads only — see
     /// <see cref="IHoldedFinanceAdminService.GetConnectorOverviewAsync"/>.</summary>

@@ -45,6 +45,13 @@ and the facade's logger. Owns purchase-document fetching and matching,
 category map and managed-account registry; no Budget, user or email dependency.
 The internal `IHoldedFinanceManagement.SyncAsync` entry point delegates here; its callers are Finance's own `HoldedDocSyncJob` (nightly) and `FinanceController.RunHoldedSync` (manual), never another section. The facade passes its duplicate-document check in, run over the fetched documents before the snapshot is written (it reads `IExpenseHoldedBookingService`, which the sync itself never does).
 
+### CashFlowService (Scoped, section-internal)
+
+No repository, no tables, no cache. Computes `/Finance/CashFlow` from
+`IBudgetService.GetActiveYearAsync` (the plan tree, including each line item's
+`VatRate` and `ExpectedDate`) and `ITicketService.GetTicketOrdersAsync` (paid
+orders' gross revenue for the runway). Injected by `FinanceController` only.
+
 ### Service (Scoped)
 
 Repository: `IHoldedRepository`.

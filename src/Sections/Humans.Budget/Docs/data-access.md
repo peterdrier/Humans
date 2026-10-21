@@ -24,6 +24,8 @@ Repository: `IBudgetRepository`.
 Cross-section calls via `ITeamService`, `IUserService`, plus `IClock`.
 Team labels are stitched at the service layer via `ITeamService`.
 Implements `IUserDataContributor`. No `IMemoryCache`.
+Cash flow (`/Finance/CashFlow`) is not Budget's: Finance's `CashFlowService`
+computes it from `IBudgetService.GetActiveYearAsync`.
 
 ### TicketingBudgetService (Scoped)
 

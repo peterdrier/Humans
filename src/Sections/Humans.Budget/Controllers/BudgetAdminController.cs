@@ -16,8 +16,8 @@ using Humans.Users.Contracts;
 namespace Humans.Budget.Controllers;
 
 /// <summary>
-/// Budget's admin surface: years, groups, categories, line items, the ticketing projection,
-/// cash flow and the audit log, under the <c>/Finance</c> route prefix it shares with
+/// Budget's admin surface: years, groups, categories, line items, the ticketing projection
+/// and the audit log, under the <c>/Finance</c> route prefix it shares with
 /// <c>Humans.Finance.Controllers.FinanceController</c> — the action templates are disjoint.
 /// </summary>
 /// <remarks>
@@ -127,31 +127,6 @@ internal sealed class BudgetAdminController(
         {
             logger.LogError(ex, "Error loading budget audit log");
             SetError("Failed to load audit log.");
-            return RedirectToAction(nameof(Index));
-        }
-    }
-
-    [HttpGet("CashFlow")]
-    public async Task<IActionResult> CashFlow(string period = "monthly")
-    {
-        var ct = HttpContext.RequestAborted;
-        try
-        {
-            var activeYear = await budgetService.GetActiveYearAsync(ct);
-            if (activeYear is null)
-            {
-                SetInfo("No active budget year.");
-                return RedirectToAction(nameof(Index));
-            }
-
-            var grossTicketRevenue = await ticketingBudgetService.GetGrossTicketRevenueAsync(activeYear, ct);
-            var model = BuildCashFlowModel(activeYear, period, grossTicketRevenue);
-            return View(model);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Error loading cash flow view");
-            SetError("Failed to load cash flow data.");
             return RedirectToAction(nameof(Index));
         }
     }
@@ -658,154 +633,4 @@ internal sealed class BudgetAdminController(
             HoldedActualsByCategory = holdedActuals
         };
     }
-
-    /// <summary>CashFlow VM: aggregate by period; synthesize VAT settlements; FinanceAdmin-only.</summary>
-    private CashFlowViewModel BuildCashFlowModel(BudgetYearDetail year, string period, decimal grossTicketRevenue)
-    {
-        if (!string.Equals(period, "weekly", StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(period, "monthly", StringComparison.OrdinalIgnoreCase))
-        {
-            period = "monthly";
-        }
-
-        var allEntries = year.Groups
-            .SelectMany(g => g.Categories.Select(c => new { GroupName = g.Name, CategoryName = c.Name, Category = c }))
-            .SelectMany(ctx => ctx.Category.LineItems.Select(li => new CashFlowEntry(
-                ctx.GroupName, ctx.CategoryName, li.Amount, li.ExpectedDate)))
-            .ToList();
-
-        var vatEntries = budgetService.ComputeVatCashFlowEntries(year.Groups);
-        allEntries.AddRange(vatEntries.Select(v => new CashFlowEntry("VAT", v.CategoryName, v.Amount, v.SettlementDate)));
-
-        var scheduled = allEntries.Where(x => x.Date.HasValue).ToList();
-        var unscheduled = allEntries.Where(x => !x.Date.HasValue).ToList();
-
-        var periodRows = new List<CashFlowPeriodRow>();
-
-        if (scheduled.Count > 0)
-        {
-            var isWeekly = string.Equals(period, "weekly", StringComparison.OrdinalIgnoreCase);
-            var grouped = isWeekly ? GroupByWeek(scheduled) : GroupByMonth(scheduled);
-
-            decimal runningNet = 0;
-            // Expense-only runway: gross ticket revenue minus expenses; income lines don't extend it.
-            decimal runningExpenseBalance = grossTicketRevenue;
-            var fundsExhausted = false;
-            foreach (var pg in grouped.OrderBy(g => g.PeriodStart))
-            {
-                var periodIncome = pg.Items.Where(x => x.Amount > 0).Sum(x => x.Amount);
-                var periodExpense = pg.Items.Where(x => x.Amount < 0).Sum(x => x.Amount);
-                var periodNet = periodIncome + periodExpense;
-                runningNet += periodNet;
-
-                runningExpenseBalance += periodExpense;
-                var isExhausted = !fundsExhausted && runningExpenseBalance <= 0;
-                if (isExhausted)
-                {
-                    fundsExhausted = true;
-                }
-
-                var categories = BuildCategoryRows(pg.Items);
-
-                periodRows.Add(new CashFlowPeriodRow
-                {
-                    Label = pg.Label,
-                    PeriodStart = pg.PeriodStart,
-                    PeriodEnd = pg.PeriodEnd,
-                    IncomeTotal = periodIncome,
-                    ExpenseTotal = periodExpense,
-                    Net = periodNet,
-                    RunningNet = runningNet,
-                    FundsExhausted = isExhausted,
-                    Categories = categories
-                });
-            }
-        }
-
-        var unscheduledIncome = unscheduled.Where(x => x.Amount > 0).Sum(x => x.Amount);
-        var unscheduledExpense = unscheduled.Where(x => x.Amount < 0).Sum(x => x.Amount);
-        var unscheduledCategories = BuildCategoryRows(unscheduled);
-
-        return new CashFlowViewModel
-        {
-            YearName = year.Name,
-            Period = period.ToLowerInvariant(),
-            Periods = periodRows,
-            Unscheduled = new CashFlowUnscheduledSummary
-            {
-                IncomeTotal = unscheduledIncome,
-                ExpenseTotal = unscheduledExpense,
-                Net = unscheduledIncome + unscheduledExpense,
-                Categories = unscheduledCategories
-            }
-        };
-    }
-
-    private static List<CashFlowCategoryRow> BuildCategoryRows(List<CashFlowEntry> items)
-    {
-        return items
-            .GroupBy(x => new { x.CategoryName, x.GroupName })
-            .Select(cg => new CashFlowCategoryRow
-            {
-                CategoryName = cg.Key.CategoryName,
-                GroupName = cg.Key.GroupName,
-                Amount = cg.Sum(x => x.Amount)
-            })
-            .OrderBy(c => c.GroupName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(c => c.CategoryName, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-    }
-
-    private static List<CashFlowPeriodGroup> GroupByWeek(List<CashFlowEntry> items)
-    {
-        return items
-            .GroupBy(x =>
-            {
-                var date = x.Date!.Value;
-                var dayOfWeek = date.DayOfWeek;
-                var monday = date.PlusDays(-(((int)dayOfWeek + 6) % 7));
-                return monday;
-            })
-            .Select(g =>
-            {
-                var monday = g.Key;
-                var sunday = monday.PlusDays(6);
-                return new CashFlowPeriodGroup(
-                    $"{monday.ToDateTimeUnspecified().ToWeekdayDayMonth()} - {sunday.ToDate()}",
-                    monday,
-                    sunday,
-                    g.ToList());
-            })
-            .ToList();
-    }
-
-    private static List<CashFlowPeriodGroup> GroupByMonth(List<CashFlowEntry> items)
-    {
-        return items
-            .GroupBy(x =>
-            {
-                var date = x.Date!.Value;
-                return new { date.Year, date.Month };
-            })
-            .Select(g =>
-            {
-                var firstDay = new LocalDate(g.Key.Year, g.Key.Month, 1);
-                var lastDay = firstDay.PlusDays(firstDay.Calendar.GetDaysInMonth(g.Key.Year, g.Key.Month) - 1);
-                return new CashFlowPeriodGroup(
-                    firstDay.ToDateTimeUnspecified().ToMonthYear(),
-                    firstDay,
-                    lastDay,
-                    g.ToList());
-            })
-            .ToList();
-    }
-
-    /// <summary>Cash flow entry — real line item or synthetic VAT settlement.</summary>
-    private sealed record CashFlowEntry(string GroupName, string CategoryName, decimal Amount, LocalDate? Date);
-
-    private sealed record CashFlowPeriodGroup(
-        string Label,
-        LocalDate PeriodStart,
-        LocalDate PeriodEnd,
-        List<CashFlowEntry> Items);
 }

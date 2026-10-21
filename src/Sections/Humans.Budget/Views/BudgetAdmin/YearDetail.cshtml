@@ -34,7 +34,7 @@
                 </ul>
             </div>
         }
-        <a asp-action="CashFlow" class="btn btn-outline-secondary">
+        <a asp-controller="Finance" asp-action="CashFlow" class="btn btn-outline-secondary">
             <i class="fa-solid fa-money-bill-transfer me-1"></i>Cash Flow
         </a>
         <form asp-action="SyncDepartments" asp-route-id="@year.Id" method="post" class="d-inline">

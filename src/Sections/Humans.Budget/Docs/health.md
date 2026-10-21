@@ -11,8 +11,8 @@ items for their own departments; every member can see a high-level summary. Tick
 actuals flow in nightly and replace the auto-generated projections (hand-entered line
 items are never touched); projected future ticket weeks are re-forecast from those
 actuals. Every change to the plan is recorded in an append-only audit trail FinanceAdmin
-and Admin can read. Cash-flow views answer "when does the money move, and do we run out?",
-including the VAT the association will settle each quarter.
+and Admin can read. Finance's cash-flow page reads this plan to answer "when does the money
+move, and do we run out?", including the VAT the association will settle each quarter.
 
 ## The shapes
 
@@ -22,7 +22,7 @@ including the VAT the association will settle each quarter.
 | Change my department's line items (coordinator) | `/Budget/LineItems/*` |
 | Manage the plan tree (admin: year lifecycle, groups, categories, line items) | `/Finance/Years/*`, `/Finance/Groups/*`, `/Finance/Categories/*`, `/Finance/LineItems/*`, `/Finance/Admin` |
 | Feed ticket actuals in / re-forecast | `/Finance/TicketingBudget/{yearId}/Sync`, `/Finance/TicketingProjection/{groupId}/Update`, `/Finance/Years/{id}/EnsureTicketingGroup`, nightly `budget-ticketing-sync` job |
-| When does money move? | `/Finance/CashFlow` (weekly/monthly, VAT settlements, runway) |
+| When does money move? | `/Finance/CashFlow` — served by Finance ([`Finance.md`](../../Humans.Finance/Docs/Finance.md)) |
 | Who changed what? | `/Finance/AuditLog/{yearId?}` |
 | Cross-section reads (Expenses, Finance, Tickets, Backdoor; Development's demo seed) | `IBudgetService`, `IBudgetDemoSeeder` (`Contracts/` folder) |
 
@@ -31,9 +31,8 @@ including the VAT the association will settle each quarter.
 The shapes imply the layered split that exists:
 
 - Two thin controllers — member-facing (`/Budget`) and admin (`/Finance` prefix) — that
-  parse, call `IBudgetManagement`, and redirect with a flash message. Cash-flow *presentation*
-  grouping (week/month bucketing of already-computed entries) is view-model shaping and may
-  live controller-side; VAT/summary *computation* belongs to the service.
+  parse, call `IBudgetManagement`, and redirect with a flash message; VAT/summary
+  *computation* belongs to the service. Cash flow is Finance's (`CashFlowService`).
 - One `BudgetService`: the tree CRUD pass-through to atomic repository ops, the coordinator
   scope derivation, the pure summary/VAT computations, and the GDPR contributor.
 - One `TicketingBudgetService` bridge: aggregates paid orders from `ITicketService` into

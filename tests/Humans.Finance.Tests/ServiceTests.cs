@@ -135,7 +135,9 @@ public class HoldedFinanceServiceTests
             return Array.Empty<HoldedLedgerLineInfo>();
         });
         var service = MakeService();
-        var controller = new FinanceController(_users, service, service, NullLogger<FinanceController>.Instance)
+        var controller = new FinanceController(_users, service, service,
+            new CashFlowService(_budget, Substitute.For<Humans.Tickets.Contracts.ITicketService>()),
+            NullLogger<FinanceController>.Instance)
         {
             ControllerContext = new() { HttpContext = new DefaultHttpContext() }
         };

@@ -179,6 +179,7 @@ graph LR
     HoldedDocSync[HoldedDocumentSync]:::finance
     SepaBooking[SepaBankBooking]:::finance
     PayDetails[PaymentDetailsService]:::finance
+    CashFlowSvc[CashFlowService]:::finance
 
     Holded[HoldedService]:::holded
 
@@ -528,6 +529,8 @@ graph LR
     Finance --> UEmail
     Finance --> Email
     Finance --> ExpenseBookings
+    CashFlowSvc --> Budget
+    CashFlowSvc --> TicketQ
     %% Finance -> Expenses is the section project (IExpenseHoldedBookingService, read-only);
     %% Expenses -> Finance is the Finance.Contracts leaf, so the project graph stays acyclic.
     %% ExpenseBookings is not ExpenseReport: ExpenseReport -> Finance, so Finance -> ExpenseReport

@@ -35,6 +35,8 @@ What lives here: the Holded purchase-doc sync and its attribution to budget cate
 - The **Unmatched Queue** (`/Finance/HoldedUnmatched`) is the working surface where the treasurer inspects unattributed docs and triggers a re-sync.
 - The **Connector index** (`/Finance/Holded`) is the read-only answer to "what is Finance's half of Holded doing": doc-sync status with its age rendered as a **Stale** badge rather than left implied, the live `HoldedCategoryMap` rows, every pulled `HoldedExpenseDoc` with its match source and raw tags, and the counts that link out to the four working screens. It never calls Holded — cache reads only, so it cannot inherit the live-contacts timeout `/Finance/Creditors` carries (nobodies-collective/Humans#976). Its read model is `IHoldedFinanceAdminService`, section-**internal**, the same shape as the Holded section's `IHoldedAdminService`.
 
+- **Cash flow** (`/Finance/CashFlow`) answers "when does the money move, and do we run out?" from the active budget year's plan: every line item plus a synthetic VAT settlement per dated line item with VAT (income owes its VAT portion as "VAT Liability", an expense reclaims it as "VAT Credits"; Spanish quarterly VAT settles 45 days after the quarter end), bucketed by ISO week or calendar month with income, expenses, net and running net. Undated items are totalled under **Unscheduled**. The **Funds exhausted** marker is an expense-only runway: it starts at the gross revenue of the year's paid ticket orders (the year's `VendorEventId`, else the current event), subtracts each period's expenses and ignores income, and marks only the first period it reaches ≤ 0. `CashFlowService` (internal) computes it from `IBudgetService.GetActiveYearAsync` and `ITicketService.GetTicketOrdersAsync`; it owns no tables. Planned next step: fold in actuals — Holded purchase documents, expense reports and invoices — beside the plan.
+
 - **Payment details** are the bank account a member is reimbursed to: one `finance_payment_details` row per member, read by Expenses through `IFinanceService.GetIbanAsync` and written through `IFinanceWrite.SetIbanAsync` (Users decomposition commit 1; the IBAN used to live on `profiles.Iban`). Admins see it masked on the Payment Details card of `/Users/Admin/{id}` and can reveal it once per page load, audited.
 
 ## Data Model
@@ -208,7 +210,13 @@ The Payment Details card itself is `PaymentDetailsViewComponent`, contributed to
 
 ### Not this section — the Budget surface on the same prefix
 
-`Humans.Budget`'s `BudgetAdminController` keeps `[Route("Finance")]`, so `/Finance`, `/Finance/Years/*`, `/Finance/Categories/*`, `/Finance/LineItems/*`, `/Finance/CashFlow`, `/Finance/AuditLog` and `/Finance/Admin` are served by Budget. Their table lives in [`Budget.md`](../../Humans.Budget/Docs/Budget.md).
+`Humans.Budget`'s `BudgetAdminController` keeps `[Route("Finance")]`, so `/Finance`, `/Finance/Years/*`, `/Finance/Categories/*`, `/Finance/LineItems/*`, `/Finance/AuditLog` and `/Finance/Admin` are served by Budget. Their table lives in [`Budget.md`](../../Humans.Budget/Docs/Budget.md).
+
+### Cash flow
+
+| Route | Purpose |
+|-------|---------|
+| `GET /Finance/CashFlow?period=weekly\|monthly` | The active year's cash flow (see Concepts). Any other `period` renders monthly. No active year → flash and redirect to `/Finance`. Linked from the `/Finance` year page toolbar |
 
 ### Holded integration
 
@@ -238,7 +246,7 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 
 | Actor | Capabilities |
 |-------|--------------|
-| FinanceAdmin, Admin | Every `/Finance/*` route: provision Holded accounts, run the sync, work the unmatched queue, bind and unbind creditors, generate and book SEPA payouts. |
+| FinanceAdmin, Admin | Every `/Finance/*` route: provision Holded accounts, run the sync, work the unmatched queue, bind and unbind creditors, generate and book SEPA payouts, view cash flow. |
 | Admin | Additionally: the Payment Details card on `/Users/Admin/{id}` and the audited IBAN reveal. |
 | Department coordinator | None — Finance routes are FinanceAdmin-only. |
 | Any other authenticated human | None |
@@ -255,7 +263,7 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 - A purchase doc is attributed **as a whole, by its first product line's** booked account (plus the union of doc-level and line-level tags), and its full `Total` lands on that one category. A multi-line doc booked across several Holded accounts is not split; line-level attribution is a deliberate later refinement (`HoldedDocumentSync.MapDoc`).
 - Actuals are keyed on the **calendar year** of the doc's Europe/Madrid date, matched against `BudgetYear.Year` parsed as an integer (`BudgetAdminController` → `GetActualsForYearAsync` → `IHoldedRepository.GetMatchedForYearAsync`). A budget year whose `Year` string is not a plain number, or that does not run January–December, shows no actuals.
 - Only `FinanceAdmin` or `Admin` may access any `/Finance/*` route (`[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` on `FinanceController`).
-- `FinanceController` performs no budget mutations at all — its actions are the Holded, creditor and SEPA-payout surface. Budget CRUD on the same prefix is `Humans.Budget`'s `BudgetAdminController`.
+- `FinanceController` performs no budget mutations at all — its actions are the Holded, creditor, SEPA-payout and cash-flow surface. Budget CRUD on the same prefix is `Humans.Budget`'s `BudgetAdminController`.
 - `/Finance/Holded` issues **no** Holded HTTP call. Every figure comes from `holded_doc_sync_state`, `holded_category_map`, `holded_expense_docs` and `holded_creditor_contacts`; the mirror's own health (API budget, ledger sweeps, chart of accounts) is `/Holded`'s and is linked, not restated. Pinned by `GetConnectorOverview_MakesNoHoldedApiCall`.
 - The doc sync counts as **stale** at 36 h — the nightly job's 24 h cadence plus half a day of grace — and never having run counts as stale too: budget actuals and the unmatched queue are equally wrong either way, so both raise the same alarm.
 - Each successful full pull replaces the purchase-document cache, including an empty snapshot. Documents absent from Holded are removed from actuals and unmatched review. Retained rows match on `HoldedDocId` and preserve their identity and `CreatedAt`. A failed fetch leaves the cached documents unchanged.
@@ -348,14 +356,15 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 
 Derived from `Humans.Finance.csproj`'s project references and the contracts namespaces the service uses (Budget, Holded, GDPR and AuditLog are referenced as section projects, whose public face is their `Contracts/` folder; Users and Email through their `.Contracts` leaves):
 
-- **Budget** (`Humans.Budget.Contracts`): `IBudgetService.GetActiveYearAsync`, for the categories the provisioning plan is built from. Read-only.
+- **Budget** (`Humans.Budget.Contracts`): `IBudgetService.GetActiveYearAsync`, for the categories the provisioning plan is built from and the plan cash flow projects. Read-only.
+- **Tickets** (`Humans.Tickets.Contracts`): `ITicketService.GetTicketOrdersAsync`, the paid orders whose gross revenue seeds the cash-flow runway. Read-only.
 - **Holded** (`Humans.Holded.Contracts`): `IHoldedService` for cached ledger lines and account balances, and `IHoldedClient` for the live contact/account calls the provisioning and bind paths make.
 - **Users** (`Humans.Users.Contracts`): `IUserService.GetUserInfosAsync`, to name bound members on `/Finance/Creditors` and to address the payout email; `GetUserInfoAsync` / `GetAllUserInfosAsync` for payment details (merge-chain resolution and the legacy `ProfileInfo.Iban` fallback and copy); `IUserMerge`, implemented by `PaymentDetailsService`; `IUserEmailService.GetNotificationTargetEmailsAsync` for the address itself.
 - **Expenses** (`Humans.Expenses.Contracts`): `IExpenseHoldedBookingService.GetHoldedBookingsAsync`, the linked expense lines with the description, notes and booked amount the push wrote, for the duplicate-document check. Read-only; Expenses already depends on Finance's `.Contracts` leaf, so the project reference goes to the Expenses section project. The contract is kept apart from `IExpenseReportService` because `ExpenseReportService` takes `IHoldedFinanceService`: its implementation needs only the Expenses repository and `IUserService`, so the two services never resolve each other.
 - **Email** (`Humans.Email.Contracts`): `IEmailService.SendAsync` for the payout email. The template, its resx set (`FinanceResource`, the section's only one — its screens are admin-only and carry no keys) and its `/Email/EmailPreview` sample are this section's (`FinanceEmails`, `FinanceEmailPreviews`); Email keeps the mechanics (memory/architecture/email-templates-live-in-sender.md).
 - **GDPR** (`Humans.Gdpr.Contracts`): Finance implements `IUserDataContributor` for the Article 15 export of every creditor binding and SEPA payout across the member's resolved `AllUserIds` (including archived merge sources; retained financial rows are not rekeyed). `HoldedCreditorAccount` preserves its original object-or-null shape for the requested account; `AdditionalHoldedCreditorAccounts` contains other merge-chain bindings with their user ids, omitted when none exist. Payout rows remain globally ordered by generation time. Generation, booking and reconciliation dates serialize as UTC ISO 8601 strings; absent booking/reconciliation dates stay null. For Article 17 erasure, `EraseForUserAsync` drops the binding (`ClearCreditorContactAsync`); `ErasureDeclaration` maps both creditor-binding slices to `null` (erased in full) and `SepaPayouts` to a fiscal-retention basis (Código de Comercio Art. 30, Ley 58/2003 Art. 66 — GDPR Art. 17(3)(b)): a payment order stripped of its payee is no longer evidence of the payment. The invoices themselves live in Holded and are fiscal records outside this section's ownership. `PaymentDetailsService` is a second contributor: slice `PaymentDetails` (the masked IBAN), erased in full by deleting the row; the legacy `profiles.Iban` is erased by Users.
 
-No Tickets dependency: the cash-flow view that had one is Budget's. Budget never calls into Finance.
+Budget never calls into Finance.
 
 ## Architecture
 
@@ -364,6 +373,7 @@ No Tickets dependency: the cash-flow view that had one is Budget's. Budget never
 **Bank-booking owner:** Internal `SepaBankBooking` owns bank-line matching, posting, reconciliation and the recurring sweep through Finance’s own repository. `Service` delegates its existing booking/read methods to that owner; contracts and the Hangfire target stay unchanged. `SepaOptions.GetPayoutSettings` owns the shared configuration gate for payout generation and booking.
 
 **Owning service:** `Service` (`Humans.Finance.Services`), implements the internal `IHoldedFinanceManagement` (`Services/IHoldedFinanceManagement.cs`), which composes two faces published from the contracts leaf. `IHoldedFinanceService` is the read-only surface for cross-section callers (`BudgetAdminController`, `Expenses.ExpensesController`, `Preapprovals`, `Backdoor.BackdoorFinanceController`); `IHoldedFinanceWrite` is the narrow write surface (the Expenses publisher for the creditor-contact calls, `Workgroups.WorkgroupService` for the expense-account calls). Finance's own `FinanceController` and `HoldedDocSyncJob` inject `IHoldedFinanceManagement`, which adds the internal `SyncAsync` (the purchase-doc sync; no other section triggers it).
+**Cash flow:** `CashFlowService` (internal, scoped, no repository) — the bucketing, running net, runway and VAT settlement math; reads Budget and Tickets contracts only.
 **Pure matcher:** `HoldedMatcher` (static, no dependencies)
 **Pure file builder:** `SepaPaymentFileBuilder` with `SepaSchema` and `SepaText` (no IO, no clock, no configuration)
 **Owned repository:** `IHoldedRepository` / `Repository` (`Humans.Finance.Data`) — tables under [Owned repository](#owned-repository)
@@ -387,7 +397,7 @@ No Tickets dependency: the cash-flow view that had one is Budget's. Budget never
 
 `GetCategoryMapAsync` and `GetSepaTransfersAsync` (added for peterdrier/Humans#1838) expose, read-only, exactly what `/Finance/Holded`'s category-map table and `/Finance/Sepa` already render: `GetCategoryMapAsync` returns the same `HoldedCategoryMapRow` projection `GetConnectorOverviewAsync` builds (both share one private helper, so the two views cannot drift), and `GetSepaTransfersAsync` shares `GetSepaPayoutsAsync`'s pre-feed booking-state logic (`GetSepaPayoutRowsWithReasonsAsync`) but skips the live Holded bank-feed read — it exists only to offer `/Finance/Sepa`'s own "book this" button, and Backdoor never projects the candidate-bank-line/unmatched-movement fields it would fill. Both DTOs (`HoldedCategoryMapRow`, `SepaPayoutTransferRow`) live in the contracts leaf now, not this section's `Models/`.
 
-**Controllers.** `/Finance` is served by two controllers under one route prefix: this section's `FinanceController` — the Holded, creditor and SEPA-payout surface, the routing table above — and `Humans.Budget.Controllers.BudgetAdminController`, Budget CRUD under the same `[Route("Finance")]`. See [`Budget.md`](../../Humans.Budget/Docs/Budget.md) for the Budget side.
+**Controllers.** `/Finance` is served by two controllers under one route prefix: this section's `FinanceController` — the Holded, creditor, SEPA-payout and cash-flow surface, the routing table above — and `Humans.Budget.Controllers.BudgetAdminController`, Budget CRUD under the same `[Route("Finance")]`. See [`Budget.md`](../../Humans.Budget/Docs/Budget.md) for the Budget side.
 
 **The Holded connector is not this section.** `IHoldedClient`, `HoldedClient`, `HoldedClientOptions`, `HoldedApiException` and the connector DTOs belong to the **Holded** section — public in its `Contracts/` folder (namespace `Humans.Holded.Contracts`), implementation `internal` in `Humans.Holded/Services/` — with their own [`Holded-connector.md`](../../Humans.Holded/Docs/Holded-connector.md). Finance consumes them through that folder. Consequence for the boundary: `HoldedCreditorLedger.Lines` carries Finance's own `CreditorLedgerLine` rather than the connector's `HoldedLedgerLineDto`, because Finance's contracts leaf may reference only the bottom of the graph and re-exporting another component's wire DTO across a section boundary is the thing the split exists to stop.
 

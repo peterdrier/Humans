@@ -93,7 +93,6 @@ public sealed class BudgetServiceTests
     [InlineData("YearDetail")]
     [InlineData("CategoryDetail")]
     [InlineData("AuditLog")]
-    [InlineData("CashFlow")]
     [InlineData("Admin")]
     public async Task AdminReads_RequestCancellation_IsNotRenderedAsLoadFailure(string action)
     {
@@ -115,7 +114,6 @@ public sealed class BudgetServiceTests
             "YearDetail" => () => controller.YearDetail(_yearId),
             "CategoryDetail" => () => controller.CategoryDetail(_yearId),
             "AuditLog" => () => controller.AuditLog(null),
-            "CashFlow" => () => controller.CashFlow(),
             _ => controller.Admin
         };
         await read.Should().ThrowAsync<OperationCanceledException>();

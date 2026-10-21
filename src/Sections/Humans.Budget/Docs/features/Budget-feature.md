@@ -281,7 +281,7 @@ Outbound invoices to members/barrios:
 - **Exit:** FinanceAdmin has a unified single-page overview of the entire budget
 
 ### V1f: Cash Flow Projection — IMPLEMENTED (#347)
-- **Cash flow view** at `/Finance/CashFlow`:
+- **Cash flow view** at `/Finance/CashFlow` (served by the Finance section — `FinanceController` + `CashFlowService`):
   - Aggregates line items by time period (weekly or monthly, toggle-able)
   - Each period row shows income total, expense total, net, and running cumulative net
   - Category-level breakdown within each period (expandable)

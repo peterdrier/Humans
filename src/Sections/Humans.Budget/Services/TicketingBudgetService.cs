@@ -125,15 +125,6 @@ internal sealed class TicketingBudgetService(
     }
 
     /// <summary>
-    /// Gross revenue of the year's paid ticket orders, by the same event rule as the actuals
-    /// sync; seeds the cash-flow runway.
-    /// </summary>
-    public async Task<decimal> GetGrossTicketRevenueAsync(BudgetYearDetail year, CancellationToken ct = default) =>
-        (await ticketService.GetTicketOrdersAsync(ct))
-            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && IsYearTicketOrder(year, o))
-            .Sum(o => o.TotalAmount);
-
-    /// <summary>
     /// The one event rule: a year with a configured <c>VendorEventId</c> counts only that
     /// event's orders; an unconfigured year counts the current event's.
     /// </summary>

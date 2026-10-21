@@ -1,10 +1,12 @@
 using System.Security.Claims;
 using System.Globalization;
 using AwesomeAssertions;
+using Humans.Budget.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Finance.Controllers;
 using Humans.Finance.Models;
 using Humans.Finance.Services;
+using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -33,9 +35,11 @@ public class FinanceControllerTests
     private readonly IHoldedFinanceManagement _finance = Substitute.For<IHoldedFinanceManagement>();
     private readonly IHoldedFinanceAdminService _connector = Substitute.For<IHoldedFinanceAdminService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
+    private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
 
     private FinanceController MakeController() =>
-        new(_users, _finance, _connector, NullLogger<FinanceController>.Instance)
+        new(_users, _finance, _connector, new CashFlowService(_budget, Substitute.For<ITicketService>()),
+            NullLogger<FinanceController>.Instance)
         {
             ControllerContext = new() { HttpContext = new DefaultHttpContext() }
         };
@@ -63,6 +67,35 @@ public class FinanceControllerTests
         controller.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
         controller.Url = Substitute.For<IUrlHelper>();
         return controller;
+    }
+
+    [HumansFact]
+    public async Task CashFlow_NoActiveYear_RedirectsToBudgetOverview()
+    {
+        var controller = MakeControllerWithHttpContext(Guid.NewGuid());
+        _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns((BudgetYearDetail?)null);
+
+        var result = await controller.CashFlow();
+
+        var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
+        redirect.ControllerName.Should().Be("BudgetAdmin");
+        redirect.ActionName.Should().Be("Index");
+        controller.TempData.Values.Should().ContainSingle().Which.Should().Be("No active budget year.");
+    }
+
+    [HumansFact]
+    public async Task CashFlow_RequestCancellation_IsNotRenderedAsLoadFailure()
+    {
+        using var request = new CancellationTokenSource();
+        var controller = MakeControllerWithHttpContext(Guid.NewGuid());
+        controller.HttpContext.RequestAborted = request.Token;
+        _budget.GetActiveYearAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<BudgetYearDetail?>(new OperationCanceledException(request.Token)));
+
+        await controller.Invoking(c => c.CashFlow()).Should().ThrowAsync<OperationCanceledException>();
+
+        controller.TempData.Should().BeEmpty();
+        _ = _budget.Received(1).GetActiveYearAsync(request.Token);
     }
 
     [HumansTheory]

@@ -92,5 +92,4 @@ internal interface IBudgetManagement : IBudgetService, IApplicationService
 
     // Summary Computation
     BudgetSummaryResult ComputeBudgetSummaryWithBuffers(IReadOnlyList<BudgetGroupDetail> groups);
-    IReadOnlyList<VatCashFlowEntry> ComputeVatCashFlowEntries(IReadOnlyList<BudgetGroupDetail> groups);
 }
