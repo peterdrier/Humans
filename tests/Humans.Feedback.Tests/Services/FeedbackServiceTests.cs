@@ -579,7 +579,7 @@ public sealed class FeedbackServiceTests
         _people[userId] = info;
         _people[archivedId] = info;
         var report = await SeedReportAsync(userId, "Historical bug", "/profile");
-        await SeedReportAsync(Guid.NewGuid(), "Someone else's report", "/other");
+        var otherReport = await SeedReportAsync(Guid.NewGuid(), "Someone else's report", "/other");
         await FeedbackDb.FeedbackMessages.AddRangeAsync(
             [new FeedbackMessage
             {
@@ -590,6 +590,16 @@ public sealed class FeedbackServiceTests
             {
                 Id = Guid.NewGuid(), FeedbackReportId = report.Id, SenderUserId = Guid.NewGuid(),
                 Content = "Staff response", CreatedAt = Clock.GetCurrentInstant()
+            },
+            new FeedbackMessage
+            {
+                Id = Guid.NewGuid(), FeedbackReportId = otherReport.Id, SenderUserId = userId,
+                Content = "My reply elsewhere", EmailEnqueuePending = true, CreatedAt = Clock.GetCurrentInstant()
+            },
+            new FeedbackMessage
+            {
+                Id = Guid.NewGuid(), FeedbackReportId = otherReport.Id, SenderUserId = otherReport.UserId,
+                Content = "Other person's reply", CreatedAt = Clock.GetCurrentInstant()
             }], Xunit.TestContext.Current.CancellationToken);
         report.UserAgent = userAgent;
         report.AdditionalContext = context;
@@ -608,6 +618,17 @@ public sealed class FeedbackServiceTests
             m => m.GetProperty("Content").GetString()!, m => m.GetProperty("IsFromUser").GetBoolean(), StringComparer.Ordinal);
         messages["Member response"].Should().BeTrue();
         messages["Staff response"].Should().BeFalse();
+
+        var replies = slices.Single(s => string.Equals(s.SectionName, "FeedbackReplies", StringComparison.Ordinal));
+        using var repliesJson = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(replies.Data));
+        var reply = repliesJson.RootElement.EnumerateArray().Should().ContainSingle().Which;
+        reply.GetProperty("FeedbackReportId").GetGuid().Should().Be(otherReport.Id);
+        reply.GetProperty("Content").GetString().Should().Be("My reply elsewhere");
+        reply.GetProperty("EmailEnqueuePending").GetBoolean().Should().BeTrue();
+        reply.GetProperty("CreatedAt").GetString().Should().NotBeNullOrEmpty();
+        reply.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo(
+            "FeedbackReportId", "Content", "EmailEnqueuePending", "CreatedAt");
+        _service.ErasureDeclaration.Should().ContainKey("FeedbackReplies");
     }
 
     [HumansFact]

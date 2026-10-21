@@ -40,6 +40,7 @@ internal sealed class FeedbackService(
     ILogger<FeedbackService> logger) : IFeedbackService, IFeedbackTriage, IUserDataContributor, IUserMerge, IRecurringJob
 {
     internal const string FeedbackReports = "FeedbackReports";
+    internal const string FeedbackReplies = "FeedbackReplies";
     private static readonly TrackedLock ReplyDeliveryLock = new("Feedback.ReplyDelivery");
 
     private static readonly TimeSpan BadgeCacheDuration = TimeSpan.FromMinutes(2);
@@ -418,6 +419,7 @@ internal sealed class FeedbackService(
         var reports = await repository.GetForUserExportAsync(userId, ct);
 
         var shaped = reports
+            .Where(fr => fr.UserId == userId)
             .OrderByDescending(fr => fr.CreatedAt)
             .Select(fr => new
             {
@@ -438,17 +440,29 @@ internal sealed class FeedbackService(
                 })
             }).ToList();
 
-        return [new UserDataSlice(FeedbackReports, shaped)];
+        var replies = reports
+            .Where(fr => fr.UserId != userId)
+            .SelectMany(fr => fr.Messages)
+            .Where(m => m.SenderUserId == userId)
+            .OrderBy(m => m.CreatedAt)
+            .Select(m => new
+            {
+                m.FeedbackReportId,
+                m.Content,
+                m.EmailEnqueuePending,
+                CreatedAt = m.CreatedAt.ToIso8601()
+            }).ToList();
+
+        return [new UserDataSlice(FeedbackReports, shaped), new UserDataSlice(FeedbackReplies, replies)];
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [FeedbackReports] =
-                "Partially retained: reports the person filed are deleted outright, messages and " +
-                "screenshots with them. A reply they left on someone else's report is that report's content and " +
-                "stays, with the authorship detached (SenderUserId nulled) — GDPR Art. 17(3)(b), " +
-                "since removing it would gut another human's thread."
+            [FeedbackReports] = null, // Own reports, messages and screenshots are deleted outright.
+            [FeedbackReplies] =
+                "Partially retained: replies on other people's reports remain as that report's content, " +
+                "with authorship detached (SenderUserId nulled), per GDPR Art. 17(3)(b)."
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;

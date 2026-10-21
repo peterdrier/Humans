@@ -73,9 +73,9 @@ internal interface IFeedbackRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all feedback reports authored by the given user, with
-    /// aggregate-local messages included for GDPR export (the service
-    /// orders them). Read-only (AsNoTracking).
+    /// Returns reports filed by the user or containing their replies, with aggregate-local
+    /// messages included. The export service filters other people's reports to the user's own
+    /// replies and orders the results. Read-only (AsNoTracking).
     /// </summary>
     Task<IReadOnlyList<FeedbackReport>> GetForUserExportAsync(
         Guid userId, CancellationToken ct = default);
