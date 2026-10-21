@@ -459,7 +459,8 @@ internal sealed class GoogleDriveAccessSyncService(
             }
 
             var role = member.ExpectedRole!;
-            var result = await drivePermissions.CreatePermissionAsync(claim.FolderId, member.Email, role, ct);
+            var result = await WithTransientRetryAsync(
+                () => drivePermissions.CreatePermissionAsync(claim.FolderId, member.Email, role, ct), r => r.Error, ct);
             switch (result.Outcome)
             {
                 case DrivePermissionCreateOutcome.Created:
@@ -489,6 +490,31 @@ internal sealed class GoogleDriveAccessSyncService(
             }
         }
         return errors;
+    }
+
+    /// <summary>Waits between transient-failure attempts; tests replace it to skip the backoff.</summary>
+    internal Func<TimeSpan, CancellationToken, Task> Delay { get; init; } = Task.Delay;
+
+    private static readonly TimeSpan[] TransientRetryBackoff = [TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3)];
+
+    /// <summary>
+    /// Re-issues a Drive mutation while Google reports a transient error, so a one-off Google hiccup
+    /// does not leave a member without access until the next pass (peterdrier/Humans#2037).
+    /// Permanent failures, including target rejections, return on the first attempt.
+    /// </summary>
+    private async Task<T> WithTransientRetryAsync<T>(Func<Task<T>> call, Func<T, GoogleClientError?> errorOf, CancellationToken ct)
+    {
+        var result = await call();
+        foreach (var backoff in TransientRetryBackoff)
+        {
+            if (errorOf(result) is not { IsTransient: true } error)
+                break;
+            logger.LogInformation("Transient Google Drive error (HTTP {StatusCode}), retrying in {Backoff}: {Error}",
+                error.StatusCode, backoff, error.RawMessage);
+            await Delay(backoff, ct);
+            result = await call();
+        }
+        return result;
     }
 
     /// <summary>Keeps two characters of the local part, like the log pipeline's email redaction.</summary>
@@ -526,7 +552,8 @@ internal sealed class GoogleDriveAccessSyncService(
     private async Task<string?> UpdateAndLogAsync(FolderClaim claim, MemberSyncStatus member, string permissionId, GoogleSyncSource syncSource, CancellationToken ct)
     {
         var role = member.ExpectedRole!;
-        var error = await drivePermissions.UpdatePermissionAsync(claim.FolderId, permissionId, role, ct);
+        var error = await WithTransientRetryAsync(
+            () => drivePermissions.UpdatePermissionAsync(claim.FolderId, permissionId, role, ct), e => e, ct);
         var action = DrivePermissionRoleMapper.Parse(member.CurrentRole) > DrivePermissionRoleMapper.Parse(role)
             ? GoogleSyncLogAction.AccessRevoked
             : GoogleSyncLogAction.AccessGranted;

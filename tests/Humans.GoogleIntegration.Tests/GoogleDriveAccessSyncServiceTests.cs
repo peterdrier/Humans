@@ -177,6 +177,100 @@ public sealed class GoogleDriveAccessSyncServiceTests
             .CreatePermissionAsync("folder-1", "alice@example.org", "writer", Arg.Any<CancellationToken>());
     }
 
+    private static readonly GoogleClientError GoogleInternalError =
+        new(400, "Bad Request. User message: \"Sorry, an internal error has occurred and your request was not completed.\"");
+
+    [HumansFact]
+    public async Task ReconcileOneAsync_TransientCreateFailure_RetriesThenGrants()
+    {
+        var alice = Guid.NewGuid();
+        var service = CreateService(new StaticSource("folder-1", (alice, DrivePermissionLevel.Contributor)));
+        StubUsers((alice, "Alice", "alice@example.org"));
+        StubFolder("folder-1");
+        _drivePermissions.CreatePermissionAsync("folder-1", "alice@example.org", "writer", Arg.Any<CancellationToken>())
+            .Returns(
+                new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Failed, GoogleInternalError),
+                new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Failed, new GoogleClientError(503, "Backend Error")),
+                new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Created, null));
+
+        var diff = await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        diff.ErrorMessage.Should().BeNull();
+        _delays.Should().HaveCount(2);
+        await _drivePermissions.Received(3)
+            .CreatePermissionAsync("folder-1", "alice@example.org", "writer", Arg.Any<CancellationToken>());
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessGranted, Guid.Empty, Arg.Any<string>(),
+            nameof(GoogleDriveAccessSyncService), "alice@example.org", "writer",
+            GoogleSyncSource.ScheduledSync, success: true, errorMessage: null, userId: alice,
+            ct: Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ReconcileOneAsync_PersistentTransientCreateFailure_GivesUpAfterBoundedAttempts()
+    {
+        var alice = Guid.NewGuid();
+        var service = CreateService(new StaticSource("folder-1", (alice, DrivePermissionLevel.Contributor)));
+        StubUsers((alice, "Alice", "alice@example.org"));
+        StubFolder("folder-1");
+        _drivePermissions.CreatePermissionAsync("folder-1", "alice@example.org", "writer", Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Failed, GoogleInternalError));
+
+        await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        await _drivePermissions.Received(3)
+            .CreatePermissionAsync("folder-1", "alice@example.org", "writer", Arg.Any<CancellationToken>());
+        await _identities.DidNotReceiveWithAnyArgs()
+            .SetStatusFromSyncAsync(default, default!, default, default);
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessGranted, Guid.Empty, Arg.Any<string>(),
+            nameof(GoogleDriveAccessSyncService), "alice@example.org", "writer",
+            GoogleSyncSource.ScheduledSync, success: false, errorMessage: Arg.Any<string?>(), userId: alice,
+            ct: Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(403, "Cannot share a shared drive with non Google accounts.")]
+    [Xunit.InlineData(403, "The caller does not have permission")]
+    [Xunit.InlineData(400, "Invalid sharing policy")]
+    public async Task ReconcileOneAsync_PermanentCreateFailure_IsNotRetried(int statusCode, string message)
+    {
+        var alice = Guid.NewGuid();
+        var service = CreateService(new StaticSource("folder-1", (alice, DrivePermissionLevel.Contributor)));
+        StubUsers((alice, "Alice", "alice@example.org"));
+        StubFolder("folder-1");
+        _drivePermissions.CreatePermissionAsync("folder-1", "alice@example.org", "writer", Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionMutationResult(
+                DrivePermissionCreateOutcome.Failed, new GoogleClientError(statusCode, message)));
+
+        await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        _delays.Should().BeEmpty();
+        await _drivePermissions.Received(1)
+            .CreatePermissionAsync("folder-1", "alice@example.org", "writer", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ReconcileOneAsync_TransientRoleChangeFailure_RetriesThenChanges()
+    {
+        var alice = Guid.NewGuid();
+        var service = CreateService(new StaticSource("folder-1", (alice, DrivePermissionLevel.Contributor)));
+        StubUsers((alice, "Alice", "alice@nobodies.team"));
+        StubFolder("folder-1", new DrivePermission("perm-1", "user", "organizer", "alice@nobodies.team", HasInheritedComponent: false));
+        _drivePermissions.UpdatePermissionAsync("folder-1", "perm-1", "writer", Arg.Any<CancellationToken>())
+            .Returns(new GoogleClientError(500, "Internal Error"), (GoogleClientError?)null);
+
+        await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        _delays.Should().ContainSingle();
+        await _drivePermissions.Received(2).UpdatePermissionAsync("folder-1", "perm-1", "writer", Arg.Any<CancellationToken>());
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessRevoked, Guid.Empty, Arg.Is<string>(s => s.Contains("from organizer to writer")),
+            nameof(GoogleDriveAccessSyncService), "alice@nobodies.team", "writer",
+            GoogleSyncSource.ScheduledSync, success: true, errorMessage: null, userId: alice,
+            ct: Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task ReconcileOneAsync_ExtraMember_RemovesAndLogs()
     {
@@ -969,7 +1063,16 @@ public sealed class GoogleDriveAccessSyncServiceTests
         Substitute.For<ITeamService>(),
         Substitute.For<ITeamResourceManagement>(),
         new FakeClock(_now),
-        _logger);
+        _logger)
+    {
+        Delay = (backoff, _) =>
+        {
+            _delays.Add(backoff);
+            return Task.CompletedTask;
+        }
+    };
+
+    private readonly List<TimeSpan> _delays = [];
 
     private readonly Dictionary<Guid, UserInfo> _usersById = new();
 
