@@ -56,6 +56,27 @@ jobs:
             --logger "console;verbosity=normal" \
             --results-directory TestResults
 
+      # A red run's console log is mostly page HTML quoted by assertion messages, and the
+      # raw log is too big to read whole; this prints one compact block per failed test,
+      # last, where a tail of the log reaches it.
+      - name: Summarize failures
+        if: failure()
+        shell: python3 {0}
+        run: |
+          import glob, xml.etree.ElementTree as ET
+          ns = {'t': 'http://microsoft.com/schemas/VisualStudio/TeamTest/2010'}
+          for path in glob.glob('TestResults/**/*.trx', recursive=True):
+              for r in ET.parse(path).getroot().iterfind('.//t:UnitTestResult', ns):
+                  if r.get('outcome') != 'Failed':
+                      continue
+                  msg = (r.findtext('.//t:ErrorInfo/t:Message', '', ns) or '').strip().splitlines()
+                  stack = (r.findtext('.//t:ErrorInfo/t:StackTrace', '', ns) or '').splitlines()
+                  print(f"FAILED {r.get('testName')}")
+                  for line in (msg if len(msg) <= 4 else msg[:2] + ['...'] + msg[-2:]):
+                      print('   ', line.strip()[:400])
+                  for line in [l.strip() for l in stack if ' in /' in l][:4]:
+                      print('   ', line[:400])
+
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v7
