@@ -38,7 +38,7 @@ The single highest-leverage package: every section Users or Auth references is p
 
 - [ ] Rework deletion, email reconciliation, suspension and merge participation around existing contributor patterns. Audit `AccountDeletionService`, `UserEmailService`, `NonCompliantMemberSuspension`, `UserParticipationBackfillService`, `UsersAudienceService`, and Governance's `MembershipCalculator` first.
 - [ ] Profile and admin-detail composition: adopt the `IUserPart` fan-out already designed in nobodies-collective/Humans#1112 and #1044, so the profile page, `AdminHumanDetailViewModelBuilder`, `SectionAdminTiles` and `SectionThingsToDo` in Users compose contributed pieces instead of naming Governance, Tickets, Shifts, Campaigns, Camps and Events. This is what removes the Camps and Events implementation references from `Humans.Users.csproj`.
-- [ ] Users' outbound cache flushes (`IShiftAuthorizationInvalidator`, `IShiftViewInvalidator`, `IConsentCacheInvalidator`) move to package 2's bus.
+- [x] Users' outbound cache flushes are gone: each cache owner evicts on its own writes or reads live (peterdrier/Humans#2087, peterdrier/Humans#2094, peterdrier/Humans#2095).
 - [ ] Auth: `RoleAssignmentService` reaches Teams, Email and Notifications. Respect the existing Peter-led Auth inversion work and its `DontFix` markers rather than silently absorbing it into this task; record what remains.
 - [ ] Keep canonical identity and lifecycle state with their owners. Distinguish GDPR export composition from Users' deletion scheduling/cancellation. Optional sections handle their own consequences.
 
@@ -47,7 +47,7 @@ Done when required member operations, the profile page and the admin member page
 ### 2. Replace point-to-point cache invalidation with the in-process event bus
 
 - [ ] Settle the open design in nobodies-collective/Humans#799 first: failure semantics (a failing subscriber must not fail the writer), handler lifetimes, and whether publish happens inside or after the writer's transaction. Then land it: a writer publishes a fact about its own domain; caches subscribe. No writer names another section's invalidator.
-- [ ] Migrate every `I<X>Invalidator` injection site and retire the interfaces as their last subscriber moves. The HUM0028 grandfathers go with them (`grandfathered-hum0028-invalidators` in the debt ledger).
+- [x] Every `I<X>Invalidator` is retired, without a bus: each cache owner evicts on its own writes or reads live (`grandfathered-hum0028-invalidators` in the debt ledger). One cross-section flush remains, `ITeamWrite.InvalidateActiveTeamsCache` from Users' merge tail (CENTRAL-98).
 
 Done when no section injects another section's invalidator, cross-section writes that existed only to flush a cache are gone, and package 1's Users flushes and package 8's connector flushes ride the bus. Prerequisite for the done-state of packages 1 and 8.
 
