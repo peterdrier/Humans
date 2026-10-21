@@ -7,7 +7,7 @@
 
 # Grants — Section Invariants
 
-A grant entitles a human to a thing (a cheaper ticket, early entry for build, staying late for strike). How the thing is delivered is not this section's concern. Grants replaces Campaigns for 2027 onward (nobodies-collective/Humans#2099); Campaigns stays until every feature that used campaign codes has a replacement.
+A grant entitles a human to a thing (a cheaper ticket, early entry for build, staying late for strike). How the thing is delivered is not this section's concern. Grants replaces Campaigns for 2027 onward (nobodies-collective/Humans#2099); Campaigns stays until every feature that used campaign codes has a replacement. Feature spec: [features/grants.md](features/grants.md).
 
 ## Concepts
 
