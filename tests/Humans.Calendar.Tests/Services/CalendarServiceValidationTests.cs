@@ -4,6 +4,8 @@ using Humans.Calendar.Services.Dtos;
 using Humans.AuditLog.Contracts;
 using Humans.Calendar.Data;
 using Humans.Calendar.Services;
+using Humans.Base.Enums;
+using Humans.Teams.Contracts;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -250,12 +252,56 @@ public class CalendarServiceValidationTests
         act.Should().Throw<DateTimeZoneNotFoundException>();
     }
 
+    [HumansTheory]
+    [InlineData(false, false, false)]
+    [InlineData(false, true, true)]
+    [InlineData(true, false, false)]
+    [InlineData(true, true, true)]
+    public async Task Create_and_update_reject_an_owning_team_that_cannot_own_events(bool update, bool isActive, bool isHidden)
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        var service = BuildService(repo, Substitute.For<IAuditLogService>(), teams: ActiveTeams(isActive, isHidden));
+        var dto = new CreateCalendarEventDto(
+            "Planning", Description: null, Location: null, LocationUrl: null,
+            OwningTeamId: Guid.NewGuid(),
+            StartUtc: Instant.FromUtc(2026, 5, 15, 17, 0),
+            EndUtc: Instant.FromUtc(2026, 5, 15, 18, 0),
+            IsAllDay: false, RecurrenceRule: null, RecurrenceTimezone: null);
+
+        var result = update
+            ? await service.UpdateEventWithResultAsync(Guid.NewGuid(), dto, Guid.NewGuid(), TestContext.Current.CancellationToken)
+            : await service.CreateEventWithResultAsync(dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ValidationMemberName.Should().Be(nameof(CreateCalendarEventDto.OwningTeamId));
+        result.ErrorMessage.Should().Be("Calendar_OwningTeamUnavailable");
+        await repo.DidNotReceive().AddAsync(Arg.Any<Humans.Calendar.Domain.CalendarEvent>(), Arg.Any<CancellationToken>());
+        await repo.DidNotReceive().UpdateAsync(Arg.Any<Guid>(), Arg.Any<Action<Humans.Calendar.Domain.CalendarEvent>>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Create_rejects_an_owning_team_that_does_not_exist()
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        var service = BuildService(repo, Substitute.For<IAuditLogService>(), teams: Substitute.For<ITeamService>());
+        var dto = new CreateCalendarEventDto(
+            "Planning", Description: null, Location: null, LocationUrl: null,
+            OwningTeamId: Guid.NewGuid(),
+            StartUtc: Instant.FromUtc(2026, 5, 15, 17, 0),
+            EndUtc: Instant.FromUtc(2026, 5, 15, 18, 0),
+            IsAllDay: false, RecurrenceRule: null, RecurrenceTimezone: null);
+
+        var result = await service.CreateEventWithResultAsync(dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.ErrorMessage.Should().Be("Calendar_OwningTeamUnavailable");
+    }
+
     [HumansFact]
     public async Task CreateEventWithResultAsync_returns_validation_member_for_malformed_recurrence()
     {
         var repo = Substitute.For<ICalendarRepository>();
         var logger = Substitute.For<ILogger<CalendarService>>();
-        var service = new CalendarService(repo,
+        var service = new CalendarService(repo, ActiveTeams(),
             new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
             Substitute.For<IAuditLogService>(), logger);
         var dto = new CreateCalendarEventDto(
@@ -286,7 +332,7 @@ public class CalendarServiceValidationTests
     {
         var repo = Substitute.For<ICalendarRepository>();
         var logger = Substitute.For<ILogger<CalendarService>>();
-        var service = new CalendarService(repo,
+        var service = new CalendarService(repo, ActiveTeams(),
             new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
             Substitute.For<IAuditLogService>(), logger);
         var dto = new CreateCalendarEventDto(
@@ -696,11 +742,23 @@ public class CalendarServiceValidationTests
         return BuildService(repo, Substitute.For<IAuditLogService>());
     }
 
+    /// <summary>A team read that answers every id with an active, visible team.</summary>
+    internal static ITeamService ActiveTeams(bool isActive = true, bool isHidden = false)
+    {
+        var teams = Substitute.For<ITeamService>();
+        teams.GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call => new TeamInfo(
+            call.Arg<Guid>(), "Team", null, "team", isActive, false, SystemTeamType.None, false,
+            false, isHidden, false, Instant.MinValue, []));
+        return teams;
+    }
+
     private static CalendarService BuildService(
-        ICalendarRepository repo, IAuditLogService audit, ILogger<CalendarService>? logger = null)
+        ICalendarRepository repo, IAuditLogService audit, ILogger<CalendarService>? logger = null,
+        ITeamService? teams = null)
     {
         return new CalendarService(
             repo,
+            teams ?? ActiveTeams(),
             new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
             audit,
             logger ?? NullLogger<CalendarService>.Instance);

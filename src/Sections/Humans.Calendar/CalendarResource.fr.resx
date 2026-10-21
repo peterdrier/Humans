@@ -165,4 +165,6 @@
   <data name="Calendar_IcalRegenerate" xml:space="preserve"><value>Régénérer l'URL</value></data>
   <data name="Calendar_IcalRegenerated" xml:space="preserve"><value>URL iCal régénérée.</value></data>
   <data name="Calendar_NoAuditHistory" xml:space="preserve"><value>Aucun historique d’audit.</value></data>
+  <data name="Calendar_IcalCreate" xml:space="preserve"><value>Créer mon URL de flux</value></data>
+  <data name="Calendar_OwningTeamUnavailable" xml:space="preserve"><value>Choisis une équipe active comme responsable de cet événement.</value></data>
 </root>
