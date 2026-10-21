@@ -67,12 +67,9 @@ public static class MemoryCacheExtensions
         return true;
     }
 
-    public static void InvalidateNotificationMeters(this IMemoryCache cache) =>
-        cache.Remove(CacheKeys.NotificationMeters);
-
     // Camp-cache invalidation extensions were retired in T-06 — eviction
-    // is now owned by CachingCampService (Infrastructure decorator) and
-    // reached through ICampInfoInvalidator. The CampSeasonsByYear /
+    // is now owned by CachingCampService, which evicts on its own writes.
+    // The CampSeasonsByYear /
     // CampSettings keys are gone from CacheKeys as well (snapshot lives on
     // the decorator).
     //
@@ -83,7 +80,4 @@ public static class MemoryCacheExtensions
 
     public static void InvalidateCampContactRateLimit(this IMemoryCache cache, Guid userId, Guid campId) =>
         cache.Remove(CacheKeys.CampContactRateLimit(userId, campId));
-
-    public static void InvalidateCampLeadJoinRequestsBadge(this IMemoryCache cache, Guid userId) =>
-        cache.Remove(CacheKeys.CampLeadJoinRequestsBadge(userId));
 }

@@ -77,13 +77,8 @@ Repository: `ITeamRepository`.
 | TeamEarlyEntryGrants | R/W |
 | GoogleSyncOutboxEvents | W via `IGoogleSyncOutboxService` (not the Teams repo) |
 
-| Cache (via invalidators) | Invalidate |
-|-------------------------|------------|
-| `NotificationMeters` (`INotificationMeterCacheInvalidator`) | yes |
-
 Cross-section calls via `IAuditLogService`, `INotificationEmitter`,
-`IShiftService`, `IAdminAuthorizationService`,
-`INotificationMeterCacheInvalidator`; lazy-resolved via `IServiceProvider` for
+`IShiftService`, `IAdminAuthorizationService`; lazy-resolved via `IServiceProvider` for
 cycle-breaking: `IGoogleSyncOutboxService` (transactional outbox appends),
 `IGoogleSyncWrite`, `ITeamResourceService`, `IRoleAssignmentService`,
 `IEmailService`, `IUserService`, `ISystemTeamSync`. Implements `ITeamManagementService`

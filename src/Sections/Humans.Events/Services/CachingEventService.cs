@@ -428,17 +428,20 @@ internal sealed class CachingEventService(
     public Task<IReadOnlyList<CampEventOverlap>> GetCampEventsForOverlapAsync(CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetCampEventsForOverlapAsync(ct));
 
-    public Task ApplyModerationAsync(
+    public Task<ModerationOutcome> ApplyModerationAsync(
         Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason,
         string? submitterEditUrl = null, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
-            await WithInnerAsync(inner => inner.ApplyModerationAsync(eventId, actorUserId, actionType, reason, submitterEditUrl, ct));
+            var outcome = await WithInnerAsync(inner => inner.ApplyModerationAsync(eventId, actorUserId, actionType, reason, submitterEditUrl, ct));
+            if (outcome is not ModerationOutcome.Applied)
+                return outcome;
             // Approve / reject / resubmit-request all transition the event's
             // approved-ness — re-load the single entry against the DB so the
             // cache reflects the post-moderation state (add for new approval,
             // remove for unapproved, no-op if it was never approved).
             await RefreshEventEntryAsync(eventId, ct);
+            return outcome;
         });
 
     // ── Dashboard / Export — moderator-only, must show fresh pending count ──

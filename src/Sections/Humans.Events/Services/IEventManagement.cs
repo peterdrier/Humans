@@ -130,8 +130,9 @@ internal interface IEventManagement : IApplicationService, IEventService
     Task<IReadOnlyList<CampEventOverlap>> GetCampEventsForOverlapAsync(CancellationToken ct = default);
     // Applies the decision, records history, and emails the submitter the outcome
     // (part of the moderation workflow). submitterEditUrl is the caller's routing
-    // concern; null opts out of the notification.
-    Task ApplyModerationAsync(Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason, string? submitterEditUrl = null, CancellationToken ct = default);
+    // concern; null opts out of the notification. Returns the refusal when a
+    // reason is missing or the event is not pending.
+    Task<ModerationOutcome> ApplyModerationAsync(Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason, string? submitterEditUrl = null, CancellationToken ct = default);
 
     // ── GDPR ──────────────────────────────────────────────────────────────
     // IUserDataContributor is carried by CachingEventService (erasure edits cached

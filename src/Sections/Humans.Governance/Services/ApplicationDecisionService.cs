@@ -36,7 +36,6 @@ internal sealed class ApplicationDecisionService(
     INotificationEmitter notificationService,
     ISystemTeamSync syncJob,
     IHumansMetrics metrics,
-    INotificationMeterCacheInvalidator notificationMeter,
     IMemoryCache cache,
     IClock clock,
     ILogger<ApplicationDecisionService> logger) : IGovernanceManagement, IUserDataContributor, IUserMerge
@@ -180,7 +179,6 @@ internal sealed class ApplicationDecisionService(
         var boardMemberIds = await GetBoardMemberIdsAsync(cancellationToken);
         await repository.FinalizeAsync(application, cancellationToken);
 
-        notificationMeter.Invalidate();
         InvalidateVotingBadges(boardMemberIds);
 
         var approved = application.Status == ApplicationStatus.Approved;
@@ -311,7 +309,6 @@ internal sealed class ApplicationDecisionService(
         var boardMemberIds = await GetBoardMemberIdsAsync(ct);
         await repository.AddAsync(application, ct);
 
-        notificationMeter.Invalidate();
         InvalidateVotingBadges(boardMemberIds);
 
         logger.LogInformation(
@@ -335,7 +332,6 @@ internal sealed class ApplicationDecisionService(
         var boardMemberIds = await GetBoardMemberIdsAsync(ct);
         await repository.UpdateAsync(application, ct);
 
-        notificationMeter.Invalidate();
         InvalidateVotingBadges(boardMemberIds);
 
         metrics.RecordApplicationProcessed("withdrawn");

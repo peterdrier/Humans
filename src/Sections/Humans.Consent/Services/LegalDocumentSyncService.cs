@@ -21,9 +21,12 @@ namespace Humans.Consent.Services;
 /// (<see cref="IAdminLegalDocumentService"/> — create/update/archive/version-summary
 /// edits from <c>/Legal/Admin/Documents</c>) and the GitHub-sync write surface
 /// (<see cref="ILegalDocumentSyncManagement"/> — version add, sync touch). Being the
-/// single writer lets it call <see cref="ILegalDocumentCacheInvalidator.InvalidateAll"/>
-/// directly after each successful repository write instead of relying on a
-/// cross-cutting SaveChanges interceptor (nobodies-collective/Humans#751).
+/// single writer lets it evict its own section's cache
+/// (<see cref="CachingLegalDocumentSyncService.InvalidateAll"/>) directly after each
+/// successful repository write instead of relying on a cross-cutting SaveChanges
+/// interceptor (nobodies-collective/Humans#751). The eviction stays here, not in the
+/// decorator's pass-through, because it must land before the version-publish
+/// notification fan-out and before the next document of a full sync.
 /// </summary>
 internal sealed partial class LegalDocumentSyncService(
     ILegalDocumentRepository repository,
@@ -31,7 +34,7 @@ internal sealed partial class LegalDocumentSyncService(
     INotificationEmitter notificationService,
     ITeamService teamService,
     IUserService userService,
-    ILegalDocumentCacheInvalidator invalidator,
+    CachingLegalDocumentSyncService cache,
     IAuditLogService audit,
     IOptions<GitHubSettings> githubSettings,
     IClock clock,
@@ -181,7 +184,7 @@ internal sealed partial class LegalDocumentSyncService(
         };
 
         var created = await repository.AddAsync(document, cancellationToken);
-        invalidator.InvalidateAll();
+        cache.InvalidateAll();
         return created;
     }
 
@@ -255,7 +258,7 @@ internal sealed partial class LegalDocumentSyncService(
         if (!updated)
             return null;
 
-        invalidator.InvalidateAll();
+        cache.InvalidateAll();
         await audit.LogAsync(AuditAction.LegalDocumentUpdated, "LegalDocument", documentId,
             $"Updated '{request.Name}': team {request.TeamId}, required {request.IsRequired}, " +
             $"active {request.IsActive}, grace period {request.GracePeriodDays} days, folder '{request.GitHubFolderPath}'.",
@@ -271,7 +274,7 @@ internal sealed partial class LegalDocumentSyncService(
         var archived = await repository.ArchiveAsync(documentId, cancellationToken);
         if (archived is not null)
         {
-            invalidator.InvalidateAll();
+            cache.InvalidateAll();
             await audit.LogAsync(AuditAction.LegalDocumentArchived, "LegalDocument", documentId,
                 $"Archived '{archived.Name}'.", actorUserId);
         }
@@ -302,7 +305,7 @@ internal sealed partial class LegalDocumentSyncService(
 
         if (updated)
         {
-            invalidator.InvalidateAll();
+            cache.InvalidateAll();
             await audit.LogAsync(AuditAction.LegalDocumentVersionSummaryUpdated, "LegalDocument", documentId,
                 $"Updated summary of version {versionId} to '{summary}'.", actorUserId,
                 relatedEntityId: versionId, relatedEntityType: "DocumentVersion");
@@ -554,7 +557,7 @@ internal sealed partial class LegalDocumentSyncService(
             logger.LogDebug("Document {Name} is up to date (SHA: {Sha})", document.Name, commitSha);
             var touched = await repository.TouchLastSyncedAtAsync(document.Id, now, cancellationToken);
             if (touched)
-                invalidator.InvalidateAll();
+                cache.InvalidateAll();
             return null;
         }
 
@@ -605,7 +608,7 @@ internal sealed partial class LegalDocumentSyncService(
             return null;
         }
 
-        invalidator.InvalidateAll();
+        cache.InvalidateAll();
 
         // Mirror write onto in-memory aggregate so callers see the same shape as the old tracked-entity path.
         document.Versions.Add(newVersion);
