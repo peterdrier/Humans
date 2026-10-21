@@ -4,12 +4,12 @@
 |---|---|---|---|
 | `GrantsAdminController` | Class | Admin, Board, or a manager of at least one program | `GrantsPolicies.Manage` (section-local policy, `GrantsPolicyHandler`) — `/Grants/Admin` |
 | `GrantsAdminController.Index` | In-method | `GrantsPolicyHandler.IsAdministering(User)` (Admin, Board) drives `CanAdminister`; others see only the programs they manage | Role check |
-| `GrantsAdminController.New` (GET/POST) | In-method | `IsAdministering(User)` else `Forbid()` — managers cannot create programs | Role check |
+| `GrantsAdminController.New` (GET/POST) | Action | Admin, Board — managers cannot create programs | `PolicyNames.BoardOrAdmin` |
 | `GrantsAdminController.Program` | In-method | `AuthorizeAsync(User, program, ProgramOperationRequirement.Manage)` via `AuthorizedAsync` | Resource-based |
-| `GrantsAdminController.Edit` (GET/POST) | In-method | `AuthorizeAsync(User, program, ProgramOperationRequirement.Administer)` | Resource-based |
-| `GrantsAdminController.Issue` / `Revoke` / `Resend` | In-method | `ProgramOperationRequirement.Manage` via `ManageAsync`; a grant route whose grant is not in that program returns 404 | Resource-based |
+| `GrantsAdminController.Edit` (GET/POST) | Action + in-method | Admin, Board; then `AuthorizeAsync(User, program, ProgramOperationRequirement.Administer)` | `PolicyNames.BoardOrAdmin` + resource-based |
+| `GrantsAdminController.Issue` / `Revoke` / `Resend` | Action + in-method | Admin, Board, or a program manager; then `ProgramOperationRequirement.Manage` via `ManageAsync`; a grant route whose grant is not in that program returns 404 | `GrantsPolicies.Manage` + resource-based |
 
-The policy name lives in this section (`Authorization/GrantsPolicies.cs`), registered in `SectionPolicies.cs`.
+Every data-modifying action names its own policy; `GrantsAdminAuthorizationTests` pins them. The section policy name lives in this section (`Authorization/GrantsPolicies.cs`), registered in `SectionPolicies.cs`.
 
 ## View components
 

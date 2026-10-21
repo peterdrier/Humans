@@ -27,15 +27,19 @@ internal sealed partial class GrantService
     private async Task AnnounceAsync(
         Grant grant, GrantProgram program, GrantNoticeKind kind, NotificationSource source, CancellationToken ct)
     {
-        try
+        // Each step is best-effort on its own: one channel's outage never suppresses the other.
+        UserInfo? person = null;
+        await BestEffortAsync("recipient lookup", kind, grant.Id,
+            async () => person = await users.GetUserInfoAsync(grant.UserId, ct), ct);
+        var language = person?.PreferredLanguage;
+        var culture = language.IsSupportedCultureCode() ? language! : CultureCatalog.DefaultCultureCode;
+        var expiresOn = grant.ExpiresOn ?? program.GrantsExpireOn;
+
+        await BestEffortAsync("in-app notice", kind, grant.Id,
+            () => NotifyAsync(person?.Id ?? grant.UserId, culture, kind, source, program, expiresOn, grant.RevokeReason, ct), ct);
+
+        await BestEffortAsync("email", kind, grant.Id, async () =>
         {
-            var person = await users.GetUserInfoAsync(grant.UserId, ct);
-            var language = person?.PreferredLanguage;
-            var culture = language.IsSupportedCultureCode() ? language! : CultureCatalog.DefaultCultureCode;
-            var expiresOn = grant.ExpiresOn ?? program.GrantsExpireOn;
-
-            await NotifyAsync(person?.Id ?? grant.UserId, culture, kind, source, program, expiresOn, grant.RevokeReason, ct);
-
             var addresses = await userEmails.GetNotificationTargetEmailsAsync([grant.UserId], ct);
             if (!addresses.TryGetValue(grant.UserId, out var address) || string.IsNullOrWhiteSpace(address))
             {
@@ -46,6 +50,14 @@ internal sealed partial class GrantService
             await email.SendAsync(emailFactory.Notice(new GrantNoticeRequest(
                 address, person?.BurnerName, kind, program.Name, program.Entitles, expiresOn, ProfileUrl,
                 grant.RevokeReason, culture)), ct);
+        }, ct);
+    }
+
+    private async Task BestEffortAsync(string step, GrantNoticeKind kind, Guid grantId, Func<Task> send, CancellationToken ct)
+    {
+        try
+        {
+            await send();
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -53,7 +65,7 @@ internal sealed partial class GrantService
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to send the grant {Kind} notice for grant {GrantId}", kind, grant.Id);
+            logger.LogError(ex, "Failed the grant {Kind} {Step} for grant {GrantId}", kind, step, grantId);
         }
     }
 

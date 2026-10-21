@@ -109,6 +109,7 @@ internal sealed partial class GrantService
             || (save.Description?.Length ?? 0) > DescriptionMax)
             return "A field is too long.";
         if (save.Year is < 2000 or > 2100) return "The year is out of range.";
+        if (!Enum.IsDefined(save.IssuedBy) || !Enum.IsDefined(save.Status)) return "The issuer or status is out of range.";
         if (save.IssuedBy == GrantIssuer.Source)
         {
             if (string.IsNullOrWhiteSpace(save.SourceKey)) return "A source program needs the key of the section that fills it.";

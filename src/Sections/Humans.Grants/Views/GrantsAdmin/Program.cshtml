@@ -105,7 +105,7 @@ else
                                     <button type="submit" class="btn btn-sm btn-outline-secondary">Resend notice</button>
                                 </form>
                                 <form method="post" asp-action="Revoke" asp-route-programId="@p.Id" asp-route-grantId="@g.Id" class="d-inline-flex gap-1 align-items-center ms-1"
-                                      onsubmit="return confirm('Revoke this grant? The person is told.');">
+                                      data-confirm="Revoke this grant? The person is told.">
                                     <input type="text" name="reason" class="form-control form-control-sm" style="width: 180px;" placeholder="Reason (optional, they see it)" maxlength="500" />
                                     <button type="submit" class="btn btn-sm btn-outline-danger">Revoke</button>
                                 </form>

@@ -50,6 +50,24 @@ public sealed class ProgramTests : GrantsTestHarness
         (await db.Programs.CountAsync(Ct)).Should().Be(0);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(2, 0)]
+    [Xunit.InlineData(0, 2)]
+    public async Task CreateAndUpdate_RefuseUndefinedIssuerOrStatus(int issuer, int status)
+    {
+        var save = Save() with { IssuedBy = (GrantIssuer)issuer, Status = (GrantProgramStatus)status };
+        var program = await SeedProgramAsync();
+        var service = NewService();
+
+        (await service.CreateProgramAsync(save, SeedUser(), Ct)).Refusal.Should().NotBeNull();
+        (await service.UpdateProgramAsync(program.Id, save, SeedUser(), Ct)).Refusal.Should().NotBeNull();
+
+        await using var db = OpenContext();
+        var stored = await db.Programs.SingleAsync(Ct);
+        stored.IssuedBy.Should().Be(GrantIssuer.Managers);
+        stored.Status.Should().Be(GrantProgramStatus.Open);
+    }
+
     [HumansFact]
     public async Task Create_ManagersProgram_DropsAnySourceKey()
     {

@@ -1,3 +1,4 @@
+using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Grants.Authorization;
 using Humans.Grants.Models;
@@ -13,7 +14,9 @@ namespace Humans.Grants.Controllers;
 /// The managers' and the Board's screens. Routed under <c>/Grants/Admin</c> rather than
 /// <c>/Admin</c>: admin pages belong to their section's URL space
 /// (memory/architecture/no-admin-url-section.md). Localization-exempt. The policy admits any
-/// program manager; per-program operations are checked against the program resource.
+/// program manager; every action also names its own policy (BoardOrAdmin for program
+/// administration, the manage policy for grant actions), and per-program operations are checked
+/// against the program resource.
 /// </summary>
 [Authorize(Policy = GrantsPolicies.Manage)]
 [Route("Grants/Admin")]
@@ -44,19 +47,19 @@ internal sealed class GrantsAdminController(
     }
 
     [HttpGet("New")]
+    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     public async Task<IActionResult> New(CancellationToken ct)
     {
-        if (!GrantsPolicyHandler.IsAdministering(User)) return Forbid();
         return View("Form", await FillAsync(new ProgramFormViewModel { Year = grants.Today.Year }, ct));
     }
 
     [HttpPost("New")]
+    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> New(ProgramFormViewModel model, CancellationToken ct)
     {
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
-        if (!GrantsPolicyHandler.IsAdministering(User)) return Forbid();
         if (!ModelState.IsValid) return View("Form", await FillAsync(model, ct));
 
         var result = await grants.CreateProgramAsync(model.ToSave(), user.Id, ct);
@@ -88,6 +91,7 @@ internal sealed class GrantsAdminController(
     }
 
     [HttpGet("{programId:guid}/Edit")]
+    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     public async Task<IActionResult> Edit(Guid programId, CancellationToken ct)
     {
         var (program, forbidden) = await AuthorizedAsync(programId, ProgramOperationRequirement.Administer, ct);
@@ -96,6 +100,7 @@ internal sealed class GrantsAdminController(
     }
 
     [HttpPost("{programId:guid}/Edit")]
+    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(Guid programId, ProgramFormViewModel model, CancellationToken ct)
     {
@@ -119,6 +124,7 @@ internal sealed class GrantsAdminController(
     // ── Grants ────────────────────────────────────────────────────────────
 
     [HttpPost("{programId:guid}/Issue")]
+    [Authorize(Policy = GrantsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Issue(Guid programId, Guid[] userIds, LocalDate? expiresOn, CancellationToken ct) =>
         ManageAsync(programId, async actor =>
@@ -128,12 +134,14 @@ internal sealed class GrantsAdminController(
         }, ct);
 
     [HttpPost("{programId:guid}/Grants/{grantId:guid}/Revoke")]
+    [Authorize(Policy = GrantsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Revoke(Guid programId, Guid grantId, string? reason, CancellationToken ct) =>
         ManageAsync(programId, async actor =>
             ((GrantMutationResult)await grants.RevokeGrantAsync(grantId, reason, actor, ct), "Grant revoked"), ct, grantId);
 
     [HttpPost("{programId:guid}/Grants/{grantId:guid}/Resend")]
+    [Authorize(Policy = GrantsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Resend(Guid programId, Guid grantId, CancellationToken ct) =>
         ManageAsync(programId, async actor =>

@@ -123,6 +123,24 @@ public sealed class GrantTests : GrantsTestHarness
         result.Refusal.Should().BeNull();
         (await ReadGrantsAsync()).Should().ContainSingle();
         Logger.Entries.Should().Contain(e => e.Exception is InvalidOperationException);
+        await ReceivedNoticeAsync(NotificationSource.GrantReceived, person);
+    }
+
+    [HumansFact]
+    public async Task InAppNoticeFailure_StillSendsTheEmail()
+    {
+        var person = SeedUser();
+        var program = await SeedProgramAsync();
+        Notifications.SendAsync(Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
+                Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("inbox down"));
+
+        var result = await NewService().IssueToAsync(program.Id, [person], null, SeedUser(), Ct);
+
+        result.Refusal.Should().BeNull();
+        Logger.Entries.Should().Contain(e => e.Exception is InvalidOperationException);
+        await Email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == $"{person}@example.org"), Arg.Any<CancellationToken>());
     }
 
     // ── The source write ──────────────────────────────────────────────────
