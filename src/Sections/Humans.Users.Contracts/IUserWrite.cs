@@ -1,5 +1,4 @@
 using Humans.Onboarding.Contracts;
-using NodaTime;
 
 namespace Humans.Users.Contracts;
 
@@ -36,16 +35,6 @@ public interface IUserWrite
     /// (<c>IConsentWrite.RecordRejectionAsync</c>). <c>NotFound</c> without a profile.
     /// </summary>
     Task<OnboardingResult> SetRejectedAsync(Guid userId, CancellationToken ct = default);
-
-    // ---- Consent-reminder storage command ----
-
-    /// <summary>
-    /// Sets <c>User.LastConsentReminderSentAt</c> to <paramref name="sentAt"/>.
-    /// No-op if the user does not exist. Used by the re-consent reminder job
-    /// so it does not write to the Users table directly (design-rules §2c).
-    /// </summary>
-    Task SetLastConsentReminderSentAsync(
-        Guid userId, Instant sentAt, CancellationToken ct = default);
 
     // ---- Merge & admin cleanup commands ----
 

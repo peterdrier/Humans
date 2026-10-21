@@ -72,6 +72,19 @@ namespace Humans.Consent.Data.Migrations
                     b.ToTable("consent_records", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Consent.Domain.ConsentReminder", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("LastSentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("consent_reminders", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Consent.Domain.ConsentReview", b =>
                 {
                     b.Property<Guid>("UserId")

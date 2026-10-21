@@ -16,11 +16,9 @@ namespace Humans.Consent.Jobs;
 /// Background job that sends re-consent reminders to members.
 /// </summary>
 /// <remarks>
-/// Reads user display/email data via <see cref="IUserService"/> and persists
-/// <c>User.LastConsentReminderSentAt</c> through
-/// <see cref="IUserWrite.SetLastConsentReminderSentAsync"/>, so the job
-/// never touches a section DbContext
-/// directly (design-rules §2c).
+/// Reads user display/email data via <see cref="IUserService"/> and keeps the cooldown stamp in
+/// Consent's own <c>consent_reminders</c> through <see cref="ConsentReminderService"/>, so the job
+/// never touches a section DbContext directly (design-rules §2c).
 ///
 /// Consent owns it: the reminder exists to close a re-consent gap, the required-version set
 /// it mails about is <see cref="ILegalDocumentSyncManagement"/>'s, and the job id is
@@ -29,16 +27,13 @@ namespace Humans.Consent.Jobs;
 /// <c>Jobs/</c> and is internal: only Consent's own <c>Section.cs</c> and
 /// <c>SectionJobs.cs</c> name the concrete type, and Shell schedules it through
 /// <c>ISectionJobs</c>.
-///
-/// The cooldown stamp is a Users column, set through Users' own service, so the class
-/// injects <c>IUserWrite</c> beside <c>IUserService</c>, which cannot set it.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 internal sealed class SendReConsentReminderJob(
     IMembershipCalculator membershipCalculator,
     ILegalDocumentSyncManagement legalDocService,
     IUserService userService,
-    IUserWrite userWrite,
+    ConsentReminderService reminders,
     IEmailService emailService,
     ConsentEmails emailMessages,
     IOptions<EmailSettings> emailSettings,
@@ -74,6 +69,7 @@ internal sealed class SendReConsentReminderJob(
 
             var userIds = usersNeedingReminder.ToList();
             var users = await userService.GetUserInfosAsync(userIds, cancellationToken);
+            var lastSent = await reminders.GetLastSentAsync(users.Values, cancellationToken);
 
             var now = clock.GetCurrentInstant();
             var cooldown = Duration.FromDays(cooldownDays);
@@ -88,8 +84,7 @@ internal sealed class SendReConsentReminderJob(
                 }
 
                 // Skip if a reminder was sent recently
-                if (user.LastConsentReminderSentAt is not null &&
-                    now - user.LastConsentReminderSentAt.Value < cooldown)
+                if (lastSent.TryGetValue(user.Id, out var sentAt) && now - sentAt < cooldown)
                 {
                     continue;
                 }
@@ -108,7 +103,7 @@ internal sealed class SendReConsentReminderJob(
                             language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode),
                             cancellationToken);
 
-                        await userWrite.SetLastConsentReminderSentAsync(user.Id, now, cancellationToken);
+                        await reminders.RecordSentAsync(user.Id, now, cancellationToken);
                         sentCount++;
 
                         logger.LogInformation(

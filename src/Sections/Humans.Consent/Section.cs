@@ -95,6 +95,12 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<IConsentWrite>(sp => sp.GetRequiredService<ConsentReviewService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ConsentReviewService>());
 
+        // Re-consent reminder cooldown stamps (consent_reminders): the reminder job's read and
+        // write, the consent.reminder-stamps copy and the export/erase slice.
+        services.AddSingleton<IConsentReminderRepository, ConsentReminderRepository>();
+        services.AddScoped<ConsentReminderService>();
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ConsentReminderService>());
+
         services.AddScoped<SyncLegalDocumentsJob>();
         services.AddScoped<SendReConsentReminderJob>();
 

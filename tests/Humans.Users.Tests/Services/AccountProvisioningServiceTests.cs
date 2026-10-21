@@ -114,8 +114,6 @@ public class AccountProvisioningServiceTests
         public Task ReassignLoginsToUserAsync(
             Guid sourceUserId, Guid targetUserId, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task SetLastConsentReminderSentAsync(Guid userId, Instant sentAt, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(Instant now, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(Guid userId, CancellationToken ct = default) =>

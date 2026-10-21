@@ -315,18 +315,6 @@ internal sealed partial class UserRepository : IUserRepository
         }
     }
 
-    public async Task SetLastConsentReminderSentAsync(
-        Guid userId, Instant sentAt, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var user = await ctx.Users.FindAsync([userId], ct);
-        if (user is null)
-            return;
-
-        user.LastConsentReminderSentAt = sentAt;
-        await ctx.SaveChangesAsync(ct);
-    }
-
     public async Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
         Instant now, CancellationToken ct = default)
     {
