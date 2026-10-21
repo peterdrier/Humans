@@ -1,3 +1,4 @@
+using Humans.Calendar.Services.Dtos;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel.DataAnnotations;
 using NodaTime;
@@ -39,7 +40,7 @@ internal sealed class OccurrenceOverrideFormViewModel
     /// The form offers dates there, so a non-zero time means
     /// the post did not come from the form and the caller re-renders rather than saving.
     /// </summary>
-    public bool TryBuildOverride(DateTimeZone zone, out Humans.Calendar.Services.Dtos.OverrideOccurrenceDto dto)
+    public bool TryBuildOverride(DateTimeZone zone, out OverrideOccurrenceDto dto)
     {
         dto = null!;
         if (OverrideStartDateLocal?.TimeOfDay > TimeSpan.Zero || OverrideEndDateLocal?.TimeOfDay > TimeSpan.Zero

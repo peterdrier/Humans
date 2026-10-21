@@ -317,7 +317,7 @@ internal sealed class Service(
             return "VAT rate cannot be negative";
         if (draft.DepositAmountEur is < 0m)
             return "Deposit cannot be negative";
-        if (draft.HoldedRevenueAccountNum is { } account and (< 10_000_000 or > 99_999_999))
+        if (draft.HoldedRevenueAccountNum is < 10_000_000 or > 99_999_999)
             return "Holded revenue account must be an 8-digit chart number";
         return null;
     }

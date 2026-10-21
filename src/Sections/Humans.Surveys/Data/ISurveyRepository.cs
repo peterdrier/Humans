@@ -18,7 +18,7 @@ namespace Humans.Surveys.Data;
 /// <c>Survey.AudienceTeamId</c>) are bare <see cref="System.Guid"/> columns with no navigation — the
 /// application service stitches display data via <c>IUserService</c>/<c>ITeamService</c>.
 /// </remarks>
-internal partial interface ISurveyRepository : IRepository
+internal interface ISurveyRepository : IRepository
 {
     /// <summary>Loads a survey with its questions (ordered) and their options (ordered). Null if not found. Read-only.</summary>
     Task<Survey?> GetByIdAsync(Guid id, CancellationToken ct = default);

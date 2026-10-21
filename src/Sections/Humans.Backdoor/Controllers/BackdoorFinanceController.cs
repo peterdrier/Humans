@@ -301,7 +301,7 @@ internal sealed class BackdoorFinanceController(
         // Reports booked outside the budget carry no year.
         foreach (var yearId in reports.Select(r => r.BudgetYearId).OfType<Guid>().Distinct())
         {
-            var year = await budget.GetYearByIdAsync(yearId);
+            var year = await budget.GetYearByIdAsync(yearId, ct);
             if (year is not null) result[yearId] = year;
         }
         return result;

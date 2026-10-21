@@ -642,7 +642,7 @@ foreach (var resourceType in SectionDiscoveryExtensions.SectionResourceTypes())
     var policyNames = typeof(Humans.Base.Authorization.PolicyNames)
         .GetFields(BindingFlags.Public | BindingFlags.Static)
         .Where(f => f.IsLiteral && f.FieldType == typeof(string))
-        .Select(f => (Name: f.Name, Value: (string)f.GetRawConstantValue()!));
+        .Select(f => (f.Name, Value: (string)f.GetRawConstantValue()!));
 
     foreach (var (name, value) in policyNames)
     {
@@ -693,7 +693,7 @@ app.UseMiddleware<PrivateUploadMiddleware>();
 // canonicalizes the subpath, so alternate spellings like /uploads//issues/ cannot bypass the gate.
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new Humans.Web.Hosting.GatedUploadsFileProvider(app.Environment.WebRootFileProvider),
+    FileProvider = new GatedUploadsFileProvider(app.Environment.WebRootFileProvider),
     OnPrepareResponse = ctx =>
     {
         if (!ctx.Context.Response.Headers.ContainsKey("Cache-Control"))
@@ -765,7 +765,7 @@ app.Use(async (context, next) =>
     if (context.User.Identity?.IsAuthenticated == true
         && context.User.HasClaim(
             ClaimTypes.NameIdentifier,
-            Humans.Base.Constants.SystemUserIds.GateTerminal.ToString()))
+            SystemUserIds.GateTerminal.ToString()))
     {
         var path = context.Request.Path;
         var allowed =
@@ -816,9 +816,9 @@ app.MapPost("/api/client-metrics", (
 
 app.MapGet("/api/version", () =>
 {
-    var assembly = System.Reflection.Assembly.GetEntryAssembly()!;
-    var attr = (System.Reflection.AssemblyInformationalVersionAttribute?)
-        Attribute.GetCustomAttribute(assembly, typeof(System.Reflection.AssemblyInformationalVersionAttribute));
+    var assembly = Assembly.GetEntryAssembly()!;
+    var attr = (AssemblyInformationalVersionAttribute?)
+        Attribute.GetCustomAttribute(assembly, typeof(AssemblyInformationalVersionAttribute));
     var informationalVersion = attr?.InformationalVersion ?? "";
     var plusIndex = informationalVersion.IndexOf('+', StringComparison.Ordinal);
     var version = plusIndex >= 0 ? informationalVersion[..plusIndex] : informationalVersion;

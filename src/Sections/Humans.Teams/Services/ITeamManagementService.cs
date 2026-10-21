@@ -1,6 +1,7 @@
 using Humans.Base.Attributes;
 using Humans.Base.Enums;
 using Humans.Teams.Contracts;
+using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using NodaTime;
 
@@ -464,11 +465,11 @@ internal enum TeamJoinOutcome
 
 internal sealed record TeamUpdateResult(
     Team? Team = null,
-    Humans.Teams.Data.TeamUpdateConflict Conflict = Humans.Teams.Data.TeamUpdateConflict.None,
+    TeamUpdateConflict Conflict = TeamUpdateConflict.None,
     string? ErrorMessage = null,
     string? GroupWarning = null)
 {
-    public bool Succeeded => Team is not null && Conflict == Humans.Teams.Data.TeamUpdateConflict.None && ErrorMessage is null;
+    public bool Succeeded => Team is not null && Conflict == TeamUpdateConflict.None && ErrorMessage is null;
 
     // Non-interactive seed/compensation callers must not silently discard a refusal.
     public void RequireSuccess()

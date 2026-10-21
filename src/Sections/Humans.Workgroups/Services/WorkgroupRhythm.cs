@@ -75,7 +75,7 @@ internal static class WorkgroupRhythm
             (null, null) => null,
             (null, var m) => m,
             (var u, null) => u,
-            var (u, m) => Instant.Max(u!.Value, m!.Value)
+            var (u, m) => Instant.Max(u.Value, m.Value)
         };
     }
 
