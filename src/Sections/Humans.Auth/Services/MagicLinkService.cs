@@ -107,16 +107,6 @@ internal sealed class MagicLinkService(
 
     public void ReleaseSignupToken(string token) => rateLimiter.ReleaseTokenReservation(token);
 
-    public async Task<User?> FindUserByVerifiedEmailAsync(string email, CancellationToken ct = default)
-    {
-        var userEmail = (await userEmailService.FindByAddressAsync(email, aliased: true, verifiedOnly: true, ct))
-            .FirstOrDefault();
-        if (userEmail is null)
-            return null;
-
-        return await userManager.FindByIdAsync(userEmail.UserId.ToString());
-    }
-
     private async Task SendLoginLinkAsync(User user, string sendToEmail, string? returnUrl, CancellationToken ct)
     {
         if (!await rateLimiter.TryReserveUserSendAsync(user.Id, RateLimitCooldown.ToTimeSpan()))

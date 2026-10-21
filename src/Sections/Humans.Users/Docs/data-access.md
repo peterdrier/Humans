@@ -306,8 +306,8 @@ directly (framework concern, per design-rules §2a — `AspNetUserLogins` is
 the authoritative store for `(Provider, ProviderKey)` → `UserId`) plus
 `IUserService` (login-timestamp recording, stub-profile provisioning on
 create), `IUserEmailService` (`ReconcileOAuthIdentityAsync` — the sole
-caller, pinned by HUM0005), `IMagicLinkService`
-(`FindUserByVerifiedEmailAsync`), and `IClock`. No direct DB access, no
+caller, pinned by HUM0005; `FindByAddressAsync` for the verified-email
+owner), and `IClock`. No direct DB access, no
 `IMemoryCache`. Implements `IExternalLoginService`.
 
 ### UserNameSyncService (Scoped)

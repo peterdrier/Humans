@@ -53,10 +53,4 @@ public interface IMagicLinkService : IApplicationService
     /// 15 minutes. No-op if the token was never reserved.
     /// </summary>
     void ReleaseSignupToken(string token);
-
-    /// <summary>
-    /// Finds a user by verified <see cref="UserEmail"/>. Used
-    /// for account linking (OAuth callback) and signup double-click protection.
-    /// </summary>
-    Task<User?> FindUserByVerifiedEmailAsync(string email, CancellationToken ct = default);
 }

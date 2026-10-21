@@ -19,6 +19,3 @@
 # the header above warns about, arriving from the marker side rather than the baseline side.
 # Do not read the shorter file as three fixes. When the marker comes back, these three rows
 # come back with it unless the method has genuinely been changed by then.
-Humans.Auth.Contracts.IMagicLinkService.FindUserByVerifiedEmailAsync:Humans.Users.Contracts.EventParticipation
-Humans.Auth.Contracts.IMagicLinkService.FindUserByVerifiedEmailAsync:Humans.Users.Contracts.User
-Humans.Auth.Contracts.IMagicLinkService.FindUserByVerifiedEmailAsync:Humans.Users.Contracts.UserEmail

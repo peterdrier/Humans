@@ -131,7 +131,7 @@ Google OAuth callback
   ├── User found by provider key → sign in (existing flow)
   │
   └── No user by provider key
-        ├── User found by verified UserEmail match (IMagicLinkService.FindUserByVerifiedEmailAsync)
+        ├── User found by verified UserEmail match (IUserEmailService.FindByAddressAsync)
         │     └── Link Google login (AddLoginAsync) → sign in
         │
         └── No user by email → create new user (existing flow)
@@ -236,7 +236,7 @@ The decision ladder now lives in `ExternalLoginService.CompleteExternalLoginAsyn
 
 ```
 no user by provider key
-  → check UserEmails for verified match (IMagicLinkService.FindUserByVerifiedEmailAsync)
+  → check UserEmails for verified match (IUserEmailService.FindByAddressAsync, aliased, verified-only)
   → if found: AddLoginAsync + sign in (same user)
   → else: create new user
 ```

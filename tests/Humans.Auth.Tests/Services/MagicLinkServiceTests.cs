@@ -464,30 +464,4 @@ public sealed class MagicLinkServiceTests : IDisposable
 
         _rateLimiter.Received(1).ReleaseTokenReservation("good-token");
     }
-
-    [HumansFact]
-    public async Task FindUserByVerifiedEmailAsync_FindsByUserEmail()
-    {
-        var userId = Guid.NewGuid();
-        var user = new User { Id = userId, UserName = "alice@gmail.com", DisplayName = "Alice" };
-
-        _userEmailService
-            .FindByAddressAsync("alice@work.com", true, true, Arg.Any<CancellationToken>())
-            .Returns([UserEmailFixtures.Row(userId, "alice@work.com")]);
-        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
-
-        var result = await _service.FindUserByVerifiedEmailAsync("alice@work.com", Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().NotBeNull();
-        result.Id.Should().Be(userId);
-    }
-
-    [HumansFact]
-    public async Task FindUserByVerifiedEmailAsync_NoVerifiedUserEmail_ReturnsNull()
-    {
-        // Only a verified UserEmail row resolves a user. Default substitute returns null.
-        var result = await _service.FindUserByVerifiedEmailAsync("nobody@nowhere.com", Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeNull();
-    }
 }

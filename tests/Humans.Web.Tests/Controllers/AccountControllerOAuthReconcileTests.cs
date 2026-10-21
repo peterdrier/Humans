@@ -74,7 +74,6 @@ public class AccountControllerOAuthReconcileTests
             _userManager,
             _userService,
             _userEmailService,
-            _magicLinkService,
             _clock,
             NullLogger<ExternalLoginService>.Instance);
 
@@ -249,7 +248,7 @@ public class AccountControllerOAuthReconcileTests
         _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
             .Returns(string.Equals(path, "relink", StringComparison.Ordinal) ? SignInResult.LockedOut : SignInResult.Failed);
         _userManager.FindByIdAsync(target.Id.ToString()).Returns(target);
-        _magicLinkService.FindUserByVerifiedEmailAsync(email, Arg.Any<CancellationToken>()).Returns(target);
+        StubVerifiedEmailOwner(email, target);
         _userManager.FindByLoginAsync(Provider, ProviderKey).Returns(new User { Id = Guid.NewGuid(), State = UserState.Merged });
         _userManager.RemoveLoginAsync(Arg.Any<User>(), Provider, ProviderKey).Returns(IdentityResult.Success);
         _userManager.AddLoginAsync(target, Arg.Any<UserLoginInfo>()).Returns(IdentityResult.Success);
@@ -281,8 +280,7 @@ public class AccountControllerOAuthReconcileTests
         var lockedSource = new User { Id = lockedSourceId };
         var activeTarget = new User { Id = activeTargetId };
         _userManager.FindByLoginAsync(Provider, ProviderKey).Returns(lockedSource);
-        _magicLinkService.FindUserByVerifiedEmailAsync(email, Arg.Any<CancellationToken>())
-            .Returns(activeTarget);
+        StubVerifiedEmailOwner(email, activeTarget);
         _userManager.RemoveLoginAsync(lockedSource, Provider, ProviderKey)
             .Returns(IdentityResult.Success);
         _userManager.AddLoginAsync(activeTarget, Arg.Any<UserLoginInfo>())
@@ -313,7 +311,7 @@ public class AccountControllerOAuthReconcileTests
         _signInManager.GetExternalLoginInfoAsync().Returns(MakeInfo(email, emailVerified: false));
         _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
             .Returns(lockedOut ? SignInResult.LockedOut : SignInResult.Failed);
-        _magicLinkService.FindUserByVerifiedEmailAsync(email, Arg.Any<CancellationToken>()).Returns(target);
+        StubVerifiedEmailOwner(email, target);
         _userManager.FindByLoginAsync(Provider, ProviderKey).Returns(source);
         _userManager.RemoveLoginAsync(source, Provider, ProviderKey).Returns(IdentityResult.Success);
         _userManager.AddLoginAsync(target, Arg.Any<UserLoginInfo>()).Returns(IdentityResult.Success);
@@ -340,8 +338,7 @@ public class AccountControllerOAuthReconcileTests
             .Returns(SignInResult.Failed);
 
         var existingUser = new User { Id = existingUserId };
-        _magicLinkService.FindUserByVerifiedEmailAsync(email, Arg.Any<CancellationToken>())
-            .Returns(existingUser);
+        StubVerifiedEmailOwner(email, existingUser);
 
         _userManager.AddLoginAsync(existingUser, Arg.Any<UserLoginInfo>())
             .Returns(IdentityResult.Success);
@@ -369,8 +366,7 @@ public class AccountControllerOAuthReconcileTests
         _signInManager.GetExternalLoginInfoAsync().Returns(info);
         _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
             .Returns(SignInResult.Failed);
-        _magicLinkService.FindUserByVerifiedEmailAsync(newEmail, Arg.Any<CancellationToken>())
-            .Returns((User?)null);
+        StubVerifiedEmailOwner(newEmail, null);
 
         _userManager.CreateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
         _userManager.AddLoginAsync(Arg.Any<User>(), Arg.Any<UserLoginInfo>())
@@ -402,8 +398,7 @@ public class AccountControllerOAuthReconcileTests
         _signInManager.GetExternalLoginInfoAsync().Returns(info);
         _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
             .Returns(SignInResult.Failed);
-        _magicLinkService.FindUserByVerifiedEmailAsync(newEmail, Arg.Any<CancellationToken>())
-            .Returns((User?)null);
+        StubVerifiedEmailOwner(newEmail, null);
 
         _userManager.CreateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
         _userManager.AddLoginAsync(Arg.Any<User>(), Arg.Any<UserLoginInfo>())
@@ -444,8 +439,7 @@ public class AccountControllerOAuthReconcileTests
         _signInManager.GetExternalLoginInfoAsync().Returns(info);
         _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
             .Returns(SignInResult.Failed);
-        _magicLinkService.FindUserByVerifiedEmailAsync(newEmail, Arg.Any<CancellationToken>())
-            .Returns((User?)null);
+        StubVerifiedEmailOwner(newEmail, null);
         _userManager.CreateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
         _userManager.AddLoginAsync(Arg.Any<User>(), Arg.Any<UserLoginInfo>())
             .Returns(IdentityResult.Success);
@@ -506,13 +500,21 @@ public class AccountControllerOAuthReconcileTests
             .Returns(SignInResult.LockedOut);
 
         _userManager.FindByLoginAsync(Provider, ProviderKey).Returns(new User { Id = Guid.NewGuid() });
-        _magicLinkService.FindUserByVerifiedEmailAsync(email, Arg.Any<CancellationToken>())
-            .Returns((User?)null);
+        StubVerifiedEmailOwner(email, null);
 
         await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
         await _signInManager.DidNotReceive().SignInAsync(
             Arg.Any<User>(), Arg.Any<bool>(), Arg.Any<string?>());
         await _userManager.DidNotReceive().CreateAsync(Arg.Any<User>());
+    }
+
+    // ExternalLoginService resolves a verified-email owner via FindByAddressAsync, then loads the entity by id.
+    private void StubVerifiedEmailOwner(string email, User? owner)
+    {
+        _userEmailService.FindByAddressAsync(email, true, true, Arg.Any<CancellationToken>())
+            .Returns(owner is null ? [] : [UserEmailFixtures.Row(owner.Id, email)]);
+        if (owner is not null)
+            _userManager.FindByIdAsync(owner.Id.ToString()).Returns(owner);
     }
 }
