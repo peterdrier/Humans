@@ -1,9 +1,11 @@
+using Humans.Consent.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Threading;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
+using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 using Humans.Surveys.Data;
 using Humans.Shifts.Contracts;
@@ -29,6 +31,8 @@ internal sealed class SurveyService(
     ILogger<SurveyService> logger,
     ITeamService teamService,
     IUserService userService,
+    IGovernanceService governanceService,
+    IConsentService consentService,
     ITicketService ticketService,
     IShiftView shiftView,
     IUserEmailService userEmailService,
@@ -916,7 +920,9 @@ internal sealed class SurveyService(
         // id resolves to an eligible survivor, but answering under the archived id would let one
         // Asociado hold two ballots, so eligibility requires the stored id to be the live one.
         var info = await userService.GetUserInfoAsync(userId, ct);
-        return info is not null && info.Id == userId && IsEligibleAsociado(info);
+        return info is not null && info.Id == userId
+            && IsEligibleAsociado(info, (await consentService.GetConsentReviewAsync(userId, ct)).IsApproved)
+            && await governanceService.GetMembershipTierAsync(userId, ct) == MembershipTier.Asociado;
     }
 
     public async Task<Guid> StartIdentifiedDraftAsync(
@@ -2230,14 +2236,18 @@ internal sealed class SurveyService(
         if (rating is { } value && (value < (question.RatingMin ?? 1) || value > (question.RatingMax ?? 5)))
             throw new InvalidOperationException("The rating is outside the question's range.");
 
+        var text = question.Type is SurveyQuestionType.ShortText or SurveyQuestionType.LongText
+            && !string.IsNullOrWhiteSpace(answer.TextValue) ? answer.TextValue : null;
+        if (text is not null && text.EnumerateRunes().Count() > 4000)
+            throw new InvalidOperationException("A text answer must be 4000 characters or fewer.");
+
         var grid = question.Type == SurveyQuestionType.Grid
             ? NormalizeGridSelections(question.GridRows, question.Options, question.GridSelectionMode, answer.GridSelections)
             : null;
         return answer with
         {
             SelectedOptionValues = choices,
-            TextValue = question.Type is SurveyQuestionType.ShortText or SurveyQuestionType.LongText
-                && !string.IsNullOrWhiteSpace(answer.TextValue) ? answer.TextValue : null,
+            TextValue = text,
             RatingValue = rating,
             GridSelections = grid?.Count > 0
                 ? grid.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<string>)pair.Value, StringComparer.Ordinal)
@@ -2308,10 +2318,15 @@ internal sealed class SurveyService(
                 return (await ActiveMemberIdsAsync(ct)).ToHashSet();
 
             case SurveyAudienceType.Asociados:
-                return (await userService.GetAllUserInfosAsync(ct))
-                    .Where(IsEligibleAsociado)
-                    .Select(user => user.Id)
-                    .ToHashSet();
+                {
+                    var tiers = await governanceService.GetMembershipTiersAsync(ct);
+                    var reviews = await consentService.GetConsentReviewsAsync(ct);
+                    return (await userService.GetAllUserInfosAsync(ct))
+                        .Where(user => IsEligibleAsociado(user, IsApproved(reviews, user.Id))
+                            && tiers.GetValueOrDefault(user.Id) == MembershipTier.Asociado)
+                        .Select(user => user.Id)
+                        .ToHashSet();
+                }
 
             case SurveyAudienceType.TicketHolders:
                 {
@@ -2364,17 +2379,22 @@ internal sealed class SurveyService(
     private async Task<List<Guid>> ActiveMemberIdsAsync(CancellationToken ct)
     {
         var users = await userService.GetAllUserInfosAsync(ct);
+        var reviews = await consentService.GetConsentReviewsAsync(ct);
         return users
-            .Where(u => u.IsApproved && !u.IsDeletionPending)
+            .Where(u => IsApproved(reviews, u.Id) && !u.IsDeletionPending)
             .Select(u => u.Id)
             .ToList();
     }
 
-    private static bool IsEligibleAsociado(UserInfo? user)
-        => user is
+    /// <summary>Cleared by the Consent Coordinator (Consent's review).</summary>
+    private static bool IsApproved(IReadOnlyDictionary<Guid, ConsentReviewInfo> reviews, Guid userId) =>
+        reviews.TryGetValue(userId, out var review) && review.IsApproved;
+
+    /// <summary>The account half of Asociado eligibility (with the Consent Coordinator's approval);
+    /// the tier half is Governance's (<see cref="IGovernanceService.GetMembershipTierAsync"/>).</summary>
+    private static bool IsEligibleAsociado(UserInfo? user, bool isApproved)
+        => isApproved && user is
         {
-            IsApproved: true,
-            Profile.MembershipTier: MembershipTier.Asociado,
             IsGdprAnonymized: false,
             IsDeletionPending: false,
             IsMerged: false,

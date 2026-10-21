@@ -23,6 +23,21 @@ public static class HtmlPlainTextConverter
         foreach (var block in document.QuerySelectorAll("p,h1,h2,h3,h4,h5,h6,li"))
             block.AppendChild(document.CreateTextNode(block.LocalName is "li" ? "\n" : "\n\n"));
 
+        // HTML source whitespace does not express table structure. Keep each row
+        // on its own line and separate cells, including in minified HTML. Convert
+        // inner tables first so their content stays inside the containing cell.
+        foreach (var table in document.QuerySelectorAll("table").Reverse())
+        {
+            var rows = table.QuerySelectorAll("caption,tr").Select(row =>
+                row.LocalName is "caption"
+                    ? row.TextContent.Trim()
+                    : string.Join("\t", row.Children
+                        .Where(cell => cell.LocalName is "th" or "td")
+                        .Select(cell => cell.TextContent.Trim())));
+            table.Parent?.ReplaceChild(
+                document.CreateTextNode("\n\n" + string.Join("\n", rows) + "\n\n"), table);
+        }
+
         // DOM text has already decoded entities once. Decoding again would turn
         // literal '&lt;text&gt;' copy into markup characters.
         return document.Body?.TextContent.Trim() ?? string.Empty;

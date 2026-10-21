@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;

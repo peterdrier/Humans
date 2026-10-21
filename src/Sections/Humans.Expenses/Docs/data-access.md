@@ -21,8 +21,8 @@ Repository: `IExpenseRepository`.
 | HoldedExpenseOutboxEvents | R/W (outbox to Holded) |
 
 Cross-section calls via `IFileStorage`, `IBudgetService`, `ITeamService`,
-`IUserService`, `IUserWrite` (`SetProfileIbanAsync` — the submitter's IBAN is written
-through the owning Users service), `IUserEmailService`, `IEmailService`, `IAuditLogService`,
+`IUserService`, `IFinanceService` / `IFinanceWrite` (Finance section — `GetIbanAsync` /
+`SetIbanAsync`: the submitter's IBAN is read and written through its owner), `IUserEmailService`, `IEmailService`, `IAuditLogService`,
 `IHoldedClient`, `IHoldedFinanceService` (Finance section — creditor balance exposure to
 expense submitters; `ListExpenseAccountsAsync` / `GetCategoryMapAsync` resolve the
 account a report books to and the budget category it maps to), `IPreapprovalService`

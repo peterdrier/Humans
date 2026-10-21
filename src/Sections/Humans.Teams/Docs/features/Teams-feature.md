@@ -136,6 +136,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 - Toggle public visibility (only for departments, not sub-teams or system teams)
 - Write page content in markdown format; render through the shared sanitizer with no inline styles and HTTPS-only images
 - Configure up to 3 call-to-action buttons (text + URL + style)
+- Button targets allow relative URLs and HTTP/HTTPS/mailto links; unsafe schemes or control characters are refused, and unsafe stored buttons are omitted from member/public pages
 - Only one CTA can be styled as Primary
 - Changes are audit-logged with `TeamPageContentUpdated`
 - Edit Page link appears in team management sidebar

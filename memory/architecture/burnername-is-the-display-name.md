@@ -16,7 +16,7 @@ Canonical resolved accessors:
 
 - Render via `<vc:human>` (text/avatar/avatar-name/card), `<vc:profile-card>`, or `<vc:human-summary>`. These three are the only sanctioned UI paths — they call `IUserService.GetUserInfoAsync(userId)` through the cache and resolve BurnerName correctly. Anything else (raw `@x.DisplayName` in a `.cshtml`, hand-built `<a href="/Profile/ViewProfile/{id}">{name}</a>`, avatar `<div>` + name `<span>` flex containers) is a violation.
 - `UserInfo.BurnerName` reads `User.BurnerName` when non-blank, else the narrow legacy-tombstone sentinel check above, else blank. `FullProfile.Create` (both overloads) does the same resolution. Don't undo either.
-- Don't read `UserInfo.DisplayName` directly for rendering — it's the raw legacy column mirror. The only legitimate consumers of the raw `UserInfo.DisplayName` / `user.DisplayName` field are: (1) the resolved-accessor implementations above, (2) debug screens (`/Users/Admin/Debug`), (3) infrastructure mutations (merge / purge / delete labels in `UserRepository`).
+- Don't read `UserInfo.DisplayName` directly for rendering — it's the raw legacy column mirror. The only legitimate consumers of the raw `UserInfo.DisplayName` / `user.DisplayName` field are: (1) the resolved-accessor implementations above, (2) debug screens (`/Debug/Users`), (3) infrastructure mutations (merge / purge / delete labels in `UserRepository`).
 - Search-results, team rosters, audit-log labels, etc., must NOT pass an explicit `display-name`/override — let the VC fetch.
 
 **DTO anti-pattern — don't copy the name into a ViewModel.**

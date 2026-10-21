@@ -19,7 +19,7 @@ Open `/Profile/Me/Edit` (the Home dashboard also nudges you here via its Getting
 - A profile picture, if you want one.
 - Any contact fields you want to share — Phone, Signal, Telegram, WhatsApp, Discord, or a custom "Other" handle. Each field has its own **visibility** setting: Board only, Coordinators and Board, My teams, or All active humans. You pick one per field when you add it.
 - An emergency contact (optional, recommended).
-- Your skills and shift preferences (you'll be nudged through `/Profile/Me/ShiftInfo` separately). **Fill these in honestly and fully** — coordinators search by skill to find the right person for a role, so a thin profile is harder to place.
+- Your skills and shift preferences (you'll be nudged through `/Shifts/ShiftInfo` separately). **Fill these in honestly and fully** — coordinators search by skill to find the right person for a role, so a thin profile is harder to place.
 
 During this one-shot setup there is also a tier selector. Leave it on **Volunteer** unless you specifically want to apply for Colaborador or Asociado — those are separate tier applications reviewed by the Board and they never block your Volunteer access. Details in [Profiles](Profiles.md).
 

@@ -36,6 +36,7 @@ public class ExpenseReportServiceGdprTests
     private readonly IExpenseRepository _repo;
     private readonly IUserService _userService;
     private readonly IAuditLogService _auditLogService;
+    private readonly IFinanceService _finance = Substitute.For<IFinanceService>();
     private readonly IHoldedFinanceService _holdedFinance = Substitute.For<IHoldedFinanceService>();
     private readonly IUserDataContributor _sut;
 
@@ -62,13 +63,15 @@ public class ExpenseReportServiceGdprTests
             Substitute.For<IFileStorage>(),
             Substitute.For<IBudgetService>(),
             Substitute.For<ITeamService>(),
-            _userService, Substitute.For<IUserWrite>(),
+            _userService,
             Substitute.For<IUserEmailService>(),
             Substitute.For<IEmailService>(),
             TestExpensesEmails.Create(),
             _auditLogService,
             Substitute.For<IHoldedClient>(),
             _holdedFinance,
+            _finance,
+            Substitute.For<IFinanceWrite>(),
             Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalService>(),
             Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalWrite>(),
             new FakeClock(FakeNow),

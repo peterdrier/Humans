@@ -585,4 +585,29 @@
   <data name="Teams_RemoveMember_SystemTeam" xml:space="preserve"><value>Les membres d’une équipe gérée par le système ne peuvent pas être retirés manuellement.</value></data>
   <data name="Teams_RemoveMember_Permission" xml:space="preserve"><value>Vous n’avez pas l’autorisation de retirer des membres de cette équipe.</value></data>
   <data name="Teams_RemoveMember_NotMember" xml:space="preserve"><value>Cette personne n’est pas membre de cette équipe.</value></data>
+  <data name="Teams_SendMessage_FromTeam" xml:space="preserve">
+    <value>Envoyer un message à {0} de la part de {1}</value>
+  </data>
+  <data name="Teams_SendMessage_FromTeamNotice" xml:space="preserve">
+    <value>Vous envoyez au nom de {0}. Les réponses seront adressées à {1}.</value>
+  </data>
+  <data name="Teams_SendMessage_Breadcrumb" xml:space="preserve">
+    <value>Envoyer un message</value>
+  </data>
+  <data name="Teams_SendMessage_MessageLabel" xml:space="preserve">
+    <value>Message</value>
+  </data>
+  <data name="Teams_SendMessage_IncludeContactInfo" xml:space="preserve">
+    <value>Inclure mes coordonnées</value>
+  </data>
+  <data name="Teams_SendMessage_IncludeContactInfoHelp" xml:space="preserve">
+    <value>Votre nom et votre e-mail seront inclus pour que la personne puisse vous répondre directement.</value>
+  </data>
+  <data name="Teams_SendMessage_Send" xml:space="preserve">
+    <value>Envoyer le message</value>
+  </data>
+  <data name="Teams_SendMessage_Success" xml:space="preserve">
+    <value>Votre message a été envoyé à {0}.</value>
+  </data>
+  <data name="Teams_SendMessage_OptedOut" xml:space="preserve"><value>Cette personne a choisi de ne pas recevoir de messages.</value></data>
 </root>

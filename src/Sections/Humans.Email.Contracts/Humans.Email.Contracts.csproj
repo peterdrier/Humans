@@ -25,20 +25,16 @@
     (IEmailOutboxManagement), the facilitated-message builder, the body composer, the SMTP
     transport, the repository and the entity.
 
-    References Humans.Base (IApplicationService, and EmailOutboxStatus, which lives there
-    because Campaigns and Surveys persist it too) and Humans.Users.Contracts, for
-    MessageCategory — Users' own vocabulary, named here by EmailMessage's Category. That is
-    the enum sitting with its owner, not Email taking a dependency on Users' services.
-
-    That leaf-to-leaf edge is acyclic: Humans.Users.Contracts has exactly one
-    ProjectReference, to the equally zero-reference Humans.Onboarding.Contracts, so the
-    chain terminates. Note that Base references Humans.Users.Contracts, so nothing in
-    that project may ever reference this one.
+    References Humans.Base only (IApplicationService, and EmailOutboxStatus, which lives there
+    because Campaigns and Surveys persist it too). MessageCategory and the communication-preference
+    contracts (ICommunicationPreferenceService / ICommunicationPreferenceWrite) are Email's own since
+    Users decomposition commit 14, which dropped this leaf's Humans.Users.Contracts reference: the
+    enum was its only use. Note that Base references Humans.Users.Contracts, so nothing in that
+    project may ever reference this one.
   -->
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,30 +1,30 @@
 using Humans.Auth.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Users.Contracts;
+using Humans.Tickets.Contracts;
 
 namespace Humans.Tickets.Services;
 
 /// <summary>
 /// Builds the "Who's onsite" roster (#736): joins
-/// <see cref="IUserService.GetOnsiteUsersAsync"/> output with camp / team /
+/// the year's onsite participations (Attended with a check-in) with camp / team /
 /// governance-role names and applies filters. Pure orchestration over existing
 /// section services — no DB access.
 /// </summary>
 internal sealed class OnsiteRosterService : IOnsiteRosterService
 {
-    private readonly IUserService _users;
+    private readonly IEventParticipationManagement _participations;
     private readonly ICampService _camps;
     private readonly ITeamService _teams;
     private readonly IRoleAssignmentService _roles;
 
     public OnsiteRosterService(
-        IUserService users,
+        IEventParticipationManagement participations,
         ICampService camps,
         ITeamService teams,
         IRoleAssignmentService roles)
     {
-        _users = users;
+        _participations = participations;
         _camps = camps;
         _teams = teams;
         _roles = roles;
@@ -40,7 +40,9 @@ internal sealed class OnsiteRosterService : IOnsiteRosterService
         if (year <= 0)
             return new OnsiteRosterResult([], [], [], []);
 
-        var onsite = await _users.GetOnsiteUsersAsync(year, ct);
+        var onsite = (await _participations.GetAllParticipationsAsync(ct))
+            .Where(p => p.Year == year && p.OnsiteSince is not null)
+            .ToList();
         if (onsite.Count == 0)
             return new OnsiteRosterResult([], [], [], []);
 
@@ -50,9 +52,8 @@ internal sealed class OnsiteRosterService : IOnsiteRosterService
         var teamNamesByUserId = await BuildTeamNamesAsync(onsiteIds, ct);
         var roleNamesByUserId = await BuildRoleNamesAsync(onsiteIds, ct);
 
-        IEnumerable<(OnsiteUserRow Row, IReadOnlyList<string> Camps,
+        IEnumerable<(EventParticipationInfo Row, IReadOnlyList<string> Camps,
             IReadOnlyList<string> Teams, IReadOnlyList<string> Roles)> joined = onsite
-            .Where(o => o.CheckedInAt is not null)
             .Select(o => (
                 Row: o,
                 Camps: NamesFor(campNamesByUserId, o.UserId),
@@ -69,7 +70,7 @@ internal sealed class OnsiteRosterService : IOnsiteRosterService
         var rows = joined
             .Select(x => new OnsiteRosterRow(
                 x.Row.UserId,
-                x.Row.CheckedInAt!.Value,
+                x.Row.OnsiteSince!.Value,
                 x.Camps,
                 x.Teams,
                 x.Roles))

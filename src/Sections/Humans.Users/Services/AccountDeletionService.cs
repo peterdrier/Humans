@@ -31,7 +31,7 @@ internal sealed class AccountDeletionService(
     IEmailService emailService,
     UsersEmails emailMessages,
     IClock clock,
-    ILogger<AccountDeletionService> logger) : IAccountDeletionService
+    ILogger<AccountDeletionService> logger) : IAccountDeletionService, IOrchestrator
 {
     // --- User-initiated deletion request (30-day scheduled) ---
 

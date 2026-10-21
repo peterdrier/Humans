@@ -4,9 +4,8 @@
     ViewData["Title"] = Localizer["Emails_Title"].Value;
     // N>1 violation detection: self users normally toggle exclusively, so we
     // hide Clear in the self grid. But when the data is already in violation
-    // (multiple Google rows or multiple verified Primary rows), the user is
-    // stuck — radios can't unselect — so expose Clear on the offending rows.
-    var hasMultipleGoogle = Model.Emails.Count(e => e.IsGoogle) > 1;
+    // (multiple verified Primary rows), the user is stuck — radios can't
+    // unselect — so expose Clear on the offending rows.
     var hasMultiplePrimary = Model.Emails.Count(e => e.IsPrimary && e.IsVerified) > 1;
     // Manual verify is gated by PolicyNames.AdminOnly server-side; surface the
     // gate in the view so HumanAdmin/Board (who reach the page via
@@ -84,17 +83,8 @@
             </div>
         }
 
-        @* see nobodies-collective/Humans#677 — Google sync rejection banner *@
-        @if (Model.GoogleEmailStatus == GoogleEmailStatus.Rejected)
-        {
-            <div class="alert alert-danger d-flex align-items-start mb-3">
-                <i class="fa-solid fa-triangle-exclamation me-2 fs-4 mt-1"></i>
-                <div>
-                    <strong>@Localizer["EmailGrid_GoogleSyncRejectedTitle"]</strong>
-                    @Localizer["EmailGrid_GoogleSyncRejectedBody"]
-                </div>
-            </div>
-        }
+        @* Google sync rejection banner — GoogleIntegration's (nobodies-collective/Humans#677). *@
+        <vc:workspace-identity user-id="@Model.TargetUserId" mode="banner" />
 
         <div class="card mb-4">
             <div class="card-header">
@@ -158,19 +148,6 @@
                                     {
                                         <span class="badge bg-secondary">@Localizer["Emails_Unverified"]</span>
                                     }
-                                    @* Per-address Google sync status (#687) — so a problem address is visible per row. *@
-                                    @if (row.GoogleEmailStatus == GoogleEmailStatus.Rejected)
-                                    {
-                                        <span class="badge bg-danger ms-1" title="@Localizer["EmailGrid_GoogleProblem"].Value">
-                                            <i class="fa-brands fa-google me-1"></i>@Localizer["EmailGrid_GoogleProblem"]
-                                        </span>
-                                    }
-                                    else if (row.GoogleEmailStatus == GoogleEmailStatus.Valid)
-                                    {
-                                        <span class="badge bg-success ms-1" title="@Localizer["EmailGrid_GoogleOk"].Value">
-                                            <i class="fa-brands fa-google me-1"></i>@Localizer["EmailGrid_GoogleOk"]
-                                        </span>
-                                    }
                                 </td>
                                 <td>
                                     @{
@@ -227,69 +204,8 @@
                                     }
                                 </td>
                                 <td>
-                                    @{
-                                        var googleChecked = isLockedRow ? true : row.IsGoogle;
-                                        var googleDisabled = workspaceLocked || !row.IsVerified;
-                                    }
-                                    @{
-                                        var showClearGoogle = !isLockedRow && row.IsGoogle
-                                            && hasMultipleGoogle;
-                                    }
-                                    @if (googleChecked)
-                                    {
-                                        <span class="d-inline-flex align-items-center">
-                                            <i class="fa-brands fa-google text-success me-1" aria-label="@Localizer["EmailGrid_Google"]"></i>
-                                            @if (!isLockedRow && row.GoogleEmailStatus == GoogleEmailStatus.Rejected)
-                                            {
-                                                @* The current/sole rejected Google address has no other retry surface — re-assert it
-                                                   as the Google email (resets Rejected→Unknown, #687) so the next reconcile retries. *@
-                                                <form asp-action="@(Model.IsAdminContext ? "AdminSetGoogle" : "SetGoogle")"
-                                                      asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
-                                                      method="post" class="d-inline me-1">
-                                                    @Html.AntiForgeryToken()
-                                                    <input type="hidden" name="emailId" value="@row.Id" />
-                                                    <button type="submit" class="btn btn-outline-danger btn-sm py-0"
-                                                            title="@Localizer["EmailGrid_RetryGoogle"].Value">
-                                                        <i class="fa-solid fa-rotate-right me-1"></i>@Localizer["EmailGrid_RetryGoogle"]
-                                                    </button>
-                                                </form>
-                                            }
-                                            @if (showClearGoogle)
-                                            {
-                                                <form asp-action="@(Model.IsAdminContext ? "AdminClearGoogle" : "ClearGoogle")"
-                                                      asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
-                                                      method="post" class="d-inline ms-1"
-                                                      data-confirm="@Localizer["EmailGrid_ConfirmClearGoogle"].Value">
-                                                    @Html.AntiForgeryToken()
-                                                    <input type="hidden" name="emailId" value="@row.Id" />
-                                                    <button type="submit" class="btn btn-link btn-sm text-muted p-0"
-                                                            title="@Localizer["EmailGrid_Clear"].Value">
-                                                        <i class="fa-solid fa-xmark"></i>
-                                                    </button>
-                                                </form>
-                                            }
-                                        </span>
-                                    }
-                                    else if (!googleDisabled)
-                                    {
-                                        <form asp-action="@(Model.IsAdminContext ? "AdminSetGoogle" : "SetGoogle")"
-                                              asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
-                                              method="post" class="d-inline">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="emailId" value="@row.Id" />
-                                            <button type="submit" class="btn btn-outline-secondary btn-sm">
-                                                @Localizer["EmailGrid_SetGoogle"]
-                                            </button>
-                                        </form>
-                                    }
-                                    else if (workspaceLocked && row.IsVerified)
-                                    {
-                                        <span class="text-muted small" title="@Localizer["EmailGrid_WorkspaceLocked"].Value">—</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted small">@Localizer["Emails_VerifyFirst"]</span>
-                                    }
+                                    @* The Google identity is GoogleIntegration's (Users decomposition commit 15). *@
+                                    <vc:workspace-identity user-id="@Model.TargetUserId" mode="cell" email-id="@row.Id" admin-context="@Model.IsAdminContext" />
                                 </td>
                                 <td>
                                     @if (row.IsVerified)
@@ -433,19 +349,6 @@
                                     }
                                 </td>
                             </tr>
-                            <tr>
-                                <th><code>UserInfo.GoogleEmail</code></th>
-                                <td>
-                                    @if (!string.IsNullOrEmpty(Model.TargetUserInfo.GoogleEmail))
-                                    {
-                                        <code>@Model.TargetUserInfo.GoogleEmail</code>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted">(null)</span>
-                                    }
-                                </td>
-                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -527,7 +430,6 @@
                                         <th>Email</th>
                                         <th>IsVerified</th>
                                         <th>IsPrimary</th>
-                                        <th>IsGoogle</th>
                                         <th>Provider</th>
                                         <th>ProviderKey</th>
                                         <th>Visibility</th>
@@ -545,7 +447,6 @@
                                         <td>@r.Email</td>
                                         <td>@r.IsVerified</td>
                                         <td>@r.IsPrimary</td>
-                                        <td>@r.IsGoogle</td>
                                         <td>@(r.Provider ?? "")</td>
                                         <td>@(r.ProviderKey ?? "")</td>
                                         <td>@(r.Visibility?.ToString() ?? "")</td>

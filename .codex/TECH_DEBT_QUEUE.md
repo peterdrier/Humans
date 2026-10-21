@@ -80,40 +80,20 @@ violation, never edit a baseline the code still triggers.
 
 ## Current state — rewrite this whole section every run; never append
 
-*As of 2026-08-25, branch `techdebt/2026-08-25-codex-2` ([peterdrier/Humans#1519](https://github.com/peterdrier/Humans/pull/1519)).*
+*As of 2026-10-21 (hygiene refresh, not a run).*
 
-- **Baselines:** counts live in the baseline files only — regenerate with the command
-  above, never record them here (`memory/process/no-derived-aggregates-in-docs.md`).
-  `NoDestructiveMigrationOps` is blocked by design — immutable migration history, not
-  a backlog. The current pass removed Camps' generic repository display ordering;
-  remaining display-sort entries inspected in Teams and Tickets are documented
-  operational selectors, chronology, or page windows. Campaign tracking ordering
-  would need a public DTO expansion to relocate it, so it remains.
-- **Resolved this pass:** Gate respects vendor check-in timestamps; Base/Profile resources
-  and the MailerLite absence assertion are removed; Camps missing values render an em dash;
-  host-local Serilog removes the parallel `WebApplicationFactory` log-buffer race
-  (nobodies-collective/Humans#1145); Shifts boolean controls and Events literal search
-  work correctly; Users profile email messages are restored; Events controller policies,
-  Issues thread/audit/cache behavior, the Expenses guide, stale Events references, and
-  Finance navigation without an active year are covered or corrected. Data-access notes
-  now live with their Users-owned lifecycle services; Base error toasts no longer require
-  a DI fixture; and the Events moderation approval flow is covered. Onboarding banner and
-  Shifts availability controls are localized in every supported culture. Home now depends on
-  Users' read surface; Store centralizes its active-event-year fallbacks; and Calendar grid,
-  local-date, and recurrence-window behavior plus Cantina matrix totals are covered. Full
-  solution tests passed after each pushed set. Surveys' question-configuration dispatcher now
-  delegates Information and Grid invariants to focused private validators.
-- **Remaining entity-read classification:** Auth `FindUserByVerifiedEmailAsync`
-  (Identity `UserManager` needs the entity); Events moderation/camp/user event reads
-  (validated read-then-mutate); Shifts settings/rota/shift/signup reads (need a
-  command/read-model design, not a return-type swap); Teams `GetTeamByIdAsync` /
-  `GetTeamEntityBySlugAsync` (admin authorization + mutation-adjacent state).
-- **Surface baseline:** never recorded here — regenerate with `reforge surface-score`
-  on a built solution (see above) at the start of each run
-  (`memory/process/no-derived-aggregates-in-docs.md`); per-section history lives in
-  the Section Refactor History table in `docs/architecture/maintenance-log.md`.
-- **Needs Peter:** `Admin_SortBy` in UsersAdmin renders raw because it is an existing
-  SharedLocalizer call with no resource; adding its `Admin_*` key conflicts with
-  `localization-admin-exempt`'s ban on new admin-page keys. Decide resource versus
-  unlocalized literal. (Legal-name picker scope shipped separately as
-  peterdrier/Humans#1516; the integration-test Serilog race is fixed in this branch.)
+- **Baselines:** counts live in the baseline files only; regenerate with the command
+  above (`memory/process/no-derived-aggregates-in-docs.md`). `NoDestructiveMigrationOps`
+  is immutable migration history, not a backlog. `DisplaySortInControllers` holds only
+  `TicketRepository` lines Peter ruled stay pending the paged-grid redesign.
+- **Ledger:** the 2026-10-06 review and the nightly sweep drained the mechanical rows;
+  open items are in the ledger files, not here. Rows needing a design call carry
+  `review: panel`.
+- **Entity-read baseline:** being worked as its own track (2026-10-21); the Auth
+  `FindUserByVerifiedEmailAsync` entry waits on the Users decomposition
+  (`docs/superpowers/specs/2026-10-19-users-decomposition-plan.md`).
+- **Surface baseline:** never recorded here; regenerate with `reforge surface-score`
+  on a built solution. Per-section history lives in the Section Refactor History table
+  in `docs/architecture/maintenance-log.md`.
+- **Needs Peter:** nothing open. (The 2026-08-25 `Admin_SortBy` question is moot; the
+  key no longer exists.)

@@ -35,4 +35,30 @@
   <data name="Auth_Email_MagicLinkLogin_Body" xml:space="preserve"><value>&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;Click the link below to sign in:&lt;/p&gt;&lt;p&gt;&lt;a href="{1}"&gt;Sign in to Nobodies&lt;/a&gt;&lt;/p&gt;&lt;p&gt;This link expires in 15 minutes and can only be used once.&lt;/p&gt;&lt;p&gt;If you didn't request this, you can ignore this email.&lt;/p&gt;</value><comment>{0}=display name, {1}=magic link URL</comment></data>
   <data name="Auth_Email_MagicLinkSignup_Subject" xml:space="preserve"><value>Welcome to Nobodies — confirm your email</value></data>
   <data name="Auth_Email_MagicLinkSignup_Body" xml:space="preserve"><value>&lt;p&gt;Welcome to Nobodies!&lt;/p&gt;&lt;p&gt;Click the link below to create your account:&lt;/p&gt;&lt;p&gt;&lt;a href="{0}"&gt;Create your account&lt;/a&gt;&lt;/p&gt;&lt;p&gt;This link expires in 15 minutes and can only be used once.&lt;/p&gt;&lt;p&gt;If you didn't request this, you can ignore this email.&lt;/p&gt;</value><comment>{0}=magic link URL</comment></data>
+  <data name="Auth_Roles_Title" xml:space="preserve"><value>Role Assignments</value></data>
+  <data name="Auth_Roles_All" xml:space="preserve"><value>All</value></data>
+  <data name="Auth_Roles_HideInactive" xml:space="preserve"><value>Hide Inactive</value></data>
+  <data name="Auth_Roles_ShowInactive" xml:space="preserve"><value>Show Inactive</value></data>
+  <data name="Auth_Roles_User" xml:space="preserve"><value>User</value></data>
+  <data name="Auth_Roles_ValidFrom" xml:space="preserve"><value>Valid From</value></data>
+  <data name="Auth_Roles_ValidTo" xml:space="preserve"><value>Valid To</value></data>
+  <data name="Auth_Roles_Assignments" xml:space="preserve"><value>Role Assignments</value></data>
+  <data name="Auth_Roles_AddRole" xml:space="preserve"><value>Add Role</value></data>
+  <data name="Auth_Roles_Ended" xml:space="preserve"><value>Ended</value></data>
+  <data name="Auth_Roles_From" xml:space="preserve"><value>From</value></data>
+  <data name="Auth_Roles_To" xml:space="preserve"><value>to</value></data>
+  <data name="Auth_Roles_EndConfirm" xml:space="preserve"><value>End this role assignment?</value></data>
+  <data name="Auth_Roles_End" xml:space="preserve"><value>End</value></data>
+  <data name="Auth_Roles_NoAssignments" xml:space="preserve"><value>No role assignments.</value></data>
+  <data name="Auth_AddRole_Title" xml:space="preserve"><value>Add Role</value></data>
+  <data name="Auth_AddRole_SelectRole" xml:space="preserve"><value>Select a role...</value></data>
+  <data name="Auth_AddRole_AdminDesc" xml:space="preserve"><value>Full system access</value></data>
+  <data name="Auth_AddRole_BoardDesc" xml:space="preserve"><value>Board member permissions</value></data>
+  <data name="Auth_AddRole_TeamsAdminDesc" xml:space="preserve"><value>Manage all teams and memberships</value></data>
+  <data name="Auth_AddRole_ConsentCoordinatorDesc" xml:space="preserve"><value>Safety checks during onboarding</value></data>
+  <data name="Auth_AddRole_CampAdminDesc" xml:space="preserve"><value>Manage camp map and placement phases</value></data>
+  <data name="Auth_AddRole_VolunteerCoordinatorDesc" xml:space="preserve"><value>Onboarding facilitation, system-wide shift management</value></data>
+  <data name="Auth_AddRole_NoInfoAdminDesc" xml:space="preserve"><value>Approve shift signups, view volunteer medical data</value></data>
+  <data name="Auth_AddRole_NotesLabel" xml:space="preserve"><value>Notes (optional)</value></data>
+  <data name="Auth_AddRole_NotesPlaceholder" xml:space="preserve"><value>Reason for assignment</value></data>
 </root>

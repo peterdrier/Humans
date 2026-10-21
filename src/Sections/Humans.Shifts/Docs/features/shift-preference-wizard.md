@@ -13,16 +13,16 @@
 
 ## Business Context
 
-Volunteers need to tell coordinators about their skills, work style preferences, and languages so they can be matched with appropriate shifts. The current `/Profile/Me/ShiftInfo` page is a flat form with bare checkboxes — functional but uninviting, especially on mobile. This feature replaces it with a guided 3-step wizard that collects the same data in a more engaging, mobile-friendly flow.
+Volunteers need to tell coordinators about their skills, work style preferences, and languages so they can be matched with appropriate shifts. The current `/Shifts/ShiftInfo` page is a flat form with bare checkboxes — functional but uninviting, especially on mobile. This feature replaces it with a guided 3-step wizard that collects the same data in a more engaging, mobile-friendly flow.
 
 This is the first of three related features:
 - **33 — Shift Preference Wizard** (this feature): Collect skills, work style, languages
 - **34 — Shift Recommendation Engine**: Fuzzy-match preferences against available shifts (not yet specced)
-- **[35 — Dietary & Medical Nudge](../../../Humans.Users/Docs/features/dietary-medical-nudge.md)**: Collect dietary/allergy/medical info when a human signs up for a 6+ hour shift where the cantina provides meals (shipped — a full page, not a modal)
+- **[35 — Dietary Nudge](../../../Humans.Cantina/Docs/features/dietary-nudge.md)**: Collect dietary/allergy info (Cantina; medical is Users' own form) when a human signs up for a 6+ hour shift where the cantina provides meals (shipped — a full page, not a modal)
 
 ## Authorization
 
-Same as current `/Profile/Me/ShiftInfo` — any authenticated user can view and edit their own shift preferences. No role-based restrictions.
+Same as current `/Shifts/ShiftInfo` — any authenticated user can view and edit their own shift preferences. No role-based restrictions.
 
 ## User Stories
 
@@ -32,7 +32,7 @@ Same as current `/Profile/Me/ShiftInfo` — any authenticated user can view and 
 **So that** coordinators can match me with shifts that fit my skills and availability
 
 **Acceptance Criteria:**
-- Wizard replaces the existing flat form at `GET /Profile/Me/ShiftInfo`
+- Wizard replaces the existing flat form at `GET /Shifts/ShiftInfo`
 - 3 steps: Skills, Work Style, Languages
 - Step 1 (Skills): emoji-prefixed chip multi-select — Bartending, First Aid, Driving, Sound, Electrical, Construction, Cooking, Art, DJ, Other
 - Step 2 (Work Style): radio cards for time preference (Early Bird, Night Owl, All Day, No Preference) + Bootstrap toggle switches for quirks (Sober Shift, Work In Shade, Quiet Work, Physical Work OK, No Heights)
@@ -85,7 +85,7 @@ The set of time preference values should be a `static readonly` array (like the 
 
 ### Fields Removed From This Page (Not Deleted)
 
-The following fields are not editable on `/Profile/Me/ShiftInfo`; they live on `Profile` ([Dietary & Medical Nudge](../../../Humans.Users/Docs/features/dietary-medical-nudge.md)), and the corresponding `VolunteerEventProfile` columns are unused pending a deferred drop:
+The following fields are not editable on `/Shifts/ShiftInfo`; food answers live in Cantina and medical on `Profile` ([Dietary Nudge](../../../Humans.Cantina/Docs/features/dietary-nudge.md)), and the corresponding `VolunteerEventProfile` columns are unused pending a deferred drop:
 - `DietaryPreference`
 - `Allergies[]` + `AllergyOtherText`
 - `Intolerances[]` + `IntoleranceOtherText`
@@ -133,7 +133,7 @@ Option labels and time-preference descriptions are localized in all six cultures
 
 - Profile page → "Shift Info" link (existing)
 - Dashboard "Things to do" card → "Set up" action (issue #273)
-- Any future contextual links can point to `/Profile/Me/ShiftInfo`
+- Any future contextual links can point to `/Shifts/ShiftInfo`
 
 ## Related Features
 
@@ -141,4 +141,4 @@ Option labels and time-preference descriptions are localized in all six cultures
 - [Issue #273](https://github.com/nobodies-collective/Humans/issues/273): Dashboard "Things to do" wizard card
 - [Issue #186](https://github.com/nobodies-collective/Humans/issues/186): Custom labels/tags on rotas (future matching input)
 - Feature 34 — Shift Recommendation Engine (not yet specced)
-- [Feature 35 — Dietary & Medical Nudge](../../../Humans.Users/Docs/features/dietary-medical-nudge.md) (shipped)
+- [Feature 35 — Dietary Nudge](../../../Humans.Cantina/Docs/features/dietary-nudge.md) (shipped)

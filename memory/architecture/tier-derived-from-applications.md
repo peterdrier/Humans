@@ -5,7 +5,7 @@ description: Tier (Colaborador/Asociado) is derived from an Approved Application
 
 A human exists. They either have an open (`Submitted`) Application or they don't. An `Approved` Application with an active term *is* what makes someone a Colaborador or Asociado — there is no parallel "tier" state for the Application section to negotiate with.
 
-The initial-setup profile form (`Views/Profile/Edit.cshtml`) keeps tier radios for onboarding efficiency — a new Colaborador/Asociado can apply without bouncing to a second page. That UI combination is intentional, but it's a *form* concern, not a *domain* concern.
+The initial-setup profile form (`Views/Profile/Edit.cshtml`) no longer hosts the application: it describes the tiers and links to `/Governance/Applications/Create` (Users decomposition commit 11).
 
 **What this rules out:**
 
@@ -18,5 +18,4 @@ The initial-setup profile form (`Views/Profile/Edit.cshtml`) keeps tier radios f
 **How to apply:**
 
 - "Can this user start a new tier application?" — answer at the call site by calling `IApplicationDecisionService.GetUserApplicationsAsync` (or letting `SubmitAsync` reject with `AlreadyPending`). Don't add a tier-state query method to a foundational interface.
-- "What tier is this user?" — derived. `Profile.MembershipTier` may exist as a write-cache populated by the application-approval flow, but it isn't user-editable from the profile form, and it isn't authoritative; the authoritative answer is "do they have an active Approved Application of tier X?".
-- The Edit form may continue to render tier radios during initial setup. The orchestration of "save profile + submit/update tier application" lives in the controller's POST handler, not in ProfileService.
+- "What tier is this user?" — derived. Governance's `governance_membership_tiers` row is a write-cache populated by approval and expiry (read via `IGovernanceService.GetMembershipTierAsync`); it isn't user-editable, and it isn't authoritative; the authoritative answer is "do they have an active Approved Application of tier X?". The legacy `Profile.MembershipTier` column is frozen.

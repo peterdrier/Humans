@@ -76,7 +76,7 @@ public sealed class UsersEmailsTests
         msg.Category.Should().BeNull();
         msg.Culture.Should().Be(culture);
         msg.HtmlBody.Should().Contain(expectedDate);
-        msg.HtmlBody.Should().Contain($"href=\"{TestUsersEmails.BaseUrl}/User/Deletion\"");
+        msg.HtmlBody.Should().Contain($"href=\"{TestUsersEmails.BaseUrl}/Gdpr/Deletion\"");
     }
 
     [HumansFact]

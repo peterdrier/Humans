@@ -5,7 +5,8 @@ namespace Humans.Consent.Data;
 
 /// <summary>
 /// Per-section database context for the Legal section: maps only
-/// <c>legal_documents</c>, <c>document_versions</c> and <c>consent_records</c>,
+/// <c>legal_documents</c>, <c>document_versions</c>, <c>consent_records</c> and
+/// <c>consent_reviews</c>,
 /// with its own <c>__EFMigrationsHistory_Legal</c> table and migrations under
 /// <c>Data/Migrations/</c>. Same database, same connection — the split
 /// is a code-side partition of the EF model.
@@ -25,6 +26,7 @@ internal sealed class LegalDbContext(DbContextOptions<LegalDbContext> options)
     public DbSet<LegalDocument> LegalDocuments => Set<LegalDocument>();
     public DbSet<DocumentVersion> DocumentVersions => Set<DocumentVersion>();
     public DbSet<ConsentRecord> ConsentRecords => Set<ConsentRecord>();
+    public DbSet<ConsentReview> ConsentReviews => Set<ConsentReview>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -33,5 +35,6 @@ internal sealed class LegalDbContext(DbContextOptions<LegalDbContext> options)
         builder.ApplyConfiguration(new LegalDocumentConfiguration());
         builder.ApplyConfiguration(new DocumentVersionConfiguration());
         builder.ApplyConfiguration(new ConsentRecordConfiguration());
+        builder.ApplyConfiguration(new ConsentReviewConfiguration());
     }
 }

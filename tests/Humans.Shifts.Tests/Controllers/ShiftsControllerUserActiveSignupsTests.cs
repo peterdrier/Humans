@@ -1,3 +1,4 @@
+using Humans.Cantina.Contracts;
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
 using System.Security.Claims;
@@ -276,7 +277,7 @@ public class ShiftsControllerUserActiveSignupsTests
 
         var ctrl = new ShiftsController(
             _shiftMgmt, _burnSettings, _signupService, _volunteerTracking, _shiftView, _teamService,
-            _auditLog, _userService, _localizer, Substitute.For<IStringLocalizer<OnboardingResource>>(), _clock,
+            _auditLog, _userService, Substitute.For<ICantinaService>(), _localizer, Substitute.For<IStringLocalizer<OnboardingResource>>(), _clock,
             new ShiftBrowsePageBuilder(_shiftMgmt, _burnSettings, _teamService),
             NullLogger<ShiftsController>.Instance);
 

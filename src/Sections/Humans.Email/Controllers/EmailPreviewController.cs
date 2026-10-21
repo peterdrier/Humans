@@ -1,5 +1,6 @@
 using Humans.Base.Controllers;
 using Humans.Email.Services;
+using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

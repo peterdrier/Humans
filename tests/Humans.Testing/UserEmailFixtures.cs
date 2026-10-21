@@ -6,7 +6,7 @@ namespace Humans.Testing;
 /// <summary>
 /// Builds <see cref="UserEmailRowSnapshot"/> rows for tests that stub
 /// <c>IUserEmailService.FindByAddressAsync</c>. The record is positional with
-/// twelve members and most stubs only care about the owner, the address and
+/// eleven members and most stubs only care about the owner, the address and
 /// whether it is verified.
 /// </summary>
 public static class UserEmailFixtures
@@ -16,8 +16,7 @@ public static class UserEmailFixtures
         string email,
         bool verified = true,
         Guid? id = null,
-        bool isPrimary = false,
-        bool isGoogle = false) =>
+        bool isPrimary = false) =>
         new(
             id ?? Guid.NewGuid(),
             userId,
@@ -25,7 +24,6 @@ public static class UserEmailFixtures
             verified,
             Provider: null,
             ProviderKey: null,
-            isGoogle,
             isPrimary,
             Visibility: null,
             VerificationSentAt: null,

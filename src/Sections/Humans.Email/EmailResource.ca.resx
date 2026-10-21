@@ -57,4 +57,146 @@
   <data name="Email_ComposerSelfTest_Subject" xml:space="preserve"><value>[Prova] {0}</value></data>
   <data name="Email_ComposerSelfTest_DefaultSubject" xml:space="preserve"><value>[Prova] Previsualització del correu</value></data>
   <data name="Email_UnsubscribeFooter" xml:space="preserve"><value>Deixar de rebre aquests correus</value></data>
+  <data name="Email_Outbox_AdminTitle" xml:space="preserve"><value>Correus</value></data>
+  <data name="Email_Outbox_BackToAdmin" xml:space="preserve"><value>Torna a Administració</value></data>
+  <data name="Email_Outbox_BackToProfile" xml:space="preserve"><value>Torna al perfil</value></data>
+  <data name="Email_Outbox_DescriptionAdmin" xml:space="preserve"><value>Correus que el sistema ha enviat a aquest human.</value></data>
+  <data name="Email_Outbox_DescriptionSelf" xml:space="preserve"><value>Correus que el sistema t'ha enviat (en els últims 150 dies).</value></data>
+  <data name="Email_Outbox_Empty" xml:space="preserve"><value>No hi ha cap correu registrat.</value></data>
+  <data name="Email_Outbox_Subject" xml:space="preserve"><value>Assumpte</value></data>
+  <data name="Email_Outbox_MyTitle" xml:space="preserve"><value>Els meus correus</value></data>
+  <data name="Email_SendMessage_Title" xml:space="preserve">
+    <value>Envia un missatge a {0}</value>
+  </data>
+  <data name="Email_SendMessage_Breadcrumb" xml:space="preserve">
+    <value>Envia missatge</value>
+  </data>
+  <data name="Email_SendMessage_Heading" xml:space="preserve">
+    <value>Envia un missatge a {0}</value>
+  </data>
+  <data name="Email_SendMessage_MessageLabel" xml:space="preserve">
+    <value>Missatge</value>
+  </data>
+  <data name="Email_SendMessage_IncludeContactInfo" xml:space="preserve">
+    <value>Inclou la meva informació de contacte</value>
+  </data>
+  <data name="Email_SendMessage_IncludeContactInfoHelp" xml:space="preserve">
+    <value>El teu nom i correu electrònic s’inclouran perquè et puguin respondre directament.</value>
+  </data>
+  <data name="Email_SendMessage_Send" xml:space="preserve">
+    <value>Envia missatge</value>
+  </data>
+  <data name="Email_SendMessage_Success" xml:space="preserve">
+    <value>El teu missatge s’ha enviat a {0}.</value>
+  </data>
+  <data name="Email_SendMessage_OptedOut" xml:space="preserve"><value>Aquesta persona ha decidit no rebre missatges.</value></data>
+  <data name="Email_BreadcrumbNavigation" xml:space="preserve"><value>Ruta de navegació</value></data>
+  <data name="Email_CommPrefs_Title" xml:space="preserve">
+    <value>Preferències de comunicació</value>
+  </data>
+  <data name="Email_CommPrefs_Description" xml:space="preserve">
+    <value>Tria quines comunicacions reps i com.</value>
+  </data>
+  <data name="Email_CommPrefs_Category" xml:space="preserve">
+    <value>Categoria</value>
+  </data>
+  <data name="Email_CommPrefs_Email" xml:space="preserve">
+    <value>Correu</value>
+  </data>
+  <data name="Email_CommPrefs_Alert" xml:space="preserve">
+    <value>Alerta</value>
+  </data>
+  <data name="Email_CommPrefs_BackToProfile" xml:space="preserve">
+    <value>Tornar al perfil</value>
+  </data>
+  <data name="Email_CommPrefs_BackToDashboard" xml:space="preserve">
+    <value>Tornar al tauler</value>
+  </data>
+  <data name="Email_CommPrefs_OneClick_Prompt" xml:space="preserve">
+    <value>Has fet clic en un enllaç per donar-te de baixa dels correus de {0}.</value>
+  </data>
+  <data name="Email_CommPrefs_OneClick_Hint" xml:space="preserve">
+    <value>Dóna't de baixa amb un sol clic, o ajusta els detalls a la matriu de sota.</value>
+  </data>
+  <data name="Email_CommPrefs_OneClick_Button" xml:space="preserve">
+    <value>Donar-se de baixa de {0}</value>
+  </data>
+  <data name="Email_CommPrefs_OneClick_Done" xml:space="preserve">
+    <value>T'has donat de baixa. Pots tornar a activar qualsevol categoria a sota.</value>
+  </data>
+  <data name="Email_CommPrefs_UpdateSource" xml:space="preserve">
+    <value>Font d'actualització</value>
+  </data>
+  <data name="Email_CommPrefs_UpdatedAt" xml:space="preserve">
+    <value>Actualitzat el</value>
+  </data>
+  <data name="Email_CommPrefs_AlwaysOn" xml:space="preserve"><value>Sempre actiu</value></data>
+  <data name="Email_Unsubscribe_Title" xml:space="preserve">
+    <value>Donar-se de baixa dels correus</value>
+  </data>
+  <data name="Email_Unsubscribe_Heading" xml:space="preserve">
+    <value>Donar-se de baixa dels correus {0}?</value>
+    <comment>{0} = category name</comment>
+  </data>
+  <data name="Email_Unsubscribe_Greeting" xml:space="preserve">
+    <value>Hola {0},</value>
+    <comment>{0} = display name</comment>
+  </data>
+  <data name="Email_Unsubscribe_ConfirmMessage" xml:space="preserve">
+    <value>Si confirmes, deixaràs de rebre correus de {0} de Humans.</value>
+    <comment>{0} = category name</comment>
+  </data>
+  <data name="Email_Unsubscribe_ConfirmButton" xml:space="preserve">
+    <value>Confirmar baixa</value>
+  </data>
+  <data name="Email_Unsubscribe_DoneTitle" xml:space="preserve">
+    <value>T'has donat de baixa</value>
+  </data>
+  <data name="Email_Unsubscribe_DoneMessage" xml:space="preserve">
+    <value>Ja no rebràs correus de {0} de Humans.</value>
+    <comment>{0} = category name</comment>
+  </data>
+  <data name="Email_Unsubscribe_DoneManage" xml:space="preserve">
+    <value>Pots gestionar les teves preferències de comunicació des de les teves</value>
+  </data>
+  <data name="Email_Unsubscribe_DoneManageLink" xml:space="preserve">
+    <value>preferències de comunicació</value>
+  </data>
+  <data name="Email_Unsubscribe_BackHome" xml:space="preserve">
+    <value>Tornar a l'inici</value>
+  </data>
+  <data name="Email_Unsubscribe_ExpiredTitle" xml:space="preserve">
+    <value>Enllaç de baixa caducat</value>
+  </data>
+  <data name="Email_Unsubscribe_ExpiredHeading" xml:space="preserve">
+    <value>Aquest enllaç de baixa ha caducat</value>
+  </data>
+  <data name="Email_Unsubscribe_ExpiredMessage" xml:space="preserve">
+    <value>Fes servir l'enllaç d'un correu més recent, o</value>
+  </data>
+  <data name="Email_Unsubscribe_ExpiredSignIn" xml:space="preserve">
+    <value>inicia sessió per gestionar les teves preferències de comunicació</value>
+  </data>
+  <data name="Email_CommPrefs_Name_System" xml:space="preserve"><value>Sistema</value></data>
+  <data name="Email_CommPrefs_Name_CampaignCodes" xml:space="preserve"><value>Codis de campanyes</value></data>
+  <data name="Email_CommPrefs_Name_FacilitatedMessages" xml:space="preserve"><value>Missatges entre persones</value></data>
+  <data name="Email_CommPrefs_Name_Ticketing" xml:space="preserve"><value>Entrades</value></data>
+  <data name="Email_CommPrefs_Name_VolunteerUpdates" xml:space="preserve"><value>Novetats del voluntariat</value></data>
+  <data name="Email_CommPrefs_Name_TeamUpdates" xml:space="preserve"><value>Novetats dels equips</value></data>
+  <data name="Email_CommPrefs_Name_Governance" xml:space="preserve"><value>Governança</value></data>
+  <data name="Email_CommPrefs_Name_Marketing" xml:space="preserve"><value>Màrqueting</value></data>
+  <data name="Email_CommPrefs_Description_System" xml:space="preserve"><value>Notificacions importants sobre el compte, el consentiment i la seguretat. Sempre activades.</value></data>
+  <data name="Email_CommPrefs_Description_CampaignCodes" xml:space="preserve"><value>Codis de descompte, ajuts i codis per bescanviar campanyes. Sempre activats.</value></data>
+  <data name="Email_CommPrefs_Description_FacilitatedMessages" xml:space="preserve"><value>Missatges que altres persones t’envien a través de Humans.</value></data>
+  <data name="Email_CommPrefs_Description_Ticketing" xml:space="preserve"><value>Confirmacions de compra i informació de l’esdeveniment.</value></data>
+  <data name="Email_CommPrefs_Description_VolunteerUpdates" xml:space="preserve"><value>Canvis de torns, actualitzacions de l’horari i notificacions del voluntariat.</value></data>
+  <data name="Email_CommPrefs_Description_TeamUpdates" xml:space="preserve"><value>Permisos de Drive, incorporacions i baixes als equips.</value></data>
+  <data name="Email_CommPrefs_Description_Governance" xml:space="preserve"><value>Votacions de la Junta, sol·licituds de nivell, assignacions de rols i revisions d’incorporació.</value></data>
+  <data name="Email_CommPrefs_Description_Marketing" xml:space="preserve"><value>Llista de correu i promocions.</value></data>
+  <data name="Email_CommPrefs_TicketingYear" xml:space="preserve"><value>Entrades — {0}</value></data>
+  <data name="Email_CommPrefs_TicketingLocked" xml:space="preserve"><value>Bloquejat — tens una entrada per a aquest any</value></data>
+  <data name="Email_CommPrefs_Name_EventOperations" xml:space="preserve"><value>Operacions de l’esdeveniment</value></data>
+  <data name="Email_CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Novetats de la comunitat</value></data>
+  <data name="Email_CommPrefs_AlwaysOnCategoryCannotChange" xml:space="preserve"><value>No es poden canviar les categories sempre actives.</value></data>
+  <data name="Email_CommPrefs_LoadFailed" xml:space="preserve"><value>No s'han pogut carregar les preferències de comunicació.</value></data>
 </root>

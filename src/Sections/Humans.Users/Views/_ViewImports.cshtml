@@ -37,6 +37,8 @@
 @addTagHelper *, Humans.Camps
 @* <vc:audit-log> (Profile/Index sent messages, AdminDetail) is Humans.AuditLog's. *@
 @addTagHelper *, Humans.AuditLog
+@* <vc:nobodies-email-badge> and <vc:workspace-identity> (Emails grid) are Humans.GoogleIntegration's. *@
+@addTagHelper *, Humans.GoogleIntegration
 @* No @addTagHelper for Humans.Web — a section RCL cannot reference the Shell. A <vc:>
    element for an unimported assembly renders as inert markup with a green build and no
    runtime error, so never add one without its @addTagHelper. *@

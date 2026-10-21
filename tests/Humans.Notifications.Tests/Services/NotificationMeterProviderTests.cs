@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Humans.Base.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
@@ -28,6 +29,7 @@ namespace Humans.Notifications.Tests.Services;
 public class NotificationMeterProviderTests : IDisposable
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IConsentService _consentService = Substitute.For<IConsentService>();
     private readonly IGoogleSyncService _googleSyncService = Substitute.For<IGoogleSyncService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly ITicketSync _ticketSyncService = Substitute.For<ITicketSync>();
@@ -40,8 +42,11 @@ public class NotificationMeterProviderTests : IDisposable
     public NotificationMeterProviderTests()
     {
         _cache = new MemoryCache(new MemoryCacheOptions());
+        _consentService.GetConsentReviewsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, ConsentReviewInfo>());
         _provider = new NotificationMeterProvider(
             _userService,
+            _consentService,
             _googleSyncService,
             _teamService,
             _ticketSyncService,
@@ -235,6 +240,27 @@ public class NotificationMeterProviderTests : IDisposable
         meters.Should().ContainSingle(m =>
             string.Equals(m.Title, "Onboarding profiles pending", StringComparison.Ordinal) &&
             string.Equals(m.ActionUrl, "/OnboardingReview", StringComparison.Ordinal));
+    }
+
+    [HumansFact]
+    public async Task GetMetersForUserAsync_ConsentCoordinator_CountExcludesMembersConsentClearedApproved()
+    {
+        var users = MakeNeedsConsentReview(3);
+        var approved = users.First().Id;
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(users));
+        _consentService.GetConsentReviewsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, ConsentReviewInfo>
+            {
+                [approved] = ConsentReviewInfo.None(approved) with { Status = ConsentCheckStatus.Cleared, IsApproved = true },
+            });
+        _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
+        _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
+
+        var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.ConsentCoordinator), Xunit.TestContext.Current.CancellationToken);
+
+        meters.Should().ContainSingle(m =>
+            string.Equals(m.Title, "Consent reviews pending", StringComparison.Ordinal) &&
+            m.Count == 2);
     }
 
     [HumansFact]

@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.MailerLite.Services.Dtos;
@@ -45,7 +46,7 @@ public class MailerLiteImportServiceWebsiteScopeTests
         harness.SetSubscribers(WebsiteScopeHarness.Active("member@x.com", inWebsite: true));
 
         var ghostId = Guid.NewGuid();
-        harness.SetUsers(Human(ghostId, "ghost@x.com",
+        harness.SetUsers(harness.Human(ghostId, "ghost@x.com",
             optedOut: false, source: "MailerLiteSync", subscribedAt: AfterCutoff));
 
         var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
@@ -62,7 +63,7 @@ public class MailerLiteImportServiceWebsiteScopeTests
         harness.SetSubscribers(WebsiteScopeHarness.Active("member@x.com", inWebsite: true));
 
         var id = Guid.NewGuid();
-        harness.SetUsers(Human(id, "member@x.com",
+        harness.SetUsers(harness.Human(id, "member@x.com",
             optedOut: false, source: "MailerLiteSync", subscribedAt: AfterCutoff));
 
         var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
@@ -80,7 +81,7 @@ public class MailerLiteImportServiceWebsiteScopeTests
         harness.SetSubscribers(WebsiteScopeHarness.Unsubscribed("lapsed@x.com", inWebsite: true));
 
         var id = Guid.NewGuid();
-        harness.SetUsers(Human(id, "lapsed@x.com",
+        harness.SetUsers(harness.Human(id, "lapsed@x.com",
             optedOut: false, source: "MailerLiteSync", subscribedAt: AfterCutoff));
         harness.MatchVerified("lapsed@x.com", id);
 
@@ -99,7 +100,7 @@ public class MailerLiteImportServiceWebsiteScopeTests
         harness.SetSubscribers(WebsiteScopeHarness.Active("member@x.com", inWebsite: true));
 
         var id = Guid.NewGuid();
-        harness.SetUsers(Human(id, "early@x.com",
+        harness.SetUsers(harness.Human(id, "early@x.com",
             optedOut: false, source: "MailerLiteSync", subscribedAt: BeforeCutoff));
 
         var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
@@ -114,7 +115,7 @@ public class MailerLiteImportServiceWebsiteScopeTests
         harness.SetSubscribers(WebsiteScopeHarness.Active("member@x.com", inWebsite: true));
 
         var id = Guid.NewGuid();
-        harness.SetUsers(Human(id, "self@x.com",
+        harness.SetUsers(harness.Human(id, "self@x.com",
             optedOut: false, source: "Profile", subscribedAt: AfterCutoff));
 
         var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
@@ -129,7 +130,7 @@ public class MailerLiteImportServiceWebsiteScopeTests
         harness.SetSubscribers(WebsiteScopeHarness.Active("member@x.com", inWebsite: true));
 
         var id = Guid.NewGuid();
-        harness.SetUsers(Human(id, "out@x.com",
+        harness.SetUsers(harness.Human(id, "out@x.com",
             optedOut: true, source: "MailerLiteSync", subscribedAt: null));
 
         var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
@@ -144,7 +145,7 @@ public class MailerLiteImportServiceWebsiteScopeTests
         harness.SetSubscribers(WebsiteScopeHarness.Active("member@x.com", inWebsite: true));
 
         var ghostId = Guid.NewGuid();
-        harness.SetUserInfo(ghostId, Human(ghostId, "ghost@x.com",
+        harness.SetUserInfo(ghostId, harness.Human(ghostId, "ghost@x.com",
             optedOut: false, source: "MailerLiteSync", subscribedAt: AfterCutoff));
 
         var plan = new ImportPlan(
@@ -154,7 +155,7 @@ public class MailerLiteImportServiceWebsiteScopeTests
         var result = await harness.Service.ApplyAsync(plan, Guid.NewGuid(), maxPerOutcome: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.MarketingFlagsReset.Should().Be(1);
-        await harness.Prefs.Received(1).ResetPreferenceAsync(
+        await harness.PrefWrite.Received(1).ResetPreferenceAsync(
             ghostId, MessageCategory.Marketing, "MailerLiteSyncReset", Arg.Any<CancellationToken>());
     }
 
@@ -166,7 +167,7 @@ public class MailerLiteImportServiceWebsiteScopeTests
         harness.SetSubscribers(WebsiteScopeHarness.Active("member@x.com", inWebsite: true));
 
         var id = Guid.NewGuid();
-        harness.SetUserInfo(id, Human(id, "self@x.com",
+        harness.SetUserInfo(id, harness.Human(id, "self@x.com",
             optedOut: false, source: "Profile", subscribedAt: AfterCutoff));
 
         var plan = new ImportPlan(
@@ -176,7 +177,7 @@ public class MailerLiteImportServiceWebsiteScopeTests
         var result = await harness.Service.ApplyAsync(plan, Guid.NewGuid(), maxPerOutcome: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.MarketingFlagsReset.Should().Be(0);
-        await harness.Prefs.DidNotReceive().ResetPreferenceAsync(
+        await harness.PrefWrite.DidNotReceive().ResetPreferenceAsync(
             Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
@@ -191,19 +192,6 @@ public class MailerLiteImportServiceWebsiteScopeTests
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Website*");
     }
-
-    private static UserInfo Human(
-        Guid id, string email, bool optedOut, string source, Instant? subscribedAt)
-    {
-        var pref = UserFixtures.Preference(
-            category: MessageCategory.Marketing,
-            optedOut: optedOut,
-            updatedAt: Instant.FromUtc(2026, 5, 19, 12, 0),
-            updateSource: source,
-            subscribedAt: subscribedAt);
-        var ue = new UserEmail { Id = Guid.NewGuid(), UserId = id, Email = email, IsVerified = true, IsPrimary = true };
-        return UserInfo.Create(new User { Id = id }, [ue], [], [], null, [pref]);
-    }
 }
 
 internal sealed class WebsiteScopeHarness
@@ -215,7 +203,10 @@ internal sealed class WebsiteScopeHarness
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
 
+    private readonly Dictionary<Guid, CommunicationPreferenceSnapshot> _marketing = [];
+
     public ICommunicationPreferenceService Prefs { get; } = Substitute.For<ICommunicationPreferenceService>();
+    public ICommunicationPreferenceWrite PrefWrite { get; } = Substitute.For<ICommunicationPreferenceWrite>();
     public MailerLiteImportService Service { get; }
 
     public WebsiteScopeHarness(bool includeWebsiteGroup = true)
@@ -234,10 +225,17 @@ internal sealed class WebsiteScopeHarness
         _users.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([]));
 
+        // Marketing preferences are Email's; Human(...) records one per user.
+        Prefs.GetPreferencesForCategoryAsync(MessageCategory.Marketing, Arg.Any<CancellationToken>())
+            .Returns(_ => new Dictionary<Guid, CommunicationPreferenceSnapshot>(_marketing));
+        Prefs.GetPreferenceOrNullAsync(Arg.Any<Guid>(), MessageCategory.Marketing, Arg.Any<CancellationToken>())
+            .Returns(call => _marketing.GetValueOrDefault(call.Arg<Guid>()));
+
         Service = new MailerLiteImportService(
             _ml, _userEmails, _users,
             Substitute.For<IAccountProvisioningService>(),
             Prefs,
+            PrefWrite,
             Substitute.For<IAuditLogService>(),
             InMemoryMailerLiteRepository.New(),
             new FakeClock(Instant.FromUtc(2026, 5, 20, 0, 0)),
@@ -266,6 +264,16 @@ internal sealed class WebsiteScopeHarness
     public void MatchVerified(string email, Guid userId) =>
         _userEmails.FindByAddressAsync(email, true, true, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<UserEmailRowSnapshot>>([UserEmailFixtures.Row(userId, email)]));
+
+    /// <summary>A verified-email human with the given Marketing preference recorded in Email.</summary>
+    public UserInfo Human(Guid id, string email, bool optedOut, string source, Instant? subscribedAt)
+    {
+        _marketing[id] = new CommunicationPreferenceSnapshot(
+            MessageCategory.Marketing, optedOut, InboxEnabled: true, source,
+            Instant.FromUtc(2026, 5, 19, 12, 0), subscribedAt);
+        var ue = new UserEmail { Id = Guid.NewGuid(), UserId = id, Email = email, IsVerified = true, IsPrimary = true };
+        return UserInfo.Create(new User { Id = id }, [ue], [], [], null, []);
+    }
 
     public void SetUserInfo(Guid id, UserInfo info) =>
         _users.GetUserInfoAsync(id, Arg.Any<CancellationToken>())

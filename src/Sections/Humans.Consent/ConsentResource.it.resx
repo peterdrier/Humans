@@ -175,4 +175,99 @@
   <data name="Consent_Notification_PublishedBody" xml:space="preserve"><value>È stato pubblicato un nuovo documento legale obbligatorio. Esaminalo e firmalo.</value></data>
   <data name="Consent_Notification_ReConsentRequired" xml:space="preserve"><value>{0} è stato aggiornato — è necessario dare nuovamente il consenso</value></data>
   <data name="Consent_Notification_ReConsentRequiredBody" xml:space="preserve"><value>È stato aggiornato un documento legale obbligatorio. Esaminalo e firma la nuova versione.</value></data>
+  <data name="Consent_MyData_Title" xml:space="preserve">
+    <value>I miei dati</value>
+  </data>
+  <data name="Consent_MyData_Lead" xml:space="preserve">
+    <value>Gestisca i Suoi dati personali e le impostazioni sulla privacy.</value>
+  </data>
+  <data name="Consent_MyData_ExportTitle" xml:space="preserve">
+    <value>Esporta i Suoi dati</value>
+  </data>
+  <data name="Consent_MyData_ExportDescription" xml:space="preserve">
+    <value>Scarichi una copia di tutti i Suoi dati personali in formato JSON. Include:</value>
+  </data>
+  <data name="Consent_MyData_ExportAccountInfo" xml:space="preserve">
+    <value>Informazioni dell'account</value>
+  </data>
+  <data name="Consent_MyData_ExportProfileDetails" xml:space="preserve">
+    <value>Dettagli del profilo</value>
+  </data>
+  <data name="Consent_MyData_ExportContactFields" xml:space="preserve">
+    <value>Campi di contatto</value>
+  </data>
+  <data name="Consent_MyData_ExportApplications" xml:space="preserve">
+    <value>Domande di iscrizione</value>
+  </data>
+  <data name="Consent_MyData_ExportConsents" xml:space="preserve">
+    <value>Registrazioni dei consensi</value>
+  </data>
+  <data name="Consent_MyData_ExportTeams" xml:space="preserve">
+    <value>Appartenenza ai team</value>
+  </data>
+  <data name="Consent_MyData_ExportRoles" xml:space="preserve">
+    <value>Assegnazione dei ruoli</value>
+  </data>
+  <data name="Consent_MyData_DownloadMyData" xml:space="preserve">
+    <value>Scarica i miei dati</value>
+  </data>
+  <data name="Consent_MyData_DeleteTitle" xml:space="preserve">
+    <value>Elimina il Suo account</value>
+  </data>
+  <data name="Consent_MyData_DeleteDescription" xml:space="preserve">
+    <value>Richieda l'eliminazione del Suo account e dei Suoi dati personali.</value>
+  </data>
+  <data name="Consent_MyData_DeleteImmediateRevocation" xml:space="preserve">
+    <value>Le Sue appartenenze ai team, le assegnazioni di ruolo e l'accesso alle risorse condivise (Google Drive, Gruppi) verranno revocati immediatamente</value>
+  </data>
+  <data name="Consent_MyData_DeleteGracePeriod" xml:space="preserve">
+    <value>Un periodo di grazia di 30 giorni Le consente di annullare la richiesta</value>
+  </data>
+  <data name="Consent_MyData_DeleteAnonymized" xml:space="preserve">
+    <value>Dopo 30 giorni, le Sue informazioni personali verranno anonimizzate e l'accesso bloccato permanentemente</value>
+  </data>
+  <data name="Consent_MyData_DeleteRetained" xml:space="preserve">
+    <value>I dati anonimizzati vengono conservati per conformità legale e scopi di audit, ma non possono essere ricondotti alla Sua identità</value>
+  </data>
+  <data name="Consent_MyData_RequestDeletion" xml:space="preserve">
+    <value>Richiedi eliminazione account</value>
+  </data>
+  <data name="Consent_MyData_DeletionPending" xml:space="preserve">
+    <value>Eliminazione in sospeso</value>
+  </data>
+  <data name="Consent_MyData_DeletionScheduledFor" xml:space="preserve">
+    <value>Il Suo account è programmato per l'eliminazione il {0}.</value>
+    <comment>{0} = deletion date</comment>
+  </data>
+  <data name="Consent_MyData_DeletionCancelInfo" xml:space="preserve">
+    <value>Può annullare questa richiesta prima della data di eliminazione, se cambia idea.</value>
+  </data>
+  <data name="Consent_MyData_CancelDeletion" xml:space="preserve">
+    <value>Annulla richiesta di eliminazione</value>
+  </data>
+  <data name="Consent_MyData_DPOContact" xml:space="preserve">
+    <value>Per domande sui Suoi dati o diritti alla privacy, contatti il nostro Responsabile della Protezione dei Dati:</value>
+  </data>
+  <data name="Consent_MyData_Email" xml:space="preserve">
+    <value>Email:</value>
+  </data>
+  <data name="Consent_MyData_ViewFullPolicy" xml:space="preserve">
+    <value>Visualizza informativa completa sulla privacy</value>
+  </data>
+  <data name="Consent_MyData_ConfirmDeletion" xml:space="preserve">
+    <value>Conferma eliminazione account</value>
+  </data>
+  <data name="Consent_MyData_ConfirmDeletionQuestion" xml:space="preserve">
+    <value>È sicuro/a di voler richiedere l'eliminazione del Suo account?</value>
+  </data>
+  <data name="Consent_MyData_YesDeleteMyAccount" xml:space="preserve">
+    <value>Sì, elimina il mio account</value>
+  </data>
+  <data name="Consent_MyData_DeletionAccessRevoked" xml:space="preserve">
+    <value>Le Sue appartenenze ai team e le assegnazioni di ruolo sono state revocate.</value>
+  </data>
+  <data name="Consent_MyData_CancelNoRestore" xml:space="preserve">
+    <value>L'annullamento non ripristinerà le Sue precedenti appartenenze ai team. Dovrà riunirsi ai team.</value>
+  </data>
+  <data name="Consent_AccountStatus_ReasonLabel" xml:space="preserve"><value>Motivo:</value></data>
 </root>

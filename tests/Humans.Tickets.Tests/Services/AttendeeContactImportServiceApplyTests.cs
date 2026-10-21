@@ -443,7 +443,7 @@ internal sealed class ApplyHarness
     public IUserEmailService UserEmails { get; } = Substitute.For<IUserEmailService>();
     public IAccountProvisioningService Provisioning { get; } = Substitute.For<IAccountProvisioningService>();
     public IUserService Users { get; } = Substitute.For<IUserService>();
-    public IUserWrite UsersWrite { get; } = Substitute.For<IUserWrite>();
+    public IEventParticipationManagement UsersWrite { get; } = Substitute.For<IEventParticipationManagement>();
     public ISettingsService Shifts { get; } = Substitute.For<ISettingsService>();
     public ITicketCacheInvalidator TicketCacheInvalidator { get; } = Substitute.For<ITicketCacheInvalidator>();
     public IAuditLogService Audit { get; } = Substitute.For<IAuditLogService>();

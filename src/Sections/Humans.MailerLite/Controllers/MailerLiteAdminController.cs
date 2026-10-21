@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using System.Net;
 using System.Text.Json;
 using Humans.Base.Authorization;

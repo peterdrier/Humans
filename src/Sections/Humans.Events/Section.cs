@@ -10,6 +10,7 @@ using Humans.Events.Filters;
 using Humans.Events.Services;
 using Humans.Events.ViewComponents;
 using Humans.Settings.Contracts;
+using Humans.Users.Contracts;
 using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -75,6 +76,10 @@ public sealed class Section : ISection, IUserPart, ICampPart
         // GDPR fan-out binds to the decorator, not the inner: erasure clears the
         // person's Host name on events that stay in the guide, and those rows are cached.
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CachingEventService>());
+
+        // Account-merge fan-out binds to the decorator too: the fold re-points the submitter
+        // of cached approved events.
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CachingEventService>());
 
         // Surface Events cache diagnostics on /Debug/CacheStats.
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingEventService>().EventCacheStats);

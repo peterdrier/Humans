@@ -4,6 +4,7 @@ using System.Text.Json;
 using AngleSharp.Dom;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
+using Humans.Cantina.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
@@ -31,6 +32,7 @@ internal sealed class ShiftsController(
     ITeamService teamService,
     IAuditLogService auditLogService,
     IUserService userService,
+    ICantinaService cantina,
     IStringLocalizer<ShiftsResource> localizer,
     // The name-gate message is Onboarding's copy, rendered from here (design §15 step 3b).
     IStringLocalizer<OnboardingResource> onboardingLocalizer,
@@ -185,7 +187,7 @@ internal sealed class ShiftsController(
         // so a department coordinator's row for an admin-only/hidden shift still renders
         // instead of falling out of the browse set and 500-ing after the write committed.
         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-        var hasDietaryPreference = !string.IsNullOrEmpty(user.Profile?.DietaryPreference);
+        var hasDietaryPreference = await HasDietaryPreferenceAsync(user.Id, ct);
         var outcome = await signupService.ToggleDayAsync(
             user.Id, shiftId, es.Id, privileged, hasDietaryPreference, ct);
 
@@ -193,7 +195,7 @@ internal sealed class ShiftsController(
         {
             SetInfo(localizer["Shifts_DietaryRequiredBeforeSignup"].Value);
             return RedirectHeader(Url.Action(
-                "DietaryMedical", "Profile", new { returnAction = "signup", shiftId }));
+                "Dietary", "CantinaProfile", new { returnAction = "signup", shiftId }));
         }
 
         var result = outcome.Result!;
@@ -269,8 +271,11 @@ internal sealed class ShiftsController(
     private async Task<bool> ComputeSignupsBlockedByMissingDietaryAsync(UserInfo user, CancellationToken ct = default)
     {
         if (!await shiftMgmt.HasQualifyingCantinaSignupAsync(user.Id, ct)) return false;
-        return string.IsNullOrEmpty(user.Profile?.DietaryPreference);
+        return !await HasDietaryPreferenceAsync(user.Id, ct);
     }
+
+    private async Task<bool> HasDietaryPreferenceAsync(Guid userId, CancellationToken ct) =>
+        (await cantina.GetDietaryProfileAsync(userId, ct))?.HasPreference == true;
 
     [HttpPost("BailRange")]
     [ValidateAntiForgeryToken]

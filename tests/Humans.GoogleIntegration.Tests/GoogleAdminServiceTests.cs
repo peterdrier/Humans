@@ -30,7 +30,7 @@ public class GoogleAdminServiceTests
     private readonly ITeamService _teamService;
     private readonly ITeamWrite _teamServiceWrite;
     private readonly IUserService _userService;
-    private readonly IUserWrite _userServiceWrite;
+    private readonly IGoogleIntegrationService _workspaceIdentities;
     private readonly IUserEmailService _userEmailService;
     private readonly IAuditLogService _auditLogService;
     private readonly GoogleAdminService _service;
@@ -46,7 +46,7 @@ public class GoogleAdminServiceTests
         _teamServiceWrite = Substitute.For<ITeamWrite>();
         var teamResourceService = Substitute.For<ITeamResourceManagement>();
         _userService = Substitute.For<IUserService>();
-        _userServiceWrite = Substitute.For<IUserWrite>();
+        _workspaceIdentities = WorkspaceIdentityFakes.ResolvingThrough(_userService);
         _userEmailService = Substitute.For<IUserEmailService>();
         _auditLogService = Substitute.For<IAuditLogService>();
 
@@ -71,7 +71,7 @@ public class GoogleAdminServiceTests
             _googleSyncService,
             _teamService, _teamServiceWrite,
             teamResourceService,
-            _userService, _userServiceWrite,
+            _userService, _workspaceIdentities,
             _userEmailService,
             _auditLogService,
             _logger);
@@ -822,7 +822,7 @@ public class GoogleAdminServiceTests
     // --- LinkAccountAsync ---
 
     [HumansFact]
-    public async Task LinkAccountAsync_LinksEmailAndStampsIsGoogle()
+    public async Task LinkAccountAsync_LinksEmailAndResyncs()
     {
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
@@ -836,15 +836,10 @@ public class GoogleAdminServiceTests
         result.Success.Should().BeTrue();
         result.Message.Should().Contain("Linked");
 
-        // Issue nobodies-collective/Humans#687: AddVerifiedEmailAsync creates the
-        // row and the UserEmailService orchestrator stamps IsGoogle via
-        // EnsureGoogleInvariantAsync. GoogleEmailStatus is reset explicitly so
-        // reconciliation resumes.
+        // AddVerifiedEmailAsync creates the row; the workspace identity resolves
+        // to the verified @nobodies.team address at read time, with a fresh status.
         await _userEmailService.Received(1)
             .AddVerifiedEmailAsync(userId, "alice@nobodies.team", Arg.Any<CancellationToken>());
-        await _userServiceWrite.Received(1)
-            .TrySetGoogleEmailStatusFromSyncAsync(
-                userId, GoogleEmailStatus.Unknown, Arg.Any<CancellationToken>());
         await _teamServiceWrite.Received(1)
             .EnqueueGoogleResyncForUserTeamsAsync(userId, Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(

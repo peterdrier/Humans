@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using System.Security.Claims;
@@ -31,7 +32,7 @@ public sealed class NotificationsControllerTests
         using var cache = new MemoryCache(new MemoryCacheOptions());
         using var localization = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var meterProvider = new NotificationMeterProvider(
-            Substitute.For<IUserService>(), Substitute.For<IGoogleSyncService>(),
+            Substitute.For<IUserService>(), Substitute.For<IConsentService>(), Substitute.For<IGoogleSyncService>(),
             Substitute.For<ITeamService>(), Substitute.For<ITicketSync>(),
             Substitute.For<IGovernanceService>(), Substitute.For<ICampService>(), cache,
             NullLogger<NotificationMeterProvider>.Instance,
@@ -59,7 +60,7 @@ public sealed class NotificationsControllerTests
         using var cache = new MemoryCache(new MemoryCacheOptions());
         using var localization = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var meterProvider = new NotificationMeterProvider(
-            Substitute.For<IUserService>(), Substitute.For<IGoogleSyncService>(),
+            Substitute.For<IUserService>(), Substitute.For<IConsentService>(), Substitute.For<IGoogleSyncService>(),
             Substitute.For<ITeamService>(), Substitute.For<ITicketSync>(),
             Substitute.For<IGovernanceService>(), Substitute.For<ICampService>(), cache,
             NullLogger<NotificationMeterProvider>.Instance,

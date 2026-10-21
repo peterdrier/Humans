@@ -5,6 +5,7 @@ using Humans.Settings.Contracts;
 using NodaTime;
 using Humans.Shifts.Data;
 using Humans.Shifts.Services.Dtos;
+using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Services;
@@ -14,6 +15,7 @@ internal sealed class VolunteerTrackingService(
     IShiftManagementRepository shiftManagement,
     EventCalendarResolver calendarResolver,
     IUserService userService,
+    ITicketService tickets,
     IShiftViewInvalidator viewInvalidator,
     IClock clock,
     IAuditLogService audit) : IVolunteerTrackingManagement, IUserMerge
@@ -91,8 +93,9 @@ internal sealed class VolunteerTrackingService(
         var todayOffset = OffsetOf(es, today);
 
         var signups = await shiftManagement.GetEligibleBuildSignupsAsync(es.Id, es.BuildStartOffset, ct).ConfigureAwait(false);
-        var users = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
-        var statusMap = BuildParticipationStatusMap(users, es.Year);
+        var living = (await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false)).Select(u => u.Id).ToHashSet();
+        var participations = await tickets.GetAllParticipationsAsync(ct).ConfigureAwait(false);
+        var statusMap = BuildParticipationStatusMap(participations.Where(p => living.Contains(p.UserId)), es.Year);
         var perUserSignups = BuildPerUserSignupMap(signups);
 
         var bsRows = await trackingRepo.GetBuildStatusesForEventAsync(es.Id, ct: ct).ConfigureAwait(false);
@@ -120,12 +123,10 @@ internal sealed class VolunteerTrackingService(
     }
 
     private static Dictionary<Guid, ParticipationStatus> BuildParticipationStatusMap(
-        IEnumerable<UserInfo> users,
+        IEnumerable<EventParticipationInfo> participations,
         int eventYear)
-        => users
-            .SelectMany(
-                user => user.EventParticipations.Where(p => p.Year == eventYear),
-                (user, participation) => (UserId: user.Id, participation.Status))
+        => participations
+            .Where(p => p.Year == eventYear)
             .Where(p => p.Status == ParticipationStatus.NotAttending
                      || p.Status == ParticipationStatus.Ticketed
                      || p.Status == ParticipationStatus.Attended)

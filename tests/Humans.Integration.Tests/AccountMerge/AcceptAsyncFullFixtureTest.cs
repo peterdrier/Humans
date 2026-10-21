@@ -1,3 +1,5 @@
+using Humans.Email.Contracts;
+using Humans.Governance.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
 using Humans.AuditLog.Data;
@@ -8,6 +10,8 @@ using Humans.Budget.Data;
 using Humans.Campaigns.Data;
 using Humans.Feedback.Data;
 using Humans.Governance.Data;
+using Humans.Tickets.Contracts;
+using Humans.Tickets.Data;
 using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.Integration.Tests.Infrastructure;
@@ -96,14 +100,14 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
             b.WithSourceLanguage($"x-{runTag.Substring(0, 4)}", LanguageProficiency.Native);
 
             // CommunicationPreference — source-only category.
-            b.WithSourceCommPref(MessageCategory.VolunteerUpdates, optedOut: true);
+            b.WithSourceCommPref(LegacyMessageCategory.VolunteerUpdates, optedOut: true);
 
             // IdentityUserLogin — source-only key (logins keyed on
             // (provider, key); two users can never share the same key).
             b.WithSourceLogin("Google", sourceLoginKey);
 
             // EventParticipation — source-only year.
-            b.WithSourceEventParticipation(2024, ParticipationStatus.Attended);
+            b.WithSourceEventParticipation(2024, LegacyParticipationStatus.Attended);
 
             // Application — source-only.
             b.WithSourceApplication();
@@ -182,6 +186,7 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
         var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var teamsDb = assertScope.ServiceProvider.GetRequiredService<TeamsDbContext>();
         var governanceDb = assertScope.ServiceProvider.GetRequiredService<GovernanceDbContext>();
+        var ticketsDb = assertScope.ServiceProvider.GetRequiredService<TicketsDbContext>();
         var campaignsDb = assertScope.ServiceProvider.GetRequiredService<CampaignsDbContext>();
         var feedbackDb = assertScope.ServiceProvider.GetRequiredService<FeedbackDbContext>();
         var authDb = assertScope.ServiceProvider.GetRequiredService<AuthDbContext>();
@@ -189,6 +194,7 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
         var budgetDb = assertScope.ServiceProvider.GetRequiredService<BudgetDbContext>();
         var legalDb = assertScope.ServiceProvider.GetRequiredService<LegalDbContext>();
         var auditLogDb = assertScope.ServiceProvider.GetRequiredService<AuditLogDbContext>();
+        var emailDb = assertScope.ServiceProvider.GetRequiredService<Humans.Email.Data.EmailDbContext>();
 
         // ----------------------------------------------------------------
         // Source User: tombstoned with MergedToUserId, MergedAt, lockout.
@@ -218,8 +224,8 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
             .Should().Be(0, "all logins re-FK to target");
         (await db.CommunicationPreferences.AsNoTracking().CountAsync(cp => cp.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0);
-        (await db.EventParticipations.AsNoTracking().CountAsync(ep => ep.UserId == sourceId, TestContext.Current.CancellationToken))
-            .Should().Be(0);
+        (await ticketsDb.EventParticipations.AsNoTracking().CountAsync(ep => ep.UserId == sourceId && ep.Status != null, TestContext.Current.CancellationToken))
+            .Should().Be(0, "Tickets clears the source's participations; the legacy Users rows stay frozen");
         (await governanceDb.Applications.AsNoTracking().CountAsync(a => a.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0);
         (await authDb.RoleAssignments.AsNoTracking().CountAsync(ra =>
@@ -306,15 +312,15 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
                     && pl.LanguageCode == $"x-{runTag.Substring(0, 4)}", TestContext.Current.CancellationToken))
             .Should().BeTrue("source-only language re-FK'd to target profile");
 
-        (await db.CommunicationPreferences.AsNoTracking()
+        (await emailDb.CommunicationPreferences.AsNoTracking()
                 .AnyAsync(cp => cp.UserId == targetId
-                    && cp.Category == MessageCategory.VolunteerUpdates && cp.OptedOut, TestContext.Current.CancellationToken))
-            .Should().BeTrue("source CommPref re-FK'd to target");
+                    && cp.Category == MessageCategory.VolunteerUpdates && cp.OptedOut == true, TestContext.Current.CancellationToken))
+            .Should().BeTrue("source legacy CommPref folded into target's Email row");
 
-        (await db.EventParticipations.AsNoTracking()
+        (await ticketsDb.EventParticipations.AsNoTracking()
                 .AnyAsync(ep => ep.UserId == targetId && ep.Year == 2024
                     && ep.Status == ParticipationStatus.Attended, TestContext.Current.CancellationToken))
-            .Should().BeTrue("source event participation re-FK'd to target");
+            .Should().BeTrue("source event participation folded into target by Tickets");
 
         (await governanceDb.Applications.AsNoTracking()
                 .CountAsync(a => a.UserId == targetId

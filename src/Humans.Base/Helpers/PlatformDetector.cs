@@ -19,12 +19,9 @@ public static class PlatformDetector
 
     public static PlatformInfo Detect(string url)
     {
-        if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        var host = GetNormalizedHost(url);
+        if (host is null)
             return new PlatformInfo(string.Empty, "fa-solid fa-link");
-
-        var host = uri.Host.ToLowerInvariant();
-        if (host.StartsWith("www.", StringComparison.Ordinal))
-            host = host[4..];
 
         if (KnownPlatforms.TryGetValue(host, out var platform))
             return platform;
@@ -32,15 +29,15 @@ public static class PlatformDetector
         return new PlatformInfo(host, "fa-solid fa-link");
     }
 
-    public static bool IsSocialMedia(string url)
+    public static bool IsSocialMedia(string url) =>
+        GetNormalizedHost(url) is { } host && KnownPlatforms.ContainsKey(host);
+
+    private static string? GetNormalizedHost(string url)
     {
         if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri))
-            return false;
+            return null;
 
         var host = uri.Host.ToLowerInvariant();
-        if (host.StartsWith("www.", StringComparison.Ordinal))
-            host = host[4..];
-
-        return KnownPlatforms.ContainsKey(host);
+        return host.StartsWith("www.", StringComparison.Ordinal) ? host[4..] : host;
     }
 }

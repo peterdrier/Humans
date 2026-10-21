@@ -1,3 +1,4 @@
+using Humans.Governance.Contracts;
 using Humans.Tickets.Models;
 using Humans.Tickets.Controllers;
 using Microsoft.AspNetCore.Http;
@@ -37,6 +38,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     private readonly ISettingsService _shiftManagementService = Substitute.For<ISettingsService>();
     private readonly ITicketCacheInvalidator _cacheInvalidator = Substitute.For<ITicketCacheInvalidator>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
+    private readonly IEventParticipationManagement _participations = Substitute.For<IEventParticipationManagement>();
     private readonly TicketQueryService _service;
 
     public TicketQueryServiceTests()
@@ -54,17 +56,18 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             _userService,
             _userEmailService,
             _teamService,
+            Substitute.For<IGovernanceService>(),
             _shiftManagementService,
             _cacheInvalidator,
             _auditLog,
-            SystemClock.Instance);
+            SystemClock.Instance,
+            _participations);
 
         // Defaults for the Volunteers team lookup — tests that care override them.
         _teamService.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(VolunteersTeam([]));
 
-        _userService.GetAllParticipationsForYearAsync(
-                Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _participations.GetAllParticipationsAsync(Arg.Any<CancellationToken>())
             .Returns([]);
 
         StubUserInfos(_userService);
@@ -181,7 +184,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             default: throw new ArgumentOutOfRangeException(nameof(boundary));
         }
         var service = new TicketQueryService(repository, _transferRepo, _budgetService, _campaignService,
-            _userService, _userEmailService, _teamService, _shiftManagementService, _cacheInvalidator, _auditLog, Clock);
+            _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(), _shiftManagementService, _cacheInvalidator, _auditLog, Clock, _participations);
 
         if (cancel)
         {
@@ -1353,7 +1356,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(
                 allUsers.Select(u => u.ToUserInfo(
                     profile: UserFixtures.Profile(
-                        membershipTier: MembershipTier.Volunteer))).ToList()));
+                        membershipTier: LegacyMembershipTier.Volunteer))).ToList()));
 
         _teamService.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(VolunteersTeam(userIds));

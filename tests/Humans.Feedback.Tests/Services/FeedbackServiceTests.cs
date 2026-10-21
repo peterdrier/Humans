@@ -64,6 +64,7 @@ public sealed class FeedbackServiceTests
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
     private readonly IFeedbackRepository _repository;
     private readonly FeedbackServiceImpl _service;
+    private readonly FeedbackReplyDelivery _delivery;
 
     public FeedbackServiceTests()
     {
@@ -105,9 +106,11 @@ public sealed class FeedbackServiceTests
 
         _repository = new FeedbackRepository(FeedbackDbFactory);
 
+        _delivery = new FeedbackReplyDelivery(
+            _repository, userService, userEmailService, _emailService, _emailMessages,
+            _notificationService, _auditLog, NullLogger<FeedbackReplyDelivery>.Instance);
         _service = new FeedbackServiceImpl(
-            _repository, userService, userEmailService, teamService,
-            _emailService, _emailMessages, _notificationService,
+            _repository, userService, teamService, _delivery,
             _auditLog, _fileStorage, _cache, Clock,
             NullLogger<FeedbackServiceImpl>.Instance);
     }
@@ -152,8 +155,7 @@ public sealed class FeedbackServiceTests
             var brokenRepo = Substitute.For<IFeedbackRepository>();
             brokenRepo.FindForMutationAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
                 .ThrowsAsync(new InvalidOperationException("Provider not found; database unavailable"));
-            service = new FeedbackServiceImpl(brokenRepo, users, Substitute.For<IUserEmailService>(), teams,
-                _emailService, _emailMessages, _notificationService, _auditLog,
+            service = new FeedbackServiceImpl(brokenRepo, users, teams, _delivery, _auditLog,
                 _fileStorage, _cache, Clock,
                 NullLogger<FeedbackServiceImpl>.Instance);
         }
@@ -385,8 +387,8 @@ public sealed class FeedbackServiceTests
         (await FeedbackDb.FeedbackMessages.AsNoTracking().SingleAsync(ct)).EmailEnqueuePending.Should().BeTrue();
         (await FeedbackDb.FeedbackReports.AsNoTracking().SingleAsync(ct)).LastAdminMessageAt.Should().NotBeNull();
 
-        await _service.ExecuteAsync(ct);
-        await _service.ExecuteAsync(ct);
+        await _delivery.ExecuteAsync(ct);
+        await _delivery.ExecuteAsync(ct);
         var reply = await FeedbackDb.FeedbackMessages.AsNoTracking().SingleAsync(ct);
         reply.EmailEnqueuePending.Should().BeFalse();
         await _emailService.Received(2).SendAsync(
@@ -407,8 +409,8 @@ public sealed class FeedbackServiceTests
         result.Succeeded.Should().BeTrue();
         result.Message!.EmailEnqueuePending.Should().BeTrue();
         _failure.FailModified = false;
-        await _service.ExecuteAsync(ct);
-        await _service.ExecuteAsync(ct);
+        await _delivery.ExecuteAsync(ct);
+        await _delivery.ExecuteAsync(ct);
         var reply = await FeedbackDb.FeedbackMessages.AsNoTracking().SingleAsync(ct);
         reply.EmailEnqueuePending.Should().BeFalse();
         await _emailService.Received(2).SendAsync(
@@ -432,7 +434,7 @@ public sealed class FeedbackServiceTests
             CreatedAt = Clock.GetCurrentInstant()
         });
         await FeedbackDb.SaveChangesAsync(ct);
-        await _service.ExecuteAsync(ct);
+        await _delivery.ExecuteAsync(ct);
         await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
     }
 
@@ -448,7 +450,7 @@ public sealed class FeedbackServiceTests
         var report = await SeedReportAsync(userId, "Test", "/test");
         var result = await _service.PostMessageAsync(report.Id, Guid.NewGuid(), "reply", ct);
         result.Message!.EmailEnqueuePending.Should().BeFalse();
-        await _service.ExecuteAsync(ct);
+        await _delivery.ExecuteAsync(ct);
         await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
         (await FeedbackDb.FeedbackMessages.AsNoTracking().SingleAsync(ct)).EmailEnqueuePending.Should().BeFalse();
         _notificationService.ReceivedCalls().Should().BeEmpty();
@@ -470,7 +472,7 @@ public sealed class FeedbackServiceTests
         });
         var posted = _service.PostMessageAsync(report.Id, Guid.NewGuid(), "reply", ct);
         await entered.Task.WaitAsync(ct);
-        var retry = _service.ExecuteAsync(ct);
+        var retry = _delivery.ExecuteAsync(ct);
         retry.IsCompleted.Should().BeFalse();
         release.SetResult();
         await Task.WhenAll(posted, retry);
@@ -565,6 +567,26 @@ public sealed class FeedbackServiceTests
     }
 
     [HumansTheory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task SetGitHubIssueNumberAsync_RejectsNonpositiveNumbersWithoutChangingLink(int number)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var report = await CreateTestReport();
+        await _service.SetGitHubIssueNumberAsync(report.Id, 123, Guid.NewGuid(), ct);
+        _auditLog.ClearReceivedCalls();
+
+        var result = await _service.SetGitHubIssueNumberAsync(report.Id, number, Guid.NewGuid(), ct);
+
+        result.Found.Should().BeTrue();
+        result.Succeeded.Should().BeFalse();
+        result.Rejection.Should().Contain("positive");
+        (await FeedbackDb.FeedbackReports.AsNoTracking().SingleAsync(r => r.Id == report.Id, ct))
+            .GitHubIssueNumber.Should().Be(123);
+        _auditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData("Browser/1.0", "Roles: Volunteer", false)]
     [InlineData(null, null, false)]
     [InlineData("Browser/1.0", "Roles: Volunteer", true)]
@@ -577,7 +599,7 @@ public sealed class FeedbackServiceTests
         _people[userId] = info;
         _people[archivedId] = info;
         var report = await SeedReportAsync(userId, "Historical bug", "/profile");
-        await SeedReportAsync(Guid.NewGuid(), "Someone else's report", "/other");
+        var otherReport = await SeedReportAsync(Guid.NewGuid(), "Someone else's report", "/other");
         await FeedbackDb.FeedbackMessages.AddRangeAsync(
             [new FeedbackMessage
             {
@@ -588,6 +610,16 @@ public sealed class FeedbackServiceTests
             {
                 Id = Guid.NewGuid(), FeedbackReportId = report.Id, SenderUserId = Guid.NewGuid(),
                 Content = "Staff response", CreatedAt = Clock.GetCurrentInstant()
+            },
+            new FeedbackMessage
+            {
+                Id = Guid.NewGuid(), FeedbackReportId = otherReport.Id, SenderUserId = userId,
+                Content = "My reply elsewhere", EmailEnqueuePending = true, CreatedAt = Clock.GetCurrentInstant()
+            },
+            new FeedbackMessage
+            {
+                Id = Guid.NewGuid(), FeedbackReportId = otherReport.Id, SenderUserId = otherReport.UserId,
+                Content = "Other person's reply", CreatedAt = Clock.GetCurrentInstant()
             }], Xunit.TestContext.Current.CancellationToken);
         report.UserAgent = userAgent;
         report.AdditionalContext = context;
@@ -606,6 +638,17 @@ public sealed class FeedbackServiceTests
             m => m.GetProperty("Content").GetString()!, m => m.GetProperty("IsFromUser").GetBoolean(), StringComparer.Ordinal);
         messages["Member response"].Should().BeTrue();
         messages["Staff response"].Should().BeFalse();
+
+        var replies = slices.Single(s => string.Equals(s.SectionName, "FeedbackReplies", StringComparison.Ordinal));
+        using var repliesJson = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(replies.Data));
+        var reply = repliesJson.RootElement.EnumerateArray().Should().ContainSingle().Which;
+        reply.GetProperty("FeedbackReportId").GetGuid().Should().Be(otherReport.Id);
+        reply.GetProperty("Content").GetString().Should().Be("My reply elsewhere");
+        reply.GetProperty("EmailEnqueuePending").GetBoolean().Should().BeTrue();
+        reply.GetProperty("CreatedAt").GetString().Should().NotBeNullOrEmpty();
+        reply.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo(
+            "FeedbackReportId", "Content", "EmailEnqueuePending", "CreatedAt");
+        _service.ErasureDeclaration.Should().ContainKey("FeedbackReplies");
     }
 
     [HumansFact]

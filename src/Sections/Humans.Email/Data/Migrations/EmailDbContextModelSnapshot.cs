@@ -23,6 +23,45 @@ namespace Humans.Email.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Humans.Email.Domain.CommunicationPreference", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<bool>("InboxEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool?>("OptedOut")
+                        .HasColumnType("boolean");
+
+                    b.Property<Instant?>("SubscribedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdateSource")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Category")
+                        .IsUnique();
+
+                    b.ToTable("email_communication_preferences", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Email.Domain.EmailDailySendCount", b =>
                 {
                     b.Property<LocalDate>("Date")

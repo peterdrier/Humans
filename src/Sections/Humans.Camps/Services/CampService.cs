@@ -12,6 +12,7 @@ using Humans.Notifications.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Base.Enums;
 using NodaTime;
+using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 
 using Humans.Teams.Contracts;
@@ -39,6 +40,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
     private readonly IEarlyEntryInvalidator _earlyEntryInvalidator;
     private readonly ICampInfoInvalidator _campInfoInvalidator;
     private readonly IUserService _userService;
+    private readonly ITicketService _tickets;
     private readonly ISettingsService _settingsService;
     private readonly IClock _clock;
     private readonly ILogger<CampService> _logger;
@@ -63,6 +65,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
         IEarlyEntryInvalidator earlyEntryInvalidator,
         ICampInfoInvalidator campInfoInvalidator,
         IUserService userService,
+        ITicketService tickets,
         ISettingsService settingsService,
         IClock clock,
         ILogger<CampService> logger)
@@ -78,6 +81,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
         _earlyEntryInvalidator = earlyEntryInvalidator;
         _campInfoInvalidator = campInfoInvalidator;
         _userService = userService;
+        _tickets = tickets;
         _settingsService = settingsService;
         _clock = clock;
         _logger = logger;
@@ -1779,15 +1783,12 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
 
     /// <summary>
     /// True when the user has an Attended participation row for the season's
-    /// year (gate check-in via ticket sync). Cross-section read off the cached
-    /// <see cref="UserInfo"/> per the I{Section}Service read pattern.
+    /// year (gate check-in via ticket sync). Cross-section read through
+    /// <see cref="ITicketService"/> per the I{Section}Service read pattern.
     /// </summary>
-    private async ValueTask<bool> HasEnteredEventAsync(Guid userId, int year, CancellationToken ct)
-    {
-        var info = await _userService.GetUserInfoAsync(userId, ct);
-        return info?.EventParticipations.Any(p =>
-            p.Year == year && p.Status == ParticipationStatus.Attended) ?? false;
-    }
+    private async ValueTask<bool> HasEnteredEventAsync(Guid userId, int year, CancellationToken ct) =>
+        (await _tickets.GetParticipationsAsync(userId, ct)).Any(p =>
+            p.Year == year && p.Status == ParticipationStatus.Attended);
 
     // ICampLeadDirectory — see Humans.Camps.Contracts.ICampLeadDirectory.
 
