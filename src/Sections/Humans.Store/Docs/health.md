@@ -197,4 +197,4 @@ never in live code.
 |---|---|---|---|
 | 1 | 2026-08-25 | first doctor run | peterdrier/Humans#1520 |
 | 2 | 2026-09-27 | admin pages take the catalog year from the service; docs stop describing unbuilt payment paths as live | peterdrier/Humans#1829 |
-| 3 | 2026-10-21 | docs and comments tell the true authorization story; the order page decides its money grants in one place | pending |
+| 3 | 2026-10-21 | docs and comments tell the true authorization story; the order page decides its money grants in one place | peterdrier/Humans#2057 |
