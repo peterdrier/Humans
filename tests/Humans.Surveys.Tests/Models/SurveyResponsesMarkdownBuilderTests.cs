@@ -1,7 +1,4 @@
-using Humans.Surveys.Domain;
 using AwesomeAssertions;
-using Humans.Surveys.Services;
-using Humans.Surveys.Models;
 using NodaTime;
 using Humans.Surveys.Contracts;
 

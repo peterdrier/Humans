@@ -255,7 +255,7 @@ public class TicketingBudgetServiceTests
 
         result.Should().Be(0);
         await _budgetService.DidNotReceiveWithAnyArgs().SyncTicketingActualsAsync(
-            default, default!, default, default);
+            default, default!, default);
     }
 
     [HumansFact]
@@ -289,7 +289,7 @@ public class TicketingBudgetServiceTests
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         await _budgetService.DidNotReceiveWithAnyArgs().SyncTicketingActualsAsync(
-            default, default!, default, default);
+            default, default!, default);
     }
 
     [HumansFact]

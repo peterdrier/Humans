@@ -313,7 +313,7 @@ public class StripeServiceContractTests
         var parsed = svc.ParseStoreCheckoutEvent(payload, Sign(payload, TestWebhookSecret));
 
         parsed.Should().NotBeNull();
-        parsed!.EventId.Should().Be("evt_test_x");
+        parsed.EventId.Should().Be("evt_test_x");
         parsed.Session.Should().NotBeNull();
         parsed.Session!.SessionId.Should().Be("cs_test_x");
         parsed.Session.OrderId.Should().Be(orderId);

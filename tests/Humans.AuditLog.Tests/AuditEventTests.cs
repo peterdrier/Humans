@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Enums;
 using NodaTime;
 
 namespace Humans.AuditLog.Tests;

@@ -2,7 +2,6 @@ using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Humans.Feedback.Domain;
 using Humans.Feedback.Models;
 using Humans.Feedback.Services;
 using Humans.Feedback.Contracts;

@@ -307,7 +307,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         var fetchedDocs = new List<string>();
         var toolCallCount = 0;
         AgentIssueProposal? issueProposal = null;
-        AgentTurnFinalizer? finalFinalizer = null;
+        AgentTurnFinalizer? finalFinalizer;
         // Each loop iteration is a separate provider request with its own usage.
         // Accumulate across all of them — recording only the last finalizer would
         // drop tool-loop (and cap-hit synthesis) requests from admin spend and

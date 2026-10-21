@@ -2,7 +2,6 @@ using Humans.Base.Caching;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
-using Humans.Finance;
 using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Finance.Data;
@@ -110,7 +109,7 @@ public class SepaBankBookingTests
         await _client.Received(25).PayPurchaseDocumentAsync(
             Arg.Any<string>(), 10m, "treasury-1", LineDate, Tag, Arg.Any<CancellationToken>());
         await _client.DidNotReceiveWithAnyArgs().PostLedgerEntryAsync(
-            default, default, default, default, default!, default);
+            default, default, default, default, default!);
         await _repo.Received(1).SaveSepaTransferBookingAsync(
             TransferId, FixedNow, Arg.Any<Guid?>(), MovementId, Arg.Any<Instant?>(),
             Arg.Is<string?>(r => r!.Split(',', StringSplitOptions.None).Length == 25
@@ -133,7 +132,7 @@ public class SepaBankBookingTests
 
         first.Succeeded.Should().BeFalse();
         await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
-            default, default, default, default!, default, default, default);
+            default, default, default, default!, default, default);
         await _audit.Received(1).LogAsync(
             AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
             Arg.Is<string>(d => d.Contains("PARTIAL", StringComparison.Ordinal)
@@ -163,7 +162,7 @@ public class SepaBankBookingTests
             Arg.Any<LocalDate>(), Arg.Any<int>(), Arg.Any<int>(), 30m, Arg.Any<string>(),
             Arg.Any<CancellationToken>());
         await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
-            default, default, default, default!, default, default, default);
+            default, default, default, default!, default, default);
     }
 
     [HumansFact]
@@ -172,7 +171,7 @@ public class SepaBankBookingTests
         SeedRows(Row(TransferId, _userId, paymentRefs: "pay-d1,unconfirmed:d2"));
         SeedContacts(_userId);
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         var row = rows.Should().ContainSingle().Subject;
         row.CanBook.Should().BeFalse();
@@ -192,9 +191,9 @@ public class SepaBankBookingTests
 
         result.Succeeded.Should().BeTrue();
         await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
-            default!, default, default, default, default!, default);
+            default!, default, default, default, default!);
         await _client.DidNotReceiveWithAnyArgs().PostLedgerEntryAsync(
-            default, default, default, default, default!, default);
+            default, default, default, default, default!);
         await _repo.Received(1).SaveSepaTransferBookingAsync(
             TransferId, FixedNow, Arg.Any<Guid?>(), MovementId, Arg.Any<Instant?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
@@ -297,7 +296,7 @@ public class SepaBankBookingTests
         // €20 of the line went to the journal entry, which the reconcile could not name: Holded
         // reads the line `pending` on the re-read, so the row stays reconcile pending and says why.
         await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(
-            default, default, default);
+            default, default);
         await _audit.Received(1).LogAsync(
             AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
             Arg.Is<string>(d => d.Contains("RECONCILE PENDING", StringComparison.Ordinal)
@@ -362,7 +361,7 @@ public class SepaBankBookingTests
         _client.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
-            .Returns(_ => (IReadOnlyList<HoldedBankMovementDto>)
+            .Returns(_ =>
                 [Movement(amount: -1200m, status: reads++ == 0 ? "pending" : statusAfter)]);
         var sent = new List<int>();
         _client.ReconcileBankMovementAsync(
@@ -395,7 +394,7 @@ public class SepaBankBookingTests
         _client.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
-            .Returns(_ => (IReadOnlyList<HoldedBankMovementDto>)
+            .Returns(_ =>
                 [Movement(amount: -1100m, status: reads++ == 0 ? "pending" : "partial")]);
         var sent = new List<int>();
         _client.ReconcileBankMovementAsync(
@@ -410,7 +409,7 @@ public class SepaBankBookingTests
 
         result.Succeeded.Should().BeTrue();
         sent.Should().Equal(110, 50, 50, 10);
-        await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(default, default, default);
+        await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(default, default);
         await _repo.Received(1).SaveSepaTransferBookingAsync(
             TransferId, FixedNow, Arg.Any<Guid?>(), MovementId, null,
             Arg.Is<string?>(r => r!.Split(',', StringSplitOptions.None).Length == 110),
@@ -431,10 +430,10 @@ public class SepaBankBookingTests
         SeedRows(Row(TransferId, _userId, amount: 1100m, bookedAt: FixedNow, movementId: MovementId, paymentRefs: refs));
         SeedMovements(Movement(amount: -1100m, status: "partial"));
 
-        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
-        await _client.DidNotReceiveWithAnyArgs().ReconcileBankMovementAsync(default!, default!, default!, default);
-        await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(default, default, default);
+        await _client.DidNotReceiveWithAnyArgs().ReconcileBankMovementAsync(default!, default!, default!);
+        await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(default, default);
     }
 
     [HumansFact]
@@ -451,7 +450,7 @@ public class SepaBankBookingTests
         _client.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
-            .Returns(_ => (IReadOnlyList<HoldedBankMovementDto>)
+            .Returns(_ =>
                 [Movement(amount: -600m, status: reads++ == 0 ? "pending" : "partial")]);
         _client.ReconcileBankMovementAsync(
                 "treasury-1", MovementId, Arg.Any<IReadOnlyList<HoldedReconcileDocumentRef>>(),
@@ -464,7 +463,7 @@ public class SepaBankBookingTests
         var result = await MakeService(logger).BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
 
         result.Succeeded.Should().BeTrue();
-        await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(default, default, default);
+        await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(default, default);
         logger.Entries.Should().Contain(e =>
             e.Level == LogLevel.Warning
             && e.Message.Contains(MovementId, StringComparison.Ordinal)
@@ -485,7 +484,7 @@ public class SepaBankBookingTests
         _client.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
-            .Returns(_ => (IReadOnlyList<HoldedBankMovementDto>)
+            .Returns(_ =>
                 [Movement(amount: -700m, status: reads++ == 0 ? "pending" : "reconciled")]);
         var sent = new List<int>();
         _client.ReconcileBankMovementAsync(
@@ -495,7 +494,7 @@ public class SepaBankBookingTests
                 ? Task.FromException(new HoldedPermanentException(400, "too many", "Holded refused"))
                 : Task.CompletedTask);
 
-        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
         sent.Should().Equal(70, 50, 20);
         await _repo.Received(1).MarkSepaTransferReconciledAsync(TransferId, FixedNow, Arg.Any<CancellationToken>());
@@ -507,7 +506,7 @@ public class SepaBankBookingTests
         SeedRows(Row(TransferId, _userId, bookedAt: FixedNow, movementId: MovementId, paymentRefs: "pay-1,entry:20.00"));
         SeedMovements(Movement());
 
-        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
         await _client.Received(1).ReconcileBankMovementAsync(
             "treasury-1", MovementId,
@@ -537,7 +536,7 @@ public class SepaBankBookingTests
         _client.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
-            .Returns(_ => (IReadOnlyList<HoldedBankMovementDto>)
+            .Returns(_ =>
                 [Movement(status: reads++ == 0 ? "pending" : "reconciled")]);
 
         var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
@@ -562,7 +561,7 @@ public class SepaBankBookingTests
         _client.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
-            .Returns(_ => (IReadOnlyList<HoldedBankMovementDto>)
+            .Returns(_ =>
                 [Movement(status: reads++ == 0 ? "pending" : statusAfter)]);
 
         var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
@@ -594,9 +593,9 @@ public class SepaBankBookingTests
 
         result.Succeeded.Should().BeTrue();
         await _client.DidNotReceiveWithAnyArgs().ReconcileBankMovementAsync(
-            default!, default!, default!, default);
+            default!, default!, default!);
         await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(
-            default, default, default);
+            default, default);
     }
 
     [HumansFact]
@@ -615,7 +614,7 @@ public class SepaBankBookingTests
         await _repo.Received(1).SaveSepaTransferBookingAsync(
             TransferId, FixedNow, Arg.Any<Guid?>(), MovementId, null, Arg.Any<string?>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(
-            default, default, default);
+            default, default);
         await _audit.Received(1).LogAsync(
             AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
             Arg.Is<string>(d => d.Contains("RECONCILE PENDING", StringComparison.Ordinal)),
@@ -642,7 +641,7 @@ public class SepaBankBookingTests
             "newest", Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<string>(),
             Arg.Any<CancellationToken>());
         await _client.DidNotReceiveWithAnyArgs().PostLedgerEntryAsync(
-            default, default, default, default, default!, default);
+            default, default, default, default, default!);
     }
 
     [HumansFact]
@@ -655,7 +654,7 @@ public class SepaBankBookingTests
 
         result.Succeeded.Should().BeTrue();
         await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
-            default!, default, default, default, default!, default);
+            default!, default, default, default, default!);
         await _client.Received(1).PostLedgerEntryAsync(
             LineDate, Account, 57200001, 30m, Tag, Arg.Any<CancellationToken>());
     }
@@ -705,7 +704,7 @@ public class SepaBankBookingTests
         SeedRows(Row(TransferId, _userId, amount: 99m));
         SeedTransfer(99m);
 
-        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
         await AssertNothingPosted();
     }
@@ -716,7 +715,7 @@ public class SepaBankBookingTests
         var other = Guid.NewGuid();
         SeedRows(Row(TransferId, _userId), Row(other, Guid.NewGuid()));
 
-        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
         await AssertNothingPosted();
     }
@@ -726,7 +725,7 @@ public class SepaBankBookingTests
     {
         SeedMovements(Movement(description: "TRANSF 40000099 - NCA - OTRO"));
 
-        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
         await AssertNothingPosted();
     }
@@ -790,7 +789,7 @@ public class SepaBankBookingTests
             Movement(id: "mov-2", amount: -45m, description: "TRANSF 40000007 - NCA - BO"));
         SeedOwed(30m, (40000007, 45m));
 
-        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
         await _repo.DidNotReceive().SaveSepaTransferBookingAsync(
             TransferId, Arg.Any<Instant>(), Arg.Any<Guid?>(), Arg.Any<string>(), Arg.Any<Instant?>(), Arg.Any<string?>(),
@@ -805,7 +804,7 @@ public class SepaBankBookingTests
         SeedRows(Row(TransferId, _userId, bookedAt: FixedNow, movementId: MovementId));
         SeedMovements(Movement(status: "reconciled"));
 
-        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
         await _repo.Received(1).MarkSepaTransferReconciledAsync(
             TransferId, FixedNow, Arg.Any<CancellationToken>());
@@ -830,10 +829,10 @@ public class SepaBankBookingTests
         _client.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
-            .Returns(_ => (IReadOnlyList<HoldedBankMovementDto>)
+            .Returns(_ =>
                 [Movement(status: reads++ == 0 ? "pending" : statusAfter)]);
 
-        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
         await _client.Received(1).ReconcileBankMovementAsync(
             "treasury-1", MovementId,
@@ -862,10 +861,10 @@ public class SepaBankBookingTests
         _client.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
-            .Returns(_ => (IReadOnlyList<HoldedBankMovementDto>)
+            .Returns(_ =>
                 [Movement(amount: -60m, status: reads++ == 0 ? "pending" : "reconciled")]);
 
-        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
         await _client.Received(1).ReconcileBankMovementAsync(
             "treasury-1", MovementId,
@@ -890,11 +889,11 @@ public class SepaBankBookingTests
             Row(Guid.NewGuid(), Guid.NewGuid(), account: Account + 1, fileId: fileId));
         SeedMovements(Movement(amount: -60m));
 
-        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
         await _client.DidNotReceiveWithAnyArgs().ReconcileBankMovementAsync(
-            default!, default!, default!, default);
-        await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(default, default, default);
+            default!, default!, default!);
+        await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(default, default);
     }
 
     [HumansTheory]
@@ -908,11 +907,11 @@ public class SepaBankBookingTests
         SeedRows(Row(TransferId, _userId, bookedAt: FixedNow, movementId: MovementId, paymentRefs: paymentRefs));
         SeedMovements(Movement(status: status));
 
-        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
         await _client.DidNotReceiveWithAnyArgs().ReconcileBankMovementAsync(
-            default!, default!, default!, default);
-        await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(default, default, default);
+            default!, default!, default!);
+        await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(default, default);
     }
 
     [HumansFact]
@@ -931,10 +930,10 @@ public class SepaBankBookingTests
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(ci => ci.ArgAt<LocalDate>(1) <= lineDate
-                ? (IReadOnlyList<HoldedBankMovementDto>)[Movement(status: "reconciled", date: lineDate)]
+                ? [Movement(status: "reconciled", date: lineDate)]
                 : []);
 
-        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
         await _repo.Received(1).MarkSepaTransferReconciledAsync(
             TransferId, FixedNow, Arg.Any<CancellationToken>());
@@ -956,10 +955,10 @@ public class SepaBankBookingTests
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(ci => ci.ArgAt<LocalDate>(1) <= lineDate
-                ? (IReadOnlyList<HoldedBankMovementDto>)[Movement(status: "reconciled", date: lineDate)]
+                ? [Movement(status: "reconciled", date: lineDate)]
                 : []);
 
-        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
         await _repo.Received(1).MarkSepaTransferReconciledAsync(
             TransferId, FixedNow, Arg.Any<CancellationToken>());
@@ -971,10 +970,10 @@ public class SepaBankBookingTests
         SeedRows(Row(TransferId, _userId, bookedAt: FixedNow, movementId: MovementId,
             reconciledAt: FixedNow));
 
-        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
         await _client.DidNotReceiveWithAnyArgs().ListBankMovementsAsync(
-            default!, default, default, default);
+            default!, default, default);
         await AssertNothingPosted();
     }
 
@@ -999,7 +998,7 @@ public class SepaBankBookingTests
     private async Task RunSweepAsync(int times)
     {
         for (var i = 0; i < times; i++)
-            await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+            await MakeService().RunAsync(TestContext.Current.CancellationToken);
     }
 
     [HumansFact]
@@ -1116,18 +1115,18 @@ public class SepaBankBookingTests
         var service = MakeService();
         Task<SepaBookingResult>? second = null;
         var accounts = OwedAccounts(30m);
-        _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>()).Returns(_ =>
+        _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>()).Returns(async _ =>
         {
             if (second is null)
             {
                 // Mid-flight: the first booking has read "not booked" and has not stamped anything.
                 second = Task.Run(() => MakeService().BookSepaTransferAsync(
                     TransferId, MovementId, Guid.NewGuid()));
-                second.Wait(TimeSpan.FromMilliseconds(250));
+                await Task.WhenAny(second, Task.Delay(TimeSpan.FromMilliseconds(250)));
                 second.IsCompleted.Should().BeFalse("the second booking must wait for the first");
             }
 
-            return accounts;
+            return (IReadOnlyList<HoldedAccountDto>)accounts;
         });
 
         var first = await service.BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
@@ -1214,7 +1213,7 @@ public class SepaBankBookingTests
 
         result.Succeeded.Should().BeTrue();
         await _client.DidNotReceiveWithAnyArgs().PostLedgerEntryAsync(
-            default, default, default, default, default!, default);
+            default, default, default, default, default!);
     }
 
     [HumansFact]
@@ -1246,7 +1245,7 @@ public class SepaBankBookingTests
     {
         SeedContacts(_userId);
 
-        var (rows, _, unmatched, error) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, error) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         error.Should().BeNull();
         unmatched.Should().BeEmpty();
@@ -1266,7 +1265,7 @@ public class SepaBankBookingTests
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>())
             .Returns(new List<HoldedCreditorContact>());
 
-        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.CandidateBankMovementId.Should().BeNull();
         unmatched.Should().ContainSingle().Which.Reason.Should()
@@ -1279,7 +1278,7 @@ public class SepaBankBookingTests
         SeedContacts(_userId);
         SeedMovements(Movement(amount: -12.5m, description: "DOMICILIACION ENDESA"));
 
-        var (_, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (_, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         var line = unmatched.Should().ContainSingle().Subject;
         line.ParsedAccountNum.Should().BeNull();
@@ -1297,7 +1296,7 @@ public class SepaBankBookingTests
         SeedContacts(_userId);
         SeedMovements(Movement(description: Textless));
 
-        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         unmatched.Should().BeEmpty();
         var row = rows.Should().ContainSingle().Subject;
@@ -1311,7 +1310,7 @@ public class SepaBankBookingTests
     {
         SeedContacts(_userId);
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.CandidateMatchedByText.Should().BeTrue();
     }
@@ -1324,7 +1323,7 @@ public class SepaBankBookingTests
         SeedContacts(_userId, otherUser);
         SeedMovements(Movement(description: Textless));
 
-        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         rows.Should().OnlyContain(r => !r.CanBook);
         unmatched.Should().ContainSingle().Which.Reason.Should()
@@ -1383,7 +1382,7 @@ public class SepaBankBookingTests
         SeedMovements(Movement(description: Textless));
         var service = MakeService();
 
-        var (rows, _, unmatched, _) = await service.GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, _) = await service.GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
         var booking = await service.BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
         var process = await service.BookSepaFileAsync(smallFile, MovementId, Guid.NewGuid());
 
@@ -1401,7 +1400,7 @@ public class SepaBankBookingTests
     {
         SeedMovements(Movement(description: Textless));
 
-        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
         await AssertNothingPosted();
     }
@@ -1419,9 +1418,9 @@ public class SepaBankBookingTests
         var service = MakeService();
 
         var (strict, _, strictUnmatched, _) = await service.GetSepaPayoutsAsync(
-            ct: Xunit.TestContext.Current.CancellationToken);
+            ct: TestContext.Current.CancellationToken);
         var (wide, _, wideUnmatched, _) = await service.GetSepaPayoutsAsync(
-            toleranceDays: 7, ct: Xunit.TestContext.Current.CancellationToken);
+            toleranceDays: 7, ct: TestContext.Current.CancellationToken);
 
         strict.Should().ContainSingle().Which.CanBook.Should().BeFalse();
         strictUnmatched.Should().ContainSingle().Which.Reason.Should().Contain("no unbooked transfer is for");
@@ -1437,7 +1436,7 @@ public class SepaBankBookingTests
         SeedMovements(Movement(date: LateLineDate));
 
         var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
-            ct: Xunit.TestContext.Current.CancellationToken);
+            ct: TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.CanBook.Should().BeTrue();
     }
@@ -1474,7 +1473,7 @@ public class SepaBankBookingTests
         var service = MakeService();
 
         var (rows, _, unmatched, _) = await service.GetSepaPayoutsAsync(
-            ct: Xunit.TestContext.Current.CancellationToken);
+            ct: TestContext.Current.CancellationToken);
         var booking = await service.BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
 
         rows.Should().OnlyContain(r => !r.CanBook);
@@ -1498,7 +1497,7 @@ public class SepaBankBookingTests
         var service = MakeService();
 
         var (rows, _, unmatched, _) = await service.GetSepaPayoutsAsync(
-            ct: Xunit.TestContext.Current.CancellationToken);
+            ct: TestContext.Current.CancellationToken);
         var booking = await service.BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
 
         rows.Single(r => r.TransferId == TransferId).CanBook.Should().BeTrue();
@@ -1519,11 +1518,11 @@ public class SepaBankBookingTests
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(ci => ci.ArgAt<LocalDate>(1) <= lineDate
-                ? (IReadOnlyList<HoldedBankMovementDto>)[Movement(description: Textless, date: lineDate)]
+                ? [Movement(description: Textless, date: lineDate)]
                 : []);
 
         var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(
-            toleranceDays: 7, ct: Xunit.TestContext.Current.CancellationToken);
+            toleranceDays: 7, ct: TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.CandidateBankMovementId.Should().Be(MovementId);
     }
@@ -1573,7 +1572,7 @@ public class SepaBankBookingTests
             });
         var service = MakeService();
 
-        var (rows, _, unmatched, _) = await service.GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, _) = await service.GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
         var result = await service.BookSepaFileMatchesAsync(MatchedFileId, Guid.NewGuid());
 
         rows.Single(r => r.TransferId == TransferId).CanBook.Should().BeTrue();
@@ -1599,7 +1598,7 @@ public class SepaBankBookingTests
         var actor = Guid.NewGuid();
         var service = MakeService();
 
-        var (rows, _, unmatched, _) = await service.GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, _) = await service.GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
         var result = await service.BookSepaFileMatchesAsync(MatchedFileId, actor);
 
         rows.Single(r => r.TransferId == TransferId).CanBook.Should().BeTrue();
@@ -1620,7 +1619,7 @@ public class SepaBankBookingTests
         // nothing: the money was cancelled, so whatever this line is, it is not that payout.
         SeedRows(Row(TransferId, _userId, withdrawnAt: FixedNow));
 
-        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         var row = rows.Should().ContainSingle().Subject;
         row.IsWithdrawn.Should().BeTrue();
@@ -1636,11 +1635,11 @@ public class SepaBankBookingTests
         SeedRows(Row(TransferId, _userId, withdrawnAt: FixedNow));
         SeedTransfer(30m, withdrawnAt: FixedNow);
 
-        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
         await AssertNothingPosted();
         await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
-            default, default, default, default!, default, default, default);
+            default, default, default, default!, default, default);
     }
 
     [HumansFact]
@@ -1724,7 +1723,7 @@ public class SepaBankBookingTests
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .ThrowsAsync(new HoldedTransientException("Holded 503"));
 
-        var (rows, unavailable, unmatched, error) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, unavailable, unmatched, error) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         unavailable.Should().BeNull();
         error.Should().Contain("bank feed could not be read");
@@ -1743,7 +1742,7 @@ public class SepaBankBookingTests
             Row(stale, _userId, generatedAt: FixedNow - Duration.FromDays(200)));
         SeedContacts(_userId);
 
-        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         unmatched.Should().BeEmpty();
         rows.Single(r => r.TransferId == TransferId).CandidateBankMovementId.Should().Be(MovementId);
@@ -1773,7 +1772,7 @@ public class SepaBankBookingTests
         SeedContacts(_userId);
         SeedMovements(Movement(date: new LocalDate(2026, 4, 20)));
 
-        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.CandidateBankMovementId.Should().BeNull();
         unmatched.Should().ContainSingle().Which.Reason.Should().Contain("no unbooked transfer");
@@ -1798,7 +1797,7 @@ public class SepaBankBookingTests
         SeedContacts(_userId);
         SeedMovements(Movement(status: "partial"));
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.CandidateBankMovementId.Should().BeNull();
     }
@@ -1821,7 +1820,7 @@ public class SepaBankBookingTests
         SeedContacts(_userId);
         SeedMovements(Movement(), Movement(id: "mov-2"));
 
-        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.CandidateBankMovementId.Should().BeNull();
         unmatched.Should().HaveCount(2);
@@ -1833,7 +1832,7 @@ public class SepaBankBookingTests
     {
         SeedMovements(Movement(), Movement(id: "mov-2"));
 
-        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
         await AssertNothingPosted();
     }
@@ -1857,7 +1856,7 @@ public class SepaBankBookingTests
         _client.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
-            .Returns(_ => (IReadOnlyList<HoldedBankMovementDto>)
+            .Returns(_ =>
                 [Movement(status: reads++ == 0 ? "pending" : statusAfter)]);
 
         var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
@@ -1880,7 +1879,7 @@ public class SepaBankBookingTests
         SeedWindowEdgeTransfer();
         SeedContacts(_userId);
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.CandidateBankMovementId.Should().Be(MovementId);
     }
@@ -1890,7 +1889,7 @@ public class SepaBankBookingTests
     {
         SeedWindowEdgeTransfer();
 
-        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
         await _repo.Received(1).SaveSepaTransferBookingAsync(
             TransferId, FixedNow, null, MovementId, Arg.Any<Instant?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
@@ -1906,7 +1905,7 @@ public class SepaBankBookingTests
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(ci => ci.ArgAt<LocalDate>(1) <= lineDate
-                ? (IReadOnlyList<HoldedBankMovementDto>)[Movement(date: lineDate)]
+                ? [Movement(date: lineDate)]
                 : []);
     }
 
@@ -1966,7 +1965,7 @@ public class SepaBankBookingTests
     {
         SeedBatch();
 
-        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         unmatched.Should().BeEmpty();
         rows.Should().HaveCount(4).And.OnlyContain(r => r.BatchLine != null && !r.CanBook);
@@ -1982,7 +1981,7 @@ public class SepaBankBookingTests
     {
         SeedBatch("TRANSF SEPA M" + BatchFileId.ToString("N").ToUpperInvariant());
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         rows[0].BatchLine!.QuotesFileReference.Should().BeTrue();
     }
@@ -2000,7 +1999,7 @@ public class SepaBankBookingTests
             .ToArray();
         SeedRows(rows);
 
-        var (result, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (result, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         result.Should().OnlyContain(r => r.BatchLine == null);
         unmatched.Should().ContainSingle().Which.Reason.Should().Contain("2 payout files total 100.00 EUR");
@@ -2014,7 +2013,7 @@ public class SepaBankBookingTests
             Movement(BatchMovementId, -100m, "TRANSFERENCIAS SEPA"),
             Movement("mov-batch-2", -100m, "TRANSFERENCIAS SEPA"));
 
-        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, unmatched, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
         var result = await MakeService().BookSepaFileAsync(BatchFileId, BatchMovementId, Guid.NewGuid());
 
         rows.Should().OnlyContain(r => r.BatchLine == null);
@@ -2034,7 +2033,7 @@ public class SepaBankBookingTests
             Movement(BatchMovementId, -100m, "TRANSFERENCIAS SEPA"),
             Movement("mov-own", -10m, "TRANSF 40000011 - NCA - ANA RUIZ"));
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
         var result = await MakeService().BookSepaFileAsync(BatchFileId, BatchMovementId, Guid.NewGuid());
 
         rows.Should().OnlyContain(r => r.BatchLine == null);
@@ -2057,7 +2056,7 @@ public class SepaBankBookingTests
                 Source = CreditorContactSource.Auto,
             }).ToList());
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         rows[0].BatchLine!.NotProcessableReason.Should().Contain("40000011").And.Contain("no Holded contact binding");
     }
@@ -2102,8 +2101,8 @@ public class SepaBankBookingTests
         result.Succeeded.Should().BeTrue(result.Message);
         result.Message.Should().Contain("RECONCILE PENDING").And.Contain("by hand");
         await _client.DidNotReceiveWithAnyArgs().ReconcileBankMovementAsync(
-            default!, default!, default!, default);
-        await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(default, default, default);
+            default!, default!, default!);
+        await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(default, default);
     }
 
     [HumansFact]
@@ -2147,7 +2146,7 @@ public class SepaBankBookingTests
         _client.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
-            .Returns(_ => (IReadOnlyList<HoldedBankMovementDto>)
+            .Returns(_ =>
                 [Movement(BatchMovementId, -100m, "TRANSFERENCIAS SEPA", reads++ == 0 ? "pending" : "reconciled")]);
 
         var result = await MakeService().BookSepaFileAsync(BatchFileId, BatchMovementId, Guid.NewGuid());
@@ -2168,7 +2167,7 @@ public class SepaBankBookingTests
     {
         SeedBatch();
 
-        await MakeService().RunAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
         await AssertNothingPosted();
     }
@@ -2178,11 +2177,11 @@ public class SepaBankBookingTests
     private async Task AssertNothingPosted()
     {
         await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
-            default!, default, default, default, default!, default);
+            default!, default, default, default, default!);
         await _client.DidNotReceiveWithAnyArgs().PostLedgerEntryAsync(
-            default, default, default, default, default!, default);
+            default, default, default, default, default!);
         await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
-            default, default, default, default!, default, default, default);
+            default, default, default, default!, default, default);
     }
 
     private void SeedContacts(params Guid[] userIds) =>

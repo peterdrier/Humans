@@ -1,4 +1,3 @@
-using Humans.Surveys.Contracts;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Humans.Surveys.Services;

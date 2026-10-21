@@ -52,6 +52,6 @@ public class AttendeeContactImportServiceSquatterTests
         attendee.MatchedUserId.Should().NotBe(squatterUserId);
         await harness.Provisioning.Received(1).ReplaceUnverifiedEmailAndProvisionAsync(
             squatterUserId, squatterRowId, "victim@x.com", "Victim", ContactSource.TicketTailor, Arg.Any<CancellationToken>());
-        await harness.UserEmails.DidNotReceiveWithAnyArgs().DeleteEmailAsync(default, default, default);
+        await harness.UserEmails.DidNotReceiveWithAnyArgs().DeleteEmailAsync(default, default);
     }
 }

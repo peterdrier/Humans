@@ -84,7 +84,7 @@ public class SyncSettingsServiceTests : IDisposable
 
         await _service.UpdateModeAsync(SyncServiceType.GoogleGroups, SyncMode.AddAndRemove, actorId, Xunit.TestContext.Current.CancellationToken);
 
-        await using var verify = _factory.CreateDbContext();
+        await using var verify = await _factory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
         var updated = await verify.SyncServiceSettings
             .FirstAsync(s => s.ServiceType == SyncServiceType.GoogleGroups, Xunit.TestContext.Current.CancellationToken);
         updated.SyncMode.Should().Be(SyncMode.AddAndRemove);

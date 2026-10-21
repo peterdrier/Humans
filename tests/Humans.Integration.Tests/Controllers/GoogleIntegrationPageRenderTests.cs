@@ -136,7 +136,7 @@ public class GoogleIntegrationPageRenderTests(HumansTestDatabase database) : Int
         token.Should().NotBeNullOrEmpty();
         await Client.PostAsync("/Language/SetLanguage", new FormUrlEncodedContent(
             [
-                new KeyValuePair<string, string>("__RequestVerificationToken", token!),
+                new KeyValuePair<string, string>("__RequestVerificationToken", token),
                 new KeyValuePair<string, string>("culture", "es"),
             ]), ct);
 

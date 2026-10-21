@@ -2,7 +2,6 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Humans.Agent.Models;
 using Humans.Agent.Services.Anthropic;
-using Humans.Agent.Contracts;
 
 namespace Humans.Agent.Tests;
 

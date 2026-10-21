@@ -1,3 +1,6 @@
+using Humans.Base.Enums;
+using Humans.GoogleIntegration.Contracts;
+
 namespace Humans.GoogleIntegration.Models;
 
 /// <summary>
@@ -15,8 +18,8 @@ internal sealed record SyncAuditViewModel(
 internal sealed record ActivityLogViewModel(
     NodaTime.LocalDate? From,
     NodaTime.LocalDate? To,
-    Humans.GoogleIntegration.Contracts.GoogleSyncLogAction? Action,
-    Humans.Base.Enums.GoogleSyncSource? Source,
+    GoogleSyncLogAction? Action,
+    GoogleSyncSource? Source,
     bool? Success,
     string? Resource,
-    IReadOnlyList<Humans.GoogleIntegration.Contracts.GoogleSyncLogView> Entries);
+    IReadOnlyList<GoogleSyncLogView> Entries);

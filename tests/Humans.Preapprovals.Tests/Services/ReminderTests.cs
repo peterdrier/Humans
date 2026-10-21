@@ -81,7 +81,7 @@ public sealed class ReminderTests : PreapprovalsTestHarness
 
         await NewService().SendDeadlineRemindersAsync(Ct);
 
-        await Notifications.DidNotReceiveWithAnyArgs().SendAsync(default, default, default, default!, default!, default, default, default, default, default, default);
+        await Notifications.DidNotReceiveWithAnyArgs().SendAsync(default, default, default, default!, default!);
         await using var db = OpenContext();
         (await db.RemindersSent.CountAsync(Ct)).Should().Be(0);
         (await ReadGrantAsync(expired.Id)).Status.Should().Be(GrantStatus.Open, "a passed deadline changes nothing");
@@ -120,9 +120,9 @@ public sealed class ReminderTests : PreapprovalsTestHarness
         Notifications.SendAsync(Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
                 Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(r => r.Contains(broken)), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns<Task>(_ => throw new InvalidOperationException("boom"));
+            .Returns(_ => throw new InvalidOperationException("boom"));
         Email.SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail.StartsWith(broken.ToString(), StringComparison.Ordinal)), Arg.Any<CancellationToken>())
-            .Returns<Task>(_ => throw new InvalidOperationException("boom"));
+            .Returns(_ => throw new InvalidOperationException("boom"));
 
         await NewService().SendDeadlineRemindersAsync(Ct);
 

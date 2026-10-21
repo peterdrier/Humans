@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Resources;
 using AwesomeAssertions;
-using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Surveys.Authorization;
@@ -22,7 +21,6 @@ using NodaTime;
 using NSubstitute;
 using Humans.Surveys.Contracts;
 using System.Reflection;
-using Humans.Testing;
 using System.Security.Claims;
 
 namespace Humans.Surveys.Tests.Controllers;
@@ -56,7 +54,7 @@ public sealed class SurveyAdminControllerTests
         else
         {
             result.Should().BeOfType<ForbidResult>();
-            await surveys.DidNotReceiveWithAnyArgs().GetResponseExportAsync(default, default, default);
+            await surveys.DidNotReceiveWithAnyArgs().GetResponseExportAsync(default, default);
         }
     }
 
@@ -120,7 +118,7 @@ public sealed class SurveyAdminControllerTests
         error.Should().Be(dependencyFailure ? localizer["Surveys_Validation_SaveFailed"].Value
             : localizer["Surveys_Validation_SubjectLength", 200, "ca"].Value);
         sut.TempData.Should().NotContainKey(TempDataKeys.SuccessMessage);
-        await surveys.DidNotReceiveWithAnyArgs().PreFillTranslationsAsync(default, default!, default, default);
+        await surveys.DidNotReceiveWithAnyArgs().PreFillTranslationsAsync(default, default!, default);
     }
 
     [HumansFact]
@@ -193,7 +191,7 @@ public sealed class SurveyAdminControllerTests
         surveys.GetPendingApprovalQueueAsync(Arg.Any<CancellationToken>())
             .Returns([new SurveyPendingApprovalItem(surveyId, "Survey", Guid.NewGuid(), "Author", null)]);
         surveys.RejectAsync(surveyId, Arg.Any<SurveyViewer>(), note, Arg.Any<CancellationToken>())
-            .Returns<Task>(_ => throw new InvalidOperationException("A rejection note must be 4000 characters or fewer."));
+            .Returns(_ => throw new InvalidOperationException("A rejection note must be 4000 characters or fewer."));
         var sut = CreateController(surveys, isBoardOrAdmin: true);
 
         var result = await sut.Reject(surveyId, note, Xunit.TestContext.Current.CancellationToken);
@@ -357,7 +355,7 @@ public sealed class SurveyAdminControllerTests
                 Arg.Any<IReadOnlyList<string>>(),
                 Arg.Is<SurveyViewer>(v => v.UserId == actorId),
                 Arg.Any<CancellationToken>())
-            .Returns<Task>(_ => throw new InvalidOperationException("The vote is still open."));
+            .Returns(_ => throw new InvalidOperationException("The vote is still open."));
         var logger = new CapturingLogger<SurveyAdminController>();
         var http = new DefaultHttpContext
         {

@@ -9,7 +9,6 @@ using Humans.Finance.Data;
 using Humans.Finance.Domain;
 using Humans.Finance.Services;
 using Humans.Holded.Contracts;
-using Humans.Testing;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -184,7 +183,7 @@ public class HoldedDuplicateTests
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns([Doc("doc-a"), Doc("doc-b")]);
 
-        var vm = await MakeService().GetHoldedDuplicatesAsync(Xunit.TestContext.Current.CancellationToken);
+        var vm = await MakeService().GetHoldedDuplicatesAsync(TestContext.Current.CancellationToken);
 
         vm.Error.Should().BeNull();
         vm.HasWork.Should().BeTrue();
@@ -208,7 +207,7 @@ public class HoldedDuplicateTests
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
             .Returns([Doc("doc-a"), Doc("doc-paid", pending: 0m), Doc("doc-draft", draft: true, pending: 0m)]);
 
-        var vm = await MakeService().GetHoldedDuplicatesAsync(Xunit.TestContext.Current.CancellationToken);
+        var vm = await MakeService().GetHoldedDuplicatesAsync(TestContext.Current.CancellationToken);
 
         var line = vm.Members.Single().Lines.Single();
         line.DeletableDocIds.Should().BeEmpty();
@@ -229,7 +228,7 @@ public class HoldedDuplicateTests
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns([Doc("doc-a"), Doc("doc-b", contactId: "c2")]);
 
-        var vm = await MakeService().GetHoldedDuplicatesAsync(Xunit.TestContext.Current.CancellationToken);
+        var vm = await MakeService().GetHoldedDuplicatesAsync(TestContext.Current.CancellationToken);
 
         var member = vm.Members.Should().ContainSingle().Subject;
         member.Lines.Single().DeletableDocIds.Should().Equal("doc-b");
@@ -246,7 +245,7 @@ public class HoldedDuplicateTests
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns([Doc("doc-a"), Doc("doc-b", contactId: "c2")]);
 
-        var vm = await MakeService().GetHoldedDuplicatesAsync(Xunit.TestContext.Current.CancellationToken);
+        var vm = await MakeService().GetHoldedDuplicatesAsync(TestContext.Current.CancellationToken);
 
         vm.Members.Should().BeEmpty();
     }
@@ -258,7 +257,7 @@ public class HoldedDuplicateTests
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns(new List<ExpenseHoldedBooking>());
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedPurchaseDocListItemDto>());
 
-        var vm = await MakeService().GetHoldedDuplicatesAsync(Xunit.TestContext.Current.CancellationToken);
+        var vm = await MakeService().GetHoldedDuplicatesAsync(TestContext.Current.CancellationToken);
 
         vm.EmptyUnboundContactIds.Should().Equal("41000062 Someone Else (c-empty)");
         vm.HasWork.Should().BeFalse();
@@ -269,7 +268,7 @@ public class HoldedDuplicateTests
     {
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Throws(new HoldedTransientException("timeout"));
 
-        var vm = await MakeService().GetHoldedDuplicatesAsync(Xunit.TestContext.Current.CancellationToken);
+        var vm = await MakeService().GetHoldedDuplicatesAsync(TestContext.Current.CancellationToken);
 
         vm.Error.Should().Contain("timeout");
         vm.Members.Should().BeEmpty();
@@ -317,7 +316,7 @@ public class HoldedDuplicateTests
         await _audit.Received(1).LogAsync(AuditAction.HoldedDuplicateRemoved, "ExpenseLine", Arg.Any<Guid>(),
             Arg.Is<string>(d => d.Contains("doc-c")), Actor, UserId, nameof(User));
         await _audit.Received(1).LogAsync(AuditAction.HoldedDuplicateRemoved, nameof(User), UserId,
-            Arg.Is<string>(d => d.Contains("contact c2") && d.Contains("kept c1")), Actor, null, null);
+            Arg.Is<string>(d => d.Contains("contact c2") && d.Contains("kept c1")), Actor);
     }
 
     [HumansFact]
@@ -368,7 +367,7 @@ public class HoldedDuplicateTests
             .Returns(duplicates ? [Doc("doc-a"), Doc("doc-b")] : [Doc("doc-a")]);
         var logger = new CapturingLogger<Service>();
 
-        await MakeService(logger).SyncAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService(logger).SyncAsync(TestContext.Current.CancellationToken);
 
         var entry = logger.Entries.Should().ContainSingle(e => e.Message.StartsWith("Holded duplicate check", StringComparison.Ordinal)).Subject;
         if (duplicates)

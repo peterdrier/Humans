@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
-using Xunit;
 
 namespace Humans.Web.Tests.Infrastructure;
 

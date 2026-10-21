@@ -1,7 +1,6 @@
 using Humans.Gdpr.Contracts;
 using NodaTime;
 using Humans.Agent.Contracts;
-using Humans.Agent.Domain;
 using Humans.Agent.Models;
 using Humans.Base.Interfaces;
 

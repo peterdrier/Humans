@@ -3,7 +3,6 @@ using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Feedback.Data;
 using FeedbackService = Humans.Feedback.Services.FeedbackService;
-using Humans.Feedback.Contracts;
 
 namespace Humans.Feedback.Tests.Architecture;
 

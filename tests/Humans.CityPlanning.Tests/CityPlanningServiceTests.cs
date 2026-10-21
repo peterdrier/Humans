@@ -58,7 +58,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             UpdatedAt = Clock.GetCurrentInstant()
         };
         CityPlanningDb.CityPlanningSettings.Add(settings);
-        await CityPlanningDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await CityPlanningDb.SaveChangesAsync(TestContext.Current.CancellationToken);
         return settings;
     }
 
@@ -85,10 +85,10 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var userId = NewUserId();
         const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""";
 
-        await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, areaSqm, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, areaSqm, userId, cancellationToken: TestContext.Current.CancellationToken);
 
-        var polygon = await CityPlanningDb.CampPolygons.AsNoTracking().SingleAsync(p => p.CampSeasonId == campSeasonId, Xunit.TestContext.Current.CancellationToken);
-        var history = await CityPlanningDb.CampPolygonHistories.AsNoTracking().SingleAsync(h => h.CampSeasonId == campSeasonId, Xunit.TestContext.Current.CancellationToken);
+        var polygon = await CityPlanningDb.CampPolygons.AsNoTracking().SingleAsync(p => p.CampSeasonId == campSeasonId, TestContext.Current.CancellationToken);
+        var history = await CityPlanningDb.CampPolygonHistories.AsNoTracking().SingleAsync(h => h.CampSeasonId == campSeasonId, TestContext.Current.CancellationToken);
 
         polygon.GeoJson.Should().Be(geoJson);
         polygon.AreaSqm.Should().Be(areaSqm);
@@ -104,12 +104,12 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         const string geoJson1 = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""";
         const string geoJson2 = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[2,0],[2,2],[0,0]]]}}""";
 
-        await _sut.SaveCampPolygonAsync(campSeasonId, geoJson1, 100.0, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
-        await _sut.SaveCampPolygonAsync(campSeasonId, geoJson2, 200.0, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        await _sut.SaveCampPolygonAsync(campSeasonId, geoJson1, 100.0, userId, cancellationToken: TestContext.Current.CancellationToken);
+        await _sut.SaveCampPolygonAsync(campSeasonId, geoJson2, 200.0, userId, cancellationToken: TestContext.Current.CancellationToken);
 
-        var polygonCount = await CityPlanningDb.CampPolygons.AsNoTracking().CountAsync(p => p.CampSeasonId == campSeasonId, Xunit.TestContext.Current.CancellationToken);
-        var historyCount = await CityPlanningDb.CampPolygonHistories.AsNoTracking().CountAsync(h => h.CampSeasonId == campSeasonId, Xunit.TestContext.Current.CancellationToken);
-        var polygon = await CityPlanningDb.CampPolygons.AsNoTracking().SingleAsync(p => p.CampSeasonId == campSeasonId, Xunit.TestContext.Current.CancellationToken);
+        var polygonCount = await CityPlanningDb.CampPolygons.AsNoTracking().CountAsync(p => p.CampSeasonId == campSeasonId, TestContext.Current.CancellationToken);
+        var historyCount = await CityPlanningDb.CampPolygonHistories.AsNoTracking().CountAsync(h => h.CampSeasonId == campSeasonId, TestContext.Current.CancellationToken);
+        var polygon = await CityPlanningDb.CampPolygons.AsNoTracking().SingleAsync(p => p.CampSeasonId == campSeasonId, TestContext.Current.CancellationToken);
 
         polygonCount.Should().Be(1);
         historyCount.Should().Be(2);
@@ -141,12 +141,12 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     public async Task SaveCampPolygonAsync_InvalidGeoJson_Throws(string geoJson)
     {
         var act = async () => await _sut.SaveCampPolygonAsync(
-            Guid.NewGuid(), geoJson, 100.0, NewUserId(), cancellationToken: Xunit.TestContext.Current.CancellationToken);
+            Guid.NewGuid(), geoJson, 100.0, NewUserId(), cancellationToken: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("Invalid GeoJSON.*");
-        (await CityPlanningDb.CampPolygons.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
-        (await CityPlanningDb.CampPolygonHistories.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await CityPlanningDb.CampPolygons.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await CityPlanningDb.CampPolygonHistories.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansTheory]
@@ -158,12 +158,12 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     {
         const string geoJson = """{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}""";
         var act = async () => await _sut.SaveCampPolygonAsync(
-            Guid.NewGuid(), geoJson, areaSqm, NewUserId(), cancellationToken: Xunit.TestContext.Current.CancellationToken);
+            Guid.NewGuid(), geoJson, areaSqm, NewUserId(), cancellationToken: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("Area must be finite and non-negative.*");
-        (await CityPlanningDb.CampPolygons.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
-        (await CityPlanningDb.CampPolygonHistories.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await CityPlanningDb.CampPolygons.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await CityPlanningDb.CampPolygonHistories.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansTheory]
@@ -174,10 +174,10 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     [InlineData("""{"type":"Feature","geometry":{"type":"MultiPolygon","coordinates":[[[[0,0],[1,0],[1,1],[0,0]]]]}}""")]
     public async Task SaveCampPolygonAsync_ValidAreaGeometry_RoundTrips(string geoJson)
     {
-        var saved = await _sut.SaveCampPolygonAsync(Guid.NewGuid(), geoJson, 100, NewUserId(), cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        var saved = await _sut.SaveCampPolygonAsync(Guid.NewGuid(), geoJson, 100, NewUserId(), cancellationToken: TestContext.Current.CancellationToken);
         saved.GeoJson.Should().Be(geoJson);
-        (await CityPlanningDb.CampPolygons.SingleAsync(Xunit.TestContext.Current.CancellationToken)).GeoJson.Should().Be(geoJson);
-        (await CityPlanningDb.CampPolygonHistories.SingleAsync(Xunit.TestContext.Current.CancellationToken)).GeoJson.Should().Be(geoJson);
+        (await CityPlanningDb.CampPolygons.SingleAsync(TestContext.Current.CancellationToken)).GeoJson.Should().Be(geoJson);
+        (await CityPlanningDb.CampPolygonHistories.SingleAsync(TestContext.Current.CancellationToken)).GeoJson.Should().Be(geoJson);
     }
 
     [HumansFact]
@@ -185,10 +185,10 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     {
         await SeedMapSettingsAsync();
 
-        var result = await _sut.UpdatePlacementDatesAsync("2026-06-01T08:30", "2026-06-02T18:45", Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.UpdatePlacementDatesAsync("2026-06-01T08:30", "2026-06-02T18:45", TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
-        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         settings.PlacementOpensAt.Should().Be(new LocalDateTime(2026, 6, 1, 8, 30));
         settings.PlacementClosesAt.Should().Be(new LocalDateTime(2026, 6, 2, 18, 45));
     }
@@ -196,7 +196,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     [HumansFact]
     public async Task UpdatePlacementDatesAsync_InvalidOpenString_ReturnsError()
     {
-        var result = await _sut.UpdatePlacementDatesAsync("not-a-date", null, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.UpdatePlacementDatesAsync("not-a-date", null, TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("InvalidOpensAt");
@@ -208,10 +208,10 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         await SeedMapSettingsAsync();
         var file = CreateUpload("""{"type":"FeatureCollection","features":[]}""");
 
-        var result = await _sut.UpdateLimitZoneFromUploadAsync(file, NewUserId(), Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.UpdateLimitZoneFromUploadAsync(file, NewUserId(), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
-        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         settings.LimitZoneGeoJson.Should().Be("""{"type":"FeatureCollection","features":[]}""");
     }
 
@@ -220,7 +220,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     {
         var file = CreateUpload("{not-json");
 
-        var result = await _sut.UpdateLimitZoneFromUploadAsync(file, NewUserId(), Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.UpdateLimitZoneFromUploadAsync(file, NewUserId(), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("InvalidGeoJson");
@@ -229,7 +229,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     [HumansFact]
     public async Task UpdateLimitZoneFromUploadAsync_NoFile_ReturnsMissingFile()
     {
-        var result = await _sut.UpdateLimitZoneFromUploadAsync(null, NewUserId(), Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.UpdateLimitZoneFromUploadAsync(null, NewUserId(), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("MissingFile");
@@ -239,7 +239,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     public async Task UpdateLimitZoneFromUploadAsync_EmptyFile_ReturnsMissingFile()
     {
         var result = await _sut.UpdateLimitZoneFromUploadAsync(
-            CreateUpload(""), NewUserId(), Xunit.TestContext.Current.CancellationToken);
+            CreateUpload(""), NewUserId(), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("MissingFile");
@@ -249,7 +249,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     public async Task UpdateLimitZoneFromUploadAsync_OverTenMegabytes_ReturnsFileTooLarge()
     {
         var result = await _sut.UpdateLimitZoneFromUploadAsync(
-            CreateOversizedUpload(), NewUserId(), Xunit.TestContext.Current.CancellationToken);
+            CreateOversizedUpload(), NewUserId(), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("FileTooLarge");
@@ -258,7 +258,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     [HumansFact]
     public async Task UpdateOfficialZonesFromUploadAsync_NoFile_ReturnsMissingFile()
     {
-        var result = await _sut.UpdateOfficialZonesFromUploadAsync(null, NewUserId(), Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.UpdateOfficialZonesFromUploadAsync(null, NewUserId(), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("MissingFile");
@@ -268,7 +268,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     public async Task UpdateOfficialZonesFromUploadAsync_OverTenMegabytes_ReturnsFileTooLarge()
     {
         var result = await _sut.UpdateOfficialZonesFromUploadAsync(
-            CreateOversizedUpload(), NewUserId(), Xunit.TestContext.Current.CancellationToken);
+            CreateOversizedUpload(), NewUserId(), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("FileTooLarge");
@@ -280,10 +280,10 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         await SeedMapSettingsAsync();
         var file = CreateUpload("""{"type":"FeatureCollection","features":[]}""");
 
-        var result = await _sut.UpdateOfficialZonesFromUploadAsync(file, NewUserId(), Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.UpdateOfficialZonesFromUploadAsync(file, NewUserId(), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
-        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         settings.OfficialZonesGeoJson.Should().Be("""{"type":"FeatureCollection","features":[]}""");
     }
 
@@ -294,18 +294,18 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var userId = NewUserId();
         const string originalGeoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""";
 
-        await _sut.SaveCampPolygonAsync(campSeasonId, originalGeoJson, 100.0, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        await _sut.SaveCampPolygonAsync(campSeasonId, originalGeoJson, 100.0, userId, cancellationToken: TestContext.Current.CancellationToken);
         var originalHistory = await CityPlanningDb.CampPolygonHistories.AsNoTracking()
-            .SingleAsync(h => h.CampSeasonId == campSeasonId, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(h => h.CampSeasonId == campSeasonId, TestContext.Current.CancellationToken);
         Clock.Advance(Duration.FromSeconds(1));
-        await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[5,0],[5,5],[0,0]]]}}""", 999.0, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[5,0],[5,5],[0,0]]]}}""", 999.0, userId, cancellationToken: TestContext.Current.CancellationToken);
         Clock.Advance(Duration.FromSeconds(1));
 
-        await _sut.RestoreCampPolygonVersionAsync(campSeasonId, originalHistory.Id, userId, Xunit.TestContext.Current.CancellationToken);
+        await _sut.RestoreCampPolygonVersionAsync(campSeasonId, originalHistory.Id, userId, TestContext.Current.CancellationToken);
 
-        var polygon = await CityPlanningDb.CampPolygons.AsNoTracking().SingleAsync(p => p.CampSeasonId == campSeasonId, Xunit.TestContext.Current.CancellationToken);
+        var polygon = await CityPlanningDb.CampPolygons.AsNoTracking().SingleAsync(p => p.CampSeasonId == campSeasonId, TestContext.Current.CancellationToken);
         var latestHistory = await CityPlanningDb.CampPolygonHistories.AsNoTracking()
-            .OrderByDescending(h => h.ModifiedAt).FirstAsync(h => h.CampSeasonId == campSeasonId, Xunit.TestContext.Current.CancellationToken);
+            .OrderByDescending(h => h.ModifiedAt).FirstAsync(h => h.CampSeasonId == campSeasonId, TestContext.Current.CancellationToken);
 
         polygon.GeoJson.Should().Be(originalGeoJson);
         latestHistory.Note.Should().StartWith("Restored from");
@@ -318,7 +318,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var teamId = Guid.NewGuid();
         SetupCityPlanningTeam(teamId, memberUserId: userId);
 
-        var result = await _sut.IsCityPlanningTeamMemberAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.IsCityPlanningTeamMemberAsync(userId, TestContext.Current.CancellationToken);
         result.Should().BeTrue();
     }
 
@@ -329,7 +329,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var teamId = Guid.NewGuid();
         SetupCityPlanningTeam(teamId, memberUserId: null);
 
-        var result = await _sut.IsCityPlanningTeamMemberAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.IsCityPlanningTeamMemberAsync(userId, TestContext.Current.CancellationToken);
         result.Should().BeFalse();
     }
 
@@ -342,7 +342,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         await SeedMapSettingsAsync(placementOpen: false);
         SetupCityPlanningTeam(teamId, memberUserId: userId);
 
-        var result = await _sut.CanUserEditAsync(userId, campSeasonId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.CanUserEditAsync(userId, campSeasonId, TestContext.Current.CancellationToken);
         result.Should().BeTrue();
     }
 
@@ -355,7 +355,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var settings = await SeedMapSettingsAsync();
         var userId = NewUserId();
 
-        await _sut.OpenPlacementAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await _sut.OpenPlacementAsync(userId, TestContext.Current.CancellationToken);
 
         await _auditLog.Received(1).LogAsync(
             AuditAction.CityPlanningPlacementOpened,
@@ -373,7 +373,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         await SeedMapSettingsAsync(placementOpen: true);
         var userId = NewUserId();
 
-        await _sut.ClosePlacementAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await _sut.ClosePlacementAsync(userId, TestContext.Current.CancellationToken);
 
         await _auditLog.Received(1).LogAsync(
             AuditAction.CityPlanningPlacementClosed,
@@ -387,8 +387,8 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         await SeedMapSettingsAsync();
         var userId = NewUserId();
 
-        await _sut.OpenContainerPlacementAsync(userId, Xunit.TestContext.Current.CancellationToken);
-        await _sut.CloseContainerPlacementAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await _sut.OpenContainerPlacementAsync(userId, TestContext.Current.CancellationToken);
+        await _sut.CloseContainerPlacementAsync(userId, TestContext.Current.CancellationToken);
 
         await _auditLog.Received(1).LogAsync(
             AuditAction.CityPlanningContainerPlacementOpened,
@@ -407,8 +407,8 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var userId = NewUserId();
         var file = CreateUpload("""{"type":"FeatureCollection","features":[]}""");
 
-        await _sut.UpdateOfficialZonesFromUploadAsync(file, userId, Xunit.TestContext.Current.CancellationToken);
-        await _sut.DeleteLimitZoneAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await _sut.UpdateOfficialZonesFromUploadAsync(file, userId, TestContext.Current.CancellationToken);
+        await _sut.DeleteLimitZoneAsync(userId, TestContext.Current.CancellationToken);
 
         await _auditLog.Received(1).LogAsync(
             AuditAction.CityPlanningOfficialZonesUpdated,
@@ -427,7 +427,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         await SeedMapSettingsAsync();
 
         var result = await _sut.UpdateLimitZoneFromUploadAsync(
-            CreateUpload("{not-json"), NewUserId(), Xunit.TestContext.Current.CancellationToken);
+            CreateUpload("{not-json"), NewUserId(), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         await _auditLog.DidNotReceive().LogAsync(
@@ -535,7 +535,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var userId = NewUserId();
         SetupCityPlanningTeam(Guid.NewGuid(), memberUserId: userId, slug: "City-Planning");
 
-        var result = await _sut.IsCityPlanningTeamMemberAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.IsCityPlanningTeamMemberAsync(userId, TestContext.Current.CancellationToken);
         result.Should().BeTrue();
     }
 
@@ -546,7 +546,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         _options.CityPlanningTeamSlug = "City-Planning";
         SetupCityPlanningTeam(Guid.NewGuid(), memberUserId: userId);
 
-        var result = await _sut.IsCityPlanningTeamMemberAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.IsCityPlanningTeamMemberAsync(userId, TestContext.Current.CancellationToken);
         result.Should().BeTrue();
     }
 
@@ -559,7 +559,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         _options.CityPlanningTeamSlug = "   ";
         SetupCityPlanningTeam(Guid.NewGuid(), memberUserId: userId);
 
-        var result = await _sut.IsCityPlanningTeamMemberAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.IsCityPlanningTeamMemberAsync(userId, TestContext.Current.CancellationToken);
         result.Should().BeFalse();
     }
 
@@ -604,7 +604,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
                 }])
             });
 
-        var result = await _sut.CanUserEditAsync(userId, campSeasonId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.CanUserEditAsync(userId, campSeasonId, TestContext.Current.CancellationToken);
         result.Should().BeTrue();
     }
 
@@ -622,7 +622,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
             .Returns(MakeCampSeasonInfo(campSeasonId, campId, 2026, "Camp"));
 
-        var result = await _sut.CanUserEditAsync(userId, campSeasonId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.CanUserEditAsync(userId, campSeasonId, TestContext.Current.CancellationToken);
         result.Should().BeFalse();
     }
 
@@ -648,7 +648,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
                 }])
             });
 
-        var result = await _sut.CanUserEditAsync(userId, campSeasonId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.CanUserEditAsync(userId, campSeasonId, TestContext.Current.CancellationToken);
         result.Should().BeFalse();
     }
 
@@ -667,7 +667,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
             .Returns(MakeCampSeasonInfo(campSeasonId, campId, 2027, "Camp"));
 
-        var result = await _sut.CanUserEditAsync(userId, campSeasonId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.CanUserEditAsync(userId, campSeasonId, TestContext.Current.CancellationToken);
         result.Should().BeFalse();
     }
 
@@ -676,11 +676,11 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     {
         SetupCampSettings(publicYear: 2026);
 
-        var settings = await _sut.GetSettingsAsync(Xunit.TestContext.Current.CancellationToken);
+        var settings = await _sut.GetSettingsAsync(TestContext.Current.CancellationToken);
 
         settings.Year.Should().Be(2026);
         settings.IsPlacementOpen.Should().BeFalse();
-        (await CityPlanningDb.CityPlanningSettings.AsNoTracking().CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+        (await CityPlanningDb.CityPlanningSettings.AsNoTracking().CountAsync(TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
     [HumansFact]
@@ -688,11 +688,11 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     {
         var existing = await SeedMapSettingsAsync(year: 2026, placementOpen: true);
 
-        var result = await _sut.GetSettingsAsync(Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.GetSettingsAsync(TestContext.Current.CancellationToken);
 
         result.Id.Should().Be(existing.Id);
         result.IsPlacementOpen.Should().BeTrue();
-        (await CityPlanningDb.CityPlanningSettings.AsNoTracking().CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+        (await CityPlanningDb.CityPlanningSettings.AsNoTracking().CountAsync(TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
     [HumansFact]
@@ -702,12 +702,12 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         await SeedMapSettingsAsync(year: 2026, placementOpen: true);
         var existing = await SeedMapSettingsAsync(year: 2025, placementOpen: false);
 
-        var result = await _sut.GetSettingsAsync(Xunit.TestContext.Current.CancellationToken, 2025);
+        var result = await _sut.GetSettingsAsync(TestContext.Current.CancellationToken, 2025);
 
         result.Id.Should().Be(existing.Id);
         result.Year.Should().Be(2025);
         result.IsPlacementOpen.Should().BeFalse();
-        (await CityPlanningDb.CityPlanningSettings.AsNoTracking().CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(2);
+        (await CityPlanningDb.CityPlanningSettings.AsNoTracking().CountAsync(TestContext.Current.CancellationToken)).Should().Be(2);
     }
 
     [HumansFact]
@@ -716,9 +716,9 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         await SeedMapSettingsAsync(placementOpen: false);
         var adminId = NewUserId();
 
-        await _sut.OpenPlacementAsync(adminId, Xunit.TestContext.Current.CancellationToken);
+        await _sut.OpenPlacementAsync(adminId, TestContext.Current.CancellationToken);
 
-        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         settings.IsPlacementOpen.Should().BeTrue();
         settings.OpenedAt.Should().Be(Clock.GetCurrentInstant());
     }
@@ -729,9 +729,9 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         await SeedMapSettingsAsync(placementOpen: true);
         var adminId = NewUserId();
 
-        await _sut.ClosePlacementAsync(adminId, Xunit.TestContext.Current.CancellationToken);
+        await _sut.ClosePlacementAsync(adminId, TestContext.Current.CancellationToken);
 
-        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         settings.IsPlacementOpen.Should().BeFalse();
         settings.ClosedAt.Should().Be(Clock.GetCurrentInstant());
     }
@@ -744,8 +744,8 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var camp2026Id = Guid.NewGuid();
         var userId = NewUserId();
 
-        await _sut.SaveCampPolygonAsync(season2026Id, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 100, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
-        await _sut.SaveCampPolygonAsync(season2027Id, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 200, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        await _sut.SaveCampPolygonAsync(season2026Id, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 100, userId, cancellationToken: TestContext.Current.CancellationToken);
+        await _sut.SaveCampPolygonAsync(season2027Id, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 200, userId, cancellationToken: TestContext.Current.CancellationToken);
 
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>
@@ -753,7 +753,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
                 MakeCampInfo(camp2026Id, "test-camp", [MakeCampSeasonInfo(season2026Id, camp2026Id, 2026, "Test Camp 2026")])
             });
 
-        var result = await _sut.GetCampPolygonsAsync(2026, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.GetCampPolygonsAsync(2026, TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(1);
         result[0].CampSeasonId.Should().Be(season2026Id);
@@ -769,7 +769,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var seasonWithoutId = Guid.NewGuid();
         var userId = NewUserId();
 
-        await _sut.SaveCampPolygonAsync(seasonWithId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 100, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        await _sut.SaveCampPolygonAsync(seasonWithId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 100, userId, cancellationToken: TestContext.Current.CancellationToken);
 
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>
@@ -778,7 +778,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
                 MakeCampInfo(campWithoutId, "camp-without", [MakeCampSeasonInfo(seasonWithoutId, campWithoutId, 2026, "Camp Without")])
             });
 
-        var result = await _sut.GetCampSeasonsWithoutCampPolygonAsync(2026, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.GetCampSeasonsWithoutCampPolygonAsync(2026, TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(1);
         result[0].CampSeasonId.Should().Be(seasonWithoutId);
@@ -793,7 +793,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var campSeasonId = Guid.NewGuid();
         var userId = NewUserId();
 
-        await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100.0, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100.0, userId, cancellationToken: TestContext.Current.CancellationToken);
 
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>
@@ -801,7 +801,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
                 MakeCampInfo(campId, "test-camp", [MakeCampSeasonInfo(campSeasonId, campId, 2026, "Test Camp")])
             });
 
-        var result = await _sut.ExportAsGeoJsonAsync(2026, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.ExportAsGeoJsonAsync(2026, TestContext.Current.CancellationToken);
 
         using var doc = System.Text.Json.JsonDocument.Parse(result);
         doc.RootElement.GetProperty("type").GetString().Should().Be("FeatureCollection");
@@ -834,11 +834,11 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
                 }));
 
         Clock.Advance(Duration.FromSeconds(1));
-        await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 100.0, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 100.0, userId, cancellationToken: TestContext.Current.CancellationToken);
         Clock.Advance(Duration.FromSeconds(1));
-        await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 200.0, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 200.0, userId, cancellationToken: TestContext.Current.CancellationToken);
 
-        var history = await _sut.GetCampPolygonHistoryAsync(campSeasonId, Xunit.TestContext.Current.CancellationToken);
+        var history = await _sut.GetCampPolygonHistoryAsync(campSeasonId, TestContext.Current.CancellationToken);
 
         // Display ordering (newest first) moved to the controller
         // (CityPlanningApiController.GetCampPolygonHistory) per
@@ -861,9 +861,9 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
-        await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 100.0, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 100.0, userId, cancellationToken: TestContext.Current.CancellationToken);
 
-        var history = await _sut.GetCampPolygonHistoryAsync(campSeasonId, Xunit.TestContext.Current.CancellationToken);
+        var history = await _sut.GetCampPolygonHistoryAsync(campSeasonId, TestContext.Current.CancellationToken);
 
         history.Should().HaveCount(1);
         history[0].ModifiedByDisplayName.Should().Be(userId.ToString());
@@ -876,7 +876,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var campId = Guid.NewGuid();
         var userId = NewUserId();
         const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""";
-        await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100.0, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100.0, userId, cancellationToken: TestContext.Current.CancellationToken);
 
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>
@@ -884,7 +884,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
                 MakeCampInfo(campId, "test-camp", [MakeCampSeasonInfo(campSeasonId, campId, 2026, "Test Camp", SoundZone.Blue)])
             });
 
-        var polygons = await _sut.GetCampPolygonsAsync(2026, Xunit.TestContext.Current.CancellationToken);
+        var polygons = await _sut.GetCampPolygonsAsync(2026, TestContext.Current.CancellationToken);
 
         polygons.Single().SoundZone.Should().Be(SoundZone.Blue);
     }
@@ -896,7 +896,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var campId = Guid.NewGuid();
         var userId = NewUserId();
         const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""";
-        await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100.0, userId, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100.0, userId, cancellationToken: TestContext.Current.CancellationToken);
 
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>
@@ -904,7 +904,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
                 MakeCampInfo(campId, "test-camp", [MakeCampSeasonInfo(campSeasonId, campId, 2026, "Test Camp")])
             });
 
-        var polygons = await _sut.GetCampPolygonsAsync(2026, Xunit.TestContext.Current.CancellationToken);
+        var polygons = await _sut.GetCampPolygonsAsync(2026, TestContext.Current.CancellationToken);
 
         polygons.Single().SoundZone.Should().BeNull();
     }
@@ -915,16 +915,16 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     public async Task UpdatePlacementDatesAsync_ClearsDates_WhenNull()
     {
         await SeedMapSettingsAsync();
-        var seeded = await CityPlanningDb.CityPlanningSettings.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var seeded = await CityPlanningDb.CityPlanningSettings.SingleAsync(TestContext.Current.CancellationToken);
         seeded.PlacementOpensAt = new LocalDateTime(2026, 4, 10, 18, 0);
         seeded.PlacementClosesAt = new LocalDateTime(2026, 4, 20, 23, 59);
-        await CityPlanningDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await CityPlanningDb.SaveChangesAsync(TestContext.Current.CancellationToken);
         CityPlanningDb.Entry(seeded).State = EntityState.Detached;
 
-        var result = await _sut.UpdatePlacementDatesAsync(null, null, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.UpdatePlacementDatesAsync(null, null, TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
-        var updated = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var updated = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         updated.PlacementOpensAt.Should().BeNull();
         updated.PlacementClosesAt.Should().BeNull();
     }
@@ -937,9 +937,9 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         await SeedMapSettingsAsync();
         const string geoJson = """{"type":"FeatureCollection","features":[]}""";
 
-        await _sut.UpdateOfficialZonesAsync(geoJson, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await _sut.UpdateOfficialZonesAsync(geoJson, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         settings.OfficialZonesGeoJson.Should().Be(geoJson);
         settings.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
     }
@@ -948,14 +948,14 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     public async Task DeleteOfficialZonesAsync_SetsNull()
     {
         await SeedMapSettingsAsync();
-        var seeded = await CityPlanningDb.CityPlanningSettings.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var seeded = await CityPlanningDb.CityPlanningSettings.SingleAsync(TestContext.Current.CancellationToken);
         seeded.OfficialZonesGeoJson = """{"type":"FeatureCollection","features":[]}""";
-        await CityPlanningDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await CityPlanningDb.SaveChangesAsync(TestContext.Current.CancellationToken);
         CityPlanningDb.Entry(seeded).State = EntityState.Detached;
 
-        await _sut.DeleteOfficialZonesAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await _sut.DeleteOfficialZonesAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        var updated = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var updated = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         updated.OfficialZonesGeoJson.Should().BeNull();
         updated.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
     }
@@ -968,10 +968,10 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(2026, [2026, 2028, 2027]));
 
-        await _sut.UpdateRegistrationInfoAsync("Read this before you register.", Xunit.TestContext.Current.CancellationToken);
+        await _sut.UpdateRegistrationInfoAsync("Read this before you register.", TestContext.Current.CancellationToken);
 
         var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking()
-            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(TestContext.Current.CancellationToken);
         settings.Year.Should().Be(2028);
         settings.RegistrationInfo.Should().Be("Read this before you register.");
     }
@@ -979,25 +979,25 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     [HumansFact]
     public async Task UpdateRegistrationInfoAsync_FallsBackToPublicYear_WhenNoOpenSeasons()
     {
-        SetupCampSettings(2026);
+        SetupCampSettings();
 
-        await _sut.UpdateRegistrationInfoAsync("Blurb", Xunit.TestContext.Current.CancellationToken);
+        await _sut.UpdateRegistrationInfoAsync("Blurb", TestContext.Current.CancellationToken);
 
         var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking()
-            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(TestContext.Current.CancellationToken);
         settings.Year.Should().Be(2026);
     }
 
     [HumansFact]
     public async Task UpdateRegistrationInfoAsync_TrimsInput_AndStoresNullForBlank()
     {
-        SetupCampSettings(2026);
+        SetupCampSettings();
 
-        await _sut.UpdateRegistrationInfoAsync("  padded  ", Xunit.TestContext.Current.CancellationToken);
-        (await _sut.GetRegistrationInfoAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be("padded");
+        await _sut.UpdateRegistrationInfoAsync("  padded  ", TestContext.Current.CancellationToken);
+        (await _sut.GetRegistrationInfoAsync(TestContext.Current.CancellationToken)).Should().Be("padded");
 
-        await _sut.UpdateRegistrationInfoAsync("   ", Xunit.TestContext.Current.CancellationToken);
-        (await _sut.GetRegistrationInfoAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
+        await _sut.UpdateRegistrationInfoAsync("   ", TestContext.Current.CancellationToken);
+        (await _sut.GetRegistrationInfoAsync(TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
     [HumansFact]
@@ -1006,7 +1006,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(2026, [2027]));
 
-        await _sut.UpdateRegistrationInfoAsync("Open-season blurb", Xunit.TestContext.Current.CancellationToken);
+        await _sut.UpdateRegistrationInfoAsync("Open-season blurb", TestContext.Current.CancellationToken);
 
         // A row keyed to PublicYear must not shadow the open-season one.
         CityPlanningDb.CityPlanningSettings.Add(new CityPlanningSettings
@@ -1015,9 +1015,9 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             RegistrationInfo = "Stale public-year blurb",
             UpdatedAt = Clock.GetCurrentInstant()
         });
-        await CityPlanningDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await CityPlanningDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        (await _sut.GetRegistrationInfoAsync(Xunit.TestContext.Current.CancellationToken))
+        (await _sut.GetRegistrationInfoAsync(TestContext.Current.CancellationToken))
             .Should().Be("Open-season blurb");
     }
 

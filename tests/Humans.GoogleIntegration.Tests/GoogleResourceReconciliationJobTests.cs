@@ -8,7 +8,6 @@ using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Humans.Base.Constants;
-using Humans.Base.Enums;
 using Humans.Base.Interfaces;
 using Humans.GoogleIntegration.Tests.Infrastructure;
 using Humans.Notifications.Contracts;
@@ -81,11 +80,11 @@ public class GoogleResourceReconciliationJobTests : IDisposable
         await _googleSyncService.DidNotReceiveWithAnyArgs()
             .SyncResourcesByTypeAsync(default, default, default, default);
         await _googleGroupSync.DidNotReceiveWithAnyArgs()
-            .ReconcileAllAsync(default, default);
+            .ReconcileAllAsync(default);
         await _googleDriveSync.DidNotReceiveWithAnyArgs()
-            .ReconcileAllAsync(default, default);
+            .ReconcileAllAsync(default);
         await _googleSyncService.DidNotReceiveWithAnyArgs()
-            .CheckGroupSettingsAsync(default);
+            .CheckGroupSettingsAsync();
     }
 
     [HumansFact]

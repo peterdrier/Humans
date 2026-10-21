@@ -109,7 +109,6 @@ internal sealed class AccountProvisioningService(
         var newUser = new User
         {
             Id = newUserId,
-            DisplayName = resolvedDisplayName,
             BurnerName = resolvedDisplayName,
             ContactSource = source,
             CreatedAt = now,
@@ -208,7 +207,6 @@ internal sealed class AccountProvisioningService(
         var user = new User
         {
             Id = Guid.NewGuid(),
-            DisplayName = burnerName,
             BurnerName = burnerName,
             CreatedAt = now,
             LastLoginAt = now

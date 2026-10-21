@@ -1,9 +1,7 @@
-using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Extensions;
 using Humans.Base.Helpers;
-using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;

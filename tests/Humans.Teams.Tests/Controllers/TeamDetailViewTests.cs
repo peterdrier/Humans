@@ -44,7 +44,7 @@ public class TeamDetailViewTests
         };
         var html = await RenderAsync("/Views/Team/Details.cshtml", model);
 
-        html.Split(HtmlEncoder.Default.Encode(expected), StringSplitOptions.None)
+        html.Split(HtmlEncoder.Default.Encode(expected))
             .Should().HaveCount(3, "the badge and membership criteria both use the translated team type");
     }
 

@@ -43,7 +43,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
         var result = await _repo.GetEventSettingsByIdAsync(es.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
-        result!.Id.Should().Be(es.Id);
+        result.Id.Should().Be(es.Id);
     }
 
     [HumansFact]
@@ -76,7 +76,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var (settings, rota) = await SeedRotaAsync(RotaPeriod.Event);
-        var calendar = Humans.Testing.BurnFixtures.Burn(id: settings.Id,
+        var calendar = BurnFixtures.Burn(id: settings.Id,
             gateOpeningDate: settings.GateOpeningDate, timeZoneId: settings.TimeZoneId);
         var shift = NewShift(rota, dayOffset: 0);
         shift.IsAllDay = false;
@@ -123,7 +123,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
 
         var edit = await _repo.GetRotaAsync(rota.Id, RotaReadShape.Shifts, ct);
         edit.Should().NotBeNull();
-        edit!.Name = "Updated rota";
+        edit.Name = "Updated rota";
         edit.IsVisibleToVolunteers = false;
 
         shift.Description = "Updated shift";
@@ -151,7 +151,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
 
         var edit = await _repo.GetShiftAsync(shift.Id, ShiftReadShape.Rota, ct);
         edit.Should().NotBeNull();
-        edit!.Description = "Updated shift";
+        edit.Description = "Updated shift";
         edit.MinVolunteers = 2;
 
         rota.Name = "Updated rota";

@@ -1,6 +1,5 @@
 using NodaTime;
 
-using Humans.Users.Contracts;
 
 namespace Humans.Users.Domain;
 

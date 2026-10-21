@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
 using AwesomeAssertions;
-using Humans.Auth.Contracts;
 using Humans.Backdoor.Contracts;
 using Humans.Backdoor.Controllers;
 using Humans.Backdoor.Filters;
@@ -175,7 +174,7 @@ public class BackdoorFinanceControllerTests
         var json = Emitted(result);
         json.Should().Contain(@"""payeeIbanMasked"":""ES79****789""");
         json.Should().Contain(@"""syncState"":null");
-        await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!, default);
+        await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!);
     }
 
     [HumansFact]
@@ -234,7 +233,7 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(@"""payeeName"":null");
         json.Should().Contain(@"""payeeIbanMasked"":null");
         json.Should().Contain(@"""syncState"":null");
-        await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!, default);
+        await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!);
     }
 
     /// <summary>The <c>year</c> query param (peterdrier/Humans#1839).</summary>
@@ -247,9 +246,9 @@ public class BackdoorFinanceControllerTests
         var report2026 = Report();
         var report2025 = Report();
         _expenses.GetReviewQueueAsync(userId, true, Arg.Any<CancellationToken>()).Returns([report2026, report2025]);
-        _budget.GetYearByIdAsync(report2026.BudgetYearId!.Value).Returns(
+        _budget.GetYearByIdAsync(report2026.BudgetYearId!.Value, Arg.Any<CancellationToken>()).Returns(
             new BudgetYearDetail(report2026.BudgetYearId!.Value, "2026", "2026", BudgetYearStatus.Active, false, []));
-        _budget.GetYearByIdAsync(report2025.BudgetYearId!.Value).Returns(
+        _budget.GetYearByIdAsync(report2025.BudgetYearId!.Value, Arg.Any<CancellationToken>()).Returns(
             new BudgetYearDetail(report2025.BudgetYearId!.Value, "2025", "2025", BudgetYearStatus.Closed, false, []));
 
         var result = await _sut.ExpenseReports("2026", null, Xunit.TestContext.Current.CancellationToken);
@@ -361,7 +360,7 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(@"""syncState"":null");
         json.Should().Contain(@"""registeredInHolded"":null");
         // Nothing to show either half, so the report/timeline call is skipped outright.
-        await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!, default);
+        await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!);
     }
 
     /// <summary>The submitter half: they see the payee name (it is their own reimbursement)

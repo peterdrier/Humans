@@ -551,7 +551,7 @@ public sealed class TicketTransferServiceTests
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
 
         // The acting admin's request culture must not leak into the receiver's copy.
-        using (new Humans.Base.Extensions.CultureScope("fr"))
+        using (new CultureScope("fr"))
         {
             await _service.ApproveAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
         }

@@ -2186,11 +2186,9 @@ internal sealed class TeamService(
             : throw new InvalidOperationException($"Team {definition.TeamId} not found");
     }
 
-#pragma warning disable CS0618 // TeamRoleDefinition.Team — in-section nav read.
     private static bool IsShiftAuthorizationDefinition(TeamRoleDefinition definition) =>
         definition.IsManagement &&
         definition.Team.SystemTeamType == SystemTeamType.None;
-#pragma warning restore CS0618
 
     private async Task<Guid> ResolveMembershipTargetAsync(Guid userId, CancellationToken ct)
     {
@@ -2340,7 +2338,6 @@ internal sealed class TeamService(
             team.IsHidden);
     }
 
-#pragma warning disable CS0618 // TeamJoinRequest.Team — in-section nav read for snapshot projections.
     private static TeamJoinRequestSnapshot ToJoinRequestSnapshot(TeamJoinRequest request) => new(
         request.Id,
         request.TeamId,
@@ -2375,7 +2372,6 @@ internal sealed class TeamService(
             request.ResolvedAt,
             request.ReviewNotes);
     }
-#pragma warning restore CS0618
 
     private static void ValidateRoleName(string name)
     {
@@ -2402,7 +2398,6 @@ internal sealed class TeamService(
         CancellationToken cancellationToken = default)
     {
         var memberships = await repo.GetActiveMembershipsForRoleReconciliationAsync(cancellationToken);
-#pragma warning disable CS0618 // TeamMember.Team — in-section nav read for reconciliation snapshot.
         return memberships
             .Select(member => new TeamRoleReconciliationMembership(
                 member.Id,
@@ -2413,7 +2408,6 @@ internal sealed class TeamService(
                 member.Team.SystemTeamType,
                 member.RoleAssignments.Any(assignment => assignment.TeamRoleDefinition.IsManagement)))
             .ToList();
-#pragma warning restore CS0618
     }
 
     public async Task<int> ApplyMemberRoleChangesAsync(

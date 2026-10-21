@@ -1,7 +1,6 @@
 using System.Text.Encodings.Web;
 using AwesomeAssertions;
 using Humans.Base.ViewComponents;
-using Humans.Base.Extensions;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Builder;

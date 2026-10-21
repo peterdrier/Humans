@@ -192,18 +192,18 @@ internal sealed class AgentToolDispatcher(
             .ToList();
         if (blockMatches.Count > 0)
             return new AnthropicToolResult(callId,
-                RenderShiftDetails(blockMatches, activeEvent), IsError: false);
+                RenderShiftDetails(blockMatches), IsError: false);
 
         var singleton = signups.FirstOrDefault(s => s.Id == shiftKey);
         if (singleton is not null)
             return new AnthropicToolResult(callId,
-                RenderShiftDetails([singleton], activeEvent), IsError: false);
+                RenderShiftDetails([singleton]), IsError: false);
 
         return new AnthropicToolResult(callId, "Shift not found.", IsError: true);
     }
 
     /// <summary>Renders the get_shift_details blob. All signups passed in must belong to the caller.</summary>
-    private static string RenderShiftDetails(IReadOnlyList<ShiftSignupSummary> signups, EventSettingsInfo ev)
+    private static string RenderShiftDetails(IReadOnlyList<ShiftSignupSummary> signups)
     {
         var ordered = signups.OrderBy(s => s.Date).ToList();
         var first = ordered[0];

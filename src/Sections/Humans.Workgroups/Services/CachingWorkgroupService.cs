@@ -352,11 +352,4 @@ internal sealed class CachingWorkgroupService(
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IWorkgroupService>(InnerServiceKey);
         return await work(inner);
     }
-
-    private async Task WithInner(Func<IWorkgroupService, Task> work)
-    {
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IWorkgroupService>(InnerServiceKey);
-        await work(inner);
-    }
 }

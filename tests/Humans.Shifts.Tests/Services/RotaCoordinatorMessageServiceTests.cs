@@ -994,7 +994,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     private static IReadOnlyList<string> ShiftLines(EmailMessage message) =>
     [
         .. message.HtmlBody
-            .Split("<li>", StringSplitOptions.None)
+            .Split("<li>")
             .Skip(1)
             .Select(part => part[..part.IndexOf("</li>", StringComparison.Ordinal)])
     ];

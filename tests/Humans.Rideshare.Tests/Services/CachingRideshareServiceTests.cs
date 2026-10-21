@@ -17,7 +17,7 @@ namespace Humans.Rideshare.Tests.Services;
 public sealed class CachingRideshareServiceTests
 {
     private static readonly LocalDate July3 = new(2026, 7, 3);
-    private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
+    private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private readonly IRideshareService _inner = Substitute.For<IRideshareService>();
     private readonly CachingRideshareService _service;

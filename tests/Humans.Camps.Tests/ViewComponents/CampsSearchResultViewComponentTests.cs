@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Base.Enums;
-using Humans.Camps.Contracts;
 using Humans.Camps.ViewComponents;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.AspNetCore.Http;

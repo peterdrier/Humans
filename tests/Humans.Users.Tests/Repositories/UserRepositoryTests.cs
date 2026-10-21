@@ -40,6 +40,7 @@ public sealed class UserRepositoryTests : IDisposable
             UserName = $"user-{Guid.NewGuid():N}@example.com",
             Email = $"user-{Guid.NewGuid():N}@example.com",
             DisplayName = "Seeded User",
+            BurnerName = "Seeded User",
             CreatedAt = _clock.GetCurrentInstant(),
         };
         _dbContext.Users.Add(user);
@@ -145,7 +146,7 @@ public sealed class UserRepositoryTests : IDisposable
         var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
-        result.OriginalDisplayName.Should().Be("Seeded User");
+        result.OriginalBurnerName.Should().Be("Seeded User");
     }
 
     [HumansFact]

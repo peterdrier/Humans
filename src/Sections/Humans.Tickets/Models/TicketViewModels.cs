@@ -1,8 +1,6 @@
-using Humans.Users.Contracts;
 using NodaTime;
 
 using Humans.Base.Models;
-using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Services.Dtos;
 

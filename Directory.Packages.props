@@ -90,7 +90,7 @@
     <!-- Analyzers -->
     <PackageVersion Include="Roslynator.Analyzers" Version="4.15.0" />
     <PackageVersion Include="Meziantou.Analyzer" Version="3.0.315" />
-    <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.14.15" />
+    <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="18.12.1" />
     <!-- Testing -->
     <PackageVersion Include="coverlet.collector" Version="10.1.0" />
     <PackageVersion Include="AwesomeAssertions" Version="9.6.0" />

@@ -48,7 +48,7 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
             return IdentityResult.Success;
         });
         _credentialUsers.SetLockoutEnabledAsync(Arg.Any<User>(), false).Returns(IdentityResult.Success);
-        _profiles.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
+        _profiles.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
             .Returns(_ =>
             {
                 _storedUser!.State = UserState.Active;
@@ -66,7 +66,7 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
     public async Task FirstProfileSaveFailure_RetryCompletesTheExistingAccount(bool throws)
     {
         var attempts = 0;
-        _profiles.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
+        _profiles.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
             .Returns(_ =>
             {
                 if (++attempts == 1)

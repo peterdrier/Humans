@@ -99,13 +99,13 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
     }
 
     [HumansTheory]
-    [Xunit.InlineData("en", "Document published")]
-    [Xunit.InlineData("es", "Documento publicado")]
-    [Xunit.InlineData("de", "Dokument veröffentlicht")]
-    [Xunit.InlineData("it", "Documento pubblicato")]
-    [Xunit.InlineData("fr", "Document publié")]
-    [Xunit.InlineData("ca", "Document publicat")]
-    [Xunit.InlineData("invalid!", "Document published")]
+    [InlineData("en", "Document published")]
+    [InlineData("es", "Documento publicado")]
+    [InlineData("de", "Dokument veröffentlicht")]
+    [InlineData("it", "Documento pubblicato")]
+    [InlineData("fr", "Document publié")]
+    [InlineData("ca", "Document publicat")]
+    [InlineData("invalid!", "Document published")]
     public async Task PublishedNotice_UsesTheRecipientLanguage(string language, string title)
     {
         var coordinator = SeedUser(language: language);

@@ -1,5 +1,4 @@
 using Humans.Base.Extensions;
-using Humans.Base.Constants;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Workgroups.Domain;
@@ -31,7 +30,7 @@ internal sealed partial class WorkgroupService
         var graph = await repository.GetGraphAsync(ct);
         var names = graph.Workgroups.ToDictionary(w => w.Id, w => w.Name);
         var documentGroups = graph.Workgroups
-            .SelectMany(w => w.Documents.Select(d => (d.Id, Title: d.Title, GroupId: w.Id)))
+            .SelectMany(w => w.Documents.Select(d => (d.Id, d.Title, GroupId: w.Id)))
             .ToDictionary(x => x.Id, x => (x.Title, x.GroupId));
 
         string NameOf(Guid workgroupId) => names.TryGetValue(workgroupId, out var name) ? name : "(unknown)";

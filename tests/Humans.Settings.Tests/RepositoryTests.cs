@@ -34,7 +34,7 @@ public sealed class RepositoryTests : IDisposable
     public void EventDictionaryComparer_EqualMapsHaveEqualHashesRegardlessOfInsertionOrder(string propertyName)
     {
         var comparer = _seedContext.Model.FindEntityType(typeof(EventSettings))!
-            .FindProperty(propertyName)!.GetValueComparer()!;
+            .FindProperty(propertyName)!.GetValueComparer();
         var original = new Dictionary<int, int> { [-1] = 100, [0] = 400 };
         var reordered = new Dictionary<int, int> { [0] = 400, [-1] = 100 };
 

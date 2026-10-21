@@ -81,7 +81,7 @@ public class GateArchitectureTests
             var attribute = post.GetCustomAttribute<AuthorizeAttribute>();
             attribute.Should().NotBeNull(
                 because: $"POST {post.Name} must not inherit only the class-level read policy");
-            attribute!.Policy.Should().Be(expected,
+            attribute.Policy.Should().Be(expected,
                 because: $"POST {post.Name} must not inherit only the class-level read policy");
         }
 

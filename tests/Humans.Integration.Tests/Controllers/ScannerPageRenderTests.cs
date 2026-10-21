@@ -104,7 +104,7 @@ public class ScannerPageRenderTests(HumansTestDatabase database) : IntegrationTe
         token.Should().NotBeNullOrEmpty();
         await Client.PostAsync("/Language/SetLanguage", new FormUrlEncodedContent(
             [
-                new KeyValuePair<string, string>("__RequestVerificationToken", token!),
+                new KeyValuePair<string, string>("__RequestVerificationToken", token),
                 new KeyValuePair<string, string>("culture", "es"),
             ]), ct);
 

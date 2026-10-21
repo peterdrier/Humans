@@ -76,7 +76,7 @@ public sealed class HoldedLedgerSyncTests
     [HumansFact]
     public async Task Cold_cache_sweeps_from_inception_and_caches_all_accounts()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         StubWindowFetch(
             Dto(1, 1, 40000004, FixedNow, credit: 23m),
             Dto(1, 2, 62900140, FixedNow, debit: 23m));   // NOT creditor-block — cached anyway (full mirror)
@@ -95,7 +95,7 @@ public sealed class HoldedLedgerSyncTests
     [HumansFact]
     public async Task Warm_cache_sweeps_trailing_45_day_window_anchored_on_now()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         StubWindowFetch(Dto(1, 1, 40000004, FixedNow, credit: 23m));
         await _service.SyncLedgerAsync(full: false, ct);   // cold pass fills the cache
         _client.ClearReceivedCalls();
@@ -112,7 +112,7 @@ public sealed class HoldedLedgerSyncTests
     [HumansFact]
     public async Task Full_flag_forces_inception_sweep_and_replaces_deleted_lines()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         StubWindowFetch(
             Dto(1, 1, 40000004, FixedNow, credit: 23m),
             Dto(2, 1, 40000004, FixedNow, debit: 23m));    // the phantom row
@@ -130,7 +130,7 @@ public sealed class HoldedLedgerSyncTests
     [HumansFact]
     public async Task Reconcile_repulls_mismatched_account_and_reports_residual()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         StubWindowFetch(Dto(1, 1, 40000004, FixedNow, credit: 23m));   // local balance −23
         // Chart says −23 for 40000004 (matches) but −100 for 57200001 (no local lines → drift).
         _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>())
@@ -158,7 +158,7 @@ public sealed class HoldedLedgerSyncTests
     [HumansFact]
     public async Task Archived_accounts_are_not_reconciled()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         StubWindowFetch();
         _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>())
             .Returns(new List<HoldedAccountDto> { Account(10000000, -999m, archived: true) });
@@ -171,15 +171,15 @@ public sealed class HoldedLedgerSyncTests
     [HumansFact]
     public async Task Second_concurrent_sweep_skips()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var firstStarted = new TaskCompletionSource();
-        var releaseFirst = new TaskCompletionSource();
+        using var releaseFirst = new SemaphoreSlim(0);
         _client.ListLedgerEntriesAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), null, Arg.Any<CancellationToken>())
-            .Returns(_ =>
+            .Returns(async _ =>
             {
                 firstStarted.TrySetResult();
-                releaseFirst.Task.GetAwaiter().GetResult();
-                return new List<HoldedLedgerLineDto>();
+                await releaseFirst.WaitAsync(CancellationToken.None);
+                return (IReadOnlyList<HoldedLedgerLineDto>)new List<HoldedLedgerLineDto>();
             });
 
         var inFlight = Task.Run(() => _service.SyncLedgerAsync(full: false, CancellationToken.None), CancellationToken.None);
@@ -187,14 +187,14 @@ public sealed class HoldedLedgerSyncTests
 
         (await _service.SyncLedgerAsync(full: true, ct)).Should().BeFalse();
 
-        releaseFirst.SetResult();
+        releaseFirst.Release();
         (await inFlight).Should().BeTrue();
     }
 
     [HumansFact]
     public async Task Drains_call_log_into_repo()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         StubWindowFetch();
         _callLog.DrainAll().Returns(new List<HoldedApiCallRecord>
         {
@@ -233,7 +233,7 @@ public sealed class HoldedLedgerSyncTests
         entry.Level.Should().Be(requestAborted ? LogLevel.Warning : LogLevel.Error);
         if (requestAborted) entry.Exception.Should().BeNull();
         else entry.Exception.Should().BeOfType<OperationCanceledException>();
-        var states = await _repo.GetSyncStatesAsync(Xunit.TestContext.Current.CancellationToken);
+        var states = await _repo.GetSyncStatesAsync(TestContext.Current.CancellationToken);
         states.Single().SyncStatus.Should().Be(HoldedSyncStatus.Error);
         states.Single().LastError.Should().Contain("ledger fetch cancelled");
     }
@@ -268,15 +268,15 @@ public sealed class HoldedLedgerSyncTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(0, "down", "down")]
-    [Xunit.InlineData(1997, "tail", "…")]
-    [Xunit.InlineData(1996, "😀tail", "…")]
-    [Xunit.InlineData(1995, "😀tail", "😀…")]
+    [InlineData(0, "down", "down")]
+    [InlineData(1997, "tail", "…")]
+    [InlineData(1996, "😀tail", "…")]
+    [InlineData(1995, "😀tail", "😀…")]
     public async Task Failed_sweep_records_error_state_and_rethrows(int prefixLength, string tail, string expectedTail)
     {
         var prefix = new string('x', prefixLength);
         var message = prefix + tail;
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         _client.ListLedgerEntriesAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), null, Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<HoldedLedgerLineDto>>(_ => throw new HoldedTransientException(message));
 
@@ -296,7 +296,7 @@ public sealed class HoldedLedgerSyncTests
     [HumansFact]
     public async Task Balances_read_sums_the_whole_mirror()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         StubWindowFetch(
             Dto(1, 1, 62900105, Instant.FromUtc(2026, 3, 1, 0, 0), debit: 100m),
             Dto(2, 1, 62900105, Instant.FromUtc(2025, 3, 1, 0, 0), debit: 40m));

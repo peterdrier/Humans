@@ -4,7 +4,6 @@ using Humans.CityPlanning.Domain;
 using Humans.CityPlanning.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using NodaTime.Testing;
 
 namespace Humans.CityPlanning.Tests;
 

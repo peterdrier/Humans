@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Expenses.Domain;
 
-namespace Humans.Expenses.Data;
+namespace Humans.Expenses.Data.Configurations;
 
 internal sealed class ExpenseAttachmentConfiguration : IEntityTypeConfiguration<ExpenseAttachment>
 {
