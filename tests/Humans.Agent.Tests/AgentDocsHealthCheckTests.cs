@@ -58,7 +58,7 @@ public class AgentDocsHealthCheckTests
             dir = dir.Parent;
         var path = Path.Combine(dir!.FullName, folder, stem + ".md");
         return File.Exists(path)
-            ? Task.FromResult(File.ReadAllText(path))
+            ? File.ReadAllTextAsync(path)
             : throw new NotFoundException(path, System.Net.HttpStatusCode.NotFound);
     }
 }

@@ -101,7 +101,7 @@ internal sealed class ProcessAccountDeletionsJob(
                         {
                             await emailService.SendAsync(emailMessages.AccountDeleted(
                                 summary.OriginalEmail,
-                                summary.OriginalDisplayName,
+                                summary.OriginalBurnerName,
                                 summary.PreferredLanguage.IsSupportedCultureCode()
                                     ? summary.PreferredLanguage : CultureCatalog.DefaultCultureCode),
                                 cancellationToken);

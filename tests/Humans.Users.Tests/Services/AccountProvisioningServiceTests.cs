@@ -163,7 +163,7 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task AddAsync(Profile profile, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task UpdateAsync(Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null, string? displayName = null) =>
+        public Task UpdateAsync(Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null) =>
             throw new NotSupportedException();
         public Task<bool> AnonymizeForDeletionByUserIdAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
@@ -540,7 +540,7 @@ public class AccountProvisioningServiceTests
         result.Created.Should().BeTrue();
         // User.Email is no longer the identity — the verified row is.
         result.User.Email.Should().BeNull();
-        result.User.DisplayName.Should().Be("Alice Smith");
+        result.User.BurnerName.Should().Be("Alice Smith");
         result.User.ContactSource.Should().Be(ContactSource.TicketTailor);
 
         // Verify UserEmail was created
@@ -709,7 +709,7 @@ public class AccountProvisioningServiceTests
             "grace@example.com", null, ContactSource.MailerLite, Xunit.TestContext.Current.CancellationToken);
 
         result.Created.Should().BeTrue();
-        result.User.DisplayName.Should().Be("grace");
+        result.User.BurnerName.Should().Be("grace");
     }
 
     [HumansFact]
@@ -876,6 +876,39 @@ public class AccountProvisioningServiceTests
         _audit.ReceivedCalls().Should().HaveCount(1);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(0, 256)]
+    [Xunit.InlineData(1, 256)]
+    [Xunit.InlineData(2, 256)]
+    [Xunit.InlineData(0, 257)]
+    [Xunit.InlineData(1, 257)]
+    [Xunit.InlineData(2, 257)]
+    public async Task CompleteMagicLinkSignupAsync_ValidatesNameLengthsBeforeCreatingAccount(int field, int length)
+    {
+        string[] names = ["Burner", "First", "Last"];
+        names[field] = " " + new string('x', length) + " ";
+
+        var result = await _service.CompleteMagicLinkSignupAsync(
+            "length@example.com", names[0], names[1], names[2], Xunit.TestContext.Current.CancellationToken);
+
+        if (length > 256)
+        {
+            result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.Failed);
+            result.User.Should().BeNull();
+            _userRepo.Count.Should().Be(0);
+            _userEmailFake.All.Should().BeEmpty();
+            await _userManager.DidNotReceive().CreateAsync(Arg.Any<User>());
+            await _userService.DidNotReceive().EnsureStubProfileAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.Created);
+            await _userService.Received(1).EnsureStubProfileAsync(
+                result.User!.Id, names[0].Trim(), names[1].Trim(), names[2].Trim(), Arg.Any<CancellationToken>());
+        }
+    }
+
     [HumansFact]
     public async Task CompleteMagicLinkSignupAsync_CreatesUserEmailAndStubProfile()
     {
@@ -884,7 +917,7 @@ public class AccountProvisioningServiceTests
 
         result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.Created);
         result.User.Should().NotBeNull();
-        result.User!.DisplayName.Should().Be("Magic Human");
+        result.User!.BurnerName.Should().Be("Magic Human");
         result.User.LastLoginAt.Should().Be(_clock.GetCurrentInstant());
         _userEmailFake.All.Should().ContainSingle(ue =>
             ue.UserId == result.User.Id

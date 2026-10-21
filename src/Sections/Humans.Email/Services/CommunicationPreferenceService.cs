@@ -253,7 +253,7 @@ internal sealed class CommunicationPreferenceService(
                     OptedOut = winner.OptedOut,
                     InboxEnabled = winner.InboxEnabled,
                     UpdateSource = winner.UpdateSource,
-                    SubscribedAt = tgt.SubscribedAt,
+                    SubscribedAt = tgt.SubscribedAt ?? src.SubscribedAt,
                     UpdatedAt = updatedAt,
                 };
             }

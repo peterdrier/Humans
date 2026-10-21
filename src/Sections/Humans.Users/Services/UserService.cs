@@ -422,7 +422,7 @@ internal sealed class UserService(
         // saved names and carries any existing suspension forward.
         try
         {
-            await repo.UpdateAsync(profile, ct, volunteerHistory, command.DisplayName);
+            await repo.UpdateAsync(profile, ct, volunteerHistory);
         }
         catch when (newPictureKey is not null)
         {

@@ -56,7 +56,7 @@ public class UnsubscribeServiceTests
         _preferenceService.ValidateUnsubscribeToken("new-token")
             .Returns((TokenValidationStatus.Valid, userId, MessageCategory.Marketing));
 
-        var result = await _service.ValidateTokenAsync("new-token", Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.ValidateTokenAsync("new-token", TestContext.Current.CancellationToken);
 
         result.IsValid.Should().BeTrue();
         result.IsExpired.Should().BeFalse();
@@ -72,7 +72,7 @@ public class UnsubscribeServiceTests
         _preferenceService.ValidateUnsubscribeToken("expired-token")
             .Returns((TokenValidationStatus.Expired, Guid.Empty, MessageCategory.Marketing));
 
-        var result = await _service.ValidateTokenAsync("expired-token", Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.ValidateTokenAsync("expired-token", TestContext.Current.CancellationToken);
 
         result.IsValid.Should().BeFalse();
         result.IsExpired.Should().BeTrue();
@@ -93,7 +93,7 @@ public class UnsubscribeServiceTests
             .ToTimeLimitedDataProtector();
         var legacyToken = protector.Protect(userId.ToString(), TimeSpan.FromDays(90));
 
-        var result = await _service.ValidateTokenAsync(legacyToken, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.ValidateTokenAsync(legacyToken, TestContext.Current.CancellationToken);
 
         result.IsValid.Should().BeTrue();
         result.IsLegacy.Should().BeTrue();
@@ -108,7 +108,7 @@ public class UnsubscribeServiceTests
         _preferenceService.ValidateUnsubscribeToken(Arg.Any<string>())
             .Returns((TokenValidationStatus.Invalid, Guid.Empty, MessageCategory.Marketing));
 
-        var result = await _service.ValidateTokenAsync("totally-not-a-token", Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.ValidateTokenAsync("totally-not-a-token", TestContext.Current.CancellationToken);
 
         result.IsValid.Should().BeFalse();
         result.IsExpired.Should().BeFalse();
@@ -125,7 +125,7 @@ public class UnsubscribeServiceTests
             .ToTimeLimitedDataProtector();
         var token = protector.Protect("not-a-guid", TimeSpan.FromDays(90));
 
-        var result = await _service.ValidateTokenAsync(token, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.ValidateTokenAsync(token, TestContext.Current.CancellationToken);
 
         result.IsValid.Should().BeFalse();
         result.IsExpired.Should().BeFalse();
@@ -140,7 +140,7 @@ public class UnsubscribeServiceTests
         _preferenceService.ValidateUnsubscribeToken("new-token")
             .Returns((TokenValidationStatus.Valid, userId, MessageCategory.Marketing));
 
-        var result = await _service.ValidateTokenAsync("new-token", Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.ValidateTokenAsync("new-token", TestContext.Current.CancellationToken);
 
         result.IsValid.Should().BeFalse();
     }
@@ -154,7 +154,7 @@ public class UnsubscribeServiceTests
         _preferenceService.ValidateUnsubscribeToken("new-token")
             .Returns((TokenValidationStatus.Valid, userId, MessageCategory.Marketing));
 
-        var result = await _service.ConfirmUnsubscribeAsync("new-token", "MagicLink", Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.ConfirmUnsubscribeAsync("new-token", "MagicLink", TestContext.Current.CancellationToken);
 
         result.IsValid.Should().BeTrue();
         await _preferenceService.Received(1).UpdatePreferenceAsync(
@@ -171,7 +171,7 @@ public class UnsubscribeServiceTests
         _preferenceService.ValidateUnsubscribeToken("new-token")
             .Returns((TokenValidationStatus.Valid, mergedId, MessageCategory.Marketing));
 
-        var result = await _service.ValidateTokenAsync("new-token", Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.ValidateTokenAsync("new-token", TestContext.Current.CancellationToken);
 
         result.IsValid.Should().BeTrue();
         result.UserId.Should().Be(survivorId);
@@ -188,7 +188,7 @@ public class UnsubscribeServiceTests
         _preferenceService.ValidateUnsubscribeToken("new-token")
             .Returns((TokenValidationStatus.Valid, mergedId, MessageCategory.Marketing));
 
-        await _service.ConfirmUnsubscribeAsync("new-token", "MagicLink", Xunit.TestContext.Current.CancellationToken);
+        await _service.ConfirmUnsubscribeAsync("new-token", "MagicLink", TestContext.Current.CancellationToken);
 
         await _preferenceService.Received(1).UpdatePreferenceAsync(
             survivorId, MessageCategory.Marketing, true, "MagicLink", Arg.Any<CancellationToken>());
@@ -224,7 +224,7 @@ public class UnsubscribeServiceTests
                 .Returns((TokenValidationStatus.Valid, userId, MessageCategory.Marketing));
         }
 
-        var result = await _service.ConfirmUnsubscribeAsync(token, "OneClick", Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.ConfirmUnsubscribeAsync(token, "OneClick", TestContext.Current.CancellationToken);
 
         result.IsValid.Should().BeFalse();
         result.UserId.Should().BeNull();
@@ -238,7 +238,7 @@ public class UnsubscribeServiceTests
         _preferenceService.ValidateUnsubscribeToken(Arg.Any<string>())
             .Returns((TokenValidationStatus.Invalid, Guid.Empty, MessageCategory.Marketing));
 
-        var result = await _service.ConfirmUnsubscribeAsync("garbage", "MagicLink", Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.ConfirmUnsubscribeAsync("garbage", "MagicLink", TestContext.Current.CancellationToken);
 
         result.IsValid.Should().BeFalse();
         await _preferenceService.DidNotReceive().UpdatePreferenceAsync(

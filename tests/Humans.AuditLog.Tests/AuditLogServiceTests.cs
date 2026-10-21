@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Humans.AuditLog.Domain;
 using AwesomeAssertions;
-using Humans.Base.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -73,7 +72,7 @@ public class AuditLogServiceTests : IDisposable
             "Auto-approved", "SystemTeamSyncJob");
 
         // Repository auto-saves — entry should be visible immediately.
-        var entry = _dbContext.AuditLogEntries.AsNoTracking().Single();
+        var entry = await _dbContext.AuditLogEntries.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         entry.Action.Should().Be(AuditAction.VolunteerApproved);
         entry.EntityType.Should().Be("User");
         entry.EntityId.Should().Be(entityId);
@@ -92,7 +91,7 @@ public class AuditLogServiceTests : IDisposable
             AuditAction.MemberSuspended, nameof(User), entityId,
             "Suspended for inactivity", actorId);
 
-        var entry = _dbContext.AuditLogEntries.AsNoTracking().Single();
+        var entry = await _dbContext.AuditLogEntries.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         entry.ActorUserId.Should().Be(actorId);
         entry.Action.Should().Be(AuditAction.MemberSuspended);
         entry.EntityType.Should().Be("User");
@@ -113,7 +112,7 @@ public class AuditLogServiceTests : IDisposable
         // Issue #552: the new Application-layer service persists each entry
         // immediately through the repository. The caller no longer needs to
         // call SaveChanges on a shared DbContext.
-        _dbContext.AuditLogEntries.AsNoTracking().Count().Should().Be(1);
+        (await _dbContext.AuditLogEntries.AsNoTracking().CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
     [HumansTheory]
@@ -131,7 +130,7 @@ public class AuditLogServiceTests : IDisposable
                 Guid.NewGuid(), description, Guid.NewGuid());
 
         var entry = await _dbContext.AuditLogEntries.AsNoTracking()
-            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(TestContext.Current.CancellationToken);
         entry.Description.Should().Be(systemAction ? $"TestJob: {description}" : description);
         // InMemory does not enforce varchar bounds; verify the complete entry fits the real mapping.
         var mapping = _dbContext.Model.FindEntityType(typeof(AuditLogEntry))!;
@@ -148,9 +147,9 @@ public class AuditLogServiceTests : IDisposable
         SeedAuditLogEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid(), now - Duration.FromHours(2));
         SeedAuditLogEntry(AuditAction.MemberSuspended, "User", Guid.NewGuid(), now - Duration.FromHours(1));
         SeedAuditLogEntry(AuditAction.RoleAssigned, "User", Guid.NewGuid(), now);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (items, totalCount, _) = await _service.GetFilteredAsync(null, 1, 10, Xunit.TestContext.Current.CancellationToken);
+        var (items, totalCount, _) = await _service.GetFilteredAsync(null, 1, 10, TestContext.Current.CancellationToken);
 
         items.Should().HaveCount(3);
         totalCount.Should().Be(3);
@@ -163,9 +162,9 @@ public class AuditLogServiceTests : IDisposable
         SeedAuditLogEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid(), now - Duration.FromHours(2));
         SeedAuditLogEntry(AuditAction.MemberSuspended, "User", Guid.NewGuid(), now - Duration.FromHours(1));
         SeedAuditLogEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid(), now);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (items, totalCount, _) = await _service.GetFilteredAsync("VolunteerApproved", 1, 10, Xunit.TestContext.Current.CancellationToken);
+        var (items, totalCount, _) = await _service.GetFilteredAsync("VolunteerApproved", 1, 10, TestContext.Current.CancellationToken);
 
         items.Should().HaveCount(2);
         totalCount.Should().Be(2);
@@ -178,9 +177,9 @@ public class AuditLogServiceTests : IDisposable
         var now = _clock.GetCurrentInstant();
         SeedAuditLogEntry(AuditAction.AnomalousPermissionDetected, "GoogleResource", Guid.NewGuid(), now);
         SeedAuditLogEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid(), now - Duration.FromHours(1));
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (items, totalCount, anomalyCount) = await _service.GetFilteredAsync("VolunteerApproved", 1, 10, Xunit.TestContext.Current.CancellationToken);
+        var (items, totalCount, anomalyCount) = await _service.GetFilteredAsync("VolunteerApproved", 1, 10, TestContext.Current.CancellationToken);
 
         items.Should().HaveCount(1);
         totalCount.Should().Be(1);
@@ -196,9 +195,9 @@ public class AuditLogServiceTests : IDisposable
             SeedAuditLogEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid(),
                 now - Duration.FromHours(i));
         }
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (items, totalCount, _) = await _service.GetFilteredAsync(null, 2, 2, Xunit.TestContext.Current.CancellationToken);
+        var (items, totalCount, _) = await _service.GetFilteredAsync(null, 2, 2, TestContext.Current.CancellationToken);
 
         items.Should().HaveCount(2);
         totalCount.Should().Be(5);
@@ -218,9 +217,9 @@ public class AuditLogServiceTests : IDisposable
         // Entry that should NOT match
         SeedAuditLogEntry(AuditAction.MemberSuspended, "User", Guid.NewGuid(),
             now - Duration.FromHours(2));
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.GetByUserAsync(userId, 10, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetByUserAsync(userId, 10, TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(2);
     }
@@ -235,9 +234,9 @@ public class AuditLogServiceTests : IDisposable
             SeedAuditLogEntry(AuditAction.VolunteerApproved, "User", userId,
                 now - Duration.FromHours(i));
         }
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.GetByUserAsync(userId, 3, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetByUserAsync(userId, 3, TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(3);
     }
@@ -252,9 +251,9 @@ public class AuditLogServiceTests : IDisposable
         var middle = SeedAuditLogEntry(AuditAction.MemberSuspended, "User", userId,
             now - Duration.FromHours(1));
         var newest = SeedAuditLogEntry(AuditAction.RoleAssigned, "User", userId, now);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.GetByUserAsync(userId, 10, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetByUserAsync(userId, 10, TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(3);
         result[0].Id.Should().Be(newest.Id);
@@ -333,10 +332,10 @@ public class AuditLogServiceTests : IDisposable
         SeedAuditLogEntry(AuditAction.RoleAssigned, "User", targetId, now - Duration.FromHours(1));
         // Row for an unrelated user — must NOT appear.
         SeedAuditLogEntry(AuditAction.RoleEnded, "User", unrelated, now);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act.
-        var result = await _service.GetByUserAsync(targetId, 10, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetByUserAsync(targetId, 10, TestContext.Current.CancellationToken);
 
         // Assert: all three rows (source1, source2, targetId) surface; unrelated does not.
         result.Should().HaveCount(3,
@@ -360,9 +359,9 @@ public class AuditLogServiceTests : IDisposable
         var now = _clock.GetCurrentInstant();
         SeedAuditLogEntry(AuditAction.VolunteerApproved, "User", archived, now - Duration.FromHours(2));
         SeedAuditLogEntry(AuditAction.RoleAssigned, "User", survivor, now - Duration.FromHours(1));
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.GetByUserAsync(archived, 10, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetByUserAsync(archived, 10, TestContext.Current.CancellationToken);
 
         result.Select(e => e.EntityId).Should().BeEquivalentTo([archived, survivor]);
     }

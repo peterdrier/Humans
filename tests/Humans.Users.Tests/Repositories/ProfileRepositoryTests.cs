@@ -33,7 +33,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
     [HumansFact]
     public async Task AddAsync_UpdatesUserStateFromNewProfile()
     {
-        var user = await SeedUserAsync(UserState.Bare);
+        var user = await SeedUserAsync();
         var profile = NewProfile(user.Id, "Burner", "First", "Last");
 
         await _repo.AddAsync(profile, Xunit.TestContext.Current.CancellationToken);

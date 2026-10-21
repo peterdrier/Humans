@@ -350,7 +350,7 @@ internal sealed partial class UserRepository : IUserRepository
             return null;
 
         var originalEmail = user.Email;
-        var originalDisplayName = user.DisplayName;
+        var originalBurnerName = user.BurnerName ?? string.Empty;
         var preferredLanguage = user.PreferredLanguage;
 
         user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
@@ -395,7 +395,7 @@ internal sealed partial class UserRepository : IUserRepository
         await ResyncStateInContextAsync(ctx, user, ct);
         await ctx.SaveChangesAsync(ct);
         return new ExpiredDeletionAnonymizationResult(
-            originalEmail, originalDisplayName, preferredLanguage);
+            originalEmail, originalBurnerName, preferredLanguage);
     }
 
     // Reads — EventParticipation

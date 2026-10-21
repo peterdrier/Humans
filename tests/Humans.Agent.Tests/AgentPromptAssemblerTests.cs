@@ -5,7 +5,6 @@ using NodaTime;
 using Humans.Agent.Models;
 
 using Humans.Shifts.Contracts;
-using Humans.Agent.Contracts;
 namespace Humans.Agent.Tests;
 
 public class AgentPromptAssemblerTests

@@ -2,7 +2,6 @@
 namespace Humans.Users.Contracts;
 
 public sealed record UserProfileSaveCommand(
-    string DisplayName,
     string BurnerName,
     string FirstName,
     string LastName,

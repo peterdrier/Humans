@@ -193,9 +193,9 @@ public sealed class EventTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("2,3", null)]
-    [Xunit.InlineData("invalid, 2, 3", null)]
-    [Xunit.InlineData("2,3", 3)]
+    [InlineData("2,3", null)]
+    [InlineData("invalid, 2, 3", null)]
+    [InlineData("2,3", 3)]
     public void GetOccurrenceInstants_Recurring_UsesGateOpeningDayOffsets(string recurrenceDays, int? dayOffset)
     {
         var timeZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
@@ -218,9 +218,9 @@ public sealed class EventTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(false, true)]
-    [Xunit.InlineData(true, false)]
-    [Xunit.InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
     public void GetOccurrenceInstants_MissingContext_ReturnsStartAtDespiteDayFilter(bool hasGateDate, bool hasZone)
     {
         var guideEvent = CreateEvent(EventStatus.Approved);

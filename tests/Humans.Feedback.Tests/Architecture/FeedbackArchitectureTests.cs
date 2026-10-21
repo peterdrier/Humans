@@ -3,7 +3,6 @@ using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Feedback.Data;
 using FeedbackService = Humans.Feedback.Services.FeedbackService;
-using Humans.Feedback.Contracts;
 
 namespace Humans.Feedback.Tests.Architecture;
 
@@ -29,8 +28,10 @@ public class FeedbackArchitectureTests
 
         paramTypes.Should().Contain(typeof(IUserService),
             because: "Feedback resolves reporter / assignee / resolver display names via IUserService.GetUserInfosAsync — UserInfo.BurnerName implements the BurnerName-first fallback per memory/architecture/burnername-is-the-display-name.md");
-        paramTypes.Should().Contain(typeof(IUserEmailService),
-            because: "Feedback resolves the reporter's effective notification email via IUserEmailService.GetNotificationTargetEmailsAsync — no User.UserEmails navigation");
+        var deliveryParamTypes = typeof(Humans.Feedback.Services.FeedbackReplyDelivery)
+            .GetConstructors().Single().GetParameters().Select(p => p.ParameterType);
+        deliveryParamTypes.Should().Contain(typeof(IUserEmailService),
+            because: "Feedback's delivery pipeline resolves the reporter's effective notification email via IUserEmailService.GetNotificationTargetEmailsAsync — no User.UserEmails navigation");
         paramTypes.Should().Contain(typeof(ITeamService),
             because: "Feedback resolves assigned-team names via the cross-section ITeamService surface — no FeedbackReport.AssignedToTeam navigation at query time");
     }

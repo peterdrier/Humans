@@ -171,7 +171,7 @@ public sealed class LegalDocumentServiceTests : IDisposable
             .SetValue(connector, client);
 
         var content = await connector.GetFolderContentByPrefixAsync(
-            "Estatutos", "ESTATUTOS", Xunit.TestContext.Current.CancellationToken);
+            "Estatutos", "ESTATUTOS", TestContext.Current.CancellationToken);
 
         content.Should().ContainKey("es").WhoseValue.Should().Be("hola");
         handler.Requests.Should().HaveCount(2);
@@ -194,7 +194,7 @@ public sealed class LegalDocumentServiceTests : IDisposable
         var file = await connector.GetFileContentAsync("Estatutos/ESTATUTOS.md", TestContext.Current.CancellationToken);
 
         file.Should().NotBeNull();
-        file!.Sha.Should().Be("abc");
+        file.Sha.Should().Be("abc");
         file.Content.Should().Be("Consentimiento: sí 😀");
         file.CommitSha.Should().Be("commit-1");
         handler.Requests.Should().HaveCount(3);
@@ -242,7 +242,7 @@ public sealed class LegalDocumentServiceTests : IDisposable
         var summary = await connector.GetCommitMessageAsync("abc", TestContext.Current.CancellationToken);
 
         summary.Should().Be(message[..expectedLength]);
-        new UTF8Encoding(false, true).GetBytes(summary!).Should().NotBeEmpty();
+        new UTF8Encoding(false, true).GetBytes(summary).Should().NotBeEmpty();
     }
 
     [HumansTheory]

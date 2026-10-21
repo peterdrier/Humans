@@ -215,7 +215,7 @@ public sealed class IssuesServiceTests
     {
         var user = SeedUser();
         var issue = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
-        var detail = await _service.GetIssueByIdAsync(issue.issueId, Admin, Xunit.TestContext.Current.CancellationToken);
+        var detail = await _service.GetIssueByIdAsync(issue.issueId, Admin, TestContext.Current.CancellationToken);
         var mutations = Substitute.For<IIssuesService>();
         mutations.GetIssueByIdAsync(issue.issueId, Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>()).Returns(detail);
         mutations.UpdateSectionAsync(issue.issueId, Arg.Any<IssueViewer>(), "Teams", user.Id,
@@ -250,7 +250,7 @@ public sealed class IssuesServiceTests
     {
         var user = SeedUser();
         var issueId = await _service.CreateIssueAsync(user.Id, IssueCategory.Bug, "Title", "Description",
-            section: "Tickets", actorUserId: user.Id, ct: Xunit.TestContext.Current.CancellationToken);
+            section: "Tickets", actorUserId: user.Id, ct: TestContext.Current.CancellationToken);
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
@@ -303,13 +303,13 @@ public sealed class IssuesServiceTests
     {
         var reporterId = Guid.NewGuid();
         SeedUser(reporterId, "Reporter").Email = "r@r.com";
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         var filerId = Guid.NewGuid();
 
         var issueId = await _service.CreateIssueAsync(
             reporterId, IssueCategory.Bug, "Title", "Desc",
             section: "Tickets",
-            actorUserId: filerId, ct: Xunit.TestContext.Current.CancellationToken);
+            actorUserId: filerId, ct: TestContext.Current.CancellationToken);
 
         // The issue row records only the reporter, so the audit entry is the filer's one record.
         await AuditLog.Received().LogAsync(
@@ -321,7 +321,7 @@ public sealed class IssuesServiceTests
             Arg.Any<Guid?>(),
             Arg.Any<string?>());
 
-        await _service.GetThreadAsync(issueId, Admin, Xunit.TestContext.Current.CancellationToken);
+        await _service.GetThreadAsync(issueId, Admin, TestContext.Current.CancellationToken);
 
         await AuditLog.Received().GetFilteredEntriesAsync(
             Arg.Any<string?>(), issueId, Arg.Any<Guid?>(),
@@ -335,7 +335,7 @@ public sealed class IssuesServiceTests
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var commenterId = Guid.NewGuid();
         SeedUser(commenterId, "Commenter").Email = "commenter@test.com";
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var auditAt = Clock.GetCurrentInstant() + Duration.FromMinutes(1);
         AuditLog.GetFilteredEntriesAsync(
@@ -346,9 +346,9 @@ public sealed class IssuesServiceTests
                 "GitHub link: 123", auditAt, null, null, null)]));
 
         await _service.PostCommentAsync(
-            issueId, Admin, commenterId, "A comment", ct: Xunit.TestContext.Current.CancellationToken);
+            issueId, Admin, commenterId, "A comment", ct: TestContext.Current.CancellationToken);
 
-        var thread = await _service.GetThreadAsync(issueId, Admin, Xunit.TestContext.Current.CancellationToken);
+        var thread = await _service.GetThreadAsync(issueId, Admin, TestContext.Current.CancellationToken);
 
         thread.Should().HaveCount(2);
         thread.Select(e => e.At).Should().BeInAscendingOrder();
@@ -364,7 +364,7 @@ public sealed class IssuesServiceTests
     {
         var userId = Guid.NewGuid();
         SeedUser(userId, "U").Email = "u@u.com";
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         var bystanderId = Guid.NewGuid();
         PrimeBadgeCounts(userId, bystanderId);
 
@@ -372,7 +372,7 @@ public sealed class IssuesServiceTests
             userId, IssueCategory.Bug, "Title", "Desc",
             section: "Tickets",
             pageUrl: "/Tickets", userAgent: null, additionalContext: null,
-            screenshot: null, ct: Xunit.TestContext.Current.CancellationToken)).Issue!;
+            screenshot: null, ct: TestContext.Current.CancellationToken)).Issue!;
 
         issue.Status.Should().Be(IssueStatus.Triage);
         issue.ReporterUserId.Should().Be(userId);
@@ -380,7 +380,7 @@ public sealed class IssuesServiceTests
         BadgeCountCached(userId).Should().BeFalse();
         BadgeCountCached(bystanderId).Should().BeTrue();
 
-        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issue.Id, Xunit.TestContext.Current.CancellationToken);
+        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issue.Id, TestContext.Current.CancellationToken);
         stored.Status.Should().Be(IssueStatus.Triage);
     }
 
@@ -394,7 +394,7 @@ public sealed class IssuesServiceTests
         var adminId = Guid.NewGuid();
         var ticketAdminId = Guid.NewGuid();
         SeedUser(reporterId, "R").Email = "r@x";
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         _roleService
             .GetActiveUserIdsInRoleAsync(RoleNames.Admin, Arg.Any<CancellationToken>())
@@ -419,7 +419,7 @@ public sealed class IssuesServiceTests
             reporterId, IssueCategory.Bug, "Title", "Desc",
             section: section,
             pageUrl: "/Tickets", userAgent: null, additionalContext: null,
-            screenshot: null, ct: Xunit.TestContext.Current.CancellationToken);
+            screenshot: null, ct: TestContext.Current.CancellationToken);
 
         capturedRecipients.Should().NotBeNull();
         capturedRecipients.Should().BeEquivalentTo(expectAdmins ? new[] { adminId } : new[] { ticketAdminId });
@@ -463,7 +463,7 @@ public sealed class IssuesServiceTests
             };
 
             var act = () => service.SubmitIssueAsync(Guid.NewGuid(), IssueCategory.Bug, "Title", "Detail",
-                null, null, null, null, screenshot, ct: Xunit.TestContext.Current.CancellationToken);
+                null, null, null, null, screenshot, ct: TestContext.Current.CancellationToken);
 
             (await act.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
             var remaining = Directory.GetFiles(root.FullName, "*.png", SearchOption.AllDirectories);
@@ -506,10 +506,10 @@ public sealed class IssuesServiceTests
         var screenshot = PngUpload([1, 2, 3]);
 
         var act = () => service.SubmitIssueAsync(Guid.NewGuid(), IssueCategory.Bug, "Title", "Detail",
-            null, null, null, null, screenshot, ct: Xunit.TestContext.Current.CancellationToken);
+            null, null, null, null, screenshot, ct: TestContext.Current.CancellationToken);
 
         (await act.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
-        var saved = await _repository.GetByIdAsync(issueId, Xunit.TestContext.Current.CancellationToken);
+        var saved = await _repository.GetByIdAsync(issueId, TestContext.Current.CancellationToken);
         saved.Should().NotBeNull();
         FileStorage.Files.Should().ContainKey(saved!.ScreenshotStoragePath!);
         FileStorage.Files[saved.ScreenshotStoragePath!].Should().Equal(1, 2, 3);
@@ -526,7 +526,7 @@ public sealed class IssuesServiceTests
         var result = await _service.SubmitIssueAsync(
             userId, IssueCategory.Bug, "T", "D",
             section: null, pageUrl: null, userAgent: null, additionalContext: null,
-            screenshot: screenshot, ct: Xunit.TestContext.Current.CancellationToken);
+            screenshot: screenshot, ct: TestContext.Current.CancellationToken);
 
         result.Issue.Should().BeNull();
         result.ErrorKey.Should().Be("Issue_ScreenshotTooLarge");
@@ -581,7 +581,7 @@ public sealed class IssuesServiceTests
         var result = await _service.SubmitIssueAsync(
             userId, IssueCategory.Bug, "T", "D",
             section: null, pageUrl: null, userAgent: null, additionalContext: null,
-            screenshot: screenshot, ct: Xunit.TestContext.Current.CancellationToken);
+            screenshot: screenshot, ct: TestContext.Current.CancellationToken);
 
         result.Issue.Should().BeNull();
         result.ErrorKey.Should().Be("Issue_ScreenshotTypeInvalid");
@@ -602,7 +602,7 @@ public sealed class IssuesServiceTests
             additionalContext: "browser details",
             screenshot: null,
             dueDate: null,
-            reporterRoles: [RoleNames.TeamsAdmin, RoleNames.Admin], ct: Xunit.TestContext.Current.CancellationToken)).Issue!;
+            reporterRoles: [RoleNames.TeamsAdmin, RoleNames.Admin], ct: TestContext.Current.CancellationToken)).Issue!;
 
         issue.AdditionalContext.Should().Be("browser details | roles: Admin, TeamsAdmin");
     }
@@ -622,7 +622,7 @@ public sealed class IssuesServiceTests
             Guid.NewGuid(), IssueCategory.Bug, "Title", "Desc",
             section: null, pageUrl: null, userAgent: null,
             additionalContext: prefix + boundary + "extra", screenshot: null,
-            ct: Xunit.TestContext.Current.CancellationToken)).Issue!;
+            ct: TestContext.Current.CancellationToken)).Issue!;
 
         issue.AdditionalContext!.Length.Should().Be(expectedLength);
         issue.AdditionalContext.Should().Be(expectedLength == prefixLength ? prefix : prefix + boundary);
@@ -634,9 +634,9 @@ public sealed class IssuesServiceTests
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Resolved);
         PrimeBadgeCounts(reporterId);
 
-        await _service.PostCommentAsync(issueId, Admin, reporterId, "Still broken", ct: Xunit.TestContext.Current.CancellationToken);
+        await _service.PostCommentAsync(issueId, Admin, reporterId, "Still broken", ct: TestContext.Current.CancellationToken);
 
-        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
+        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, TestContext.Current.CancellationToken);
         stored.Status.Should().Be(IssueStatus.Open);
         BadgeCountCached(reporterId).Should().BeFalse();
     }
@@ -646,7 +646,7 @@ public sealed class IssuesServiceTests
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Resolved);
 
-        await _service.PostCommentAsync(issueId, Admin, reporterId, "Still broken", ct: Xunit.TestContext.Current.CancellationToken);
+        await _service.PostCommentAsync(issueId, Admin, reporterId, "Still broken", ct: TestContext.Current.CancellationToken);
 
         await AuditLog.Received(1).LogAsync(
             AuditAction.IssueStatusChanged,
@@ -663,9 +663,9 @@ public sealed class IssuesServiceTests
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.WontFix, withResolvedFields: true);
 
-        await _service.PostCommentAsync(issueId, Admin, reporterId, "Reopen please", ct: Xunit.TestContext.Current.CancellationToken);
+        await _service.PostCommentAsync(issueId, Admin, reporterId, "Reopen please", ct: TestContext.Current.CancellationToken);
 
-        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
+        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, TestContext.Current.CancellationToken);
         stored.ResolvedAt.Should().BeNull();
         stored.ResolvedByUserId.Should().BeNull();
     }
@@ -675,9 +675,9 @@ public sealed class IssuesServiceTests
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open);
 
-        await _service.PostCommentAsync(issueId, Admin, reporterId, "Update", ct: Xunit.TestContext.Current.CancellationToken);
+        await _service.PostCommentAsync(issueId, Admin, reporterId, "Update", ct: TestContext.Current.CancellationToken);
 
-        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
+        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, TestContext.Current.CancellationToken);
         stored.Status.Should().Be(IssueStatus.Open);
     }
 
@@ -691,7 +691,7 @@ public sealed class IssuesServiceTests
             .Returns((IReadOnlyList<Guid>)[handler.Id]);
 
         await _service.SubmitIssueAsync(reporter.Id, IssueCategory.Bug, "Title", "Detail",
-            null, null, null, null, null, ct: Xunit.TestContext.Current.CancellationToken);
+            null, null, null, null, null, ct: TestContext.Current.CancellationToken);
 
         var notice = _notificationService.ReceivedCalls().Single().GetArguments();
         notice[3].Should().Be("New issue filed: Title");
@@ -699,9 +699,9 @@ public sealed class IssuesServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(NotificationSource.IssueSubmitted)]
-    [Xunit.InlineData(NotificationSource.IssueComment)]
-    [Xunit.InlineData(NotificationSource.IssueStatusChanged)]
+    [InlineData(NotificationSource.IssueSubmitted)]
+    [InlineData(NotificationSource.IssueComment)]
+    [InlineData(NotificationSource.IssueStatusChanged)]
     public async Task IssueNotices_FailedLanguageGroup_DoesNotBlockOtherRecipients(NotificationSource source)
     {
         var reporter = SeedUser(Guid.NewGuid(), "Reporter");
@@ -726,20 +726,20 @@ public sealed class IssuesServiceTests
         if (source == NotificationSource.IssueSubmitted)
         {
             issueId = (await _service.SubmitIssueAsync(reporter.Id, IssueCategory.Bug, "Title", "Detail",
-                null, null, null, null, null, ct: Xunit.TestContext.Current.CancellationToken)).Issue!.Id;
+                null, null, null, null, null, ct: TestContext.Current.CancellationToken)).Issue!.Id;
         }
         else
         {
             issueId = await SeedIssueRowAsync(reporter.Id, IssueStatus.Open, "Title");
-            var row = await _issuesDb.Issues.FindAsync([issueId], Xunit.TestContext.Current.CancellationToken);
+            var row = await _issuesDb.Issues.FindAsync([issueId], TestContext.Current.CancellationToken);
             row!.AssigneeUserId = second.Id;
-            await _issuesDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+            await _issuesDb.SaveChangesAsync(TestContext.Current.CancellationToken);
             if (source == NotificationSource.IssueComment)
                 await _service.PostCommentAsync(issueId, Admin, Admin.UserId, "Reply",
-                    ct: Xunit.TestContext.Current.CancellationToken);
+                    ct: TestContext.Current.CancellationToken);
             else
                 await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.InProgress, Admin.UserId,
-                    Xunit.TestContext.Current.CancellationToken);
+                    TestContext.Current.CancellationToken);
         }
 
         var calls = _notificationService.ReceivedCalls().ToList();
@@ -752,10 +752,10 @@ public sealed class IssuesServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(NotificationSource.IssueSubmitted)]
-    [Xunit.InlineData(NotificationSource.IssueComment)]
-    [Xunit.InlineData(NotificationSource.IssueStatusChanged)]
-    [Xunit.InlineData(NotificationSource.IssueAssigned)]
+    [InlineData(NotificationSource.IssueSubmitted)]
+    [InlineData(NotificationSource.IssueComment)]
+    [InlineData(NotificationSource.IssueStatusChanged)]
+    [InlineData(NotificationSource.IssueAssigned)]
     public async Task IssueNotices_LongTitleAndDetail_DispatchFullCopyAndLinkToFullContent(NotificationSource source)
     {
         var reporterId = Guid.NewGuid();
@@ -773,27 +773,27 @@ public sealed class IssuesServiceTests
         if (source == NotificationSource.IssueSubmitted)
         {
             issueId = (await _service.SubmitIssueAsync(reporterId, IssueCategory.Bug, title, detail,
-                null, null, null, null, null, ct: Xunit.TestContext.Current.CancellationToken)).Issue!.Id;
+                null, null, null, null, null, ct: TestContext.Current.CancellationToken)).Issue!.Id;
         }
         else
         {
             issueId = await SeedIssueRowAsync(reporterId, IssueStatus.Open, title);
-            var row = await _issuesDb.Issues.FindAsync([issueId], Xunit.TestContext.Current.CancellationToken);
+            var row = await _issuesDb.Issues.FindAsync([issueId], TestContext.Current.CancellationToken);
             row!.Description = detail;
-            await _issuesDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+            await _issuesDb.SaveChangesAsync(TestContext.Current.CancellationToken);
             switch (source)
             {
                 case NotificationSource.IssueComment:
                     await _service.PostCommentAsync(issueId, Admin, Admin.UserId, detail,
-                        ct: Xunit.TestContext.Current.CancellationToken);
+                        ct: TestContext.Current.CancellationToken);
                     break;
                 case NotificationSource.IssueStatusChanged:
                     await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.InProgress, Admin.UserId,
-                        Xunit.TestContext.Current.CancellationToken);
+                        TestContext.Current.CancellationToken);
                     break;
                 case NotificationSource.IssueAssigned:
                     await _service.UpdateAssigneeAsync(issueId, Admin, recipientId, Admin.UserId,
-                        Xunit.TestContext.Current.CancellationToken);
+                        TestContext.Current.CancellationToken);
                     break;
             }
         }
@@ -819,18 +819,18 @@ public sealed class IssuesServiceTests
         args[6].Should().Be($"/Issues/{issueId}");
         ((IReadOnlyList<Guid>)args[4]!).Should().Equal(recipientId);
         var stored = await _issuesDb.Issues.AsNoTracking().SingleAsync(i => i.Id == issueId,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
         stored.Title.Should().Be(title);
         stored.Description.Should().Be(detail);
     }
 
     [HumansTheory]
-    [Xunit.InlineData("es", "es")]
-    [Xunit.InlineData(null, "en")]
-    [Xunit.InlineData("", "en")]
-    [Xunit.InlineData("pt", "en")]
-    [Xunit.InlineData("fr-FR", "en")]
-    [Xunit.InlineData("not a culture!", "en")]
+    [InlineData("es", "es")]
+    [InlineData(null, "en")]
+    [InlineData("", "en")]
+    [InlineData("pt", "en")]
+    [InlineData("fr-FR", "en")]
+    [InlineData("not a culture!", "en")]
     public async Task PostCommentAsync_handler_sends_email_and_notification_to_reporter(
         string? language, string expectedLanguage)
     {
@@ -839,12 +839,12 @@ public sealed class IssuesServiceTests
         var reporter = SeedUser(reporterId, "Reporter");
         reporter.Email = "reporter@test.com";
         reporter.PreferredLanguage = language!;
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var issueId = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Report Title");
         var adminId = Guid.NewGuid();
 
-        await _service.PostCommentAsync(issueId, Admin, adminId, "Looking at it", ct: Xunit.TestContext.Current.CancellationToken);
+        await _service.PostCommentAsync(issueId, Admin, adminId, "Looking at it", ct: TestContext.Current.CancellationToken);
 
         _renderedEmailCultures.Should().NotBeEmpty().And.OnlyContain(
             value => string.Equals(value, expectedLanguage, StringComparison.Ordinal));
@@ -900,7 +900,7 @@ public sealed class IssuesServiceTests
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>());
 
-        await _service.PostCommentAsync(issueId, Admin, reporterId, "More info", ct: Xunit.TestContext.Current.CancellationToken);
+        await _service.PostCommentAsync(issueId, Admin, reporterId, "More info", ct: TestContext.Current.CancellationToken);
 
         capturedRecipients.Should().BeEquivalentTo(expectAdmins ? new[] { adminId } : new[] { ticketAdminId });
     }
@@ -910,7 +910,7 @@ public sealed class IssuesServiceTests
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open);
 
-        await _service.PostCommentAsync(issueId, Admin, reporterId, "More info", ct: Xunit.TestContext.Current.CancellationToken);
+        await _service.PostCommentAsync(issueId, Admin, reporterId, "More info", ct: TestContext.Current.CancellationToken);
 
         await _emailService.DidNotReceive().SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == "issue_comment"),
@@ -928,11 +928,11 @@ public sealed class IssuesServiceTests
             .Returns(async _ =>
             {
                 observedStatus = (await _issuesDb.Issues.AsNoTracking().SingleAsync(
-                    i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken)).Status;
+                    i => i.Id == issueId, TestContext.Current.CancellationToken)).Status;
             });
 
         var result = await _service.PostCommentAsync(issueId, Admin, Admin.UserId, "Fixed this",
-            resolveOnPost: true, ct: Xunit.TestContext.Current.CancellationToken);
+            resolveOnPost: true, ct: TestContext.Current.CancellationToken);
 
         result.Comment.Should().NotBeNull();
         observedStatus.Should().Be(IssueStatus.Resolved);
@@ -961,15 +961,15 @@ public sealed class IssuesServiceTests
                 .Returns(Task.FromException(error));
 
         var result = await _service.PostCommentAsync(issueId, Admin, Admin.UserId, "Fixed this",
-            resolveOnPost: true, ct: Xunit.TestContext.Current.CancellationToken);
+            resolveOnPost: true, ct: TestContext.Current.CancellationToken);
 
         result.Comment.Should().NotBeNull();
         result.Comment.Content.Should().Be("Fixed this");
         var stored = await _issuesDb.Issues.AsNoTracking().SingleAsync(
-            i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
+            i => i.Id == issueId, TestContext.Current.CancellationToken);
         stored.Status.Should().Be(IssueStatus.Resolved);
         (await _issuesDb.IssueComments.CountAsync(c => c.IssueId == issueId,
-            Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+            TestContext.Current.CancellationToken)).Should().Be(1);
         await _notificationService.Received().SendAsync(
             NotificationSource.IssueComment, NotificationClass.Informational, NotificationPriority.Normal,
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(ids => ids.Contains(reporterId)),
@@ -987,9 +987,9 @@ public sealed class IssuesServiceTests
             issueId, Admin,
             actorId,
             "Fixed this",
-                       resolveOnPost: true, ct: Xunit.TestContext.Current.CancellationToken);
+                       resolveOnPost: true, ct: TestContext.Current.CancellationToken);
 
-        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
+        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, TestContext.Current.CancellationToken);
         stored.Status.Should().Be(IssueStatus.Resolved);
         stored.ResolvedByUserId.Should().Be(actorId);
     }
@@ -1000,7 +1000,7 @@ public sealed class IssuesServiceTests
     [InlineData(999)]
     public async Task SubmitIssueAsync_undefined_category_writes_nothing(int category)
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var act = () => _service.SubmitIssueAsync(Guid.NewGuid(), (IssueCategory)category,
             "Title", "Description", null, null, null, null, null, ct: ct);
 
@@ -1014,7 +1014,7 @@ public sealed class IssuesServiceTests
     [InlineData(999)]
     public async Task UpdateStatusAsync_undefined_status_preserves_stored_state(int status)
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var result = await _service.UpdateStatusAsync(issueId, Admin, (IssueStatus)status, Admin.UserId, ct);
 
@@ -1035,9 +1035,9 @@ public sealed class IssuesServiceTests
         var actorId = Guid.NewGuid();
         PrimeBadgeCounts(reporterId);
 
-        await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, actorId, Xunit.TestContext.Current.CancellationToken);
+        await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, actorId, TestContext.Current.CancellationToken);
 
-        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
+        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, TestContext.Current.CancellationToken);
         stored.Status.Should().Be(IssueStatus.Resolved);
         stored.ResolvedAt.Should().NotBeNull();
         stored.ResolvedByUserId.Should().Be(actorId);
@@ -1050,7 +1050,7 @@ public sealed class IssuesServiceTests
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var actorId = Guid.NewGuid();
 
-        await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, actorId, Xunit.TestContext.Current.CancellationToken);
+        await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, actorId, TestContext.Current.CancellationToken);
 
         // The "New issue filed" alerts that fanned out on submission clear once the
         // issue is terminal, attributed to the actor who closed it.
@@ -1066,7 +1066,7 @@ public sealed class IssuesServiceTests
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
 
-        await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.InProgress, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.InProgress, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         await _notificationInbox.DidNotReceive().ResolveBySourceKeyAsync(
             Arg.Any<NotificationSource>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
@@ -1078,10 +1078,10 @@ public sealed class IssuesServiceTests
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var actorId = Guid.NewGuid();
 
-        await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, actorId, Xunit.TestContext.Current.CancellationToken);
-        await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Open, actorId, Xunit.TestContext.Current.CancellationToken);
+        await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, actorId, TestContext.Current.CancellationToken);
+        await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Open, actorId, TestContext.Current.CancellationToken);
 
-        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
+        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, TestContext.Current.CancellationToken);
         stored.Status.Should().Be(IssueStatus.Open);
         stored.ResolvedAt.Should().BeNull();
         stored.ResolvedByUserId.Should().BeNull();
@@ -1093,7 +1093,7 @@ public sealed class IssuesServiceTests
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var actorId = Guid.NewGuid();
 
-        await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Open, actorId, Xunit.TestContext.Current.CancellationToken);
+        await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Open, actorId, TestContext.Current.CancellationToken);
 
         await AuditLog.DidNotReceive().LogAsync(
             Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
@@ -1108,7 +1108,7 @@ public sealed class IssuesServiceTests
 
         await _service.UpdateStatusAsync(
             issueId, Admin, IssueStatus.InProgress, actorUserId: null,
-            ct: Xunit.TestContext.Current.CancellationToken);
+            ct: TestContext.Current.CancellationToken);
 
         await AuditLog.Received(1).LogAsync(
             AuditAction.IssueStatusChanged, nameof(Issue), issueId,
@@ -1124,13 +1124,13 @@ public sealed class IssuesServiceTests
         // to notify alongside the reporter.
         var assigneeId = Guid.NewGuid();
         SeedUser(assigneeId, "Assignee").Email = "ass@x.com";
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-        await _service.UpdateAssigneeAsync(issueId, Admin, assigneeId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _service.UpdateAssigneeAsync(issueId, Admin, assigneeId, Guid.NewGuid(), TestContext.Current.CancellationToken);
         _notificationService.ClearReceivedCalls();
 
         // Actor is the assignee — they should NOT receive a notification, but
         // the reporter still should.
-        await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, assigneeId, Xunit.TestContext.Current.CancellationToken);
+        await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, assigneeId, TestContext.Current.CancellationToken);
 
         await _notificationService.Received(1).SendAsync(
             NotificationSource.IssueStatusChanged,
@@ -1154,7 +1154,7 @@ public sealed class IssuesServiceTests
         // set is empty → no notification is dispatched.
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open);
 
-        await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, reporterId, Xunit.TestContext.Current.CancellationToken);
+        await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, reporterId, TestContext.Current.CancellationToken);
 
         await _notificationService.DidNotReceive().SendAsync(
             NotificationSource.IssueStatusChanged,
@@ -1191,7 +1191,7 @@ public sealed class IssuesServiceTests
             repo, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
             Cache, Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
 
         var result = field switch
         {
@@ -1230,7 +1230,7 @@ public sealed class IssuesServiceTests
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
         var result = await _service.UpdateSectionAsync(
             inaccessible ? issueId : Guid.NewGuid(), new IssueViewer(Guid.NewGuid(), []), "Teams", Guid.NewGuid(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.NotFound.Should().BeTrue();
@@ -1243,12 +1243,12 @@ public sealed class IssuesServiceTests
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var actorId = Guid.NewGuid();
 
-        var result = await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, actorId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, actorId, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.NotFound.Should().BeFalse();
 
-        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
+        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, TestContext.Current.CancellationToken);
         stored.Status.Should().Be(IssueStatus.Resolved);
         stored.ResolvedByUserId.Should().Be(actorId);
     }
@@ -1260,7 +1260,7 @@ public sealed class IssuesServiceTests
     [InlineData("GitHub")]
     public async Task Mutations_return_not_found_when_issue_is_missing(string field)
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var result = field switch
         {
             "Status" => await _service.UpdateStatusAsync(Guid.NewGuid(), Admin, IssueStatus.Resolved, Guid.NewGuid(), ct),
@@ -1290,11 +1290,11 @@ public sealed class IssuesServiceTests
         oldAssignee.Email = "old@x.com";
         var newAssignee = SeedUser(Guid.NewGuid(), "New Person");
         newAssignee.Email = "new@x.com";
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var actorId = Guid.NewGuid();
-        await _service.UpdateAssigneeAsync(issueId, Admin, oldAssignee.Id, actorId, Xunit.TestContext.Current.CancellationToken);
-        await _service.UpdateAssigneeAsync(issueId, Admin, newAssignee.Id, actorId, Xunit.TestContext.Current.CancellationToken);
+        await _service.UpdateAssigneeAsync(issueId, Admin, oldAssignee.Id, actorId, TestContext.Current.CancellationToken);
+        await _service.UpdateAssigneeAsync(issueId, Admin, newAssignee.Id, actorId, TestContext.Current.CancellationToken);
 
         await AuditLog.Received().LogAsync(
             AuditAction.IssueAssigneeChanged,
@@ -1315,9 +1315,9 @@ public sealed class IssuesServiceTests
         var assignee = SeedUser(newAssigneeId, "Assignee");
         assignee.Email = "a@a.com";
         assignee.PreferredLanguage = "es";
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await _service.UpdateAssigneeAsync(issueId, Admin, newAssigneeId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await _service.UpdateAssigneeAsync(issueId, Admin, newAssigneeId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         await _notificationService.Received().SendAsync(
             NotificationSource.IssueAssigned,
@@ -1339,9 +1339,9 @@ public sealed class IssuesServiceTests
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var actorId = Guid.NewGuid();
         SeedUser(actorId, "Self").Email = "self@x.com";
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await _service.UpdateAssigneeAsync(issueId, Admin, actorId, actorId, Xunit.TestContext.Current.CancellationToken);
+        await _service.UpdateAssigneeAsync(issueId, Admin, actorId, actorId, TestContext.Current.CancellationToken);
 
         await _notificationService.DidNotReceive().SendAsync(
             NotificationSource.IssueAssigned,
@@ -1363,14 +1363,14 @@ public sealed class IssuesServiceTests
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var assigneeId = Guid.NewGuid();
         SeedUser(assigneeId, "Assignee").Email = "assignee@x.com";
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.UpdateAssigneeAsync(issueId, Admin, assigneeId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.UpdateAssigneeAsync(issueId, Admin, assigneeId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.NotFound.Should().BeFalse();
 
-        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
+        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, TestContext.Current.CancellationToken);
         stored.AssigneeUserId.Should().Be(assigneeId);
     }
 
@@ -1389,9 +1389,9 @@ public sealed class IssuesServiceTests
         _roleService.GetActiveUserIdsInRoleAsync(RoleNames.TeamsAdmin, Arg.Any<CancellationToken>()).Returns([teamsAdminId]);
         PrimeBadgeCounts(ticketAdminId, teamsAdminId);
 
-        await _service.UpdateSectionAsync(issueId, Admin, "Teams", actorId, Xunit.TestContext.Current.CancellationToken);
+        await _service.UpdateSectionAsync(issueId, Admin, "Teams", actorId, TestContext.Current.CancellationToken);
 
-        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
+        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, TestContext.Current.CancellationToken);
         stored.Section.Should().Be("Teams");
 
         // Both queues' holders: the issue left one count and joined the other.
@@ -1417,10 +1417,10 @@ public sealed class IssuesServiceTests
         var ticketAdmin = new IssueViewer(Guid.NewGuid(), [RoleNames.TicketAdmin]);
 
         var result = await _service.UpdateSectionAsync(
-            issueId, ticketAdmin, "Teams", ticketAdmin.UserId, Xunit.TestContext.Current.CancellationToken);
+            issueId, ticketAdmin, "Teams", ticketAdmin.UserId, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
-        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
+        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, TestContext.Current.CancellationToken);
         stored.Section.Should().Be("Teams");
     }
 
@@ -1429,7 +1429,7 @@ public sealed class IssuesServiceTests
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
 
-        var result = await _service.UpdateSectionAsync(issueId, Admin, "Teams", Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.UpdateSectionAsync(issueId, Admin, "Teams", Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.NotFound.Should().BeFalse();
@@ -1444,13 +1444,13 @@ public sealed class IssuesServiceTests
     {
         var userId = Guid.NewGuid();
         SeedUser(userId, "U").Email = "u@u.com";
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var issue = (await _service.SubmitIssueAsync(
             userId, IssueCategory.Bug, "Title", "Desc",
             section: "NotARoutedQueue",
             pageUrl: null, userAgent: null, additionalContext: null,
-            screenshot: null, ct: Xunit.TestContext.Current.CancellationToken)).Issue!;
+            screenshot: null, ct: TestContext.Current.CancellationToken)).Issue!;
 
         // Degrades rather than failing: the routing table may change without a migration.
         issue.Section.Should().BeNull();
@@ -1461,13 +1461,13 @@ public sealed class IssuesServiceTests
     {
         var userId = Guid.NewGuid();
         SeedUser(userId, "U").Email = "u@u.com";
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var issue = (await _service.SubmitIssueAsync(
             userId, IssueCategory.Bug, "Title", "Desc",
             section: "  tIcKeTs  ",
             pageUrl: null, userAgent: null, additionalContext: null,
-            screenshot: null, ct: Xunit.TestContext.Current.CancellationToken)).Issue!;
+            screenshot: null, ct: TestContext.Current.CancellationToken)).Issue!;
 
         issue.Section.Should().Be("Tickets");
     }
@@ -1477,13 +1477,13 @@ public sealed class IssuesServiceTests
     {
         var userId = Guid.NewGuid();
         SeedUser(userId, "U").Email = "u@u.com";
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var act = async () => await _service.SubmitIssueAsync(
             userId, IssueCategory.Bug, "Title", "Desc",
             section: new string('x', 65),
             pageUrl: null, userAgent: null, additionalContext: null,
-            screenshot: null, ct: Xunit.TestContext.Current.CancellationToken);
+            screenshot: null, ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*64 characters*");
@@ -1494,9 +1494,9 @@ public sealed class IssuesServiceTests
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
 
-        await _service.UpdateSectionAsync(issueId, Admin, "NotARoutedQueue", Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await _service.UpdateSectionAsync(issueId, Admin, "NotARoutedQueue", Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
+        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, TestContext.Current.CancellationToken);
         stored.Section.Should().BeNull();
     }
 
@@ -1506,14 +1506,14 @@ public sealed class IssuesServiceTests
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
 
         var result = await _service.UpdateSectionAsync(
-            issueId, Admin, new string('x', 65), Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            issueId, Admin, new string('x', 65), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("64 characters");
         result.ErrorKey.Should().Be("Issue_Section_TooLong");
         result.ErrorLimit.Should().Be(64);
 
-        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
+        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, TestContext.Current.CancellationToken);
         stored.Section.Should().Be("Tickets");
     }
 
@@ -1522,7 +1522,7 @@ public sealed class IssuesServiceTests
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Resolved, section: "Tickets");
 
-        var result = await _service.UpdateSectionAsync(issueId, Admin, "Teams", Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.UpdateSectionAsync(issueId, Admin, "Teams", Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.NotFound.Should().BeFalse();
@@ -1537,14 +1537,41 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task SetGitHubIssueNumberAsync_returns_success_when_link_updates()
+    public async Task SetGitHubIssueNumberAsync_returns_success_when_link_updates_or_clears()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
 
-        var result = await _service.SetGitHubIssueNumberAsync(issueId, Admin, 1234, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.SetGitHubIssueNumberAsync(issueId, Admin, 1234, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.NotFound.Should().BeFalse();
+
+        var cleared = await _service.SetGitHubIssueNumberAsync(issueId, Admin, null, Admin.UserId,
+            Xunit.TestContext.Current.CancellationToken);
+        cleared.Succeeded.Should().BeTrue();
+        (await _issuesDb.Issues.AsNoTracking().SingleAsync(i => i.Id == issueId,
+            Xunit.TestContext.Current.CancellationToken)).GitHubIssueNumber.Should().BeNull();
+    }
+
+    [HumansTheory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task SetGitHubIssueNumberAsync_RejectsNonpositiveNumbersWithoutChangingLink(int number)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
+        await _service.SetGitHubIssueNumberAsync(issueId, Admin, 123, Admin.UserId, ct);
+        AuditLog.ClearReceivedCalls();
+
+        var result = await _service.SetGitHubIssueNumberAsync(issueId, Admin, number, Admin.UserId, ct);
+
+        result.NotFound.Should().BeFalse();
+        result.Rejected.Should().BeTrue();
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("positive");
+        (await _issuesDb.Issues.AsNoTracking().SingleAsync(i => i.Id == issueId, ct))
+            .GitHubIssueNumber.Should().Be(123);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -1553,9 +1580,9 @@ public sealed class IssuesServiceTests
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var actorId = Guid.NewGuid();
 
-        await _service.SetGitHubIssueNumberAsync(issueId, Admin, 1234, actorId, Xunit.TestContext.Current.CancellationToken);
+        await _service.SetGitHubIssueNumberAsync(issueId, Admin, 1234, actorId, TestContext.Current.CancellationToken);
 
-        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
+        var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, TestContext.Current.CancellationToken);
         stored.GitHubIssueNumber.Should().Be(1234);
 
         await AuditLog.Received(1).LogAsync(
@@ -1608,9 +1635,9 @@ public sealed class IssuesServiceTests
             UpdatedAt = Clock.GetCurrentInstant() - Duration.FromHours(1)
         };
         await _issuesDb.Issues.AddRangeAsync(older, newer, middle);
-        await _issuesDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _issuesDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.GetIssueListAsync(new IssueListFilter(Limit: 2), new IssueViewer(reporterId, Roles: [RoleNames.Admin]), ct: Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetIssueListAsync(new IssueListFilter(Limit: 2), new IssueViewer(reporterId, Roles: [RoleNames.Admin]), ct: TestContext.Current.CancellationToken);
 
         result.Select(i => i.Id).Should().Equal(newer.Id, middle.Id);
     }
@@ -1627,7 +1654,7 @@ public sealed class IssuesServiceTests
         var strangerId = Guid.NewGuid();
         SeedUser(viewerId, "Viewer").Email = "viewer@example.org";
         SeedUser(strangerId, "Stranger").Email = "stranger@example.org";
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var inSection = await SeedIssueRowAsync(
             strangerId, IssueStatus.Open, "In my section", "Tickets");
@@ -1636,7 +1663,7 @@ public sealed class IssuesServiceTests
         var ownReport = await SeedIssueRowAsync(
             viewerId, IssueStatus.Open, "Mine, elsewhere", "Camps");
 
-        var result = await _service.GetIssueListAsync(new IssueListFilter(), new IssueViewer(viewerId, Roles: [RoleNames.TicketAdmin]), ct: Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetIssueListAsync(new IssueListFilter(), new IssueViewer(viewerId, Roles: [RoleNames.TicketAdmin]), ct: TestContext.Current.CancellationToken);
 
         result.Select(i => i.Id).Should().BeEquivalentTo([inSection, ownReport]);
     }
@@ -1646,13 +1673,13 @@ public sealed class IssuesServiceTests
     {
         var reporterId = Guid.NewGuid();
         SeedUser(reporterId, "Reporter").Email = "reporter@example.org";
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var tickets = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Tickets", "Tickets");
         var camps = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Camps", "Camps");
         var unrouted = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Unrouted", null);
 
-        var result = await _service.GetIssueListAsync(new IssueListFilter(), Admin, ct: Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetIssueListAsync(new IssueListFilter(), Admin, ct: TestContext.Current.CancellationToken);
 
         result.Select(i => i.Id).Should().BeEquivalentTo([tickets, camps, unrouted]);
     }
@@ -1664,12 +1691,12 @@ public sealed class IssuesServiceTests
         var strangerId = Guid.NewGuid();
         SeedUser(viewerId, "Viewer").Email = "viewer@example.org";
         SeedUser(strangerId, "Stranger").Email = "stranger@example.org";
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var ownReport = await SeedIssueRowAsync(viewerId, IssueStatus.Open, "Mine", "Tickets");
         await SeedIssueRowAsync(strangerId, IssueStatus.Open, "Not mine", "Tickets");
 
-        var result = await _service.GetIssueListAsync(new IssueListFilter(), new IssueViewer(viewerId, Roles: []), ct: Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetIssueListAsync(new IssueListFilter(), new IssueViewer(viewerId, Roles: []), ct: TestContext.Current.CancellationToken);
 
         result.Select(i => i.Id).Should().Equal(ownReport);
     }
@@ -1681,7 +1708,7 @@ public sealed class IssuesServiceTests
         var strangerId = Guid.NewGuid();
         SeedUser(viewerId, "Viewer").Email = "viewer@example.org";
         SeedUser(strangerId, "Stranger").Email = "stranger@example.org";
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         await SeedIssueRowAsync(strangerId, IssueStatus.Open, "In my section", "Tickets");
         await SeedIssueRowAsync(strangerId, IssueStatus.Open, "Not mine", "Camps");
@@ -1692,10 +1719,10 @@ public sealed class IssuesServiceTests
 
         var count = await _service.GetActionableCountForViewerAsync(
             new IssueViewer(viewerId, [RoleNames.TicketAdmin]),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         count.Should().Be(2);
-        (await _service.GetActionableCountForViewerAsync(Admin, Xunit.TestContext.Current.CancellationToken))
+        (await _service.GetActionableCountForViewerAsync(Admin, TestContext.Current.CancellationToken))
             .Should().Be(4, "Admin counts every Triage/Open issue, unrouted included");
     }
 
@@ -1704,11 +1731,11 @@ public sealed class IssuesServiceTests
     // ==========================================================================
 
     [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task ContributeForUserAsync_includes_merged_reports_and_recognizes_both_comment_authors(bool archivedId)
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var survivorId = Guid.NewGuid();
         var sourceId = Guid.NewGuid();
         var strangerId = Guid.NewGuid();
@@ -1720,7 +1747,7 @@ public sealed class IssuesServiceTests
             .Returns(Info(survivorId)! with { MergedUserIds = [sourceId] });
         var sourceIssueId = await SeedIssueRowAsync(sourceId, IssueStatus.Open, "Source issue");
         await SeedIssueRowAsync(survivorId, IssueStatus.Open, "Survivor issue");
-        await SeedIssueRowAsync(strangerId, IssueStatus.Open, "Stranger issue");
+        var strangerIssueId = await SeedIssueRowAsync(strangerId, IssueStatus.Open, "Stranger issue");
         foreach (var (sender, content) in new[]
         {
             (sourceId, "Before merge"), (survivorId, "After merge"), (strangerId, "Another person")
@@ -1733,11 +1760,26 @@ public sealed class IssuesServiceTests
                 Content = content,
                 CreatedAt = Clock.GetCurrentInstant()
             });
+        foreach (var (sender, content) in new[]
+        {
+            (sourceId, "My archived comment elsewhere"),
+            (survivorId, "My current comment elsewhere"),
+            (strangerId, "Private stranger comment")
+        })
+            _issuesDb.IssueComments.Add(new IssueComment
+            {
+                Id = Guid.NewGuid(),
+                IssueId = strangerIssueId,
+                SenderUserId = sender,
+                Content = content,
+                CreatedAt = Clock.GetCurrentInstant()
+            });
         await _issuesDb.SaveChangesAsync(ct);
 
         var slices = await _service.ContributeForUserAsync(requestedId, ct);
 
-        var exported = System.Text.Json.JsonSerializer.SerializeToElement(slices.Single().Data);
+        var exported = System.Text.Json.JsonSerializer.SerializeToElement(
+            slices.Single(slice => string.Equals(slice.SectionName, "Issues", StringComparison.Ordinal)).Data);
         exported.EnumerateArray().Select(issue => issue.GetProperty("Title").GetString())
             .Should().BeEquivalentTo(["Source issue", "Survivor issue"]);
         var comments = exported.EnumerateArray()
@@ -1747,6 +1789,19 @@ public sealed class IssuesServiceTests
         comments["Before merge"].Should().BeTrue();
         comments["After merge"].Should().BeTrue();
         comments["Another person"].Should().BeFalse();
+
+        var ownComments = System.Text.Json.JsonSerializer.SerializeToElement(
+            slices.Single(slice => string.Equals(slice.SectionName, "IssueComments", StringComparison.Ordinal)).Data);
+        ownComments.EnumerateArray().Select(comment => comment.GetProperty("Content").GetString())
+            .Should().BeEquivalentTo(["My archived comment elsewhere", "My current comment elsewhere"]);
+        foreach (var comment in ownComments.EnumerateArray())
+        {
+            comment.GetProperty("IssueId").GetGuid().Should().Be(strangerIssueId);
+            comment.GetProperty("CreatedAt").GetString().Should().NotBeNullOrEmpty();
+            comment.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo(
+                "IssueId", "Content", "CreatedAt");
+        }
+        _service.ErasureDeclaration.Should().ContainKey("IssueComments");
     }
 
     [HumansFact]
@@ -1756,19 +1811,22 @@ public sealed class IssuesServiceTests
         var bobId = Guid.NewGuid();
         SeedUser(aliceId, "Alice").Email = "a@a.com";
         SeedUser(bobId, "Bob").Email = "b@b.com";
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var firstId = await SeedIssueRowAsync(aliceId, IssueStatus.Open, "Alice's first");
         await SeedIssueRowAsync(aliceId, IssueStatus.Open, "Alice's second");
         await SeedIssueRowAsync(bobId, IssueStatus.Open, "Bob's");
-        var first = await _issuesDb.Issues.FirstAsync(i => i.Id == firstId, Xunit.TestContext.Current.CancellationToken);
+        var first = await _issuesDb.Issues.FirstAsync(i => i.Id == firstId, TestContext.Current.CancellationToken);
         first.UserAgent = "Test browser";
         first.AdditionalContext = "browser details | roles: Volunteer";
-        await _issuesDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _issuesDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var slices = await _service.ContributeForUserAsync(aliceId, Xunit.TestContext.Current.CancellationToken);
+        var slices = await _service.ContributeForUserAsync(aliceId, TestContext.Current.CancellationToken);
 
-        slices.Should().ContainSingle();
+        slices.Select(slice => slice.SectionName).Should().BeEquivalentTo("Issues", "IssueComments");
+        System.Text.Json.JsonSerializer.SerializeToElement(
+                slices.Single(slice => string.Equals(slice.SectionName, "IssueComments", StringComparison.Ordinal)).Data)
+            .GetArrayLength().Should().Be(0);
         slices[0].SectionName.Should().Be("Issues");
         var data = slices[0].Data.Should().BeAssignableTo<System.Collections.IEnumerable>().Subject;
         data.Cast<object>().Should().HaveCount(2);
@@ -1788,7 +1846,7 @@ public sealed class IssuesServiceTests
         var bobId = Guid.NewGuid();
         SeedUser(aliceId, "Alice").Email = "a@a.com";
         SeedUser(bobId, "Bob").Email = "b@b.com";
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var aliceIssue = await SeedIssueRowAsync(aliceId, IssueStatus.Open, "Alice's", "Camps");
         var bobIssue = await SeedIssueRowAsync(bobId, IssueStatus.Open, "Bob's", "Tickets");
@@ -1798,7 +1856,7 @@ public sealed class IssuesServiceTests
         _roleService.GetActiveUserIdsInRoleAsync(RoleNames.Admin, Arg.Any<CancellationToken>()).Returns([Admin.UserId]);
         _roleService.GetActiveUserIdsInRoleAsync(RoleNames.CampAdmin, Arg.Any<CancellationToken>()).Returns([owner.UserId]);
         _roleService.GetActiveUserIdsInRoleAsync(RoleNames.TicketAdmin, Arg.Any<CancellationToken>()).Returns([unrelated.UserId]);
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         (await _service.GetActionableCountForViewerAsync(Admin, ct)).Should().Be(2);
         (await _service.GetActionableCountForViewerAsync(owner, ct)).Should().Be(1);
         (await _service.GetActionableCountForViewerAsync(unrelated, ct)).Should().Be(1);
@@ -1806,7 +1864,7 @@ public sealed class IssuesServiceTests
 
         // Alice assigned to, and commented on, an issue that is not hers.
         var bobRow = await _issuesDb.Issues.FirstAsync(
-            i => i.Id == bobIssue, Xunit.TestContext.Current.CancellationToken);
+            i => i.Id == bobIssue, TestContext.Current.CancellationToken);
         bobRow.AssigneeUserId = aliceId;
         _issuesDb.IssueComments.Add(new IssueComment
         {
@@ -1816,7 +1874,7 @@ public sealed class IssuesServiceTests
             Content = "Alice's comment on Bob's issue",
             CreatedAt = Clock.GetCurrentInstant()
         });
-        await _issuesDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _issuesDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         await _service.EraseForUserAsync(aliceId, ct);
 
@@ -1827,14 +1885,14 @@ public sealed class IssuesServiceTests
 
         _issuesDb.ChangeTracker.Clear();
         var remaining = await _issuesDb.Issues
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+            .ToListAsync(TestContext.Current.CancellationToken);
         remaining.Select(i => i.Id).Should().Equal(bobIssue);
         remaining[0].AssigneeUserId.Should().BeNull();
         aliceIssue.Should().NotBe(bobIssue);
 
         // Bob's thread keeps Alice's comment; only her authorship goes.
         var comments = await _issuesDb.IssueComments
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+            .ToListAsync(TestContext.Current.CancellationToken);
         comments.Should().ContainSingle();
         comments[0].SenderUserId.Should().BeNull();
     }
@@ -1850,7 +1908,7 @@ public sealed class IssuesServiceTests
 
     // A property, not a field: TestContext.Current is ambient per test, and HumansFact gives
     // each one its own timeout CTS, so a captured token would outlive the test that made it.
-    private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
+    private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     /// <summary>Holds a role that owns the Tickets section, so Tickets issues are theirs.</summary>
     private static IssueViewer Handler() => new(Guid.NewGuid(), [RoleNames.TicketAdmin]);
@@ -1978,7 +2036,7 @@ public sealed class IssuesServiceTests
         if (!Db.Users.Any(u => u.Id == reporterId))
         {
             SeedUser(reporterId, "Reporter").Email = $"{reporterId}@test.com";
-            await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+            await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var issueId = await SeedIssueRowAsync(reporterId, status, "Title", section, withResolvedFields);
@@ -2008,7 +2066,7 @@ public sealed class IssuesServiceTests
             ResolvedByUserId = withResolvedFields ? Guid.NewGuid() : null
         };
         _issuesDb.Issues.Add(issue);
-        await _issuesDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _issuesDb.SaveChangesAsync(TestContext.Current.CancellationToken);
         return issue.Id;
     }
 
@@ -2031,7 +2089,7 @@ public sealed class IssuesServiceTests
             ScreenshotStoragePath = screenshotPath
         };
         _issuesDb.Issues.Add(issue);
-        await _issuesDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _issuesDb.SaveChangesAsync(TestContext.Current.CancellationToken);
         return issue.Id;
     }
 
@@ -2232,12 +2290,12 @@ public sealed class IssuesServiceTests
         var alsoPurgeWontFix = await SeedIssueWithResolvedAtAsync(IssueStatus.WontFix, oldResolved);
         var alsoPurgeDuplicate = await SeedIssueWithResolvedAtAsync(IssueStatus.Duplicate, oldResolved);
 
-        var deleted = await _service.PurgeExpiredAsync(Xunit.TestContext.Current.CancellationToken);
+        var deleted = await _service.PurgeExpiredAsync(TestContext.Current.CancellationToken);
 
         deleted.Should().Be(3);
-        _issuesDb.Issues.Any(i => i.Id == toPurge).Should().BeFalse();
-        _issuesDb.Issues.Any(i => i.Id == alsoPurgeWontFix).Should().BeFalse();
-        _issuesDb.Issues.Any(i => i.Id == alsoPurgeDuplicate).Should().BeFalse();
+        (await _issuesDb.Issues.AnyAsync(i => i.Id == toPurge, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
+        (await _issuesDb.Issues.AnyAsync(i => i.Id == alsoPurgeWontFix, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
+        (await _issuesDb.Issues.AnyAsync(i => i.Id == alsoPurgeDuplicate, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
     }
 
     [HumansFact]
@@ -2248,10 +2306,10 @@ public sealed class IssuesServiceTests
 
         var keep = await SeedIssueWithResolvedAtAsync(IssueStatus.Resolved, recentResolved);
 
-        var deleted = await _service.PurgeExpiredAsync(Xunit.TestContext.Current.CancellationToken);
+        var deleted = await _service.PurgeExpiredAsync(TestContext.Current.CancellationToken);
 
         deleted.Should().Be(0);
-        _issuesDb.Issues.Any(i => i.Id == keep).Should().BeTrue();
+        (await _issuesDb.Issues.AnyAsync(i => i.Id == keep, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
     }
 
     [HumansFact]
@@ -2263,12 +2321,12 @@ public sealed class IssuesServiceTests
         var keepInProgress = await SeedIssueWithResolvedAtAsync(IssueStatus.InProgress, ancient);
         var keepTriage = await SeedIssueWithResolvedAtAsync(IssueStatus.Triage, ancient);
 
-        var deleted = await _service.PurgeExpiredAsync(Xunit.TestContext.Current.CancellationToken);
+        var deleted = await _service.PurgeExpiredAsync(TestContext.Current.CancellationToken);
 
         deleted.Should().Be(0);
-        _issuesDb.Issues.Any(i => i.Id == keepOpen).Should().BeTrue();
-        _issuesDb.Issues.Any(i => i.Id == keepInProgress).Should().BeTrue();
-        _issuesDb.Issues.Any(i => i.Id == keepTriage).Should().BeTrue();
+        (await _issuesDb.Issues.AnyAsync(i => i.Id == keepOpen, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
+        (await _issuesDb.Issues.AnyAsync(i => i.Id == keepInProgress, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
+        (await _issuesDb.Issues.AnyAsync(i => i.Id == keepTriage, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
     }
 
     [HumansFact]
@@ -2294,9 +2352,9 @@ public sealed class IssuesServiceTests
             ResolvedAt = oldResolved,
             ScreenshotStoragePath = key
         });
-        await _issuesDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _issuesDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var deleted = await _service.PurgeExpiredAsync(Xunit.TestContext.Current.CancellationToken);
+        var deleted = await _service.PurgeExpiredAsync(TestContext.Current.CancellationToken);
 
         deleted.Should().Be(1);
         FileStorage.Files.Should().NotContainKey(key);
@@ -2326,12 +2384,12 @@ public sealed class IssuesServiceTests
             ResolvedAt = oldResolved,
             ScreenshotStoragePath = $"uploads/issues/{issueId}/missing.png"
         });
-        await _issuesDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _issuesDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var deleted = await _service.PurgeExpiredAsync(Xunit.TestContext.Current.CancellationToken);
+        var deleted = await _service.PurgeExpiredAsync(TestContext.Current.CancellationToken);
 
         deleted.Should().Be(1);
-        _issuesDb.Issues.Any(i => i.Id == issueId).Should().BeFalse();
+        (await _issuesDb.Issues.AnyAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
     }
 
     // ==========================================================================
@@ -2348,7 +2406,7 @@ public sealed class IssuesServiceTests
         Db.Users.Single(u => u.Id == reporterId).MergedToUserId = survivorId;
         StubResolution(reporterId, survivorId);
 
-        await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         await _notificationService.Received(1).SendAsync(
             NotificationSource.IssueStatusChanged,
@@ -2374,9 +2432,9 @@ public sealed class IssuesServiceTests
         SeedUser(survivorId, "Survivor").Email = "s@x.com";
         StubResolution(archivedId, survivorId);
 
-        await _service.UpdateAssigneeAsync(issueId, Admin, archivedId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await _service.UpdateAssigneeAsync(issueId, Admin, archivedId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        var stored = await _issuesDb.Issues.AsNoTracking().SingleAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
+        var stored = await _issuesDb.Issues.AsNoTracking().SingleAsync(i => i.Id == issueId, TestContext.Current.CancellationToken);
         stored.AssigneeUserId.Should().Be(survivorId);
     }
 

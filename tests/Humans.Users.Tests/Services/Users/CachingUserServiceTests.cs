@@ -1036,7 +1036,6 @@ public class CachingUserServiceTests
         var result = await sut.SaveProfileAsync(
             userId,
             new UserProfileSaveCommand(
-                DisplayName: "After",
                 BurnerName: "New Burner",
                 FirstName: "New",
                 LastName: "Human",
@@ -1196,7 +1195,7 @@ public class CachingUserServiceTests
         });
         StubRefreshEntry(userId, profile);
 
-        var command = new UserProfileSaveCommand("Alice", "Alice", "Alice", "Person", null, null,
+        var command = new UserProfileSaveCommand("Alice", "Alice", "Person", null, null,
             null, null, null, null, null, null, null, null, null, null, null, null, false,
             UserProfilePictureMutation.None, null);
         var entries = new[] { new CVEntry(Guid.Empty, new LocalDate(2025, 3, 1), "Nowhere 2025", "Sound crew") };

@@ -93,7 +93,7 @@ public class BackdoorApiKeyServiceTests
 
         result.Succeeded.Should().BeFalse();
         result.PlaintextKey.Should().BeNull();
-        await _repository.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+        await _repository.DidNotReceiveWithAnyArgs().AddAsync(default!);
     }
 
     [HumansFact]
@@ -104,7 +104,7 @@ public class BackdoorApiKeyServiceTests
         var result = await _sut.IssueAsync(_owner, "  ", _actor);
 
         result.Succeeded.Should().BeFalse();
-        await _repository.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+        await _repository.DidNotReceiveWithAnyArgs().AddAsync(default!);
     }
 
     [HumansFact]
@@ -117,7 +117,7 @@ public class BackdoorApiKeyServiceTests
         var result = await _sut.IssueAsync(_owner, new string('x', 101), _actor);
 
         result.Succeeded.Should().BeFalse();
-        await _repository.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+        await _repository.DidNotReceiveWithAnyArgs().AddAsync(default!);
     }
 
     [HumansFact]
@@ -240,7 +240,7 @@ public class BackdoorApiKeyServiceTests
         var result = await _sut.RotateAsync(key.Id, _actor);
 
         result.Succeeded.Should().BeFalse();
-        await _repository.DidNotReceiveWithAnyArgs().RotateAsync(default, default, default, default!, default);
+        await _repository.DidNotReceiveWithAnyArgs().RotateAsync(default, default, default, default!);
     }
 
     [HumansFact]
@@ -253,7 +253,7 @@ public class BackdoorApiKeyServiceTests
         var result = await _sut.RotateAsync(key.Id, _actor);
 
         result.Succeeded.Should().BeFalse();
-        await _repository.DidNotReceiveWithAnyArgs().RotateAsync(default, default, default, default!, default);
+        await _repository.DidNotReceiveWithAnyArgs().RotateAsync(default, default, default, default!);
     }
 
     // ==========================================================================
@@ -276,8 +276,8 @@ public class BackdoorApiKeyServiceTests
         resolved!.UserId.Should().Be(_owner);
         resolved.Roles.Select(r => r.RoleName).Should().Equal("Admin");
         await _roles.Received(1).GetActiveForUserAsync(_owner, Arg.Any<CancellationToken>());
-        await _roles.DidNotReceiveWithAnyArgs().IsUserAdminAsync(default, default);
-        await _roles.DidNotReceiveWithAnyArgs().IsUserBoardMemberAsync(default, default);
+        await _roles.DidNotReceiveWithAnyArgs().IsUserAdminAsync(default);
+        await _roles.DidNotReceiveWithAnyArgs().IsUserBoardMemberAsync(default);
         await _repository.Received(1).TouchAsync(stored.Id, Now, Arg.Any<CancellationToken>());
     }
 
@@ -295,7 +295,7 @@ public class BackdoorApiKeyServiceTests
     {
         (await _sut.ResolveOwnerAsync(string.Empty)).Should().BeNull();
 
-        await _repository.DidNotReceiveWithAnyArgs().FindActiveByHashAsync(default!, default);
+        await _repository.DidNotReceiveWithAnyArgs().FindActiveByHashAsync(default!);
     }
 
     [HumansFact]
@@ -309,7 +309,7 @@ public class BackdoorApiKeyServiceTests
 
         (await _sut.ResolveOwnerAsync("hmn_whatever")).Should().BeNull();
 
-        await _repository.DidNotReceiveWithAnyArgs().TouchAsync(default, default, default);
+        await _repository.DidNotReceiveWithAnyArgs().TouchAsync(default, default);
     }
 
     [HumansFact]
@@ -320,7 +320,7 @@ public class BackdoorApiKeyServiceTests
         var result = await _sut.IssueAsync(_owner, "triage agent", _actor);
 
         result.Succeeded.Should().BeFalse();
-        await _repository.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+        await _repository.DidNotReceiveWithAnyArgs().AddAsync(default!);
     }
 
     [HumansFact]
@@ -333,8 +333,8 @@ public class BackdoorApiKeyServiceTests
         (await _sut.ResolveOwnerAsync("hmn_whatever")).Should().BeNull();
 
         // Refused, not revoked — restoring the role restores the key.
-        await _repository.DidNotReceiveWithAnyArgs().TouchAsync(default, default, default);
-        await _repository.DidNotReceiveWithAnyArgs().RevokeAsync(default, default, default, default);
+        await _repository.DidNotReceiveWithAnyArgs().TouchAsync(default, default);
+        await _repository.DidNotReceiveWithAnyArgs().RevokeAsync(default, default, default);
     }
 
     // ==========================================================================

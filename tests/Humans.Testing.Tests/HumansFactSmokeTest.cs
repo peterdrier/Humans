@@ -8,7 +8,8 @@ public class HumansFactSmokeTest
     public void Sync_default_timeout_test_runs() => Assert.True(true);
 
     [HumansFact(Timeout = 5000)]
-    public void Sync_explicit_higher_timeout_runs() => Assert.True(true);
+    public void Sync_explicit_higher_timeout_runs() =>
+        Assert.False(TestContext.Current.CancellationToken.IsCancellationRequested);
 
     [HumansFact]
     public async Task Async_default_timeout_test_runs()

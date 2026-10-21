@@ -269,7 +269,7 @@ public sealed class IssuesControllerTests
         var actor = Guid.NewGuid();
         var issueId = Guid.NewGuid();
         var issues = Substitute.For<IIssuesService>();
-        issues.SubmitIssueAsync(default, default, default!, default!, default, default, default, default, default, default, default, default)
+        issues.SubmitIssueAsync(default, default, default!, default!, default, default, default, default, default)
             .ReturnsForAnyArgs(new IssueSubmissionResult(new Issue { Id = issueId }));
         var users = Substitute.For<IUserService>();
         if (viewerExists)

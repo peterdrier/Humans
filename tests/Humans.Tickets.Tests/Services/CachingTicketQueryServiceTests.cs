@@ -61,7 +61,7 @@ public sealed class CachingTicketQueryServiceTests
         SeedOrders(past, MakeOrder(Guid.NewGuid(), null, hit));
 
         var result = await _decorator.FindCurrentEventAttendeeByBarcodeAsync(
-            barcode, Xunit.TestContext.Current.CancellationToken);
+            barcode, TestContext.Current.CancellationToken);
 
         if (found) result.Should().BeSameAs(hit);
         else result.Should().BeNull();
@@ -76,7 +76,7 @@ public sealed class CachingTicketQueryServiceTests
             MakeAttendee(matchedUserId: UserC, status: TicketAttendeeStatus.Void),
         ]));
 
-        var result = (await _decorator.GetTicketOrdersAsync(Xunit.TestContext.Current.CancellationToken))
+        var result = (await _decorator.GetTicketOrdersAsync(TestContext.Current.CancellationToken))
             .Where(o => o.IsCurrentEvent)
             .SelectMany(o => o.Attendees)
             .Where(a => a.MatchedUserId.HasValue
@@ -96,8 +96,8 @@ public sealed class CachingTicketQueryServiceTests
                 MakeAttendee(matchedUserId: UserB, status: TicketAttendeeStatus.Valid),
             ]));
 
-        var first = await _decorator.GetTicketOrdersAsync(Xunit.TestContext.Current.CancellationToken);
-        var second = await _decorator.GetTicketOrdersAsync(Xunit.TestContext.Current.CancellationToken);
+        var first = await _decorator.GetTicketOrdersAsync(TestContext.Current.CancellationToken);
+        var second = await _decorator.GetTicketOrdersAsync(TestContext.Current.CancellationToken);
 
         first.Should().BeEquivalentTo(second);
         await _inner.Received(1).GetTicketOrdersAsync(Arg.Any<CancellationToken>());
@@ -108,8 +108,8 @@ public sealed class CachingTicketQueryServiceTests
     {
         SeedHoldings(UserA, new UserTicketHoldings(1, [], TicketCount: 1));
 
-        var first = await _decorator.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
-        var second = await _decorator.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
+        var first = await _decorator.GetUserTicketHoldingsAsync(UserA, TestContext.Current.CancellationToken);
+        var second = await _decorator.GetUserTicketHoldingsAsync(UserA, TestContext.Current.CancellationToken);
 
         first.TicketCount.Should().Be(1);
         second.TicketCount.Should().Be(1);
@@ -124,9 +124,9 @@ public sealed class CachingTicketQueryServiceTests
         _inner.GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(stale), Task.FromResult(fresh));
 
-        var first = await _decorator.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
+        var first = await _decorator.GetUserTicketHoldingsAsync(UserA, TestContext.Current.CancellationToken);
         _clock.Advance(Duration.FromMinutes(6));
-        var second = await _decorator.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
+        var second = await _decorator.GetUserTicketHoldingsAsync(UserA, TestContext.Current.CancellationToken);
 
         first.TicketCount.Should().Be(1);
         second.TicketCount.Should().Be(2);
@@ -134,14 +134,14 @@ public sealed class CachingTicketQueryServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(false, false)]
-    [Xunit.InlineData(false, true)]
-    [Xunit.InlineData(true, false)]
-    [Xunit.InlineData(true, true)]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
     public async Task GetUserTicketHoldingsAsync_LoadStartedBeforeInvalidation_DoesNotRepopulateCache(
         bool expired, bool invalidateAll)
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var old = new UserTicketHoldings(1, [], TicketCount: 1);
         var current = new UserTicketHoldings(0, []);
         var pending = new TaskCompletionSource<UserTicketHoldings>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -169,9 +169,9 @@ public sealed class CachingTicketQueryServiceTests
 
         _decorator.InvalidateAfterTransfer(senderUserId: UserA, receiverUserId: UserB);
 
-        _ = await _decorator.GetTicketOrdersAsync(Xunit.TestContext.Current.CancellationToken);
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserB, Xunit.TestContext.Current.CancellationToken);
+        _ = await _decorator.GetTicketOrdersAsync(TestContext.Current.CancellationToken);
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserA, TestContext.Current.CancellationToken);
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserB, TestContext.Current.CancellationToken);
 
         await _inner.Received(1).GetTicketOrdersAsync(Arg.Any<CancellationToken>());
         await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
@@ -185,8 +185,8 @@ public sealed class CachingTicketQueryServiceTests
 
         _decorator.InvalidateAfterTransfer(senderUserId: UserA, receiverUserId: null);
 
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserB, Xunit.TestContext.Current.CancellationToken);
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserA, TestContext.Current.CancellationToken);
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserB, TestContext.Current.CancellationToken);
 
         await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
         await _inner.DidNotReceive().GetUserTicketHoldingsAsync(UserB, Arg.Any<CancellationToken>());
@@ -199,9 +199,9 @@ public sealed class CachingTicketQueryServiceTests
 
         _decorator.InvalidateAfterUserMerge(sourceUserId: UserA, targetUserId: UserB);
 
-        _ = await _decorator.GetTicketOrdersAsync(Xunit.TestContext.Current.CancellationToken);
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserB, Xunit.TestContext.Current.CancellationToken);
+        _ = await _decorator.GetTicketOrdersAsync(TestContext.Current.CancellationToken);
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserA, TestContext.Current.CancellationToken);
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserB, TestContext.Current.CancellationToken);
 
         await _inner.Received(1).GetTicketOrdersAsync(Arg.Any<CancellationToken>());
         await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
@@ -215,8 +215,8 @@ public sealed class CachingTicketQueryServiceTests
 
         _decorator.InvalidateAll();
 
-        _ = await _decorator.GetTicketOrdersAsync(Xunit.TestContext.Current.CancellationToken);
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
+        _ = await _decorator.GetTicketOrdersAsync(TestContext.Current.CancellationToken);
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserA, TestContext.Current.CancellationToken);
 
         await _inner.Received(1).GetTicketOrdersAsync(Arg.Any<CancellationToken>());
         await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
@@ -229,9 +229,9 @@ public sealed class CachingTicketQueryServiceTests
 
         _decorator.InvalidateAfterContactImport();
 
-        _ = await _decorator.GetTicketOrdersAsync(Xunit.TestContext.Current.CancellationToken);
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserB, Xunit.TestContext.Current.CancellationToken);
+        _ = await _decorator.GetTicketOrdersAsync(TestContext.Current.CancellationToken);
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserA, TestContext.Current.CancellationToken);
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserB, TestContext.Current.CancellationToken);
 
         await _inner.Received(1).GetTicketOrdersAsync(Arg.Any<CancellationToken>());
         await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
@@ -250,9 +250,9 @@ public sealed class CachingTicketQueryServiceTests
         SeedHoldings(UserA, new UserTicketHoldings(1, [], TicketCount: 1));
         SeedHoldings(UserB, new UserTicketHoldings(1, [], TicketCount: 1));
 
-        _ = await _decorator.GetTicketOrdersAsync(Xunit.TestContext.Current.CancellationToken);
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserB, Xunit.TestContext.Current.CancellationToken);
+        _ = await _decorator.GetTicketOrdersAsync(TestContext.Current.CancellationToken);
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserA, TestContext.Current.CancellationToken);
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserB, TestContext.Current.CancellationToken);
         _inner.ClearReceivedCalls();
     }
 
@@ -263,8 +263,8 @@ public sealed class CachingTicketQueryServiceTests
         ]));
         SeedHoldings(UserA, new UserTicketHoldings(1, [], TicketCount: 1));
 
-        _ = await _decorator.GetTicketOrdersAsync(Xunit.TestContext.Current.CancellationToken);
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
+        _ = await _decorator.GetTicketOrdersAsync(TestContext.Current.CancellationToken);
+        _ = await _decorator.GetUserTicketHoldingsAsync(UserA, TestContext.Current.CancellationToken);
         _inner.ClearReceivedCalls();
     }
 

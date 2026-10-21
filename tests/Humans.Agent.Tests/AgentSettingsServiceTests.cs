@@ -9,7 +9,6 @@ using Humans.Agent.Services.Stores;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Agent.Domain;
-using Humans.Agent.Contracts;
 
 namespace Humans.Agent.Tests;
 

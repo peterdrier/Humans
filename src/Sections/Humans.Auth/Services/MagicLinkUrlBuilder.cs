@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
 using Humans.Base.Configuration;
 
@@ -31,19 +32,7 @@ internal sealed class MagicLinkUrlBuilder(
         return $"{_baseUrl}/Account/MagicLinkConfirm?userId={userId}&token={encodedToken}{returnUrlParam}";
     }
 
-    public string? UnprotectLoginToken(string token)
-    {
-        if (string.IsNullOrEmpty(token)) return null;
-
-        try
-        {
-            return _loginProtector.Unprotect(token);
-        }
-        catch (CryptographicException)
-        {
-            return null;
-        }
-    }
+    public string? UnprotectLoginToken(string token) => UnprotectToken(_loginProtector, token);
 
     public string BuildSignupUrl(string email, string? returnUrl)
     {
@@ -54,15 +43,23 @@ internal sealed class MagicLinkUrlBuilder(
         return $"{_baseUrl}/Account/MagicLinkSignup?token={encodedToken}&email={encodedEmail}{returnUrlParam}";
     }
 
-    public string? UnprotectSignupToken(string token)
+    public string? UnprotectSignupToken(string token) => UnprotectToken(_signupProtector, token);
+
+    private static string? UnprotectToken(ITimeLimitedDataProtector protector, string token)
     {
         if (string.IsNullOrEmpty(token)) return null;
 
         try
         {
-            return _signupProtector.Unprotect(token);
+            // Replay reservations hash the token text. Accept only the spelling
+            // we issue, so equivalent Base64 encodings cannot redeem it twice.
+            if (!string.Equals(token, WebEncoders.Base64UrlEncode(WebEncoders.Base64UrlDecode(token)),
+                    StringComparison.Ordinal))
+                return null;
+
+            return protector.Unprotect(token);
         }
-        catch (CryptographicException)
+        catch (Exception ex) when (ex is CryptographicException or FormatException)
         {
             return null;
         }

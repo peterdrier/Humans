@@ -1,5 +1,4 @@
 using Humans.GoogleIntegration.Services;
-using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Humans.GoogleIntegration.Services.Workspace;
 using Humans.GoogleIntegration.Data;

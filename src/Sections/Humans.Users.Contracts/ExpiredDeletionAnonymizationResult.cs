@@ -10,9 +10,9 @@ namespace Humans.Users.Contracts;
 /// verified notification-target <c>UserEmail</c> row, falling back to
 /// <c>User.Email</c>). May be null when the account never had an email.
 /// </param>
-/// <param name="OriginalDisplayName">Display name on the user before the write.</param>
+/// <param name="OriginalBurnerName">Burner name on the user before the write; the confirmation email greets them by it.</param>
 /// <param name="PreferredLanguage">Preferred language on the user before the write.</param>
 public record ExpiredDeletionAnonymizationResult(
     string? OriginalEmail,
-    string OriginalDisplayName,
+    string OriginalBurnerName,
     string PreferredLanguage);

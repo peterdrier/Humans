@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Agent.Services.Stores;
 using NodaTime;
-using Humans.Agent.Contracts;
 
 namespace Humans.Agent.Tests;
 

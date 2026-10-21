@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Routing;
-
 namespace Humans.Base.Interfaces;
 
 /// <summary>

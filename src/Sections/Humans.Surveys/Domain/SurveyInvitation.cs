@@ -1,4 +1,3 @@
-using Humans.Surveys.Contracts;
 using Humans.Base.Enums;
 using NodaTime;
 

@@ -60,7 +60,7 @@ public sealed class ServiceTests
         var dto = await BuildSut().GetActiveEventSettingsAsync(TestContext.Current.CancellationToken);
 
         dto.Should().NotBeNull();
-        dto!.Id.Should().Be(id);
+        dto.Id.Should().Be(id);
         dto.EventName.Should().Be("Nowhere 2026");
         dto.Year.Should().Be(2026);
         dto.TimeZoneId.Should().Be("Europe/Madrid");

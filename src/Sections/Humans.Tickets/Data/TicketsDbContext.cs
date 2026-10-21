@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Humans.Tickets.Data.Configurations;
 using Humans.Tickets.Domain;
 
 namespace Humans.Tickets.Data;

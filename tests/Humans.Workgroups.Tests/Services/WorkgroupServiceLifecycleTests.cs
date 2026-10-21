@@ -522,7 +522,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
 
         var act = () => NewService().CreateMeetingAsync(
             workgroup.Id, member,
-            new WorkgroupMeetingSave("Meeting", now, now.Plus(NodaTime.Duration.FromHours(1)), null, null, false, null),
+            new WorkgroupMeetingSave("Meeting", now, now.Plus(Duration.FromHours(1)), null, null, false, null),
             Ct);
 
         (await act()).Refusal!.Key
@@ -609,7 +609,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
         var now = Clock.GetCurrentInstant();
         var document = await AddDocumentAsync(
             workgroup.Id, WorkgroupDocumentStatus.Published, categories: ["Scope"],
-            opensAt: now.Minus(NodaTime.Duration.FromDays(1)), closesAt: now.Plus(NodaTime.Duration.FromDays(1)));
+            opensAt: now.Minus(Duration.FromDays(1)), closesAt: now.Plus(Duration.FromDays(1)));
 
         // The Secretary closes the group for silence while the comment window is still open.
         await NewService().CloseAsync(workgroup.Id, SeedUser(), "Quiet for two months", Ct);

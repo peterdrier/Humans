@@ -2,7 +2,6 @@ using System.Security.Claims;
 using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
 using Humans.Governance.Contracts;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Governance;

@@ -55,7 +55,7 @@ public class TicketsOnsiteAdminControllerTests
         var act = () => ctrl.Index(null, null, null, aborted.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
-        await roster.DidNotReceiveWithAnyArgs().GetRosterAsync(default, default, default, default, default);
+        await roster.DidNotReceiveWithAnyArgs().GetRosterAsync(default, default, default, default);
     }
 
     [HumansFact]

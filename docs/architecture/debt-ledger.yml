@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 96
+next_id: 97
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0031-controller-logic
@@ -66,7 +66,7 @@ themes:
     detect: "build:HUM0028"
     review: panel
     last_swept: 2026-10-20
-    remaining: 13
+    remaining: 12
     parked: "Peter 2026-09-20 — 'I don't think fixing all 17 in one go is possible.. it's reworking a lot of things to not need the invalidators anymore, that won't be a short fix.' Rotation skips it; re-check on the interval below, not every rotation."
     recheck_every: 6 months
     recheck_due: 2027-03-20
@@ -78,6 +78,10 @@ themes:
       count, so the Auth, Governance and Issues calls (and
       IRoleAssignmentWrite.InvalidateNavBadgeCache) were dead; FeedbackService
       now evicts its own key.
+      IVotingBadgeCacheInvalidator is gone: ApplicationDecisionService owned
+      the cache and was the only caller. CampLeadJoinRequestsBadge is NOT
+      self-only (Notifications reads the key, Camps evicts it), so it moves to
+      the cross-section group.
       PARKED 2026-09-20 (see `parked:`) — this supersedes the 2026-06-13
       'LEAVE in rotation, re-check periodically' instruction: the re-check now
       runs on `recheck_due`, so rotation stops spending a slot on it.
@@ -101,7 +105,7 @@ themes:
       (RoleAssignment — stays); 15 cross-section merge/lifecycle or
       intra-section sibling signals that must stay (Consent, ActiveTeams,
       UserInfo, RoleAssignmentClaims, ShiftAuthorization, NavBadge [removed 2026-10-20],
-      NotificationMeter, VotingBadge, EarlyEntry, ShiftView, LegalDocument [direct
+      NotificationMeter, VotingBadge [absorbed 2026-10-20], EarlyEntry, ShiftView, LegalDocument [direct
       service-side InvalidateAll()], Ticket, CampInfo [CampRoleService sibling], IssuesBadge [absorbed 2026-10-20],
       CampLeadJoinRequestsBadge). None are sweep-mechanical. The HUM0028 ratchet correctly
       blocks NEW invalidators; existing ones are deliberate ordering-sensitive
@@ -115,74 +119,37 @@ themes:
     title: User.DisplayName reads (HUM_USER_DISPLAYNAME)
     detect: "build:HUM_USER_DISPLAYNAME"
     review: light
-    last_swept: 2026-08-20
-    remaining: 18
-    parked: "Peter 2026-06-13 - LEAVE parked in the ledger; the [Obsolete] warning independently guards against new misuse. The machine-readable key was missing until 2026-10-06, so rotation was still serving it."
+    last_swept: 2026-10-21
+    remaining: 8
     notes: >-
-      ACTIONABLE = 0 (re-audited every site against a full clean rebuild,
-      #1053, 2026-08-20 — the section's G5 move into its own project gave the
-      analyzer a compilation unit to fire against on every clean build, which
-      is what surfaced the count for a full-rebuild audience). All 19 sites
-      that fire HUM_USER_DISPLAYNAME are still legitimate consumers per the
-      obsolete message: creation-time writes (ExternalLoginService.CreateUserAsync,
-      AccountProvisioningService ×2, dev/system seeders ×4), BurnerName-fallback
-      derivation (UserInfo.cs, CachingUserService.WithUserFields), write-side
-      sync (UserInfoSaveChangesInterceptor ×2, UserRepository.UpdateDisplayNameAsync),
-      repository merge/purge/delete labels (UserRepository ×5 more), GDPR
-      export (UserService.ContributeForUserAsync), and GDPR-anonymized
-      sentinel state (UserStateEvaluator). Full site table in
-      peterdrier/Humans PR for #1053. Count dropped 20->19 since the
-      2026-06-13 sweep because CachingUserService.RehydrateUser (one of the
-      two BurnerName-derivation sites back then) no longer exists — folded
-      into WithUserFields at some point since, not because a site was
-      silenced. Rendering-caller debt was already migrated (#691). DETECT
-      OVERCOUNTS: build:HUM_USER_DISPLAYNAME counts all 19 firing sites, but
-      legit consumers cannot be silenced without a forbidden pragma, so the
-      count floors at ~19 and can never reach 0. Treat it as the irreducible
-      legit floor, not a backlog. PARKED — re-check only if a new rendering
-      caller of User.DisplayName appears (the analyzer will flag it).
-      Peter 2026-06-13: LEAVE parked in the ledger; the [Obsolete] warning
-      independently guards against new misuse.
+      Swept 2026-10-21 (clean rebuild, 17 -> 8): creation-time and profile-save
+      writes are gone (new rows hold ""), and the deletion email greets by
+      BurnerName. Left, all retired by one PR: the legacy GDPR tombstone arm
+      (UserInfo x2, UserStateEvaluator, UserInfoSaveChangesInterceptor x2 for its
+      clone) and the scrubs and export that exist only while the column does
+      (UserRepository merge + erasure, UserService GDPR export). Path to 0:
+      apply users.legacy-gdpr-tombstones on production; once
+      /api/data-migrations reports it done, delete the legacy arms and drop the
+      users.DisplayName column (nobodies-collective/Humans#1102, #1742), which
+      also clears the 108 test files that seed it and the WarningsNotAsErrors
+      entry.
   - id: cs0618-pragma-nav-reads
-    title: Pragma-wrapped CS0618 cross-section nav reads
+    title: CS0618 pragma sites
     detect: "grep -rl --include='*.cs' 'pragma warning disable CS0618' src | wc -l"
-    review: panel
-    last_swept: 2026-06-14
-    remaining: 9
-    parked: "Peter — PARKED, as the note has said since 2026-06-14; the machine-readable key was missing until 2026-09-20, so rotation was still serving it. Re-check only when a NEW un-stitched cross-section nav read appears."
+    review: light
+    last_swept: 2026-10-21
+    remaining: 3
     notes: >-
-      The drop in `remaining` is real, not a burndown — the
-      src/Humans.Infrastructure/Data/Configurations/*.cs mappings in item (1)
-      below went away with that project.
-      ACTIONABLE = 0 cross-section nav reads (audited all 27 files, sweep
-      2026-06-14). The detect counts FILES-with-pragma and conflates five
-      unrelated things, none sweep-mechanical:
-      (1) ~15 src/Humans.Infrastructure/Data/Configurations/*.cs HasOne nav
-      MAPPINGS = the SCHEMA side, owned by grandfathered-hum0024-nav-strip
-      (dropping any fires has-pending-model-changes; out of sweep scope);
-      (2) 3 FALSE POSITIVES where the arch scan's textual `.User` heuristic
-      matches a non-domain member — HttpCurrentUserContext + CurrentUserEnricher
-      (HttpContext.User principal) and AccountController (record field
-      result.User);
-      (3) 2 obsolete ContactFieldType.Email ENUM reads (legit legacy-data
-      display, a different obsolete concern, not nav reads) — ProfileApiController,
-      ProfileViewModel;
-      (4) the APPROVED §6b in-memory cross-domain stitch (entity nav populated
-      from service data, design-rules §6b/§15i) — already migrated: FeedbackService
-      (r.User after userService.GetByIdsAsync), TeamService (member.User), and the
-      consumers AboutController, ProfileController, TeamController, TeamAdminController,
-      TeamViewModels (file-wide);
-      (5) 3 IN-SECTION obsolete Team-nav reads in TeamService
-      (TeamRoleDefinition.Team, TeamJoinRequest.Team, TeamMember.Team) — off-theme
-      (in-section, not cross-section); the only "fix" relocates the pragma into a
-      repo projection expression (still CS0618), non-mechanical, panel.
-      Like obsolete-user-displayname this detect FLOORS (~27) and can never reach 0
-      without forbidden pragmas/schema work. The cross-section reads are ALL already
-      service-stitched. PARKED — re-check only when a NEW un-stitched cross-section
-      nav read appears (the CS0618 ratchet flags it). Future re-scope: count only
-      un-stitched cross-section nav reads (currently 0). TeamViewModels file-wide
-      pragma clears only when its VMs are built from service DTOs (large refactor,
-      separate). Still closely coupled to grandfathered-hum0024-nav-strip.
+      Swept 2026-10-21: the cross-section nav reads are gone, and 6 pragmas
+      (CurrentUserEnricher, HttpCurrentUserContext, AccountController,
+      TeamService x3) suppressed nothing, since none of those members is
+      [Obsolete] any more; removed. Order.Label and User.GoogleEmailStatus became
+      EF shadow properties (same pattern as users.GoogleEmail), so no code can
+      reference them and the model snapshot is unchanged; their columns drop
+      under no-drops-until-prod-verified. Left: ContactFieldType.Email
+      (ProfileApiController, ProfileViewModel; legacy contact rows still
+      render) and UserService's GDPR export of the two dead users flags
+      (retire with the USERS-12/13 column drop).
   - id: baseline-entity-read-returns
     title: Application services returning entities from reads
     detect: "grep -cv '^#\\|^$' tests/Humans.Web.Tests/Architecture/Baselines/ApplicationServiceEntityReadReturns.baseline.txt"
@@ -250,7 +217,7 @@ themes:
     detect: "cat docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml 2>/dev/null | grep -c '^  - added:'"
     review: per-item
     last_swept: 2026-06-14
-    remaining: 5
+    remaining: 22
     notes: >-
       Each inbox entry carries its own review tier and a stable `id`; an item is
       closed by deleting its row and citing the id in the PR — ids are never
@@ -259,11 +226,7 @@ themes:
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
-  - added: 2026-10-18
-    id: CENTRAL-87
-    what: "StripeService.GetPaymentDetailsAsync sums only stripe_fee/application_fee although Stripe supports payment_method_passthrough_fee, tax and withheld_tax. Tickets reports therefore omit legitimate settlement costs and overstate net revenue; Budget imports only those two fee buckets, both at a fixed 21% VAT rate. Preserve additional components through StripePaymentDetails and TicketOrderInfo, Tickets persistence/reports/exports, and Budget actuals after defining their expense/VAT classification rather than silently treating tax or withholding as processing fees. Found by comparing Stripe.net FeeDetail.Type with the enrichment loop and TicketingBudgetService/BudgetRepository actuals mapping."
-    review: panel
-  - added: 2026-10-19
-    id: CENTRAL-88
-    what: "CacheKeys.MagicLinkUsed in Humans.Base names its parameter tokenPrefix, but its only caller (Auth's MagicLinkRateLimiter) passes a SHA-256 digest of the whole token. Rename the parameter. Found by section-doctor on Auth."
+  - added: 2026-10-21
+    id: CENTRAL-96
+    what: "Remaining MA0011 suppressions on column-side .ToLower() in EF queries: TicketRepository (GetOrdersPageAsync/GetAttendeesPageAsync search + duplicate-email grouping), UserRepository.UserEmails (batch lowered-IN lookup; UserEmail.Email is not stored normalized, OAuth claim emails keep their case), GoogleSyncLogRepository.GetRecentAsync (text filter applied before Take(limit) on an unbounded log). Npgsql 10 translates only parameterless ToLower() (ToLowerInvariant/ToLower(culture) throw); EF.Functions.ILike breaks the InMemory repo tests. Fix needs a cheap in-memory shape or an accepted test strategy. Found in the debt/ma0011 burndown."
     review: light

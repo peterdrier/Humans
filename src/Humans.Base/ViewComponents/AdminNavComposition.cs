@@ -1,7 +1,6 @@
 using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 
 namespace Humans.Base.ViewComponents;
 

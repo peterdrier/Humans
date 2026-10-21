@@ -1,6 +1,5 @@
 using Humans.Base.Interfaces;
 using Humans.Preapprovals.Contracts;
-using Humans.Preapprovals.Domain;
 
 namespace Humans.Preapprovals.Services;
 

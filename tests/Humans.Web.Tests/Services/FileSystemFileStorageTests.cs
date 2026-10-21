@@ -89,7 +89,7 @@ public class FileSystemFileStorageTests : IDisposable
 
         var fullPath = Path.Combine(_wwwroot, "uploads", "camps", "abc", "file.jpg");
         File.Exists(fullPath).Should().BeTrue();
-        File.ReadAllBytes(fullPath).Should().BeEquivalentTo(payload);
+        (await File.ReadAllBytesAsync(fullPath, Xunit.TestContext.Current.CancellationToken)).Should().BeEquivalentTo(payload);
     }
 
     [HumansFact]
@@ -190,7 +190,7 @@ public class FileSystemFileStorageTests : IDisposable
         await _store.DeleteAsync("uploads/issues/first", Xunit.TestContext.Current.CancellationToken, recursiveDirectory: true);
 
         Directory.Exists(Path.Combine(_wwwroot, "uploads", "issues", "first")).Should().BeFalse();
-        (await _store.TryReadAsync("uploads/issues/second/c.png", Xunit.TestContext.Current.CancellationToken)).Should().Equal((byte)3);
+        (await _store.TryReadAsync("uploads/issues/second/c.png", Xunit.TestContext.Current.CancellationToken)).Should().Equal(3);
     }
 
     [HumansFact]

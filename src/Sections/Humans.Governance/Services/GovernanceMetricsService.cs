@@ -3,7 +3,6 @@ using Humans.Base.Hosting;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Governance.Services;

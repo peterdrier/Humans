@@ -874,7 +874,7 @@ public class AgentServiceTests
 
         var finalizer = tokens.Last().Finalizer;
         finalizer.Should().NotBeNull();
-        finalizer!.StopReason.Should().Be("error");
+        finalizer.StopReason.Should().Be("error");
         finalizer.ConversationId.Should().NotBe(Guid.Empty,
             "the client must be able to continue the same conversation after a failed turn");
         // nobodies-collective/Humans#990: the streamed error frame must agree with what got
@@ -887,7 +887,7 @@ public class AgentServiceTests
         var transcript = await svc.GetConversationForUserAsync(
             userId, finalizer.ConversationId, Xunit.TestContext.Current.CancellationToken);
         transcript.Should().NotBeNull();
-        var failureMessage = transcript!.Messages.Should().ContainSingle(m => m.Role == AgentRole.Assistant,
+        var failureMessage = transcript.Messages.Should().ContainSingle(m => m.Role == AgentRole.Assistant,
             "a turn that throws mid-stream must still leave an assistant message in the transcript").Subject;
         failureMessage.RefusalReason.Should().Be("error");
         // AgentAdminStatusService prices spend straight off these fields, so a zeroed trace

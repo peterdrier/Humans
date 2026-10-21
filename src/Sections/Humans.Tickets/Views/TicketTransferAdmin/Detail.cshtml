@@ -2,7 +2,12 @@
 @{
     ViewData["Title"] = "Review transfer";
     var row = Model.Row;
-    var (statusLabel, statusClass) = row.OriginalAttendeeStatus switch
+    var isCheckedIn = row.OriginalAttendeeCheckedInAt is not null
+        || row.OriginalAttendeeStatus == TicketAttendeeStatus.CheckedIn;
+    var canProcess = row.OriginalAttendeeStatus == TicketAttendeeStatus.Valid && !isCheckedIn;
+    var (statusLabel, statusClass) = isCheckedIn
+        ? ("Checked in", "bg-warning text-dark")
+        : row.OriginalAttendeeStatus switch
     {
         TicketAttendeeStatus.Valid => ("Valid (not checked in)", "bg-success"),
         TicketAttendeeStatus.CheckedIn => ("Checked in", "bg-warning text-dark"),
@@ -127,25 +132,30 @@
 }
 else if (row.Status == TicketTransferStatus.Pending)
 {
-    <div class="card mb-3 border-info">
-        <div class="card-body">
-            <h2 class="h6 mb-2">How to process this transfer</h2>
-            <ol class="mb-0">
-                <li><strong>Process transfer</strong> below voids ticket
-                    <strong>@Model.OriginalAttendeeVendorTicketId</strong> (to a hold, so the same ticket
-                    type is preserved even if it's now closed) and reissues it to
-                    <strong>@row.ReceiverLegalName</strong> (<strong>@row.ReceiverEmail</strong>) — no refund,
-                    like-for-like.</li>
-                <li>If the automated step fails, retry the reissue (or finish in TicketTailor and use
-                    <strong>Mark successful</strong>). Or <strong>cancel</strong> with a reason.</li>
-            </ol>
+    @if (canProcess)
+    {
+        <div class="card mb-3 border-info">
+            <div class="card-body">
+                <h2 class="h6 mb-2">How to process this transfer</h2>
+                <ol class="mb-0">
+                    <li><strong>Process transfer</strong> below voids ticket
+                        <strong>@Model.OriginalAttendeeVendorTicketId</strong> (to a hold, so the same ticket
+                        type is preserved even if it's now closed) and reissues it to
+                        <strong>@row.ReceiverLegalName</strong> (<strong>@row.ReceiverEmail</strong>) — no refund,
+                        like-for-like.</li>
+                    <li>If the automated step fails, retry the reissue (or finish in TicketTailor and use
+                        <strong>Mark successful</strong>). Or <strong>cancel</strong> with a reason.</li>
+                </ol>
+            </div>
         </div>
-    </div>
 
-    @if (row.OriginalAttendeeStatus == TicketAttendeeStatus.CheckedIn || row.OriginalAttendeeCheckedInAt is not null)
+    }
+    else
     {
         <div class="alert alert-warning">
-            This ticket has already been checked in — confirm with the Sender before processing.
+            @(isCheckedIn ? "This ticket has already been checked in." : "This ticket is no longer valid.")
+            Automated transfer is unavailable. Cancel the request, or mark successful only if
+            the transfer was already completed in TicketTailor.
         </div>
     }
 
@@ -157,7 +167,10 @@ else if (row.Status == TicketTransferStatus.Pending)
             <textarea id="adminNotes" name="adminNotes" rows="2" class="form-control" maxlength="1000"></textarea>
             <div class="form-text">A reason is required to cancel. Optional when marking successful.</div>
         </div>
-        <button type="submit" name="action" value="process" class="btn btn-success">Process transfer (void + reissue)</button>
+        @if (canProcess)
+        {
+            <button type="submit" name="action" value="process" class="btn btn-success">Process transfer (void + reissue)</button>
+        }
         <button type="submit" name="action" value="marksuccessful" class="btn btn-outline-secondary">Mark successful (no vendor call)</button>
         <button type="submit" name="action" value="cancel" class="btn btn-danger">Cancel transfer</button>
         <a class="btn btn-outline-secondary" asp-action="Index">Back</a>

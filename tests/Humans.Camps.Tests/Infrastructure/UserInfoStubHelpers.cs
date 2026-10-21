@@ -121,17 +121,18 @@ internal static class UserInfoStubHelpers
     {
         userService
             .GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
+            .Returns(async ValueTask<UserInfo?> (callInfo) =>
             {
                 var id = callInfo.Arg<Guid>();
-                var user = dbContext.Users.AsNoTracking()
+                var ct = callInfo.Arg<CancellationToken>();
+                var user = await dbContext.Users.AsNoTracking()
                     .Include(u => u.UserEmails)
-                    .FirstOrDefault(u => u.Id == id);
+                    .FirstOrDefaultAsync(u => u.Id == id, ct);
                 if (user is null)
-                    return new ValueTask<UserInfo?>((UserInfo?)null);
-                var profile = dbContext.Profiles.AsNoTracking()
-                    .FirstOrDefault(p => p.UserId == id);
-                return new ValueTask<UserInfo?>(user.ToUserInfo(user.UserEmails.ToList(), profile));
+                    return null;
+                var profile = await dbContext.Profiles.AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.UserId == id, ct);
+                return user.ToUserInfo(user.UserEmails.ToList(), profile);
             });
         return userService;
     }

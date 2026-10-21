@@ -3,7 +3,6 @@ using System.Text;
 using AwesomeAssertions;
 using Humans.Holded.Contracts;
 using Humans.Holded.Services;
-using Humans.Testing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -372,7 +371,7 @@ public class HoldedClientTreasuryTests
         {
             capturedPath = req.RequestUri!.AbsolutePath;
             capturedMethod = req.Method.Method;
-            capturedBody = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            capturedBody = new StreamReader(req.Content!.ReadAsStream()).ReadToEnd();
             return Respond(HttpStatusCode.OK, "{}");
         });
 

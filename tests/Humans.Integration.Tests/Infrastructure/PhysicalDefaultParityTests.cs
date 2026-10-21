@@ -1,11 +1,9 @@
 using AwesomeAssertions;
 using Humans.Base.Data;
-using Humans.Web.Data;
 using Humans.Base.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Humans.Web.Extensions;
-using Humans.Web.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;

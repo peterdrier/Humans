@@ -17,7 +17,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using NodaTime;
 using NSubstitute;
 using Xunit;
 
@@ -71,7 +70,7 @@ public sealed class CityPlanningControllerSettingsRedirectTests : CityPlanningTe
     [HumansFact]
     public async Task OpenPlacement_RedirectsToTheSettingsPageCityPlanningTab()
     {
-        var result = await _controller.OpenPlacement(Xunit.TestContext.Current.CancellationToken);
+        var result = await _controller.OpenPlacement(TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#city-planning");
     }
@@ -79,7 +78,7 @@ public sealed class CityPlanningControllerSettingsRedirectTests : CityPlanningTe
     [HumansFact]
     public async Task ClosePlacement_RedirectsToTheSettingsPageCityPlanningTab()
     {
-        var result = await _controller.ClosePlacement(Xunit.TestContext.Current.CancellationToken);
+        var result = await _controller.ClosePlacement(TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#city-planning");
     }
@@ -87,7 +86,7 @@ public sealed class CityPlanningControllerSettingsRedirectTests : CityPlanningTe
     [HumansFact]
     public async Task UpdatePlacementDates_RedirectsToTheSettingsPageCityPlanningTab()
     {
-        var result = await _controller.UpdatePlacementDates(null, null, Xunit.TestContext.Current.CancellationToken);
+        var result = await _controller.UpdatePlacementDates(null, null, TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#city-planning");
     }
@@ -95,10 +94,10 @@ public sealed class CityPlanningControllerSettingsRedirectTests : CityPlanningTe
     [HumansFact]
     public async Task UpdateRegistrationInfo_SavesAndRedirectsToTheSettingsPageCityPlanningTab()
     {
-        var result = await _controller.UpdateRegistrationInfo("Bring water.", Xunit.TestContext.Current.CancellationToken);
+        var result = await _controller.UpdateRegistrationInfo("Bring water.", TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#city-planning");
-        (await _service.GetRegistrationInfoAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be("Bring water.");
+        (await _service.GetRegistrationInfoAsync(TestContext.Current.CancellationToken)).Should().Be("Bring water.");
     }
 
     [HumansTheory]

@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Surveys.Services;
 using Humans.Surveys.Domain;
-using Humans.Surveys.Contracts;
 namespace Humans.Surveys.Tests.Services;
 
 public class SurveyBranchingEvaluatorTests

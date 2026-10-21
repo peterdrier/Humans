@@ -80,7 +80,7 @@ public sealed class CampaignServiceTests
 
         teamService
             .GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => (IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo>(_teams));
+            .Returns(_ => new Dictionary<Guid, TeamInfo>(_teams));
 
         userService
             .GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -88,14 +88,14 @@ public sealed class CampaignServiceTests
 
         userService
             .GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call => (IReadOnlyDictionary<Guid, UserInfo>)call
+            .Returns(call => call
                 .ArgAt<IReadOnlyCollection<Guid>>(0)
                 .Where(_people.ContainsKey)
                 .ToDictionary(id => id, id => _people[id]));
 
         userEmailService
             .GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call => (IReadOnlyDictionary<Guid, string>)call
+            .Returns(call => call
                 .ArgAt<IReadOnlyCollection<Guid>>(0)
                 .Where(id => _people.TryGetValue(id, out var p) && !string.IsNullOrEmpty(p.Email))
                 .ToDictionary(id => id, id => _people[id].Email!));
@@ -119,7 +119,7 @@ public sealed class CampaignServiceTests
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         _audit.LogAsync(AuditAction.CampaignCreated, "Campaign", Arg.Any<Guid>(),
-            Arg.Any<string>(), _actorId, null, null).Returns(async call =>
+            Arg.Any<string>(), _actorId).Returns(async call =>
             {
                 var savedId = call.ArgAt<Guid>(2);
                 (await CampaignsDb.Campaigns.AnyAsync(campaign => campaign.Id == savedId, ct)).Should().BeTrue();
@@ -198,7 +198,7 @@ public sealed class CampaignServiceTests
     [Xunit.InlineData("plain")]
     public async Task ImportCodes_ReadsUploadedCodeValues(string format)
     {
-        var campaign = await SeedCampaignAsync(CampaignStatus.Draft);
+        var campaign = await SeedCampaignAsync();
         var controller = CreateImportController();
         var content = format switch
         {
@@ -225,7 +225,7 @@ public sealed class CampaignServiceTests
     [Xunit.InlineData("VALID\r\nFIRST,SECOND\r\n")]
     public async Task ImportCodes_InvalidCsv_DoesNotImportAPartialPrefix(string content)
     {
-        var campaign = await SeedCampaignAsync(CampaignStatus.Draft);
+        var campaign = await SeedCampaignAsync();
         var controller = CreateImportController();
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
         var file = new FormFile(stream, 0, stream.Length, "file", "codes.csv");

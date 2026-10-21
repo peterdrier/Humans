@@ -69,7 +69,7 @@ public class OnboardingWidgetStateTests
         {
             await request.CancelAsync();
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return (EventSettingsInfo?)null;
+            return null;
         });
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => BuildSut().GetCurrentStepAsync(userId, request.Token));

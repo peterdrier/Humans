@@ -144,7 +144,7 @@ public class FeedbackPageRenderTests(HumansTestDatabase database) : IntegrationT
         token.Should().NotBeNullOrEmpty();
         await Client.PostAsync("/Language/SetLanguage", new FormUrlEncodedContent(
             [
-                new KeyValuePair<string, string>("__RequestVerificationToken", token!),
+                new KeyValuePair<string, string>("__RequestVerificationToken", token),
                 new KeyValuePair<string, string>("culture", "es"),
             ]), ct);
 

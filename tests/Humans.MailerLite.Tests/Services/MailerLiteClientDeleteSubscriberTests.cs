@@ -22,7 +22,7 @@ public class MailerLiteClientDeleteSubscriberTests
         var client = BuildClient(new DeleteHandler(HttpStatusCode.NoContent));
         await DrainAsync(client);
 
-        await client.DeleteSubscriberAsync(Erased, Xunit.TestContext.Current.CancellationToken);
+        await client.DeleteSubscriberAsync(Erased, TestContext.Current.CancellationToken);
 
         (await SnapshotEmailsAsync(client)).Should().NotContain(Erased);
     }
@@ -33,7 +33,7 @@ public class MailerLiteClientDeleteSubscriberTests
         var client = BuildClient(new DeleteHandler(HttpStatusCode.NotFound));
         await DrainAsync(client);
 
-        await client.DeleteSubscriberAsync(Erased, Xunit.TestContext.Current.CancellationToken);
+        await client.DeleteSubscriberAsync(Erased, TestContext.Current.CancellationToken);
 
         (await SnapshotEmailsAsync(client)).Should().NotContain(Erased,
             "an erased human's address must not survive in the no-TTL subscriber cache");
@@ -49,13 +49,13 @@ public class MailerLiteClientDeleteSubscriberTests
     public async Task DeleteSubscriberAsync_UpdatesStatusTotals(string status, HttpStatusCode response)
     {
         var client = BuildClient(new DeleteHandler(response, status));
-        var before = await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken);
+        var before = await client.GetAccountSummaryAsync(TestContext.Current.CancellationToken);
         (before.ActiveCount + before.UnsubscribedCount + before.UnconfirmedCount
             + before.BouncedCount + before.JunkCount).Should().Be(1);
 
-        await client.DeleteSubscriberAsync(Erased, Xunit.TestContext.Current.CancellationToken);
+        await client.DeleteSubscriberAsync(Erased, TestContext.Current.CancellationToken);
 
-        var after = await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken);
+        var after = await client.GetAccountSummaryAsync(TestContext.Current.CancellationToken);
         (after.ActiveCount + after.UnsubscribedCount + after.UnconfirmedCount
             + after.BouncedCount + after.JunkCount).Should().Be(0);
     }
@@ -64,13 +64,13 @@ public class MailerLiteClientDeleteSubscriberTests
     public async Task DeleteSubscriberAsync_Failure_PreservesSnapshotAndStatusTotals()
     {
         var client = BuildClient(new DeleteHandler(HttpStatusCode.InternalServerError));
-        var before = await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken);
+        var before = await client.GetAccountSummaryAsync(TestContext.Current.CancellationToken);
 
-        var delete = () => client.DeleteSubscriberAsync(Erased, Xunit.TestContext.Current.CancellationToken);
+        var delete = () => client.DeleteSubscriberAsync(Erased, TestContext.Current.CancellationToken);
         await delete.Should().ThrowAsync<HttpRequestException>();
 
         (await SnapshotEmailsAsync(client)).Should().Contain(Erased);
-        (await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(before);
+        (await client.GetAccountSummaryAsync(TestContext.Current.CancellationToken)).Should().Be(before);
     }
 
     private static async Task DrainAsync(MailerLiteClient client)
@@ -81,7 +81,7 @@ public class MailerLiteClientDeleteSubscriberTests
     private static async Task<List<string>> SnapshotEmailsAsync(MailerLiteClient client)
     {
         var emails = new List<string>();
-        await foreach (var s in client.ListSubscribersAsync(Xunit.TestContext.Current.CancellationToken))
+        await foreach (var s in client.ListSubscribersAsync(TestContext.Current.CancellationToken))
             emails.Add(s.Email);
         return emails;
     }

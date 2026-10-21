@@ -147,13 +147,14 @@ public class TeamAdminControllerMembersTests
         var resourceId = Guid.NewGuid();
         var teams = Substitute.For<ITeamManagementService>();
         var users = Substitute.For<IUserService>();
-        var team = new Team { Id = Guid.NewGuid(), Name = "Team", Slug = "team" };
+        var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
+            false, false, false, false, Instant.MinValue, []);
         var resources = Substitute.For<ITeamResourceService>();
         var resourceWrite = Substitute.For<ITeamResourceWrite>();
         var sync = Substitute.For<IGoogleSyncWrite>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = userId }, [], [], null));
-        teams.GetTeamEntityBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(team);
+        teams.GetTeamBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(team);
         resources.CanManageTeamResourcesAsync(team.Id, userId, Arg.Any<CancellationToken>())
             .Returns(!string.Equals(scenario, "denied", StringComparison.Ordinal));
         if (!string.Equals(scenario, "missing", StringComparison.Ordinal))
@@ -216,12 +217,13 @@ public class TeamAdminControllerMembersTests
         var resourceId = Guid.NewGuid();
         var teams = Substitute.For<ITeamManagementService>();
         var users = Substitute.For<IUserService>();
-        var team = new Team { Id = Guid.NewGuid(), Name = "Team", Slug = "team" };
+        var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
+            false, false, false, false, Instant.MinValue, []);
         var resources = Substitute.For<ITeamResourceService>();
         var resourceWrite = Substitute.For<ITeamResourceWrite>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = userId }, [], [], null));
-        teams.GetTeamEntityBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(team);
+        teams.GetTeamBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(team);
         resources.GetResourceByIdAsync(resourceId, Arg.Any<CancellationToken>()).Returns(
             new GoogleResourceSnapshot(resourceId, team.Id, "google-id", "Folder", GoogleResourceType.DriveFolder, null));
         resources.CanManageTeamResourcesAsync(team.Id, userId, Arg.Any<CancellationToken>()).Returns(allowed);
@@ -361,11 +363,12 @@ public class TeamAdminControllerMembersTests
         var userId = Guid.NewGuid();
         var teams = Substitute.For<ITeamManagementService>();
         var users = Substitute.For<IUserService>();
-        var team = new Team { Id = Guid.NewGuid(), Name = "Team", Slug = "team" };
+        var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
+            false, false, false, false, Instant.MinValue, []);
         var resources = Substitute.For<ITeamResourceService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(
             new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], null)));
-        teams.GetTeamEntityBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(team);
+        teams.GetTeamBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(team);
         resources.CanManageTeamResourcesAsync(team.Id, userId, Arg.Any<CancellationToken>()).Returns(true);
         resources.GetTeamResourcesAsync(team.Id, Arg.Any<CancellationToken>()).Returns([]);
         resources.GetServiceAccountEmailAsync(Arg.Any<CancellationToken>()).Returns("service@example.com");
@@ -375,7 +378,7 @@ public class TeamAdminControllerMembersTests
                 users.GetUserInfoAsync(userId, aborted.Token).Returns(ValueTask.FromCanceled<UserInfo?>(aborted.Token));
                 break;
             case "team":
-                teams.GetTeamEntityBySlugAsync(team.Slug, aborted.Token).Returns(Task.FromCanceled<Team?>(aborted.Token));
+                teams.GetTeamBySlugAsync(team.Slug, aborted.Token).Returns(Task.FromCanceled<TeamInfo?>(aborted.Token));
                 break;
             case "permission":
                 resources.CanManageTeamResourcesAsync(team.Id, userId, aborted.Token).Returns(Task.FromCanceled<bool>(aborted.Token));

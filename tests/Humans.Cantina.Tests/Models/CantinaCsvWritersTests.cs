@@ -99,7 +99,7 @@ public sealed class CantinaCsvWritersTests
 
         var noShiftDays = Enumerable.Range(0, 5)
             .Select(i => WeekStart.PlusDays(i))
-            .ToArray<LocalDate>();
+            .ToArray();
 
         var person = new RosterPersonDto(
             UserId: Guid.NewGuid(),

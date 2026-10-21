@@ -57,8 +57,8 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
             .With(_userService)
-            .With<IUserService>(_userService)
-            .With<IRoleAssignmentService>(_roleAssignmentService)
+            .With(_userService)
+            .With(_roleAssignmentService)
             .Build();
 
         var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
@@ -125,7 +125,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         var service = new ShiftManagementService(
             repo, AuditLog, AdminAuthorization, new ServiceLocatorBuilder().With(_teamService).Build(),
             cache, invalidator, NewCalendarResolver(), Clock,
-            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+            Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
         Func<Task> mutate = () => create
             ? service.CreateRotaAsync(rota, [Guid.NewGuid()])
             : service.UpdateRotaAsync(rota, [Guid.NewGuid()]);
@@ -196,7 +196,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
             Clock,
-            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+            Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         var deleted = await service.DeleteEventAsync(eventId, Xunit.TestContext.Current.CancellationToken);
 

@@ -88,6 +88,8 @@ internal sealed partial class PreapprovalService
         program.Kind = save.Kind;
         program.UpdatedAt = now;
         await repository.UpdateProgramAsync(program, ct);
+        // The program committed; finish manager changes, audit and deadline notices independently of the browser.
+        ct = CancellationToken.None;
 
         var wanted = save.ManagerUserIds.Distinct().ToList();
         var current = program.Managers.Select(m => m.UserId).ToList();

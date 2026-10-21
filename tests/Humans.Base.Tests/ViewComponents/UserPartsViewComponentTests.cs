@@ -38,7 +38,7 @@ public class UserPartsViewComponentTests
     {
         var model = ModelFrom(
             Contributor(new UserPart(Slot, typeof(LatePart), 10), new UserPart(Slot, typeof(MiddlePart), 5)),
-            Contributor(new UserPart(Slot, typeof(EarlyPart), 0)));
+            Contributor(new UserPart(Slot, typeof(EarlyPart))));
 
         model.Parts.Select(p => p.Component).Should().Equal(typeof(EarlyPart), typeof(MiddlePart), typeof(LatePart));
     }

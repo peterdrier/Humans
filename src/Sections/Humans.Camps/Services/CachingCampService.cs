@@ -1,8 +1,6 @@
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
-using Humans.Base.Caching;
-using Humans.Base.Extensions;
 using Humans.EarlyEntry.Contracts;
 using Humans.Users.Contracts;
 

@@ -122,7 +122,7 @@ public class ProfileControllerEditTests
 
         // SaveProfileAsync is invoked unconditionally by the happy path.
         _profileEditorService.SaveProfileAsync(
-                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(),
+                Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(),
                 Arg.Any<CancellationToken>())
             .Returns(new ProfileEditResult(true, _profileId));
         _userService.SaveProfileLanguagesAsync(
@@ -415,8 +415,7 @@ public class ProfileControllerEditTests
             .GetUserApplicationsAsync(Guid.Empty, Arg.Any<CancellationToken>());
         // CV rides on the save request — SaveProfileAsync owns persisting it.
         await _profileEditorService.Received(1).SaveProfileAsync(
-            _userId, Arg.Any<string>(),
-            Arg.Is<ProfileSaveRequest>(r => r.VolunteerHistory != null),
+            _userId, Arg.Is<ProfileSaveRequest>(r => r.VolunteerHistory != null),
             Arg.Any<CancellationToken>());
         await _userService.Received(1).SaveProfileLanguagesAsync(
             _profileId, Arg.Any<IReadOnlyList<ProfileLanguageInfo>>(), Arg.Any<CancellationToken>());
@@ -453,7 +452,7 @@ public class ProfileControllerEditTests
     public async Task Edit_Post_ServiceRefusal_UsesExistingLocalizedFeedbackAndStopsAfterSaveEffects()
     {
         _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
-        _profileEditorService.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
+        _profileEditorService.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
             .Returns(new ProfileEditResult(false, ErrorKey: "Profile_BurnerCVRequired"));
         var model = MakeValidModel();
 

@@ -294,7 +294,7 @@ internal sealed class ProfileController(
         var saveRequest = BuildProfileSaveRequest(model, pictureUpload);
 
         var result = await profileEditorService.SaveProfileAsync(
-            userId, model.BurnerName, saveRequest);
+            userId, saveRequest);
         if (result.Succeeded) return (result.ProfileId!.Value, null);
         var errorKey = result.ErrorKey;
 

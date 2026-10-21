@@ -1,5 +1,4 @@
 using Humans.Tickets.Contracts;
-using Humans.Users.Contracts;
 using NodaTime;
 
 namespace Humans.Users.Services;

@@ -9,6 +9,8 @@ namespace Humans.Analyzers.Internal.Rules;
 /// exception: a deliberate surface (<c>Contracts/</c>, <c>Jobs/</c>, the <c>ISection</c>
 /// entry point, the <c>&lt;Section&gt;Resource</c> marker) and types the framework
 /// silently drops when they are internal (view components, tag helpers, EF migrations).
+/// An <c>I*Management</c> interface is never surface: it is internal even under
+/// <c>Contracts/</c> or in a <c>.Contracts</c> leaf, so cross-section use cannot compile.
 /// </summary>
 /// <remarks>
 /// The membership test for the framework exception: does making the type internal fail
@@ -30,6 +32,7 @@ internal static class PublicSurfaceRule
     private const string ResourceNameSuffix = "Resource";
     private const string ViewComponentNameSuffix = "ViewComponent";
     private const string JobNameSuffix = "Job";
+    private const string ManagementNameSuffix = "Management";
     private const string ContractsSegment = "Contracts";
     private const string JobsSegment = "Jobs";
 
@@ -42,8 +45,9 @@ internal static class PublicSurfaceRule
             "'{0}' is public in section '{1}'. A section is internal by default: its public "
             + "surface is Contracts/, its Jobs/ (Hangfire jobs the Shell schedules by concrete "
             + "type), its Section entry point, its <Section>Resource marker, EF migrations, and "
-            + "types the framework needs public (view components, tag helpers). Make '{0}' "
-            + "internal, or move it under Contracts/ if another section needs it.",
+            + "types the framework needs public (view components, tag helpers). An I*Management "
+            + "interface is internal everywhere, Contracts/ included. Make '{0}' internal, or move "
+            + "it under Contracts/ if another section needs it.",
         category: AnalyzerCategories.Architecture,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
@@ -88,17 +92,33 @@ internal static class PublicSurfaceRule
         if (type.DeclaredAccessibility != Accessibility.Public || type.IsImplicitlyDeclared)
             return;
 
-        if (IsSectionEntryPoint(type, types.SectionMarker)
+        if (!IsManagementInterface(type)
+            && (IsSectionEntryPoint(type, types.SectionMarker)
             || IsResourceMarker(type)
             || IsEfMigration(type, types.MigrationBase)
             || IsViewComponent(type, types.ViewComponentAttr, types.NonViewComponentAttr)
             || IsTagHelper(type, types.TagHelperInterface)
             || IsUnderContracts(type)
-            || IsAllowedJob(type, types.RecurringJobInterface))
+            || IsAllowedJob(type, types.RecurringJobInterface)))
         {
             return;
         }
 
+        Report(context, type, grandfatheredAttr);
+    }
+
+    /// <summary>
+    /// A <c>.Contracts</c> leaf is all surface, so the one check left there is the
+    /// <c>I*Management</c> one.
+    /// </summary>
+    public static void AnalyzeContractsLeaf(SymbolAnalysisContext context, INamedTypeSymbol? grandfatheredAttr)
+    {
+        var type = (INamedTypeSymbol)context.Symbol;
+        if (type.DeclaredAccessibility == Accessibility.Public && IsManagementInterface(type))
+            Report(context, type, grandfatheredAttr);
+    }
+
+    private static void Report(SymbolAnalysisContext context, INamedTypeSymbol type, INamedTypeSymbol? grandfatheredAttr) =>
         context.ReportDiagnostic(Diagnostic.Create(
             descriptor: Rule,
             location: type.Locations.Length > 0 ? type.Locations[0] : Location.None,
@@ -106,7 +126,11 @@ internal static class PublicSurfaceRule
             additionalLocations: null,
             properties: null,
             messageArgs: [type.Name, type.ContainingAssembly.Name]));
-    }
+
+    /// <summary>The section-internal management surface, named <c>I&lt;Section&gt;Management</c>.</summary>
+    private static bool IsManagementInterface(INamedTypeSymbol type) =>
+        type.TypeKind == TypeKind.Interface
+        && type.Name.EndsWith(ManagementNameSuffix, StringComparison.Ordinal);
 
     /// <summary>Matched by implementing <c>ISection</c> — the test boot discovery uses.</summary>
     private static bool IsSectionEntryPoint(INamedTypeSymbol type, INamedTypeSymbol? sectionMarker) =>

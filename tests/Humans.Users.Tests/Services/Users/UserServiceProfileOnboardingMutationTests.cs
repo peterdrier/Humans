@@ -341,6 +341,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     public async Task ApplyExpiredDeletionAnonymizationAsync_RemovesUserEmailsThroughUserRepository()
     {
         var user = SeedUser(Guid.NewGuid(), "Purge Me");
+        user.BurnerName = "Purge Me";
         Db.UserEmails.Add(new UserEmail
         {
             Id = Guid.NewGuid(),
@@ -354,7 +355,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var result = await _service.ApplyExpiredDeletionAnonymizationAsync(
             user.Id, TestContext.Current.CancellationToken);
 
-        result!.OriginalDisplayName.Should().Be("Purge Me");
+        result!.OriginalBurnerName.Should().Be("Purge Me");
         var remaining = await Db.UserEmails.AsNoTracking()
             .Where(e => e.UserId == user.Id)
             .ToListAsync(TestContext.Current.CancellationToken);

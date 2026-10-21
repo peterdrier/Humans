@@ -80,12 +80,12 @@ HUM0028 | Interface extends IInvalidator (`[Grandfathered("HUM0028")]` downgrade
 HUM0030 | Date/time format-string literal (custom `.ToString` format, interpolation format clause, or NodaTime `*Pattern.Create` literal) used outside the single sanctioned home `Humans.Base.Extensions.DateFormattingExtensions` | Error
 HUM0031 | Controller method (action or private helper) exceeds the business-logic thresholds — statements > 40 or cyclomatic complexity > 15; thresholds are hardcoded in `ControllerBusinessLogicAnalyzer` and **fixed at 40/15** as a backstop, never ratcheted; controller intent below them is section-doctor's call (`[Grandfathered("HUM0031")]` on the method downgrades to Warning) | Error
 HUM0033 | State-changing controller action (`[HttpPost]`/`[HttpPut]`/`[HttpDelete]`/`[HttpPatch]`) passes a request-scoped cancellation token (`HttpContext.RequestAborted` or the action's own `CancellationToken` parameter) to a method marked `[ExternalWrite]` — pass `CancellationToken.None` or enqueue through Hangfire (`[Grandfathered("HUM0033")]` on the action downgrades to Warning) | Error
-HUM0034 | Public type in a section outside `Contracts/` or `Jobs/` (Hangfire `IRecurringJob` implementors and `*Job`-named jobs) that is not the `ISection` entry point, the `<Section>Resource` marker, an EF migration, or framework-required-public (view component, tag helper) — makes "internal by default" load-bearing instead of convention-only (`[Grandfathered("HUM0034")]` downgrades to Warning) | Error
+HUM0034 | Public type in a section outside `Contracts/` or `Jobs/` (Hangfire `IRecurringJob` implementors and `*Job`-named jobs) that is not the `ISection` entry point, the `<Section>Resource` marker, an EF migration, or framework-required-public (view component, tag helper); also a public `I*Management` interface anywhere, `Contracts/` and `.Contracts` leaves included, so the internal management surface cannot be reached cross-section — makes "internal by default" load-bearing instead of convention-only (`[Grandfathered("HUM0034")]` downgrades to Warning) | Error
 HUM0035 | Repository interface or implementation declared under a section `Contracts/` folder | Error
 HUM0036 | View component invoked by its string name (`IViewComponentHelper.InvokeAsync(string, …)`, the `InvokeAsync(helper, string)` extension, `Controller.ViewComponent(string, …)`, `ViewComponentResult.ViewComponentName`) — invoke by `Type` (design-rules §8b). Analyzes Razor-generated code; skips unmapped `<vc:>` tag-helper internals, reports hand-written `.cshtml` sites at their line | Error
 HUM0037 | EF infrastructure (including derived contexts) or `IQueryable` used under a `Contracts/` folder or in a `.Contracts` leaf; Identity user models remain allowed | Error
 
-> The next free id is **HUM0038** (0004, 0012-0013, 0017-0018, 0021, 0022-0023, 0024, 0029, 0032 unused — all retired, not reassigned: 0004 with the `Profile.IsSuspended` column drop in #1217, 0012-0013 with the section split — both asserted a `Humans.Application.*` namespace layout the section assemblies replaced, 0017-0018 in nobodies-collective/Humans#1064 — the assembly boundary makes a cross-section repository injection a compile error, and with `[Section]` gone there is no "cannot determine the section" state left to report, 0022-0023 subsumed by the universal HUM0025, 0021/0024 in #1278, 0032 with the retired read/write interface split — a section's `Contracts` are now its whole public face, so HUM0034 and HUM0037 carry the boundary and nothing keys on interface names (see `memory/architecture/section-public-contract.md`), 0029 once `Humans.Application` declared no `I*Read` interface at all — its assembly gate made it analyze zero types, and `.Contracts` leaves cannot name EF types except `Humans.Users.Contracts`, which deliberately declares the EF `User : IdentityUser<Guid>` entity with HUM0037 now enforcing the EF infrastructure boundary while permitting that Identity model; HUM0037 also enforces the former `IQueryable` gap tracked by nobodies-collective/Humans#1040). Always confirm against `AnalyzerReleases.Unshipped.md` before assigning a new id.
+> The next free id is **HUM0038** (0004, 0012-0013, 0017-0018, 0021, 0022-0023, 0024, 0029, 0032 unused — all retired, not reassigned: 0004 with the `Profile.IsSuspended` column drop in #1217, 0012-0013 with the section split — both asserted a `Humans.Application.*` namespace layout the section assemblies replaced, 0017-0018 in nobodies-collective/Humans#1064 — the assembly boundary makes a cross-section repository injection a compile error, and with `[Section]` gone there is no "cannot determine the section" state left to report, 0022-0023 subsumed by the universal HUM0025, 0021/0024 in #1278, 0032 with the retired read/write interface split — a section's `Contracts` are now its whole public face, so HUM0034 and HUM0037 carry the boundary and the only name key is HUM0034's `I*Management` check (see `memory/architecture/section-public-contract.md`), 0029 once `Humans.Application` declared no `I*Read` interface at all — its assembly gate made it analyze zero types, and `.Contracts` leaves cannot name EF types except `Humans.Users.Contracts`, which deliberately declares the EF `User : IdentityUser<Guid>` entity with HUM0037 now enforcing the EF infrastructure boundary while permitting that Identity model; HUM0037 also enforces the former `IQueryable` gap tracked by nobodies-collective/Humans#1040). Always confirm against `AnalyzerReleases.Unshipped.md` before assigning a new id.
 
 Authoritative declaration: `src/Humans.Analyzers/AnalyzerReleases.Unshipped.md`
 (plus `AnalyzerReleases.Shipped.md` once we cut a 1.0).
@@ -111,8 +111,9 @@ not from where the context lives.
 `src/Directory.Build.props` adds a `ProjectReference` with
 `OutputItemType="Analyzer"` and `ReferenceOutputAssembly="false"` to every
 project under `src/` except the analyzer itself. The analyzer compiles to
-`netstandard2.0` and binds to `Microsoft.CodeAnalysis.CSharp` 5.0.0 (the
-version EF Core Design pulls in on .NET 10). Tests do *not* attach the
+`netstandard2.0` and binds to the `Microsoft.CodeAnalysis.CSharp` version pinned in
+`Directory.Packages.props`, held deliberately low: a compiler older than that
+version refuses to load the analyzer (CS9057). Tests do *not* attach the
 analyzer to their own compilation — they instantiate analyzers directly via
 `AnalyzerTestHarness` and feed them synthetic compilations.
 
@@ -177,20 +178,15 @@ on expression trees + reflection + dynamic dispatch, codegen-evolution risk on
 
 ## ReSharper InspectCode (CLI)
 
-Full analysis using existing `.DotSettings`:
+Full analysis using the existing `Humans.slnx.DotSettings`, against a built solution:
 
 ```bash
-# PowerShell
-./scripts/run-inspectcode.ps1
-./scripts/run-inspectcode.ps1 -Severity SUGGESTION -Output Html
-
-# Bash
-./scripts/run-inspectcode.sh
-./scripts/run-inspectcode.sh SUGGESTION Json
+dotnet tool install -g JetBrains.ReSharper.GlobalTools   # once
+dotnet build Humans.slnx -v quiet
+jb inspectcode Humans.slnx --no-build --severity=WARNING -f=Sarif -o=insp.sarif
 ```
 
 **Severity:** HINT, SUGGESTION, WARNING, ERROR
-**Output:** Text (default), Xml, Json, Html
+**Format (`-f`):** Sarif (default), Xml, Html, Text
 
-Results: `inspectcode-results.*` (gitignored)
-First run auto-installs `JetBrains.ReSharper.GlobalTools`.
+Name the output `insp.*` (sarif, json and xml are gitignored).
