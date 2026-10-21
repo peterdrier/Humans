@@ -892,14 +892,24 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
                 $"Week of {week.WeekLabel}",
                 week.Revenue, week.Monday, projectionVatRate, $"{week.TicketCount} tickets", now);
 
-            // The Stripe line is the gross cash cost (fees + the VAT Stripe charged on them); its rate
-            // comes from that actual VAT, with fees of unknown tax keeping the assumed rate.
+            // One Stripe row per fee-VAT class, so a whole-percent rate only approximates the taxed
+            // row: fees of unknown tax (enriched before capture) keep the assumed rate under the
+            // original description; captured-untaxed fees carry 0; captured-taxed fees carry their
+            // gross (fees + the VAT Stripe charged) at the rate derived from that VAT.
             if (week.StripeFees >= 0)
+            {
+                var taxedFees = week.StripeFees - week.StripeFeesTaxUnknown - week.StripeFeesUntaxed;
                 lineItemsChanged += UpsertTicketingLineItem(ctx, feesCategory,
                     $"Stripe fees: {week.WeekLabel}",
-                    -(week.StripeFees + week.StripeFeeTax), week.Monday,
-                    StripeFeeVatRate(week.StripeFees, week.StripeFeeTax, week.StripeFeesTaxUnknown),
-                    null, now, omitNewZero: true);
+                    -week.StripeFeesTaxUnknown, week.Monday, AssumedTicketingFeeVatRate, null, now, omitNewZero: true);
+                lineItemsChanged += UpsertTicketingLineItem(ctx, feesCategory,
+                    $"Stripe fees (no fee VAT): {week.WeekLabel}",
+                    -week.StripeFeesUntaxed, week.Monday, 0, null, now, omitNewZero: true);
+                lineItemsChanged += UpsertTicketingLineItem(ctx, feesCategory,
+                    $"Stripe fees (fee VAT): {week.WeekLabel}",
+                    -(taxedFees + week.StripeFeeTax), week.Monday,
+                    DerivedFeeVatRate(taxedFees, week.StripeFeeTax), null, now, omitNewZero: true);
+            }
 
             // Stripe's tax bucket is VAT on Stripe's own fees; it says nothing about Ticket Tailor's.
             if (week.TicketTailorFees >= 0)
@@ -1016,20 +1026,15 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
     private const int AssumedTicketingFeeVatRate = 21;
 
     /// <summary>
-    /// Whole-percent VAT rate for a week's Stripe fee row (gross = <paramref name="stripeFees"/> +
-    /// <paramref name="feeTax"/>). Its VAT is the tax Stripe actually charged plus, for
-    /// <paramref name="feesTaxUnknown"/> (fees of orders with no captured tax), the assumed rate
-    /// treated as VAT-inclusive the way it always was. All-unknown reproduces the assumed rate;
-    /// all-known with no tax gives 0. Clamped to the 0–21 line-item range.
+    /// Whole-percent VAT rate closest to the fee VAT Stripe actually charged
+    /// (<paramref name="feeTax"/> on <paramref name="netFees"/>), clamped to the 0–21 line-item
+    /// range. Line items carry no exact VAT amount, so a non-integer effective rate leaves a
+    /// few cents of residual in the row's computed VAT.
     /// </summary>
-    private static int StripeFeeVatRate(decimal stripeFees, decimal feeTax, decimal feesTaxUnknown)
-    {
-        var vat = feeTax + feesTaxUnknown * AssumedTicketingFeeVatRate / (100m + AssumedTicketingFeeVatRate);
-        var net = stripeFees + feeTax - vat;
-        return net <= 0m || vat <= 0m
+    private static int DerivedFeeVatRate(decimal netFees, decimal feeTax) =>
+        netFees <= 0m || feeTax <= 0m
             ? 0
-            : (int)Math.Clamp(Math.Round(vat / net * 100m, MidpointRounding.AwayFromZero), 0m, 21m);
-    }
+            : (int)Math.Clamp(Math.Round(feeTax / netFees * 100m, MidpointRounding.AwayFromZero), 0m, 21m);
 
     private static void AddDefaultTicketingCategories(
         BudgetDbContext ctx, Guid ticketingGroupId, Instant now)

@@ -191,6 +191,8 @@ public class TicketingBudgetServiceTests
                 BuildOrder(purchasedAt, 100m, stripeFee: 2m, applicationFee: 1m, TicketAttendeeStatus.Valid)
                     with { FeeTax = 0.42m, WithheldTax = 0.10m },
                 BuildOrder(purchasedAt, 50m, stripeFee: 1m, applicationFee: 0.5m, TicketAttendeeStatus.Valid),
+                BuildOrder(purchasedAt, 50m, stripeFee: 0.7m, applicationFee: 0.5m, TicketAttendeeStatus.Valid)
+                    with { FeeTax = 0m },
             });
 
         List<TicketingWeeklyActuals>? capturedActuals = null;
@@ -206,9 +208,10 @@ public class TicketingBudgetServiceTests
         await sut.SyncActualsAsync(_yearId, actorUserId: null, Xunit.TestContext.Current.CancellationToken);
 
         capturedActuals.Should().NotBeNull().And.ContainSingle();
-        capturedActuals![0].StripeFees.Should().Be(3m);
+        capturedActuals![0].StripeFees.Should().Be(3.7m);
         capturedActuals[0].StripeFeeTax.Should().Be(0.42m);
         capturedActuals[0].StripeFeesTaxUnknown.Should().Be(1m, because: "null FeeTax means unknown, not zero");
+        capturedActuals[0].StripeFeesUntaxed.Should().Be(0.7m);
     }
 
     [HumansFact]

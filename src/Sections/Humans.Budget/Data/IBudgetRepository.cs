@@ -415,4 +415,5 @@ internal sealed record TicketingWeeklyActualsInput(
     decimal StripeFees,
     decimal TicketTailorFees,
     decimal StripeFeeTax,
-    decimal StripeFeesTaxUnknown);
+    decimal StripeFeesTaxUnknown,
+    decimal StripeFeesUntaxed);
