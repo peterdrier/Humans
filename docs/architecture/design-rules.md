@@ -647,17 +647,13 @@ Key rules the example demonstrates:
 <!-- wheat: src/Sections/Humans.EarlyEntry/Docs/EarlyEntry.md §Invariants -->
 - **Caching a legitimate negative result needs manual `TryGet`/`Set`, not `GetAsync`.** `TrackedCache<TKey,TValue>.GetAsync` only calls `Set` when `LoadRowAsync` returns non-null, so it never caches a `null`/not-found outcome — every miss re-triggers the loader. A decorator whose value type is itself nullable, and where "no result" is a real cacheable answer, must call `TryGet` on read and `Set` explicitly, storing the null. `CachingEarlyEntryService.GetForUserAsync` is the live example: `if (TryGet(userId, out var cached)) return cached;` then `Set(userId, result)` where `result` may be null.
 
-### 15e. Invalidator — One-Way Cross-Section Signal
+### 15e. The Cache Owner Evicts
 
-Each cached section exposes a one-method invalidator interface (e.g., `IUserInfoInvalidator`):
+Only the section that owns a cache evicts it. There is no cross-section invalidator interface: HUM0028 flags any interface extending `IInvalidator`, and the family is at zero.
 
-```csharp
-Task InvalidateAsync(Guid userId, CancellationToken ct = default);
-```
-
-Implemented by the section's caching decorator. External sections inject the invalidator when their writes make the cached view stale. The decorator reloads-or-removes the entry. External code never mutates the dict directly.
-
-**CRITICAL:** the invalidator must resolve to the **same Singleton instance** as the section's public `I<Section>Service`. Both registrations point to the single decorator. If two instances were created, the dict would diverge and invalidations would be silently lost.
+- **Own writes:** the decorator evicts or replaces after delegating the write, or the inner service calls its own section's concrete decorator when eviction has to happen at a specific point (e.g. before a sync that reads the fresh value). Neither crosses a section boundary.
+- **Another section's change makes the view stale:** use a signal the owner already receives (`IUserMerge`, `IUserDataContributor` erasure, its own writes), or read that data live from the other section's cached service instead of copying it into this cache. A cached copy of another section's data that nothing tells you about is a design smell; a short TTL is the fallback, not an invalidator.
+- If none of those fits, stop and ask Peter. Don't add an `I*Invalidator` or a cache-clearing method on an `I*Write` interface; `ITeamWrite.InvalidateActiveTeamsCache` is the one recorded exception (debt ledger CENTRAL-98).
 
 ### 15f. Canonical Read-Model Naming
 
@@ -665,7 +661,6 @@ Implemented by the section's caching decorator. External sections inject the inv
 |------|------|
 | Canonical section read model | `<Section>Info` (e.g., `UserInfo`, `TeamInfo`). |
 | Read method | Match the read model name when returning one item (e.g., `GetUserInfoAsync`, `GetTeamAsync`). Plural collection methods may use the natural plural (e.g., `GetTeamsAsync`). Load-all methods used by decorators must still be normal service/read-interface methods (e.g., `GetAllEventInfosAsync`, `GetTicketOrderInfosAsync`), never cache-shaped `ForCache` helpers. |
-| Invalidator interface | `I<SectionInfo>Invalidator` (e.g., `IUserInfoInvalidator`). |
 | Sub-aggregate collections | Natural plural on the DTO (e.g., `VolunteerHistory`, `ContactFields`). |
 
 Do not expose EF entity types from section service read APIs — the canonical
@@ -677,7 +672,7 @@ Architecture tests verify *structure* (namespace, no-DbContext, no-IMemoryCache,
 
 Three guards mitigate this:
 
-1. **Singleton identity.** The decorator and its invalidator interface must resolve to the *same* instance (§15e CRITICAL). If two instances exist, in-process invalidation routes to the wrong dict.
+1. **Singleton identity.** Every interface the decorator serves, and any concrete injection of it for same-section eviction, must resolve to the *same* Singleton instance. If two instances exist, an eviction lands in the wrong dict and is silently lost.
 2. **Repository-bypass analyzer.** HUM0020 fails the build when a `Caching*Service` structurally references an `I*Repository` type. Decorators are transparent wrappers around the scoped service surface; they do not side-step that service for warmup or refresh.
 3. **Integration test through the decorator.** For every cached section, a test writes through the public service interface and reads back through the same interface, asserting the post-write read reflects the change. This is the only automated guard that catches a missing `RefreshEntryAsync` call.
 
