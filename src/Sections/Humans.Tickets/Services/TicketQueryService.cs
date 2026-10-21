@@ -30,10 +30,9 @@ internal sealed class TicketQueryService(
     ITeamService teamService,
     IGovernanceService governanceService,
     ISettingsService settingsService,
-    ITicketCacheInvalidator cacheInvalidator,
     IAuditLogService auditLog,
     IClock clock,
-    IEventParticipationManagement participations) : ITicketManagement, IUserDataContributor
+    IEventParticipationManagement participations) : ITicketManagement
 {
     public Task<IReadOnlyList<EventParticipationInfo>> GetParticipationsAsync(Guid userId, CancellationToken ct = default) =>
         participations.GetParticipationsAsync(userId, ct);
@@ -958,24 +957,21 @@ internal sealed class TicketQueryService(
         "tombstones, MatchedUserId is dropped, and the free text on their ticket-transfer " +
         "requests is cleared.";
 
-    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+    /// <summary>
+    /// The section's erasure declaration, served by the caching decorator as
+    /// <c>IUserDataContributor.ErasureDeclaration</c>.
+    /// </summary>
+    internal static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
             [TicketOrders] = SalesRecordRetention,
             [TicketAttendeeMatches] = SalesRecordRetention
         };
 
-    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
-
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
         await ticketRepository.EraseUserPiiAsync(userId, ct);
         await ticketTransferRepository.ErasePiiForUserAsync(userId, ct);
-
-        // The order projection is a warmed singleton with no TTL and carries the
-        // buyer/attendee names and emails just tombstoned — without this the erased
-        // identity keeps being served from memory until the process restarts.
-        cacheInvalidator.InvalidateAll();
     }
 
     public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>

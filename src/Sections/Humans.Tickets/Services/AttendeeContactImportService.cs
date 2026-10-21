@@ -16,7 +16,6 @@ internal sealed class AttendeeContactImportService(
     IUserService users,
     IEventParticipationManagement participations,
     ISettingsService settingsService,
-    ITicketCacheInvalidator ticketCacheInvalidator,
     IAuditLogService audit,
     IClock clock,
     ILogger<AttendeeContactImportService> logger) : IAttendeeContactImportService
@@ -103,9 +102,6 @@ internal sealed class AttendeeContactImportService(
         {
             await ticketRepository.UpsertAttendeesAsync(importState.ToUpsert, ct);
         }
-
-        // Evict before participation loop so attendee mutation always invalidates caches.
-        ticketCacheInvalidator.InvalidateAfterContactImport();
 
         var active = await settingsService.GetActiveEventSettingsAsync();
         if (active is not null)

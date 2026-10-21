@@ -50,7 +50,6 @@ public sealed class TicketTransferServiceTests
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly TicketsEmails _emailMessages = TestTicketsEmails.Create();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
-    private readonly ITicketCacheInvalidator _cacheInvalidator = Substitute.For<ITicketCacheInvalidator>();
 
     private readonly TicketTransferService _service;
 
@@ -511,18 +510,6 @@ public sealed class TicketTransferServiceTests
             Arg.Is<EmailMessage>(m => m.RecipientEmail == req.ReceiverEmail
                 && m.Subject == "Ticket transfer complete"),
             Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task ApproveAsync_EvictsOrderProjectionCache()
-    {
-        var req = MakePending(Guid.NewGuid());
-        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
-        StubAttendee(TicketAttendeeStatus.Valid, _senderId);
-
-        await _service.ApproveAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
-
-        _cacheInvalidator.Received(1).InvalidateAfterTransfer(_senderId, _receiverId);
     }
 
     // ── ProcessTransferAsync (automated void+reissue) ───────────────────────────
@@ -1051,7 +1038,6 @@ public sealed class TicketTransferServiceTests
             _emailService,
             _emailMessages,
             _auditLog,
-            _cacheInvalidator,
             _clock,
             NullLogger<TicketTransferService>.Instance);
 

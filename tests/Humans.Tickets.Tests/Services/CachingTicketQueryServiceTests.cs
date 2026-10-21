@@ -8,6 +8,8 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Tickets.Services;
+using Humans.Tickets.Services.Dtos;
+using Humans.Tickets.Domain;
 
 namespace Humans.Tickets.Tests.Services;
 
@@ -18,6 +20,9 @@ public sealed class CachingTicketQueryServiceTests
     private static readonly Guid UserC = Guid.NewGuid();
 
     private readonly ITicketManagement _inner;
+    private readonly ITicketSyncService _sync = Substitute.For<ITicketSyncService>();
+    private readonly ITicketTransferService _transfers = Substitute.For<ITicketTransferService>();
+    private readonly IAttendeeContactImportService _import = Substitute.For<IAttendeeContactImportService>();
     private readonly FakeClock _clock;
     private readonly CachingTicketQueryService _decorator;
 
@@ -29,6 +34,9 @@ public sealed class CachingTicketQueryServiceTests
         services.AddKeyedScoped<ITicketManagement>(
             CachingTicketQueryService.InnerServiceKey,
             (_, _) => _inner);
+        services.AddKeyedScoped<ITicketSyncService>(CachingTicketQueryService.InnerServiceKey, (_, _) => _sync);
+        services.AddKeyedScoped<ITicketTransferService>(CachingTicketQueryService.InnerServiceKey, (_, _) => _transfers);
+        services.AddKeyedScoped<IAttendeeContactImportService>(CachingTicketQueryService.InnerServiceKey, (_, _) => _import);
         var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
         _clock = new FakeClock(Instant.FromUtc(2026, 5, 1, 0, 0));
 
@@ -138,8 +146,8 @@ public sealed class CachingTicketQueryServiceTests
     [Xunit.InlineData(false, true)]
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(true, true)]
-    public async Task GetUserTicketHoldingsAsync_LoadStartedBeforeInvalidation_DoesNotRepopulateCache(
-        bool expired, bool invalidateAll)
+    public async Task GetUserTicketHoldingsAsync_LoadStartedBeforeEviction_DoesNotRepopulateCache(
+        bool expired, bool viaSync)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var old = new UserTicketHoldings(1, [], TicketCount: 1);
@@ -154,118 +162,153 @@ public sealed class CachingTicketQueryServiceTests
         _inner.GetUserTicketHoldingsAsync(UserA, ct).Returns(pending.Task, Task.FromResult(current));
         var read = _decorator.GetUserTicketHoldingsAsync(UserA, ct);
 
-        if (invalidateAll) _decorator.InvalidateAll();
-        else _decorator.InvalidateAfterTransfer(UserA, UserB);
+        if (viaSync) await _decorator.SyncOrdersAndAttendeesAsync(ct);
+        else await _decorator.CancelAsync(Guid.NewGuid(), UserA, ct);
         pending.SetResult(old);
         (await read).Should().BeSameAs(old);
 
         (await _decorator.GetUserTicketHoldingsAsync(UserA, ct)).Should().BeSameAs(current);
     }
 
-    [HumansFact]
-    public async Task InvalidateAfterTransfer_DropsProjectionAndBothUsersPerUserEntries()
+    // Every transfer lifecycle step changes pendency (holdings) or the order projection's
+    // TransferredToName/TransferredAt, so each one drops both slices.
+    [HumansTheory]
+    [Xunit.InlineData("create")]
+    [Xunit.InlineData("cancel")]
+    [Xunit.InlineData("approve")]
+    [Xunit.InlineData("process")]
+    [Xunit.InlineData("retry")]
+    [Xunit.InlineData("reject")]
+    public async Task TransferMutation_DelegatesThenDropsProjectionAndAllHoldings(string mutation)
     {
-        await SeedTwoUserHoldings();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await PrimeAsync(UserA, UserB, UserC);
+        var id = Guid.NewGuid();
 
-        _decorator.InvalidateAfterTransfer(senderUserId: UserA, receiverUserId: UserB);
+        await (mutation switch
+        {
+            "create" => _decorator.CreateRequestAsync(new TicketTransferRequestDto(id, UserB, "gift"), UserA, ct),
+            "cancel" => _decorator.CancelAsync(id, UserA, ct),
+            "approve" => _decorator.ApproveAsync(id, UserC, null, ct),
+            "process" => _decorator.ProcessTransferAsync(id, UserC, null, ct),
+            "retry" => _decorator.RetryReissueAsync(id, UserC, null, ct),
+            _ => _decorator.RejectAsync(id, UserC, "no", ct),
+        });
 
-        _ = await _decorator.GetTicketOrdersAsync(Xunit.TestContext.Current.CancellationToken);
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserB, Xunit.TestContext.Current.CancellationToken);
+        _transfers.ReceivedCalls().Should().ContainSingle();
+        await AssertReloadedAsync(orders: true, reloaded: [UserA, UserB, UserC], kept: []);
+    }
 
-        await _inner.Received(1).GetTicketOrdersAsync(Arg.Any<CancellationToken>());
-        await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
-        await _inner.Received(1).GetUserTicketHoldingsAsync(UserB, Arg.Any<CancellationToken>());
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SyncOrdersAndAttendeesAsync_DropsProjectionAndAllHoldings_EvenWhenALaterStageThrows(bool throws)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await PrimeAsync(UserA, UserB);
+        if (throws)
+        {
+            _sync.SyncOrdersAndAttendeesAsync(Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<TicketSyncResult>(new InvalidOperationException("redemption failed")));
+        }
+
+        var sync = () => _decorator.SyncOrdersAndAttendeesAsync(ct);
+        if (throws) await sync.Should().ThrowAsync<InvalidOperationException>();
+        else await sync();
+
+        await AssertReloadedAsync(orders: true, reloaded: [UserA, UserB], kept: []);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ApplyContactImport_DropsProjectionAndAllHoldings_EvenWhenParticipationThrows(bool throws)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await PrimeAsync(UserA, UserB);
+        var plan = new AttendeeImportPlan([], 0);
+        if (throws)
+        {
+            _import.ApplyAsync(plan, Arg.Any<IReadOnlySet<Guid>>(), UserC, Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<AttendeeImportResult>(new InvalidOperationException("participation failed")));
+        }
+
+        var apply = () => _decorator.ApplyAsync(plan, new HashSet<Guid>(), UserC, ct);
+        if (throws) await apply.Should().ThrowAsync<InvalidOperationException>();
+        else await apply();
+
+        await AssertReloadedAsync(orders: true, reloaded: [UserA, UserB], kept: []);
     }
 
     [HumansFact]
-    public async Task InvalidateAfterTransfer_NullReceiver_LeavesOtherUsersAlone()
+    public async Task EraseForUserAsync_DropsProjectionAndAllHoldings()
     {
-        await SeedTwoUserHoldings();
+        await PrimeAsync(UserA, UserB);
 
-        _decorator.InvalidateAfterTransfer(senderUserId: UserA, receiverUserId: null);
+        await _decorator.EraseForUserAsync(UserA, Xunit.TestContext.Current.CancellationToken);
 
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserB, Xunit.TestContext.Current.CancellationToken);
-
-        await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
-        await _inner.DidNotReceive().GetUserTicketHoldingsAsync(UserB, Arg.Any<CancellationToken>());
+        await _inner.Received(1).EraseForUserAsync(UserA, Arg.Any<CancellationToken>());
+        await AssertReloadedAsync(orders: true, reloaded: [UserA, UserB], kept: []);
     }
 
     [HumansFact]
-    public async Task InvalidateAfterUserMerge_DropsProjectionAndBothUsersPerUserEntries()
+    public async Task ReassignAsync_DropsProjectionAndBothUsersHoldings_LeavesOthersCached()
     {
-        await SeedTwoUserHoldings();
+        var now = Instant.FromUtc(2026, 5, 16, 12, 0);
+        await PrimeAsync(UserA, UserB, UserC);
 
-        _decorator.InvalidateAfterUserMerge(sourceUserId: UserA, targetUserId: UserB);
+        await _decorator.ReassignAsync(UserA, UserB, UserC, now, Xunit.TestContext.Current.CancellationToken);
 
-        _ = await _decorator.GetTicketOrdersAsync(Xunit.TestContext.Current.CancellationToken);
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserB, Xunit.TestContext.Current.CancellationToken);
-
-        await _inner.Received(1).GetTicketOrdersAsync(Arg.Any<CancellationToken>());
-        await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
-        await _inner.Received(1).GetUserTicketHoldingsAsync(UserB, Arg.Any<CancellationToken>());
+        await _sync.Received(1).ReassignAsync(UserA, UserB, UserC, now, Arg.Any<CancellationToken>());
+        await AssertReloadedAsync(orders: true, reloaded: [UserA, UserB], kept: [UserC]);
     }
 
     [HumansFact]
-    public async Task InvalidateAll_DropsProjectionAndPerUserEntries()
+    public async Task ReadPassThroughs_KeepBothSlicesCached()
     {
-        await SeedOneUserHolding();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await PrimeAsync(UserA);
 
-        _decorator.InvalidateAll();
+        await _decorator.IsInErrorStateAsync(ct);
+        await _decorator.ResetSyncStateForFullResyncAsync();
+        await _decorator.BuildPlanAsync(ct);
+        await _decorator.CountPendingAsync(ct);
+        await _decorator.GetByStatusAsync(TicketTransferStatus.Pending, ct);
+        await _decorator.GetMyAttendeesAsync(UserA, ct);
+        await _decorator.ContributeForUserAsync(UserA, ct);
 
-        _ = await _decorator.GetTicketOrdersAsync(Xunit.TestContext.Current.CancellationToken);
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
-
-        await _inner.Received(1).GetTicketOrdersAsync(Arg.Any<CancellationToken>());
-        await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
+        await AssertReloadedAsync(orders: false, reloaded: [], kept: [UserA]);
     }
 
-    [HumansFact]
-    public async Task InvalidateAfterContactImport_DropsProjectionAndAllUserHoldings()
+    /// <summary>Loads the order projection and each user's holdings, then forgets those calls.</summary>
+    private async Task PrimeAsync(params Guid[] users)
     {
-        await SeedTwoUserHoldings();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        SeedOrders(users.Select(u => MakeOrder(Guid.NewGuid(), matchedUserId: u, attendees: [
+            MakeAttendee(matchedUserId: u, status: TicketAttendeeStatus.Valid),
+        ])).ToArray());
+        foreach (var user in users)
+            SeedHoldings(user, new UserTicketHoldings(1, [], TicketCount: 1));
 
-        _decorator.InvalidateAfterContactImport();
-
-        _ = await _decorator.GetTicketOrdersAsync(Xunit.TestContext.Current.CancellationToken);
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserB, Xunit.TestContext.Current.CancellationToken);
-
-        await _inner.Received(1).GetTicketOrdersAsync(Arg.Any<CancellationToken>());
-        await _inner.Received(1).GetUserTicketHoldingsAsync(UserA, Arg.Any<CancellationToken>());
-        await _inner.Received(1).GetUserTicketHoldingsAsync(UserB, Arg.Any<CancellationToken>());
-    }
-
-    private async Task SeedTwoUserHoldings()
-    {
-        SeedOrders(
-            MakeOrder(Guid.NewGuid(), matchedUserId: UserA, attendees: [
-                MakeAttendee(matchedUserId: UserA, status: TicketAttendeeStatus.Valid),
-            ]),
-            MakeOrder(Guid.NewGuid(), matchedUserId: UserB, attendees: [
-                MakeAttendee(matchedUserId: UserB, status: TicketAttendeeStatus.Valid),
-            ]));
-        SeedHoldings(UserA, new UserTicketHoldings(1, [], TicketCount: 1));
-        SeedHoldings(UserB, new UserTicketHoldings(1, [], TicketCount: 1));
-
-        _ = await _decorator.GetTicketOrdersAsync(Xunit.TestContext.Current.CancellationToken);
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserB, Xunit.TestContext.Current.CancellationToken);
+        _ = await _decorator.GetTicketOrdersAsync(ct);
+        foreach (var user in users)
+            _ = await _decorator.GetUserTicketHoldingsAsync(user, ct);
         _inner.ClearReceivedCalls();
     }
 
-    private async Task SeedOneUserHolding()
+    /// <summary>Reads everything again and checks which reads reached the inner service.</summary>
+    private async Task AssertReloadedAsync(bool orders, Guid[] reloaded, Guid[] kept)
     {
-        SeedOrders(MakeOrder(Guid.NewGuid(), matchedUserId: UserA, attendees: [
-            MakeAttendee(matchedUserId: UserA, status: TicketAttendeeStatus.Valid),
-        ]));
-        SeedHoldings(UserA, new UserTicketHoldings(1, [], TicketCount: 1));
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _ = await _decorator.GetTicketOrdersAsync(ct);
+        foreach (var user in reloaded.Concat(kept))
+            _ = await _decorator.GetUserTicketHoldingsAsync(user, ct);
 
-        _ = await _decorator.GetTicketOrdersAsync(Xunit.TestContext.Current.CancellationToken);
-        _ = await _decorator.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
-        _inner.ClearReceivedCalls();
+        await _inner.Received(orders ? 1 : 0).GetTicketOrdersAsync(Arg.Any<CancellationToken>());
+        foreach (var user in reloaded)
+            await _inner.Received(1).GetUserTicketHoldingsAsync(user, Arg.Any<CancellationToken>());
+        foreach (var user in kept)
+            await _inner.DidNotReceive().GetUserTicketHoldingsAsync(user, Arg.Any<CancellationToken>());
     }
 
     private void SeedOrders(params TicketOrderInfo[] orders)

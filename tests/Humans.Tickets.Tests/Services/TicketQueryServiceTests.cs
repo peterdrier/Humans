@@ -36,7 +36,6 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly ISettingsService _shiftManagementService = Substitute.For<ISettingsService>();
-    private readonly ITicketCacheInvalidator _cacheInvalidator = Substitute.For<ITicketCacheInvalidator>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly IEventParticipationManagement _participations = Substitute.For<IEventParticipationManagement>();
     private readonly TicketQueryService _service;
@@ -58,7 +57,6 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             _teamService,
             Substitute.For<IGovernanceService>(),
             _shiftManagementService,
-            _cacheInvalidator,
             _auditLog,
             SystemClock.Instance,
             _participations);
@@ -184,7 +182,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             default: throw new ArgumentOutOfRangeException(nameof(boundary));
         }
         var service = new TicketQueryService(repository, _transferRepo, _budgetService, _campaignService,
-            _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(), _shiftManagementService, _cacheInvalidator, _auditLog, Clock, _participations);
+            _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(), _shiftManagementService, _auditLog, Clock, _participations);
 
         if (cancel)
         {
@@ -268,14 +266,13 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task EraseForUserAsync_scrubs_ticket_and_transfer_data_then_drops_the_warmed_projection()
+    public async Task EraseForUserAsync_scrubs_ticket_and_transfer_data()
     {
         var userId = Guid.NewGuid();
 
         await _service.EraseForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         await _transferRepo.Received(1).ErasePiiForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
-        _cacheInvalidator.Received(1).InvalidateAll();
     }
 
     [HumansFact]
