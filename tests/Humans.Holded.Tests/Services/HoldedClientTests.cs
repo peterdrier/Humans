@@ -103,7 +103,7 @@ public class HoldedClientTests
             req.RequestUri!.PathAndQuery.Should().Be("/api/v2/purchases");
             req.Headers.Authorization!.Scheme.Should().Be("Bearer");
             req.Headers.Authorization!.Parameter.Should().Be("test-key");
-            capturedBody = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            capturedBody = new StreamReader(req.Content!.ReadAsStream()).ReadToEnd();
             return Respond(HttpStatusCode.Created, """{"id":"doc-123"}""");
         });
 
@@ -346,7 +346,7 @@ public class HoldedClientTests
         string? capturedBody = null;
         var handler = PaymentHandler(
             OldPayment, OldPayment + "," + NewPayment,
-            onPost: req => capturedBody = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult());
+            onPost: req => capturedBody = new StreamReader(req.Content!.ReadAsStream()).ReadToEnd());
 
         var id = await Make(handler).PayPurchaseDocumentAsync(
             "doc-123", 18m, "treasury-1", new LocalDate(2026, 8, 25), "SEPA payout E1",
@@ -367,7 +367,7 @@ public class HoldedClientTests
         string? capturedBody = null;
         var handler = PaymentHandler(
             "", """{"id":"pay-9","amount":"5.00","date":"2026-08-25","bank_id":"whatever"}""",
-            onPost: req => capturedBody = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult());
+            onPost: req => capturedBody = new StreamReader(req.Content!.ReadAsStream()).ReadToEnd());
 
         var id = await Make(handler).PayPurchaseDocumentAsync(
             "doc-123", 5m, "", new LocalDate(2026, 8, 25), null,
@@ -455,7 +455,7 @@ public class HoldedClientTests
         {
             req.Method.Method.Should().Be("POST");
             req.RequestUri!.PathAndQuery.Should().Be("/api/v2/ledger-entries");
-            capturedBody = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            capturedBody = new StreamReader(req.Content!.ReadAsStream()).ReadToEnd();
             return Respond(HttpStatusCode.Created, """{"id":"entry-7"}""");
         });
 

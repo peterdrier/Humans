@@ -66,6 +66,9 @@ public class MovedSharedPartialsRenderTests(HumansTestDatabase database) : Integ
             new RouteData(),
             new ActionDescriptor());
 
+        // Host startup is the slow part this timeout covers; stop here if it used the budget.
+        Xunit.TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
+
         var missing = MovedPartials
             .Where(p => !engine.FindView(context, p.Name, isMainPage: false).Success)
             .Select(p => $"{p.Name} (expected in {p.Owner})")

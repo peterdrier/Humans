@@ -100,7 +100,6 @@ internal sealed class DevPersonaSeeder(
         var user = new User
         {
             Id = id,
-            DisplayName = displayName,
             BurnerName = displayName,
             CreatedAt = now,
             LastLoginAt = now
@@ -126,7 +125,7 @@ internal sealed class DevPersonaSeeder(
             lastName: lastName,
             bio: $"Dev persona for testing the {displayNameSuffix} role.");
 
-        var save = await profileEditorService.SaveProfileAsync(id, displayName, saveRequest);
+        var save = await profileEditorService.SaveProfileAsync(id, saveRequest);
         if (!save.Succeeded)
             throw new InvalidOperationException("Dev persona profile validation failed.");
         var profileId = save.ProfileId!.Value;
@@ -314,7 +313,6 @@ internal sealed class DevPersonaSeeder(
         var user = new User
         {
             Id = id,
-            DisplayName = displayName,
             BurnerName = displayName,
             CreatedAt = now,
             LastLoginAt = now
@@ -359,7 +357,6 @@ internal sealed class DevPersonaSeeder(
 
         var save = await profileEditorService.SaveProfileAsync(
             userId,
-            burnerName,
             BuildPersonaProfileRequest(
                 burnerName: burnerName,
                 firstName: string.Empty,

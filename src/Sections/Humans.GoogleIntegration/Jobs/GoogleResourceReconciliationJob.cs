@@ -3,7 +3,6 @@ using Hangfire;
 using NodaTime;
 using Humans.Base.Interfaces;
 using Humans.Base.Constants;
-using Humans.Base.Enums;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Notifications.Contracts;
 

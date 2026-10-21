@@ -397,7 +397,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             vote.Id, userId, viewerIsBoardOrAdmin: false, Xunit.TestContext.Current.CancellationToken);
 
         results.Should().NotBeNull("a process that died between the two writes must not leave the page blank forever");
-        _fx.Db.AssemblyVotes.Single(v => v.Id == vote.Id).ResultJson.Should().NotBeNull();
+        (await _fx.Db.AssemblyVotes.SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken)).ResultJson.Should().NotBeNull();
     }
 
     [HumansFact]

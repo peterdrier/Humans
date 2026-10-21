@@ -1,4 +1,3 @@
-using Humans.Surveys.Contracts;
 using Humans.Surveys.Services;
 using Humans.Base.Authorization;
 using Humans.Base.Interfaces;

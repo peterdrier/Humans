@@ -2,7 +2,6 @@ using System.Diagnostics.Metrics;
 using Humans.Base.Hosting;
 using Humans.Teams.Contracts;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace Humans.Teams.Services;
 

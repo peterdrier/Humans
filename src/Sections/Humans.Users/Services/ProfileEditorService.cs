@@ -23,7 +23,6 @@ internal sealed class ProfileEditorService(
 
     public async Task<ProfileEditResult> SaveProfileAsync(
         Guid userId,
-        string displayName,
         ProfileSaveRequest request,
         CancellationToken ct = default)
     {
@@ -39,7 +38,7 @@ internal sealed class ProfileEditorService(
         {
             var storageResult = await userService.SaveProfileAsync(
                 userId,
-                ToUserProfileSaveCommand(displayName, request),
+                ToUserProfileSaveCommand(request),
                 request.ProfilePictureData,
                 ct,
                 request.VolunteerHistory);
@@ -66,7 +65,6 @@ internal sealed class ProfileEditorService(
     }
 
     private static UserProfileSaveCommand ToUserProfileSaveCommand(
-        string displayName,
         ProfileSaveRequest request)
     {
         var pictureMutation = request.RemoveProfilePicture
@@ -76,7 +74,6 @@ internal sealed class ProfileEditorService(
                 : UserProfilePictureMutation.None;
 
         return new UserProfileSaveCommand(
-            DisplayName: displayName,
             BurnerName: request.BurnerName,
             FirstName: request.FirstName,
             LastName: request.LastName,

@@ -122,8 +122,8 @@ The shapes imply:
   design, and the global search orchestrator ranks.
 - **No merging `TeamResourceService` into Teams** — vendor connectors own their sections
   (`vendor-connectors-own-sections`, `team-resources-google-integration-section`).
-- **No entity-returning members on the leaf** — `GetTeamEntityBySlugAsync` /
-  `GetTeamByIdAsync` are internal on purpose and shrink as the controllers move to `TeamInfo`.
+- **No entity-returning members on the leaf** — controllers read `TeamInfo` via
+  `GetTeamBySlugAsync` / `GetTeamAsync`; the internal entity reads are gone.
 - **`EETeamAdmin` is not in `AnyAdminRole`** — its only surface is the per-team page.
 
 ## Load-bearing weirdness

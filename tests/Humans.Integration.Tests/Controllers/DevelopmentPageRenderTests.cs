@@ -96,7 +96,7 @@ public class DevelopmentPageRenderTests(HumansTestDatabase database) : Integrati
         response.StatusCode.Should().Be(HttpStatusCode.Found);
         var location = response.Headers.Location;
         location.Should().NotBeNull();
-        location!.OriginalString.Should().StartWith("/",
+        location.OriginalString.Should().StartWith("/",
             because: "the no-returnUrl branch redirects to Home/Index by string literal — "
                    + "HomeController is Shell's and the section cannot name it");
 

@@ -1,5 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Store/**
+  src/Sections/Humans.Stripe/**
 -->
 <!-- freshness:flag-on-change
   Store catalog editing, order lifecycle, ordering deadline gate, invoice issuance, Stripe checkout, and resource-based authorization — review when Store services/entities/controllers/auth handlers change.
@@ -9,7 +10,7 @@
 
 ## What this section is for
 
-The Store is where camp leads order supplies and services for their camp — things like water, ice, and tokens — from a catalogue set up for each event year. Each order belongs to a specific camp's season and can be paid by card or by bank transfer.
+The Store is where camp leads order supplies and services for their camp — things like water, ice, and tokens — from a catalogue set up for each event year. Each order belongs to a specific camp's season and is paid by card through Stripe checkout (a bank debit mandate also works).
 
 Store Admin and Finance Admin look after the catalogue, keep an eye on orders, and handle the money side.
 

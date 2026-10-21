@@ -73,7 +73,7 @@ public class ICalFeedServiceTests
             new FakeContributor(MakeItem("b@x", "Shifts", late)),
             new FakeContributor(MakeItem("a@x", "Events", early)));
 
-        var items = await service.GetFeedItemsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var items = await service.GetFeedItemsAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         items.Should().HaveCount(2);
         items[0].Uid.Should().Be("a@x");
@@ -88,7 +88,7 @@ public class ICalFeedServiceTests
         bool dependencyCancelled, bool callerCancelled)
     {
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
         if (callerCancelled) await cancellation.CancelAsync();
         Exception exception = dependencyCancelled
             ? new OperationCanceledException(cancellation.Token)
@@ -112,7 +112,7 @@ public class ICalFeedServiceTests
             .Returns(new ValueTask<UserInfo?>((UserInfo?)null));
         var service = CreateService();
 
-        var ics = await service.GetFeedIcsAsync(Guid.NewGuid(), Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var ics = await service.GetFeedIcsAsync(Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         ics.Should().BeNull();
     }
@@ -124,7 +124,7 @@ public class ICalFeedServiceTests
         StubUser(userId, icalToken: null);
         var service = CreateService();
 
-        var ics = await service.GetFeedIcsAsync(userId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var ics = await service.GetFeedIcsAsync(userId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         ics.Should().BeNull();
     }
@@ -136,7 +136,7 @@ public class ICalFeedServiceTests
         StubUser(userId, icalToken: Guid.NewGuid());
         var service = CreateService();
 
-        var ics = await service.GetFeedIcsAsync(userId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var ics = await service.GetFeedIcsAsync(userId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         ics.Should().BeNull();
     }
@@ -152,7 +152,7 @@ public class ICalFeedServiceTests
         StubUser(tombstoneId, icalToken: Guid.NewGuid(), resolvedId: survivorId);
         var service = CreateService();
 
-        var ics = await service.GetFeedIcsAsync(tombstoneId, tombstoneToken, Xunit.TestContext.Current.CancellationToken);
+        var ics = await service.GetFeedIcsAsync(tombstoneId, tombstoneToken, TestContext.Current.CancellationToken);
 
         ics.Should().BeNull();
     }
@@ -170,7 +170,7 @@ public class ICalFeedServiceTests
         StubUser(tombstoneId, icalToken: survivorToken, resolvedId: survivorId);
         var service = CreateService();
 
-        var ics = await service.GetFeedIcsAsync(tombstoneId, survivorToken, Xunit.TestContext.Current.CancellationToken);
+        var ics = await service.GetFeedIcsAsync(tombstoneId, survivorToken, TestContext.Current.CancellationToken);
 
         ics.Should().BeNull();
     }
@@ -192,14 +192,14 @@ public class ICalFeedServiceTests
         contributor.GetCalendarItemsForUserAsync(userId, Arg.Any<CancellationToken>()).Returns(async _ =>
         {
             await Task.Yield();
-            return (IReadOnlyList<CalendarFeedItem>)[
+            return [
                 MakeItem("shift-1@humans.nobodies.team", "Shifts", Instant.FromUtc(2026, 7, 2, 8, 0))
                     with { Summary = $"Owner language {CultureInfo.CurrentUICulture.Name}" },
             ];
         });
         var service = CreateService(contributor);
 
-        var ics = await service.GetFeedIcsAsync(userId, token, Xunit.TestContext.Current.CancellationToken);
+        var ics = await service.GetFeedIcsAsync(userId, token, TestContext.Current.CancellationToken);
 
         ics.Should().NotBeNull();
         ics.Should().Contain("BEGIN:VCALENDAR");
@@ -214,7 +214,7 @@ public class ICalFeedServiceTests
         ics.Should().Contain("X-WR-CALNAME:Nobodies");
 
         // Round-trips through the same library calendar clients use.
-        var parsed = Ical.Net.Calendar.Load(ics!);
+        var parsed = Ical.Net.Calendar.Load(ics);
         parsed!.Events.Should().HaveCount(1);
     }
 
@@ -226,10 +226,10 @@ public class ICalFeedServiceTests
         StubUser(userId, icalToken: token);
         var service = CreateService(new FakeContributor());
 
-        var ics = await service.GetFeedIcsAsync(userId, token, Xunit.TestContext.Current.CancellationToken);
+        var ics = await service.GetFeedIcsAsync(userId, token, TestContext.Current.CancellationToken);
 
         ics.Should().NotBeNull();
-        var parsed = Ical.Net.Calendar.Load(ics!);
+        var parsed = Ical.Net.Calendar.Load(ics);
         parsed!.Events.Should().BeEmpty();
     }
 

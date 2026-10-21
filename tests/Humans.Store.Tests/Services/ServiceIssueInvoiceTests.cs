@@ -10,7 +10,6 @@ using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Enums;
 using Humans.Camps.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Settings.Contracts;
@@ -30,7 +29,7 @@ using Xunit;
 namespace Humans.Store.Tests.Services;
 
 /// <summary>
-/// Phase 5 issuance (nobodies-collective/Humans#1029): the v2 create+approve pipeline, per-line
+/// Issuance (nobodies-collective/Humans#1029): the v2 create+approve pipeline, per-line
 /// revenue accounts, tax-0 deposit lines to the fianzas account, the receipt/factura branch, and
 /// both idempotency guards — the local one, and the pre-issue search that adopts a document an
 /// earlier attempt approved before failing to save.
@@ -203,7 +202,7 @@ public class ServiceIssueInvoiceTests
         input.Lines[0].AccountId.Should().Be(IceAccountId);
         input.Lines[0].Taxes.Should().Equal("s_iva_21");
         input.Lines[0].Units.Should().Be(20m);
-        // Priced from the live catalog, not the stale €4 snapshot — the #816 freeze seam.
+        // Priced from the live catalog, not the stale €4 snapshot — the nobodies-collective/Humans#816 freeze seam.
         input.Lines[0].Price.Should().Be(5m);
 
         await _holded.Received(1).CreateSalesDocumentAsync(

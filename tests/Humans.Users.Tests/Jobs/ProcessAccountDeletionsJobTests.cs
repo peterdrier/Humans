@@ -91,7 +91,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
         await _accountDeletionService.DidNotReceiveWithAnyArgs()
             .AnonymizeExpiredAccountAsync(Guid.Empty, Arg.Any<CancellationToken>());
-        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
     }
 
     [HumansTheory]
@@ -112,7 +112,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         _accountDeletionService.AnonymizeExpiredAccountAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new AnonymizedAccountSummary(
                 OriginalEmail: "test@example.com",
-                OriginalDisplayName: "Test User",
+                OriginalBurnerName: "Test User",
                 PreferredLanguage: language));
 
         await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
@@ -171,12 +171,12 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         _accountDeletionService.AnonymizeExpiredAccountAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new AnonymizedAccountSummary(
                 OriginalEmail: null,
-                OriginalDisplayName: "Orphan User",
+                OriginalBurnerName: "Orphan User",
                 PreferredLanguage: "en"));
 
         await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
 
         // Audit should still fire.
         await _auditLogService.Received(1).LogAsync(

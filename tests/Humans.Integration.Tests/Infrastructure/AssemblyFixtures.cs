@@ -1,5 +1,7 @@
 using Humans.Integration.Tests.Infrastructure;
 using Xunit;
+using Xunit.Sdk;
+using Xunit.v3;
 
 // One Postgres container and one migration pass for the whole assembly
 // (nobodies-collective/Humans#764). Before this, each test class owned an
@@ -18,4 +20,4 @@ using Xunit;
 // The one thing still shared is the Postgres container, and each concurrent app
 // host holds a connection pool against it — see HumansTestDatabase for the
 // max_connections headroom that assumes.
-[assembly: CollectionBehavior(DisableTestParallelization = false)]
+[assembly: Parallelization(Mode = ParallelMode.Collections)]

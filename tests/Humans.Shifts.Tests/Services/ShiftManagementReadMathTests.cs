@@ -46,8 +46,8 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
         var serviceProvider = new ServiceLocatorBuilder()
             .With(teamService)
             .With(userService)
-            .With<IUserService>(userService)
-            .With<IRoleAssignmentService>(Substitute.For<IRoleAssignmentService>())
+            .With(userService)
+            .With(Substitute.For<IRoleAssignmentService>())
             .Build();
 
         _service = new ShiftManagementService(
@@ -59,7 +59,7 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
             Clock,
-            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+            Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
     }
 
     // ============================================================

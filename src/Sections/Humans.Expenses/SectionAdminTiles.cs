@@ -1,7 +1,6 @@
 using System.Globalization;
 using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
-using Humans.Expenses.Contracts;
 using Humans.Expenses.Services;
 using Microsoft.Extensions.DependencyInjection;
 

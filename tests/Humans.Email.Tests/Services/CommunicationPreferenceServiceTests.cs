@@ -80,7 +80,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     }
 
     private async Task SeedRowAsync(Guid userId, MessageCategory category, bool? optedOut,
-        bool inboxEnabled = true, Instant? updatedAt = null, string source = "Profile")
+        bool inboxEnabled = true, Instant? updatedAt = null, string source = "Profile", Instant? subscribedAt = null)
     {
         _db.CommunicationPreferences.Add(new CommunicationPreference
         {
@@ -91,6 +91,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
             InboxEnabled = inboxEnabled,
             UpdatedAt = updatedAt ?? _clock.GetCurrentInstant(),
             UpdateSource = source,
+            SubscribedAt = subscribedAt,
         });
         await _db.SaveChangesAsync(Ct);
         _db.ChangeTracker.Clear();
@@ -436,6 +437,30 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
 
         (await RowsAsync(target)).Single().OptedOut.Should().BeTrue();
         (await RowsAsync(source)).Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task Merge_KeepsKnownSubscribedAt_IndependentOfWinner(bool targetHasTimestamp, bool sourceIsNewer)
+    {
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        var sourceSubscribedAt = _clock.GetCurrentInstant() - Duration.FromDays(30);
+        Instant? targetSubscribedAt = targetHasTimestamp ? _clock.GetCurrentInstant() - Duration.FromDays(15) : null;
+        await SeedRowAsync(source, MessageCategory.Marketing, optedOut: true,
+            updatedAt: _clock.GetCurrentInstant() - Duration.FromDays(sourceIsNewer ? 1 : 3), subscribedAt: sourceSubscribedAt);
+        await SeedRowAsync(target, MessageCategory.Marketing, optedOut: false,
+            updatedAt: _clock.GetCurrentInstant() - Duration.FromDays(2), subscribedAt: targetSubscribedAt);
+
+        await _service.ReassignAsync(source, target, Guid.NewGuid(), _clock.GetCurrentInstant(), Ct);
+        await _service.ReassignAsync(source, target, Guid.NewGuid(), _clock.GetCurrentInstant(), Ct);
+
+        var row = (await RowsAsync(target)).Should().ContainSingle().Subject;
+        row.SubscribedAt.Should().Be(targetSubscribedAt ?? sourceSubscribedAt);
+        row.OptedOut.Should().Be(sourceIsNewer);
     }
 
     // ─── GDPR ────────────────────────────────────────────────────────────────────

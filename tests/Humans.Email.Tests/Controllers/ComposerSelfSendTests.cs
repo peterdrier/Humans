@@ -96,7 +96,7 @@ public sealed class ComposerSelfSendTests
             .SendMarkdownToSelf("Hello", "Body", CancellationToken.None);
 
         result.Should().BeOfType<UnauthorizedResult>();
-        await _email.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
+        await _email.DidNotReceiveWithAnyArgs().SendAsync(default!);
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
     }
 
@@ -110,7 +110,7 @@ public sealed class ComposerSelfSendTests
             .SendMarkdownToSelf("Hello", "Body", CancellationToken.None);
 
         result.Should().BeOfType<UnprocessableEntityResult>();
-        await _email.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
+        await _email.DidNotReceiveWithAnyArgs().SendAsync(default!);
     }
 
     [HumansFact]

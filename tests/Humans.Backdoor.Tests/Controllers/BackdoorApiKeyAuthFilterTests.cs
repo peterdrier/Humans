@@ -44,7 +44,7 @@ public class BackdoorApiKeyAuthFilterTests
         await Filter().OnAuthorizationAsync(ctx);
 
         ctx.Result.Should().BeOfType<UnauthorizedResult>();
-        await _keys.DidNotReceiveWithAnyArgs().ResolveOwnerAsync(default!, default);
+        await _keys.DidNotReceiveWithAnyArgs().ResolveOwnerAsync(default!);
     }
 
     [HumansFact]

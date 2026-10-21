@@ -1,6 +1,5 @@
 using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
-using Microsoft.Extensions.Hosting;
 
 namespace Humans.Development;
 

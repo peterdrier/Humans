@@ -275,6 +275,8 @@ If you didn't request this, you can ignore this email.
 
 Category: `MessageCategory.System` (not opt-outable).
 
+Both login and signup token validation require the canonical Base64url spelling issued by the URL builder. Equivalent encodings (whitespace, padding or nonzero unused trailing bits) are rejected before redemption, preserving single-use enforcement by the token-text SHA-256 replay key.
+
 ### Rate Limiting
 
 To prevent abuse of the magic link endpoint:

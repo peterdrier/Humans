@@ -167,7 +167,7 @@ public class StringViewComponentInvocationAnalyzerTests
         var diagnostics = (await RunAsync(source)).Where(IsHum0036).ToList();
 
         var single = diagnostics.Should().ContainSingle().Subject;
-        single.GetMessage(null).Should().Contain("\"HandWritten\"");
+        single.GetMessage().Should().Contain("\"HandWritten\"");
         var span = single.Location.GetMappedLineSpan();
         span.Path.Should().EndWith("Index.cshtml");
         span.StartLinePosition.Line.Should().Be(99);

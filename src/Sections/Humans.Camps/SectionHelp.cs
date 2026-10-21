@@ -1,4 +1,3 @@
-using Humans.Base.Interfaces;
 using Humans.Base.Models;
 
 namespace Humans.Camps;

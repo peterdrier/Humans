@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using Humans.Base.Constants;
-using Humans.Workgroups.Domain;
 using Humans.Workgroups.Services;
 using Microsoft.AspNetCore.Authorization;
 

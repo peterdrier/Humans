@@ -1,5 +1,4 @@
 using Humans.Base.Authorization;
-using Humans.Base.Interfaces;
 
 namespace Humans.Camps;
 

@@ -332,7 +332,7 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
                 npgsql.MigrationsAssembly(typeof(UsersDbContext).Assembly.GetName().Name!);
                 npgsql.MigrationsHistoryTable(historyTable);
             })
-            .LogTo(commandLog.Add, Microsoft.Extensions.Logging.LogLevel.Debug)
+            .LogTo(commandLog.Add)
             .Options;
 
         await using var db = new UsersDbContext(options);

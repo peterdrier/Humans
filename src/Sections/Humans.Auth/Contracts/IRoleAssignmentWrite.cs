@@ -13,11 +13,6 @@ public interface IRoleAssignmentWrite : IApplicationService
         string? notes,
         CancellationToken ct = default);
 
-    Task<RoleAssignmentResult> EndRoleAsync(
-        Guid assignmentId, Guid enderId,
-        string? notes,
-        CancellationToken ct = default);
-
     /// <summary>
     /// Ends all active governance role assignments for a user by setting
     /// <c>ValidTo</c> to now. Returns the count of ended assignments.

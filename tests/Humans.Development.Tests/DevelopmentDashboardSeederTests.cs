@@ -51,8 +51,7 @@ public class DevelopmentDashboardSeederTests
 
         var profiles = new Dictionary<Guid, ProfileSaveRequest>();
         var profileEditor = Substitute.For<IProfileEditorService>();
-        profileEditor.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<string>(),
-                Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
+        profileEditor.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 profiles.Add(call.Arg<Guid>(), call.Arg<ProfileSaveRequest>());
@@ -135,8 +134,7 @@ public class DevelopmentDashboardSeederTests
         userManager.UpdateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
 
         var profileEditor = Substitute.For<IProfileEditorService>();
-        profileEditor.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<string>(),
-                Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
+        profileEditor.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
             .Returns(_ => new ProfileEditResult(true, Guid.NewGuid()));
 
         var signups = Substitute.For<IShiftSignupSeeding>();

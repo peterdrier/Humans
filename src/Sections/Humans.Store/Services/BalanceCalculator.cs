@@ -27,7 +27,11 @@ internal static class BalanceCalculator
         decimal DepositTotalEur,
         decimal PaymentsTotalEur,
         decimal BalanceEur,
-        IReadOnlyList<LineTotals> Lines);
+        IReadOnlyList<LineTotals> Lines)
+    {
+        /// <summary>What the order costs: lines, VAT and deposits, before any payment.</summary>
+        public decimal TotalDueEur => LinesSubtotalEur + VatTotalEur + DepositTotalEur;
+    }
 
     private static readonly IReadOnlyDictionary<Guid, ProductPrice> NoCurrentPrices =
         new Dictionary<Guid, ProductPrice>();

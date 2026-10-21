@@ -1,5 +1,4 @@
 using Humans.Governance.Services;
-using Microsoft.Extensions.Logging;
 
 namespace Humans.Governance.Jobs;
 

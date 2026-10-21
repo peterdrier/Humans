@@ -37,7 +37,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
     public void DocumentContentComparer_EqualMapsHaveEqualHashesRegardlessOfInsertionOrder()
     {
         var comparer = _dbContext.Model.FindEntityType(typeof(DocumentVersion))!
-            .FindProperty(nameof(DocumentVersion.Content))!.GetValueComparer()!;
+            .FindProperty(nameof(DocumentVersion.Content))!.GetValueComparer();
         var original = new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "Castellano", ["en"] = "English" };
         var reordered = new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = "English", ["es"] = "Castellano" };
 

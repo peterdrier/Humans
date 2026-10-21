@@ -85,11 +85,7 @@ public sealed class CurrentUserEnricher : ILogEventEnricher
             return null;
 
         // Reading the principal off ASP.NET's HttpContext (not a domain entity nav).
-        // Pragma scoped to silence the cross-domain-nav-reads ratchet, whose textual
-        // heuristic otherwise matches this access by property name.
-#pragma warning disable CS0618
         var user = httpContext.User;
-#pragma warning restore CS0618
         if (user?.Identity is null || !user.Identity.IsAuthenticated)
             return null;
 

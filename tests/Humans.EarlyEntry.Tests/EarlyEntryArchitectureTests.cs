@@ -28,7 +28,7 @@ public class EarlyEntryArchitectureTests
         var authorize = typeof(EarlyEntryRosterController).GetCustomAttribute<AuthorizeAttribute>();
 
         authorize.Should().NotBeNull();
-        authorize!.Policy.Should().Be(PolicyNames.ShiftDashboardAccess);
+        authorize.Policy.Should().Be(PolicyNames.ShiftDashboardAccess);
     }
 }
 

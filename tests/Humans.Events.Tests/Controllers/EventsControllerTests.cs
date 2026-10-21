@@ -760,7 +760,7 @@ public class EventsControllerTests
             failure = new IOException("Upload stream unavailable");
         else if (string.Equals(failureKind, "dependency-format", StringComparison.Ordinal))
             failure = new FormatException("Secret upload diagnostics");
-        if (failure is not null) file.OpenReadStream().Returns<Stream>(_ => throw failure);
+        if (failure is not null) file.OpenReadStream().Returns(_ => throw failure);
         else
         {
             const string header = "Id,Barrio,Status,Title,Description,Category,Date,StartTime,DurationMinutes,LocationNote,Host,IsRecurring,RecurrenceDays,PriorityRank";

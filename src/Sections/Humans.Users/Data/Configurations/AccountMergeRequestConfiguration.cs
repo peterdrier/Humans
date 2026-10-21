@@ -1,4 +1,3 @@
-using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace Humans.Users.Data.Configurations;

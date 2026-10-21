@@ -25,7 +25,7 @@ public class AgentControllerTests
 
         await controller.Ask(
             new AgentAskRequest { Message = new string('x', AgentAskRequest.MaxMessageLength + 1) },
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         controller.Response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
         agent.DidNotReceiveWithAnyArgs().AskAsync(default!, default);
@@ -40,7 +40,7 @@ public class AgentControllerTests
 
         await controller.Ask(
             new AgentAskRequest { Message = null! },
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         controller.Response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
         agent.DidNotReceiveWithAnyArgs().AskAsync(default!, default);
@@ -56,7 +56,7 @@ public class AgentControllerTests
 
         await controller.Ask(
             new AgentAskRequest { Message = new string('x', AgentAskRequest.MaxMessageLength) },
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         controller.Response.StatusCode.Should().Be(StatusCodes.Status503ServiceUnavailable);
     }
@@ -71,7 +71,7 @@ public class AgentControllerTests
 
         await controller.Ask(
             new AgentAskRequest { Message = "hi", ConversationId = Guid.NewGuid() },
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         controller.Response.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
         controller.Response.ContentType.Should().BeNull("no event stream was opened");

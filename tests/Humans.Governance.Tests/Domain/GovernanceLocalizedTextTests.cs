@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Governance.Domain;
-using Xunit;
 
 namespace Humans.Governance.Tests.Domain;
 

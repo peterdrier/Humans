@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Xml.Linq;
 using AwesomeAssertions;
 using Humans.Finance.Models;
@@ -111,7 +110,7 @@ public class SepaPaymentFileBuilderTests
         // Sabadell ignores BtchBookg=false inside one PmtInf and books the batch as one bank line,
         // which breaks Holded's per-payment matching. Banks that ignore the flag still book one
         // debit per PmtInf, so every transfer gets its own block.
-        var request = Request(Ana(12.34m), Bo(20m), Ana(0.01m, account: 40000009));
+        var request = Request(Ana(), Bo(), Ana(0.01m, account: 40000009));
         var doc = Parse(SepaPaymentFileBuilder.Build(request));
 
         var init = doc.Root!.Element(Ns + "CstmrCdtTrfInitn")!;
@@ -241,7 +240,7 @@ public class SepaPaymentFileBuilderTests
     [HumansFact]
     public void Build_AmountOverTheCap_RefusesTheWholeFile()
     {
-        var act = () => SepaPaymentFileBuilder.Build(Request(Ana(12.34m), Bo(50.01m)));
+        var act = () => SepaPaymentFileBuilder.Build(Request(Ana(), Bo(50.01m)));
 
         act.Should().Throw<SepaPaymentFileException>().WithMessage("*50.00 EUR per-transfer cap*");
     }

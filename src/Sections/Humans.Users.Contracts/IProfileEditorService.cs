@@ -19,7 +19,6 @@ public interface IProfileEditorService
     /// </summary>
     Task<ProfileEditResult> SaveProfileAsync(
         Guid userId,
-        string displayName,
         ProfileSaveRequest request,
         CancellationToken ct = default);
 }

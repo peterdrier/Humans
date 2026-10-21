@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Auth.Contracts;
 using Humans.Auth.Services;
-using Humans.Base;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;

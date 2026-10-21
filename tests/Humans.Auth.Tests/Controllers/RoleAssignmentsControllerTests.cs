@@ -4,6 +4,7 @@ using AwesomeAssertions;
 using Humans.Auth.Contracts;
 using Humans.Auth.Controllers;
 using Humans.Auth.Models;
+using Humans.Auth.Services;
 using Humans.Base;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
@@ -33,7 +34,7 @@ public sealed class RoleAssignmentsControllerTests
 
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
-    private readonly IRoleAssignmentWrite _write = Substitute.For<IRoleAssignmentWrite>();
+    private readonly IRoleAssignmentManagement _write = Substitute.For<IRoleAssignmentManagement>();
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IAuthorizationService _authorization = Substitute.For<IAuthorizationService>();
 

@@ -178,7 +178,9 @@ archived account and the survivor.
 | `ShiftTagPreferences` | `ShiftSignupService` | Array of `{ TagName }`. |
 | `Events` | `CachingEventService` (delegates to `EventService`) | Single object with `{ SubmittedEvents: [{ Id, CampId, GuideSharedVenueId, CategoryId, Title, Description, LocationNote, Host, StartAt, DurationMinutes, IsRecurring, RecurrenceDays, PriorityRank, Status, SubmittedAt, LastUpdatedAt }], Favourites: [{ GuideEventId, DayOffset, CreatedAt }], Preference: { ExcludedCategorySlugs, UpdatedAt }, AdditionalPreferences: [{ UserId, ExcludedCategorySlugs, UpdatedAt }] }` — the events the human submitted, their favourites and category-exclusion preference; `Preference` is null when no preference row exists, and `AdditionalPreferences` holds preferences of archived accounts merged into this one. |
 | `FeedbackReports` | `FeedbackService` | Array of feedback reports with nested `Messages[]`. |
+| `FeedbackReplies` | `FeedbackService` | Array of `{ FeedbackReportId, Content, EmailEnqueuePending, CreatedAt }` — the user's replies on other people's reports. |
 | `Issues` | `IssuesService` | Array of `{ Title, Description, Category, Section, Status, PageUrl, UserAgent, AdditionalContext, CreatedAt, ResolvedAt, Comments: [{ Content, IsFromUser, CreatedAt }] }` — issues filed by the user including their comments. |
+| `IssueComments` | `IssuesService` | Array of `{ IssueId, Content, CreatedAt }` — the user's comments on other people's issues. |
 | `Notifications` | `NotificationInboxService` | Array of `{ Title, Body, ActionUrl, Priority, Source, CreatedAt, ReadAt, ResolvedAt }`. |
 | `TicketOrders` | `TicketQueryService` | Array of `{ BuyerName, BuyerEmail, TotalAmount, Currency, PaymentStatus, DiscountCode, PurchasedAt }`. |
 | `TicketAttendeeMatches` | `TicketQueryService` | Array of `{ AttendeeName, AttendeeEmail, TicketTypeName, Price, Status }`. |

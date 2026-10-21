@@ -1,7 +1,4 @@
-@using Humans.Store.Authorization
-@using Microsoft.AspNetCore.Authorization
 @model Humans.Store.Models.OrderViewModel
-@inject IAuthorizationService AuthService
 @{
     ViewData["Title"] = Localizer["Store_OrderTitle", Model.CounterpartyDisplayName].Value;
     var order = Model.Order;
@@ -9,9 +6,6 @@
     var pendingTotal = order.Payments
         .Where(p => p.Status == PaymentStatus.Pending)
         .Sum(p => p.AmountEur);
-    var canRefund = Model.CanRecordPayment
-        && (await AuthService.AuthorizeAsync(User, order, OrderOperationRequirement.Refund)).Succeeded;
-    var canDeletePayment = (await AuthService.AuthorizeAsync(User, order, OrderOperationRequirement.DeletePayment)).Succeeded;
 }
 
 <nav aria-label="@Localizer["Store_BreadcrumbNavigation"]" class="mb-3">
@@ -162,7 +156,7 @@ else
     <div class="alert alert-secondary">@Localizer["Store_NoLines"]</div>
 }
 
-@* Price changes on this order's products since it was created (#816). The AuditLog section
+@* Price changes on this order's products since it was created (nobodies-collective/Humans#816). The AuditLog section
    owns the read: one predicate over every product id, not one panel per product. *@
 <vc:audit-log entity-type="@AuditEntityTypes.Product"
               entity-ids="@order.Lines.Select(l => l.ProductId).Distinct().ToList()"
@@ -208,7 +202,7 @@ else
                     <th>@Localizer["Store_ColStatus"]</th>
                     <th>@Localizer["Store_ColReference"]</th>
                     <th class="text-end">@Localizer["Store_ColAmount"]</th>
-                    @if (canDeletePayment)
+                    @if (Model.CanDeletePayment)
                     {
                         <th></th>
                     }
@@ -253,7 +247,7 @@ else
                                 <div class="text-muted small">@Localizer["Store_PendingSettlement"]</div>
                             }
                         </td>
-                        @if (canDeletePayment)
+                        @if (Model.CanDeletePayment)
                         {
                             @* Admin-only control (localization-admin-exempt): plain strings. *@
                             <td class="text-end">
@@ -271,7 +265,7 @@ else
                 <tr class="fw-bold">
                     <td colspan="4" class="text-end">@Localizer["Store_TotalClearedPayments"]</td>
                     <td class="text-end">@order.PaymentsTotalEur.ToEuro()</td>
-                    @if (canDeletePayment)
+                    @if (Model.CanDeletePayment)
                     {
                         <td></td>
                     }
@@ -341,7 +335,7 @@ else
                 <label class="form-label">@Localizer["Store_RecordPaymentType"]</label>
                 <select name="method" class="form-select" required>
                     <option value="@PaymentMethod.DepositReturn">@Localizer["Store_Method_DepositReturn"]</option>
-                    @if (canRefund)
+                    @if (Model.CanRefund)
                     {
                         <option value="@PaymentMethod.Refund">@Localizer["Store_Method_Refund"]</option>
                     }

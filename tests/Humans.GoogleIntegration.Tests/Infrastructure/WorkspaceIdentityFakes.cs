@@ -28,6 +28,8 @@ internal static class WorkspaceIdentityFakes
         fake.GetWorkspaceIdentitiesAsync(default!, default)
             .ReturnsForAnyArgs(ci => real.GetWorkspaceIdentitiesAsync(
                 ci.Arg<IReadOnlyCollection<Guid>>(), ci.Arg<CancellationToken>()));
+        fake.GetDriveEmailsAsync(default)
+            .ReturnsForAnyArgs(ci => real.GetDriveEmailsAsync(ci.Arg<CancellationToken>()));
         return fake;
     }
 
@@ -53,7 +55,31 @@ internal sealed class InMemoryWorkspaceIdentityRepository : IWorkspaceIdentityRe
 
     public Task UpsertAsync(Guid userId, string? email, GoogleEmailStatus status, Instant now, CancellationToken ct = default)
     {
-        Rows[userId] = new WorkspaceIdentityRecord { UserId = userId, Email = email, Status = status, UpdatedAt = now };
+        var driveEmail = Rows.TryGetValue(userId, out var row) && string.Equals(row.Email, email, StringComparison.OrdinalIgnoreCase)
+            ? row.DriveEmail
+            : null;
+        Rows[userId] = new WorkspaceIdentityRecord
+        {
+            UserId = userId,
+            Email = email,
+            Status = status,
+            DriveEmail = driveEmail,
+            UpdatedAt = now
+        };
+        return Task.CompletedTask;
+    }
+
+    public Task SetDriveEmailAsync(
+        Guid userId, string email, GoogleEmailStatus status, string driveEmail, Instant now, CancellationToken ct = default)
+    {
+        Rows[userId] = new WorkspaceIdentityRecord
+        {
+            UserId = userId,
+            Email = email,
+            Status = status,
+            DriveEmail = driveEmail,
+            UpdatedAt = now
+        };
         return Task.CompletedTask;
     }
 
@@ -67,5 +93,5 @@ internal sealed class InMemoryWorkspaceIdentityRepository : IWorkspaceIdentityRe
     public Task<bool> DeleteAsync(Guid userId, CancellationToken ct = default) => Task.FromResult(Rows.Remove(userId));
 
     private static WorkspaceIdentityRecord Copy(WorkspaceIdentityRecord r) =>
-        new() { UserId = r.UserId, Email = r.Email, Status = r.Status, UpdatedAt = r.UpdatedAt };
+        new() { UserId = r.UserId, Email = r.Email, Status = r.Status, DriveEmail = r.DriveEmail, UpdatedAt = r.UpdatedAt };
 }

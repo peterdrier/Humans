@@ -79,6 +79,22 @@ public sealed class EmailPreviewServiceTests
         composer.Received(1).Compose(Arg.Any<string>(), null, CultureInfo.CurrentUICulture.Name);
     }
     [HumansFact]
+    public void Compose_MarkdownTableRetainsRowsAndCellsInPlainText()
+    {
+        var environment = Substitute.For<Microsoft.Extensions.Hosting.IHostEnvironment>();
+        environment.EnvironmentName.Returns("Production");
+        var composer = new BrandedEmailBodyComposer(
+            Microsoft.Extensions.Options.Options.Create(new Humans.Base.Configuration.EmailSettings()), environment);
+        var html = Humans.Base.Extensions.SanitizedMarkdownRenderer.Render(
+            "| Name | Shift |\n| --- | --- |\n| Alice | [Gate](https://humans.example/shift) |");
+
+        var body = composer.Compose(html);
+
+        body.HtmlBody.Should().Contain("<table");
+        body.PlainTextBody.Should().Be("Name\tShift\nAlice\tGate (https://humans.example/shift)");
+    }
+
+    [HumansFact]
     public void RenderMarkdown_UsesTheCallersCultureForThePlaceholderFooter()
     {
         using var culture = new Humans.Base.Extensions.CultureScope("es");

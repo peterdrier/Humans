@@ -85,7 +85,7 @@ public sealed class GoogleSyncLogActivityLogTests
         await SeedAsync(
             match,
             Entry(T0, GoogleSyncLogAction.AccessGranted, GoogleSyncSource.ManualSync, success: false),
-            Entry(T0, GoogleSyncLogAction.AccessRevoked, GoogleSyncSource.ScheduledSync, success: false),
+            Entry(T0, GoogleSyncLogAction.AccessRevoked, success: false),
             Entry(T0, GoogleSyncLogAction.AccessRevoked, GoogleSyncSource.ManualSync, success: true));
 
         var rows = await Repo().GetRecentAsync(
@@ -114,11 +114,11 @@ public sealed class GoogleSyncLogActivityLogTests
         var docs = Guid.NewGuid();
         var other = Guid.NewGuid();
         var repo = Substitute.For<IGoogleSyncLogRepository>();
-        repo.GetRecentAsync(default, default, default, default, default, default, default, default).ReturnsForAnyArgs(
+        repo.GetRecentAsync(default, default, default, default, default, default, default).ReturnsForAnyArgs(
             [Entry(T0, resourceId: docs), Entry(T0, resourceId: other), Entry(T0, resourceId: Guid.Empty)]);
-        repo.GetResourceIdsAsync(default).ReturnsForAnyArgs([docs, other, Guid.Empty]);
+        repo.GetResourceIdsAsync().ReturnsForAnyArgs([docs, other, Guid.Empty]);
         var resources = Substitute.For<ITeamResourceManagement>();
-        resources.GetResourceNamesByIdsAsync(default!, default).ReturnsForAnyArgs(
+        resources.GetResourceNamesByIdsAsync(default!).ReturnsForAnyArgs(
             new Dictionary<Guid, string> { [docs] = "Board Docs", [other] = "Camp Group" });
         var sut = new GoogleSyncLogService(repo, resources, Substitute.For<IUserService>(),
             Substitute.For<IUserEmailService>(), Substitute.For<IServiceProvider>(),
@@ -131,10 +131,10 @@ public sealed class GoogleSyncLogActivityLogTests
 
         all.Select(v => v.ResourceName).Should().Equal("Board Docs", "Camp Group", null);
         all.Should().OnlyContain(v => v.UserId != null);
-        await repo.Received(1).GetRecentAsync(null, null, null, null, null, null, 500, ct, null);
+        await repo.Received(1).GetRecentAsync(null, null, null, null, null, null, 500, ct);
         await repo.Received(1).GetRecentAsync(null, null, null, null, null,
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { docs })), 500, ct, "board");
-        await repo.ReceivedWithAnyArgs(3).GetRecentAsync(default, default, default, default, default, default, default, default, default);
+        await repo.ReceivedWithAnyArgs(3).GetRecentAsync(default, default, default, default, default, default, default);
     }
 
     [HumansFact]
@@ -159,9 +159,9 @@ public sealed class GoogleSyncLogActivityLogTests
     public async Task Viewer_GetRecentAsync_NameFilterWithNoMatchingResource_StillQueriesUnlinkedDescriptions()
     {
         var repo = Substitute.For<IGoogleSyncLogRepository>();
-        repo.GetResourceIdsAsync(default).ReturnsForAnyArgs([Guid.NewGuid()]);
+        repo.GetResourceIdsAsync().ReturnsForAnyArgs([Guid.NewGuid()]);
         var resources = Substitute.For<ITeamResourceManagement>();
-        resources.GetResourceNamesByIdsAsync(default!, default).ReturnsForAnyArgs(new Dictionary<Guid, string>());
+        resources.GetResourceNamesByIdsAsync(default!).ReturnsForAnyArgs(new Dictionary<Guid, string>());
         var sut = new GoogleSyncLogService(repo, resources, Substitute.For<IUserService>(),
             Substitute.For<IUserEmailService>(), Substitute.For<IServiceProvider>(),
             new FakeClock(T0), NullLogger<GoogleSyncLogService>.Instance);

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Humans.Expenses.Data.Configurations;
 using Humans.Expenses.Domain;
 
 namespace Humans.Expenses.Data;

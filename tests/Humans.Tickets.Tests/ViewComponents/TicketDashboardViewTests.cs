@@ -132,8 +132,8 @@ public class TicketDashboardViewTests
             RecentOrders = [new RecentOrder { Amount = 1234 }],
             DailySales = [new DailySales { Date = "2026-07-01", RollingAverage = 12.5m }],
         }, language);
-        Assert.True(index.Split(System.Text.Encodings.Web.HtmlEncoder.Default.Encode(count), StringSplitOptions.None).Length >= 8);
-        Assert.True(index.Split(System.Text.Encodings.Web.HtmlEncoder.Default.Encode(amount), StringSplitOptions.None).Length >= 4);
+        Assert.True(index.Split(System.Text.Encodings.Web.HtmlEncoder.Default.Encode(count)).Length >= 8);
+        Assert.True(index.Split(System.Text.Encodings.Web.HtmlEncoder.Default.Encode(amount)).Length >= 4);
         Assert.Contains(rate, index);
         Assert.Contains("\"rollingAverage\":12.5", index);
 
@@ -145,7 +145,7 @@ public class TicketDashboardViewTests
                 VatAmount = 1234.5m, StripeFee = 1234.5m, ApplicationFee = 1234.5m,
             }],
         }, language);
-        Assert.Equal(7, orders.Split(System.Text.Encodings.Web.HtmlEncoder.Default.Encode(amount), StringSplitOptions.None).Length);
+        Assert.Equal(7, orders.Split(System.Text.Encodings.Web.HtmlEncoder.Default.Encode(amount)).Length);
 
         var attendees = await RenderAsync("Attendees", new TicketAttendeesViewModel
         {
@@ -180,7 +180,7 @@ public class TicketDashboardViewTests
                 CodesGranted = 1234, CodesUsed = 1234, AverageDiscount = 1234.5m, TotalDiscount = 1234.5m,
             }],
         }, language);
-        Assert.True(aggregates.Split(System.Text.Encodings.Web.HtmlEncoder.Default.Encode(amount), StringSplitOptions.None).Length >= 36);
+        Assert.True(aggregates.Split(System.Text.Encodings.Web.HtmlEncoder.Default.Encode(amount)).Length >= 36);
     }
 
     private static async Task<string> RenderAsync(string page, object model, string cultureName = "en", string? viewPath = null)

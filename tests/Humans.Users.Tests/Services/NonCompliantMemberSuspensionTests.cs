@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Base.Enums;
 using Humans.Web.Services;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces.Caching;
@@ -72,7 +71,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
 
-        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
+        await _sut.SuspendNonCompliantAsync(TestContext.Current.CancellationToken);
 
         await _userService.Received(1).SuspendProfilesForMissingConsentAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(user.Id)),
@@ -91,7 +90,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
             .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(failure));
 
         var thrown = await Assert.ThrowsAsync<IOException>(() =>
-            _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken));
+            _sut.SuspendNonCompliantAsync(TestContext.Current.CancellationToken));
 
         Assert.Same(failure, thrown);
         await _userService.DidNotReceive().SuspendProfilesForMissingConsentAsync(
@@ -113,7 +112,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
                 users.ToDictionary(user => user.Id, user => user.ToUserInfo())));
         StubSuspendSucceeds(ids.Take(2).ToList());
 
-        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
+        await _sut.SuspendNonCompliantAsync(TestContext.Current.CancellationToken);
 
         foreach (var userId in ids.Take(2))
         {
@@ -132,7 +131,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
         _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
             .Returns(new List<Guid>());
 
-        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
+        await _sut.SuspendNonCompliantAsync(TestContext.Current.CancellationToken);
 
         await _userService.DidNotReceive().SuspendProfilesForMissingConsentAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
@@ -154,7 +153,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
             Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid>());
 
-        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
+        await _sut.SuspendNonCompliantAsync(TestContext.Current.CancellationToken);
 
         await _emailService.DidNotReceive().SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == "access_suspended"), Arg.Any<CancellationToken>());
@@ -179,7 +178,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
-        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
+        await _sut.SuspendNonCompliantAsync(TestContext.Current.CancellationToken);
 
         await _emailService.DidNotReceive().SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == "access_suspended"), Arg.Any<CancellationToken>());
@@ -198,7 +197,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
 
-        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
+        await _sut.SuspendNonCompliantAsync(TestContext.Current.CancellationToken);
 
         // The builder is sealed with no interface, so the sent message is the assertion surface.
         await _emailService.Received(1).SendAsync(
@@ -220,7 +219,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
 
-        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
+        await _sut.SuspendNonCompliantAsync(TestContext.Current.CancellationToken);
 
         var args = _notificationService.ReceivedCalls().Single().GetArguments();
         Assert.Equal("Dein Konto wurde gesperrt", args[3]);
@@ -240,7 +239,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
 
-        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
+        await _sut.SuspendNonCompliantAsync(TestContext.Current.CancellationToken);
 
         await _notificationService.Received(1).SendAsync(
             NotificationSource.AccessSuspended,
@@ -264,7 +263,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
 
-        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
+        await _sut.SuspendNonCompliantAsync(TestContext.Current.CancellationToken);
 
         await _auditLogService.Received(1).LogAsync(
             AuditAction.MemberSuspended,
@@ -284,7 +283,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
 
-        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
+        await _sut.SuspendNonCompliantAsync(TestContext.Current.CancellationToken);
 
         _roleAssignmentClaimsInvalidator.Received(1).Invalidate(user.Id);
         _shiftAuthorizationInvalidator.Received(1).Invalidate(user.Id);

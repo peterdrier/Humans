@@ -32,7 +32,10 @@ internal interface IIssuesRepository : IRepository
 
     Task<IReadOnlyList<DistinctReporterRow>> GetReporterCountsAsync(CancellationToken ct = default);
 
-    /// <summary>For GDPR export.</summary>
+    /// <summary>
+    /// Returns issues reported by the user or containing their comments. The export service
+    /// limits other people's issues to the user's own comments.
+    /// </summary>
     Task<IReadOnlyList<Issue>> GetForUserExportAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>Ids of issues whose <c>ResolvedAt</c> is at or before <paramref name="cutoff"/>.</summary>

@@ -5,7 +5,6 @@ using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
 using Humans.Web.Extensions;
 using Humans.Base.ViewComponents;
-using Humans.Web.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
