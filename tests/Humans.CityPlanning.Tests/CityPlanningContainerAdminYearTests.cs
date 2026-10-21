@@ -13,6 +13,7 @@ using Humans.Containers;
 using Humans.Containers.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -121,30 +122,30 @@ public sealed class CityPlanningContainerAdminYearTests : CityPlanningTestBase
         AssertRedirectsToContainers(result, RouteYear);
     }
 
-    [HumansFact]
-    public async Task ContainerMap_LeadIsAdmittedByTheRouteYearsPhase_NotThePublicYears()
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ContainerMap_LeadIsGatedByThePlaceRequirementForTheirCampInTheRouteYear(bool placeAllowed)
     {
-        await SeedPlacementAsync(RouteYear, open: true);
-        await SeedPlacementAsync(PublicYear, open: false);
-        SeedLeadCamp();
-        var controller = CreateController();
+        var campId = SeedLeadCamp();
+        object? target = null;
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Failed());
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(call =>
+            {
+                target = call.ArgAt<object?>(1);
+                return call.ArgAt<IEnumerable<IAuthorizationRequirement>>(2).Single() == ContainerOperationRequirement.Place
+                    && placeAllowed ? AuthorizationResult.Success() : AuthorizationResult.Failed();
+            });
+        var controller = CreateController(authorization);
 
         var result = await controller.ContainerMap(RouteYear, TestContext.Current.CancellationToken);
 
-        result.Should().BeOfType<ViewResult>();
-    }
-
-    [HumansFact]
-    public async Task ContainerMap_LeadIsRefusedWhenTheRouteYearsPhaseIsClosed_EvenIfThePublicYearIsOpen()
-    {
-        await SeedPlacementAsync(RouteYear, open: false);
-        await SeedPlacementAsync(PublicYear, open: true);
-        SeedLeadCamp();
-        var controller = CreateController();
-
-        var result = await controller.ContainerMap(RouteYear, TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<ForbidResult>();
+        if (placeAllowed) result.Should().BeOfType<ViewResult>();
+        else result.Should().BeOfType<ForbidResult>();
+        target.Should().Be(new ContainerAuthorizationTarget(campId) { Year = RouteYear });
     }
 
     [HumansFact]
@@ -170,18 +171,7 @@ public sealed class CityPlanningContainerAdminYearTests : CityPlanningTestBase
     private static ContainerDto ContainerDtoFor(Guid id) =>
         new(id, Guid.NewGuid(), "Box", null, [], Instant.MinValue, Instant.MinValue);
 
-    private async Task SeedPlacementAsync(int year, bool open)
-    {
-        CityPlanningDb.CityPlanningSettings.Add(new CityPlanningSettings
-        {
-            Year = year,
-            IsContainerPlacementOpen = open,
-            UpdatedAt = Clock.GetCurrentInstant(),
-        });
-        await CityPlanningDb.SaveChangesAsync(TestContext.Current.CancellationToken);
-    }
-
-    private void SeedLeadCamp()
+    private Guid SeedLeadCamp()
     {
         var campId = Guid.NewGuid();
         var season = new CampSeasonInfo(
@@ -193,13 +183,17 @@ public sealed class CityPlanningContainerAdminYearTests : CityPlanningTestBase
         };
         _campService.GetCampsForYearAsync(RouteYear, Arg.Any<CancellationToken>())
             .Returns([new CampInfo(campId, "lead-camp", string.Empty, string.Empty, false, 0, [season])]);
+        return campId;
     }
 
-    private CityPlanningController CreateController(params string[] roles)
+    private CityPlanningController CreateController(params string[] roles) => CreateController(null, roles);
+
+    private CityPlanningController CreateController(IAuthorizationService? authorization, params string[] roles)
     {
+        authorization ??= MapAdminAuthorization(_service);
         var controller = new CityPlanningController(
             _service, _campService, _containerService, Substitute.For<IStringLocalizer<ContainersResource>>(), _userService,
-            MapAdminAuthorization(_service), NullLogger<CityPlanningController>.Instance);
+            authorization, NullLogger<CityPlanningController>.Instance);
 
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, _userId.ToString()) };
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
