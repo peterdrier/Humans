@@ -1,4 +1,3 @@
-using Humans.Base.Interfaces;
 using Humans.Base.Attributes;
 
 namespace Humans.Base.Interfaces.Caching;

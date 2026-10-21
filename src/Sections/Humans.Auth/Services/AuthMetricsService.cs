@@ -1,5 +1,4 @@
 using System.Diagnostics.Metrics;
-using Humans.Auth.Contracts;
 using Humans.Base.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

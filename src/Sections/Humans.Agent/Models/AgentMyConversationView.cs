@@ -1,5 +1,4 @@
 using Humans.Agent.Contracts;
-using Humans.Agent.Services;
 
 namespace Humans.Agent.Models;
 

@@ -1,6 +1,4 @@
-using Humans.Users.Contracts;
 using Humans.Base.Interfaces.Repositories;
-using Humans.Users.Services;
 
 namespace Humans.Users.Data.Repositories;
 

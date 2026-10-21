@@ -1,5 +1,3 @@
-using Humans.Base.Interfaces;
-
 namespace Humans.Camps;
 
 /// <summary>Member top-nav contribution — was the first link in Shell's <c>_Layout.cshtml</c>.</summary>

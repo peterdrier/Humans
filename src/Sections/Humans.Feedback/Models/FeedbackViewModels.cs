@@ -1,7 +1,6 @@
 using Humans.Feedback.Contracts;
 using System.ComponentModel.DataAnnotations;
 using Humans.Teams.Contracts;
-using Humans.Feedback.Domain;
 using Humans.Base.Models;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ModelBinding;

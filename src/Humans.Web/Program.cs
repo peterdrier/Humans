@@ -25,7 +25,6 @@ using Humans.Base.Interfaces;
 using Humans.Web.Extensions;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Base.Data;
-using Humans.Base.Hosting;
 using Humans.Web.Services;
 using Humans.Web.Authorization;
 using Humans.Web.Health;
@@ -38,7 +37,6 @@ using Serilog;
 using Serilog.Events;
 using Humans.Web.Hosting;
 using Humans.Web.ModelBinders;
-using Humans.Web.Data;
 using Humans.Users.Contracts;
 using Humans.Web.Localization;
 

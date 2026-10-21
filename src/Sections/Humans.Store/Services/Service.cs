@@ -1,6 +1,5 @@
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
-using Humans.Base.Interfaces;
 using Humans.Base.Threading;
 using Humans.Camps.Contracts;
 using Humans.Holded.Contracts;

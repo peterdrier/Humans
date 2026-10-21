@@ -6,7 +6,6 @@ using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
 using Humans.Governance.Services;
-using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
 

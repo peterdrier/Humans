@@ -1,4 +1,3 @@
-using Humans.Surveys.Contracts;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.DataProtection;
 

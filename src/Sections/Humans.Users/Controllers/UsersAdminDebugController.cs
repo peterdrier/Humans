@@ -5,7 +5,6 @@ using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
-using Humans.Users.Contracts;
 using Humans.Users.Services;
 
 namespace Humans.Users.Controllers;

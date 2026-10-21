@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.DataProtection;
 
