@@ -1486,15 +1486,17 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result.ErrorKey.Should().Be("Teams_RemoveMember_NotMember");
     }
 
-    [HumansFact]
-    public async Task ReassignAsync_RefusedRemovalStillAbortsMerge()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ReassignAsync_RefusedRemovalStillAbortsMerge(bool targetAlreadyMember)
     {
         var actor = SeedUser(displayName: "Actor");
         var source = SeedUser(displayName: "Source");
         var target = SeedUser(displayName: "Target");
         var team = SeedTeam("Alpha");
         var member = SeedTeamMember(team.Id, source.Id);
-        SeedTeamMember(team.Id, target.Id);
+        if (targetAlreadyMember) SeedTeamMember(team.Id, target.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         Func<Task> act = () => _service.ReassignAsync(source.Id, target.Id, actor.Id,
@@ -1502,6 +1504,8 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*permission*");
         member.LeftAt.Should().BeNull();
+        (await TeamsDb.TeamMembers.CountAsync(m => m.TeamId == team.Id && m.UserId == target.Id,
+            Xunit.TestContext.Current.CancellationToken)).Should().Be(targetAlreadyMember ? 1 : 0);
     }
 
     [HumansFact]

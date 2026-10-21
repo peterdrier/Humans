@@ -291,6 +291,67 @@ public sealed class TeamRepositoryTests : IDisposable
         (await _dbContext.TeamMembers.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
+    [HumansTheory]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    [InlineData(false, false, true)]
+    [InlineData(false, true, false)]
+    public async Task MarkMemberLeftAsync_MergePreservesRolesSlotsAndProvenance(
+        bool duplicate, bool coordinator, bool assigned)
+    {
+        var team = await SeedTeamAsync("Merge roles");
+        var source = await SeedActiveMemberAsync(team, await SeedUserAsync(),
+            coordinator ? TeamMemberRole.Coordinator : TeamMemberRole.Member);
+        var target = await SeedActiveMemberAsync(team, await SeedUserAsync(),
+            duplicate && coordinator ? TeamMemberRole.Coordinator : TeamMemberRole.Member);
+        var definition = await SeedRoleDefinitionAsync(team, isManagement: coordinator);
+        definition.SlotCount = duplicate ? 2 : 1;
+        definition.Priorities = Enumerable.Repeat(SlotPriority.Critical, definition.SlotCount).ToList();
+        TeamRoleAssignment? expected = null;
+        if (assigned)
+        {
+            await SeedRoleAssignmentAsync(definition, source);
+            expected = await _dbContext.Set<TeamRoleAssignment>().SingleAsync(
+                a => a.TeamMemberId == source.Id, Xunit.TestContext.Current.CancellationToken);
+        }
+        if (duplicate)
+        {
+            expected = new TeamRoleAssignment
+            {
+                Id = Guid.NewGuid(), TeamRoleDefinitionId = definition.Id, TeamMemberId = target.Id,
+                SlotIndex = 1, AssignedAt = _clock.GetCurrentInstant() - Duration.FromDays(2),
+                AssignedByUserId = target.UserId
+            };
+            _dbContext.Set<TeamRoleAssignment>().Add(expected);
+        }
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _dbContext.ChangeTracker.Clear();
+        var now = _clock.GetCurrentInstant();
+
+        await _repo.MarkMemberLeftAsync(source.Id, now, target.Id, Xunit.TestContext.Current.CancellationToken);
+
+        var sourceAfter = await _dbContext.TeamMembers.AsNoTracking().SingleAsync(
+            m => m.Id == source.Id, Xunit.TestContext.Current.CancellationToken);
+        var targetAfter = await _dbContext.TeamMembers.AsNoTracking().SingleAsync(
+            m => m.Id == target.Id, Xunit.TestContext.Current.CancellationToken);
+        sourceAfter.LeftAt.Should().Be(now);
+        targetAfter.LeftAt.Should().BeNull();
+        targetAfter.Role.Should().Be(coordinator ? TeamMemberRole.Coordinator : TeamMemberRole.Member);
+        var assignments = await _dbContext.Set<TeamRoleAssignment>().AsNoTracking()
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        if (expected is null)
+            assignments.Should().BeEmpty();
+        else
+        {
+            var actual = assignments.Should().ContainSingle().Subject;
+            actual.Id.Should().Be(expected.Id);
+            actual.TeamMemberId.Should().Be(target.Id);
+            actual.SlotIndex.Should().Be(expected.SlotIndex);
+            actual.AssignedAt.Should().Be(expected.AssignedAt);
+            actual.AssignedByUserId.Should().Be(expected.AssignedByUserId);
+        }
+    }
+
     [HumansFact]
     public async Task MarkMemberLeftAsync_SetsLeftAtAndRemovesAssignments()
     {
@@ -301,7 +362,7 @@ public sealed class TeamRepositoryTests : IDisposable
         await SeedRoleAssignmentAsync(role, member);
 
         var now = _clock.GetCurrentInstant();
-        var removed = await _repo.MarkMemberLeftAsync(member.Id, now, Xunit.TestContext.Current.CancellationToken);
+        var removed = await _repo.MarkMemberLeftAsync(member.Id, now, ct: Xunit.TestContext.Current.CancellationToken);
 
         removed.Should().HaveCount(1);
         _dbContext.ChangeTracker.Clear();

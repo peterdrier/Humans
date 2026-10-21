@@ -646,7 +646,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
     }
 
     public async Task<IReadOnlyList<TeamRoleAssignment>> MarkMemberLeftAsync(
-        Guid teamMemberId, Instant leftAt, CancellationToken ct = default)
+        Guid teamMemberId, Instant leftAt, Guid? mergeIntoMemberId = null, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         var member = await db.TeamMembers.FirstOrDefaultAsync(tm => tm.Id == teamMemberId, ct)
@@ -658,8 +658,29 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             .Where(a => a.TeamMemberId == teamMemberId)
             .ToListAsync(ct);
 
-        if (roleAssignments.Count > 0)
+        if (mergeIntoMemberId is { } targetId)
+        {
+            var target = await db.TeamMembers.FirstOrDefaultAsync(
+                m => m.Id == targetId && m.Id != member.Id && m.TeamId == member.TeamId && m.LeftAt == null, ct)
+                ?? throw new InvalidOperationException("Active survivor membership not found on the same team");
+            var targetDefinitions = (await db.Set<TeamRoleAssignment>()
+                    .Where(a => a.TeamMemberId == targetId)
+                    .Select(a => a.TeamRoleDefinitionId).ToListAsync(ct))
+                .ToHashSet();
+            foreach (var assignment in roleAssignments)
+            {
+                if (targetDefinitions.Contains(assignment.TeamRoleDefinitionId))
+                    db.Set<TeamRoleAssignment>().Remove(assignment);
+                else
+                    db.Entry(assignment).Property(nameof(TeamRoleAssignment.TeamMemberId)).CurrentValue = targetId;
+            }
+            if (member.Role == TeamMemberRole.Coordinator)
+                target.Role = TeamMemberRole.Coordinator;
+        }
+        else if (roleAssignments.Count > 0)
+        {
             db.Set<TeamRoleAssignment>().RemoveRange(roleAssignments);
+        }
 
         member.LeftAt = leftAt;
 
