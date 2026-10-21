@@ -2251,6 +2251,50 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task ContributeForUser_BoundMember_ExportsTheMirroredCreditorLedger()
+    {
+        // Article 15 reaches the mirrored Holded journal lines of the bound account, free-text
+        // descriptions included — the same read the creditor statement uses.
+        var userId = Guid.NewGuid();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorContact { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = 40000004 });
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(
+            new List<HoldedCreditorContact> { new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = 40000004 } });
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<HoldedContactDto>());
+        _holded.GetLedgerLinesAsync(40000004, Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLineInfo>
+        {
+            new(7, 1, 40000004, Instant.FromUtc(2026, 4, 1, 0, 0), "purchase", "Gas for the truck", 0m, 45.50m),
+            new(9, 1, 40000004, Instant.FromUtc(2026, 4, 10, 0, 0), "payment", null, 45.50m, 0m),
+        });
+
+        var slices = await MakeService().ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
+
+        var lines = JsonSerializer.SerializeToElement(slices.Should()
+            .ContainSingle(s => s.SectionName == Service.CreditorLedger).Subject.Data);
+        lines.GetArrayLength().Should().Be(2);
+        using var scope = new AssertionScope();
+        lines[0].GetProperty("AccountNum").GetInt32().Should().Be(40000004);
+        lines[0].GetProperty("Date").GetString().Should().Be("2026-04-01T00:00:00Z");
+        lines[0].GetProperty("Description").GetString().Should().Be("Gas for the truck");
+        lines[0].GetProperty("Credit").GetDecimal().Should().Be(45.50m);
+        lines[0].GetProperty("RunningBalance").GetDecimal().Should().Be(45.50m);
+        lines[1].GetProperty("Debit").GetDecimal().Should().Be(45.50m);
+        lines[1].GetProperty("RunningBalance").GetDecimal().Should().Be(0m);
+    }
+
+    [HumansFact]
+    public async Task ContributeForUser_UnboundMember_ExportsNoLedgerAndReadsNone()
+    {
+        _repo.GetCreditorContactByUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((HoldedCreditorContact?)null);
+
+        var slices = await MakeService().ContributeForUserAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        slices.Should().ContainSingle(s => s.SectionName == Service.CreditorLedger).Subject.Data.Should().BeNull();
+        await _holded.DidNotReceive().GetLedgerLinesAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task EraseForUser_DropsTheBindingAndDeclaresThePayoutsRetained()
     {
         // Article 17: the binding is erased in full; the payout files are the accounting record
@@ -2267,6 +2311,9 @@ public class HoldedFinanceServiceTests
             .WhoseValue.Should().BeNull("the binding is erased in full");
         svc.ErasureDeclaration.Should().ContainKey(Service.SepaPayouts)
             .WhoseValue.Should().Contain("Art. 17(3)(b)");
+        svc.ErasureDeclaration.Should().ContainKey(Service.CreditorLedger)
+            .WhoseValue.Should().StartWith("Retained").And.Contain("Art. 17(3)(b)",
+                "financial records are never erased for GDPR reasons");
     }
 
     // ─── Purchase-doc sync state, as the /Holded screen reads it ─────────────────

@@ -50,6 +50,7 @@ internal sealed class Service(
     internal const string HoldedCreditorAccount = "HoldedCreditorAccount";
     internal const string AdditionalHoldedCreditorAccounts = "AdditionalHoldedCreditorAccounts";
     internal const string SepaPayouts = "SepaPayouts";
+    internal const string CreditorLedger = "CreditorLedger";
 
     /// <summary>First number of the P&amp;L expense block both provisioning paths allocate from.</summary>
     internal const int ExpenseAccountBlockStart = 62900100;
@@ -1687,6 +1688,17 @@ internal sealed class Service(
                 bindings.Add(binding);
             payouts.AddRange(await repo.GetSepaPayoutsForUserAsync(id, ct));
         }
+        // The mirrored journal lines of every bound account, read the way the creditor statement
+        // reads them — free-text descriptions included, which are the member's data too.
+        var contacts = bindings.Count == 0
+            ? new Dictionary<string, HoldedContactDto>(StringComparer.Ordinal)
+            : await ContactsByIdAsync(ct);
+        var ledgerLines = new List<CreditorLedgerLine>();
+        foreach (var num in bindings.Select(b => ResolveCreditorAccount(b, contacts)).OfType<int>().Distinct())
+        {
+            if (await GetCreditorLedgerAsync(num, ct) is { } ledger)
+                ledgerLines.AddRange(ledger.Lines);
+        }
         var currentBinding = bindings.FirstOrDefault(binding => binding.UserId == userId);
         var additionalBindings = bindings.Where(binding => binding.UserId != userId).ToList();
         return
@@ -1723,6 +1735,19 @@ internal sealed class Service(
                 ReconciledAt = p.ReconciledAt?.ToIso8601(),
                 WithdrawnAt = p.WithdrawnAt?.ToIso8601(),
             })),
+
+            new UserDataSlice(CreditorLedger, ledgerLines.Count == 0 ? null : ledgerLines.Select(l => new
+            {
+                l.AccountNum,
+                Date = l.Date.ToIso8601(),
+                l.EntryNumber,
+                l.Line,
+                l.Type,
+                l.Description,
+                l.Debit,
+                l.Credit,
+                l.RunningBalance,
+            }).ToList()),
         ];
     }
 
@@ -1736,12 +1761,21 @@ internal sealed class Service(
         "(Código de Comercio Art. 30) and 4 years for tax purposes (Ley 58/2003 Art. 66), and a " +
         "payment order stripped of its payee is no longer evidence of the payment. GDPR Art. 17(3)(b).";
 
+    private const string LedgerRetention =
+        "Retained in full, nothing erased: the creditor ledger lines are Holded's journal entries for " +
+        "the member's creditor account (amounts, dates and their free-text descriptions), mirrored here " +
+        "from the books. Spanish law requires the books and their supporting documents be kept 6 years " +
+        "(Código de Comercio Art. 30) and 4 years for tax purposes (Ley 58/2003 Art. 66). The lines carry " +
+        "no user id: once the creditor binding is erased they are no longer linkable to the person " +
+        "through this system. GDPR Art. 17(3)(b).";
+
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
             [HoldedCreditorAccount] = null,
             [AdditionalHoldedCreditorAccounts] = null,
-            [SepaPayouts] = PayoutRetention
+            [SepaPayouts] = PayoutRetention,
+            [CreditorLedger] = LedgerRetention
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
