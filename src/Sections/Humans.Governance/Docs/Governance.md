@@ -18,7 +18,7 @@ The Governance page’s tier totals and Colaborador prompts use active approved 
 
 - **Volunteer** is the standard membership tier. Nearly all humans are Volunteers. Becoming a Volunteer happens through the onboarding process — not through the application/voting workflow described here.
 - **Colaborador** is an active contributor with project and event responsibilities. Requires an application and Board vote. 2-year term.
-- **Asociado** is a voting member with governance rights (assemblies, elections). Requires an application and Board vote. 2-year term. There is no code-enforced prerequisite of being a Colaborador first — the Application/Create UI defaults the radio to Asociado when the applicant is already an approved Colaborador, but the Submit endpoint accepts either tier from any volunteer.
+- **Asociado** is a voting member with governance rights (assemblies, elections). Requires an application and Board vote. 2-year term. There is no code-enforced prerequisite of being a Colaborador first — the Application/Create UI defaults the radio to Asociado when the applicant holds an active (unexpired) approved Colaborador term — the same `HasActiveApprovedTierAsync` rule the Applications index uses — but the Submit endpoint accepts either tier from any volunteer.
 - **Application** is a formal request to become a Colaborador or Asociado. Never used for becoming a Volunteer.
 - **Membership tier** is the member's current tier (Volunteer, Colaborador or Asociado), one `governance_membership_tiers` row per member, written by the approval and by term expiry. `MembershipTier` sits on `Humans.Governance.Contracts`; every other section reads it through `IGovernanceService.GetMembershipTierAsync` / `GetMembershipTiersAsync` (Users decomposition commit 11; it used to be `profiles.MembershipTier`).
 - **Board Vote** is an individual Board member's vote on a tier application. Board votes are transient working data — they are deleted when the application is finalized, and only the collective decision note and meeting date are retained (GDPR data minimization).
@@ -55,7 +55,7 @@ Tier application entity with state machine workflow. Used for Colaborador and As
 | ReviewedByUserId | Guid? | Reviewer ID — **FK only**, no nav |
 | ReviewNotes | string? (4000) | Reviewer notes / rejection reason |
 | TermExpiresAt | LocalDate? | Term expiry (Dec 31 of the current cycle's odd year), set on approval |
-| BoardMeetingDate | LocalDate? | Date of Board meeting where decision was made |
+| BoardMeetingDate | LocalDate? | Date of Board meeting where decision was made. Always set on finalize: `ApproveAsync`/`RejectAsync` default a missing date to today (UTC); the finalize form still asks for it. |
 | DecisionNote | string? (4000) | Board's collective decision note (only record after vote deletion) |
 | RenewalReminderSentAt | Instant? | When renewal reminder was last sent |
 

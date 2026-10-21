@@ -77,11 +77,12 @@ internal sealed class ApplicationDecisionService(
             return new ApplicationDecisionResult(false, "DecisionNoteTooLong");
         }
 
+        var today = clock.GetCurrentInstant().InUtc().Date;
         application.Approve(reviewerUserId, notes, clock);
-        application.BoardMeetingDate = boardMeetingDate;
+        // A finalized decision always carries its Board meeting date; a missing one means today.
+        application.BoardMeetingDate = boardMeetingDate ?? today;
         application.DecisionNote = notes;
 
-        var today = clock.GetCurrentInstant().InUtc().Date;
         application.TermExpiresAt = TermExpiryCalculator.ComputeTermExpiry(today);
 
         await FinalizeDecisionAsync(application, reviewerUserId, cancellationToken);
@@ -144,7 +145,7 @@ internal sealed class ApplicationDecisionService(
         }
 
         application.Reject(reviewerUserId, reason, clock);
-        application.BoardMeetingDate = boardMeetingDate;
+        application.BoardMeetingDate = boardMeetingDate ?? clock.GetCurrentInstant().InUtc().Date;
         application.DecisionNote = reason;
 
         await FinalizeDecisionAsync(application, reviewerUserId, cancellationToken);
