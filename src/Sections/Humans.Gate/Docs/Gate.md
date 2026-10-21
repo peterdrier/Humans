@@ -206,7 +206,7 @@ nobodies-collective/Humans#933.)
   _Cross-section read approved by Peter (verbal, 2026-06-29)._
 - **Users** — `IUserService` (scanner name; supervisor/claim display names; leaderboard
   rendering via `<vc:human>`).
-- **Tickets** — `ITicketWrite.SetParticipationFromTicketSyncAsync` (Tickets owns participation since Users
+- **Tickets** — `ITicketWrite.RecordParticipationAsync` (Tickets owns participation since Users
   decomposition commit 13) — on an
   admit with a matched guest, `GateService` projects the check-in onto the guest's
   `EventParticipation` row (Attended, `CheckedInAt` = admit instant, year = the active event's).

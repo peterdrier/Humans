@@ -157,7 +157,7 @@ internal sealed class GateService(
             if (activeEvent is null || activeEvent.Year == 0)
                 return;
 
-            await ticketWrite.SetParticipationFromTicketSyncAsync(
+            await ticketWrite.RecordParticipationAsync(
                 guestUserId.Value, activeEvent.Year, ParticipationStatus.Attended,
                 clock.GetCurrentInstant(), CancellationToken.None);
         }

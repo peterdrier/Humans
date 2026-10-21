@@ -61,7 +61,7 @@ public class AttendeeContactImportServiceApplyTests
             .UpsertAttendeesAsync(Arg.Is<IReadOnlyList<TicketAttendee>>(
                 l => l.Count == 1 && l[0].Id == attendeeId), Arg.Any<CancellationToken>());
 
-        await harness.UsersWrite.Received(1).SetParticipationFromTicketSyncAsync(
+        await harness.UsersWrite.Received(1).RecordParticipationAsync(
             targetUserId, 2026, scanned ? ParticipationStatus.Attended : ParticipationStatus.Ticketed,
             scanned ? scan : null, Arg.Any<CancellationToken>());
 
@@ -111,7 +111,7 @@ public class AttendeeContactImportServiceApplyTests
         await harness.Provisioning.Received(1).FindOrCreateUserByEmailAsync(
             "fresh@x.com", "Fresh Face", ContactSource.TicketTailor, Arg.Any<CancellationToken>());
 
-        await harness.UsersWrite.Received(1).SetParticipationFromTicketSyncAsync(
+        await harness.UsersWrite.Received(1).RecordParticipationAsync(
             newUserId, 2026, ParticipationStatus.Ticketed,
             null, Arg.Any<CancellationToken>());
     }
@@ -316,7 +316,7 @@ public class AttendeeContactImportServiceApplyTests
         extra.MatchedUserId.Should().Be(targetUserId);
 
         // Participation flips once for the single user, not twice.
-        await harness.UsersWrite.Received(1).SetParticipationFromTicketSyncAsync(
+        await harness.UsersWrite.Received(1).RecordParticipationAsync(
             targetUserId, 2026, scanned ? ParticipationStatus.Attended : ParticipationStatus.Ticketed,
             scanned ? scan - Duration.FromHours(1) : null, Arg.Any<CancellationToken>());
     }
