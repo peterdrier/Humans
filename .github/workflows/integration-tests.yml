@@ -7,9 +7,6 @@ name: Integration tests
 
 on:
   workflow_dispatch:
-  # Temporary, so the first run happens before this file reaches main; removed before merge.
-  push:
-    branches: [claude/project-thread-7fbnmk-integration-run]
   schedule:
     - cron: '0 3 * * *'
 
