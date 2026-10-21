@@ -7,7 +7,6 @@ namespace Humans.Store.Data;
 /// Repository for the Store section's tables: <c>store_products</c>,
 /// <c>store_orders</c>, <c>store_order_lines</c>, <c>store_payments</c> and
 /// <c>store_invoices</c>. The only non-test file that writes to these DbSets.
-/// <c>store_treasury_sync_state</c> ships unused — nothing here touches it.
 /// </summary>
 /// <remarks>
 /// Keeps the <c>Store</c> prefix because it derives from <see cref="IRepository"/> and so

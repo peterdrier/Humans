@@ -18,7 +18,7 @@ namespace Humans.Store.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -269,29 +269,6 @@ namespace Humans.Store.Data.Migrations
                     b.HasIndex("Year", "IsActive");
 
                     b.ToTable("store_products", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Store.Domain.TreasurySyncState", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("LastError")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<Instant?>("LastSyncAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("SyncStatus")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("store_treasury_sync_state", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Store.Domain.Invoice", b =>

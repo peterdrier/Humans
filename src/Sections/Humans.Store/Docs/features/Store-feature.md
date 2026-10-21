@@ -96,10 +96,9 @@ The section invariant doc is [`Store.md`](../Store.md).
 **As** the system, **I want** to poll Holded for treasury entries that match outstanding `BankTransfer` payments, **so that** the order ledger stays in sync with what actually cleared the bank without Treasurer manual reconciliation.
 
 **Acceptance Criteria:**
-- `TreasurySyncState` is a singleton cursor row tracking `LastSyncAt`, `SyncStatus` (`Idle` / `Running` / `Failed`), and `LastError`.
-- The sync job would poll Holded for new treasury entries since `LastSyncAt`, attempt to match them to outstanding `BankTransfer` `Payment` rows by amount + counterparty, and store match results.
+- The sync job would poll Holded for new treasury entries, attempt to match them to outstanding `BankTransfer` `Payment` rows by amount + counterparty, and store match results.
 - Unmatched entries would be flagged for Treasurer attention.
-- *Note: US-30.6 is not built — no sync job exists; `TreasurySyncState` ships with no reader or writer (`Docs/debt.yml` STORE-2).*
+- *Note: US-30.6 is not built. Its `TreasurySyncState` cursor table was dropped unused (peterdrier/Humans#1924); Finance owns the Holded bank-movement feed, so a future implementation reads through it rather than keeping a Store-side cursor.*
 
 ### US-30.7: Admin Aggregate Summary (StoreAdmin / FinanceAdmin / Admin)
 
@@ -133,7 +132,6 @@ See [`Store.md`](../Store.md) for the full table schema. Summary:
 | `OrderLine` | `store_order_lines` | child of `Order` | `ProductId` (intra), `AddedByUserId` (provenance) |
 | `Payment` | `store_payments` | child of `Order` | `RecordedByUserId` (provenance, nullable for Stripe) |
 | `Invoice` | `store_invoices` | yes (one per order) | `OrderId` (intra), `IssuedByUserId` (provenance) |
-| `TreasurySyncState` | `store_treasury_sync_state` | singleton (`Id = 1`) | none |
 
 All cross-section linkage is bare `Guid` columns — no FK constraints, no nav properties (per `memory/architecture/no-cross-section-ef-joins.md`).
 
