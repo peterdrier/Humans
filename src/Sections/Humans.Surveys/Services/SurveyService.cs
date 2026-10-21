@@ -2230,14 +2230,18 @@ internal sealed class SurveyService(
         if (rating is { } value && (value < (question.RatingMin ?? 1) || value > (question.RatingMax ?? 5)))
             throw new InvalidOperationException("The rating is outside the question's range.");
 
+        var text = question.Type is SurveyQuestionType.ShortText or SurveyQuestionType.LongText
+            && !string.IsNullOrWhiteSpace(answer.TextValue) ? answer.TextValue : null;
+        if (text is not null && text.EnumerateRunes().Count() > 4000)
+            throw new InvalidOperationException("A text answer must be 4000 characters or fewer.");
+
         var grid = question.Type == SurveyQuestionType.Grid
             ? NormalizeGridSelections(question.GridRows, question.Options, question.GridSelectionMode, answer.GridSelections)
             : null;
         return answer with
         {
             SelectedOptionValues = choices,
-            TextValue = question.Type is SurveyQuestionType.ShortText or SurveyQuestionType.LongText
-                && !string.IsNullOrWhiteSpace(answer.TextValue) ? answer.TextValue : null,
+            TextValue = text,
             RatingValue = rating,
             GridSelections = grid?.Count > 0
                 ? grid.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<string>)pair.Value, StringComparer.Ordinal)
