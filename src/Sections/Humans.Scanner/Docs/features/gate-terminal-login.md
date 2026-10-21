@@ -47,7 +47,12 @@ cannot be opened by the kiosk account.
   Profile ("Gate Terminal", legal name Gate/Terminal) created through the canonical
   `SaveProfileAsync` path so `UserStateClassifier` yields `Active` (the membership
   filter requires it). Consent check is auto-cleared so the account never sits in
-  the Consent Coordinator review queue.
+  the Consent Coordinator review queue. If setup fails after creating the user,
+  another password-set attempt resumes setup on that row. Until a password exists,
+  profile and consent-review annotation must both succeed before a password is set.
+  Credential writes reload the user in a fresh Identity scope after setup, preserving
+  the names and Active state saved through the profile service. Established-account
+  password rotation does not repeat provisioning.
 - **Credential:** the Identity `PasswordHash` on the row itself — no extra storage,
   no schema change. Set/rotate at `/Tickets/Admin/Gate` (policy `TicketAdminOrAdmin`)
   via reset-token replace, so a new password that fails the Identity policy leaves the
