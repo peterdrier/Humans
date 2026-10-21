@@ -43,7 +43,7 @@ public sealed class MemberOutboxControllerTests
     private void GivenKnownUser(Guid id) =>
         _users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(new UserInfo(
             id, "Member", false, "en", null, Instant.FromUnixTimeSeconds(0),
-            null, null, null, null, null, false, false, null, null,
+            null, null, null, null, null, null, null,
             null, null, null, [], [], [], null, []));
 
     private static EmailOutboxMessageDto Message(Guid userId) => new(

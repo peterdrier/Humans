@@ -769,14 +769,21 @@ internal sealed class UserService(
             .Select(e => e.Email)
             .FirstOrDefault() ?? user.IdentityEmailColumn;
 
+        // The two dead legacy flags stay in the Art. 15 export while the columns exist (debt ledger
+        // USERS-12/13 remove these lines with the drop). Scoped suppression: this is their only reader.
+#pragma warning disable CS0618
+        var unsubscribedFromCampaigns = user.UnsubscribedFromCampaigns;
+        var suppressScheduleChangeEmails = user.SuppressScheduleChangeEmails;
+#pragma warning restore CS0618
+
         var shaped = new
         {
             user.Id,
             Email = effectiveEmail,
             user.DisplayName,
             user.PreferredLanguage,
-            user.UnsubscribedFromCampaigns,
-            user.SuppressScheduleChangeEmails,
+            UnsubscribedFromCampaigns = unsubscribedFromCampaigns,
+            SuppressScheduleChangeEmails = suppressScheduleChangeEmails,
             ContactSource = user.ContactSource?.ToString(),
             State = user.State.ToString(),
             DeletionRequestedAt = user.DeletionRequestedAt.ToIso8601(),

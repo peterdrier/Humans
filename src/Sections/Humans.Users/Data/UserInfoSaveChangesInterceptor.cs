@@ -165,8 +165,6 @@ internal sealed class UserInfoSaveChangesInterceptor(
             DeletionRequestedAt = user.DeletionRequestedAt,
             DeletionScheduledFor = user.DeletionScheduledFor,
             DeletionEligibleAfter = user.DeletionEligibleAfter,
-            UnsubscribedFromCampaigns = user.UnsubscribedFromCampaigns,
-            SuppressScheduleChangeEmails = user.SuppressScheduleChangeEmails,
             // GoogleEmailStatus is not on UserInfo: the Google identity and its verdict are
             // GoogleIntegration's google_workspace_identities (Users decomposition commit 15).
             ContactSource = user.ContactSource,

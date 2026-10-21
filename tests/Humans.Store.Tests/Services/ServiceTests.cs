@@ -1385,7 +1385,7 @@ public class ServiceTests
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(new UserInfo(
             actor, "Tester", false, "en", null, _clock.GetCurrentInstant(), null, null, null, null, null,
-            false, false, null, null, null, null, null, [], [], [], null, []));
+            null, null, null, null, null, [], [], [], null, []));
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "test"))
