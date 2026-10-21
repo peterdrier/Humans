@@ -28,7 +28,9 @@ internal static class DrivePlusAddressFallback
             : email;
 
     /// <summary>
-    /// Grants <paramref name="email"/>. When Drive refuses a plus address, grants the base address
+    /// Grants <paramref name="email"/>. When Drive refuses a plus address (a target rejection or
+    /// its 400 internal error; never an outage, rate limit or caller-permission failure, which say
+    /// nothing about the address), grants the base address
     /// instead and, if Drive accepts it, records it on the member's identity so later passes match and
     /// grant it directly. Returns the result to act on and the address it is for; when the base
     /// address fails too, that is the original failure.
@@ -38,7 +40,8 @@ internal static class DrivePlusAddressFallback
         Guid userId, string identityEmail, IWorkspaceIdentityManagement identities, CancellationToken ct)
     {
         var result = await create(email);
-        if (result.Outcome != DrivePermissionCreateOutcome.Failed || BaseAddress(email) is not { } baseEmail)
+        if (result.Error is not ({ IsDriveTargetRejection: true } or { IsInternalError: true })
+            || BaseAddress(email) is not { } baseEmail)
             return (result, email);
 
         var fallback = await create(baseEmail);

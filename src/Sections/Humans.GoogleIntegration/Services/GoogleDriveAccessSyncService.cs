@@ -484,9 +484,10 @@ internal sealed class GoogleDriveAccessSyncService(
             switch (result.Outcome)
             {
                 // After a transient retry, AlreadyExists means the failed attempt was applied
-                // by Google anyway; the grant is still ours to record.
+                // by Google anyway; the grant is still ours to record. So is a fallback onto a
+                // base address that already had access: the member's Drive address changed.
                 case DrivePermissionCreateOutcome.Created:
-                case DrivePermissionCreateOutcome.AlreadyExists when retried:
+                case DrivePermissionCreateOutcome.AlreadyExists when retried || insteadOf.Length > 0:
                     await googleSyncLog.LogAsync(
                         GoogleSyncLogAction.AccessGranted, claim.ResourceId,
                         $"Granted Drive access ({role}) to {grantedEmail}{insteadOf} ({claim.DisplayName})",

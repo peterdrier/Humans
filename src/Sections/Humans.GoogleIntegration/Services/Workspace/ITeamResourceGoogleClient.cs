@@ -127,7 +127,10 @@ internal sealed record GoogleClientError(int StatusCode, string? RawMessage)
     /// Google-side hiccup worth retrying within the same pass: 5xx, 429, or the 400 Drive returns
     /// as "Sorry, an internal error has occurred" (peterdrier/Humans#2037).
     /// </summary>
-    public bool IsTransient => StatusCode is >= 500 or 429
-        || (StatusCode == 400 && RawMessage is { } message
-            && message.Contains("internal error has occurred", StringComparison.OrdinalIgnoreCase));
+    public bool IsTransient => StatusCode is >= 500 or 429 || IsInternalError;
+
+    /// <summary>Drive's 400 "Sorry, an internal error has occurred". Usually a hiccup, but it is
+    /// also how Drive refuses some plus addresses on custom domains (peterdrier/Humans#2037).</summary>
+    public bool IsInternalError => StatusCode == 400 && RawMessage is { } message
+        && message.Contains("internal error has occurred", StringComparison.OrdinalIgnoreCase);
 }

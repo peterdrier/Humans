@@ -74,12 +74,18 @@ internal sealed class GoogleWorkspaceSyncService(
             email => drivePermissions.CreatePermissionAsync(resource.GoogleId, email, apiRole, cancellationToken),
             driveTargetEmail, userId, identityEmail, workspaceIdentities, cancellationToken);
 
+        var insteadOf = string.Equals(grantedEmail, driveTargetEmail, StringComparison.Ordinal)
+            ? ""
+            : $" in place of {driveTargetEmail}, which Drive refused";
         switch (result.Outcome)
         {
+            // A fallback onto a base address that already had access still changes the
+            // member's Drive address, so it is logged like a grant.
             case DrivePermissionCreateOutcome.Created:
+            case DrivePermissionCreateOutcome.AlreadyExists when insteadOf.Length > 0:
                 await googleSyncLog.LogAsync(
                     GoogleSyncLogAction.AccessGranted, resource.Id,
-                    $"Granted Drive access ({effectiveLevel}) to {grantedEmail} ({resource.Name})",
+                    $"Granted Drive access ({effectiveLevel}) to {grantedEmail}{insteadOf} ({resource.Name})",
                     nameof(GoogleWorkspaceSyncService),
                     grantedEmail, apiRole, syncSource, success: true,
                     userId: userId, ct: cancellationToken);
