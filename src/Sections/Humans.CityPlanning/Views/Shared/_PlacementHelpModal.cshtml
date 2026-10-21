@@ -10,23 +10,20 @@
             </div>
             <div class="modal-body">
                 <h6>@Localizer["CityPlanning_Help_WhenIsIt"]</h6>
-                @{
-                    const string dateFmt = "d MMMM";
-                }
                 @if (Model.OpensOn.HasValue || Model.ClosesOn.HasValue || Model.ChangeableUntilOn.HasValue)
                 {
                     <ul class="text-muted small ps-3">
                         @if (Model.OpensOn is { } opensOn)
                         {
-                            <li>@Localizer["CityPlanning_Help_Opens"] <strong>@opensOn.ToString(dateFmt, null)</strong></li>
+                            <li>@Localizer["CityPlanning_Help_Opens"] <strong>@opensOn.ToDate()</strong></li>
                         }
                         @if (Model.ClosesOn is { } closesOn)
                         {
-                            <li>@Localizer["CityPlanning_Help_LastDayToPlace"] <strong>@closesOn.ToString(dateFmt, null)</strong></li>
+                            <li>@Localizer["CityPlanning_Help_LastDayToPlace"] <strong>@closesOn.ToDate()</strong></li>
                         }
                         @if (Model.ChangeableUntilOn is { } changeableUntilOn)
                         {
-                            <li>@Localizer["CityPlanning_Help_ChangeableUntil"] <strong>@changeableUntilOn.ToString(dateFmt, null)</strong></li>
+                            <li>@Localizer["CityPlanning_Help_ChangeableUntil"] <strong>@changeableUntilOn.ToDate()</strong></li>
                         }
                     </ul>
                 }
