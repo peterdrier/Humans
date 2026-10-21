@@ -205,7 +205,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
 
         var result = await controller.EditLegalDocument(document.Id, model);
 
-        await using var verify = LegalDbFactory.CreateDbContext();
+        await using var verify = await LegalDbFactory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
         var stored = await verify.LegalDocuments.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         if (omitted is not null)
         {
@@ -265,7 +265,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
             : await controller.CreateLegalDocument(model);
 
         result.Should().BeOfType<NotFoundResult>();
-        await using var verify = LegalDbFactory.CreateDbContext();
+        await using var verify = await LegalDbFactory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
         var stored = await verify.LegalDocuments.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
         stored.Should().ContainSingle().Which.Name.Should().Be("Existing document");
         stored[0].TeamId.Should().Be(_team.Id);
@@ -447,7 +447,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         // Repository created its own DbContext via the factory; read the
         // refreshed value through a fresh context rather than the test's
         // change-tracker-polluted one.
-        await using var verifyCtx = LegalDbFactory.CreateDbContext();
+        await using var verifyCtx = await LegalDbFactory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
         var version = await verifyCtx.DocumentVersions
             .AsNoTracking()
             .FirstOrDefaultAsync(v => v.Id == versionId, Xunit.TestContext.Current.CancellationToken);
@@ -630,7 +630,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
 
         result.Should().Contain("v1.0");
 
-        await using var verifyCtx = LegalDbFactory.CreateDbContext();
+        await using var verifyCtx = await LegalDbFactory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
         var version = await verifyCtx.DocumentVersions
             .AsNoTracking()
             .SingleAsync(v => v.LegalDocumentId == document.Id, Xunit.TestContext.Current.CancellationToken);
@@ -670,7 +670,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
 
         result.Should().Contain("v2.0");
 
-        await using var verifyCtx = LegalDbFactory.CreateDbContext();
+        await using var verifyCtx = await LegalDbFactory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
         var newVersion = await verifyCtx.DocumentVersions
             .AsNoTracking()
             .SingleAsync(v => v.CommitSha == "sha-2", Xunit.TestContext.Current.CancellationToken);
@@ -696,7 +696,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*No canonical Spanish file*");
 
-        await using var verifyCtx = LegalDbFactory.CreateDbContext();
+        await using var verifyCtx = await LegalDbFactory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
         (await verifyCtx.DocumentVersions
                 .AsNoTracking()
                 .AnyAsync(v => v.LegalDocumentId == document.Id, Xunit.TestContext.Current.CancellationToken))
@@ -714,7 +714,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         Func<Task> sync = () => _service.SyncDocumentAsync(document.Id, Xunit.TestContext.Current.CancellationToken);
 
         await sync.Should().ThrowAsync<InvalidOperationException>().WithMessage("*canonical Spanish content*");
-        await using var verify = LegalDbFactory.CreateDbContext();
+        await using var verify = await LegalDbFactory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
         (await verify.DocumentVersions.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
         (await verify.LegalDocuments.SingleAsync(d => d.Id == document.Id, Xunit.TestContext.Current.CancellationToken))
             .CurrentCommitSha.Should().Be("old-sha");

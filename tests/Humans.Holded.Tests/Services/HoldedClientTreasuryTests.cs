@@ -372,7 +372,7 @@ public class HoldedClientTreasuryTests
         {
             capturedPath = req.RequestUri!.AbsolutePath;
             capturedMethod = req.Method.Method;
-            capturedBody = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            capturedBody = new StreamReader(req.Content!.ReadAsStream()).ReadToEnd();
             return Respond(HttpStatusCode.OK, "{}");
         });
 

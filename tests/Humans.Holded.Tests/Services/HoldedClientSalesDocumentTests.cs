@@ -53,7 +53,7 @@ public class HoldedClientSalesDocumentTests
             req.Method.Method.Should().Be("POST");
             req.RequestUri!.PathAndQuery.Should().Be(expectedPath);
             req.Headers.Authorization!.Parameter.Should().Be("test-key");
-            body = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            body = new StreamReader(req.Content!.ReadAsStream()).ReadToEnd();
             return Respond(HttpStatusCode.Created, """{"id":"doc-9"}""");
         });
 
@@ -195,7 +195,7 @@ public class HoldedClientSalesDocumentTests
         string? body = null;
         var handler = new StubHandler(req =>
         {
-            body = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            body = new StreamReader(req.Content!.ReadAsStream()).ReadToEnd();
             return Respond(HttpStatusCode.Created, """{"id":"doc-9"}""");
         });
 

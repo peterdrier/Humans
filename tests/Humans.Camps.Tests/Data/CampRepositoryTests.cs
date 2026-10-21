@@ -567,7 +567,7 @@ public sealed class CampRepositoryTests : IDisposable
         // Helper that lands a CampRoleAssignment for the given (camp, role, user)
         // via the camp's current season + a CampMember(Active). Used by tests
         // that exercise the role-assignment-based lead authority.
-        var season = _dbContext.CampSeasons.FirstOrDefault(s => s.CampId == campId);
+        var season = await _dbContext.CampSeasons.FirstOrDefaultAsync(s => s.CampId == campId, Xunit.TestContext.Current.CancellationToken);
         if (season is null)
         {
             season = BuildSeason(campId, CampSeasonStatus.Active, year: 2026);

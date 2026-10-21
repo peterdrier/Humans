@@ -1116,18 +1116,18 @@ public class SepaBankBookingTests
         var service = MakeService();
         Task<SepaBookingResult>? second = null;
         var accounts = OwedAccounts(30m);
-        _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>()).Returns(_ =>
+        _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>()).Returns(async _ =>
         {
             if (second is null)
             {
                 // Mid-flight: the first booking has read "not booked" and has not stamped anything.
                 second = Task.Run(() => MakeService().BookSepaTransferAsync(
                     TransferId, MovementId, Guid.NewGuid()));
-                second.Wait(TimeSpan.FromMilliseconds(250));
+                await Task.WhenAny(second, Task.Delay(TimeSpan.FromMilliseconds(250)));
                 second.IsCompleted.Should().BeFalse("the second booking must wait for the first");
             }
 
-            return accounts;
+            return (IReadOnlyList<HoldedAccountDto>)accounts;
         });
 
         var first = await service.BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());

@@ -179,20 +179,20 @@ public abstract class ShiftsTestHarness : IDisposable
         var settingsService = Substitute.For<ISettingsService>();
 
         settingsService.GetEventSettingsByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(ci =>
+            .Returns(async ci =>
             {
                 var id = ci.Arg<Guid>();
                 var local = ShiftsDb.EventSettings.Local.FirstOrDefault(e => e.Id == id)
-                    ?? ShiftsDb.EventSettings.FirstOrDefault(e => e.Id == id);
-                return Task.FromResult(local is null ? null : ToEventSettingsInfo(local));
+                    ?? await ShiftsDb.EventSettings.FirstOrDefaultAsync(e => e.Id == id, ci.Arg<CancellationToken>());
+                return local is null ? null : ToEventSettingsInfo(local);
             });
 
         settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(_ =>
+            .Returns(async ci =>
             {
                 var local = ShiftsDb.EventSettings.Local.FirstOrDefault(e => e.IsActive)
-                    ?? ShiftsDb.EventSettings.FirstOrDefault(e => e.IsActive);
-                return Task.FromResult(local is null ? null : ToEventSettingsInfo(local));
+                    ?? await ShiftsDb.EventSettings.FirstOrDefaultAsync(e => e.IsActive, ci.Arg<CancellationToken>());
+                return local is null ? null : ToEventSettingsInfo(local);
             });
 
         return new EventCalendarResolver(settingsService);
@@ -238,11 +238,11 @@ public abstract class ShiftsTestHarness : IDisposable
             });
 
         svc.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
+            .Returns(async ValueTask<UserInfo?> (callInfo) =>
             {
                 var id = callInfo.Arg<Guid>();
-                var user = Db.Users.FirstOrDefault(u => u.Id == id);
-                return new ValueTask<UserInfo?>(user?.ToUserInfo());
+                var user = await Db.Users.FirstOrDefaultAsync(u => u.Id == id, callInfo.Arg<CancellationToken>());
+                return user?.ToUserInfo();
             });
 
         return svc;

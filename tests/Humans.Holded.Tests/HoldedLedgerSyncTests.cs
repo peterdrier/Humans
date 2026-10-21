@@ -173,13 +173,13 @@ public sealed class HoldedLedgerSyncTests
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var firstStarted = new TaskCompletionSource();
-        var releaseFirst = new TaskCompletionSource();
+        using var releaseFirst = new SemaphoreSlim(0);
         _client.ListLedgerEntriesAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), null, Arg.Any<CancellationToken>())
-            .Returns(_ =>
+            .Returns(async _ =>
             {
                 firstStarted.TrySetResult();
-                releaseFirst.Task.GetAwaiter().GetResult();
-                return new List<HoldedLedgerLineDto>();
+                await releaseFirst.WaitAsync(CancellationToken.None);
+                return (IReadOnlyList<HoldedLedgerLineDto>)new List<HoldedLedgerLineDto>();
             });
 
         var inFlight = Task.Run(() => _service.SyncLedgerAsync(full: false, CancellationToken.None), CancellationToken.None);
@@ -187,7 +187,7 @@ public sealed class HoldedLedgerSyncTests
 
         (await _service.SyncLedgerAsync(full: true, ct)).Should().BeFalse();
 
-        releaseFirst.SetResult();
+        releaseFirst.Release();
         (await inFlight).Should().BeTrue();
     }
 

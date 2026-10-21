@@ -73,7 +73,7 @@ public class AuditLogServiceTests : IDisposable
             "Auto-approved", "SystemTeamSyncJob");
 
         // Repository auto-saves — entry should be visible immediately.
-        var entry = _dbContext.AuditLogEntries.AsNoTracking().Single();
+        var entry = await _dbContext.AuditLogEntries.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         entry.Action.Should().Be(AuditAction.VolunteerApproved);
         entry.EntityType.Should().Be("User");
         entry.EntityId.Should().Be(entityId);
@@ -92,7 +92,7 @@ public class AuditLogServiceTests : IDisposable
             AuditAction.MemberSuspended, nameof(User), entityId,
             "Suspended for inactivity", actorId);
 
-        var entry = _dbContext.AuditLogEntries.AsNoTracking().Single();
+        var entry = await _dbContext.AuditLogEntries.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         entry.ActorUserId.Should().Be(actorId);
         entry.Action.Should().Be(AuditAction.MemberSuspended);
         entry.EntityType.Should().Be("User");
@@ -113,7 +113,7 @@ public class AuditLogServiceTests : IDisposable
         // Issue #552: the new Application-layer service persists each entry
         // immediately through the repository. The caller no longer needs to
         // call SaveChanges on a shared DbContext.
-        _dbContext.AuditLogEntries.AsNoTracking().Count().Should().Be(1);
+        (await _dbContext.AuditLogEntries.AsNoTracking().CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
     [HumansTheory]

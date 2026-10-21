@@ -89,7 +89,7 @@ public class FileSystemFileStorageTests : IDisposable
 
         var fullPath = Path.Combine(_wwwroot, "uploads", "camps", "abc", "file.jpg");
         File.Exists(fullPath).Should().BeTrue();
-        File.ReadAllBytes(fullPath).Should().BeEquivalentTo(payload);
+        (await File.ReadAllBytesAsync(fullPath, Xunit.TestContext.Current.CancellationToken)).Should().BeEquivalentTo(payload);
     }
 
     [HumansFact]

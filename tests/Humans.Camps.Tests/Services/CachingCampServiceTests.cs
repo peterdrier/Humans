@@ -207,8 +207,8 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         // call InvalidateCampAsync — this is the exact path the decorator's
         // write methods (SetEarlyEntryAsync, RemoveCampMemberAsync, …) take:
         // InvalidateCampAsync → _repo.GetByIdAsync → projection.
-        var third = CampsDb.CampMembers
-            .First(m => m.CampSeasonId == season.Id && !m.HasEarlyEntry);
+        var third = await CampsDb.CampMembers
+            .FirstAsync(m => m.CampSeasonId == season.Id && !m.HasEarlyEntry, TestContext.Current.CancellationToken);
         third.HasEarlyEntry = true;
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
