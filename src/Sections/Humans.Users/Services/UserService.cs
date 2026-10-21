@@ -34,7 +34,7 @@ internal sealed class UserService(
     internal const string UserEmails = "UserEmails";
     internal const string VolunteerHistory = "VolunteerHistory";
     internal const string Languages = "Languages";
-    internal const string CommunicationPreferences = "CommunicationPreferences";
+    internal const string LegacyCommunicationPreferences = "LegacyCommunicationPreferences";
     internal const string LegacyEventParticipations = "LegacyEventParticipations";
 
     private static readonly TrackedLock EmailAdditionLock = new("UserService.EmailAddition");
@@ -938,7 +938,7 @@ internal sealed class UserService(
             pl.Proficiency
         }).ToList());
 
-        var commPrefsSlice = new UserDataSlice(CommunicationPreferences, communicationPreferences.Select(cp => new
+        var commPrefsSlice = new UserDataSlice(LegacyCommunicationPreferences, communicationPreferences.Select(cp => new
         {
             cp.Category,
             cp.OptedOut,
@@ -1029,7 +1029,7 @@ internal sealed class UserService(
             [UserEmails] = null,
             [VolunteerHistory] = null,
             [Languages] = null,
-            [CommunicationPreferences] = null
+            [LegacyCommunicationPreferences] = null
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;

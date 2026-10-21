@@ -4,9 +4,9 @@
   src/Sections/Humans.Campaigns/Domain/**
   src/Sections/Humans.Campaigns/Data/Configurations/**
   src/Sections/Humans.Campaigns/Views/**
-  src/Sections/Humans.Users/Views/Unsubscribe/**
-  src/Sections/Humans.Users/Controllers/UnsubscribeController.cs
-  src/Sections/Humans.Users/Services/UnsubscribeService.cs
+  src/Sections/Humans.Email/Views/Unsubscribe/**
+  src/Sections/Humans.Email/Controllers/UnsubscribeController.cs
+  src/Sections/Humans.Email/Services/UnsubscribeService.cs
   src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Sections/Humans.Tickets/Services/TicketSyncService.cs
 -->

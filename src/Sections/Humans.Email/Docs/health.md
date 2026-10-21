@@ -40,6 +40,11 @@ The section keeps a second, permanent tally beside the send log: how many messag
 kind went out or failed on each day. The send log itself is pruned on age, so without the
 tally there is no denominator when the mail provider reports a spam-rate spike months later.
 
+It also holds each person's answer to "which kinds of mail do you want?" — one switch per
+kind for email and one for the in-app inbox — and the no-login links in every message that
+let a reader say no. Those links must keep working for as long as they live, so their
+format never changes (Users decomposition commit 14 moved them here unchanged).
+
 Finally, it is where a person sees what the organisation has emailed them, where that
 history is handed over on a data-export request, and where it is destroyed on an erasure
 request.
@@ -57,6 +62,8 @@ Every external entry point, grouped by the question it answers.
 | **Which templates cannot wait?** | `TimeSensitiveTemplates` | One list, read by both the immediate drain and the batch order, so they cannot disagree. |
 | **What have we sent this person?** | `IEmailOutboxService` — per-user list, per-user count (dashboard stats are internal, on `IEmailOutboxManagement`) | Consumed by Email's own member-outbox pages and admin-detail card. |
 | **Drain the queue / prune the queue** | `IEmailOutboxProcessor`, `IEmailOutboxRetention`, `IImmediateOutboxProcessor` | Job-facing. The first two have no consumer outside the section any more; Shell registers the third. |
+| **What kinds of mail does this person accept?** | `ICommunicationPreferenceService` (reads, incl. the bulk per-category map); `ICommunicationPreferenceWrite` (MailerLite's update and reset); `ICommunicationPreferenceManagement` (internal: channel-aware updates, tokens, the legacy copy) | Read by Notifications, MailerLite, Debug and Users. The legacy fallback over Users' frozen rows goes when the retirement PR drops it. |
+| **Say no without logging in** | `/Unsubscribe/*`, `/Guest/CommunicationPreferences*` (`IUnsubscribeService`, `IUnsubscribeTokenProvider`, both internal) | Token purposes and payload are frozen so old links keep validating. |
 | **Admin operates the queue** | `IEmailOutboxManagement` (internal) behind `/Email/EmailOutbox` and the `/Settings#email` tab — pause, resume, retry, discard, volume, backfill | Section-internal; `EmailController` and the settings tab component are its only callers. |
 | **Admin reads the templates** | `/Email/EmailPreview` | Every contributor's samples, rendered in each of the six cultures. |
 

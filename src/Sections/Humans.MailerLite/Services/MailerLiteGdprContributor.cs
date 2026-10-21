@@ -9,7 +9,7 @@ namespace Humans.MailerLite.Services;
 /// §8a) but does hold per-person state in a third-party system: MailerLite subscriber
 /// membership. Article 15 export contributes nothing — the subscriber list mirrors state
 /// already exported by the sections that generate it (marketing opt-in lives on
-/// <c>UserInfo.MarketingOptedOut</c>), not new personal data — so
+/// Email's communication preferences), not new personal data — so
 /// <see cref="ContributeForUserAsync"/> always returns an empty list. Article 17 erasure
 /// deletes the person's MailerLite subscriber outright (nobodies-collective/Humans#853).
 ///

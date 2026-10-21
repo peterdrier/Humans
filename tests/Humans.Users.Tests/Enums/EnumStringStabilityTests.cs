@@ -6,7 +6,7 @@ namespace Humans.Users.Tests.Enums;
 
 /// <summary>
 /// Users' share of the string-stored-enum guard:
-/// <see cref="LegacyMembershipTier"/>, <see cref="LegacyConsentCheckStatus"/>, <see cref="MessageCategory"/>,
+/// <see cref="LegacyMembershipTier"/>, <see cref="LegacyConsentCheckStatus"/>, <see cref="LegacyMessageCategory"/>,
 /// <see cref="ContactFieldType"/> and <see cref="ContactFieldVisibility"/> live on
 /// <c>Humans.Users.Contracts</c>, so the guard belongs to the section that owns them.
 /// </summary>
@@ -46,7 +46,7 @@ public class EnumStringStabilityTests
             typeof(ContactFieldVisibility), ["BoardOnly", "CoordinatorsAndBoard", "MyTeams", "AllActiveProfiles"]
         },
         {
-            typeof(MessageCategory), [
+            typeof(LegacyMessageCategory), [
                 "System", "EventOperations", "CommunityUpdates", "Marketing", "Governance",
                 "CampaignCodes", "FacilitatedMessages", "Ticketing", "VolunteerUpdates", "TeamUpdates"
             ]

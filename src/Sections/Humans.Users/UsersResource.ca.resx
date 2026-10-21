@@ -141,15 +141,6 @@
   <data name="Profile_NotificationTargetUpdated" xml:space="preserve">
     <value>Adreça de correu de notificacions actualitzada.</value>
   </data>
-  <data name="Profile_DeletionAlreadyPending" xml:space="preserve">
-    <value>Ja existeix una sol·licitud d'eliminació pendent.</value>
-  </data>
-  <data name="Profile_NoDeletionPending" xml:space="preserve">
-    <value>No hi ha cap sol·licitud d'eliminació pendent.</value>
-  </data>
-  <data name="Profile_DeletionCancelled" xml:space="preserve">
-    <value>L'eliminació del compte s'ha cancel·lat.</value>
-  </data>
   <data name="Profile_ProfilePicture" xml:space="preserve">
     <value>Foto de perfil</value>
   </data>
@@ -360,43 +351,9 @@
   <data name="CommPrefs_Title" xml:space="preserve">
     <value>Preferències de comunicació</value>
   </data>
-  <data name="CommPrefs_Description" xml:space="preserve">
-    <value>Tria quines comunicacions reps i com.</value>
-  </data>
-  <data name="CommPrefs_Category" xml:space="preserve">
-    <value>Categoria</value>
-  </data>
   <data name="CommPrefs_Email" xml:space="preserve">
     <value>Correu</value>
   </data>
-  <data name="CommPrefs_Alert" xml:space="preserve">
-    <value>Alerta</value>
-  </data>
-  <data name="CommPrefs_BackToProfile" xml:space="preserve">
-    <value>Tornar al perfil</value>
-  </data>
-  <data name="CommPrefs_BackToDashboard" xml:space="preserve">
-    <value>Tornar al tauler</value>
-  </data>
-  <data name="CommPrefs_OneClick_Prompt" xml:space="preserve">
-    <value>Has fet clic en un enllaç per donar-te de baixa dels correus de {0}.</value>
-  </data>
-  <data name="CommPrefs_OneClick_Hint" xml:space="preserve">
-    <value>Dóna't de baixa amb un sol clic, o ajusta els detalls a la matriu de sota.</value>
-  </data>
-  <data name="CommPrefs_OneClick_Button" xml:space="preserve">
-    <value>Donar-se de baixa de {0}</value>
-  </data>
-  <data name="CommPrefs_OneClick_Done" xml:space="preserve">
-    <value>T'has donat de baixa. Pots tornar a activar qualsevol categoria a sota.</value>
-  </data>
-  <data name="CommPrefs_UpdateSource" xml:space="preserve">
-    <value>Font d'actualització</value>
-  </data>
-  <data name="CommPrefs_UpdatedAt" xml:space="preserve">
-    <value>Actualitzat el</value>
-  </data>
-  <data name="CommPrefs_AlwaysOn" xml:space="preserve"><value>Sempre actiu</value></data>
 
   <!-- ======================== -->
   <!-- Email addresses page     -->
@@ -651,52 +608,6 @@
   <!-- ======================== -->
   <!-- Unsubscribe              -->
   <!-- ======================== -->
-  <data name="Users_Unsubscribe_Title" xml:space="preserve">
-    <value>Donar-se de baixa dels correus</value>
-  </data>
-  <data name="Users_Unsubscribe_Heading" xml:space="preserve">
-    <value>Donar-se de baixa dels correus {0}?</value>
-    <comment>{0} = category name</comment>
-  </data>
-  <data name="Users_Unsubscribe_Greeting" xml:space="preserve">
-    <value>Hola {0},</value>
-    <comment>{0} = display name</comment>
-  </data>
-  <data name="Users_Unsubscribe_ConfirmMessage" xml:space="preserve">
-    <value>Si confirmes, deixaràs de rebre correus de {0} de Humans.</value>
-    <comment>{0} = category name</comment>
-  </data>
-  <data name="Users_Unsubscribe_ConfirmButton" xml:space="preserve">
-    <value>Confirmar baixa</value>
-  </data>
-  <data name="Users_Unsubscribe_DoneTitle" xml:space="preserve">
-    <value>T'has donat de baixa</value>
-  </data>
-  <data name="Users_Unsubscribe_DoneMessage" xml:space="preserve">
-    <value>Ja no rebràs correus de {0} de Humans.</value>
-    <comment>{0} = category name</comment>
-  </data>
-  <data name="Users_Unsubscribe_DoneManage" xml:space="preserve">
-    <value>Pots gestionar les teves preferències de comunicació des de les teves</value>
-  </data>
-  <data name="Users_Unsubscribe_DoneManageLink" xml:space="preserve">
-    <value>preferències de comunicació</value>
-  </data>
-  <data name="Users_Unsubscribe_BackHome" xml:space="preserve">
-    <value>Tornar a l'inici</value>
-  </data>
-  <data name="Users_Unsubscribe_ExpiredTitle" xml:space="preserve">
-    <value>Enllaç de baixa caducat</value>
-  </data>
-  <data name="Users_Unsubscribe_ExpiredHeading" xml:space="preserve">
-    <value>Aquest enllaç de baixa ha caducat</value>
-  </data>
-  <data name="Users_Unsubscribe_ExpiredMessage" xml:space="preserve">
-    <value>Fes servir l'enllaç d'un correu més recent, o</value>
-  </data>
-  <data name="Users_Unsubscribe_ExpiredSignIn" xml:space="preserve">
-    <value>inicia sessió per gestionar les teves preferències de comunicació</value>
-  </data>
 
   <!-- ======================== -->
   <!-- Account status page      -->
@@ -866,40 +777,14 @@
 &lt;p&gt;Una salutació,&lt;br/&gt;L’equip de Humans&lt;/p&gt;</value>
     <comment>{0} = user name</comment>
   </data>
-  <data name="Users_Profile_CommunicationPreferencesLoadFailed" xml:space="preserve"><value>No s'han pogut carregar les preferències de comunicació.</value></data>
   <data name="Users_Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>Aquest correu està vinculat a un altre compte. En verificar-lo se sol·licitarà una fusió de comptes. Consulta la safata d'entrada per a l'enllaç de verificació.</value></data>
   <data name="Users_Profile_EmailVerifiedMergeRequested" xml:space="preserve"><value>Correu verificat. S'ha enviat una sol·licitud de fusió per a la revisió administrativa. El correu {0} s'afegirà al teu compte quan s'aprovi.</value><comment>{0} = email address</comment></data>
-  <data name="Users_Guest_DeletionRequestFailed" xml:space="preserve"><value>No s'ha pogut processar la sol·licitud d'eliminació. Torna-ho a provar.</value></data>
-  <data name="Users_Guest_DeletionRequested" xml:space="preserve"><value>Sol·licitud d'eliminació registrada. El teu compte s'eliminarà definitivament el {0}.</value><comment>{0} = deletion date</comment></data>
-  <data name="Users_Guest_DeletionHeldForTicket" xml:space="preserve"><value>Sol·licitud d'eliminació registrada. Com que tens entrades per a un esdeveniment proper, el teu compte s'eliminarà després del {0}.</value><comment>{0} = deletion date</comment></data>
-  <data name="Users_Guest_CancelDeletionFailed" xml:space="preserve"><value>No s'ha pogut cancel·lar la sol·licitud d'eliminació. Torna-ho a provar.</value></data>
   <data name="Users_NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Té un compte de correu @nobodies.team</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Importat · encara sense perfil</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>Aquesta persona existeix al sistema però encara no ha completat un perfil (per exemple, s'ha importat d'una llista de correu o de ticketing).</value></data>
-  <data name="Users_Profile_AlwaysOnCategoryCannotChange" xml:space="preserve"><value>No es poden canviar les categories sempre actives.</value></data>
   <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>El teu accés ha estat suspès: {0}</value></data>
   <data name="Users_Notification_ViewProfile" xml:space="preserve"><value>Veure el perfil</value></data>
   <data name="Users_Notification_ConsentSuspensionReason" xml:space="preserve"><value>Falta el consentiment als documents requerits (termini de gràcia vençut)</value></data>
-  <data name="CommPrefs_Name_System" xml:space="preserve"><value>Sistema</value></data>
-  <data name="CommPrefs_Name_CampaignCodes" xml:space="preserve"><value>Codis de campanyes</value></data>
-  <data name="CommPrefs_Name_FacilitatedMessages" xml:space="preserve"><value>Missatges entre persones</value></data>
-  <data name="CommPrefs_Name_Ticketing" xml:space="preserve"><value>Entrades</value></data>
-  <data name="CommPrefs_Name_VolunteerUpdates" xml:space="preserve"><value>Novetats del voluntariat</value></data>
-  <data name="CommPrefs_Name_TeamUpdates" xml:space="preserve"><value>Novetats dels equips</value></data>
-  <data name="CommPrefs_Name_Governance" xml:space="preserve"><value>Governança</value></data>
-  <data name="CommPrefs_Name_Marketing" xml:space="preserve"><value>Màrqueting</value></data>
-  <data name="CommPrefs_Description_System" xml:space="preserve"><value>Notificacions importants sobre el compte, el consentiment i la seguretat. Sempre activades.</value></data>
-  <data name="CommPrefs_Description_CampaignCodes" xml:space="preserve"><value>Codis de descompte, ajuts i codis per bescanviar campanyes. Sempre activats.</value></data>
-  <data name="CommPrefs_Description_FacilitatedMessages" xml:space="preserve"><value>Missatges que altres persones t’envien a través de Humans.</value></data>
-  <data name="CommPrefs_Description_Ticketing" xml:space="preserve"><value>Confirmacions de compra i informació de l’esdeveniment.</value></data>
-  <data name="CommPrefs_Description_VolunteerUpdates" xml:space="preserve"><value>Canvis de torns, actualitzacions de l’horari i notificacions del voluntariat.</value></data>
-  <data name="CommPrefs_Description_TeamUpdates" xml:space="preserve"><value>Permisos de Drive, incorporacions i baixes als equips.</value></data>
-  <data name="CommPrefs_Description_Governance" xml:space="preserve"><value>Votacions de la Junta, sol·licituds de nivell, assignacions de rols i revisions d’incorporació.</value></data>
-  <data name="CommPrefs_Description_Marketing" xml:space="preserve"><value>Llista de correu i promocions.</value></data>
-  <data name="CommPrefs_TicketingYear" xml:space="preserve"><value>Entrades — {0}</value></data>
-  <data name="CommPrefs_TicketingLocked" xml:space="preserve"><value>Bloquejat — tens una entrada per a aquest any</value></data>
-  <data name="CommPrefs_Name_EventOperations" xml:space="preserve"><value>Operacions de l’esdeveniment</value></data>
-  <data name="CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Novetats de la comunitat</value></data>
   <data name="Users_Profile_EmailAlreadyAdded" xml:space="preserve">
     <value>Aquesta adreça de correu ja és al teu compte.</value>
   </data>

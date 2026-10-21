@@ -141,15 +141,6 @@
   <data name="Profile_NotificationTargetUpdated" xml:space="preserve">
     <value>Benachrichtigungs-E-Mail-Adresse aktualisiert.</value>
   </data>
-  <data name="Profile_DeletionAlreadyPending" xml:space="preserve">
-    <value>Ein Löschantrag ist bereits ausstehend.</value>
-  </data>
-  <data name="Profile_NoDeletionPending" xml:space="preserve">
-    <value>Kein Löschantrag ausstehend.</value>
-  </data>
-  <data name="Profile_DeletionCancelled" xml:space="preserve">
-    <value>Die Kontolöschung wurde abgebrochen.</value>
-  </data>
   <data name="Profile_ProfilePicture" xml:space="preserve">
     <value>Profilbild</value>
   </data>
@@ -360,43 +351,9 @@
   <data name="CommPrefs_Title" xml:space="preserve">
     <value>Kommunikationseinstellungen</value>
   </data>
-  <data name="CommPrefs_Description" xml:space="preserve">
-    <value>Wähle, welche Mitteilungen du erhältst und wie.</value>
-  </data>
-  <data name="CommPrefs_Category" xml:space="preserve">
-    <value>Kategorie</value>
-  </data>
   <data name="CommPrefs_Email" xml:space="preserve">
     <value>E-Mail</value>
   </data>
-  <data name="CommPrefs_Alert" xml:space="preserve">
-    <value>Benachrichtigung</value>
-  </data>
-  <data name="CommPrefs_BackToProfile" xml:space="preserve">
-    <value>Zurück zum Profil</value>
-  </data>
-  <data name="CommPrefs_BackToDashboard" xml:space="preserve">
-    <value>Zurück zum Dashboard</value>
-  </data>
-  <data name="CommPrefs_OneClick_Prompt" xml:space="preserve">
-    <value>Du hast auf einen Abmeldelink in {0}-E-Mails geklickt.</value>
-  </data>
-  <data name="CommPrefs_OneClick_Hint" xml:space="preserve">
-    <value>Mit einem Klick abmelden oder die Matrix unten anpassen.</value>
-  </data>
-  <data name="CommPrefs_OneClick_Button" xml:space="preserve">
-    <value>{0} abbestellen</value>
-  </data>
-  <data name="CommPrefs_OneClick_Done" xml:space="preserve">
-    <value>Abgemeldet. Du kannst jede Kategorie unten wieder aktivieren.</value>
-  </data>
-  <data name="CommPrefs_UpdateSource" xml:space="preserve">
-    <value>Source</value>
-  </data>
-  <data name="CommPrefs_UpdatedAt" xml:space="preserve">
-    <value>Updated</value>
-  </data>
-  <data name="CommPrefs_AlwaysOn" xml:space="preserve"><value>Immer aktiv</value></data>
 
   <!-- ======================== -->
   <!-- Email addresses page     -->
@@ -651,52 +608,6 @@
   <!-- ======================== -->
   <!-- Unsubscribe              -->
   <!-- ======================== -->
-  <data name="Users_Unsubscribe_Title" xml:space="preserve">
-    <value>E-Mails abbestellen</value>
-  </data>
-  <data name="Users_Unsubscribe_Heading" xml:space="preserve">
-    <value>Von {0}-E-Mails abmelden?</value>
-    <comment>{0} = category name</comment>
-  </data>
-  <data name="Users_Unsubscribe_Greeting" xml:space="preserve">
-    <value>Hallo {0},</value>
-    <comment>{0} = display name</comment>
-  </data>
-  <data name="Users_Unsubscribe_ConfirmMessage" xml:space="preserve">
-    <value>Wenn du bestätigst, erhältst du keine {0}-E-Mails mehr von Humans.</value>
-    <comment>{0} = category name</comment>
-  </data>
-  <data name="Users_Unsubscribe_ConfirmButton" xml:space="preserve">
-    <value>Abmeldung bestätigen</value>
-  </data>
-  <data name="Users_Unsubscribe_DoneTitle" xml:space="preserve">
-    <value>Abgemeldet</value>
-  </data>
-  <data name="Users_Unsubscribe_DoneMessage" xml:space="preserve">
-    <value>Du erhältst keine {0}-E-Mails mehr von Humans.</value>
-    <comment>{0} = category name</comment>
-  </data>
-  <data name="Users_Unsubscribe_DoneManage" xml:space="preserve">
-    <value>Du kannst alle Kommunikationseinstellungen verwalten unter</value>
-  </data>
-  <data name="Users_Unsubscribe_DoneManageLink" xml:space="preserve">
-    <value>Kommunikationseinstellungen</value>
-  </data>
-  <data name="Users_Unsubscribe_BackHome" xml:space="preserve">
-    <value>Zurück zur Startseite</value>
-  </data>
-  <data name="Users_Unsubscribe_ExpiredTitle" xml:space="preserve">
-    <value>Abmelde-Link abgelaufen</value>
-  </data>
-  <data name="Users_Unsubscribe_ExpiredHeading" xml:space="preserve">
-    <value>Dieser Abmelde-Link ist abgelaufen</value>
-  </data>
-  <data name="Users_Unsubscribe_ExpiredMessage" xml:space="preserve">
-    <value>Bitte verwende den Link aus einer neueren E-Mail, oder</value>
-  </data>
-  <data name="Users_Unsubscribe_ExpiredSignIn" xml:space="preserve">
-    <value>melde dich an, um deine Kommunikationseinstellungen zu verwalten</value>
-  </data>
 
   <!-- ======================== -->
   <!-- Account status page      -->
@@ -866,40 +777,14 @@
 &lt;p&gt;Alles Gute,&lt;br/&gt;Das Humans-Team&lt;/p&gt;</value>
     <comment>{0} = user name</comment>
   </data>
-  <data name="Users_Profile_CommunicationPreferencesLoadFailed" xml:space="preserve"><value>Kommunikationseinstellungen konnten nicht geladen werden.</value></data>
   <data name="Users_Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>Diese E-Mail ist mit einem anderen Konto verknüpft. Die Verifizierung fordert eine Kontozusammenführung an. Prüfe deinen Posteingang auf den Bestätigungslink.</value></data>
   <data name="Users_Profile_EmailVerifiedMergeRequested" xml:space="preserve"><value>E-Mail verifiziert. Eine Zusammenführungsanfrage wurde zur Prüfung durch die Administration eingereicht. Die E-Mail-Adresse {0} wird nach der Genehmigung deinem Konto hinzugefügt.</value><comment>{0} = email address</comment></data>
-  <data name="Users_Guest_DeletionRequestFailed" xml:space="preserve"><value>Der Löschantrag konnte nicht verarbeitet werden. Bitte versuche es erneut.</value></data>
-  <data name="Users_Guest_DeletionRequested" xml:space="preserve"><value>Löschantrag erfasst. Dein Konto wird am {0} endgültig gelöscht.</value><comment>{0} = deletion date</comment></data>
-  <data name="Users_Guest_DeletionHeldForTicket" xml:space="preserve"><value>Löschantrag erfasst. Da du Tickets für eine bevorstehende Veranstaltung hast, wird dein Konto nach dem {0} gelöscht.</value><comment>{0} = deletion date</comment></data>
-  <data name="Users_Guest_CancelDeletionFailed" xml:space="preserve"><value>Der Löschantrag konnte nicht storniert werden. Bitte versuche es erneut.</value></data>
   <data name="Users_NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Hat ein @nobodies.team-E-Mail-Konto</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Importiert · noch kein Profil</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>Diese Person existiert im System, hat aber noch kein Profil ausgefüllt (zum Beispiel wurde sie aus einer Mailingliste oder dem Ticketing importiert).</value></data>
-  <data name="Users_Profile_AlwaysOnCategoryCannotChange" xml:space="preserve"><value>Immer aktive Kategorien können nicht geändert werden.</value></data>
   <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>Dein Zugang wurde gesperrt: {0}</value></data>
   <data name="Users_Notification_ViewProfile" xml:space="preserve"><value>Profil ansehen</value></data>
   <data name="Users_Notification_ConsentSuspensionReason" xml:space="preserve"><value>Erforderliche Einwilligung fehlt (Nachfrist abgelaufen)</value></data>
-  <data name="CommPrefs_Name_System" xml:space="preserve"><value>System</value></data>
-  <data name="CommPrefs_Name_CampaignCodes" xml:space="preserve"><value>Kampagnencodes</value></data>
-  <data name="CommPrefs_Name_FacilitatedMessages" xml:space="preserve"><value>Nachrichten zwischen Mitgliedern</value></data>
-  <data name="CommPrefs_Name_Ticketing" xml:space="preserve"><value>Tickets</value></data>
-  <data name="CommPrefs_Name_VolunteerUpdates" xml:space="preserve"><value>Neuigkeiten für Freiwillige</value></data>
-  <data name="CommPrefs_Name_TeamUpdates" xml:space="preserve"><value>Teamneuigkeiten</value></data>
-  <data name="CommPrefs_Name_Governance" xml:space="preserve"><value>Vereinsführung</value></data>
-  <data name="CommPrefs_Name_Marketing" xml:space="preserve"><value>Marketing</value></data>
-  <data name="CommPrefs_Description_System" xml:space="preserve"><value>Wichtige Benachrichtigungen zu Konto, Einwilligung und Sicherheit. Immer aktiviert.</value></data>
-  <data name="CommPrefs_Description_CampaignCodes" xml:space="preserve"><value>Rabattcodes, Zuschüsse und Codes zum Einlösen von Kampagnen. Immer aktiviert.</value></data>
-  <data name="CommPrefs_Description_FacilitatedMessages" xml:space="preserve"><value>Nachrichten, die dir andere Menschen über Humans senden.</value></data>
-  <data name="CommPrefs_Description_Ticketing" xml:space="preserve"><value>Kaufbestätigungen und Informationen zur Veranstaltung.</value></data>
-  <data name="CommPrefs_Description_VolunteerUpdates" xml:space="preserve"><value>Schichtänderungen, Dienstplanaktualisierungen und Benachrichtigungen für Freiwillige.</value></data>
-  <data name="CommPrefs_Description_TeamUpdates" xml:space="preserve"><value>Drive-Berechtigungen sowie Hinzufügen und Entfernen von Teammitgliedern.</value></data>
-  <data name="CommPrefs_Description_Governance" xml:space="preserve"><value>Vorstandsabstimmungen, Anträge auf Mitgliedschaftsstufen, Rollenzuweisungen und Prüfungen beim Beitritt.</value></data>
-  <data name="CommPrefs_Description_Marketing" xml:space="preserve"><value>Mailingliste und Werbeaktionen.</value></data>
-  <data name="CommPrefs_TicketingYear" xml:space="preserve"><value>Tickets — {0}</value></data>
-  <data name="CommPrefs_TicketingLocked" xml:space="preserve"><value>Gesperrt — du hast ein Ticket für dieses Jahr</value></data>
-  <data name="CommPrefs_Name_EventOperations" xml:space="preserve"><value>Veranstaltungsorganisation</value></data>
-  <data name="CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Neuigkeiten der Gemeinschaft</value></data>
   <data name="Users_Profile_EmailAlreadyAdded" xml:space="preserve">
     <value>Diese E-Mail-Adresse ist bereits in deinem Konto.</value>
   </data>

@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
@@ -347,20 +348,22 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         {
             // Same category — source is newer, so source's OptedOut value wins
             // and gets copied onto target before the source row is deleted.
-            b.WithSourceCommPref(MessageCategory.VolunteerUpdates, optedOut: true, updatedAt: newer);
-            b.WithTargetCommPref(MessageCategory.VolunteerUpdates, optedOut: false, updatedAt: older);
+            b.WithSourceCommPref(LegacyMessageCategory.VolunteerUpdates, optedOut: true, updatedAt: newer);
+            b.WithTargetCommPref(LegacyMessageCategory.VolunteerUpdates, optedOut: false, updatedAt: older);
 
             // Same category — target newer, target value stands.
-            b.WithSourceCommPref(MessageCategory.Marketing, optedOut: false, updatedAt: older);
-            b.WithTargetCommPref(MessageCategory.Marketing, optedOut: true, updatedAt: newer);
+            b.WithSourceCommPref(LegacyMessageCategory.Marketing, optedOut: false, updatedAt: older);
+            b.WithTargetCommPref(LegacyMessageCategory.Marketing, optedOut: true, updatedAt: newer);
         });
         var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
+        // The fold lands in Email's table; the source's legacy rows stay behind, shadowed by
+        // cleared rows so Email's fallback cannot resurrect them.
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<Humans.Email.Data.EmailDbContext>();
 
         var targetPrefs = await db.CommunicationPreferences
             .AsNoTracking()
@@ -377,7 +380,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
             .AsNoTracking()
             .Where(cp => cp.UserId == sourceId)
             .ToListAsync(TestContext.Current.CancellationToken);
-        sourcePrefs.Should().BeEmpty();
+        sourcePrefs.Should().OnlyContain(cp => cp.OptedOut == null);
     }
 
     // ==================================================================

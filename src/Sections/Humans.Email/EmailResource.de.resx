@@ -97,4 +97,112 @@
   </data>
   <data name="Email_SendMessage_OptedOut" xml:space="preserve"><value>Diese Person hat den Empfang von Nachrichten abgelehnt.</value></data>
   <data name="Email_BreadcrumbNavigation" xml:space="preserve"><value>Navigationspfad</value></data>
+  <data name="Email_CommPrefs_Title" xml:space="preserve">
+    <value>Kommunikationseinstellungen</value>
+  </data>
+  <data name="Email_CommPrefs_Description" xml:space="preserve">
+    <value>Wähle, welche Mitteilungen du erhältst und wie.</value>
+  </data>
+  <data name="Email_CommPrefs_Category" xml:space="preserve">
+    <value>Kategorie</value>
+  </data>
+  <data name="Email_CommPrefs_Email" xml:space="preserve">
+    <value>E-Mail</value>
+  </data>
+  <data name="Email_CommPrefs_Alert" xml:space="preserve">
+    <value>Benachrichtigung</value>
+  </data>
+  <data name="Email_CommPrefs_BackToProfile" xml:space="preserve">
+    <value>Zurück zum Profil</value>
+  </data>
+  <data name="Email_CommPrefs_BackToDashboard" xml:space="preserve">
+    <value>Zurück zum Dashboard</value>
+  </data>
+  <data name="Email_CommPrefs_OneClick_Prompt" xml:space="preserve">
+    <value>Du hast auf einen Abmeldelink in {0}-E-Mails geklickt.</value>
+  </data>
+  <data name="Email_CommPrefs_OneClick_Hint" xml:space="preserve">
+    <value>Mit einem Klick abmelden oder die Matrix unten anpassen.</value>
+  </data>
+  <data name="Email_CommPrefs_OneClick_Button" xml:space="preserve">
+    <value>{0} abbestellen</value>
+  </data>
+  <data name="Email_CommPrefs_OneClick_Done" xml:space="preserve">
+    <value>Abgemeldet. Du kannst jede Kategorie unten wieder aktivieren.</value>
+  </data>
+  <data name="Email_CommPrefs_UpdateSource" xml:space="preserve">
+    <value>Source</value>
+  </data>
+  <data name="Email_CommPrefs_UpdatedAt" xml:space="preserve">
+    <value>Updated</value>
+  </data>
+  <data name="Email_CommPrefs_AlwaysOn" xml:space="preserve"><value>Immer aktiv</value></data>
+  <data name="Email_Unsubscribe_Title" xml:space="preserve">
+    <value>E-Mails abbestellen</value>
+  </data>
+  <data name="Email_Unsubscribe_Heading" xml:space="preserve">
+    <value>Von {0}-E-Mails abmelden?</value>
+    <comment>{0} = category name</comment>
+  </data>
+  <data name="Email_Unsubscribe_Greeting" xml:space="preserve">
+    <value>Hallo {0},</value>
+    <comment>{0} = display name</comment>
+  </data>
+  <data name="Email_Unsubscribe_ConfirmMessage" xml:space="preserve">
+    <value>Wenn du bestätigst, erhältst du keine {0}-E-Mails mehr von Humans.</value>
+    <comment>{0} = category name</comment>
+  </data>
+  <data name="Email_Unsubscribe_ConfirmButton" xml:space="preserve">
+    <value>Abmeldung bestätigen</value>
+  </data>
+  <data name="Email_Unsubscribe_DoneTitle" xml:space="preserve">
+    <value>Abgemeldet</value>
+  </data>
+  <data name="Email_Unsubscribe_DoneMessage" xml:space="preserve">
+    <value>Du erhältst keine {0}-E-Mails mehr von Humans.</value>
+    <comment>{0} = category name</comment>
+  </data>
+  <data name="Email_Unsubscribe_DoneManage" xml:space="preserve">
+    <value>Du kannst alle Kommunikationseinstellungen verwalten unter</value>
+  </data>
+  <data name="Email_Unsubscribe_DoneManageLink" xml:space="preserve">
+    <value>Kommunikationseinstellungen</value>
+  </data>
+  <data name="Email_Unsubscribe_BackHome" xml:space="preserve">
+    <value>Zurück zur Startseite</value>
+  </data>
+  <data name="Email_Unsubscribe_ExpiredTitle" xml:space="preserve">
+    <value>Abmelde-Link abgelaufen</value>
+  </data>
+  <data name="Email_Unsubscribe_ExpiredHeading" xml:space="preserve">
+    <value>Dieser Abmelde-Link ist abgelaufen</value>
+  </data>
+  <data name="Email_Unsubscribe_ExpiredMessage" xml:space="preserve">
+    <value>Bitte verwende den Link aus einer neueren E-Mail, oder</value>
+  </data>
+  <data name="Email_Unsubscribe_ExpiredSignIn" xml:space="preserve">
+    <value>melde dich an, um deine Kommunikationseinstellungen zu verwalten</value>
+  </data>
+  <data name="Email_CommPrefs_Name_System" xml:space="preserve"><value>System</value></data>
+  <data name="Email_CommPrefs_Name_CampaignCodes" xml:space="preserve"><value>Kampagnencodes</value></data>
+  <data name="Email_CommPrefs_Name_FacilitatedMessages" xml:space="preserve"><value>Nachrichten zwischen Mitgliedern</value></data>
+  <data name="Email_CommPrefs_Name_Ticketing" xml:space="preserve"><value>Tickets</value></data>
+  <data name="Email_CommPrefs_Name_VolunteerUpdates" xml:space="preserve"><value>Neuigkeiten für Freiwillige</value></data>
+  <data name="Email_CommPrefs_Name_TeamUpdates" xml:space="preserve"><value>Teamneuigkeiten</value></data>
+  <data name="Email_CommPrefs_Name_Governance" xml:space="preserve"><value>Vereinsführung</value></data>
+  <data name="Email_CommPrefs_Name_Marketing" xml:space="preserve"><value>Marketing</value></data>
+  <data name="Email_CommPrefs_Description_System" xml:space="preserve"><value>Wichtige Benachrichtigungen zu Konto, Einwilligung und Sicherheit. Immer aktiviert.</value></data>
+  <data name="Email_CommPrefs_Description_CampaignCodes" xml:space="preserve"><value>Rabattcodes, Zuschüsse und Codes zum Einlösen von Kampagnen. Immer aktiviert.</value></data>
+  <data name="Email_CommPrefs_Description_FacilitatedMessages" xml:space="preserve"><value>Nachrichten, die dir andere Menschen über Humans senden.</value></data>
+  <data name="Email_CommPrefs_Description_Ticketing" xml:space="preserve"><value>Kaufbestätigungen und Informationen zur Veranstaltung.</value></data>
+  <data name="Email_CommPrefs_Description_VolunteerUpdates" xml:space="preserve"><value>Schichtänderungen, Dienstplanaktualisierungen und Benachrichtigungen für Freiwillige.</value></data>
+  <data name="Email_CommPrefs_Description_TeamUpdates" xml:space="preserve"><value>Drive-Berechtigungen sowie Hinzufügen und Entfernen von Teammitgliedern.</value></data>
+  <data name="Email_CommPrefs_Description_Governance" xml:space="preserve"><value>Vorstandsabstimmungen, Anträge auf Mitgliedschaftsstufen, Rollenzuweisungen und Prüfungen beim Beitritt.</value></data>
+  <data name="Email_CommPrefs_Description_Marketing" xml:space="preserve"><value>Mailingliste und Werbeaktionen.</value></data>
+  <data name="Email_CommPrefs_TicketingYear" xml:space="preserve"><value>Tickets — {0}</value></data>
+  <data name="Email_CommPrefs_TicketingLocked" xml:space="preserve"><value>Gesperrt — du hast ein Ticket für dieses Jahr</value></data>
+  <data name="Email_CommPrefs_Name_EventOperations" xml:space="preserve"><value>Veranstaltungsorganisation</value></data>
+  <data name="Email_CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Neuigkeiten der Gemeinschaft</value></data>
+  <data name="Email_CommPrefs_AlwaysOnCategoryCannotChange" xml:space="preserve"><value>Immer aktive Kategorien können nicht geändert werden.</value></data>
+  <data name="Email_CommPrefs_LoadFailed" xml:space="preserve"><value>Kommunikationseinstellungen konnten nicht geladen werden.</value></data>
 </root>

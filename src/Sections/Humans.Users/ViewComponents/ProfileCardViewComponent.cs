@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Users.Controllers;
 using Humans.Users.Models;

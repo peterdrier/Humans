@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
 
@@ -9,7 +10,8 @@ namespace Humans.MailerLite.Services.Audiences;
 /// </summary>
 internal sealed class HasShiftStrikeAudience(
     IShiftView shiftView,
-    IUserService users) : ShiftViewAudienceBase(shiftView, users)
+    IUserService users,
+    ICommunicationPreferenceService prefs) : ShiftViewAudienceBase(shiftView, users, prefs)
 {
     public override string Key => "has-shift-strike";
     public override string DisplayName => "Volunteers with a strike shift";

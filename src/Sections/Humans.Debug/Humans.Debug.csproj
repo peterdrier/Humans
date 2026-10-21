@@ -25,6 +25,8 @@
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <!-- The user grid's Marketing column reads ICommunicationPreferenceService (Users decomposition commit 14). -->
+    <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -129,7 +129,7 @@ Inbox selection checkboxes have a localized accessible label in all six supporte
 - **Tickets:** `ITicketSync.IsInErrorStateAsync` — admin ticket-sync-error meter.
 - **Google Integration:** `IGoogleSyncService.GetFailedSyncEventCountAsync` — admin failed-sync-events meter.
 - **Camps:** `ICampService.GetSettingsAsync` + `GetCampsForYearAsync(year)` — per-camp-lead pending-requests meter (count derived in-memory from the returned camp snapshots).
-- **Users (communication preferences):** `ICommunicationPreferenceService.GetUsersWithInboxDisabledAsync` — filters out informational notifications for users who suppressed the source's `MessageCategory`.
+- **Email (communication preferences, since Users decomposition commit 14):** `ICommunicationPreferenceService.GetUsersWithInboxDisabledAsync` (`Humans.Email.Contracts`, a Base-only leaf — no cycle) — filters out informational notifications for users who suppressed the source's `MessageCategory`.
 - **GDPR:** `NotificationInboxService` implements `IUserDataContributor` (via `INotificationRepository.GetAllForUserContributorAsync`) for the GDPR export.
 
 This section is **fan-in**: almost every other section calls in, but this section only reads back a small, narrow slice of count + recipient methods from each. It does not aggregate-join.

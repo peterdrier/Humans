@@ -160,7 +160,8 @@ archived account and the survivor.
 | `ContactFields` | `UserService` | Array of `{ FieldType, Label, Value, Visibility }`. |
 | `VolunteerHistory` | `UserService` | Array of `{ Date, EventName, Description, CreatedAt }`. |
 | `Languages` | `UserService` | Array of `{ LanguageCode, Proficiency }`. |
-| `CommunicationPreferences` | `UserService` | Array of `{ Category, OptedOut, InboxEnabled, SubscribedAt, UpdatedAt, UpdateSource }`. |
+| `LegacyCommunicationPreferences` | `UserService` | Array of `{ Category, OptedOut, InboxEnabled, SubscribedAt, UpdatedAt, UpdateSource }` — the frozen Users `communication_preferences` rows (live record: the `CommunicationPreferences` slice). Deleted on erasure. |
+| `CommunicationPreferences` | `CommunicationPreferenceService` (Email) | Array of `{ Category, OptedOut, InboxEnabled, SubscribedAt, UpdatedAt, UpdateSource }` — the effective preferences, the legacy Users row answering until the `email.communication-preferences` copy or a write replaces it (Users decomposition commit 14). Deleted on erasure. |
 | `EventParticipations` | `EventParticipationService` (Tickets) | Array of `{ Year, Status, Source, DeclaredAt, CheckedInAt }` covering every event-year the user has a participation record for (Ticketed / Attended / NoShow / NotAttending), the legacy Users row answering until the `tickets.event-participations` copy has run; requests under an archived ID resolve to the survivor. Retained on erasure. |
 | `Applications` | `ApplicationDecisionService` | Array of tier application records with `StateHistory` inline. |
 | `MembershipTier` | `MembershipTierService` | Single object `{ Tier, GrantedAt, ExpiresAt, GrantedByApplicationId }`, or `{ Tier }` for a not-yet-copied legacy profile tier; null for a Volunteer. Retained on erasure (register of members). |

@@ -11,7 +11,7 @@
   src/Sections/Humans.Users/Domain/ProfileLanguage.cs
   src/Sections/Humans.Users/Domain/ContactField.cs
   src/Sections/Humans.Users.Contracts/UserEmail.cs
-  src/Sections/Humans.Users/Domain/CommunicationPreference.cs
+  src/Sections/Humans.Email/Domain/CommunicationPreference.cs
   src/Sections/Humans.Users.Contracts/User.cs
   src/Sections/Humans.Users/Data/Configurations/**
 -->

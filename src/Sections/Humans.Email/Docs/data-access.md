@@ -4,7 +4,10 @@
 
 Folder: `src/Sections/Humans.Email/Services/`. **DbContext:**
 `EmailDbContext`. `EmailOutboxRepository` injects
-`IDbContextFactory<EmailDbContext>` directly. Owns `EmailOutboxMessages`.
+`IDbContextFactory<EmailDbContext>` directly, as does
+`CommunicationPreferenceRepository`. Owns `EmailOutboxMessages`,
+`EmailDailySendCounts` and `CommunicationPreferences`
+(`email_communication_preferences`, Users decomposition commit 14).
 The email-send-pause flag routes through `ISettingsService` (key
 `SettingKeys.IsEmailSendingPaused`), whose table the Settings section owns
 (`src/Sections/Humans.Settings/`) — reached only via the service interface,
@@ -54,8 +57,30 @@ Repository: `IEmailOutboxRepository`.
 Implements `IEmailService` — the single `SendAsync(EmailMessage)` send
 path (the interface collapsed to one method). Cross-section calls via
 `IUserEmailService`, `IImmediateOutboxProcessor`, `IHumansMetrics`,
-`ICommunicationPreferenceService`, plus `IClock`; `IEmailBodyComposer` is
-section-internal. No `IMemoryCache`.
+plus `IClock`; `IEmailBodyComposer` and `ICommunicationPreferenceManagement`
+(opt-out checks, `List-Unsubscribe` headers) are section-internal. No
+`IMemoryCache`.
+
+### CommunicationPreferenceService (Scoped)
+
+Repository: `ICommunicationPreferenceRepository` (Singleton, `IDbContextFactory<EmailDbContext>`).
+
+| Table | R/W |
+|-------|-----|
+| CommunicationPreferences | R/W |
+| Users' `communication_preferences` (frozen legacy) | R only via `IUserService` (`UserInfo.CommunicationPreferences`) — never the table |
+
+Implements `ICommunicationPreferenceService`, `ICommunicationPreferenceWrite`,
+the internal `ICommunicationPreferenceManagement`, `IUserDataContributor` and
+`IUserMerge`. Cross-section calls via `IUserService`, `IAuditLogService`;
+`IUnsubscribeTokenProvider` is section-internal. No cache.
+
+### UnsubscribeService (Scoped, internal)
+
+No repository. Validates unsubscribe tokens (category tokens through
+`ICommunicationPreferenceManagement`, legacy campaign tokens through
+`IDataProtectionProvider`) and opts the user out. Reads the display name
+through `IUserService`. No cache.
 
 ### EmailMessageFactory (Scoped, internal)
 

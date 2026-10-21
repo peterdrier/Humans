@@ -5,7 +5,8 @@ namespace Humans.Email.Data;
 
 /// <summary>
 /// Per-section database context for the Email section
-/// (nobodies-collective/Humans#858): maps only <c>email_outbox_messages</c>,
+/// (nobodies-collective/Humans#858): maps <c>email_outbox_messages</c>, <c>email_daily_send_counts</c>
+/// and <c>email_communication_preferences</c> (Users decomposition commit 14),
 /// with its own <c>__EFMigrationsHistory_Email</c> table and migrations under
 /// <c>Migrations/Email/</c>. Same database, same connection — the split is a
 /// code-side partition of the EF model.
@@ -23,6 +24,7 @@ internal sealed class EmailDbContext(DbContextOptions<EmailDbContext> options)
 {
     public DbSet<EmailOutboxMessage> EmailOutboxMessages => Set<EmailOutboxMessage>();
     public DbSet<EmailDailySendCount> EmailDailySendCounts => Set<EmailDailySendCount>();
+    public DbSet<CommunicationPreference> CommunicationPreferences => Set<CommunicationPreference>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -30,5 +32,6 @@ internal sealed class EmailDbContext(DbContextOptions<EmailDbContext> options)
 
         builder.ApplyConfiguration(new EmailOutboxMessageConfiguration());
         builder.ApplyConfiguration(new EmailDailySendCountConfiguration());
+        builder.ApplyConfiguration(new CommunicationPreferenceConfiguration());
     }
 }

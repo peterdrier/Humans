@@ -2,8 +2,8 @@
   src/Sections/Humans.Campaigns/**
   src/Sections/Humans.Email/Services/OutboxEmailService.cs
   src/Sections/Humans.Tickets/Services/TicketSyncService.cs
-  src/Sections/Humans.Users/Services/UnsubscribeService.cs
-  src/Sections/Humans.Users/Controllers/GuestAccountController.cs
+  src/Sections/Humans.Email/Services/UnsubscribeService.cs
+  src/Sections/Humans.Email/Controllers/GuestAccountController.cs
 -->
 <!-- freshness:flag-on-change
   Campaign lifecycle, code import/grant rules, wave email triggers, and unsubscribe handling — review when Campaign service/entities/controller change.

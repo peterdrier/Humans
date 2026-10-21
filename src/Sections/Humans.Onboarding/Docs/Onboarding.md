@@ -134,7 +134,7 @@ After the nobodies-collective#584 narrowing, `OnboardingService` injects only wh
 ## Architecture
 
 **Owning services:** `OnboardingService` (intake funnel only after the nobodies-collective#584 narrowing).
-**Sibling services in the three-concerns split:** `HumanLifecycleService` (state-machine), `ApplicationDecisionService` (board voting), `AccountDeletionService` (cascade — single entry point for `RequestDeletionAsync` and `CancelDeletionAsync`; both `ProfileController` and `GuestAccountController` deletion actions call through it; ticket-hold + 30-day-grace fields written atomically, see the cascade section of `src/Sections/Humans.Users/Docs/Users.md`).
+**Sibling services in the three-concerns split:** `HumanLifecycleService` (state-machine), `ApplicationDecisionService` (board voting), `AccountDeletionService` (cascade — single entry point for `RequestDeletionAsync` and `CancelDeletionAsync`; both Gdpr's `MemberDataController` and `GuestDataController` deletion actions call through it; ticket-hold + 30-day-grace fields written atomically, see the cascade section of `src/Sections/Humans.Users/Docs/Users.md`).
 **Owned tables:** None — orchestrator over Profiles, Consent, Teams, Governance.
 **Status:** (A) Migrated (peterdrier/Humans PR #285 for issue nobodies-collective/Humans#553, 2026-04-22). Three-concerns narrowing complete with nobodies-collective#583 (lifecycle) and nobodies-collective#584 (board voting + admin dashboard). **G5** (nobodies-collective/Humans#866): the section is `src/Sections/Humans.Onboarding` + `src/Sections/Humans.Onboarding.Contracts`.
 

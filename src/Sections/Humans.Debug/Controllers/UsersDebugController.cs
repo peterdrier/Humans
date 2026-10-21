@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Debug.Models;
 using Humans.Base.Authorization;
@@ -13,11 +14,13 @@ namespace Humans.Debug.Controllers;
 
 // Diagnostic surface for UserInfo cache — flat sortable table from GetAllRawUserInfosAsync
 // (tombstones included: this is the cache diagnostic, it shows what is in the cache), plus Consent's
-// review map for the consent-check column and Tickets' participations for the ticket column.
+// review map for the consent-check column, Tickets' participations for the ticket column and Email's
+// Marketing preferences for the marketing column.
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Users/Admin/Debug")]
 internal sealed class UsersDebugController(
-    IUserService userService, IConsentService consentService, ITicketService tickets)
+    IUserService userService, IConsentService consentService, ITicketService tickets,
+    ICommunicationPreferenceService preferences)
     : HumansControllerBase(userService)
 {
     private const int MinPageSize = 10;
@@ -39,8 +42,10 @@ internal sealed class UsersDebugController(
         // Any-year Ticketed/Attended participation — diagnostic only.
         var ticketHolders = (await tickets.GetAllParticipationsAsync(ct))
             .Where(p => p.HasTicket).Select(p => p.UserId).ToHashSet();
+        var marketing = await preferences.GetPreferencesForCategoryAsync(MessageCategory.Marketing, ct);
         var allRows = snapshot
-            .Select(u => UserDebugRow.From(u, reviews.GetValueOrDefault(u.Id), ticketHolders.Contains(u.Id)))
+            .Select(u => UserDebugRow.From(u, reviews.GetValueOrDefault(u.Id), ticketHolders.Contains(u.Id),
+                marketing.GetValueOrDefault(u.Id)?.OptedOut))
             .ToList();
 
         var sorted = ApplySort(allRows, sort, dir);

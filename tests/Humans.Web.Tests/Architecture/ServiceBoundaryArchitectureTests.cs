@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Microsoft.Extensions.DependencyModel;
 using System.Reflection;
 using AwesomeAssertions;

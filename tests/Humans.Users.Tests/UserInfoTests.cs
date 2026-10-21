@@ -17,7 +17,7 @@ public class UserInfoTests
     };
 
     [HumansFact]
-    public void Create_carries_communication_preferences_projection()
+    public void Create_carries_legacy_communication_preferences_projection()
     {
         var userId = Guid.NewGuid();
         var prefs = new[]
@@ -26,7 +26,7 @@ public class UserInfoTests
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
-                Category = MessageCategory.Marketing,
+                Category = LegacyMessageCategory.Marketing,
                 OptedOut = false,
                 InboxEnabled = true,
                 UpdatedAt = Instant.FromUtc(2026, 4, 1, 0, 0),
@@ -37,7 +37,7 @@ public class UserInfoTests
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
-                Category = MessageCategory.Governance,
+                Category = LegacyMessageCategory.Governance,
                 OptedOut = true,
                 InboxEnabled = false,
                 UpdatedAt = Instant.FromUtc(2026, 4, 2, 0, 0),
@@ -58,11 +58,13 @@ public class UserInfoTests
             communicationPreferences: prefs);
 
         // Marketing (3) sorts before Governance (4) by enum value ascending.
+#pragma warning disable HUM_USER_COMMPREFS // pins the frozen legacy slice Email's fallback and copy read
         info.CommunicationPreferences.Should().HaveCount(2);
         info.CommunicationPreferences.Select(c => c.Category)
-            .Should().Equal(MessageCategory.Marketing, MessageCategory.Governance);
+            .Should().Equal(LegacyMessageCategory.Marketing, LegacyMessageCategory.Governance);
         info.CommunicationPreferences[0].OptedOut.Should().BeFalse();
         info.CommunicationPreferences[0].UpdateSource.Should().Be("Profile");
+#pragma warning restore HUM_USER_COMMPREFS
     }
 
     [HumansFact]
@@ -127,55 +129,6 @@ public class UserInfoTests
             MinimalUser(userId), [isGoogleRow, providerFallback], [], [], profile: null, [], [], [], []);
 
         info.GoogleEmailStatus.Should().Be(GoogleEmailStatus.Valid);
-    }
-
-    [HumansFact]
-    public void MarketingOptedOut_is_null_when_no_marketing_pref()
-    {
-        var info = UserInfoFactory.Create(
-            MinimalUser(),
-            [],
-            [],
-            [],
-            profile: null,
-            [],
-            [],
-            [],
-            []);
-
-        info.MarketingOptedOut.Should().BeNull();
-    }
-
-    [HumansFact]
-    public void MarketingOptedOut_reflects_pref_when_present()
-    {
-        var userId = Guid.NewGuid();
-        var prefs = new[]
-        {
-            new CommunicationPreference
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Category = MessageCategory.Marketing,
-                OptedOut = true,
-                InboxEnabled = true,
-                UpdatedAt = Instant.FromUtc(2026, 4, 1, 0, 0),
-                UpdateSource = "Profile",
-            },
-        };
-
-        var info = UserInfoFactory.Create(
-            MinimalUser(userId),
-            [],
-            [],
-            [],
-            profile: null,
-            [],
-            [],
-            [],
-            prefs);
-
-        info.MarketingOptedOut.Should().BeTrue();
     }
 
     // nobodies-collective/Humans#1098: User.BurnerName is the sole source. The Profile.BurnerName

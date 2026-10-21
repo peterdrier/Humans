@@ -56,11 +56,13 @@ Three controllers and two views (`Views/User/Status`, `Views/User/Deletion`), so
 | `GET /Profile/Me/DownloadData` | `MemberDataController.DownloadData` | For a human who has completed onboarding; own data only |
 | `POST /Profile/Me/Privacy/RequestDeletion` | `MemberDataController.RequestDeletion` | Starts the deletion countdown via `IAccountDeletionService.RequestDeletionAsync`; redirects back to `/Profile/Me/Privacy` |
 | `GET /Guest/DownloadData` | `GuestDataController` | For an authenticated account with no profile yet |
+| `POST /Guest/RequestDeletion` | `GuestDataController.RequestDeletion` | Profileless deletion request via `IAccountDeletionService.RequestDeletionAsync` (ticket hold shown in the flash); redirects to `/Guest`. Moved from Users' `GuestAccountController` in Users decomposition commit 14, same URL |
+| `POST /Guest/CancelDeletion` | `GuestDataController.CancelDeletion` | `IAccountDeletionService.CancelDeletionAsync`; redirects to `/Guest` |
 | `GET /User/Status` | `UserController.Status` | Account-status wall for Suspended/AdminSuspended/Rejected/Deleted/Merged |
 | `GET /User/Deletion` | `UserController.Deletion` | Pending-deletion landing; redirects home when nothing is pending |
 | `POST /User/Deletion/Cancel` | `UserController.CancelDeletion` | `IAccountDeletionService.CancelDeletionAsync` |
 
-The views' copy lives in `GdprResource` (six cultures; keys `Gdpr_AccountStatus_*`, `Gdpr_AccountDeletion_*`, `Gdpr_Deletion_*`). For a Rejected account the wall renders the `UserPartSlots.AccountStatus` slot (Base), where Consent contributes the rejection reason — Gdpr cannot reference Consent, which owns the record (Users decomposition commit 12). Users keeps its own copies of the deletion flash keys (the guest dashboard still uses them) and of the suspension keys its notification text reads.
+The views' copy lives in `GdprResource` (six cultures; keys `Gdpr_AccountStatus_*`, `Gdpr_AccountDeletion_*`, `Gdpr_Deletion_*`, and the guest deletion flashes `Gdpr_Guest_*`). For a Rejected account the wall renders the `UserPartSlots.AccountStatus` slot (Base), where Consent contributes the rejection reason — Gdpr cannot reference Consent, which owns the record (Users decomposition commit 12). Users keeps its own copies of the suspension keys its notification text reads; its deletion flash copies went with the guest deletion actions (Users decomposition commit 14).
 
 The `/Profile/Me/Privacy` page itself is Consent's (`MyDataController`) and links to the two
 `MemberData` actions. The `User` controller and the two `MemberData` actions are exempt from

@@ -92,16 +92,10 @@ public sealed class Section : ISection, IIssueQueueOwner
         // Hosted service for TrackedCache StartAsync → WarmAllAsync.
         services.AddHostedService(sp => sp.GetRequiredService<CachingUserService>());
 
-        // Singleton repos so CachingUserService injects directly without a scope factory.
+        // Singleton repos so CachingUserService injects directly without a scope factory. The frozen
+        // legacy communication_preferences rows (Email owns the live table since Users decomposition
+        // commit 14) are only read into UserInfo and deleted on erasure.
         services.AddSingleton<ICommunicationPreferenceRepository, CommunicationPreferenceRepository>();
-
-        services.AddScoped<IUnsubscribeTokenProvider, UnsubscribeTokenProvider>();
-
-        services.AddScoped<CommunicationPreferenceService>();
-        services.AddScoped<ICommunicationPreferenceService>(sp => sp.GetRequiredService<CommunicationPreferenceService>());
-        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CommunicationPreferenceService>());
-
-        services.AddScoped<IUnsubscribeService, UnsubscribeService>();
 
         services.AddScoped<ContactFieldService>();
         services.AddScoped<IContactFieldService>(sp => sp.GetRequiredService<ContactFieldService>());

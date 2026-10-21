@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
@@ -99,7 +100,7 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
             b.WithSourceLanguage($"x-{runTag.Substring(0, 4)}", LanguageProficiency.Native);
 
             // CommunicationPreference — source-only category.
-            b.WithSourceCommPref(MessageCategory.VolunteerUpdates, optedOut: true);
+            b.WithSourceCommPref(LegacyMessageCategory.VolunteerUpdates, optedOut: true);
 
             // IdentityUserLogin — source-only key (logins keyed on
             // (provider, key); two users can never share the same key).
@@ -193,6 +194,7 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
         var budgetDb = assertScope.ServiceProvider.GetRequiredService<BudgetDbContext>();
         var legalDb = assertScope.ServiceProvider.GetRequiredService<LegalDbContext>();
         var auditLogDb = assertScope.ServiceProvider.GetRequiredService<AuditLogDbContext>();
+        var emailDb = assertScope.ServiceProvider.GetRequiredService<Humans.Email.Data.EmailDbContext>();
 
         // ----------------------------------------------------------------
         // Source User: tombstoned with MergedToUserId, MergedAt, lockout.
@@ -310,10 +312,10 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
                     && pl.LanguageCode == $"x-{runTag.Substring(0, 4)}", TestContext.Current.CancellationToken))
             .Should().BeTrue("source-only language re-FK'd to target profile");
 
-        (await db.CommunicationPreferences.AsNoTracking()
+        (await emailDb.CommunicationPreferences.AsNoTracking()
                 .AnyAsync(cp => cp.UserId == targetId
-                    && cp.Category == MessageCategory.VolunteerUpdates && cp.OptedOut, TestContext.Current.CancellationToken))
-            .Should().BeTrue("source CommPref re-FK'd to target");
+                    && cp.Category == MessageCategory.VolunteerUpdates && cp.OptedOut == true, TestContext.Current.CancellationToken))
+            .Should().BeTrue("source legacy CommPref folded into target's Email row");
 
         (await ticketsDb.EventParticipations.AsNoTracking()
                 .AnyAsync(ep => ep.UserId == targetId && ep.Year == 2024

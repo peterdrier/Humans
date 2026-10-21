@@ -52,7 +52,6 @@ public class ProfileControllerEditTests
 {
     private readonly IProfileEditorService _profileEditorService = Substitute.For<IProfileEditorService>();
     private readonly IContactFieldService _contactFields = Substitute.For<IContactFieldService>();
-    private readonly ICommunicationPreferenceService _commPrefService = Substitute.For<ICommunicationPreferenceService>();
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly IGovernanceService _governanceService =
         Substitute.For<IGovernanceService>();
@@ -89,7 +88,6 @@ public class ProfileControllerEditTests
             userManager,
             _profileEditorService,
             _contactFields,
-            _commPrefService,
             _onboardingService,
             _configuration,
             new ConfigurationRegistry(),
@@ -277,71 +275,6 @@ public class ProfileControllerEditTests
     }
 
     [HumansTheory]
-    [InlineData("emailEnabled", true)]
-    [InlineData("alertEnabled", true)]
-    [InlineData("emailEnabled", false)]
-    [InlineData("alertEnabled", false)]
-    public async Task UpdatePreference_InvalidBinding_DoesNotChangeChannels(string field, bool viewerExists)
-    {
-        if (!viewerExists)
-            _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>((UserInfo?)null));
-        _controller.ModelState.AddModelError(field, "Not a boolean.");
-        var result = await _controller.UpdatePreference(MessageCategory.Marketing,
-            !string.Equals(field, "emailEnabled", StringComparison.Ordinal),
-            !string.Equals(field, "alertEnabled", StringComparison.Ordinal));
-
-        if (viewerExists) Assert.IsType<BadRequestObjectResult>(result);
-        else Assert.IsType<UnauthorizedResult>(result);
-        Assert.Empty(_commPrefService.ReceivedCalls());
-    }
-
-    [HumansTheory]
-    [InlineData(typeof(ProfileController), "emailEnabled")]
-    [InlineData(typeof(ProfileController), "alertEnabled")]
-    [InlineData(typeof(GuestAccountController), "emailEnabled")]
-    [InlineData(typeof(GuestAccountController), "alertEnabled")]
-    public async Task CommunicationPreferenceFlags_MissingFromForm_AreBindingErrors(Type controllerType, string field)
-    {
-        var registrations = new ServiceCollection().AddLogging();
-        registrations.AddControllers();
-        using var services = registrations.BuildServiceProvider();
-        var context = new ControllerContext { HttpContext = new DefaultHttpContext { RequestServices = services } };
-        var parameter = controllerType.GetMethod("UpdatePreference")!.GetParameters().Single(p => string.Equals(p.Name, field, StringComparison.Ordinal));
-        var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
-        var descriptor = new ControllerParameterDescriptor
-        {
-            Name = field,
-            ParameterType = parameter.ParameterType,
-            ParameterInfo = parameter
-        };
-        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
-        {
-            Metadata = metadata,
-            CacheToken = parameter
-        });
-
-        var values = new Dictionary<string, StringValues>(StringComparer.Ordinal)
-        {
-            ["category"] = "Marketing",
-            [field is "emailEnabled" ? "alertEnabled" : "emailEnabled"] = "true"
-        };
-        await services.GetRequiredService<ParameterBinder>().BindModelAsync(context, binder,
-            new FormValueProvider(BindingSource.Form, new FormCollection(values), CultureInfo.InvariantCulture),
-            descriptor, metadata, value: null);
-
-        Assert.False(context.ModelState.IsValid);
-        Assert.True(context.ModelState.ContainsKey(field));
-    }
-
-    [HumansFact]
-    public async Task UpdatePreference_ExplicitFalseFlags_RemainValid()
-    {
-        Assert.IsType<OkResult>(await _controller.UpdatePreference(MessageCategory.Marketing, false, false));
-        await _commPrefService.Received(1).UpdatePreferenceAsync(_userId, MessageCategory.Marketing,
-            true, false, "Profile", actorUserId: _userId, cancellationToken: Arg.Any<CancellationToken>());
-    }
-
-    [HumansTheory]
     [InlineData("en")]
     [InlineData("es")]
     [InlineData("de")]
@@ -451,10 +384,8 @@ public class ProfileControllerEditTests
             .Should().Be(21L * 1024 * 1024);
     }
 
-    [HumansTheory]
-    [InlineData("Medical")]
-    [InlineData("CommunicationPreferences")]
-    public async Task ProfileReadPages_StopLoadingAfterRequestCancellation(string page)
+    [HumansFact]
+    public async Task MedicalPage_StopsLoadingAfterRequestCancellation()
     {
         using var request = new CancellationTokenSource();
         _controller.HttpContext.RequestAborted = request.Token;
@@ -465,11 +396,7 @@ public class ProfileControllerEditTests
         }
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(call => ReadViewer(call.Arg<CancellationToken>()));
-        Func<Task<IActionResult>> load = page switch
-        {
-            "Medical" => () => _controller.Medical(request.Token),
-            _ => () => _controller.CommunicationPreferences(),
-        };
+        Func<Task<IActionResult>> load = () => _controller.Medical(request.Token);
         (await load()).Should().BeOfType<ViewResult>();
         await request.CancelAsync();
         await load.Should().ThrowAsync<OperationCanceledException>();

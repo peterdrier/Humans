@@ -6,8 +6,9 @@ Folder: `src/Sections/Humans.Users/Services/` — no separate `Profiles/`
 subfolder; `ProfileEditorService`, `ProfileService`, and
 `ContactFieldService` sit alongside the Users services listed under
 [Users](#users) below. Owns `Profiles`, `ContactFields`,
-`ProfileLanguages`, `VolunteerHistoryEntries`, `UserEmails`,
-`CommunicationPreferences`. **DbContext:** `UsersDbContext` — the merged
+`ProfileLanguages`, `VolunteerHistoryEntries`, `UserEmails`, and the
+frozen legacy `CommunicationPreferences` (Email owns preferences since
+Users decomposition commit 14). **DbContext:** `UsersDbContext` — the merged
 Users+Profiles context.
 
 The account-merge surface (`AccountMergeService`, `DuplicateAccountService`,
@@ -58,18 +59,6 @@ Cross-section reads via `IUserService`, `ITeamService`,
 `IRoleAssignmentService` (visibility / coordinator-team lookups). Implements
 `IUserMerge`. Invalidates the User+Profile read-model via
 `IUserInfoInvalidator`. No `IMemoryCache`.
-
-### CommunicationPreferenceService (Scoped)
-
-Repository: `ICommunicationPreferenceRepository`.
-
-| Table | R/W |
-|-------|-----|
-| CommunicationPreferences | R/W |
-
-Cross-section calls via `IUserService`, `IAuditLogService`,
-`IUnsubscribeTokenProvider` (same section, `Services/`). Implements
-`IUserMerge`. No cache.
 
 ### UserEmailService (Scoped)
 
@@ -195,7 +184,7 @@ Repositories: `IUserRepository`, `ICommunicationPreferenceRepository`.
 | IdentityUserLogins | R | IUserRepository |
 | Profiles | R/W | IUserRepository |
 | ContactFields | R | IUserRepository |
-| CommunicationPreferences | R | ICommunicationPreferenceRepository |
+| CommunicationPreferences | R/D (frozen legacy rows: `UserInfo.CommunicationPreferences` for Email's fallback, the `LegacyCommunicationPreferences` export slice, and erasure) | ICommunicationPreferenceRepository |
 | ProfileLanguages | R/W | IUserRepository |
 | VolunteerHistoryEntries | R | IUserRepository |
 
@@ -270,21 +259,6 @@ No repository. GDPR right-to-deletion orchestrator. Fans out over
 `IUserInfoInvalidator`, `IRoleAssignmentClaimsCacheInvalidator`,
 `IShiftAuthorizationInvalidator`, `IShiftViewInvalidator`. No cache, no
 direct DB access — all writes go through owning services.
-
-### UnsubscribeService (Scoped)
-
-Repositories: `IUserRepository` (read-only — token validation / user guard).
-
-| Table | R/W |
-|-------|-----|
-| Users | R (existence check via `IUserRepository.GetByIdAsync`) |
-
-Calls `ICommunicationPreferenceService` to validate the token and flip
-per-category opt-outs; uses `IDataProtectionProvider` for legacy token
-validation. Also injects `IUserService` to resolve the user's
-`BurnerName` for the unsubscribe-confirm display (reads from the
-`CachingUserService` TrackedCache — no extra DB round-trip on hit).
-No cache on the service itself.
 
 ### AccountMergeService (Scoped)
 

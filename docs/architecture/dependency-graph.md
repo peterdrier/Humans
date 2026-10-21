@@ -83,7 +83,6 @@ graph LR
 
     User[UserService]:::users
     UEmail[UserEmailService]:::users
-    CommPref[CommunicationPreferenceService]:::users
     CF[ContactFieldService]:::users
     AcctProv[AccountProvisioningService]:::users
     AcctDel[AccountDeletionService]:::users
@@ -93,6 +92,8 @@ graph LR
     UsersAudience[UsersAudienceService]:::users
     HumanLifecycle[HumanLifecycleService]:::users
     TeamMsgOpts[TeamMessageOptionsProvider]:::email
+    CommPref[CommunicationPreferenceService]:::email
+    Unsub[UnsubscribeService]:::email
     UserNameSync[UserNameSyncService]:::users
 
     AdminAuth[AdminAuthorizationService]:::auth
@@ -249,6 +250,8 @@ graph LR
     User --> Audit
     UEmail --> Audit
     CommPref --> Audit
+    CommPref --> User
+    Unsub --> User
     CF --> Team
     CF --> Role
     AcctProv --> Audit
@@ -714,7 +717,7 @@ interfaces / infra connectors, which this graph doesn't chart):
 `AgentAnthropicBalanceProvider`, `AuditViewerService` (fans `IEntityNameContributor`),
 `BurnSettingsService`, `EmailProblemsService`, `EventBulkImporter` (Events' own repository only),
 `GoogleWorkspaceUserService`, `GuideContentService`, `MailerLiteService`, `NotificationInboxRead`
-(composes Notifications' own inbox + meter provider), `ProfileService`, `UnsubscribeService`.
+(composes Notifications' own inbox + meter provider), `ProfileService`.
 
 ## Cycles broken by lazy-resolution
 

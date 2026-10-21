@@ -32,11 +32,11 @@ internal sealed record UserDebugRow(
     Instant CreatedAt,
     Instant? LastLoginAt)
 {
-    public static UserDebugRow From(UserInfo info, ConsentReviewInfo? review, bool hasTicket) => new(
+    public static UserDebugRow From(UserInfo info, ConsentReviewInfo? review, bool hasTicket, bool? marketingOptedOut) => new(
         UserId: info.Id,
         HasProfile: info.Profile is not null,
         HasTicket: hasTicket,
-        MarketingOptedOut: info.MarketingOptedOut,
+        MarketingOptedOut: marketingOptedOut,
         DisplayName: info.BurnerName,
         BurnerName: info.BurnerName,
         LegalName: info.Profile?.FullName ?? string.Empty,

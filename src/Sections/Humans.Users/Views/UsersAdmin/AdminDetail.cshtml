@@ -108,11 +108,8 @@
 
         <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" display-name="@Model.DisplayName" />
 
-        @* Section-contributed parts (IUserPart) — UserCalendar (Calendar), Role Assignments (Auth), Email Outbox (Email), each auto-hides when empty *@
+        @* Section-contributed parts (IUserPart) — UserCalendar (Calendar), Role Assignments (Auth), Email Outbox and Communication Preferences (Email), each auto-hides when empty *@
         <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.AdminDetail" user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Admin" />
-
-        <h5 class="mt-4 mb-2">@Localizer["CommPrefs_Title"]</h5>
-        <vc:communication-preferences-panel user-id="@Model.UserId" read-only="true" />
 
         <vc:audit-log user-id="@Model.UserId" limit="50" title="@Localizer["AdminHuman_AuditHistory"].Value" />
 

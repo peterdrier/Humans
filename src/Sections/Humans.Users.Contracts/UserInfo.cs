@@ -39,10 +39,11 @@ public sealed record VolunteerHistoryInfo(
     string EventName,
     string? Description);
 
-/// <summary>Compact projection of <c>CommunicationPreference</c>.</summary>
-public sealed record CommunicationPreferenceInfo(
+/// <summary>Compact projection of the frozen legacy <c>communication_preferences</c> row
+/// (Users decomposition commit 14; the live record is Email's <c>email_communication_preferences</c>).</summary>
+public sealed record LegacyCommunicationPreferenceInfo(
     Guid Id,
-    MessageCategory Category,
+    LegacyMessageCategory Category,
     bool OptedOut,
     bool InboxEnabled,
     Instant UpdatedAt,
@@ -169,7 +170,8 @@ public sealed record UserInfo(
     IReadOnlyList<LegacyEventParticipationInfo> EventParticipations,
     IReadOnlyList<UserExternalLoginInfo> ExternalLogins,
     ProfileInfo? Profile,
-    IReadOnlyList<CommunicationPreferenceInfo> CommunicationPreferences)
+    [property: Obsolete("Moved to Email's email_communication_preferences (Users decomposition commit 14). Read ICommunicationPreferenceService; the one reader left is Email's legacy fallback and the email.communication-preferences copy.", DiagnosticId = "HUM_USER_COMMPREFS")]
+    IReadOnlyList<LegacyCommunicationPreferenceInfo> CommunicationPreferences)
 {
     /// <summary>
     /// Stored lifecycle/access state (the <c>users.State</c> column) — the single source of truth
@@ -312,12 +314,6 @@ public sealed record UserInfo(
         .Select(e => e.Email)
         .ToList();
 
-    /// <summary>Marketing opt tri-state: null = no preference row, true = opted out, false = opted in.</summary>
-    public bool? MarketingOptedOut => CommunicationPreferences
-        .Where(c => c.Category == MessageCategory.Marketing)
-        .Select(c => (bool?)c.OptedOut)
-        .FirstOrDefault();
-
     /// <summary>Stub: hasn't entered their name yet (<see cref="UserState.Bare"/>) — no profile row
     /// or blank required names. Callers writing consents must block on this.</summary>
     public bool IsStub => State == UserState.Bare;
@@ -375,7 +371,7 @@ public sealed record UserInfo(
         IReadOnlyList<EventParticipation> eventParticipations,
         IReadOnlyList<(string Provider, string ProviderKey)> externalLogins,
         ProfileInfo? profile,
-        IReadOnlyList<CommunicationPreferenceInfo> communicationPreferences)
+        IReadOnlyList<LegacyCommunicationPreferenceInfo> communicationPreferences)
     {
         var userEmailInfos = userEmails
             .OrderByDescending(e => e.IsPrimary)

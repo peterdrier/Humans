@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
@@ -13,7 +14,7 @@ namespace Humans.Debug.Services;
 ///   <item><description>bit 0 — <c>Profile</c>: <c>UserInfo.HasRequiredNameFields</c></description></item>
 ///   <item><description>bit 1 — <c>Ticket</c>: Ticketed/Attended participation for the active year (<c>ITicketService</c>)</description></item>
 ///   <item><description>bit 2 — <c>Shift</c>: active signup (Pending/Confirmed) in the active event</description></item>
-///   <item><description>bit 3 — <c>Marketing</c>: explicit marketing opt-in (<c>MarketingOptedOut == false</c>)</description></item>
+///   <item><description>bit 3 — <c>Marketing</c>: explicit marketing opt-in (a Marketing preference with <c>OptedOut</c> false, <c>ICommunicationPreferenceService</c>)</description></item>
 /// </list>
 /// The Venn diagram uses only the first three bits (marginalized over Marketing); the UpSet
 /// plot uses all four.
@@ -25,6 +26,7 @@ internal static class UserSetMembershipCalculator
         ISettingsService settingsService,
         IShiftView shiftView,
         ITicketService tickets,
+        ICommunicationPreferenceService preferences,
         CancellationToken ct)
     {
         var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
@@ -34,6 +36,7 @@ internal static class UserSetMembershipCalculator
                 .Where(p => p.Year == activeYear && p.HasTicket).Select(p => p.UserId).ToHashSet()
             : [];
         var shiftViews = await shiftView.GetUsersAsync(snapshot.Select(u => u.Id), ct);
+        var marketing = await preferences.GetPreferencesForCategoryAsync(MessageCategory.Marketing, ct);
 
         var counts = new Dictionary<int, int>(capacity: 16);
         foreach (var u in snapshot)
@@ -42,8 +45,8 @@ internal static class UserSetMembershipCalculator
             if (u.HasRequiredNameFields) mask |= UserSetMembership.ProfileBit;
             if (ticketHolders.Contains(u.Id)) mask |= UserSetMembership.TicketBit;
             if (shiftViews[u.Id].HasShift) mask |= UserSetMembership.ShiftBit;
-            // Explicit opt-in only: tri-state MarketingOptedOut == false (not null, not true).
-            if (u.MarketingOptedOut == false) mask |= UserSetMembership.MarketingBit;
+            // Explicit opt-in only: a recorded Marketing preference that is not opted out.
+            if (marketing.GetValueOrDefault(u.Id) is { OptedOut: false }) mask |= UserSetMembership.MarketingBit;
 
             counts[mask] = counts.GetValueOrDefault(mask) + 1;
         }

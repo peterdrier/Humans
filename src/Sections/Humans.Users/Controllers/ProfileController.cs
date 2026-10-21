@@ -1,5 +1,4 @@
 using Humans.Consent.Contracts;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Users.Services;
 using Humans.Base.Models.Tables;
 // @e2e: board.spec.ts
@@ -44,7 +43,6 @@ internal sealed class ProfileController(
     UserManager<User> userManager,
     IProfileEditorService profileEditorService,
     IContactFieldService contactFieldService,
-    ICommunicationPreferenceService commPrefService,
     IOnboardingIntake onboardingService,
     IConfiguration configuration,
     ConfigurationRegistry configRegistry,
@@ -425,58 +423,6 @@ internal sealed class ProfileController(
             return View(model);
         }
     }
-
-    [HttpGet("Me/CommunicationPreferences")]
-    public async Task<IActionResult> CommunicationPreferences()
-    {
-        try
-        {
-            var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
-            if (user is null)
-                return NotFound();
-
-            return View(model: user.Id);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Failed to load communication preferences");
-            SetError(localizer["Users_Profile_CommunicationPreferencesLoadFailed"].Value);
-            return RedirectToAction(nameof(Me));
-        }
-    }
-
-    [HttpPost("Me/CommunicationPreferences/Update")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdatePreference(MessageCategory category, [BindRequired] bool emailEnabled, [BindRequired] bool alertEnabled)
-    {
-        try
-        {
-            var user = await GetCurrentUserInfoAsync();
-            if (user is null)
-                return Unauthorized();
-            if (!ModelState.IsValid)
-            {
-                logger.LogWarning("Rejected malformed communication preference update for {UserId}", user.Id);
-                return BadRequest(ModelState);
-            }
-
-            if (category.IsAlwaysOn())
-                return BadRequest(localizer["Users_Profile_AlwaysOnCategoryCannotChange"].Value);
-
-            await commPrefService.UpdatePreferenceAsync(
-                user.Id, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, "Profile", actorUserId: user.Id);
-
-            return Ok();
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to save communication preference for {Category}", category);
-            return StatusCode(500);
-        }
-    }
-
-    [HttpGet("Me/Notifications")]
-    public IActionResult Notifications() => RedirectToActionPermanent(nameof(CommunicationPreferences));
 
     // ─── Helpers ─────────────────────────────────────────────────────
 

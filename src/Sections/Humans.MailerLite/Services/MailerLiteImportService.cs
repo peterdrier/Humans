@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.MailerLite.Data;
 using Humans.MailerLite.Domain;
@@ -14,6 +15,7 @@ internal sealed class MailerLiteImportService(
     IUserService users,
     IAccountProvisioningService provisioning,
     ICommunicationPreferenceService prefs,
+    ICommunicationPreferenceWrite prefWrite,
     IAuditLogService audit,
     IMailerLiteRepository repository,
     IClock clock,
@@ -129,8 +131,9 @@ internal sealed class MailerLiteImportService(
         // from the Humans side — these users have no Website subscriber row, so they
         // never appear in the subscriber loop above.
         var websiteEmails = WebsiteSubscriberEmails(subs);
+        var marketingPrefs = await prefs.GetPreferencesForCategoryAsync(MessageCategory.Marketing, ct);
         foreach (var u in await users.GetAllUserInfosAsync(ct))
-            if (IsResetCandidate(u, websiteEmails))
+            if (IsResetCandidate(u, marketingPrefs.GetValueOrDefault(u.Id), websiteEmails))
                 decisions.Add(new SubscriberDecision(
                     u.Email ?? "(no verified email)", "n/a",
                     SubscriberOutcome.ResetMarketingFlag, u.Id, null, null));
@@ -354,7 +357,7 @@ internal sealed class MailerLiteImportService(
                 return DeltaResult.NoChange;
         }
 
-        await prefs.UpdatePreferenceAsync(userId, MessageCategory.Marketing,
+        await prefWrite.UpdatePreferenceAsync(userId, MessageCategory.Marketing,
             optedOut: mlOptedOut, source: SyncSource, ct);
         return mlOptedOut ? DeltaResult.FlippedToOptOut : DeltaResult.FlippedToOptIn;
     }
@@ -386,10 +389,9 @@ internal sealed class MailerLiteImportService(
     /// being nulled here. Non-members are pure collateral: the row is deleted to
     /// revert to "no preference" (null).
     /// </summary>
-    private static bool IsResetCandidate(UserInfo user, HashSet<string> websiteEmails)
+    private static bool IsResetCandidate(
+        UserInfo user, CommunicationPreferenceSnapshot? marketing, HashSet<string> websiteEmails)
     {
-        var marketing = user.CommunicationPreferences
-            .FirstOrDefault(c => c.Category == MessageCategory.Marketing);
         if (marketing is null || marketing.OptedOut) return false;
         if (!string.Equals(marketing.UpdateSource, SyncSource, StringComparison.Ordinal)) return false;
         if (marketing.SubscribedAt is { } subscribedAt && subscribedAt < BadImportCutoff) return false;
@@ -402,9 +404,10 @@ internal sealed class MailerLiteImportService(
         Guid userId, HashSet<string> websiteEmails, CancellationToken ct)
     {
         var info = await users.GetUserInfoAsync(userId, ct);
-        if (info is null || !IsResetCandidate(info, websiteEmails))
+        if (info is null
+            || !IsResetCandidate(info, await prefs.GetPreferenceOrNullAsync(userId, MessageCategory.Marketing, ct), websiteEmails))
             return false;
-        await prefs.ResetPreferenceAsync(userId, MessageCategory.Marketing, ResetSource, ct);
+        await prefWrite.ResetPreferenceAsync(userId, MessageCategory.Marketing, ResetSource, ct);
         return true;
     }
 }

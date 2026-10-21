@@ -44,6 +44,14 @@ public class MembershipRequiredFilterTests
             .FirstOrDefault(t => t is not null)
         ?? throw new InvalidOperationException(
             "Humans.Email.Controllers.MemberOutboxController not found in any section assembly.");
+    // CommunicationPreferencesController is internal to Humans.Email and serves
+    // /Profile/Me/CommunicationPreferences (Users decomposition commit 14).
+    private static readonly Type CommunicationPreferencesControllerType =
+        SectionDiscoveryExtensions.SectionAssemblies()
+            .Select(a => a.GetType("Humans.Email.Controllers.CommunicationPreferencesController", throwOnError: false))
+            .FirstOrDefault(t => t is not null)
+        ?? throw new InvalidOperationException(
+            "Humans.Email.Controllers.CommunicationPreferencesController not found in any section assembly.");
     // MemberDataController and UserController are internal to Humans.Gdpr: the member's own
     // export/deletion-request actions and the account-status wall / pending-deletion landing.
     private static readonly Type MemberDataControllerType = GdprControllerType("MemberDataController");
@@ -163,9 +171,9 @@ public class MembershipRequiredFilterTests
             (typeof(ProfileController), nameof(ProfileController.Medical)),
             (CantinaProfileControllerType, "Dietary"),
             (CantinaProfileControllerType, "LegacyDietaryMedical"),
-            (typeof(ProfileController), nameof(ProfileController.CommunicationPreferences)),
-            (typeof(ProfileController), nameof(ProfileController.UpdatePreference)),
-            (typeof(ProfileController), nameof(ProfileController.Notifications)),
+            (CommunicationPreferencesControllerType, "Index"),
+            (CommunicationPreferencesControllerType, "UpdatePreference"),
+            (CommunicationPreferencesControllerType, "Notifications"),
             (MemberDataControllerType, "DownloadData"),
             (MemberDataControllerType, "RequestDeletion"),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.Emails)),
@@ -205,6 +213,7 @@ public class MembershipRequiredFilterTests
             typeof(ProfileController), typeof(ProfileEmailsController),
             OnboardingWidgetControllerType, UserControllerType, MemberOutboxControllerType,
             MemberDataControllerType, MyDataControllerType, CantinaProfileControllerType,
+            CommunicationPreferencesControllerType,
         })
         {
             var methods = type.GetMethods().Where(m => m.DeclaringType == type

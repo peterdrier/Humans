@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.MailerLite.Services.Dtos;
 using Humans.Users.Contracts;
@@ -108,6 +109,7 @@ internal sealed class ApplyHarness
     private readonly IMailerLiteService _ml = Substitute.For<IMailerLiteService>();
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly ICommunicationPreferenceService _prefs = Substitute.For<ICommunicationPreferenceService>();
+    private readonly ICommunicationPreferenceWrite _prefWrite = Substitute.For<ICommunicationPreferenceWrite>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
 
     public PrefsVerifier Prefs { get; }
@@ -126,7 +128,7 @@ internal sealed class ApplyHarness
             .Returns(Task.FromResult<IReadOnlyList<MailerLiteGroup>>(
                 [new MailerLiteGroup(WebsiteGroupId, "Website", 0, 0, 0, 0, 0)]));
 
-        Prefs = new PrefsVerifier(_prefs);
+        Prefs = new PrefsVerifier(_prefWrite);
 
         Service = new MailerLiteImportService(
             _ml,
@@ -134,6 +136,7 @@ internal sealed class ApplyHarness
             Substitute.For<IUserService>(),
             Substitute.For<IAccountProvisioningService>(),
             _prefs,
+            _prefWrite,
             _audit,
             InMemoryMailerLiteRepository.New(),
             new FakeClock(Instant.FromUtc(2026, 5, 12, 12, 0)),
@@ -174,7 +177,7 @@ internal sealed class ApplyHarness
                 Arg.Is<Guid>(id => id == userId), category, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<CommunicationPreferenceSnapshot?>(pref));
 
-        _prefs.UpdatePreferenceAsync(
+        _prefWrite.UpdatePreferenceAsync(
                 Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<bool>(),
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
@@ -182,9 +185,9 @@ internal sealed class ApplyHarness
 }
 
 /// <summary>
-/// Assertion helpers for <see cref="ICommunicationPreferenceService"/> mock calls.
+/// Assertion helpers for <see cref="ICommunicationPreferenceWrite"/> mock calls.
 /// </summary>
-internal sealed class PrefsVerifier(ICommunicationPreferenceService mock)
+internal sealed class PrefsVerifier(ICommunicationPreferenceWrite mock)
 {
     public async Task AssertUpdated(Guid userId, MessageCategory category, bool optedOut, string source)
     {

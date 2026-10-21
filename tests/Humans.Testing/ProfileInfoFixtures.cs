@@ -150,8 +150,9 @@ public static class UserFixtures
         Guid? id = null) =>
         new(id ?? Guid.NewGuid(), date ?? new LocalDate(2026, 1, 1), eventName, description);
 
-    public static CommunicationPreferenceInfo Preference(
-        MessageCategory category = MessageCategory.System,
+    /// <summary>A frozen legacy Users preference row (Email owns the live ones since Users decomposition commit 14).</summary>
+    public static LegacyCommunicationPreferenceInfo Preference(
+        LegacyMessageCategory category = LegacyMessageCategory.System,
         bool optedOut = false,
         bool inboxEnabled = true,
         Instant? updatedAt = null,

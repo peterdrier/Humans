@@ -143,15 +143,17 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task CommittedPreferenceChange_FinishesCacheRefreshAndAuditDespiteRequestCancellation()
+    public async Task CommittedLegacyPreferenceErasure_FinishesCacheRefreshDespiteRequestCancellation()
     {
+        // Email owns the live preferences since Users decomposition commit 14; the frozen legacy rows
+        // are deleted only by erasure, and the cached legacy slice must follow that delete.
         var testCt = Xunit.TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
         var preference = new CommunicationPreference
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            Category = MessageCategory.Marketing,
+            Category = LegacyMessageCategory.Marketing,
             OptedOut = false,
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdateSource = "Profile"
@@ -163,10 +165,11 @@ public class CachingUserServiceTests
             seed.CommunicationPreferences.Add(preference);
             await seed.SaveChangesAsync(testCt);
         }
+#pragma warning disable HUM_USER_COMMPREFS // pins the cache's handling of the frozen legacy slice
         var original = SampleUserInfo(userId) with
         {
             CommunicationPreferences =
-            [new CommunicationPreferenceInfo(preference.Id, preference.Category, false, true,
+            [new LegacyCommunicationPreferenceInfo(preference.Id, preference.Category, false, true,
                 preference.UpdatedAt, preference.UpdateSource, null)]
         };
         var cached = CreateSut();
@@ -176,16 +179,16 @@ public class CachingUserServiceTests
             .Returns(call => new ValueTask<UserInfo?>(ReloadAsync(call.ArgAt<CancellationToken>(1))));
         async Task<UserInfo?> ReloadAsync(CancellationToken readCt)
         {
-            // This reload runs only after the preference has committed.
+            // This reload runs only after the delete has committed.
             await cancellation.CancelAsync();
             readCt.ThrowIfCancellationRequested();
             await using var read = new UsersDbContext(options);
-            var saved = await read.CommunicationPreferences.AsNoTracking().SingleAsync(readCt);
+            var saved = await read.CommunicationPreferences.AsNoTracking().ToListAsync(readCt);
             return original with
             {
                 CommunicationPreferences =
-                [new CommunicationPreferenceInfo(saved.Id, saved.Category, saved.OptedOut, saved.InboxEnabled,
-                    saved.UpdatedAt, saved.UpdateSource, saved.SubscribedAt)]
+                [.. saved.Select(p => new LegacyCommunicationPreferenceInfo(p.Id, p.Category, p.OptedOut, p.InboxEnabled,
+                    p.UpdatedAt, p.UpdateSource, p.SubscribedAt))]
             };
         }
         var services = new ServiceCollection();
@@ -193,20 +196,14 @@ public class CachingUserServiceTests
         await using var provider = services.BuildServiceProvider();
         var interceptor = new UserInfoSaveChangesInterceptor(provider, NullLogger<UserInfoSaveChangesInterceptor>.Instance);
         var interceptedOptions = new DbContextOptionsBuilder<UsersDbContext>(options).AddInterceptors(interceptor).Options;
-        var audit = Substitute.For<IAuditLogService>();
-        var preferences = new CommunicationPreferenceService(
-            new CommunicationPreferenceRepository(new TestDbContextFactory(interceptedOptions)),
-            cached, Substitute.For<IUnsubscribeTokenProvider>(), new FakeClock(preference.UpdatedAt),
-            audit, NullLogger<CommunicationPreferenceService>.Instance);
+        var repository = new CommunicationPreferenceRepository(new TestDbContextFactory(interceptedOptions));
 
-        await preferences.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: true,
-            source: "Profile", cancellation.Token);
+        (await repository.DeleteAllForUserAsync(userId, cancellation.Token)).Should().Be(1);
 
         var refreshed = await cached.GetUserInfoAsync(userId, testCt);
-        refreshed!.CommunicationPreferences.Should().ContainSingle().Which.OptedOut.Should().BeTrue();
-        original.CommunicationPreferences.Single().OptedOut.Should().BeFalse();
-        await audit.Received(1).LogAsync(AuditAction.CommunicationPreferenceChanged, "User", userId,
-            Arg.Any<string>(), "CommunicationPreferenceService");
+        refreshed!.CommunicationPreferences.Should().BeEmpty();
+        original.CommunicationPreferences.Should().ContainSingle();
+#pragma warning restore HUM_USER_COMMPREFS
     }
 
     [HumansTheory]

@@ -15,7 +15,8 @@ from memory, because the whole register fits in memory and is kept there.
 
 People manage themselves under `/Profile/Me/*`; member admins manage people under
 `/Users/Admin/*`; a handful of one-off repair screens sit under `/Profile/Admin/*`;
-`/Unsubscribe/*` and `/Guest/*` serve people with no session or no profile.
+`/Unsubscribe/*` and `/Guest/*` (people with no session or no profile) are Email's and Gdpr's since
+Users decomposition commit 14.
 
 ## 2. The shapes
 
@@ -26,7 +27,7 @@ People manage themselves under `/Profile/Me/*`; member admins manage people unde
 | **Address mutation** | add, verify, promote, demote, hide, delete, link/unlink a provider, reconcile the OAuth claim | `IUserEmailService` writes → `IUserManagement` storage commands → repository |
 | **Profile mutation** | save the edit form; save medical conditions; set picture; set tier; stub a profile; replace languages / history | `IProfileEditorService` (validation + file) → `IUserManagement` (row) → repository |
 | **Contact handles** | what can this viewer see of that owner; save the owner's list | `IContactFieldService` |
-| **Mail consent** | is Y opted out of category C; flip it; mint / validate an unsubscribe token | `ICommunicationPreferenceService`, `IUnsubscribeService`, `IUnsubscribeTokenProvider` |
+| **Mail consent** | moved to Email (Users decomposition commit 14); Users only carries the frozen `communication_preferences` rows on `UserInfo` for Email's fallback and copy | `UserInfo.CommunicationPreferences` (`[Obsolete(HUM_USER_COMMPREFS)]`) |
 | **Presence** | moved to Tickets (Users decomposition commit 13); Users only carries the frozen `event_participations` rows on `UserInfo` for Tickets' fallback and copy | `UserInfo.EventParticipations` (`[Obsolete(HUM_USER_PARTICIPATIONS)]`) |
 | **Account life** | create (OAuth callback, magic link, import), suspend / unsuspend / reject / restore, request and cancel deletion, anonymize on expiry, purge (non-prod), merge two accounts | `IExternalLoginService`, `IAccountProvisioningService`, `IHumanLifecycleService`, `IAccountDeletionService`, `IAccountMergeService` + `IDuplicateAccountService`, `INonCompliantMemberSuspension` |
 | **Cache signal** | "this person changed" from a write the service did not see | `IUserInfoInvalidator`, `IUserInfoSliceRefresher` + `UserInfoSaveChangesInterceptor` |
@@ -45,9 +46,9 @@ The shapes imply one register with one cache and one write funnel:
   refresh happens exactly once per write: `IUserWrite` is the write half other sections call,
   `IUserManagement : IUserService, IUserWrite` adds the section-only half; one `CachingUserService`
   behind both. Domain services (`UserEmailService`,
-  `ProfileEditorService`, `ContactFieldService`, `CommunicationPreferenceService`) hold the
+  `ProfileEditorService`, `ContactFieldService`) hold the
   rules and call the funnel; they do not reach the repository around it — except where a table
-  is that service's own lane (contact fields, communication preferences).
+  is that service's own lane (contact fields).
 - **Address ownership as one lookup**: `FindByAddressAsync` filters the cached snapshot
   (`UserInfo.UserEmails`) by address form (aliased / exact) and verification, and returns
   every matching row; the caller picks the cardinality (first owner, distinct owners, exactly
@@ -85,7 +86,6 @@ The shapes imply one register with one cache and one write funnel:
 - `CachingUserService` and `IUserInfoInvalidator` are the same singleton.
 - Deletion is a 30-day grace period; memberships and roles go on request, data goes on expiry;
   purge never runs in Production and never on oneself.
-- Unsubscribe endpoints are unauthenticated and never enumerate accounts.
 - Contact-field and email visibility resolve from the viewer's relation to the owner: self and
   Board see all, coordinators see `CoordinatorsAndBoard` and below, shared-team members see
   `MyTeams` and below, other active members see `AllActiveProfiles` only.

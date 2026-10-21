@@ -3,12 +3,12 @@
   src/Sections/Humans.Email.Contracts/**
 -->
 <!-- freshness:flag-on-change
-  Outbox queue/retry semantics, pause flag ownership, and SDK-free composer/processor split — review when Email service/repository/entity change.
+  Outbox queue/retry semantics, pause flag ownership, SDK-free composer/processor split, communication-preference rules (legacy fallback, cleared rows, merge fold) and unsubscribe token rules — review when Email service/repository/entity change.
 -->
 
 # Email — Section Invariants
 
-Transactional email outbox: queue, render, deliver, retry, pause/resume. Backs campaign sends, onboarding mail, shift notifications, feedback replies.
+Transactional email outbox: queue, render, deliver, retry, pause/resume. Backs campaign sends, onboarding mail, shift notifications, feedback replies. Also owns each human's per-category communication preferences and the unsubscribe surface (Users decomposition commit 14).
 
 ## Concepts
 
@@ -22,6 +22,8 @@ Transactional email outbox: queue, render, deliver, retry, pause/resume. Backs c
 <!-- wheat: docs/plans/2026-09-16-production-readiness.md §Promotion rehearsal and recovery record -->
 - Transport selection keys on the raw `Email:SmtpHost` setting (`Section.Register`), and `appsettings.json` defaults it to `smtp-relay.gmail.com`, so any host binds the real `SmtpEmailTransport` unless `Email:SmtpHost` is explicitly cleared. Removing SMTP credentials alone does not select `StubEmailTransport`.
 - A persisted `EmailMessage.DeliveryId` reuses that logical delivery's outbox primary key: retries are no-ops while the row exists, even if their payload changes. Only the first enqueue records queue metrics or triggers immediate processing. Ordinary sends without a delivery id receive a new id each time. Retention/erasure removes this deduplication history; `DoNotPersist` bypasses it, and SMTP delivery retains its existing retry semantics.
+- **Communication Preferences** are a human's per-category email opt-out and in-app inbox switch (`MessageCategory`; [feature spec](features/communication-preferences.md)). System and CampaignCodes are always on. `ICommunicationPreferenceService` is the cross-section read; `ICommunicationPreferenceWrite` carries the two writes MailerLite's import makes; everything else (channel-aware updates, tokens, the copy) is the internal `ICommunicationPreferenceManagement`.
+- **Unsubscribe** is the no-login opt-out surface: `/Unsubscribe/{token}` and the RFC 8058 `/Unsubscribe/OneClick` POST. Category-aware tokens (Data Protection purpose `CommunicationPreference`, payload `{userId}|{Category}`, 90-day lifetime) redirect to `/Guest/CommunicationPreferences`; legacy campaign tokens (`CampaignUnsubscribe` purpose) show the confirmation page and act on `Marketing`. Purposes and payload are unchanged from when Users served them, so tokens minted before the move still validate.
 - **One `IEmailService` implementation exists:** `OutboxEmailService` (Application, default — writes to the outbox). DI binds `IEmailService` to `OutboxEmailService`.
 
 ## Data Model
@@ -71,6 +73,42 @@ spikes seen in Google Postmaster, since `email_outbox_messages` is pruned after
 
 **Composite PK:** `(Date, TemplateName)`. **Index:** `Date` — the dashboard's rolling-window scan.
 
+### CommunicationPreference
+
+**Table:** `email_communication_preferences` (Users decomposition commit 14; replaces Users' frozen `communication_preferences`)
+
+| Property | Type | Purpose |
+|----------|------|---------|
+| Id | Guid | PK |
+| UserId | Guid | Bare column, no FK or nav |
+| Category | MessageCategory | Stored as string (max 50) |
+| OptedOut | bool? | true = no email for this category; **null = cleared row** (a reset, or a merge source) that shadows the legacy row so the fallback cannot resurrect it |
+| InboxEnabled | bool | true = informational in-app notifications for this category show (actionable ones always do) |
+| UpdatedAt | Instant | Last change |
+| UpdateSource | string (100) | Who changed it — see [`update-source-attribution`](../../../../memory/code/update-source-attribution.md) |
+| SubscribedAt | Instant? | First opt-in; never overwritten while non-null |
+
+**Unique index:** `(UserId, Category)`.
+
+**Legacy fallback (until the retirement PR):** a (user, category) with no row here reads Users' frozen row from `UserInfo.CommunicationPreferences` (`[Obsolete(HUM_USER_COMMPREFS)]`, read only by `CommunicationPreferenceService.LegacyRows`). Single-user reads go through `GetUserInfoAsync` (merge chains resolved forward); writes and the copy use the raw id. A write seeds its untouched fields from the legacy row; a reset with a legacy row writes a cleared row, otherwise deletes. The data migration `email.communication-preferences` (Email's `SectionDataMigrations`, run from `/Debug/DataMigrations`) copies every legacy row without a row here; cleared rows count as present.
+
+### MessageCategory
+
+| Value | Int | Description |
+|-------|-----|-------------|
+| System | 0 | Critical account/consent/security notifications. Always on. |
+| ~~EventOperations~~ | 1 | **Deprecated** — split into VolunteerUpdates + TeamUpdates. Kept for DB string compatibility. |
+| ~~CommunityUpdates~~ | 2 | **Deprecated** — replaced by FacilitatedMessages. Kept for DB string compatibility. |
+| Marketing | 3 | Mailing list, promotions. Default: off. |
+| Governance | 4 | Board voting, tier applications, role assignments, onboarding reviews. Default: on. |
+| CampaignCodes | 5 | Discount codes, grants, campaign redemption codes. Always on. |
+| FacilitatedMessages | 6 | User-to-user emails relayed via Humans. Default: on. |
+| Ticketing | 7 | Purchase confirmations, event info. Default: on. Locked on when user has a matched ticket order. |
+| VolunteerUpdates | 8 | Shift changes, schedule updates, volunteer notifications. Default: on. |
+| TeamUpdates | 9 | Drive permissions, team member adds/removes. Default: on. |
+
+`Humans.Email.Contracts`. Stored as string. `IsAlwaysOn()` covers System and CampaignCodes; `MessageCategoryExtensions.ActiveCategories` is the display-order list (deprecated values omitted). Member names are persisted and carried in unsubscribe tokens, so they never change.
+
 ### EmailOutboxStatus
 
 | Value | Description |
@@ -107,6 +145,15 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 | `GET /Profile/{id}/SendMessage` | authenticated | `FacilitatedMessageController.SendMessage` — the composer for a one-off message to another member; redirects to the profile for self or an opted-out recipient, 403 for a requested team the viewer may not send as. URL kept from when Users served it. |
 | `POST /Profile/{id}/SendMessage` | authenticated, anti-forgery | `FacilitatedMessageController.SendMessage` — relays the message through `IEmailMessageFactory.FacilitatedMessage` and `IEmailService`, then audits `FacilitatedMessageSent` (team sends name and link the team, never copy its address into the audit text). Same guards as the GET, re-checked. |
 | `GET /Users/Admin/{id}/Outbox` | `HumanAdminBoardOrAdmin` | `MemberOutboxController.AdminOutbox` — another user's outbox history. Both routes keep their `Profile` / `Users/Admin` prefixes so the URLs did not change when the pages left Users. |
+| `GET /Profile/Me/CommunicationPreferences` | authenticated | `CommunicationPreferencesController.Index` — the member's own preferences; takes no user id. Exempt from the Active-membership gate. |
+| `POST /Profile/Me/CommunicationPreferences/Update` | authenticated, anti-forgery | `CommunicationPreferencesController.UpdatePreference` — one category's email/inbox flags (`[BindRequired]`; 400 on malformed binding or an always-on category); source `Profile`, actor the member. |
+| `GET /Profile/Me/Notifications` | authenticated | `CommunicationPreferencesController.Notifications` — permanent redirect to the page above. |
+| `GET /Guest/CommunicationPreferences` | `[AllowAnonymous]` | `GuestAccountController.CommunicationPreferences` — the profileless and unsubscribe-link variant; a valid `utoken` stands in for a session. |
+| `POST /Guest/CommunicationPreferences/Update` | `[AllowAnonymous]`, anti-forgery | `GuestAccountController.UpdatePreference` — source `Guest` when signed in, `MagicLink` via token. |
+| `GET /Unsubscribe/{token}`, `POST /Unsubscribe/{token}` | anonymous | `UnsubscribeController` — confirm page (legacy campaign tokens) or redirect to the guest page (category tokens). |
+| `POST /Unsubscribe/OneClick` | anonymous, no anti-forgery by design | `UnsubscribeController.OneClick` — RFC 8058 one-click. |
+
+The communication-preference routes moved from Users in decomposition commit 14 at the same URLs; `/Guest/RequestDeletion` and `/Guest/CancelDeletion` went to Gdpr's `GuestDataController`.
 
 ## Actors & Roles
 
@@ -115,7 +162,8 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 | Any service / job | Build a fully-rendered `EmailMessage` through the sending section's own builder (e.g. `GovernanceEmails`, `UsersEmails`) — or, for the facilitated relay alone, `IEmailMessageFactory.FacilitatedMessage` — and hand it to the single `IEmailService.SendAsync(message, ct)`. The default `IEmailService` is `OutboxEmailService`, which writes the row to `email_outbox_messages`. |
 | Admin (`AdminOnly` policy) | Pause / resume outbox at `/Settings#email` (peterdrier/Humans#1634). Retry a failed message (re-queue). Discard a failed message (delete). View the outbox dashboard at `/Email/EmailOutbox`, including the configured per-run batch limit, 90-day daily send/failure volume and top templates. Preview rendered templates at `/Email/EmailPreview`. Review then confirm a one-shot backfill of daily counts from retained outbox history. |
 | Any authenticated human | View own outbox (`GET /Profile/Me/Outbox`, linked from the Profile page) — emails where `UserId` matches the signed-in user. Preview a composer draft (`POST /Email/PreviewMarkdown`) and send it to themselves (`POST /Email/SendMarkdownToSelf`). |
-| HumanAdmin, Board, Admin (`HumanAdminBoardOrAdmin` policy) | View another human's outbox (`GET /Users/Admin/{id}/Outbox`), reached from the "Email Outbox" card on `/Users/Admin/{id}` that Email contributes there as an `AdminDetail` user part (`OutboxCardViewComponent`, shown only to a `HumanAdminBoardOrAdmin` viewer in admin mode). Everyone else gets the 403 from the controller and no card. |
+| Anyone with an unsubscribe link | Opt out at `/Unsubscribe/{token}` or `/Unsubscribe/OneClick`, or manage every category at `/Guest/CommunicationPreferences?utoken=…` — no login. |
+| HumanAdmin, Board, Admin (`HumanAdminBoardOrAdmin` policy) | See a human's preferences read-only on `/Users/Admin/{id}` (`CommunicationPreferencesCardViewComponent`, an `AdminDetail` user part at weight 210, admin mode only). View another human's outbox (`GET /Users/Admin/{id}/Outbox`), reached from the "Email Outbox" card on `/Users/Admin/{id}` that Email contributes there as an `AdminDetail` user part (`OutboxCardViewComponent`, shown only to a `HumanAdminBoardOrAdmin` viewer in admin mode). Everyone else gets the 403 from the controller and no card. |
 
 ## Invariants
 
@@ -144,12 +192,15 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 - `IEmailPreviewService` is the cross-section seam for side-effect-free final-body rendering: `RenderSystemMessage(EmailMessage)` accepts only always-send system messages (opt-outable messages need recipient-specific unsubscribe policy and are rejected) for previewing a fully-built factory message. `IEmailPreviewManagement` (section-internal, extends it) adds `RenderMarkdown(subject, markdownBody, category)`, which renders arbitrary human-typed Markdown for the shared composer's "Preview" button and accepts any category, substituting a placeholder unsubscribe footer when it is opt-outable — its only consumer is `EmailPreviewController`, in this section. Both delegate to the same internal `IEmailBodyComposer`.
 - **Daily send counts (#1195):** `EmailOutboxProcessor` increments `email_daily_send_counts` at `(now.InUtc().Date, TemplateName)` once per send attempt — `SentCount` on success, `FailedCount` on failure — right after the matching `MarkSentAsync`/`MarkFailedAsync` call, so it inherits the same test-address exclusion (the `continue` for `@localhost`/`@ticketstub.local` fires before either). That increment is wrapped in its own try/catch (`EmailOutboxProcessor.TryIncrementDailySendCountAsync`): a tally write failure is logged and swallowed without interrupting the batch or changing its delivery outcome. The increment runs in its own `DbContext`/`SaveChangesAsync`, separate from `MarkSentAsync`/`MarkFailedAsync` — a crash between the two calls can silently drop one message's contribution to that day's count. Accepted as a documented, narrow-window risk rather than folded into one transaction, consistent with the same swallow-on-failure trade-off. The table is never purged; `CleanupEmailOutboxJob` only ever deletes from `email_outbox_messages`.
 - **Daily send counts backfill:** the admin-triggered backfill (`EmailOutboxService.BackfillDailySendCountsAsync`, behind a review step per `memory/process/no-data-backfills.md`, audited via `AuditAction.EmailDailySendCountsBackfilled`) aggregates retained `Sent` outbox rows by `SentAt`'s UTC date into `SentCount`. Per the issue #1195 spec, **failures are never backfilled** — the outbox keeps only a message's final state, not the day (or count) of each attempt, so a failed row's actual failure day can't be reconstructed; `FailedCount` stays `0` for every backfilled row, and a template that only ever failed produces no row at all. It also drops today's UTC date entirely — not just existing (Date, TemplateName) keys for it — so a day the live processor has already started counting is never merged with a historical partial count (which would otherwise permanently undercount that day). Past that, it inserts only (Date, TemplateName) combinations that have no row yet — it never overwrites processor-written or previously-backfilled data, so re-running it is a no-op past the first pass.
+- **Communication preferences.** An unchanged write is a no-op (no row, no audit). Every change audits `CommunicationPreferenceChanged` on the user, with the signed-in actor where there is one. Erasure deletes every row and invalidates current and legacy unsubscribe tokens even inside their lifetime; the guest page refuses an erased account. Tokens for a merged-away account resolve to the survivor.
+- `CommunicationPreferenceService` is also an `IUserDataContributor` (`CommunicationPreferences` slice: the effective rows, legacy included) and an `IUserMerge`: per category the later `UpdatedAt` wins (target keeps its `SubscribedAt`), a source-only category moves over, and the source gets cleared rows for its legacy categories.
 - `EmailOutboxService` is the section's `IUserDataContributor`. Article 15 exports the human's own outbox history under the `EmailOutbox` key — the same rows `/Profile/Me/Outbox` already shows them. Article 17 deletes **every** row with a matching `UserId`, whatever its status: the retention sweep only reaches `Sent` rows past the cutoff, so failed and queued rows would otherwise outlive the erasure. The deletion-confirmation mail that follows the cascade leaves no row to delete (`DoNotPersist`) — it is sent after the collapse, so its `UserId` would resolve to null and put it out of this contributor's reach.
 - On account merge, `EmailOutboxService` participates in Users' `IUserMerge` fan-out and its repository reassigns every outbox row's `UserId` from archived source to survivor in one save, regardless of delivery status. It changes no delivery/content fields and is safe to retry; the source account is tombstoned only after the fan-out completes.
 
 ## Negative Access Rules
 
-- Regular humans **cannot** view another human's outbox.
+- Regular humans **cannot** view another human's outbox or communication preferences; `/Profile/Me/CommunicationPreferences` takes no user id.
+- Unsubscribe endpoints **cannot** enumerate accounts: a tampered or malformed token is `NotFound`.
 - The composer's "Send to me" **cannot** reach anyone but the signed-in human: `SendMarkdownToSelf` takes no recipient parameter, resolves the address from the caller's own id, and is capped at 5 sends a minute per human.
 - Services **cannot** send email by calling MailKit / `SmtpClient` / `IEmailTransport` directly — build an `EmailMessage` in the section's own `<Section>Emails` builder and route through `IEmailService.SendAsync`, which owns the outbox-versus-direct decision.
 - The pause flag **cannot** be read or written by any non-Email code — other sections must not touch `system_settings` with key `IsEmailSendingPaused`. The processor job is the only Infrastructure-side reader and it goes through `IEmailOutboxManagement.IsEmailPausedAsync`.
@@ -173,7 +224,9 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 ## Cross-Section Dependencies
 
 - **Teams / GoogleIntegration:** `TeamMessageOptionsProvider` (facilitated messaging, no tables) lists the teams a viewer may send as — `ITeamService.GetTeamsAsync` for the viewer's coordinated active teams and `ITeamResourceService.GetResourcesByTeamIdsAsync` for a linked, synced Google Group. `Humans.Email` references `Humans.Teams.Contracts` and `Humans.GoogleIntegration` for these two reads (acyclic: neither reaches Email).
-- **Users:** `IUserEmailService.FindByAddressAsync` (exact form, verified only) — resolves `UserId` from a recipient address so `OutboxEmailService` can link outbox rows to users. `ICommunicationPreferenceService` — checked by `OutboxEmailService` for per-category opt-outs and to generate `List-Unsubscribe` headers. Users' merge orchestrator also fans out to Email's `IUserMerge` implementation; Email only mutates its own outbox rows.
+- **Users:** `IUserEmailService.FindByAddressAsync` (exact form, verified only) — resolves `UserId` from a recipient address so `OutboxEmailService` can link outbox rows to users. `IUserService.GetUserInfoAsync` / `GetRawUserInfoAsync` / `GetAllRawUserInfosAsync` for the frozen legacy preference rows. Users' merge orchestrator fans out to Email's two `IUserMerge` implementations; Email only mutates its own rows.
+- **Tickets:** `ITicketService` — the guest preferences page locks Ticketing on for a matched ticket holder. `Humans.Email` references `Humans.Tickets.Contracts` (a Base-only leaf) for it.
+- **Consumers of `ICommunicationPreferenceService`:** Notifications (inbox switch), MailerLite (audience opt-outs and the import's `ICommunicationPreferenceWrite`), Debug (marketing set), Users (profile card's facilitated-message button), and the views that name `MessageCategory`.
 - **Campaigns:** `ICampaignWrite` receives the delivery status; Campaigns queues campaign wave messages via this section; per-grant latest-status is mirrored to `CampaignGrant.LatestEmailStatus` / `LatestEmailAt`.
 - **Shifts:** `IShiftSignupService` sends approve/refuse/voluntell emails through this section.
 - **Feedback:** `IFeedbackService` sends admin-reply emails through this section.
@@ -183,8 +236,8 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 
 ## Architecture
 
-**Owning services:** `OutboxEmailService` (`IEmailService`), `EmailOutboxService` (`IEmailOutboxManagement`)
-**Owned tables:** `email_outbox_messages`, `email_daily_send_counts`
+**Owning services:** `OutboxEmailService` (`IEmailService`), `EmailOutboxService` (`IEmailOutboxManagement`), `CommunicationPreferenceService` (`ICommunicationPreferenceManagement`), `UnsubscribeService` (`IUnsubscribeService`, internal)
+**Owned tables:** `email_outbox_messages`, `email_daily_send_counts`, `email_communication_preferences`
 **Owned SystemSetting keys:** `IsEmailSendingPaused`
 **Status:** (A) Migrated.
 
@@ -209,13 +262,14 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
     authorized cross-section preview pages. It applies the same internal branded composer as the
     outbox, creates no outbox row, and deliberately rejects opt-outable categories whose exact
     footer depends on recipient-specific send policy.
+  - `ICommunicationPreferenceService` + `CommunicationPreferenceSnapshot` (reads, including the bulk `GetPreferencesForCategoryAsync`), `ICommunicationPreferenceWrite` (MailerLite's update and reset), `MessageCategory` + `MessageCategoryExtensions`. The contracts leaf references only Base.
   - `IEmailOutboxService` + `EmailOutboxMessageDto` — per-human outbox history and count, read by Email's own `MemberOutboxController` and `OutboxCardViewComponent` (the pages and card left Users in the Users decomposition); no other section calls it today.
   - `IEmailOutboxProcessor` / `IEmailOutboxRetention` — what `ProcessEmailOutboxJob` / `CleanupEmailOutboxJob` drive. Neither has a consumer outside the section any more, so both could move inward in a later pass.
   - `IImmediateOutboxProcessor` — implemented by `HangfireImmediateOutboxProcessor` under `Humans.Email/Contracts/` rather than `Jobs/`: that folder is for `IRecurringJob` implementors and `*Job`-named Hangfire jobs, and this type is neither. Both sides sit inside the section.
 - **Section-internal abstractions** (`Humans.Email.Services`): `IEmailOutboxManagement` (admin surface and dashboard stats, consumed by `EmailController` and the admin tile), `EmailMessageFactory` (`IEmailMessageFactory`), `FacilitatedMessagePreviews` (`IEmailPreviewContributor`), `IEmailBodyComposer` / `BrandedEmailBodyComposer`, `IEmailTransport` / `SmtpEmailTransport` / `StubEmailTransport`, `EmailInlineStyler` (static, AngleSharp-based inline-style pass called from `BrandedEmailTemplate.Wrap`), `EmailPreviewService` (`IEmailPreviewService`), `EmailPreviewController` (`[Authorize]`, not `AdminOnly` — hosts `POST /Email/PreviewMarkdown`).
-- **`EmailSettings` stays in `Humans.Base.Configuration` and is bound in Shell**, not in `Section.Register`: Auth's `MagicLinkUrlBuilder`, Profiles' `UnsubscribeTokenProvider`, `SendReConsentReminderJob` and Email's own `SmtpHealthCheck` all read it. It is Base configuration the section is merely named after.
+- **`EmailSettings` stays in `Humans.Base.Configuration` and is bound in Shell**, not in `Section.Register`: Auth's `MagicLinkUrlBuilder`, Email's own `UnsubscribeTokenProvider`, `SendReConsentReminderJob` and Email's own `SmtpHealthCheck` all read it. It is Base configuration the section is merely named after.
 - **`EmailOutboxStatus` stays in `Humans.Base.Enums`.** Campaigns' `CampaignGrant.LatestEmailStatus` and Surveys' `SurveyInvitation` persist it on their own tables, so it is shared Base vocabulary rather than section-internal; its `Enum_EmailOutboxStatus_*` resource keys stay in `SharedResource` with it.
-- **Resource set:** `Humans.Email/EmailResource.{resx,es,ca,de,fr,it}` holds the three `Email_FacilitatedMessage_*` keys (`Subject`, `Body`, `NoContactInfo` — the copy of the one template this section still renders), the two composer-self-test keys and the footer key, and the eight `Email_Outbox_*` keys of the member-facing outbox page (`/Profile/Me/Outbox`). The two admin dashboard views carry no localized string; the "Email Outbox" admin card is localization-exempt. Every other section's transactional copy moved into that section's own resx set with its `<Section>Emails` builder, keeping the `<Section>_Email_*` prefix (peterdrier/Humans#1651).
+- **Resource set:** `Humans.Email/EmailResource.{resx,es,ca,de,fr,it}` holds the `Email_CommPrefs_*` and `Email_Unsubscribe_*` keys of the preferences and unsubscribe pages (moved from Users in decomposition commit 14), and the three `Email_FacilitatedMessage_*` keys (`Subject`, `Body`, `NoContactInfo` — the copy of the one template this section still renders), the two composer-self-test keys and the footer key, and the eight `Email_Outbox_*` keys of the member-facing outbox page (`/Profile/Me/Outbox`). The two admin dashboard views carry no localized string; the "Email Outbox" admin card is localization-exempt. Every other section's transactional copy moved into that section's own resx set with its `<Section>Emails` builder, keeping the `<Section>_Email_*` prefix (peterdrier/Humans#1651).
 - **Architecture test:** `tests/Humans.Email.Tests/EmailArchitectureTests.cs` pins the `OutboxEmailService` constructor shape, that it takes no Hangfire dependency, and which side of the boundary each connector abstraction sits on. `tests/Humans.Integration.Tests/Controllers/EmailPageRenderTests.cs` is the step-12 render guard.
 
 ### Touch-and-clean guidance

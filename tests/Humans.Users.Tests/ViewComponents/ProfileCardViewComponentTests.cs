@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Humans.Users.Tests.Infrastructure;
 using AwesomeAssertions;
 using System.Security.Claims;

@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using System.Net;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
@@ -14,11 +15,11 @@ namespace Humans.Integration.Tests.Controllers;
 
 /// <summary>
 /// PR 5 of the email/OAuth decoupling sequence. Locks in the
-/// <c>UpdateSource</c> attribution split for <c>GuestAccountController.UpdatePreference</c>:
+/// <c>UpdateSource</c> attribution split for Email's <c>GuestAccountController.UpdatePreference</c>:
 /// anonymous token-driven POSTs must record <c>"MagicLink"</c>, while
 /// session-driven POSTs must record <c>"Guest"</c>. The previous in-flight
 /// version of these tests went green on a no-op flip — the seed row already
-/// matched the POST body, so <see cref="ICommunicationPreferenceService.UpdatePreferenceAsync(Guid, MessageCategory, bool, bool, string, Guid?, System.Threading.CancellationToken)"/>
+/// matched the POST body, so <see cref="Humans.Email.Services.ICommunicationPreferenceManagement.UpdatePreferenceAsync(Guid, MessageCategory, bool, bool, string, Guid?, System.Threading.CancellationToken)"/>
 /// short-circuited as idempotent and the row stayed at <c>UpdateSource = "Default"</c>
 /// while the controller still returned 200 OK. The fix is to drive the POST
 /// against <see cref="MessageCategory.VolunteerUpdates"/> (default OptedOut=false)
@@ -42,7 +43,7 @@ public class UnsubscribeFlowTests(HumansTestDatabase database) : IntegrationTest
         string token;
         await using (var scope = Factory.Services.CreateAsyncScope())
         {
-            var commPrefService = scope.ServiceProvider.GetRequiredService<ICommunicationPreferenceService>();
+            var commPrefService = scope.ServiceProvider.GetRequiredService<Humans.Email.Services.ICommunicationPreferenceManagement>();
             token = commPrefService.GenerateUnsubscribeToken(userId, MessageCategory.VolunteerUpdates);
         }
 
@@ -66,8 +67,8 @@ public class UnsubscribeFlowTests(HumansTestDatabase database) : IntegrationTest
             $"the AJAX update endpoint returns 200 OK on success (got {(int)resp.StatusCode}).");
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
-        var pref = await db.Set<CommunicationPreference>()
+        var db = assertScope.ServiceProvider.GetRequiredService<Humans.Email.Data.EmailDbContext>();
+        var pref = await db.CommunicationPreferences
             .AsNoTracking()
             .SingleAsync(p => p.UserId == userId && p.Category == MessageCategory.VolunteerUpdates, Xunit.TestContext.Current.CancellationToken);
         pref.OptedOut.Should().BeTrue("emailEnabled=false maps to OptedOut=true.");
@@ -101,8 +102,8 @@ public class UnsubscribeFlowTests(HumansTestDatabase database) : IntegrationTest
             $"the AJAX update endpoint returns 200 OK on success (got {(int)resp.StatusCode}).");
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
-        var pref = await db.Set<CommunicationPreference>()
+        var db = assertScope.ServiceProvider.GetRequiredService<Humans.Email.Data.EmailDbContext>();
+        var pref = await db.CommunicationPreferences
             .AsNoTracking()
             .SingleAsync(p => p.UserId == userId && p.Category == MessageCategory.VolunteerUpdates, Xunit.TestContext.Current.CancellationToken);
         pref.OptedOut.Should().BeTrue("emailEnabled=false maps to OptedOut=true.");

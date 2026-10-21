@@ -125,7 +125,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             UserService.UserEmails,
             UserService.VolunteerHistory,
             UserService.Languages,
-            UserService.CommunicationPreferences
+            UserService.LegacyCommunicationPreferences
         ]);
         System.Text.Json.JsonSerializer.Serialize(slices.Single(s =>
             string.Equals(s.SectionName, UserService.MergedProfiles, StringComparison.Ordinal)).Data)
@@ -262,7 +262,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
                 new CommunicationPreference
                 {
                     UserId = userId,
-                    Category = MessageCategory.Marketing,
+                    Category = LegacyMessageCategory.Marketing,
                     SubscribedAt = subscribedAt,
                     UpdatedAt = Clock.GetCurrentInstant(),
                     UpdateSource = "Profile",
@@ -271,7 +271,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 
         var slices = await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
 
-        var slice = slices.Single(s => string.Equals(s.SectionName, UserService.CommunicationPreferences, StringComparison.Ordinal));
+        var slice = slices.Single(s => string.Equals(s.SectionName, UserService.LegacyCommunicationPreferences, StringComparison.Ordinal));
         using var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(slice.Data));
         var preference = json.RootElement[0];
         preference.GetProperty("SubscribedAt").GetString().Should().Be(

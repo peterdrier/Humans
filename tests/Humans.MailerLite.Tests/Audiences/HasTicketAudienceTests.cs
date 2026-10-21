@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.MailerLite.Services.Audiences;
+using Humans.MailerLite.Tests.Infrastructure;
 using Humans.Tickets.Contracts;
 using NodaTime;
 using NSubstitute;
@@ -49,7 +50,7 @@ public class HasTicketAudienceTests
         var users = Substitute.For<IUserService>();
         users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(new List<UserInfo>());
 
-        return new HasTicketAudience(tickets, users);
+        return new HasTicketAudience(tickets, users, MarketingPreferenceStubs.For());
     }
 
     private static IReadOnlyList<TicketOrderInfo> OrdersForTicketHolders(IEnumerable<Guid> userIds) =>

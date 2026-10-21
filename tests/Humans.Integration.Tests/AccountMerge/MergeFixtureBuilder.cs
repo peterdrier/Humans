@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Data;
 using Humans.Shifts.Domain;
@@ -223,16 +224,17 @@ public sealed class MergeFixtureBuilder
     }
 
     // ------------------------------------------------------------------
-    // CommunicationPreference (Users section)
+    // CommunicationPreference (Users' frozen legacy table; Email reads it as a fallback until
+    // a row in email_communication_preferences shadows it — Users decomposition commit 14)
     // ------------------------------------------------------------------
 
-    public MergeFixtureBuilder WithSourceCommPref(MessageCategory category, bool optedOut, Instant? updatedAt = null)
+    public MergeFixtureBuilder WithSourceCommPref(LegacyMessageCategory category, bool optedOut, Instant? updatedAt = null)
         => AddCommPref(SourceUserId, category, optedOut, updatedAt);
 
-    public MergeFixtureBuilder WithTargetCommPref(MessageCategory category, bool optedOut, Instant? updatedAt = null)
+    public MergeFixtureBuilder WithTargetCommPref(LegacyMessageCategory category, bool optedOut, Instant? updatedAt = null)
         => AddCommPref(TargetUserId, category, optedOut, updatedAt);
 
-    private MergeFixtureBuilder AddCommPref(Guid userId, MessageCategory category, bool optedOut, Instant? updatedAt)
+    private MergeFixtureBuilder AddCommPref(Guid userId, LegacyMessageCategory category, bool optedOut, Instant? updatedAt)
     {
         _pending.Add(db => db.CommunicationPreferences.Add(new CommunicationPreference
         {

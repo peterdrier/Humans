@@ -103,7 +103,7 @@
             {
                 @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
                 {
-                    Controller = "GuestAccount",
+                    Controller = "GuestData",
                     Action = "RequestDeletion",
                     Title = Localizer["Onboarding_GuestDeleteTitle"].Value,
                     Description = Localizer["Onboarding_GuestDeleteDescription"].Value,
@@ -144,7 +144,7 @@
                                 @Html.Raw(string.Format(Localizer["Onboarding_GuestDeletionScheduledFor"].Value, "<strong>" + Html.Encode(Model.DeletionScheduledFor?.ToDate()) + "</strong>"))
                             </p>
                         }
-                        <form asp-controller="GuestAccount" asp-action="CancelDeletion" method="post" class="d-inline">
+                        <form asp-controller="GuestData" asp-action="CancelDeletion" method="post" class="d-inline">
                             <button type="submit" class="btn btn-sm btn-outline-success">
                                 <i class="fa-solid fa-rotate-left me-1"></i>@Localizer["Onboarding_GuestDeletionCancelButton"]
                             </button>

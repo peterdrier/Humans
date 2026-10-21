@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Consent.Contracts;
 using Humans.Debug.Controllers;
 using Humans.Debug.Models;
+using Humans.Email.Contracts;
 using Humans.Testing;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
@@ -47,7 +48,7 @@ public class UsersDebugControllerTests
         var users = new[] { MakeUserInfo(Guid.NewGuid(), "Human", true, false) };
         var service = Substitute.For<IUserService>();
         service.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>()).Returns(users);
-        var controller = new UsersDebugController(service, NoReviews(), _tickets);
+        var controller = new UsersDebugController(service, NoReviews(), _tickets, Substitute.For<ICommunicationPreferenceService>());
         var first = (UsersDebugViewModel)((ViewResult)await controller.Index(page: 1, pageSize: 50)).Model!;
         first.Rows.Should().ContainSingle();
 
@@ -68,7 +69,7 @@ public class UsersDebugControllerTests
         userService.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(users));
 
-        var controller = new UsersDebugController(userService, NoReviews(), _tickets);
+        var controller = new UsersDebugController(userService, NoReviews(), _tickets, Substitute.For<ICommunicationPreferenceService>());
 
         var result = await controller.Index(page: 1, pageSize: 50, sort: "displayName", dir: "asc", ct: Xunit.TestContext.Current.CancellationToken) as ViewResult;
 
@@ -93,7 +94,7 @@ public class UsersDebugControllerTests
         userService.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(users));
 
-        var controller = new UsersDebugController(userService, NoReviews(), _tickets);
+        var controller = new UsersDebugController(userService, NoReviews(), _tickets, Substitute.For<ICommunicationPreferenceService>());
 
         var result = await controller.Index(page: 1, pageSize: 50, sort: "displayName", dir: "desc", ct: Xunit.TestContext.Current.CancellationToken) as ViewResult;
 
@@ -110,7 +111,7 @@ public class UsersDebugControllerTests
         userService.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([holder, other]));
 
-        var result = await new UsersDebugController(userService, NoReviews(), _tickets)
+        var result = await new UsersDebugController(userService, NoReviews(), _tickets, Substitute.For<ICommunicationPreferenceService>())
             .Index(ct: Xunit.TestContext.Current.CancellationToken) as ViewResult;
 
         var rows = ((UsersDebugViewModel)result!.Model!).Rows;
@@ -128,7 +129,7 @@ public class UsersDebugControllerTests
         userService.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(users));
 
-        var controller = new UsersDebugController(userService, NoReviews(), _tickets);
+        var controller = new UsersDebugController(userService, NoReviews(), _tickets, Substitute.For<ICommunicationPreferenceService>());
 
         var tooSmall = (UsersDebugViewModel)((ViewResult)await controller.Index(1, 1, ct: Xunit.TestContext.Current.CancellationToken)).Model!;
         tooSmall.PageSize.Should().Be(10);

@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Xunit;
 using AwesomeAssertions;
 using Humans.Email.Services;

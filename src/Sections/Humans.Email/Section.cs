@@ -22,7 +22,7 @@ namespace Humans.Email;
 /// </summary>
 /// <remarks>
 /// <c>EmailSettings</c> itself is bound in Shell, not here: Auth's magic-link URL builder,
-/// Profiles' unsubscribe token provider, <c>SendReConsentReminderJob</c> and Shell's
+/// this section's unsubscribe token provider, <c>SendReConsentReminderJob</c> and Shell's
 /// <c>SmtpHealthCheck</c> all read it, so it is Base configuration this section happens to
 /// be named after (Governance's rule — the section that owns the file is not always the
 /// section that owns the line). The transport *choice* is Email's and lives here.
@@ -79,6 +79,18 @@ public sealed class Section : ISection
         // GDPR fan-out: outbox rows are user-scoped personal data (#853).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<EmailOutboxService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<EmailOutboxService>());
+
+        // Communication preferences (Users decomposition commit 14): public reads and MailerLite's
+        // writes, Email's own management surface, the GDPR slice and the merge fold, one instance.
+        services.AddSingleton<ICommunicationPreferenceRepository, CommunicationPreferenceRepository>();
+        services.AddScoped<IUnsubscribeTokenProvider, UnsubscribeTokenProvider>();
+        services.AddScoped<CommunicationPreferenceService>();
+        services.AddScoped<ICommunicationPreferenceManagement>(sp => sp.GetRequiredService<CommunicationPreferenceService>());
+        services.AddScoped<ICommunicationPreferenceService>(sp => sp.GetRequiredService<CommunicationPreferenceService>());
+        services.AddScoped<ICommunicationPreferenceWrite>(sp => sp.GetRequiredService<CommunicationPreferenceService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CommunicationPreferenceService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CommunicationPreferenceService>());
+        services.AddScoped<IUnsubscribeService, UnsubscribeService>();
 
         services.AddScoped<IEmailOutboxProcessor, EmailOutboxProcessor>();
 
