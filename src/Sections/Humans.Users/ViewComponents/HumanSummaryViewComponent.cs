@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Controllers;
 using Humans.Users.Models;
@@ -18,7 +19,7 @@ namespace Humans.Users.ViewComponents;
 /// </summary>
 public sealed class HumanSummaryViewComponent(
     IUserService userService, ITeamService teamService, IGovernanceService governanceService,
-    IMembershipCalculator membershipCalculator) : ViewComponent
+    IConsentService consentService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)
     {
@@ -72,8 +73,7 @@ public sealed class HumanSummaryViewComponent(
 
         var isSuspended = info.IsSuspended;
         var tier = await governanceService.GetMembershipTierAsync(userId, ct);
-        // Governance's calculator owns membership status — the same value ProfileCard renders.
-        var membershipStatus = (await membershipCalculator.GetMembershipSnapshotAsync(userId, ct)).Status;
+        var isApproved = (await consentService.GetConsentReviewAsync(userId, ct)).IsApproved;
 
         var vm = new ProfileSummaryViewModel
         {
@@ -83,7 +83,8 @@ public sealed class HumanSummaryViewComponent(
             ProfilePictureUrl = effectivePictureUrl,
             PreferredLanguage = info.PreferredLanguage,
             MembershipTier = tier.ToString(),
-            MembershipStatus = membershipStatus.ToString(),
+            MembershipStatus = isSuspended ? "Suspended"
+                : isApproved ? "Active" : "Pending",
             City = profile.City,
             CountryCode = profile.CountryCode,
             IsSuspended = isSuspended,

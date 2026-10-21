@@ -16,6 +16,7 @@ using Humans.Users.Models;
 using Microsoft.Extensions.Options;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
+using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Humans.Base;
 using Humans.Base.Authorization;
@@ -39,10 +40,12 @@ internal sealed class ProfileEmailsController(
     ILogger<ProfileEmailsController> logger,
     IStringLocalizer<UsersResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer,
+    ITicketService ticketQueryService,
     IAuthorizationService authorizationService,
     SignInManager<User> signInManager,
     IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions) : HumansControllerBase(userService)
 {
+    private readonly ITicketService _ticketQueryService = ticketQueryService;
     private readonly IUserManagement _userService = userService;
     private readonly GoogleWorkspaceOptions _googleWorkspaceOptions = googleWorkspaceOptions.Value;
 
@@ -884,6 +887,13 @@ internal sealed class ProfileEmailsController(
 
         var linkedAccounts = await BuildLinkedAccountsAsync(user, emails, isAdminContext, ct);
 
+        // see nobodies-collective/Humans#758 — addresses linked to the user's event ticket.
+        // The grid hides Delete for these rows; UserEmailService.DeleteEmailAsync re-validates.
+        var ticketEmails = await GetTicketLinkedEmailsAsync(user.Id, ct);
+
+        bool RowIsTicketLinked(string address) =>
+            ticketEmails.Any(ticketEmail => Base.Helpers.EmailNormalization.EmailsMatch(address, ticketEmail));
+
         bool RowHasOrphanProviderTag(string? provider, string? providerKey) =>
             isAdminContext
             && !string.IsNullOrEmpty(provider)
@@ -911,8 +921,7 @@ internal sealed class ProfileEmailsController(
                 IsNobodiesTeamDomain = e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase),
                 Provider = e.Provider,
                 HasOrphanProviderTag = RowHasOrphanProviderTag(e.Provider, e.ProviderKey),
-                // see nobodies-collective/Humans#758 — the grid hides Delete; DeleteEmailAsync refuses.
-                IsTicketLinked = e.IsTicketLinked,
+                IsTicketLinked = RowIsTicketLinked(e.Email),
             }).ToList(),
             ExternalLogins = userLogins.Select(l => new ExternalLoginRowViewModel
             {
@@ -1020,6 +1029,19 @@ internal sealed class ProfileEmailsController(
                 CanUnlink = canUnlink,
             };
         }).ToList();
+    }
+
+    private async Task<List<string>> GetTicketLinkedEmailsAsync(Guid userId, CancellationToken ct)
+    {
+        var ticketOrders = await _ticketQueryService.GetTicketOrdersAsync(ct);
+        return ticketOrders
+            .Where(o => o.MatchedUserId == userId && !string.IsNullOrWhiteSpace(o.BuyerEmail))
+            .Select(o => o.BuyerEmail!)
+            .Concat(ticketOrders
+                .SelectMany(o => o.Attendees)
+                .Where(a => a.MatchedUserId == userId && !string.IsNullOrWhiteSpace(a.AttendeeEmail))
+                .Select(a => a.AttendeeEmail!))
+            .ToList();
     }
 
     private static string HashForDisplay(string s)

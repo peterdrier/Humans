@@ -7,6 +7,7 @@ using Humans.Users.Models;
 using Humans.Users.Controllers;
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Tickets.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
@@ -87,6 +88,7 @@ public class ProfileEmailsControllerGridTests
             _logger,
             localizer,
             _sharedLocalizer,
+            Substitute.For<ITicketService>(),
             _authorizationService,
             _signInManager,
             Options.Create(new GoogleWorkspaceOptions()));
@@ -218,7 +220,7 @@ public class ProfileEmailsControllerGridTests
             Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
         var controller = new ProfileEmailsController(
             _userService, _userManager, _emailService, _emailMessages, _userEmailService,
-            _auditLogService, _logger, localizer, _sharedLocalizer,
+            _auditLogService, _logger, localizer, _sharedLocalizer, Substitute.For<ITicketService>(),
             _authorizationService, _signInManager, Options.Create(new GoogleWorkspaceOptions()));
         var row = Guid.NewGuid();
         _userEmailService.VerifyEmailAsync(_userId, row, "token")
