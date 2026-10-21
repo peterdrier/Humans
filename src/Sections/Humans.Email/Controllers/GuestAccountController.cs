@@ -75,9 +75,10 @@ internal sealed class GuestAccountController(
             if (!CanUpdatePreference(category))
                 return BadRequest(localizer["Email_CommPrefs_AlwaysOnCategoryCannotChange"].Value);
 
-            await commPrefService.UpdatePreferenceAsync(
-                userId.Value, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, GetPreferenceUpdateSource(fromToken),
-                actorUserId: fromToken ? null : userId);
+            if (!await commPrefService.UpdatePreferenceAsync(
+                    userId.Value, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, GetPreferenceUpdateSource(fromToken),
+                    actorUserId: fromToken ? null : userId))
+                return BadRequest(localizer["Email_CommPrefs_TicketingLockedCannotChange"].Value);
 
             return Ok();
         }
@@ -126,7 +127,7 @@ internal sealed class GuestAccountController(
         {
             var pref = prefsByCategory.GetValueOrDefault(category);
             var isAlwaysOn = category.IsAlwaysOn();
-            var isTicketingLocked = category == MessageCategory.Ticketing && hasTicketOrder;
+            var isTicketingLocked = CommunicationPreferenceService.IsTicketingLocked(category, hasTicketOrder);
 
             categories.Add(new CategoryPreferenceItem
             {

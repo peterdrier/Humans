@@ -199,4 +199,5 @@
   <data name="Email_CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Novedades de la comunidad</value></data>
   <data name="Email_CommPrefs_AlwaysOnCategoryCannotChange" xml:space="preserve"><value>No se pueden cambiar las categorías siempre activas.</value></data>
   <data name="Email_CommPrefs_LoadFailed" xml:space="preserve"><value>No se pudieron cargar las preferencias de comunicación.</value></data>
+  <data name="Email_CommPrefs_TicketingLockedCannotChange" xml:space="preserve"><value>Los mensajes de entradas siguen activos mientras tengas una entrada para este año.</value></data>
 </root>

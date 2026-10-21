@@ -14,8 +14,10 @@ internal interface ICommunicationPreferenceManagement
     /// <summary>
     /// Updates opt-out and inbox-enabled status for a specific category. Idempotent.
     /// Logs the authenticated actor when supplied; anonymous updates retain service attribution.
+    /// Returns <c>false</c>, writing nothing, when the category is Ticketing and locked because the
+    /// member holds a matched ticket order.
     /// </summary>
-    Task UpdatePreferenceAsync(
+    Task<bool> UpdatePreferenceAsync(
         Guid userId, MessageCategory category, bool optedOut, bool inboxEnabled, string source,
         Guid? actorUserId = null, CancellationToken cancellationToken = default);
 
