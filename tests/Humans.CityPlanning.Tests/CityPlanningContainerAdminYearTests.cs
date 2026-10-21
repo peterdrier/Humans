@@ -160,6 +160,24 @@ public sealed class CityPlanningContainerAdminYearTests : CityPlanningTestBase
         CityPlanningDb.CityPlanningSettings.Should().BeEmpty();
     }
 
+    /// <summary>
+    /// The map's base layers come from the state API, which 404s with no active event — so the page
+    /// itself 404s instead of rendering a map whose state fetch fails, even for a map admin.
+    /// </summary>
+    [HumansFact]
+    public async Task ContainerMap_NoActiveEvent_IsNotFoundEvenForAMapAdmin()
+    {
+        var service = new CityPlanningService(
+            new CityPlanningRepository(CityPlanningDbFactory), Clock,
+            Options.Create(new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" }),
+            _campService, Substitute.For<ITeamService>(), _userService, Substitute.For<IAuditLogService>(), ActiveEvent(null));
+        var controller = CreateController(service, MapAdminAuthorization(service), RoleNames.CampAdmin);
+
+        var result = await controller.ContainerMap(RouteYear, TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<NotFoundResult>();
+    }
+
     private static void AssertRedirectsToContainers(IActionResult result, int year)
     {
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
@@ -188,11 +206,14 @@ public sealed class CityPlanningContainerAdminYearTests : CityPlanningTestBase
 
     private CityPlanningController CreateController(params string[] roles) => CreateController(null, roles);
 
-    private CityPlanningController CreateController(IAuthorizationService? authorization, params string[] roles)
+    private CityPlanningController CreateController(IAuthorizationService? authorization, params string[] roles) =>
+        CreateController(_service, authorization ?? MapAdminAuthorization(_service), roles);
+
+    private CityPlanningController CreateController(
+        CityPlanningService service, IAuthorizationService authorization, params string[] roles)
     {
-        authorization ??= MapAdminAuthorization(_service);
         var controller = new CityPlanningController(
-            _service, _campService, _containerService, Substitute.For<IStringLocalizer<ContainersResource>>(), _userService,
+            service, _campService, _containerService, Substitute.For<IStringLocalizer<ContainersResource>>(), _userService,
             authorization, NullLogger<CityPlanningController>.Instance);
 
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, _userId.ToString()) };

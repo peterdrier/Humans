@@ -280,6 +280,9 @@ internal sealed class CityPlanningController(
         var (error, user) = await RequireCurrentUserAsync(cancellationToken);
         if (error != null) return error;
 
+        // The map's base layers come from the state API, which is keyed to the active event.
+        if (await cityPlanningService.GetSettingsAsync(cancellationToken) is null) return NotFound(); // no active event
+
         var isMapAdmin = await IsMapAdminAsync();
         var userCamp = await FindUserLeadCampAsync(user.Id, year, cancellationToken);
 
