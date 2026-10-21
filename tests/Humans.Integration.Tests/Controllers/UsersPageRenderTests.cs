@@ -9,7 +9,7 @@ using Humans.Integration.Tests.Infrastructure;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain;
-using Humans.Tickets.Services;
+using Humans.Tickets.Services.Stores;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 
@@ -318,8 +318,11 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
             await db.SaveChangesAsync(ct);
         }
 
-        // CachingTicketQueryService warmed its per-user holdings at host start.
-        Factory.Services.GetRequiredService<ITicketCacheInvalidator>().InvalidateAfterContactImport();
+        // CachingTicketQueryService warmed at host start and evicts only on its own write
+        // pass-throughs. Folding a user who holds no tickets into the persona writes nothing,
+        // and that pass-through drops the order projection and the persona's holdings.
+        await Factory.Services.GetRequiredService<CachingTicketQueryService>()
+            .ReassignAsync(Guid.NewGuid(), userId, userId, now, ct);
     }
 
     private async Task<string> SeedCampMembershipAsync(Guid userId, CancellationToken ct)

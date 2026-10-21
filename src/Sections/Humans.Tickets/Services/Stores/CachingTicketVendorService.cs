@@ -11,7 +11,11 @@ namespace Humans.Tickets.Services.Stores;
 /// <see cref="GetEventSummaryAsync"/> — the one high-read, low-churn vendor call; every
 /// other member forwards straight through to the keyed inner, uncached.
 /// </summary>
-internal sealed class CachingTicketVendorService : ITicketVendorService, ITicketVendorCacheInvalidator
+/// <remarks>
+/// An order pull for an event (the ticket sync's first vendor read) evicts that event's
+/// cached summary, so the summary is never older than the orders the sync last pulled.
+/// </remarks>
+internal sealed class CachingTicketVendorService : ITicketVendorService
 {
     private static readonly Duration EventSummaryCacheTtl = Duration.FromMinutes(15);
 
@@ -39,9 +43,13 @@ internal sealed class CachingTicketVendorService : ITicketVendorService, ITicket
             $"Vendor event summary load for '{eventId}' returned no result.");
     }
 
-    public Task<IReadOnlyList<VendorOrderDto>> GetOrdersAsync(
-        Instant? since, string eventId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetOrdersAsync(since, eventId, ct));
+    public async Task<IReadOnlyList<VendorOrderDto>> GetOrdersAsync(
+        Instant? since, string eventId, CancellationToken ct = default)
+    {
+        var orders = await WithInner(inner => inner.GetOrdersAsync(since, eventId, ct));
+        _eventSummaries.DeleteKey(eventId);
+        return orders;
+    }
 
     public Task<IReadOnlyList<VendorTicketDto>> GetIssuedTicketsAsync(
         Instant? since, string eventId, CancellationToken ct = default) =>
@@ -66,10 +74,6 @@ internal sealed class CachingTicketVendorService : ITicketVendorService, ITicket
     public Task CreateCheckInAsync(
         string vendorTicketId, Instant occurredAt, CancellationToken ct = default) =>
         WithInner(inner => inner.CreateCheckInAsync(vendorTicketId, occurredAt, ct));
-
-    /// <summary>Drops the cached vendor event summary keyed on <paramref name="vendorEventId"/>.</summary>
-    public void InvalidateEventSummary(string vendorEventId) =>
-        _eventSummaries.DeleteKey(vendorEventId);
 
     private async Task<TResult> WithInner<TResult>(Func<ITicketVendorService, Task<TResult>> action)
     {

@@ -61,18 +61,43 @@ public sealed class CachingTicketVendorServiceTests
     }
 
     [HumansFact]
-    public async Task InvalidateEventSummary_CausesNextCallToHitInnerAgain()
+    public async Task GetOrdersAsync_EvictsThatEventsSummaryOnly()
     {
+        var ct = Xunit.TestContext.Current.CancellationToken;
         _inner.GetEventSummaryAsync("ev_test", Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(MakeSummary("ev_test", sold: 1)), Task.FromResult(MakeSummary("ev_test", sold: 2)));
+        _inner.GetEventSummaryAsync("ev_other", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(MakeSummary("ev_other")));
+        _inner.GetOrdersAsync(null, "ev_test", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<VendorOrderDto>>([]));
 
-        var first = await _decorator.GetEventSummaryAsync("ev_test", Xunit.TestContext.Current.CancellationToken);
-        _decorator.InvalidateEventSummary("ev_test");
-        var second = await _decorator.GetEventSummaryAsync("ev_test", Xunit.TestContext.Current.CancellationToken);
+        var first = await _decorator.GetEventSummaryAsync("ev_test", ct);
+        await _decorator.GetEventSummaryAsync("ev_other", ct);
+        await _decorator.GetOrdersAsync(null, "ev_test", ct);
+        var second = await _decorator.GetEventSummaryAsync("ev_test", ct);
+        await _decorator.GetEventSummaryAsync("ev_other", ct);
 
         first.TicketsSold.Should().Be(1);
         second.TicketsSold.Should().Be(2);
         await _inner.Received(2).GetEventSummaryAsync("ev_test", Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetEventSummaryAsync("ev_other", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetOrdersAsync_FailedPull_KeepsCachedSummary()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _inner.GetEventSummaryAsync("ev_test", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(MakeSummary("ev_test")));
+        _inner.GetOrdersAsync(null, "ev_test", Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlyList<VendorOrderDto>>(new HttpRequestException("vendor down")));
+
+        await _decorator.GetEventSummaryAsync("ev_test", ct);
+        var pull = () => _decorator.GetOrdersAsync(null, "ev_test", ct);
+        await pull.Should().ThrowAsync<HttpRequestException>();
+        await _decorator.GetEventSummaryAsync("ev_test", ct);
+
+        await _inner.Received(1).GetEventSummaryAsync("ev_test", Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
@@ -91,9 +116,11 @@ public sealed class CachingTicketVendorServiceTests
             _clock.Advance(Duration.FromMinutes(16));
         }
         _inner.GetEventSummaryAsync("ev_test", ct).Returns(pending.Task, Task.FromResult(current));
+        _inner.GetOrdersAsync(null, "ev_test", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<VendorOrderDto>>([]));
         var read = _decorator.GetEventSummaryAsync("ev_test", ct);
 
-        _decorator.InvalidateEventSummary("ev_test");
+        await _decorator.GetOrdersAsync(null, "ev_test", ct);
         pending.SetResult(old);
         (await read).Should().BeSameAs(old);
 
