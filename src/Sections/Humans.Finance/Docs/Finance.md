@@ -3,8 +3,6 @@
   src/Sections/Humans.Finance.Contracts/**
   src/Sections/Humans.Holded/Services/HoldedClient.cs
   src/Sections/Humans.Holded/Services/Service.cs
-  src/Sections/Humans.Holded/Jobs/HoldedSyncJob.cs
-  src/Sections/Humans.Holded/SectionJobs.cs
   src/Sections/Humans.Budget/Controllers/BudgetAdminController.cs
   src/Sections/Humans.Expenses/Services/ExpenseReportService.cs
 -->
@@ -365,13 +363,13 @@ No Tickets dependency: the cash-flow view that had one is Budget's. Budget never
 
 **Bank-booking owner:** Internal `SepaBankBooking` owns bank-line matching, posting, reconciliation and the recurring sweep through Finance’s own repository. `Service` delegates its existing booking/read methods to that owner; contracts and the Hangfire target stay unchanged. `SepaOptions.GetPayoutSettings` owns the shared configuration gate for payout generation and booking.
 
-**Owning service:** `Service` (`Humans.Finance.Services`), implements the internal `IHoldedFinanceManagement` (`Services/IHoldedFinanceManagement.cs`), which composes two faces published from the contracts leaf. `IHoldedFinanceService` is the read-only surface for cross-section callers (`BudgetAdminController`, `Expenses.ExpensesController`, `Preapprovals`, `Backdoor.BackdoorFinanceController`); `IHoldedFinanceWrite` is the narrow write surface (`Holded.HoldedNightlySync` and `Holded.HoldedController` for `SyncAsync`, the Expenses publisher for the creditor-contact calls, `Workgroups.WorkgroupService` for the expense-account calls). Finance's own `FinanceController` injects `IHoldedFinanceManagement`.
+**Owning service:** `Service` (`Humans.Finance.Services`), implements the internal `IHoldedFinanceManagement` (`Services/IHoldedFinanceManagement.cs`), which composes two faces published from the contracts leaf. `IHoldedFinanceService` is the read-only surface for cross-section callers (`BudgetAdminController`, `Expenses.ExpensesController`, `Preapprovals`, `Backdoor.BackdoorFinanceController`); `IHoldedFinanceWrite` is the narrow write surface (this section's own `HoldedDocSyncJob` for `SyncAsync` — public only because the Hangfire shim's constructor must be, no other section calls it — the Expenses publisher for the creditor-contact calls, `Workgroups.WorkgroupService` for the expense-account calls). Finance's own `FinanceController` injects `IHoldedFinanceManagement`.
 **Pure matcher:** `HoldedMatcher` (static, no dependencies)
 **Pure file builder:** `SepaPaymentFileBuilder` with `SepaSchema` and `SepaText` (no IO, no clock, no configuration)
 **Owned repository:** `IHoldedRepository` / `Repository` (`Humans.Finance.Data`) — tables under [Owned repository](#owned-repository)
 **Document-sync body:** Internal `HoldedDocumentSync` owns purchase-document fetching, matching, mirror writes and sync-state transitions. `Service.SyncAsync` delegates to it through the existing contract; the facade retains provisioning, creditor and payout operations.
 
-**Job:** `HoldedSyncJob` — **not this section's.** It is Holded's (`src/Sections/Humans.Holded/Jobs/`, cron in `Humans.Holded/SectionJobs.cs`); its body `HoldedNightlySync` calls this section's `IHoldedFinanceWrite.SyncAsync` first and then the ledger mirror.
+**Jobs:** `HoldedDocSyncJob` (`Jobs/`, job id `holded-doc-sync`, nightly at 02:45, scheduled in `SectionJobs.cs`) runs `IHoldedFinanceWrite.SyncAsync`; with no `HOLDED_API_KEY_V2` it skips with an Information log. A failure records `Error` on the doc-sync state and fails the job. It runs ahead of Holded's own 03:00 ledger sweep (`HoldedSyncJob`, Holded's) only to keep the two off the API at once; neither reads the other's output. The manual trigger is `POST /Finance/HoldedSync/Run` ("Sync Now" on `/Finance/HoldedUnmatched`). `SepaBankBookingJob` — see `ISepaBankBooking` below.
 **Migrations:** `Data/Migrations/`, on `FinanceDbContext` with its own history table `__EFMigrationsHistory_Finance`.
 **Architecture tests:** `tests/Humans.Finance.Tests/FinanceArchitectureTests.cs`
 
@@ -380,7 +378,7 @@ No Tickets dependency: the cash-flow view that had one is Budget's. Budget never
 | Interface | Methods | Notes |
 |---|---|---|
 | `IHoldedFinanceService` (read) | [`IHoldedFinanceService.cs`](../../Humans.Finance.Contracts/IHoldedFinanceService.cs) | Consumed by `BudgetAdminController` (actuals), `ExpensesController` (creditor status, ledger, account list) and `Backdoor.BackdoorFinanceController` (peterdrier/Humans#1838: the same account/ledger reads, plus `GetCategoryMapAsync` and `GetSepaTransfersAsync` below). |
-| `IHoldedFinanceWrite` | [`IHoldedFinanceWrite.cs`](../../Humans.Finance.Contracts/IHoldedFinanceWrite.cs) | `SyncAsync` (Holded), `EnsureCreditorContactAsync` / `SetCreditorAccountNumAsync` (Expenses), `CreateOrLinkExpenseAccountAsync` / `SetExpenseAccountActiveAsync` (Workgroups) — resolve, and retire/restore, an expense account for a caller with no budget category, the managed registry. |
+| `IHoldedFinanceWrite` | [`IHoldedFinanceWrite.cs`](../../Humans.Finance.Contracts/IHoldedFinanceWrite.cs) | `SyncAsync` (Finance's own `HoldedDocSyncJob` only), `EnsureCreditorContactAsync` / `SetCreditorAccountNumAsync` (Expenses), `CreateOrLinkExpenseAccountAsync` / `SetExpenseAccountActiveAsync` (Workgroups) — resolve, and retire/restore, an expense account for a caller with no budget category, the managed registry. |
 | `ISepaBankBooking` | [`ISepaBankBooking.cs`](../../Humans.Finance.Contracts/ISepaBankBooking.cs) | `RunAsync` — the two-hourly SEPA bank-line sweep as one call. `SepaBankBookingJob` is the Hangfire shim; nothing else calls it. |
 | `IFinanceService` (read) | [`IFinanceService.cs`](../../Humans.Finance.Contracts/IFinanceService.cs) | `GetIbanAsync` — Expenses (submit snapshot, the masked `/Expenses/{id}/Iban` page, the index's has-IBAN flag). |
 | `IFinanceWrite` | [`IFinanceWrite.cs`](../../Humans.Finance.Contracts/IFinanceWrite.cs) | `SetIbanAsync` — Expenses' `/Expenses/{id}/Iban`. The caller validates and audits (`IbanSet` / `IbanRemove`), because only it knows on whose behalf. |

@@ -8,7 +8,7 @@ internal sealed class SectionJobs : ISectionJobs
 {
     public IEnumerable<RecurringJobDescriptor> Jobs(IServiceProvider services)
     {
-        // Nightly pull of Holded purchase docs → budget-category actuals + creditor daybook.
+        // Nightly sweep of the ledger mirror's trailing window (the daybook every account reads).
         yield return new RecurringJobDescriptor(
             "holded-sync", typeof(HoldedSyncJob), "0 3 * * *");
     }
