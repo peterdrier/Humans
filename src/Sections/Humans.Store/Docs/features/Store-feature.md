@@ -98,7 +98,7 @@ The section invariant doc is [`Store.md`](../Store.md).
 **Acceptance Criteria:**
 - The sync job would poll Holded for new treasury entries, attempt to match them to outstanding `BankTransfer` `Payment` rows by amount + counterparty, and store match results.
 - Unmatched entries would be flagged for Treasurer attention.
-- *Note: US-30.6 is not built. Its `TreasurySyncState` cursor table was dropped unused (peterdrier/Humans#1924); Finance owns the Holded bank-movement feed, so a future implementation reads through it rather than keeping a Store-side cursor.*
+- *Note: US-30.6 is not built. Store keeps no sync cursor; Finance owns the Holded bank-movement feed, so an implementation reads through it rather than a Store-side cursor.*
 
 ### US-30.7: Admin Aggregate Summary (StoreAdmin / FinanceAdmin / Admin)
 

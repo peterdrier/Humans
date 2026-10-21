@@ -140,10 +140,9 @@ never in live code.
 - **Bank-transfer / cash entry** (FinanceAdmin records money received outside Stripe). The
   `BankTransfer` and `Manual` enum members exist; nothing writes them — the hand-entry path
   accepts only deposit returns and refunds.
-- **Treasury sync** (a recurring job matching Holded bank entries to orders). Its
-  `store_treasury_sync_state` cursor table was dropped unused (peterdrier/Humans#1924); the
-  matching key it was designed around (`Order.Label`) was abolished and Finance now owns the
-  bank-movement feed.
+- **Treasury sync** (a recurring job matching Holded bank entries to orders). No job, cursor
+  table or entity exists; the matching key it was designed around (`Order.Label`) was abolished
+  and Finance owns the bank-movement feed.
 - **A FinanceAdmin order ledger** at `/Store/Admin/Orders`. No route, no view.
 - **Payment method read from the string column.** `Payment.MethodName` is written on every insert
   and backfilled by the repair screen; every read still goes through the int `Method`. The

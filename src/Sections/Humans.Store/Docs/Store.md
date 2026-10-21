@@ -287,7 +287,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 **Not built:**
 - Bank-transfer / cash entry (`BankTransfer`, `Manual`) and the `/Store/Admin/Orders` ledger. No service member, endpoint, or view exists.
-- Treasury sync. Never built; its `store_treasury_sync_state` cursor table was dropped (peterdrier/Humans#1924). Bank movements are read by Finance, so any future matching of bank transfers to store orders starts there.
+- Treasury sync. No job, table or entity exists. Finance owns the Holded bank-movement feed, so matching bank transfers to store orders would start there.
 
 ## Cross-Section Dependencies
 
