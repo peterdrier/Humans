@@ -436,7 +436,7 @@ internal interface ITeamRepository : IRepository
         Guid userId, CancellationToken ct = default);
 
     // GoogleEmailStatus.Rejected suppresses outbox events for users whose Google account is dead.
-    // The application service owns that decision and reads it through IUserService.GetUserInfoAsync;
+    // The application service owns that decision and reads it through IGoogleIntegrationService;
     // there is no corresponding method on this repository.
 
     // ==========================================================================

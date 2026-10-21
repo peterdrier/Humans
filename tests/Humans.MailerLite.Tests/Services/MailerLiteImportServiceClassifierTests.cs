@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using NSubstitute.ExceptionExtensions;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
@@ -354,6 +355,7 @@ internal sealed class ClassifierHarness
             _users,
             Provisioning,
             _prefs,
+            Substitute.For<ICommunicationPreferenceWrite>(),
             Substitute.For<IAuditLogService>(),
             InMemoryMailerLiteRepository.New(),
             new FakeClock(Instant.FromUtc(2026, 1, 1, 0, 0)),

@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 89
+next_id: 96
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0031-controller-logic
@@ -276,3 +276,31 @@ inbox:
     id: CENTRAL-88
     what: "CacheKeys.MagicLinkUsed in Humans.Base names its parameter tokenPrefix, but its only caller (Auth's MagicLinkRateLimiter) passes a SHA-256 digest of the whole token. Rename the parameter. Found by section-doctor on Auth."
     review: light
+  - added: 2026-10-21
+    id: CENTRAL-89
+    what: "Retirement PR for data migration finance.iban-to-payment-details (Users decomposition, Finance): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: PaymentDetailsService's legacy fallback (LegacyIban) and ProfileInfo.Iban with its HUM_PROFILE_IBAN obsolete; Users' erase line that nulls Profile.Iban stays until the USERS drop row. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
+    review: panel
+  - added: 2026-10-21
+    id: CENTRAL-90
+    what: "Retirement PR for data migration cantina.profile-dietary (Users decomposition, Cantina): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: DietaryProfileService's legacy fallback and the five ProfileInfo food fields (DietaryPreference, Allergies, AllergyOtherText, Intolerances, IntoleranceOtherText; HUM_PROFILE_DIETARY). Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
+    review: panel
+  - added: 2026-10-21
+    id: CENTRAL-91
+    what: "Retirement PR for data migration governance.profile-tier (Users decomposition, Governance): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: MembershipTierService's legacy fallback, ProfileInfo.MembershipTier and LegacyMembershipTier (HUM_PROFILE_TIER). Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
+    review: panel
+  - added: 2026-10-21
+    id: CENTRAL-92
+    what: "Retirement PR for data migration consent.profile-review (Users decomposition, Consent): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: ConsentReviewService's LegacyReview fallback, UserInfo.IsRejected's legacy arm and the UserStateClassifier profile.RejectedAt arm, the obsolete ProfileInfo review fields (HUM_PROFILE_REVIEW), LegacyConsentCheckStatus, the UserFixtures.StateFor pragma, and Users' export/erase of the legacy review columns. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
+    review: panel
+  - added: 2026-10-21
+    id: CENTRAL-93
+    what: "Retirement PR for data migration tickets.event-participations (Users decomposition, Tickets): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: EventParticipationService's LegacyRows, fallback, write seed and cleared-row handling, UserInfo.EventParticipations and its pragmas (HUM_USER_PARTICIPATIONS), LegacyEventParticipationInfo, the Legacy* participation enums and the Users LegacyEventParticipations export slice. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
+    review: panel
+  - added: 2026-10-21
+    id: CENTRAL-94
+    what: "Retirement PR for data migration email.communication-preferences (Users decomposition, Email): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: CommunicationPreferenceService's legacy fallback and cleared-row semantics, UserInfo.CommunicationPreferences (HUM_USER_COMMPREFS), LegacyMessageCategory, and Users' LegacyCommunicationPreferences export slice and erase. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
+    review: panel
+  - added: 2026-10-21
+    id: CENTRAL-95
+    what: "Retirement PR for data migration google.workspace-identities (Users decomposition, GoogleIntegration): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: WorkspaceIdentityService's legacy fallback, UserEmailInfo.IsGoogle/GoogleEmailStatus (HUM_USER_GOOGLE_IDENTITY), LegacyGoogleEmailStatus, the merge re-FK's IsGoogle = false, and the Users export keys IsGoogle/GoogleEmailStatus. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
+    review: panel

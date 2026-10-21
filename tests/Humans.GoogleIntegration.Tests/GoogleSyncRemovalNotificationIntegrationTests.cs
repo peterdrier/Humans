@@ -31,7 +31,7 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
     private readonly ITeamResourceManagement _teamResourceService = Substitute.For<ITeamResourceManagement>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IUserWrite _userServiceWrite = Substitute.For<IUserWrite>();
+    private readonly IWorkspaceIdentityManagement _identities;
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
@@ -51,6 +51,7 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
 
     public GoogleSyncRemovalNotificationIntegrationTests()
     {
+        _identities = WorkspaceIdentityFakes.ResolvingThrough(_userService);
         _syncSettingsService
             .GetModeAsync(SyncServiceType.GoogleGroups, Arg.Any<CancellationToken>())
             .Returns(SyncMode.AddAndRemove);
@@ -60,6 +61,7 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
         var notifications = new GoogleRemovalNotificationService(
             _userEmailService,
             _userService,
+            _identities,
             _emailService,
             _emailMessages,
             NullLogger<GoogleRemovalNotificationService>.Instance);
@@ -71,7 +73,7 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
             _teamResourceClient,
             _teamResourceService,
             _teamService,
-            _userService, _userServiceWrite,
+            _userService, _identities,
             _userEmailService,
             _syncSettingsService,
             _auditLogService,
@@ -107,8 +109,7 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
             Id = Guid.NewGuid(),
             UserId = userId,
             Email = removedEmail,
-            IsVerified = true,
-            IsGoogle = true
+            IsVerified = true
         });
         user.UserEmails.Add(new UserEmail
         {
@@ -126,6 +127,8 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [userId] = user.ToUserInfo(user.UserEmails.ToList()) }));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(user.ToUserInfo(user.UserEmails.ToList()));
 
         await _syncService.ReconcileOneAsync(TestGroupEmail, SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 

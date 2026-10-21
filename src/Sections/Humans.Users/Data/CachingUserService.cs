@@ -300,7 +300,7 @@ internal sealed class CachingUserService(
             if (TryGet(idGuid, out var byIdRow)
                 && Resolve(byIdRow) is { Profile: not null } byId
                 && !byId.IsTombstone
-                && byId.Profile.RejectedAt is null)
+                && !byId.IsRejected)
             {
                 return [
                     new HumanSearchResult(
@@ -324,7 +324,7 @@ internal sealed class CachingUserService(
             // row carries the same person.
             if (u.IsTombstone) continue;
             if (u.Profile is null) continue;
-            if (u.Profile.RejectedAt is not null) continue;
+            if (u.IsRejected) continue;
 
             var match = PersonSearchMatcher.Match(u, query, fields);
             if (match is null) continue;
@@ -450,19 +450,6 @@ internal sealed class CachingUserService(
         await ReplaceAsync(userId, ct).ConfigureAwait(false);
     }
 
-    public async Task RefreshEventParticipationsAsync(
-        Guid userId,
-        CancellationToken ct = default,
-        [CallerMemberName] string memberName = "",
-        [CallerFilePath] string filePath = "")
-    {
-        logger.LogDebug(
-            "UserInfo refresh event-participations userId={UserId} caller={CallerMember} file={CallerFile}",
-            userId, memberName, Path.GetFileName(filePath));
-
-        await ReplaceAsync(userId, ct).ConfigureAwait(false);
-    }
-
     public async Task RefreshExternalLoginsAsync(
         Guid userId,
         CancellationToken ct = default,
@@ -493,9 +480,11 @@ internal sealed class CachingUserService(
         UserInfo.Create(user, [], [], [], current.Profile, []) with
         {
             UserEmails = current.UserEmails,
+#pragma warning disable HUM_USER_PARTICIPATIONS, HUM_USER_COMMPREFS // carrying the frozen legacy slices across a user-row refresh, not reading them
             EventParticipations = current.EventParticipations,
-            ExternalLogins = current.ExternalLogins,
             CommunicationPreferences = current.CommunicationPreferences,
+#pragma warning restore HUM_USER_PARTICIPATIONS, HUM_USER_COMMPREFS
+            ExternalLogins = current.ExternalLogins,
             MergedUserIds = current.MergedUserIds,
         };
 
@@ -516,36 +505,6 @@ internal sealed class CachingUserService(
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserManagement>(InnerServiceKey);
         await work(inner);
-    }
-
-    public async Task<IReadOnlyList<UserParticipationRow>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default)
-    {
-        await EnsureWarmedAsync(ct).ConfigureAwait(false);
-        var snapshot = Values;
-        var result = new List<UserParticipationRow>();
-        foreach (var u in snapshot)
-        {
-            foreach (var p in u.EventParticipations)
-            {
-                if (p.Year != year) continue;
-                result.Add(new UserParticipationRow(u.Id, p.Status, p.Source, p.CheckedInAt));
-            }
-        }
-        return result;
-    }
-
-    public async Task<IReadOnlyList<OnsiteUserRow>> GetOnsiteUsersAsync(
-        int year, CancellationToken ct = default)
-    {
-        await EnsureWarmedAsync(ct).ConfigureAwait(false);
-        var result = new List<OnsiteUserRow>();
-        foreach (var u in Values)
-        {
-            var onsiteSince = u.OnsiteSinceForYear(year);
-            if (onsiteSince is null) continue;
-            result.Add(new OnsiteUserRow(u.Id, u.BurnerName, onsiteSince));
-        }
-        return result;
     }
 
     public async Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default)
@@ -578,15 +537,6 @@ internal sealed class CachingUserService(
         WithInnerAsync(inner => inner.GetExternalLoginsByUserIdsAsync(userIds, ct));
 
     // Writes — delegate to inner, then refresh the affected entry.
-
-    public async Task<bool> TrySetGoogleEmailStatusFromSyncAsync(
-        Guid userId, GoogleEmailStatus status, CancellationToken ct = default, Guid? googleEmailId = null)
-    {
-        var result = await WithInnerAsync(inner =>
-            inner.TrySetGoogleEmailStatusFromSyncAsync(userId, status, ct, googleEmailId));
-        if (result) await RefreshEntryAsync(userId);
-        return result;
-    }
 
     public async Task SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default)
     {
@@ -631,23 +581,18 @@ internal sealed class CachingUserService(
         return created;
     }
 
-    public async Task<bool> SetMembershipTierAsync(
-        Guid userId,
-        MembershipTier tier,
-        CancellationToken ct = default)
-    {
-        var updated = await WithInnerAsync(inner => inner.SetMembershipTierAsync(userId, tier, ct));
-        if (updated) await RefreshEntryAsync(userId);
-        return updated;
-    }
-
-    public async Task<OnboardingResult> ApplyProfileOnboardingMutationAsync(
-        Guid userId,
-        UserProfileOnboardingCommand command,
-        CancellationToken ct = default)
+    public async Task<OnboardingResult> SetSuspensionAsync(
+        Guid userId, bool suspended, bool adminSuspension = false, CancellationToken ct = default)
     {
         var result = await WithInnerAsync(inner =>
-            inner.ApplyProfileOnboardingMutationAsync(userId, command, ct));
+            inner.SetSuspensionAsync(userId, suspended, adminSuspension, ct));
+        if (result.Success) await RefreshEntryAsync(userId);
+        return result;
+    }
+
+    public async Task<OnboardingResult> SetRejectedAsync(Guid userId, CancellationToken ct = default)
+    {
+        var result = await WithInnerAsync(inner => inner.SetRejectedAsync(userId, ct));
         if (result.Success) await RefreshEntryAsync(userId);
         return result;
     }
@@ -665,14 +610,14 @@ internal sealed class CachingUserService(
         return result;
     }
 
-    public async Task SaveDietaryMedicalAsync(
+    public async Task SaveMedicalConditionsAsync(
         Guid userId,
-        UserProfileDietaryMedicalCommand command,
+        string? medicalConditions,
         CancellationToken ct = default)
     {
         await WithInnerAsync(async inner =>
         {
-            await inner.SaveDietaryMedicalAsync(userId, command, ct);
+            await inner.SaveMedicalConditionsAsync(userId, medicalConditions, ct);
             return true;
         });
         await RefreshEntryAsync(userId);
@@ -700,13 +645,6 @@ internal sealed class CachingUserService(
         return result;
     }
 
-    public async Task<bool> SetProfileIbanAsync(Guid userId, string? iban, CancellationToken ct = default)
-    {
-        var updated = await WithInnerAsync(inner => inner.SetProfileIbanAsync(userId, iban, ct));
-        if (updated) await RefreshEntryAsync(userId);
-        return updated;
-    }
-
     public async Task<IReadOnlySet<Guid>> SuspendProfilesForMissingConsentAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken ct = default)
@@ -716,22 +654,6 @@ internal sealed class CachingUserService(
         foreach (var userId in mutated)
             await RefreshEntryAsync(userId);
         return mutated;
-    }
-
-    public async Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>>
-        DowngradeMembershipTierForExpiredAsync(
-            MembershipTier currentTier,
-            IReadOnlyCollection<Guid> userIdsToKeep,
-            IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
-            Instant now,
-            CancellationToken ct = default)
-    {
-        var downgrades = await WithInnerAsync(inner =>
-            inner.DowngradeMembershipTierForExpiredAsync(
-                currentTier, userIdsToKeep, fallbackTierByUser, now, ct));
-        foreach (var (userId, _) in downgrades)
-            await RefreshEntryAsync(userId);
-        return downgrades;
     }
 
     public async Task<UserEmailAddResult> AddUserEmailAsync(
@@ -787,46 +709,6 @@ internal sealed class CachingUserService(
             await inner.SetLastConsentReminderSentAsync(userId, sentAt, ct);
             await RefreshEntryAsync(userId);
         });
-
-    public async Task DeclareNotAttendingAsync(
-        Guid userId, int year, CancellationToken ct = default)
-    {
-        await WithInnerAsync(inner => inner.DeclareNotAttendingAsync(userId, year, ct));
-        await RefreshEntryAsync(userId);
-    }
-
-    public async Task<bool> UndoNotAttendingAsync(Guid userId, int year, CancellationToken ct = default)
-    {
-        var result = await WithInnerAsync(inner => inner.UndoNotAttendingAsync(userId, year, ct));
-        if (result) await RefreshEntryAsync(userId);
-        return result;
-    }
-
-    public async Task SetParticipationFromTicketSyncAsync(
-        Guid userId, int year, ParticipationStatus status, Instant? checkedInAt, CancellationToken ct = default)
-    {
-        await WithInnerAsync(inner =>
-            inner.SetParticipationFromTicketSyncAsync(userId, year, status, checkedInAt, ct));
-        await RefreshEventParticipationsAsync(userId, ct);
-    }
-
-    public async Task RemoveTicketSyncParticipationAsync(Guid userId, int year, CancellationToken ct = default)
-    {
-        await WithInnerAsync(inner => inner.RemoveTicketSyncParticipationAsync(userId, year, ct));
-        await RefreshEventParticipationsAsync(userId, ct);
-    }
-
-    public async Task<int> BackfillParticipationsAsync(
-        int year,
-        List<(Guid UserId, ParticipationStatus Status)> entries,
-        Guid actorUserId,
-        CancellationToken ct = default)
-    {
-        var count = await WithInnerAsync(inner => inner.BackfillParticipationsAsync(year, entries, actorUserId, ct));
-        foreach (var userId in entries.Select(e => e.UserId).Distinct())
-            await RefreshEventParticipationsAsync(userId, ct);
-        return count;
-    }
 
     public async Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
         Guid userId, CancellationToken ct = default)

@@ -1,5 +1,3 @@
-using Humans.Users.Contracts;
-
 namespace Humans.Email.Contracts;
 
 /// <summary>

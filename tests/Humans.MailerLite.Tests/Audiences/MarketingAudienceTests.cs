@@ -1,7 +1,7 @@
+using Humans.Email.Contracts;
 using AwesomeAssertions;
 using Humans.MailerLite.Tests.Infrastructure;
 using Humans.MailerLite.Services.Audiences;
-using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
 
@@ -16,12 +16,9 @@ public class MarketingAudienceTests
         var optedOut = Guid.NewGuid();    // OptedOut=true  → OUT
         var noPrefRow = Guid.NewGuid();   // no row         → OUT (default off)
 
-        var audience = NewAudience(new[]
-        {
-            UserWithMarketingPref(optedIn, optedOut: false),
-            UserWithMarketingPref(optedOut, optedOut: true),
-            UserWithoutMarketingPref(noPrefRow),
-        });
+        var audience = NewAudience(
+            [User(optedIn), User(optedOut), User(noPrefRow)],
+            (optedIn, false), (optedOut, true));
 
         var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -46,23 +43,14 @@ public class MarketingAudienceTests
         audience.MailerLiteGroupName.Should().Be("Humans - Marketing");
     }
 
-    private static MarketingAudience NewAudience(IReadOnlyList<UserInfo> userInfos)
+    private static MarketingAudience NewAudience(
+        IReadOnlyList<UserInfo> userInfos, params (Guid UserId, bool OptedOut)[] marketing)
     {
         var users = Substitute.For<IUserService>();
         users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(userInfos);
-        return new MarketingAudience(users);
+        return new MarketingAudience(users, MarketingPreferenceStubs.For(marketing));
     }
 
-    private static UserInfo UserWithMarketingPref(Guid userId, bool optedOut) =>
-        UserInfo.Create(
-            new User { Id = userId, DisplayName = "u", PreferredLanguage = "en" },
-            [], [], [], profile: null,
-            [UserFixtures.Preference(
-                category: MessageCategory.Marketing,
-                optedOut: optedOut,
-                updatedAt: Instant.FromUnixTimeSeconds(0),
-                updateSource: "Test")]);
-
-    private static UserInfo UserWithoutMarketingPref(Guid userId) =>
+    private static UserInfo User(Guid userId) =>
         UserInfoStubHelpers.MakeUserInfo(userId);
 }

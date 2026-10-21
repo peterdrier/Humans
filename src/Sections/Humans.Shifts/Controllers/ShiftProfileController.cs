@@ -1,3 +1,4 @@
+using Humans.Shifts.Contracts;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services;
 using Humans.Base;
@@ -11,16 +12,17 @@ namespace Humans.Shifts.Controllers;
 
 /// <summary>
 /// The volunteer's own shift-matching profile — skills, quirks and languages — at
-/// <c>/Profile/Me/ShiftInfo</c>.
+/// <c>/Shifts/ShiftInfo</c>.
 /// </summary>
 /// <remarks>
-/// Both actions read and write <c>volunteer_event_profiles</c>, a Shifts table, but keep
-/// the <c>[Route("Profile")]</c> prefix so the member-facing URLs do not change.
+/// Both actions read and write <c>volunteer_event_profiles</c>, a Shifts table.
 /// </remarks>
 [Authorize]
-[Route("Profile")]
+[Route("Shifts")]
 internal sealed class ShiftProfileController(
     IShiftManagement shiftMgmt,
+    IShiftVolunteerProfiles shiftProfiles,
+    IShiftView shiftView,
     IUserService userService,
     // SharedResource: the only string this controller resolves is Profile_Updated,
     // which belongs to Shell's profile vocabulary.
@@ -28,7 +30,7 @@ internal sealed class ShiftProfileController(
     IStringLocalizer<ShiftsResource> shiftsLocalizer,
     ILogger<ShiftProfileController> logger) : HumansControllerBase(userService)
 {
-    [HttpGet("Me/ShiftInfo")]
+    [HttpGet("ShiftInfo")]
     public async Task<IActionResult> ShiftInfo()
     {
         try
@@ -37,7 +39,9 @@ internal sealed class ShiftProfileController(
             if (user is null)
                 return NotFound();
             var profile = await shiftMgmt.GetShiftProfileAsync(user.Id);
-            return View(ShiftInfoViewModel.FromProfile(profile));
+            var model = ShiftInfoViewModel.FromProfile(profile);
+            await PopulateTagsAsync(model, user.Id);
+            return View(model);
         }
         catch (Exception ex)
         {
@@ -47,12 +51,15 @@ internal sealed class ShiftProfileController(
         }
     }
 
-    [HttpPost("Me/ShiftInfo")]
+    [HttpPost("ShiftInfo")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ShiftInfo(ShiftInfoViewModel model)
     {
         if (!ModelState.IsValid)
+        {
+            await PopulateCatalogAsync(model);
             return View(model);
+        }
 
         try
         {
@@ -70,6 +77,7 @@ internal sealed class ShiftProfileController(
                 model.SelectedLanguages, model.LanguageOtherText, shiftProfile.Languages);
 
             await shiftMgmt.UpdateShiftProfileAsync(shiftProfile);
+            await shiftProfiles.SetVolunteerTagPreferencesAsync(user.Id, model.EditableShiftTagIds);
 
             SetSuccess(localizer["Profile_Updated"].Value);
             return RedirectToAction(nameof(ShiftInfo));
@@ -78,7 +86,20 @@ internal sealed class ShiftProfileController(
         {
             logger.LogError(ex, "Failed to save shift info for user");
             SetError(shiftsLocalizer["Shifts_ShiftProfile_SaveFailed"].Value);
+            await PopulateCatalogAsync(model);
             return View(model);
         }
     }
+
+    private async Task PopulateTagsAsync(ShiftInfoViewModel model, Guid userId)
+    {
+        await PopulateCatalogAsync(model);
+        var summary = await shiftView.GetUserAsync(userId);
+        model.EditableShiftTagIds = summary.TagPreferences.Select(t => t.ShiftTagId).ToList();
+    }
+
+    private async Task PopulateCatalogAsync(ShiftInfoViewModel model) =>
+        model.AllShiftTags = (await shiftProfiles.GetTagsAsync())
+            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 }

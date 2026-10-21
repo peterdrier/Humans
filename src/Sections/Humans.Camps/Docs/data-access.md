@@ -51,8 +51,8 @@ Repository: `ICampRepository`.
 |-------------------------|------------|
 | `EarlyEntry.UserEarlyEntry` TrackedCache (`IEarlyEntryInvalidator`) | yes (camp-lead grant changes) |
 
-Cross-section calls via `IUserService`, `IAuditLogService`,
-`ISystemTeamSync`, `IFileStorage`, `INotificationEmitter`,
+Cross-section calls via `IUserService`, `ITicketService` (has the member entered the event),
+`IAuditLogService`, `ISystemTeamSync`, `IFileStorage`, `INotificationEmitter`,
 `IEarlyEntryInvalidator`, `ISettingsService` (active event settings), plus
 `Lazy<ICampRoleService>` and `Lazy<ICityPlanningWrite>` (camp deletion removes
 the camp's polygon/history rows) to break DI cycles. Implements `ICampLeadDirectory`, `IEarlyEntryProvider` (via `ICampManagement`),

@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Users.Tests.Infrastructure;
 using NodaTime;
@@ -11,6 +12,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
 {
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
+    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
 
     private readonly List<UserInfo> _allInfos = [];
 
@@ -22,10 +24,10 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     }
 
     private EmailProblemsService Sut => new(
-        _userEmailService, _userService, Clock);
+        _userEmailService, _userService, _audit, Clock);
 
     private static UserEmail Email(Guid userId, string address,
-        bool isVerified = true, bool isPrimary = false, bool isGoogle = false) =>
+        bool isVerified = true, bool isPrimary = false) =>
         new()
         {
             Id = Guid.NewGuid(),
@@ -33,7 +35,6 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
             Email = address,
             IsVerified = isVerified,
             IsPrimary = isPrimary,
-            IsGoogle = isGoogle,
         };
 
     private static Profile MakeProfile(Guid userId) =>
@@ -108,12 +109,12 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     {
         // Per-user email hygiene problems must not be reported for merge-source / GDPR-deleted
         // tombstones — their scrubbed sentinel emails (…@merged.local / …@deleted.local) yield
-        // only false ZeroIsGoogle / Unverified positives. (Leftover orphan/ghost cleanup rows are
+        // only false ZeroIsPrimary / Unverified positives. (Leftover orphan/ghost cleanup rows are
         // a separate case — see ScanAsync_OrphanAndGhostRowsForTombstones_ArePreserved.)
         var liveId = Guid.NewGuid();
         AddInfo(MakeInfo(liveId, emails:
         [
-            Email(liveId, "live@x.com", isVerified: true, isPrimary: true) // real ZeroIsGoogle problem
+            Email(liveId, "live@x.com", isVerified: true) // real ZeroIsPrimary problem
         ]));
 
         var mergedId = Guid.NewGuid();
@@ -155,7 +156,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         report.Problems.Should().NotContain(p => p.UserId == deletedId);
         // The live account's hygiene problem is untouched.
         report.Problems.Should().Contain(p =>
-            p.Kind == EmailProblemKind.ZeroIsGoogle && p.UserId == liveId);
+            p.Kind == EmailProblemKind.ZeroIsPrimary && p.UserId == liveId);
     }
 
     [HumansFact]
@@ -233,24 +234,6 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task DetectsMultipleIsGoogle()
-    {
-        var userId = Guid.NewGuid();
-        AddInfo(MakeInfo(userId, emails:
-        [
-            Email(userId, "a@x.com", isVerified: true, isGoogle: true),
-            Email(userId, "b@x.com", isVerified: true, isGoogle: true)
-        ]));
-        SetOrphans();
-        SetGhosts();
-
-        var report = await Sut.ScanAsync(Xunit.TestContext.Current.CancellationToken);
-
-        report.Problems.Should().ContainSingle(p =>
-            p.Kind == EmailProblemKind.MultipleIsGoogle && p.UserId == userId);
-    }
-
-    [HumansFact]
     public async Task DetectsZeroIsPrimary_WhenUserHasVerifiedEmails()
     {
         var userId = Guid.NewGuid();
@@ -282,23 +265,6 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         var report = await Sut.ScanAsync(Xunit.TestContext.Current.CancellationToken);
 
         report.Problems.Should().NotContain(p => p.Kind == EmailProblemKind.ZeroIsPrimary);
-    }
-
-    [HumansFact]
-    public async Task DetectsZeroIsGoogle()
-    {
-        var userId = Guid.NewGuid();
-        AddInfo(MakeInfo(userId, emails:
-        [
-            Email(userId, "a@x.com", isVerified: true, isPrimary: true)
-        ]));
-        SetOrphans();
-        SetGhosts();
-
-        var report = await Sut.ScanAsync(Xunit.TestContext.Current.CancellationToken);
-
-        report.Problems.Should().ContainSingle(p =>
-            p.Kind == EmailProblemKind.ZeroIsGoogle && p.UserId == userId);
     }
 
     [HumansFact]
@@ -509,5 +475,37 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         result.Should().BeEmpty();
         await _userEmailService.DidNotReceive().AddVerifiedEmailAsync(
             Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task BackfillLegacyIdentityEmails_AuditsEachCreatedRowAgainstTheActor()
+    {
+        var actorId = Guid.NewGuid();
+        var u1 = Guid.NewGuid();
+        var u2 = Guid.NewGuid();
+        AddInfo(MakeInfo(u1, identityEmailColumn: "a@x.com"));
+        AddInfo(MakeInfo(u2, identityEmailColumn: "b@x.com"));
+
+        await Sut.BackfillLegacyIdentityEmailsAsync(actorId, Xunit.TestContext.Current.CancellationToken);
+
+        await _audit.Received(1).LogAsync(
+            AuditAction.LegacyIdentityEmailBackfilled, nameof(User), u1,
+            Arg.Is<string>(s => s.Contains("a@x.com")), actorId);
+        await _audit.Received(1).LogAsync(
+            AuditAction.LegacyIdentityEmailBackfilled, nameof(User), u2,
+            Arg.Is<string>(s => s.Contains("b@x.com")), actorId);
+    }
+
+    [HumansFact]
+    public async Task BackfillLegacyIdentityEmails_NothingToBackfill_WritesNoAudit()
+    {
+        var userId = Guid.NewGuid();
+        AddInfo(MakeInfo(userId, identityEmailColumn: null));
+
+        await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        await _audit.DidNotReceive().LogAsync(
+            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>());
     }
 }

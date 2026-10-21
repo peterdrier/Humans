@@ -6,8 +6,9 @@ Folder: `src/Sections/Humans.Users/Services/` — no separate `Profiles/`
 subfolder; `ProfileEditorService`, `ProfileService`, and
 `ContactFieldService` sit alongside the Users services listed under
 [Users](#users) below. Owns `Profiles`, `ContactFields`,
-`ProfileLanguages`, `VolunteerHistoryEntries`, `UserEmails`,
-`CommunicationPreferences`. **DbContext:** `UsersDbContext` — the merged
+`ProfileLanguages`, `VolunteerHistoryEntries`, `UserEmails`, and the
+frozen legacy `CommunicationPreferences` (Email owns preferences since
+Users decomposition commit 14). **DbContext:** `UsersDbContext` — the merged
 Users+Profiles context.
 
 The account-merge surface (`AccountMergeService`, `DuplicateAccountService`,
@@ -19,7 +20,7 @@ DB access; its one write is the `DuplicateAccountFlagged` audit entry through
 
 Per-user persistence is a single `IUserRepository`, which owns `Users`,
 `Profiles`, `UserEmails`, `ContactFields`, `ProfileLanguages`,
-`VolunteerHistoryEntries`, `EventParticipations`, and the ASP.NET-Identity
+`VolunteerHistoryEntries`, the frozen legacy `EventParticipations` (read-only; Tickets owns participation since Users decomposition commit 13), and the ASP.NET-Identity
 `IdentityUserLogins` bridge. `ProfileService` exposes only
 `IProfilePictureService`; the unified User+Profile read-model lives behind
 `IUserService.GetUserInfoAsync`. Repositories are **Singletons**
@@ -59,18 +60,6 @@ Cross-section reads via `IUserService`, `ITeamService`,
 `IUserMerge`. Invalidates the User+Profile read-model via
 `IUserInfoInvalidator`. No `IMemoryCache`.
 
-### CommunicationPreferenceService (Scoped)
-
-Repository: `ICommunicationPreferenceRepository`.
-
-| Table | R/W |
-|-------|-----|
-| CommunicationPreferences | R/W |
-
-Cross-section calls via `IUserService`, `IAuditLogService`,
-`IUnsubscribeTokenProvider` (same section, `Services/`). Implements
-`IUserMerge`. No cache.
-
 ### UserEmailService (Scoped)
 
 Repository: `IUserRepository`.
@@ -78,10 +67,10 @@ Repository: `IUserRepository`.
 | Table | R/W |
 |-------|-----|
 | UserEmails | R/W |
-| Users | R/W (the only direct EF write to `Users.Email`). The `Users.GoogleEmail` shadow column has no reader or writer left (nobodies-collective/Humans#1102); the mapping survives only until the drop PR. Google sync status is per-address on `UserEmails.GoogleEmailStatus` — `Users.GoogleEmailStatus` is deprecated/unwritten. |
+| Users | R/W (the only direct EF write to `Users.Email`). The `Users.GoogleEmail` shadow column has no reader or writer left (nobodies-collective/Humans#1102); the mapping survives only until the drop PR. `UserEmails.IsGoogle` / `UserEmails.GoogleEmailStatus` and `Users.GoogleEmailStatus` are frozen and unwritten: the Google Workspace identity is GoogleIntegration's `google_workspace_identities` (Users decomposition commit 15). |
 
 Cross-section calls via `IUserService`, plus ASP.NET `UserManager<User>` and
-`IServiceProvider` for lazy resolution. Implements `IUserMerge`. No
+`IServiceProvider` for lazy resolution (Tickets' `ITicketService`, Users' `IAccountMergeService`, and GoogleIntegration's `IGoogleIntegrationWrite.ClearIfAddressAsync` after each committed delete, unlink or OAuth tag-move/rename/displacement). Implements `IUserMerge`. No
 `IMemoryCache` directly.
 **Cross-section design-rule note:** `Users` reads/writes overlap the User
 section — `IUserRepository` is the consolidated owner and this is the
@@ -114,18 +103,10 @@ No repository, no cache, no direct DB access. Section-internal diagnostics over
 `IUserEmailService` and `IUserService`: `ScanAsync` builds the
 `EmailProblemsReport` for the admin email-health screen, including accounts
 whose only identity is an external login. `BackfillLegacyIdentityEmailsAsync`
-returns the
-`(UserId, Email)` pairs still missing a `UserEmail` row. Timestamps come from
-`IClock`.
-
-### TeamMessageOptionsProvider (Scoped, internal — `IOrchestrator`)
-
-No repository, no cache, no direct DB access. Section-internal
-`ITeamMessageOptionsProvider`: the teams a viewer may send a facilitated message
-for — active teams the viewer coordinates whose linked Google Group is synced.
-Cross-section reads via `ITeamService.GetTeamsAsync` and
-`ITeamResourceService.GetResourcesByTeamIdsAsync` (GoogleIntegration); it touches
-neither section's tables.
+(the `users.legacy-identity-emails` data migration) creates the missing verified
+`UserEmail` rows, audits `LegacyIdentityEmailBackfilled` per row against the acting
+admin via `IAuditLogService`, and returns the `(UserId, Email)` pairs it wrote.
+Timestamps come from `IClock`.
 
 ## Human Lifecycle
 
@@ -176,7 +157,7 @@ Folder: `src/Sections/Humans.Users/Services/`; repository under
 `Data/Repositories/`. **DbContext:** `UsersDbContext` — the merged
 Users+Profiles context (`Users` is the Identity-backed `users` table via
 `IdentityDbContext<User, …>`, which the context carries directly). Owns
-`Users`, `UserEmails` cross-bridge (read-through), `EventParticipations`,
+`Users`, `UserEmails` cross-bridge (read-through), the frozen legacy `EventParticipations` (read-only),
 ASP.NET `IdentityUserLogins`, and `AccountMergeRequests` — the
 account-merge surface (`AccountMergeService`, `DuplicateAccountService`,
 `AccountMergeRepository`) lives here. The inner `IUserService` registration is wrapped
@@ -199,11 +180,11 @@ Repositories: `IUserRepository`, `ICommunicationPreferenceRepository`.
 |-------|-----|------|
 | Users | R/W | IUserRepository |
 | UserEmails | R | IUserRepository |
-| EventParticipations | R/W | IUserRepository |
+| EventParticipations | R (frozen legacy rows: `UserInfo.EventParticipations` for Tickets' fallback, and the `LegacyEventParticipations` export slice) | IUserRepository |
 | IdentityUserLogins | R | IUserRepository |
 | Profiles | R/W | IUserRepository |
 | ContactFields | R | IUserRepository |
-| CommunicationPreferences | R | ICommunicationPreferenceRepository |
+| CommunicationPreferences | R/D (frozen legacy rows: `UserInfo.CommunicationPreferences` for Email's fallback, the `LegacyCommunicationPreferences` export slice, and erasure) | ICommunicationPreferenceRepository |
 | ProfileLanguages | R/W | IUserRepository |
 | VolunteerHistoryEntries | R | IUserRepository |
 
@@ -213,7 +194,7 @@ a single cached read-model fanning out over the User + Profile section's
 unified persistence layer. Implements `IUserDataContributor`,
 `IUserMerge`.
 
-Cross-section calls via `IAdminAuthorizationService` and `IAuditLogService` (per-member historical participation import and admin stub-profile creation after save). No direct
+Cross-section calls via `IAdminAuthorizationService` and `IAuditLogService` (admin stub-profile creation after save). No direct
 `IMemoryCache` — caching is in the Singleton decorator.
 
 ### CachingUserService (Singleton, `Humans.Users.Data`)
@@ -279,26 +260,6 @@ No repository. GDPR right-to-deletion orchestrator. Fans out over
 `IShiftAuthorizationInvalidator`, `IShiftViewInvalidator`. No cache, no
 direct DB access — all writes go through owning services.
 
-### UnsubscribeService (Scoped)
-
-Repositories: `IUserRepository` (read-only — token validation / user guard).
-
-| Table | R/W |
-|-------|-----|
-| Users | R (existence check via `IUserRepository.GetByIdAsync`) |
-
-Calls `ICommunicationPreferenceService` to validate the token and flip
-per-category opt-outs; uses `IDataProtectionProvider` for legacy token
-validation. Also injects `IUserService` to resolve the user's
-`BurnerName` for the unsubscribe-confirm display (reads from the
-`CachingUserService` TrackedCache — no extra DB round-trip on hit).
-No cache on the service itself.
-
-### UserParticipationBackfillService (Scoped)
-
-No repository. Fan-out over `IUserManagement` and `ISettingsService`
-(active event settings) to preview valid CSV rows and, only after operator confirmation, backfill `EventParticipations` with the acting admin. No direct DB access, no cache.
-
 ### AccountMergeService (Scoped)
 
 Repositories: `IAccountMergeRepository`, `IUserRepository`.
@@ -358,7 +319,8 @@ Repository: `IUserRepository`.
 | Users | R |
 | Profiles | R/W (re-persists the Profile row to run the User↔Profile dual-write sync) |
 
-Operator-driven BurnerName/legal-name backfill: finds `User`/`Profile`
+Operator-driven BurnerName/legal-name backfill (the `users.names-onto-user` data
+migration on `/Debug/DataMigrations`): finds `User`/`Profile`
 pairs where the User row is missing a name the Profile carries, then
 re-saves the Profile through the normal dual-write path. Cross-section
 calls via `IUserService` (`GetAllUserInfosAsync`, for email display only) and `IAuditLogService` (actor-attributed `UserNamesBackfilled` per saved member).

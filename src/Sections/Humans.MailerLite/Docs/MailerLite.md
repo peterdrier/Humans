@@ -63,14 +63,14 @@ All routes are `AdminOnly`.
 - `IMailerLiteService` exposes reads + five narrow outbound writes: `CreateGroupAsync`, `AssignSubscriberToGroupAsync`, `UnassignSubscriberFromGroupAsync`, `BulkImportSubscribersToGroupAsync`, and `DeleteSubscriberAsync` (GDPR Article 17 erasure, nobodies-collective/Humans#853). The set of allowed write methods is pinned by `MailerLiteArchitectureTests.IMailerLiteService_OnlyAllowsAudienceWrites`.
 - The four audience-management writes target an ML group whose `Name` starts with `"Humans - "`; `MailerLiteClient` runtime-rejects those against non-`"Humans - "` groups with `InvalidOperationException` (pinned by `MailerLiteClientWriteGuardTests`). `DeleteSubscriberAsync` takes no group — erasure targets a subscriber, not a group, so the group guard does not apply.
 - All `IMailerLiteAudience` implementations target group names starting with `"Humans - "`. Pinned by `MailerLiteArchitectureTests.AllAudiences_UseHumansPrefix`. Audience keys and group names are unique across registrations (pinned by `AllAudiences_HaveUniqueGroupNamesAndKeys`).
-- Every audience excludes humans who have **explicitly opted out** of Marketing (`UserInfo.MarketingOptedOut == true`) — applied centrally in `MailerLiteAudienceBase.ComputeMemberUserIdsAsync` after the subclass computes its raw set, because MailerLite rejects opted-out addresses regardless of audience. Humans with no Marketing preference (null) or who opted in (false) are kept. For the two Marketing audiences this is subsumed by their stricter `== false` filter. Pinned by `MailerLiteAudienceBaseTests`.
+- Every audience excludes humans who have **explicitly opted out** of Marketing (a Marketing `CommunicationPreferenceSnapshot` with `OptedOut` true, read once per sync through Email's `ICommunicationPreferenceService.GetPreferencesForCategoryAsync`) — applied centrally in `MailerLiteAudienceBase.ComputeMemberUserIdsAsync` after the subclass computes its raw set, because MailerLite rejects opted-out addresses regardless of audience. Humans with no Marketing preference (null) or who opted in (false) are kept. For the two Marketing audiences this is subsumed by their stricter opted-in filter. Pinned by `MailerLiteAudienceBaseTests`.
 - `MailerLiteImportService` and `MailerLiteAudienceSyncService` reach `mailerlite_sync_states` only through `IMailerLiteRepository`; nothing outside `Data/` holds a `MailerLiteDbContext`.
 - Neither service reads `audit_log`. Sync state is read from the section's own table; audit descriptions are prose, never serialized JSON.
 - No `IMailerLiteAudience` may claim the reserved `import-reconciliation` key (pinned by `MailerLiteArchitectureTests.AllAudiences_HaveUniqueGroupNamesAndKeys`).
 - `mailerlite_sync_states` holds exactly one row per key. The repository's check-and-insert runs under a striped `TrackedLock` keyed on the sync key (the daily job and an admin's "Sync Audience" click can land together); there is no DB unique index. `ComputeAllStatsAsync` groups by key and takes the most recent rather than assuming uniqueness, so a duplicate shows the newest row instead of 500ing the dashboard (pinned by `ComputeAllStatsAsync_DuplicateKeyRows_ShowsTheNewest`).
 - Import matching prefers a single verified owner. Multiple verified owners or multiple unverified matching email rows (including aliases on one owner) are skipped without deleting emails, provisioning a contact, or changing marketing preferences. Only a single unverified match is eligible for replacement. Apply delegates deletion and provisioning to Users' atomic replacement operation; failed provisioning leaves the original address intact and counts an error.
 - The import (`MailerLiteImportService`) ingests **only** the MailerLite group named `Website` (resolved by name; throws if the group is absent) — never the whole account. The reset pass excludes anyone in that group of any status, since the import already owns their pref (active → opt-in, unsubscribed/bounced → opt-out). Pinned by `MailerLiteImportServiceWebsiteScopeTests`.
-- Every write to `CommunicationPreference[Marketing]` goes through `CommunicationPreferenceService` — `UpdatePreferenceAsync` for opt state, `ResetPreferenceAsync` to delete the row (→ null) — and produces a `CommunicationPreferenceChanged` audit entry on real state changes (not idempotent confirms).
+- Every write to `CommunicationPreference[Marketing]` goes through Email's `ICommunicationPreferenceWrite` — `UpdatePreferenceAsync` for opt state, `ResetPreferenceAsync` to clear it (→ null) — and produces a `CommunicationPreferenceChanged` audit entry on real state changes (not idempotent confirms).
 - `ApplyAsync` is idempotent: a second run against unchanged ML+Humans state writes zero per-row entries and exactly one `MailerLiteReconciliationCompleted` summary entry.
 - One human, one Marketing decision: when several of a human's verified addresses sit in the `Website` group, the import resolves them to one governing subscriber before classifying or applying — any opt-out status (`unsubscribed`, `bounced`, `junk`) beats `active`, bounce/junk beat `unsubscribed`, then the most recent ML action, then email. An active address never overrides an opt-out, and the result does not depend on enumeration order. The preview lists each address under its human's resolved outcome; apply writes once per human, resolving across the human's addresses in the whole plan (throttled ones included). Pinned by `MailerLiteImportServiceSameHumanTests`.
 - `SyncAsync` is idempotent: a second run against unchanged audience+ML state writes zero ML mutations and exactly one `MailerLiteAudienceSyncCompleted` summary entry whose counts are all zero.
@@ -88,7 +88,7 @@ All routes are `AdminOnly`.
 - Non-admins **cannot** access any `/MailerLite/Admin/*` route.
 - `IMailerLiteService` **cannot** be extended with write methods without removing the architecture-test pin in the same PR.
 - `MailerLiteImportService` **cannot** inject `HumansDbContext` or any non-MailerLite repository (it goes through service interfaces).
-- Code outside `CommunicationPreferenceService` **cannot** write to `communication_preferences` directly.
+- Code outside Email's `CommunicationPreferenceService` **cannot** write to `email_communication_preferences` directly.
 
 ## Triggers
 
@@ -99,23 +99,23 @@ All routes are `AdminOnly`.
 
 ## Cross-Section Dependencies
 
-The section references the contracts leaves `Humans.Users.Contracts`,
+The section references the contracts leaves `Humans.Users.Contracts`, `Humans.Email.Contracts`,
 `Humans.Tickets.Contracts` and `Humans.Shifts.Contracts`, the section projects `Humans.Gdpr` and
-`Humans.AuditLog` (contracts in their `Contracts/` folders), plus `Humans.Base`. There is no Profiles reference: the email
-and communication-preference interfaces all live in `Humans.Users.Contracts`.
+`Humans.AuditLog` (contracts in their `Contracts/` folders), plus `Humans.Base`. The
+communication-preference interfaces live in `Humans.Email.Contracts` (Users decomposition commit 14).
 
 - **Users — people**: `IUserService.GetAllUserInfosAsync` and `GetUserInfoAsync` over the
-  cached `UserInfo` set. `MailerLiteAudienceBase` reads it to drop explicit Marketing
-  opt-outs from *every* audience; `MarketingAudience` / `MarketingNoTicketAudience` read it
-  to enumerate explicit opt-ins (`UserInfo.MarketingOptedOut == false`); the debug screen
-  reads it for names and addresses.
+  cached `UserInfo` set. `MarketingAudience` / `MarketingNoTicketAudience` enumerate it
+  and keep the explicit opt-ins; the debug screen reads it for names and addresses.
 - **Users — email**: `IUserEmailService.GetNotificationTargetEmailsAsync` (the sync's
   user-id → address resolution), `GetPrimaryEmailAsync` and `GetVerifiedEmailsForUserAsync`
   (GDPR erasure), `FindByAddressAsync` (import matching: the verified-only pass counts
   distinct owners, the unverified pass picks the row to replace).
-- **Users — preferences**: `ICommunicationPreferenceService.IsOptedOutAsync`,
-  `GetPreferenceOrNullAsync`, `GetCountByCategoryAndStateAsync` (reads) and
-  `UpdatePreferenceAsync`, `ResetPreferenceAsync` (writes, from the import apply).
+- **Email — preferences**: `ICommunicationPreferenceService.IsOptedOutAsync`,
+  `GetPreferenceOrNullAsync`, `GetPreferencesForCategoryAsync` (the bulk Marketing map every
+  audience and the reset pass read), `GetCountByCategoryAndStateAsync` (reads) and
+  `ICommunicationPreferenceWrite.UpdatePreferenceAsync` / `ResetPreferenceAsync` (writes, from
+  the import apply).
 - **Users — provisioning**: `IAccountProvisioningService.FindOrCreateUserByEmailAsync` for creation and
   `ReplaceUnverifiedEmailAndProvisionAsync` for atomic replacement.
 - **Tickets**: `ITicketService.GetTicketOrdersAsync`, called once from
@@ -139,5 +139,5 @@ and communication-preference interfaces all live in `Humans.Users.Contracts`.
 - **Cross-section surface** — none. The section is a leaf: `MailerLiteAudienceSyncJob` (`Jobs/`) is internal and calls `IMailerLiteAudienceSyncService.SyncAllAsync` as the actor-less scheduled run, contributed through `SectionJobs` like every other section's jobs. The dashboard stats, the import plan/apply pair and the whole `IMailerLiteService` surface are internal too.
 - **No resource set** — the admin pages are English operator copy with no `Localizer[…]` call; admin-only pages are exempt from localization ([`localization-admin-exempt`](../../../../memory/code/localization-admin-exempt.md)).
 - **Decorator decision** — no caching decorator. Rationale: admin-only, sequential, runs by hand; one DB count per dashboard load is fine at our scale. `MailerLiteClient` is a Singleton holding its own subscriber/group snapshot, refreshed only on demand.
-- **Cross-section calls** — `IUserEmailService`, `IAccountProvisioningService`, `ICommunicationPreferenceService`, `IUserService`, `ITicketService`, `IShiftView`, `IAuditLogService`.
+- **Cross-section calls** — `IUserEmailService`, `IAccountProvisioningService`, `ICommunicationPreferenceService` + `ICommunicationPreferenceWrite` (Email), `IUserService`, `ITicketService`, `IShiftView`, `IAuditLogService`.
 - **Architecture test** — `tests/Humans.MailerLite.Tests/Architecture/MailerLiteArchitectureTests.cs` pins: namespace, allowed-write surface on `IMailerLiteService`, audience group-name prefix + uniqueness, and (`EveryController_IsAdminOnly`) the admin-only policy — the pin CI runs. `MailerLiteClientWriteGuardTests` pins the runtime "Humans - " prefix guard; `MailerLitePageRenderTests` (in `Humans.Integration.Tests`, which CI does not run) checks that the section's own `_ViewImports` binds and that `/MailerLite/Admin/*` stays admin-only.

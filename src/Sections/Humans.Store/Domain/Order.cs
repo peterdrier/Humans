@@ -32,7 +32,7 @@ internal sealed class Order
     /// </summary>
     public int Year { get; set; }
 
-    [Obsolete("Order labels were removed from the UI (#816). The column is retained but unused — do not reference.")]
+    [Obsolete("Order labels were removed from the UI (nobodies-collective/Humans#816). The column is retained but unused — do not reference.")]
     public string? Label { get; set; }
     public OrderState State { get; set; } = OrderState.Open;
 

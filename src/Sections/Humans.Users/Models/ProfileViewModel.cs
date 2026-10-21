@@ -3,8 +3,6 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NodaTime;
 using Humans.Base.Extensions;
-using Humans.Campaigns.Contracts;
-using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Users.Models;
@@ -146,7 +144,7 @@ internal sealed class ProfileViewModel
 
     /// <summary>
     /// Whether this is the user's initial profile setup (no profile yet or not approved).
-    /// Controls visibility of tier selection and inline application sections.
+    /// Controls visibility of the membership-tier card.
     /// </summary>
     public bool IsInitialSetup { get; set; }
 
@@ -163,46 +161,10 @@ internal sealed class ProfileViewModel
     public bool NoPriorBurnExperience { get; set; }
 
     /// <summary>
-    /// Selected membership tier. During initial setup, the user can choose Colaborador/Asociado.
-    /// Defaults to Volunteer if not specified.
-    /// </summary>
-    public MembershipTier SelectedTier { get; set; } = MembershipTier.Volunteer;
-
-    /// <summary>
-    /// Whether the tier has been locked (approved or has active application).
+    /// The member already has a pending or approved tier application, so the initial-setup
+    /// tier card shows a note instead of the link to <c>/Governance/Applications/Create</c>.
     /// </summary>
     public bool IsTierLocked { get; set; }
-
-    // Inline application fields (only used during initial setup for Colaborador/Asociado)
-
-    /// <summary>
-    /// Motivation statement for Colaborador/Asociado application.
-    /// Required when SelectedTier is not Volunteer during initial setup.
-    /// </summary>
-    [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
-    [DataType(DataType.MultilineText)]
-    public string? ApplicationMotivation { get; set; }
-
-    /// <summary>
-    /// Additional information for the application.
-    /// </summary>
-    [StringLength(1000, ErrorMessage = "Validation_MaxLength")]
-    [DataType(DataType.MultilineText)]
-    public string? ApplicationAdditionalInfo { get; set; }
-
-    /// <summary>
-    /// Asociado-only: significant contribution to Nowhere or another Burn.
-    /// </summary>
-    [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
-    [DataType(DataType.MultilineText)]
-    public string? ApplicationSignificantContribution { get; set; }
-
-    /// <summary>
-    /// Asociado-only: understanding of the asociado role and why they want it.
-    /// </summary>
-    [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
-    [DataType(DataType.MultilineText)]
-    public string? ApplicationRoleUnderstanding { get; set; }
 
     public string? EffectiveProfilePictureUrl => HasCustomProfilePicture
         ? CustomProfilePictureUrl
@@ -241,8 +203,6 @@ internal sealed class ProfileViewModel
 
     public IReadOnlyList<TeamMembershipViewModel> Teams { get; set; } = [];
 
-    public IReadOnlyList<CampaignGrantSummary> CampaignGrants { get; set; } = [];
-
     public List<NoShowHistoryItem>? NoShowHistory { get; set; }
 
     /// <summary>
@@ -255,60 +215,12 @@ internal sealed class ProfileViewModel
 
     public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
 
-    public IReadOnlyList<ShiftTagSummary> AllShiftTags { get; set; } = [];
-
-    /// <summary>
-    /// IDs of shift tags the user has marked as preferred. Owner only.
-    /// Posted from the Edit form so the same submit saves preferences alongside the profile.
-    /// </summary>
-    public List<Guid> EditableShiftTagIds { get; set; } = [];
-
-    /// <summary>
-    /// Dietary preference (single choice). Surfaced on the Edit page as a second
-    /// entry point for <c>Profile.DietaryPreference</c>, also editable on the
-    /// dedicated DietaryMedical page. Empty = not set.
-    /// </summary>
-    public string DietaryPreference { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Selected allergy chips. May include the "Other" sentinel, which pairs with
-    /// <see cref="AllergyOtherText"/>. Writes to <c>Profile.Allergies</c>.
-    /// </summary>
-    public List<string> Allergies { get; set; } = [];
-
-    /// <summary>
-    /// Free-text detail when "Other" allergy is selected.
-    /// </summary>
-    [StringLength(500, ErrorMessage = "Validation_MaxLength")]
-    public string? AllergyOtherText { get; set; }
-
-    /// <summary>
-    /// When the human was first checked in at the active event's gate, or null
-    /// if not yet onsite. Drives the "Onsite since {time}" chip per issue
-    /// nobodies-collective/Humans#736. Visibility is policy-gated on
-    /// <see cref="CanViewOnsiteChip"/>.
-    /// </summary>
-    public Instant? OnsiteSince { get; set; }
-
-    /// <summary>
-    /// Whether the viewer is permitted to see the onsite chip. True for the
-    /// human themselves and for users matching the same admin/coordinator
-    /// policy that gates <c>/Tickets/Admin/Onsite</c>
-    /// (<c>PolicyNames.TicketAdminBoardOrAdmin</c>).
-    /// </summary>
-    public bool CanViewOnsiteChip { get; set; }
-
     /// <summary>
     /// Whether the viewer can see the "Sent messages" panel.
     /// True when the viewer is a coordinator or has a privileged shift-management role.
     /// </summary>
     public bool CanViewSentMessages { get; set; }
-
-    /// <summary>Verified Google Groups the viewer coordinates and may send replies through.</summary>
-    public IReadOnlyList<TeamMessageOption> TeamMessageOptions { get; set; } = [];
 }
-
-internal sealed record TeamMessageOption(Guid TeamId, string TeamName, string GoogleGroupEmail);
 
 internal sealed class TeamMembershipViewModel
 {
@@ -529,13 +441,6 @@ internal sealed class ProfileLanguageDisplayViewModel
         LanguageProficiency.Conversational => "bg-info text-dark",
         _ => "bg-secondary"
     };
-}
-
-internal sealed class PrivacyViewModel
-{
-    public bool IsDeletionPending { get; set; }
-    public DateTime? DeletionRequestedAt { get; set; }
-    public DateTime? DeletionScheduledFor { get; set; }
 }
 
 /// <summary>

@@ -1,0 +1,21 @@
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
+   here ships broken markup with a green build and no runtime error.
+   `<vc:human>`'s component lives in Humans.Base, so `@addTagHelper *, Humans.Base`
+   resolves it; a component still in Humans.Web would render as inert literal markup. *@
+@using Humans.Base.Extensions
+@using Humans.Base.Enums
+@using Humans.Auth
+@using Humans.Auth.Contracts
+@using Humans.Auth.Controllers
+@using Humans.Auth.Models
+@using Humans.Base
+@using Humans.Base.Models
+@using Humans.Base.Models.Tables
+@using Microsoft.AspNetCore.Html
+@using Microsoft.Extensions.Localization
+@* AuthResource for the section's own copy; SharedLocalizer for Common_, MyTeams_Role and
+   AdminHuman_Active, which stay in SharedResource. *@
+@inject IStringLocalizer<AuthResource> Localizer
+@inject IStringLocalizer<SharedResource> SharedLocalizer
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@addTagHelper *, Humans.Base

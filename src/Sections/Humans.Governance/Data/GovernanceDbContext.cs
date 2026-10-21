@@ -6,8 +6,9 @@ using MemberApplication = Humans.Governance.Domain.Application;
 namespace Humans.Governance.Data;
 
 /// <summary>
-/// Per-section database context: maps only <c>applications</c>,
-/// <c>application_state_history</c> and <c>board_votes</c>, with its own
+/// Per-section database context: maps <c>applications</c>,
+/// <c>application_state_history</c>, <c>board_votes</c>, the assembly-vote tables and
+/// <c>governance_membership_tiers</c>, with its own
 /// <c>__EFMigrationsHistory_Governance</c> table and migrations under
 /// <c>Data/Migrations/</c>. Same database, same connection — the split is a
 /// code-side partition of the EF model.
@@ -31,6 +32,7 @@ internal sealed class GovernanceDbContext(DbContextOptions<GovernanceDbContext> 
     public DbSet<AssemblyBallot> AssemblyBallots => Set<AssemblyBallot>();
     public DbSet<AssemblyBallotHistory> AssemblyBallotHistories => Set<AssemblyBallotHistory>();
     public DbSet<AssemblyVotePeek> AssemblyVotePeeks => Set<AssemblyVotePeek>();
+    public DbSet<MembershipTierRecord> MembershipTiers => Set<MembershipTierRecord>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -45,5 +47,6 @@ internal sealed class GovernanceDbContext(DbContextOptions<GovernanceDbContext> 
         builder.ApplyConfiguration(new AssemblyBallotConfiguration());
         builder.ApplyConfiguration(new AssemblyBallotHistoryConfiguration());
         builder.ApplyConfiguration(new AssemblyVotePeekConfiguration());
+        builder.ApplyConfiguration(new MembershipTierRecordConfiguration());
     }
 }

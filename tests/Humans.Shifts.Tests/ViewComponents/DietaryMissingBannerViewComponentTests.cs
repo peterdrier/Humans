@@ -7,27 +7,25 @@ using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
-using Humans.Users.Contracts;
-using Humans.Users.Domain;
-using Humans.Users.Services;
+using Humans.Cantina.Contracts;
 
 namespace Humans.Shifts.Tests.ViewComponents;
 
 /// <summary>
 /// Covers the visibility gate inside <see cref="DietaryMissingBannerViewComponent"/>.
-/// Spec: src/Sections/Humans.Users/Docs/features/dietary-medical-nudge.md (US-35.6)
+/// Spec: src/Sections/Humans.Cantina/Docs/features/dietary-nudge.md (US-35.6)
 /// </summary>
 public class DietaryMissingBannerViewComponentTests
 {
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
-    private readonly IUserService _userRead = Substitute.For<IUserService>();
+    private readonly ICantinaService _cantina = Substitute.For<ICantinaService>();
     private readonly DietaryMissingBannerViewComponent _sut;
 
     public DietaryMissingBannerViewComponentTests()
     {
         _sut = new DietaryMissingBannerViewComponent(
             _shiftMgmt,
-            _userRead,
+            _cantina,
             NullLogger<DietaryMissingBannerViewComponent>.Instance);
         _sut.ViewComponentContext = new ViewComponentContext
         {
@@ -35,23 +33,16 @@ public class DietaryMissingBannerViewComponentTests
         };
     }
 
-    private static UserInfo UserInfoWith(Guid userId, string? dietary) => UserInfoFactory.Create(
-        user: new User { Id = userId, DisplayName = "Test", PreferredLanguage = "en" },
-        userEmails: [],
-        eventParticipations: [],
-        externalLogins: [],
-        profile: new Profile { UserId = userId, BurnerName = "Test", DietaryPreference = dietary },
-        contactFields: [],
-        profileLanguages: [],
-        volunteerHistory: [],
-        communicationPreferences: []);
+    private void StubDietary(Guid userId, string? dietary) =>
+        _cantina.GetDietaryProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(dietary is null ? null : new DietaryProfileInfo(userId, dietary, [], null, [], null));
 
     [HumansFact]
     public async Task Renders_WhenQualifyingSignupAndDietaryEmpty()
     {
         var userId = Guid.NewGuid();
         _shiftMgmt.HasQualifyingCantinaSignupAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
-        _userRead.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoWith(userId, null));
+        StubDietary(userId, null);
 
         var result = await _sut.InvokeAsync(userId);
 
@@ -66,7 +57,7 @@ public class DietaryMissingBannerViewComponentTests
     {
         var userId = Guid.NewGuid();
         _shiftMgmt.HasQualifyingCantinaSignupAsync(userId, Arg.Any<CancellationToken>()).Returns(hasQualifying);
-        _userRead.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoWith(userId, dietary));
+        StubDietary(userId, dietary);
 
         var result = await _sut.InvokeAsync(userId);
 

@@ -1,3 +1,7 @@
+using Humans.Web.Models;
+using NodaTime;
+using Humans.Testing;
+using Humans.Consent.Contracts;
 using System.Security.Claims;
 using Humans.Base.Configuration;
 using Humans.Web.Controllers;
@@ -21,6 +25,7 @@ namespace Humans.Web.Tests.Controllers;
 public class HomeControllerTests
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IConsentService _consentService = Substitute.For<IConsentService>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
     private readonly ConfigurationRegistry _configRegistry = new();
 
@@ -28,6 +33,7 @@ public class HomeControllerTests
     {
         var ctrl = new HomeController(
             _userService,
+            _consentService,
             _configuration,
             _configRegistry);
 
@@ -41,12 +47,32 @@ public class HomeControllerTests
     private static ClaimsPrincipal Authenticated(Guid userId) =>
         new(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"));
 
-    private void StubUserInfo(Guid userId)
+    private void StubUserInfo(Guid userId, ProfileInfo? profile = null, ConsentReviewInfo? review = null)
     {
         var user = new User { Id = userId, DisplayName = "Test" };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
-                user, [], [], [], profile: null, [])));
+                user, [], [], [], profile, [])));
+        _consentService.GetConsentReviewAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(review ?? ConsentReviewInfo.None(userId));
+    }
+
+    [HumansFact]
+    public async Task Index_Dashboard_ShowsConsentsRecordedRejectionAndReason()
+    {
+        var userId = Guid.NewGuid();
+        StubUserInfo(userId, UserFixtures.Profile(burnerName: "B", firstName: "F", lastName: "L"),
+            ConsentReviewInfo.None(userId) with
+            {
+                RejectionReason = "Not a fit",
+                RejectedAt = Instant.FromUtc(2026, 5, 1, 0, 0),
+            });
+
+        var result = await BuildSut(Authenticated(userId)).Index();
+
+        var model = Assert.IsType<DashboardViewModel>(Assert.IsType<ViewResult>(result).Model);
+        Assert.True(model.IsRejected);
+        Assert.Equal("Not a fit", model.RejectionReason);
     }
 
     [HumansFact]

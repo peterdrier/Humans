@@ -28,13 +28,6 @@ public enum UserEmailPrimaryChange
     ClearDuplicatePrimary,
 }
 
-public enum UserEmailGoogleChange
-{
-    None,
-    MakeGoogle,
-    ClearDuplicateGoogle,
-}
-
 /// <summary>
 /// Consolidated storage-level update for the mutable flags on a UserEmail row.
 /// Commands are intentionally invariant-aware so the Users boundary does not
@@ -43,7 +36,6 @@ public enum UserEmailGoogleChange
 public sealed record UserEmailUpdateCommand(
     bool MarkVerified = false,
     UserEmailPrimaryChange Primary = UserEmailPrimaryChange.None,
-    UserEmailGoogleChange Google = UserEmailGoogleChange.None,
     bool ChangeVisibility = false,
     ContactFieldVisibility? Visibility = null);
 

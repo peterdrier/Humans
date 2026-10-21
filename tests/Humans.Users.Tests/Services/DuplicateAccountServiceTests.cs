@@ -1,3 +1,5 @@
+using Humans.Users.Tests.Infrastructure;
+using Humans.Governance.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
@@ -17,7 +19,7 @@ public sealed class DuplicateAccountServiceTests
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private static readonly Instant Now = Instant.FromUtc(2026, 6, 6, 12, 0);
 
-    private DuplicateAccountService Sut => new(_userService, _teamService, _roles, _audit);
+    private DuplicateAccountService Sut => new(_userService, _teamService, _roles, Substitute.For<IGovernanceService>(), ConsentReviewStubs.Create(), _audit);
 
     private void SetUsers(params UserInfo[] infos) =>
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())

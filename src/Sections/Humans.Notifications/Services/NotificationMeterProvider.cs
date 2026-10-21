@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Microsoft.Extensions.Localization;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Base.Caching;
@@ -32,6 +33,7 @@ namespace Humans.Notifications.Services;
 /// </remarks>
 internal sealed class NotificationMeterProvider(
     IUserService userService,
+    IConsentService consentService,
     IGoogleSyncService googleSyncService,
     ITeamService teamService,
     ITicketSync ticketSyncService,
@@ -240,7 +242,9 @@ internal sealed class NotificationMeterProvider(
     private async Task<MeterCounts> ComputeCountsAsync(CancellationToken cancellationToken)
     {
         var allUserInfos = await userService.GetAllUserInfosAsync(cancellationToken).ConfigureAwait(false);
-        var consentReviewsPending = allUserInfos.Count(u => u.NeedsConsentReview);
+        var reviews = await consentService.GetConsentReviewsAsync(cancellationToken);
+        var consentReviewsPending = allUserInfos.Count(u =>
+            u.NeedsConsentReview(reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id)));
 
         // Pending deletions derived from the cached UserInfo snapshot —
         // ConsentReviewsPending above already reads the same snapshot, and the

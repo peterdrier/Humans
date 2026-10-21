@@ -73,6 +73,7 @@ public sealed class CampServiceTests : CampsTestHarness
             _earlyEntryInvalidator,
             _campInfoInvalidator,
             _userService,
+            Substitute.For<Humans.Tickets.Contracts.ITicketService>(),
             _settingsService,
             Clock,
             NullLogger<CampService>.Instance);
@@ -2198,7 +2199,7 @@ public sealed class CampServiceTests : CampsTestHarness
             Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
             new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
-            _earlyEntryInvalidator, _campInfoInvalidator, _userService, _settingsService,
+            _earlyEntryInvalidator, _campInfoInvalidator, _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
             Clock, NullLogger<CampService>.Instance);
 
         if (deleteCamp)
@@ -2271,7 +2272,7 @@ public sealed class CampServiceTests : CampsTestHarness
             Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
             new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
-            _earlyEntryInvalidator, _campInfoInvalidator, _userService, _settingsService,
+            _earlyEntryInvalidator, _campInfoInvalidator, _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
             Clock, NullLogger<CampService>.Instance);
         await using var image = new MemoryStream([1, 2, 3]);
 
@@ -2789,7 +2790,7 @@ public sealed class CampServiceTests : CampsTestHarness
             Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
             new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
-            _earlyEntryInvalidator, _campInfoInvalidator, _userService, _settingsService,
+            _earlyEntryInvalidator, _campInfoInvalidator, _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
             Clock, NullLogger<CampService>.Instance);
 
         var deletion = service.DeleteCampAsync(camp.Id, actorUserId: TestActorId, Xunit.TestContext.Current.CancellationToken);

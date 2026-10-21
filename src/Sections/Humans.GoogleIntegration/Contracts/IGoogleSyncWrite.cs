@@ -86,15 +86,15 @@ public enum GoogleResourceGrantOutcome
     Failed
 }
 
-/// <summary>Vendor acceptance and the exact email row attempted by team provisioning.</summary>
+/// <summary>Vendor acceptance and the exact Google identity address attempted by team provisioning.</summary>
 /// <param name="Outcome">Accepted only when at least one Drive grant succeeds and none fail.</param>
 /// <param name="UserId">Resolved owner of the attempted address.</param>
-/// <param name="GoogleEmailId">Attempted verified email row; required for Accepted.</param>
+/// <param name="GoogleEmail">Attempted Google identity address; required for Accepted.</param>
 /// <param name="Retryable">Whether any failed grant can be retried; local refusals are permanent.</param>
 /// <param name="ErrorMessage">Failure details for the outbox and operator diagnostics.</param>
 public sealed record GoogleResourceGrantResult(
     GoogleResourceGrantOutcome Outcome,
     Guid UserId,
-    Guid? GoogleEmailId = null,
+    string? GoogleEmail = null,
     bool Retryable = false,
     string? ErrorMessage = null);

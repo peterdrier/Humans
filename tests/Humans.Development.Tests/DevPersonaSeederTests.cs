@@ -40,7 +40,7 @@ public class DevPersonaSeederTests
     private readonly ITeamSeeding _teamSeeding = Substitute.For<ITeamSeeding>();
     private readonly ISystemTeamSync _systemTeamSync = Substitute.For<ISystemTeamSync>();
     private readonly IUserService _users = Substitute.For<IUserService>();
-    private readonly IUserWrite _usersWrite = Substitute.For<IUserWrite>();
+    private readonly IConsentWrite _consentWrite = Substitute.For<IConsentWrite>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly ICampService _camps = Substitute.For<ICampService>();
     private readonly ICampSeeding _campSeeding = Substitute.For<ICampSeeding>();
@@ -69,7 +69,7 @@ public class DevPersonaSeederTests
         _teamSeeding,
         _systemTeamSync,
         _users,
-        _usersWrite,
+        _consentWrite,
         _audit,
         _camps,
         _campSeeding,

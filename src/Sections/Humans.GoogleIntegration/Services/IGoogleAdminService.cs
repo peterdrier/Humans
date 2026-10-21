@@ -95,9 +95,8 @@ internal interface IGoogleAdminService : IApplicationService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Detects @nobodies.team email renames by comparing the stored Google
-    /// identity (the verified <c>UserEmail</c> row tagged
-    /// <see cref="Humans.Users.Contracts.UserEmail.IsGoogle"/>) against the current
+    /// Detects @nobodies.team email renames by comparing the member's Google
+    /// Workspace identity (<see cref="Contracts.IGoogleIntegrationService"/>) against the current
     /// <c>primaryEmail</c> from the Google Directory API. Read-only diagnostic
     /// surface only — there is no admin "fix" action. Renames self-heal on
     /// the user's next Google sign-in via the OAuth callback path.

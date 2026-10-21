@@ -1,6 +1,6 @@
 ---
 name: section-doctor
-description: "Daily per-section review cycle driving a section toward the smallest, clearest form that still does everything it does today. Selects its section live each run (scripted), inventories every file, derives the target shape before any scan, works parallel reading threads into one ranked list and strikes it on a 2-3h budget. One PR per run; each run's report and Needs-Peter queue live in its own docs/health/runs/ file; 'resume' applies Peter's answers later. Use for the morning section-improvement run, 'doctor <section>', or 'run section doctor'."
+description: "Daily per-section review cycle driving a section toward the smallest, clearest form that still does everything it does today. Selects its section live each run (scripted), inventories every file, derives the target shape before any scan, works parallel reading threads into one ranked list and strikes it on a 2-3h budget. One PR per run; each run's report and Needs-Peter queue live in its own docs/health/runs/ file, and a session-only purpose/surface/debt review is shown in the session; 'resume' applies Peter's answers later. Use for the morning section-improvement run, 'doctor <section>', or 'run section doctor'."
 argument-hint: "[resume] [--section=<Name>] [--budget=2.5h] [--mutation]"
 ---
 
@@ -93,9 +93,12 @@ around.
   files. Never `docs/architecture/maintenance-log.md`, never `docs/architecture/section-conformance.yml`
   (rows change only at Peter's direction; propose in Needs-Peter), never this skill. Scratch lives
   in `$RUNDIR`, outside the tree.
-- **Existing GitHub issues are read-only to every run** — no close, edit, relabel or comment,
-  ever; the Inbox review recommends, Peter enacts. A run's GitHub writes are its own PR and, under
-  the bar in "When the skill is wrong", a new issue.
+- **Existing GitHub issues: comment, never mutate.** No run closes, edits or relabels an existing
+  issue. It may leave one comment per reviewed issue (Phase 7) giving the issue's current state
+  against the code, and that comment may recommend a close, edit or relabel. Peter enacts. It
+  comments only when that state differs from the issue's last section-doctor comment, so the
+  history builds without repeats. A run's other GitHub writes are its own PR and, under the bar in
+  "When the skill is wrong", a new issue.
 - N unattended days are N open PRs that must merge in any order. A ledger or `memory/` append is
   the only write another run may share; an overlap is one hand-resolved hunk.
 
@@ -343,7 +346,7 @@ compiler, a C# doc-comment edit adds no `<see cref>` and is checked for XML tag 
 comment-only `.cs` edit is production LOC, never "docs only".
 
 **Skip and queue, never block:** schema or EF changes, public-surface additions, privilege
-changes, guardrail retirement, mutating an existing issue, anything needing Peter's judgment.
+changes, guardrail retirement, closing, editing or relabelling an existing issue, anything needing Peter's judgment.
 A queued item naming a symbol carries its repo-wide `git grep -n`. If in-flight feature work on
 this section surfaces mid-run, stop striking and ship the assessment-only PR. Debt found and not
 fixed goes to a ledger, not the run file (`memory/process/debt-ledger-additions.md`): in-section
@@ -418,6 +421,42 @@ test run, `doctor.py push`, and the PR against `peterdrier/Humans` `main`:
 - Backfill the PR number over every `pending` reference, commit, push. That is the last
   bookkeeping push: from here a push changes code, tests or a doc a reader depends on, never a
   corrected figure alone.
+- Issue comments: post each Inbox comment draft that main has re-checked against the code, one per
+  issue. Each comment opens with the `<!-- section-doctor -->` marker, then
+  `section-doctor, <date>, peterdrier/Humans#<PR>:`, then the current state, then any
+  close/edit/relabel recommendation. It ends with the attribution footer. `## Worked` in the run
+  file names the issues commented on.
+
+### Phase 7b: Section review (session-only)
+
+Every run, once the PR is up, writes one markdown file, `$RUNDIR/section-review.md`, and shows it
+in the session (`SendUserFile`, `display: render`; `status: proactive` on an unattended run). It
+is never committed and never linked from the PR or the run file. It dies with the session.
+Peter comments on it in chat or in the section itself. The run acts on none of it: no strike, no
+ledger row, no Needs-Peter item. Changes come back as a new session. Contents, in order:
+
+1. **Purpose, vision, intention.** Read them from the section's main doc (`Docs/<Section>.md`).
+   Where the doc states them, quote them and flag any drift from the code. Where it doesn't,
+   draft them (what the section is for, what good looks like, the deliberate choices and what is
+   out of scope) and mark the text as a draft. They are formalized in the main doc, never in
+   `health.md`, and only once Peter rules on the wording.
+2. **Public surface.** Every item another section, the shell or an outside caller can reach:
+   - Contracts interfaces and their members;
+   - public DTOs, enums and other public types;
+   - member, admin and machine routes;
+   - shell contributions (nav, tiles, policies);
+   - the sections it depends on.
+
+   For each: who uses it, why it exists, and a verdict of keep, shrink or question, with enough
+   context to judge it cold.
+3. **Section debt.** `Docs/debt.yml` rows, the section's open issues with today's state, and
+   debt that lives only in the code (`[Obsolete]`, `Grandfathered`, baselines naming the
+   section, transitional duplicates, reforge hot spots). For each: what it is, why it is still
+   there, and what fixing it takes.
+4. **Questions,** numbered and answerable in a word.
+
+Write in plain language with no run-internal numbering. Ids (`S1`, `D1`, …) are stable within
+the file.
 
 ### Phase 8: Inline round (interactive runs only)
 

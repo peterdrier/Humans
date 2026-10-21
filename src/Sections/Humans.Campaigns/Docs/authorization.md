@@ -13,3 +13,8 @@
 | `CampaignController.SendWave` (GET/POST) | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `CampaignController.Resend` (`Grants/{grantId}/Resend`) | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `CampaignController.RetryAllFailed` | Action | `Admin` | `PolicyNames.AdminOnly` |
+
+| View component | Slot | Audience | Source |
+|---|---|---|---|
+| `MyCodesViewComponent` ("My Codes") | `UserPartSlots.Profile` | Own profile only: `Self` view mode and signed-in user equals the target | in-component check |
+| `CampaignCodesViewComponent` ("Campaign Codes") | `UserPartSlots.AdminDetail` | `Admin` view mode and `HumanAdminBoardOrAdmin` (the host page's policy) | `PolicyNames.HumanAdminBoardOrAdmin` |

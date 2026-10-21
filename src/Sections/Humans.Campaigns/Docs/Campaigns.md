@@ -2,8 +2,8 @@
   src/Sections/Humans.Campaigns/**
   src/Sections/Humans.Email/Services/OutboxEmailService.cs
   src/Sections/Humans.Tickets/Services/TicketSyncService.cs
-  src/Sections/Humans.Users/Services/UnsubscribeService.cs
-  src/Sections/Humans.Users/Controllers/GuestAccountController.cs
+  src/Sections/Humans.Email/Services/UnsubscribeService.cs
+  src/Sections/Humans.Email/Controllers/GuestAccountController.cs
 -->
 <!-- freshness:flag-on-change
   Campaign lifecycle, code import/grant rules, wave email triggers, and unsubscribe handling — review when Campaign service/entities/controller change.
@@ -116,7 +116,8 @@ Stored as string (`HasConversion<string>()`, max length 20).
 
 - TicketAdmin **cannot** create, edit, activate, or complete campaigns. They can only view details and generate codes.
 - Regular humans and other roles have no access to campaign management.
-- Humans see only their own grants on `/Profile/Me` (the "My Codes" card, sourced from `ICampaignService.GetActiveOrCompletedGrantsForUserAsync`); no human can see another human's grants outside the admin views.
+- Humans see only their own grants on `/Profile/Me` (the "My Codes" card, `MyCodesViewComponent`, sourced from `ICampaignService.GetActiveOrCompletedGrantsForUserAsync`). The card renders only for the `Self` view mode and only when the signed-in user is the profile's owner, so it is absent on another member's profile for every role. No human can see another human's grants outside the admin card.
+- The "Campaign Codes" card (`CampaignCodesViewComponent`, every grant whatever the campaign's status) renders only in the `Admin` view mode for a viewer passing `HumanAdminBoardOrAdmin`, the same policy as the host page; any other viewer or audience gets nothing.
 
 ## Triggers
 
@@ -138,7 +139,7 @@ email template is copied into audit. Refused mutations emit no success entry.
 
 - **Tickets:** `ITicketDiscountCodes` (`Humans.Tickets.Contracts`) — TicketAdmin can generate discount codes via the ticket vendor integration; Campaigns asks Tickets for codes through this leaf rather than reaching past it into the Base vendor port. Generation is invoked from the Campaign Detail page, not from the Tickets section.
 - **Email:** transport only. Campaigns owns its one template — `CampaignsEmails` (internal) builds the `EmailMessage` from the campaign's own subject and markdown body (the builder reads no resx), and `CampaignsEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists it at `/Email/EmailPreview` (`memory/architecture/email-templates-live-in-sender.md`). `IEmailService.SendAsync` queues the message through the outbox.
-- **Users:** `IUserEmailService.GetNotificationTargetEmailsAsync(IReadOnlyCollection<Guid>)` — resolves notification targets for grant emails; `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` — recipient `BurnerName` for the email payload and code-tracking display; `IUnsubscribeService` (Users section, `Humans.Users.Services.UnsubscribeService`) processes the public `/Unsubscribe/{token}` endpoint, validating legacy campaign-only tokens (mapped to `MessageCategory.Marketing`) before delegating opt-out to `ICommunicationPreferenceService.UpdatePreferenceAsync` — `CampaignService` itself does not call `ICommunicationPreferenceService`. Called by `IAccountMergeService` (Users section) — `IUserMerge.ReassignAsync` (implemented by `CampaignService`) re-FKs `CampaignGrant` from source to target during account merge fold.
+- **Users:** `IUserEmailService.GetNotificationTargetEmailsAsync(IReadOnlyCollection<Guid>)` — resolves notification targets for grant emails; `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` — recipient `BurnerName` for the email payload and code-tracking display; `IUnsubscribeService` (Users section, `Humans.Users.Services.UnsubscribeService`) processes the public `/Email/Unsubscribe/{token}` endpoint, validating legacy campaign-only tokens (mapped to `MessageCategory.Marketing`) before delegating opt-out to `ICommunicationPreferenceService.UpdatePreferenceAsync` — `CampaignService` itself does not call `ICommunicationPreferenceService`. Called by `IAccountMergeService` (Users section) — `IUserMerge.ReassignAsync` (implemented by `CampaignService`) re-FKs `CampaignGrant` from source to target during account merge fold.
 - **Gdpr:** `IUserDataContributor` (grant export resolves archived account IDs to the survivor; erasure keeps its per-ID scope) and `IUserMerge` (`Humans.Gdpr.Contracts`), both implemented by `CampaignService`.
 - **AuditLog:** `IAuditLogService.LogAsync` records persisted admin mutations.
 - **Notifications:** `INotificationEmitter.SendAsync` — `CampaignReceived` in-app notifications for wave recipients.
@@ -154,7 +155,7 @@ email template is copied into audit. Refused mutations emit no success entry.
 
 | Public interface | Methods | Notes |
 |---|---:|---|
-| `ICampaignService` | 3 | Read contract: `GetCodeTrackingAsync` (Tickets), `GetActiveOrCompletedGrantsForUserAsync` (Users `ProfileController`), `GetAllGrantsForUserAsync` (Users admin). DTOs only. |
+| `ICampaignService` | 3 | Read contract: `GetCodeTrackingAsync` (Tickets); `GetActiveOrCompletedGrantsForUserAsync` and `GetAllGrantsForUserAsync` are read by Campaigns' own member and admin cards (below). DTOs only. |
 | `ICampaignWrite` | 2 | `MarkGrantsRedeemedAsync` (Tickets sync marks redeemed codes), `UpdateGrantEmailStatusAsync` (Email outbox records delivery state). Unavoidable: both are driven by another section's job. |
 
 `CampaignService` implements the internal `ICampaignManagement` (`ICampaignService` + `ICampaignWrite`); DI registers each face to the same instance. Campaign/code CRUD, activation, wave sending, resend and retry are not public: the section's controller injects the concrete service.
@@ -165,6 +166,17 @@ email template is copied into audit. Refused mutations emit no success entry.
 - **Cross-section reads** route through `ITeamService.GetTeamsAsync` / `GetTeamAsync` and `IUserEmailService.GetNotificationTargetEmailsAsync`, `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` for display data. Outbound email queueing goes through `IEmailService.SendAsync` with `CampaignsEmails.CampaignCode` (the outbox service owns the email_outbox_messages table and applies opt-out/unsubscribe policy itself — `CampaignService` does not call `ICommunicationPreferenceService`).
 - **No cross-domain navs:** `Campaign.CreatedByUserId` and `CampaignGrant.UserId` are bare Guid columns — no nav property, no DB-level FK constraint: the section assembly cannot name `User`, so `CampaignConfiguration` / `CampaignGrantConfiguration` declare no relationship at all. All callers — including `TicketQueryService.GetCodeTrackingDataAsync` via `ICampaignService.GetCodeTrackingAsync` — resolve display names through `IUserService`.
 - **Architecture test** — `tests/Humans.Campaigns.Tests/Architecture/CampaignsArchitectureTests.cs`, alongside the cross-cutting analyzer coverage (`HUM0009`, `HUM0034`).
+
+### User parts
+
+`SectionUserParts` (`IUserPart`) contributes two cards to Users' pages; Users names neither:
+
+| Slot | Component | Audience |
+|---|---|---|
+| `UserPartSlots.Profile` | `MyCodesViewComponent` ("My Codes", member-facing, `Campaigns_MyCodes_*` keys in all six cultures) | Own profile only |
+| `UserPartSlots.AdminDetail` | `CampaignCodesViewComponent` ("Campaign Codes", English, admin-only) | `/Users/Admin/{id}`, `HumanAdminBoardOrAdmin` |
+
+Both render nothing when the member has no grants. The cards add no routes, nav entries or data; they are reached from the profile and admin-detail pages.
 
 ### Touch-and-clean guidance
 

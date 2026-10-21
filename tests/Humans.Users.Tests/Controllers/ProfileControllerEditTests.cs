@@ -14,10 +14,8 @@ using AwesomeAssertions;
 using Humans.Base.Configuration;
 using Humans.Tickets.Contracts;
 using Humans.AuditLog.Contracts;
-using Humans.Campaigns.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Email.Contracts;
-using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
@@ -54,20 +52,12 @@ public class ProfileControllerEditTests
 {
     private readonly IProfileEditorService _profileEditorService = Substitute.For<IProfileEditorService>();
     private readonly IContactFieldService _contactFields = Substitute.For<IContactFieldService>();
-    private readonly ICommunicationPreferenceService _commPrefService = Substitute.For<ICommunicationPreferenceService>();
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly IGovernanceService _governanceService =
         Substitute.For<IGovernanceService>();
-    private readonly IGovernanceWrite _governanceWrite =
-        Substitute.For<IGovernanceWrite>();
     private readonly IOnboardingIntake _onboardingService = Substitute.For<IOnboardingIntake>();
     private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
-    private readonly IGdprService _gdprService = Substitute.For<IGdprService>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
-    private readonly IShiftVolunteerProfiles _shiftMgmt = Substitute.For<IShiftVolunteerProfiles>();
-    private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
-    private readonly IEmailOutboxService _emailOutbox = Substitute.For<IEmailOutboxService>();
-    private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly ProfileController _controller;
     private readonly Guid _userId = Guid.NewGuid();
@@ -98,25 +88,16 @@ public class ProfileControllerEditTests
             userManager,
             _profileEditorService,
             _contactFields,
-            _commPrefService,
             _onboardingService,
-            Substitute.For<IShiftSignups>(),
-            _settings,
-            _shiftMgmt,
-            _shiftView,
-            _gdprService,
             _configuration,
             new ConfigurationRegistry(),
             NullLogger<ProfileController>.Instance,
             localizer,
             sharedLocalizer,
-            Substitute.For<ICampaignService>(),
-            _emailOutbox,
-            new FakeClock(Instant.FromUtc(2026, 5, 9, 12, 0)),
             _governanceService,
-            _governanceWrite,
             _accountDeletionService,
-            _membershipCalculator);
+            _membershipCalculator,
+            ConsentReviewStubs.Create());
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _userId.ToString())
@@ -128,21 +109,6 @@ public class ProfileControllerEditTests
         userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>())
             .Returns(new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" });
         userManager.GetUserId(Arg.Any<ClaimsPrincipal>()).Returns(_userId.ToString());
-
-        // Tier-application field rules live in IGovernanceWrite and are
-        // pre-flighted by Edit POST before any save. Default to "passes" so tests
-        // that aren't about tier validation reach the save path; the tier-validation
-        // tests below override this with the specific failure they exercise.
-        _governanceWrite
-            .ValidateSubmission(
-                Arg.Any<MembershipTier>(), Arg.Any<string?>(),
-                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>())
-            .Returns(new ApplicationDecisionResult(true));
-
-        // Edit GET reads shiftView.GetUserAsync(...).TagPreferences (#720); return
-        // an empty view so the GET path doesn't NRE before the dietary population.
-        _shiftView.GetUserAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(ShiftUserSummary.Empty(_userId));
 
         // Edit POST resolves the current user through GetCurrentUserInfoAsync
         // (cache-resident); subsequent setup-detection lookups in the action body
@@ -295,7 +261,7 @@ public class ProfileControllerEditTests
         var info = UserInfoFactory.Create(new User { Id = _userId, PreferredLanguage = "en" }, [], [], [],
             new Profile { Id = _profileId, UserId = _userId, FirstName = "First", LastName = "Last" }, [legacy], [], [], []);
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(info));
-        var model = MakeValidModel(MembershipTier.Volunteer);
+        var model = MakeValidModel();
         model.ContactFields = [new() { Id = Guid.NewGuid(), Value = "untrusted@example.org" }];
         _controller.ModelState.AddModelError("BurnerName", "Required");
 
@@ -306,88 +272,6 @@ public class ProfileControllerEditTests
         model.ContactFields[0].Value.Should().Be("legacy@example.org");
         _profileEditorService.ReceivedCalls().Should().BeEmpty();
         _contactFields.ReceivedCalls().Should().BeEmpty();
-    }
-
-    [HumansTheory]
-    [InlineData("emailEnabled", true)]
-    [InlineData("alertEnabled", true)]
-    [InlineData("emailEnabled", false)]
-    [InlineData("alertEnabled", false)]
-    public async Task UpdatePreference_InvalidBinding_DoesNotChangeChannels(string field, bool viewerExists)
-    {
-        if (!viewerExists)
-            _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>((UserInfo?)null));
-        _controller.ModelState.AddModelError(field, "Not a boolean.");
-        var result = await _controller.UpdatePreference(MessageCategory.Marketing,
-            !string.Equals(field, "emailEnabled", StringComparison.Ordinal),
-            !string.Equals(field, "alertEnabled", StringComparison.Ordinal));
-
-        if (viewerExists) Assert.IsType<BadRequestObjectResult>(result);
-        else Assert.IsType<UnauthorizedResult>(result);
-        Assert.Empty(_commPrefService.ReceivedCalls());
-    }
-
-    [HumansTheory]
-    [InlineData(typeof(ProfileController), "emailEnabled")]
-    [InlineData(typeof(ProfileController), "alertEnabled")]
-    [InlineData(typeof(GuestAccountController), "emailEnabled")]
-    [InlineData(typeof(GuestAccountController), "alertEnabled")]
-    public async Task CommunicationPreferenceFlags_MissingFromForm_AreBindingErrors(Type controllerType, string field)
-    {
-        var registrations = new ServiceCollection().AddLogging();
-        registrations.AddControllers();
-        using var services = registrations.BuildServiceProvider();
-        var context = new ControllerContext { HttpContext = new DefaultHttpContext { RequestServices = services } };
-        var parameter = controllerType.GetMethod("UpdatePreference")!.GetParameters().Single(p => string.Equals(p.Name, field, StringComparison.Ordinal));
-        var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
-        var descriptor = new ControllerParameterDescriptor
-        {
-            Name = field,
-            ParameterType = parameter.ParameterType,
-            ParameterInfo = parameter
-        };
-        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
-        {
-            Metadata = metadata,
-            CacheToken = parameter
-        });
-
-        var values = new Dictionary<string, StringValues>(StringComparer.Ordinal)
-        {
-            ["category"] = "Marketing",
-            [field is "emailEnabled" ? "alertEnabled" : "emailEnabled"] = "true"
-        };
-        await services.GetRequiredService<ParameterBinder>().BindModelAsync(context, binder,
-            new FormValueProvider(BindingSource.Form, new FormCollection(values), CultureInfo.InvariantCulture),
-            descriptor, metadata, value: null);
-
-        Assert.False(context.ModelState.IsValid);
-        Assert.True(context.ModelState.ContainsKey(field));
-    }
-
-    [HumansFact]
-    public async Task UpdatePreference_ExplicitFalseFlags_RemainValid()
-    {
-        Assert.IsType<OkResult>(await _controller.UpdatePreference(MessageCategory.Marketing, false, false));
-        await _commPrefService.Received(1).UpdatePreferenceAsync(_userId, MessageCategory.Marketing,
-            true, false, "Profile", actorUserId: _userId, cancellationToken: Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task Me_AbandonedRequest_CancelsOnsiteYearRead()
-    {
-        using var aborted = new CancellationTokenSource();
-        await aborted.CancelAsync();
-        _membershipCalculator.GetMembershipSnapshotAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(new MembershipSnapshot(MembershipStatus.Active, true, 0, 0, []));
-        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns((EventSettingsInfo?)null);
-        _settings.GetActiveEventSettingsAsync(aborted.Token)
-            .Returns(Task.FromCanceled<EventSettingsInfo?>(aborted.Token));
-
-        var act = () => _controller.Me(aborted.Token);
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [HumansTheory]
@@ -438,11 +322,6 @@ public class ProfileControllerEditTests
             EmergencyContactName = new string('x', 257),
             EmergencyContactPhone = new string('x', 51),
             EmergencyContactRelationship = new string('x', 101),
-            ApplicationMotivation = new string('x', 2001),
-            ApplicationAdditionalInfo = new string('x', 1001),
-            ApplicationSignificantContribution = new string('x', 2001),
-            ApplicationRoleUnderstanding = new string('x', 2001),
-            AllergyOtherText = new string('x', 501),
             BirthdayMonth = 13,
             BirthdayDay = 32,
         },
@@ -459,22 +338,9 @@ public class ProfileControllerEditTests
             ("EmergencyContactName", "Validation_MaxLength", ["", 256]),
             ("EmergencyContactPhone", "Validation_MaxLength", ["", 50]),
             ("EmergencyContactRelationship", "Validation_MaxLength", ["", 100]),
-            ("ApplicationMotivation", "Validation_MaxLength", ["", 2000]),
-            ("ApplicationAdditionalInfo", "Validation_MaxLength", ["", 1000]),
-            ("ApplicationSignificantContribution", "Validation_MaxLength", ["", 2000]),
-            ("ApplicationRoleUnderstanding", "Validation_MaxLength", ["", 2000]),
-            ("AllergyOtherText", "Validation_MaxLength", ["", 500]),
             ("BirthdayMonth", "Validation_Range", ["", 1, 12]),
             ("BirthdayDay", "Validation_Range", ["", 1, 31]));
-        AssertErrors(new DietaryMedicalViewModel
-        {
-            AllergyOtherText = new string('x', 501),
-            IntoleranceOtherText = new string('x', 501),
-            MedicalConditions = new string('x', 4001),
-        },
-            ("DietaryPreference", "Validation_Required", []),
-            ("AllergyOtherText", "Validation_MaxLength", ["", 500]),
-            ("IntoleranceOtherText", "Validation_MaxLength", ["", 500]),
+        AssertErrors(new MedicalViewModel { MedicalConditions = new string('x', 4001) },
             ("MedicalConditions", "Validation_MaxLength", ["", 4000]));
         AssertErrors(new ProfileViewModel
         {
@@ -501,9 +367,6 @@ public class ProfileControllerEditTests
             ("NewEmail", "Validation_EmailAddress", []));
         AssertErrors(new EmailsViewModel { NewEmail = new string('x', 245) + "@example.com" },
             ("NewEmail", "Validation_MaxLength", ["", 256]));
-        AssertErrors(new SendMessageViewModel(), ("Message", "Validation_Required", []));
-        AssertErrors(new SendMessageViewModel { Message = new string('x', 2001) },
-            ("Message", "Validation_MaxLength", ["", 2000]));
     }
 
     [HumansFact]
@@ -521,142 +384,35 @@ public class ProfileControllerEditTests
             .Should().Be(21L * 1024 * 1024);
     }
 
-    [HumansTheory]
-    [InlineData("Outbox")]
-    [InlineData("Privacy")]
-    [InlineData("DietaryMedical")]
-    [InlineData("OutboxAfterViewer")]
-    [InlineData("CommunicationPreferences")]
-    public async Task ProfileReadPages_StopLoadingAfterRequestCancellation(string page)
+    [HumansFact]
+    public async Task MedicalPage_StopsLoadingAfterRequestCancellation()
     {
         using var request = new CancellationTokenSource();
         _controller.HttpContext.RequestAborted = request.Token;
-        var abandon = false;
         async ValueTask<UserInfo?> ReadViewer(CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
-            if (abandon && string.Equals(page, "OutboxAfterViewer", StringComparison.Ordinal))
-                await request.CancelAsync();
             return new User { Id = _userId, PreferredLanguage = "en" }.ToUserInfo();
         }
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(call => ReadViewer(call.Arg<CancellationToken>()));
-        _emailOutbox.GetMessagesForUserAsync(_userId, Arg.Any<CancellationToken>()).Returns(call =>
-        {
-            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return Array.Empty<EmailOutboxMessageDto>();
-        });
-        Func<Task<IActionResult>> load = page switch
-        {
-            "Privacy" => () => _controller.Privacy(),
-            "DietaryMedical" => () => _controller.DietaryMedical(),
-            "CommunicationPreferences" => () => _controller.CommunicationPreferences(),
-            _ => () => _controller.MyOutbox(),
-        };
-        (await load()).Should().BeOfType<ViewResult>();
-        abandon = true;
-        if (!string.Equals(page, "OutboxAfterViewer", StringComparison.Ordinal))
-            await request.CancelAsync();
-        await load.Should().ThrowAsync<OperationCanceledException>();
-    }
-
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task AccountWallPages_StopLoadingAfterRequestCancellation(bool deletion)
-    {
-        using var request = new CancellationTokenSource();
-        _controller.HttpContext.RequestAborted = request.Token;
-        ((ClaimsIdentity)_controller.User.Identity!).AddClaim(
-            new Claim(Humans.Base.Authorization.RoleChecks.UserStateClaimType, nameof(UserState.Suspended)));
-        var now = Instant.FromUtc(2026, 10, 3, 0, 0);
-        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(call =>
-        {
-            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(new User
-            {
-                Id = _userId,
-                PreferredLanguage = "en",
-                DeletionRequestedAt = now,
-                DeletionScheduledFor = now + Duration.FromDays(30),
-            }.ToUserInfo());
-        });
-        var wall = new UserController(_userService, _accountDeletionService, Substitute.For<IStringLocalizer<UsersResource>>())
-        {
-            ControllerContext = _controller.ControllerContext,
-        };
-        Func<Task<IActionResult>> load = deletion ? wall.Deletion : wall.Status;
+        Func<Task<IActionResult>> load = () => _controller.Medical(request.Token);
         (await load()).Should().BeOfType<ViewResult>();
         await request.CancelAsync();
         await load.Should().ThrowAsync<OperationCanceledException>();
     }
 
-    [HumansTheory]
-    [InlineData(null)]
-    [InlineData(10)]
-    [InlineData(30)]
-    [InlineData(60)]
-    public async Task DeletionPages_report_the_later_of_grace_deadline_and_ticket_hold(int? holdDays)
-    {
-        var now = Instant.FromUtc(2026, 10, 3, 0, 0);
-        var user = new User
-        {
-            Id = _userId,
-            DeletionRequestedAt = now,
-            DeletionScheduledFor = now + Duration.FromDays(30),
-            DeletionEligibleAfter = holdDays is { } days ? now + Duration.FromDays(days) : null,
-        }.ToUserInfo();
-        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(user);
-        var expectedDate = (now + Duration.FromDays(Math.Max(30, holdDays ?? 0))).ToDateTimeUtc();
-
-        var privacy = (await _controller.Privacy()).Should().BeOfType<ViewResult>().Subject;
-        privacy.Model.Should().BeOfType<PrivacyViewModel>().Which.DeletionScheduledFor.Should().Be(expectedDate);
-
-        var wall = new UserController(_userService, _accountDeletionService, Substitute.For<IStringLocalizer<UsersResource>>())
-        {
-            ControllerContext = _controller.ControllerContext,
-        };
-        var deletion = (await wall.Deletion()).Should().BeOfType<ViewResult>().Subject;
-        deletion.Model.Should().BeOfType<PendingDeletionViewModel>().Which.ScheduledFor.Should().Be(expectedDate);
-    }
-
     [HumansFact]
-    public async Task DownloadData_ExportFailure_ShowsErrorAndReturnsToPrivacy()
+    public async Task Edit_InitialSetup_SavesProfileWithoutTouchingTierApplications()
     {
-        _gdprService.ExportForUserAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<GdprExport>(new InvalidOperationException("contributor failed")));
-
-        var result = await _controller.DownloadData(TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Privacy");
-        _controller.TempData[TempDataKeys.ErrorMessage].Should().Be("Error_TryAgainLater");
-    }
-
-    [HumansFact]
-    public async Task DownloadData_CancelledRequest_PropagatesCancellation()
-    {
-        using var cancellation = new CancellationTokenSource();
-        await cancellation.CancelAsync();
-        _gdprService.ExportForUserAsync(_userId, cancellation.Token)
-            .Returns(Task.FromException<GdprExport>(new OperationCanceledException(cancellation.Token)));
-
-        var act = () => _controller.DownloadData(cancellation.Token);
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
-    }
-
-    [HumansFact]
-    public async Task Edit_InitialSetup_Volunteer_DoesNotDispatchTierApplication()
-    {
-
-        var model = MakeValidModel(MembershipTier.Volunteer);
+        // Tier applications left the edit form for /Governance/Applications/Create
+        // (Users decomposition commit 11): saving the profile never reads or writes them.
+        var model = MakeValidModel();
 
         await _controller.Edit(model);
 
-        await _governanceWrite.DidNotReceiveWithAnyArgs()
-            .SubmitAsync(Guid.Empty, default, null!, null, null, null, null!, Arg.Any<CancellationToken>());
-        await _governanceWrite.DidNotReceiveWithAnyArgs()
-            .UpdateDraftApplicationAsync(Guid.Empty, default, null!, null, null, null, Arg.Any<CancellationToken>());
+        await _governanceService.DidNotReceiveWithAnyArgs()
+            .GetUserApplicationsAsync(Guid.Empty, Arg.Any<CancellationToken>());
         // CV rides on the save request — SaveProfileAsync owns persisting it.
         await _profileEditorService.Received(1).SaveProfileAsync(
             _userId, Arg.Any<string>(),
@@ -666,136 +422,10 @@ public class ProfileControllerEditTests
             _profileId, Arg.Any<IReadOnlyList<ProfileLanguageInfo>>(), Arg.Any<CancellationToken>());
     }
 
-    // The tier-application field rules live in IGovernanceWrite (the service that
-    // owns tier-application state), not in a controller-private helper — see
-    // memory/architecture/no-business-logic-in-controllers.md. The controller's remaining job
-    // is to pre-flight them before any save and map the ErrorKey onto a localized,
-    // form-field-targeted ModelState error, the same way GovernanceApplicationsController does.
-    [HumansTheory]
-    [InlineData("MotivationRequired", nameof(ProfileViewModel.ApplicationMotivation))]
-    [InlineData("MotivationLength", nameof(ProfileViewModel.ApplicationMotivation))]
-    [InlineData("AdditionalInfoTooLong", nameof(ProfileViewModel.ApplicationAdditionalInfo))]
-    [InlineData("SignificantContributionTooLong", nameof(ProfileViewModel.ApplicationSignificantContribution))]
-    [InlineData("RoleUnderstandingTooLong", nameof(ProfileViewModel.ApplicationRoleUnderstanding))]
-    [InlineData("SignificantContributionRequired", nameof(ProfileViewModel.ApplicationSignificantContribution))]
-    [InlineData("RoleUnderstandingRequired", nameof(ProfileViewModel.ApplicationRoleUnderstanding))]
-    public async Task Edit_InitialSetup_TierValidationFailure_RerendersWithFieldError_AndDoesNotSave(
-        string errorKey, string expectedField)
-    {
-        _governanceWrite
-            .ValidateSubmission(
-                Arg.Any<MembershipTier>(), Arg.Any<string?>(),
-                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>())
-            .Returns(new ApplicationDecisionResult(false, errorKey));
-
-        var model = MakeValidModel(MembershipTier.Asociado, motivation: "to help");
-
-        var result = await _controller.Edit(model);
-
-        result.Should().BeOfType<ViewResult>();
-        _controller.ModelState.Should().ContainKey(expectedField);
-
-        // Validation runs before persistence so a rejected submit cannot half-save.
-        await _profileEditorService.DidNotReceiveWithAnyArgs()
-            .SaveProfileAsync(Guid.Empty, null!, null!, Arg.Any<CancellationToken>());
-        await _governanceWrite.DidNotReceiveWithAnyArgs()
-            .SubmitAsync(Guid.Empty, default, null!, null, null, null, null!, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task Edit_InitialSetup_Colaborador_NoExistingApp_CallsSubmitAsync()
-    {
-        _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns([]);
-
-        var model = MakeValidModel(MembershipTier.Colaborador, motivation: "to help");
-
-        await _controller.Edit(model);
-
-        await _governanceWrite.Received(1).SubmitAsync(
-            _userId, MembershipTier.Colaborador, "to help",
-            Arg.Any<string?>(),
-            Arg.Is<string?>(x => x == null),
-            Arg.Is<string?>(x => x == null),
-            Arg.Any<string>(), Arg.Any<CancellationToken>());
-        await _governanceWrite.DidNotReceiveWithAnyArgs()
-            .UpdateDraftApplicationAsync(Guid.Empty, default, null!, null, null, null, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task Edit_InitialSetup_ExistingSubmittedApp_CallsUpdateDraftAndNotSubmit()
-    {
-        // No-duplicate guard: when a Submitted application already exists,
-        // the controller must update it in place (UpdateDraftApplicationAsync)
-        // and never call SubmitAsync — otherwise the user can produce two
-        // pending applications by replaying the form. ApplicationDecisionService
-        // also rejects with AlreadyPending as a backstop, but the controller
-        // shouldn't lean on that.
-
-        var existingDraftId = Guid.NewGuid();
-        var existingDraft = new UserApplicationSnapshot(
-            existingDraftId,
-            _userId,
-            ApplicationStatus.Submitted,
-            MembershipTier.Colaborador,
-            SystemClock.Instance.GetCurrentInstant(),
-            ResolvedAt: null,
-            TermExpiresAt: null,
-            Motivation: "old motivation",
-            AdditionalInfo: null,
-            SignificantContribution: null,
-            RoleUnderstanding: null);
-        _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns([existingDraft]);
-
-        var model = MakeValidModel(MembershipTier.Colaborador, motivation: "updated motivation");
-
-        await _controller.Edit(model);
-
-        await _governanceWrite.Received(1).UpdateDraftApplicationAsync(
-            existingDraftId, MembershipTier.Colaborador, "updated motivation",
-            Arg.Any<string?>(),
-            Arg.Is<string?>(x => x == null),
-            Arg.Is<string?>(x => x == null),
-            Arg.Any<CancellationToken>());
-        await _governanceWrite.DidNotReceiveWithAnyArgs()
-            .SubmitAsync(Guid.Empty, default, null!, null, null, null, null!, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task Edit_ApprovedProfile_DoesNotDispatchTierApplication()
-    {
-        // Approved profile means the user is past initial setup. Tier radios
-        // on the form are advisory only — the controller must skip the
-        // dispatch entirely regardless of which tier the form arrives with.
-        var approvedProfile = new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = _userId,
-            BurnerName = "Existing",
-            FirstName = "Existing",
-            LastName = "Human",
-            IsApproved = true,
-        };
-        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(BuildUserInfo(approvedProfile));
-
-        var model = MakeValidModel(MembershipTier.Colaborador, motivation: "irrelevant");
-
-        await _controller.Edit(model);
-
-        await _governanceWrite.DidNotReceiveWithAnyArgs()
-            .SubmitAsync(Guid.Empty, default, null!, null, null, null, null!, Arg.Any<CancellationToken>());
-        await _governanceWrite.DidNotReceiveWithAnyArgs()
-            .UpdateDraftApplicationAsync(Guid.Empty, default, null!, null, null, null, Arg.Any<CancellationToken>());
-        await _governanceService.DidNotReceiveWithAnyArgs()
-            .GetUserApplicationsAsync(Guid.Empty, Arg.Any<CancellationToken>());
-    }
-
     [HumansFact]
     public async Task Edit_InitialSetup_TriggersOnboardingConsentCheck()
     {
-        var model = MakeValidModel(MembershipTier.Volunteer);
+        var model = MakeValidModel();
 
         await _controller.Edit(model);
 
@@ -812,134 +442,11 @@ public class ProfileControllerEditTests
                 new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en", DeletionRequestedAt = SystemClock.Instance.GetCurrentInstant() }
                     .ToUserInfo()));
 
-        var model = MakeValidModel(MembershipTier.Volunteer);
+        var model = MakeValidModel();
 
         await _controller.Edit(model);
 
         await _accountDeletionService.Received(1).CancelDeletionAsync(_userId, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task Edit_Post_WithShiftTagIds_CallsSetVolunteerTagPreferencesAsync()
-    {
-        _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns([]);
-
-        var tagId1 = Guid.NewGuid();
-        var tagId2 = Guid.NewGuid();
-        var model = MakeValidModel(MembershipTier.Volunteer);
-        model.EditableShiftTagIds = [tagId1, tagId2];
-
-        await _controller.Edit(model);
-
-        await _shiftMgmt.Received(1).SetVolunteerTagPreferencesAsync(
-            _userId,
-            Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 2 && ids.Contains(tagId1) && ids.Contains(tagId2)));
-    }
-
-    [HumansFact]
-    public async Task Edit_Post_WithEmptyShiftTagIds_CallsSetVolunteerTagPreferencesAsyncWithEmptyList()
-    {
-        _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns([]);
-
-        var model = MakeValidModel(MembershipTier.Volunteer);
-        model.EditableShiftTagIds = [];
-
-        await _controller.Edit(model);
-
-        await _shiftMgmt.Received(1).SetVolunteerTagPreferencesAsync(
-            _userId,
-            Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 0));
-    }
-
-    [HumansFact]
-    public async Task Edit_Post_ValidationFailure_RepopulatesAllShiftTagsAndDoesNotCallSetPreferences()
-    {
-        var tag1 = new ShiftTagSummary(Guid.NewGuid(), "Heavy lifting");
-        var tag2 = new ShiftTagSummary(Guid.NewGuid(), "Working in the sun");
-        _shiftMgmt.GetTagsAsync(Arg.Any<string?>())
-            .Returns(new List<ShiftTagSummary> { tag1, tag2 });
-
-        // Force ModelState invalid before the action runs.
-        _controller.ModelState.AddModelError("BurnerName", "Required");
-
-        var model = MakeValidModel(MembershipTier.Volunteer);
-
-        var result = await _controller.Edit(model);
-
-        var viewResult = result.Should().BeOfType<ViewResult>().Subject;
-        var returnedModel = viewResult.Model.Should().BeOfType<ProfileViewModel>().Subject;
-        returnedModel.AllShiftTags.Should().HaveCountGreaterThan(0);
-
-        await _shiftMgmt.DidNotReceiveWithAnyArgs()
-            .SetVolunteerTagPreferencesAsync(Guid.Empty, null!);
-    }
-
-    [HumansFact]
-    public async Task Edit_Post_WithDietary_WritesMealPrefAndAllergiesToProfile()
-    {
-        _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns([]);
-
-        var model = MakeValidModel(MembershipTier.Volunteer);
-        model.DietaryPreference = "Vegan";
-        model.Allergies = ["Peanut", "Other"];
-        model.AllergyOtherText = "Kiwi";
-
-        await _controller.Edit(model);
-
-        // Meal-pref + allergies are persisted through the Profile save request.
-        await _profileEditorService.Received(1).SaveProfileAsync(
-            _userId,
-            Arg.Any<string>(),
-            Arg.Is<ProfileSaveRequest>(r =>
-                r.DietaryPreference == "Vegan"
-                && r.Allergies != null && r.Allergies.Contains("Peanut") && r.Allergies.Contains("Other")
-                && r.AllergyOtherText == "Kiwi"),
-            Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task Edit_Post_WithDietary_DoesNotTouchIntolerancesOrMedical()
-    {
-        // The Edit page owns only meal-pref + allergies (carried on ProfileSaveRequest,
-        // which has no intolerance/medical fields). Intolerances + medical are written
-        // only by the DietaryMedical page via SaveDietaryMedicalAsync — never from Edit.
-        _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns([]);
-
-        var model = MakeValidModel(MembershipTier.Volunteer);
-        model.DietaryPreference = "Vegan";
-        model.Allergies = ["Peanut"];
-
-        await _controller.Edit(model);
-
-        await _profileEditorService.Received(1).SaveProfileAsync(
-            _userId, Arg.Any<string>(),
-            Arg.Is<ProfileSaveRequest>(r => r.DietaryPreference == "Vegan"),
-            Arg.Any<CancellationToken>());
-        await _profileEditorService.DidNotReceiveWithAnyArgs()
-            .SaveDietaryMedicalAsync(default, default!, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task Edit_Post_AllergyOtherWithoutText_IsInvalidAndDoesNotSaveProfile()
-    {
-        _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns([]);
-
-        var model = MakeValidModel(MembershipTier.Volunteer);
-        model.Allergies = ["Other"];
-        model.AllergyOtherText = "   "; // whitespace-only triggers the required rule
-
-        var result = await _controller.Edit(model);
-
-        result.Should().BeOfType<ViewResult>();
-        _controller.ModelState.IsValid.Should().BeFalse();
-        _controller.ModelState.ContainsKey(nameof(model.AllergyOtherText)).Should().BeTrue();
-        await _profileEditorService.DidNotReceiveWithAnyArgs()
-            .SaveProfileAsync(default, default!, default!, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -948,7 +455,7 @@ public class ProfileControllerEditTests
         _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
         _profileEditorService.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
             .Returns(new ProfileEditResult(false, ErrorKey: "Profile_BurnerCVRequired"));
-        var model = MakeValidModel(MembershipTier.Volunteer);
+        var model = MakeValidModel();
 
         var result = await _controller.Edit(model);
 
@@ -959,46 +466,65 @@ public class ProfileControllerEditTests
         await _onboardingService.DidNotReceiveWithAnyArgs().SetConsentCheckPendingIfEligibleAsync(default, default);
     }
 
+    // ─── /Profile/Me/Medical (GDPR Art. 9, owner-only) ─────────────────────────
+
     [HumansFact]
-    public async Task Edit_Get_PopulatesDietaryFieldsAndPreservesTagReadCancellation()
+    public async Task Medical_Get_ShowsOnlyTheSignedInMembersOwnConditions()
     {
-        using var cancellation = new CancellationTokenSource();
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(BuildUserInfo(new Profile
-            {
-                UserId = _userId,
-                BurnerName = "Burner",
-                FirstName = "First",
-                LastName = "Last",
-                DietaryPreference = "Pescatarian",
-                Allergies = ["Dairy", "Other"],
-                AllergyOtherText = "Mango",
-            }));
+            .Returns(BuildUserInfo(new Profile { UserId = _userId, BurnerName = "Burner", MedicalConditions = "Epilepsy" }));
 
-        var result = await _controller.Edit(ct: cancellation.Token);
+        var result = await _controller.Medical(CancellationToken.None);
 
-        var viewModel = result.Should().BeOfType<ViewResult>().Subject
-            .Model.Should().BeOfType<ProfileViewModel>().Subject;
-        viewModel.DietaryPreference.Should().Be("Pescatarian");
-        viewModel.Allergies.Should().BeEquivalentTo(["Dairy", "Other"]);
-        viewModel.AllergyOtherText.Should().Be("Mango");
-        await _shiftMgmt.Received(1).GetTagsAsync(ct: cancellation.Token);
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<MedicalViewModel>()
+            .Which.MedicalConditions.Should().Be("Epilepsy");
+        await _userService.Received().GetUserInfoAsync(_userId, Arg.Any<CancellationToken>());
     }
 
-    private static ProfileViewModel MakeValidModel(
-        MembershipTier tier,
-        string? motivation = null) => new()
-        {
-            BurnerName = "Burner",
-            FirstName = "First",
-            LastName = "Last",
-            // NoPriorBurnExperience=true short-circuits the volunteer-history
-            // requirement so we don't need to fabricate history rows just to
-            // reach the dispatch block under test.
-            NoPriorBurnExperience = true,
-            SelectedTier = tier,
-            ApplicationMotivation = motivation,
-        };
+    [HumansTheory]
+    [InlineData("  Diabetes  ", "Diabetes")]
+    [InlineData("   ", null)]
+    public async Task Medical_Post_SavesTheTrimmedConditions_ForTheSignedInMemberOnly(string posted, string? saved)
+    {
+        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(BuildUserInfo(new Profile { UserId = _userId, BurnerName = "Burner" }));
+
+        var result = await _controller.Medical(new MedicalViewModel { MedicalConditions = posted });
+
+        await _userService.Received(1).SaveMedicalConditionsAsync(_userId, saved, Arg.Any<CancellationToken>());
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(ProfileController.Index));
+    }
+
+    [HumansFact]
+    public async Task Medical_Post_InvalidModel_DoesNotSave()
+    {
+        _controller.ModelState.AddModelError(nameof(MedicalViewModel.MedicalConditions), "Validation_MaxLength");
+
+        var result = await _controller.Medical(new MedicalViewModel { MedicalConditions = "x" });
+
+        result.Should().BeOfType<ViewResult>();
+        await _userService.DidNotReceiveWithAnyArgs().SaveMedicalConditionsAsync(default, default, default);
+    }
+
+    [HumansFact]
+    public void Medical_Post_RequiresAntiforgery()
+    {
+        typeof(ProfileController).GetMethods()
+            .Single(m => string.Equals(m.Name, nameof(ProfileController.Medical), StringComparison.Ordinal)
+                && m.GetCustomAttribute<HttpPostAttribute>() is not null)
+            .GetCustomAttribute<ValidateAntiForgeryTokenAttribute>().Should().NotBeNull();
+    }
+
+    private static ProfileViewModel MakeValidModel() => new()
+    {
+        BurnerName = "Burner",
+        FirstName = "First",
+        LastName = "Last",
+        // NoPriorBurnExperience=true short-circuits the volunteer-history
+        // requirement so we don't need to fabricate history rows just to
+        // reach the save path under test.
+        NoPriorBurnExperience = true,
+    };
 
     private UserInfo BuildUserInfo(Profile? profile) => UserInfoFactory.Create(
         user: new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" },

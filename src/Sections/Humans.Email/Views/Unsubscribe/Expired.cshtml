@@ -1,0 +1,12 @@
+@{
+    ViewData["Title"] = Localizer["Email_Unsubscribe_ExpiredTitle"].Value;
+}
+
+<h1>@Localizer["Email_Unsubscribe_ExpiredHeading"]</h1>
+
+<p>
+    @Localizer["Email_Unsubscribe_ExpiredMessage"]
+    <a asp-controller="Account" asp-action="Login">@Localizer["Email_Unsubscribe_ExpiredSignIn"]</a>.
+</p>
+
+<p><a asp-controller="Home" asp-action="Index">@Localizer["Email_Unsubscribe_BackHome"]</a></p>

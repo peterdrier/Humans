@@ -212,7 +212,7 @@ public class NotificationInboxServiceTests : IDisposable
             {
                 [resolverId] = new(
                     resolverId, "Resolver", false, "en", null, Instant.FromUnixTimeSeconds(0),
-                    null, null, null, null, null, false, false, null, null,
+                    null, null, null, null, null, null, null,
                     null, null, null, [], [], [], null, []),
             }));
 

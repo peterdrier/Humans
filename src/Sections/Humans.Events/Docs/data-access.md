@@ -13,8 +13,8 @@ directly. Owns `Events`,
 edition settings row is Settings' `settings_event` table (on
 `SettingsDbContext`, read only through `ISettingsService`; Shifts' similarly-named
 `event_settings` is a different table Events never reads) and
-`EventParticipations` is **Users-owned** (lives on `UsersDbContext` —
-see [Users](../../Humans.Users/Docs/data-access.md)); `EventGuideDbContext`
+event participation is **Tickets-owned** (lives on `TicketsDbContext` —
+see [Tickets](../../Humans.Tickets/Docs/data-access.md)); `EventGuideDbContext`
 deliberately excludes both
 (see its doc comment).
 
