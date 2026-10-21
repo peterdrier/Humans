@@ -65,7 +65,7 @@ internal interface IStoreRepository : IRepository
     /// <c>Lines</c> and <c>Payments</c> eager-loaded. Empty input returns an empty list
     /// without a round-trip.
     /// </summary>
-    Task<IReadOnlyList<Order>> GetOrdersForTeamsWithLinesAsync(
+    Task<IReadOnlyList<Order>> GetOrdersForTeamsWithLinesAndPaymentsAsync(
         IReadOnlyCollection<Guid> teamIds,
         int year,
         CancellationToken ct = default);

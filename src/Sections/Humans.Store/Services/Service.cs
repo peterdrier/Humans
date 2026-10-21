@@ -79,7 +79,7 @@ internal sealed class Service(
             .ToList();
         var campOrders = await repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
             campSeasons.Select(s => s.Id).ToList(), ct);
-        var teamOrders = await repo.GetOrdersForTeamsWithLinesAsync(
+        var teamOrders = await repo.GetOrdersForTeamsWithLinesAndPaymentsAsync(
             teams.Select(t => t.Id).ToList(), year, ct);
         var productIds = campOrders.Concat(teamOrders)
             .SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList();
@@ -1204,7 +1204,7 @@ internal sealed class Service(
         var campOrdersInYear = campOrders
             .Where(o => o.CampSeasonId is { } sid && seasonsForYear.ContainsKey(sid))
             .ToList();
-        var teamOrders = await repo.GetOrdersForTeamsWithLinesAsync(departmentIds, year, ct);
+        var teamOrders = await repo.GetOrdersForTeamsWithLinesAndPaymentsAsync(departmentIds, year, ct);
         var totalsByOrder = PriceAll(campOrdersInYear.Concat(teamOrders), context);
         var productNames = products.ToDictionary(p => p.Id, p => p.Name);
 
