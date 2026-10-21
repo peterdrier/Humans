@@ -313,6 +313,41 @@ have the supporting machinery. Each notes the missing piece.
   attribute on a base class). Without a baseline-aware analyzer the
   false-positive rate is too high.
 
+### Controller-intent candidates (HUM0031's intent half)
+
+HUM0031 counts statements and branches; the intent question ("is this a domain
+decision?") belongs to section-doctor. Each candidate below is one narrow,
+intent-shaped pattern from the 2026-06-12 controller-intent audit
+(`docs/debt/controller-intent-audit-2026-06-12.md`) that an analyzer could own
+outright, taking that slice off the judgment pass. None is approved; each needs
+Peter's call before it is built.
+
+- **A read action that writes.** An `[HttpGet]` action (or a view component's
+  `InvokeAsync`) that reaches a member of an `I<Section>Write` interface or a
+  mutating `I<Section>Management` member. Audit finding: the onboarding widget's
+  self-heal moved Suspended→Active from a GET. **Needs:** a way to tell a
+  mutating member from a read on `*Management` interfaces (the `I*Service` /
+  `I*Write` split already does it for the published surface), plus a baseline
+  for the legitimate cases (a GET that stamps a last-seen time).
+
+- **Post-mutation sequencing.** One action that calls two or more distinct
+  write members across services, so the controller decides which domain side
+  effects follow a mutation. Audit theme 1 (Teams coordinator-sync trio, event
+  lifecycle emails, the profile save chain); a Hangfire job doing the same
+  mutation would skip the follow-ups. **Needs:** the same mutating-member
+  classification, and a baseline.
+
+- **Status predicates in controllers.** A comparison, `is` pattern or switch
+  arm against a member of a section's `*Status` / `*State` contract enum inside
+  a controller method. Audit theme 2 (`CanEdit`/`CanWithdraw` predicates
+  re-derived beside the service's own rule). **Needs:** a carve-out for pure
+  display mapping (status → badge CSS class), which is presentation; expect
+  this one to stay advisory (Warning) because that line is fuzzy.
+
+Patterns that stay with section-doctor because no syntax shape separates them
+from honest presentation: the same rule written twice in one controller, and
+read-DTO enrichment a controller computes instead of the service.
+
 ---
 
 ## Tier 3 — Captured for completeness (covered by ratchet tests)
@@ -324,7 +359,7 @@ analyzer.
 - `NoConcurrencyTokensRule` — replaced by semantic analyzer `HUM0007`.
 - `NoCrossSectionEfJoinsRule` — was replaced by analyzer `HUM0024`; both are gone, the analyzer retired in nobodies-collective/Humans#1278 (per-section `DbContext`s make the join structurally impossible). Do not resurrect either.
 - `NoLinqAtDbLayerRule` — retired. It scanned a hardcoded `src/Humans.Application/Services`, which the section split drained to 28 files while 360 service files moved to `src/Sections/*/Services`; its baseline reached zero through lost coverage, not through fixes. The `no-linq-at-db-layer` rule itself still stands (`memory/architecture/no-linq-at-db-layer.md`) — only the regex ratchet is gone. Do not resurrect it in this form.
-- `NoBusinessLogicInControllersRule` — retired (the regex heuristic was noisy and only saw public action signatures; nobodies-collective/Humans#793). Replaced by semantic analyzer `HUM0031` (`ControllerBusinessLogicAnalyzer`): statements > 40 or cyclomatic complexity > 15 on any controller method, method-level `[Grandfathered]`, **thresholds frozen at 40/15 until 2027**. The freeze is Peter's call and is not up for revisiting — do not propose tightening, unfreezing, or "re-evaluating now that #866 has progressed". He will lower them when he decides to.
+- `NoBusinessLogicInControllersRule` — retired (the regex heuristic was noisy and only saw public action signatures; nobodies-collective/Humans#793). Replaced by semantic analyzer `HUM0031` (`ControllerBusinessLogicAnalyzer`): statements > 40 or cyclomatic complexity > 15 on any controller method, method-level `[Grandfathered]`, **thresholds fixed at 40/15** (Peter, 2026-10-21): a backstop that never ratchets. Statement and branch counts are a smell, not a measure of intent, so whether a controller carries business logic is judged by section-doctor's controller-intent check on every run (litmus: would a Hangfire job doing the same domain operation need this line?). Do not propose moving the numbers. Intent-shaped analyzers that could take part of that judgment are listed under Tier 2.
 - `NoObsoleteNavReadsRule` — was replaced by semantic analyzer `HUM0021`; both are gone, the analyzer retired in nobodies-collective/Humans#1278 as a dead rule (zero live `[Obsolete("Cross-domain nav…")]` markers since nobodies-collective/Humans#996). Do not resurrect either.
 - `NoDestructiveMigrationOpsRule` (`tests/.../Rules/NoDestructiveMigrationOpsRule.cs`) — operates on EF-generated migration files which legitimately contain destructive ops in other contexts. Filesystem-aware. Stay as ratchet.
 - `NoStartupGuardsRule` — retired alongside `NoLinqAtDbLayerRule` (Peter's call). Its scan root `src/Humans.Web` was still valid and its baseline genuinely zero, but it was a regex over one project out of 36+ and saw no section's `Section.Register`. The `no-startup-guards` rule itself still stands (`memory/architecture/no-startup-guards.md`).
