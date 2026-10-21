@@ -42,6 +42,21 @@ public interface IUserDataContributor : IFanout
     Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct);
 
     /// <summary>
+    /// Second Article 15 call, made for every contributor right after
+    /// <see cref="ContributeForUserAsync"/>: <paramref name="allUserIds"/> is the
+    /// survivor's whole identity chain — <paramref name="userId"/> first, then every
+    /// archived account merged into it. For a contributor that cannot resolve the
+    /// chain itself (a crosscut that may not call Users) and still holds rows keyed
+    /// to archived ids. The default returns nothing. Same rules as
+    /// <see cref="ContributeForUserAsync"/>: read-only, every section name declared
+    /// in <see cref="ErasureDeclaration"/>, and a section name unique across the
+    /// whole export — returning one name from both methods fails the export.
+    /// </summary>
+    Task<IReadOnlyList<UserDataSlice>> ContributeForIdentityChainAsync(
+        Guid userId, IReadOnlyList<Guid> allUserIds, CancellationToken ct) =>
+        Task.FromResult<IReadOnlyList<UserDataSlice>>([]);
+
+    /// <summary>
     /// Article 17 counterpart of <see cref="ContributeForUserAsync"/>: one entry
     /// for every export section name this contributor owns, plus any category it
     /// erases without ever exporting it. A <c>null</c> value means

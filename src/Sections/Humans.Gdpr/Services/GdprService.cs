@@ -23,6 +23,8 @@ internal sealed class GdprService(
         // survivor; contributors with retained history still expand its merge chain.
         var info = await users.GetUserInfoAsync(userId, ct);
         var resolvedUserId = info?.Id ?? userId;
+        // Survivor first, then every archived id: for contributors that can't resolve the chain.
+        var allUserIds = info?.AllUserIds ?? [userId];
 
         var sections = new Dictionary<string, object?>(StringComparer.Ordinal);
 
@@ -31,7 +33,11 @@ internal sealed class GdprService(
             IReadOnlyList<UserDataSlice> slices;
             try
             {
-                slices = await contributor.ContributeForUserAsync(resolvedUserId, ct);
+                slices =
+                [
+                    .. await contributor.ContributeForUserAsync(resolvedUserId, ct),
+                    .. await contributor.ContributeForIdentityChainAsync(resolvedUserId, allUserIds, ct),
+                ];
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {

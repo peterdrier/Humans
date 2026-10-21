@@ -175,6 +175,44 @@ public sealed class EmailOutboxServiceTests
     }
 
     [HumansFact]
+    public async Task ContributeForIdentityChainAsync_ExportsRowsLeftOnArchivedAccounts()
+    {
+        var survivor = Guid.NewGuid();
+        var archivedA = Guid.NewGuid();
+        var archivedB = Guid.NewGuid();
+        var older = BuildMessage(_now - Duration.FromDays(2), archivedA);
+        older.RecipientEmail = "older@example.org";
+        var newer = BuildMessage(_now - Duration.FromDays(1), archivedB);
+        newer.RecipientEmail = "newer@example.org";
+        _repo.GetForUserAsync(archivedA, Arg.Any<CancellationToken>()).Returns([older]);
+        _repo.GetForUserAsync(archivedB, Arg.Any<CancellationToken>()).Returns([newer]);
+
+        var slices = await _service.ContributeForIdentityChainAsync(
+            survivor, [survivor, archivedA, archivedB], Xunit.TestContext.Current.CancellationToken);
+
+        var slice = slices.Should().ContainSingle().Subject;
+        slice.SectionName.Should().Be(EmailOutboxService.EmailOutboxMergedAccounts);
+        var json = System.Text.Json.JsonSerializer.Serialize(slice.Data);
+        json.IndexOf("newer@example.org", StringComparison.Ordinal)
+            .Should().BeLessThan(json.IndexOf("older@example.org", StringComparison.Ordinal), "newest first");
+        // The survivor's own rows already come from ContributeForUserAsync.
+        await _repo.DidNotReceive().GetForUserAsync(survivor, Arg.Any<CancellationToken>());
+        _service.ErasureDeclaration.Should().ContainKey(EmailOutboxService.EmailOutboxMergedAccounts);
+    }
+
+    [HumansFact]
+    public async Task ContributeForIdentityChainAsync_UnmergedAccount_ContributesNothing()
+    {
+        var survivor = Guid.NewGuid();
+
+        var slices = await _service.ContributeForIdentityChainAsync(
+            survivor, [survivor], Xunit.TestContext.Current.CancellationToken);
+
+        slices.Should().BeEmpty();
+        await _repo.DidNotReceive().GetForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ReassignAsync_DelegatesMergeToOutboxRepository()
     {
         var sourceUserId = Guid.NewGuid();

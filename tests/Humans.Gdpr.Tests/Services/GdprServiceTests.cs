@@ -186,6 +186,57 @@ public class GdprServiceTests
     }
 
     [HumansFact]
+    public async Task ExportForUserAsync_CallsTheChainMethodWithSurvivorFirstAndMergesItsSlices()
+    {
+        var survivor = Guid.NewGuid();
+        var archived = Guid.NewGuid();
+        var chainData = new { Rows = 1 };
+        var contributor = new ChainContributor("Own", "Chain", chainData);
+        var service = CreateService(StubMerged(survivor, archived), contributor);
+
+        var export = await service.ExportForUserAsync(archived, Xunit.TestContext.Current.CancellationToken);
+
+        contributor.ChainCalledWith!.Value.UserId.Should().Be(survivor);
+        contributor.ChainCalledWith.Value.AllUserIds.Should().Equal(survivor, archived);
+        export.Sections.Keys.Should().Equal("Own", "Chain");
+        export.Sections["Chain"].Should().BeSameAs(chainData);
+    }
+
+    [HumansFact]
+    public async Task ExportForUserAsync_UnknownUser_PassesTheRequestedIdAsTheWholeChain()
+    {
+        var userId = Guid.NewGuid();
+        var contributor = new ChainContributor("Own", "Chain", new object());
+        var service = CreateService(contributor);
+
+        await service.ExportForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        contributor.ChainCalledWith!.Value.UserId.Should().Be(userId);
+        contributor.ChainCalledWith.Value.AllUserIds.Should().Equal(userId);
+    }
+
+    [HumansFact]
+    public async Task ExportForUserAsync_SameSectionFromBothMethods_FailsAsADuplicate()
+    {
+        var service = CreateService(new ChainContributor("Outbox", "Outbox", new object()));
+
+        var act = async () => await service.ExportForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Outbox*");
+    }
+
+    [HumansFact]
+    public async Task ChainMethod_DefaultsToNothing()
+    {
+        IUserDataContributor contributor = new FakeContributor("Profile", new object());
+
+        var slices = await contributor.ContributeForIdentityChainAsync(
+            Guid.NewGuid(), [Guid.NewGuid()], Xunit.TestContext.Current.CancellationToken);
+
+        slices.Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task ExportForUserAsync_LogsAndContinuesWhenExportedSectionHasNoErasureDeclaration()
     {
         var logger = new CapturingLogger<GdprService>();
@@ -439,6 +490,27 @@ public class GdprServiceTests
 
         public IReadOnlyDictionary<string, string?> ErasureDeclaration =>
             new Dictionary<string, string?>(StringComparer.Ordinal) { [name] = null };
+
+        public Task EraseForUserAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
+    }
+
+    private sealed class ChainContributor(string ownSection, string chainSection, object chainData)
+        : IUserDataContributor
+    {
+        public (Guid UserId, IReadOnlyList<Guid> AllUserIds)? ChainCalledWith { get; private set; }
+
+        public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<UserDataSlice>>([new UserDataSlice(ownSection, new object())]);
+
+        public Task<IReadOnlyList<UserDataSlice>> ContributeForIdentityChainAsync(
+            Guid userId, IReadOnlyList<Guid> allUserIds, CancellationToken ct)
+        {
+            ChainCalledWith = (userId, allUserIds);
+            return Task.FromResult<IReadOnlyList<UserDataSlice>>([new UserDataSlice(chainSection, chainData)]);
+        }
+
+        public IReadOnlyDictionary<string, string?> ErasureDeclaration =>
+            new Dictionary<string, string?>(StringComparer.Ordinal) { [ownSection] = null, [chainSection] = null };
 
         public Task EraseForUserAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
     }

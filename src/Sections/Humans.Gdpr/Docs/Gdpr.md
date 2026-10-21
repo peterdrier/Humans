@@ -88,6 +88,14 @@ calls `EraseForUserAsync` per merge-chain id from the deletion paths.
   the request names an archived account. Contributors with retained history still
   read the survivor's merge-chain IDs. An unknown account keeps the requested ID.
   Erasure remains a separate per-ID fan-out; its input is never redirected.
+- **Every contributor gets a second, chain-aware call.** Right after
+  `ContributeForUserAsync`, the orchestrator always calls
+  `ContributeForIdentityChainAsync(survivor, allUserIds)` — the survivor first,
+  then every archived id merged into it (`UserInfo.AllUserIds`). The default
+  returns nothing; a contributor that cannot resolve the chain itself (Email, a
+  crosscut barred from Users) overrides it. Its slices join the same section bag
+  under the same rules — one section name from both methods is a duplicate and
+  fails the export.
 - **The export is complete or it fails.** A contributor that throws is logged
   and the exception is re-thrown: omitting a category silently is worse than
   failing the download. Erasure holds the same rule — a contributor that throws
@@ -107,7 +115,7 @@ calls `EraseForUserAsync` per merge-chain id from the deletion paths.
   id as it completes — so Gdpr keeps no dependency on the Users merge primitive
   or its caches, and a mid-chain failure still leaves the already-erased ids'
   caches dropped.
-- **Section names are unique across contributors.** A duplicate is a
+- **Section names are unique across contributors and both calls.** A duplicate is a
   programming error and throws `InvalidOperationException` naming the section —
   it is not last-writer-wins.
 - **A `null` slice is dropped; an empty collection is not.** `Data is null`
@@ -159,7 +167,8 @@ calls `EraseForUserAsync` per merge-chain id from the deletion paths.
 **Outbound:** `Humans.Gdpr` references `Humans.Users.Contracts`. `GdprService`
 injects `IUserService` and calls `GetUserInfoAsync` once per export to
 stamp the envelope with the surviving account id and the merged-away ids,
-and pass that surviving id to every export contributor;
+and pass that surviving id (and, to the chain-aware call, the whole chain) to every
+export contributor;
 the controllers' base class `HumansControllerBase` also takes
 `IUserService`, and `MemberDataController`/`UserController` inject Users.Contracts'
 `IAccountDeletionService` (the deletion work stays in Users; the deletion timestamps stay on

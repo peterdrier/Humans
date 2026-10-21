@@ -31,6 +31,7 @@ internal sealed class EmailOutboxService(
     IAuditLogService audit) : IEmailOutboxManagement, IUserDataContributor, IUserMerge
 {
     internal const string EmailOutbox = "EmailOutbox";
+    internal const string EmailOutboxMergedAccounts = "EmailOutboxMergedAccounts";
 
     private static readonly Duration Last24Hours = Duration.FromHours(24);
 
@@ -198,8 +199,32 @@ internal sealed class EmailOutboxService(
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var messages = await repo.GetForUserAsync(userId, ct);
+        return [new UserDataSlice(EmailOutbox, Shape(messages))];
+    }
 
-        var shaped = messages.Select(m => new
+    /// <summary>
+    /// Outbox rows still keyed to an archived account merged into the survivor. Merges
+    /// since peterdrier/Humans#1999 move them in <see cref="ReassignAsync"/>; older ones
+    /// left them behind, and Email may not call Users to find them itself. The survivor's
+    /// own rows come from <see cref="ContributeForUserAsync"/>.
+    /// </summary>
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForIdentityChainAsync(
+        Guid userId, IReadOnlyList<Guid> allUserIds, CancellationToken ct)
+    {
+        var archivedIds = allUserIds.Where(id => id != userId).ToList();
+        if (archivedIds.Count == 0)
+            return [];
+
+        var messages = new List<EmailOutboxMessage>();
+        foreach (var id in archivedIds)
+            messages.AddRange(await repo.GetForUserAsync(id, ct));
+
+        return [new UserDataSlice(EmailOutboxMergedAccounts,
+            Shape(messages.OrderByDescending(m => m.CreatedAt).ToList()))];
+    }
+
+    private static List<object> Shape(IEnumerable<EmailOutboxMessage> messages) =>
+        messages.Select(object (m) => new
         {
             m.RecipientEmail,
             m.RecipientName,
@@ -211,13 +236,12 @@ internal sealed class EmailOutboxService(
             SentAt = m.SentAt.ToIso8601()
         }).ToList();
 
-        return [new UserDataSlice(EmailOutbox, shaped)];
-    }
-
+    // Erasure runs per id across the whole chain, so archived ids' rows go too.
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [EmailOutbox] = null
+            [EmailOutbox] = null,
+            [EmailOutboxMergedAccounts] = null
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
