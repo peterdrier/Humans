@@ -49,6 +49,9 @@ public class AdminNavTreeRoutingTests(HumansTestDatabase database) : Integration
             .Where(x => x.Controller is not null && x.Action is not null)
             .ToHashSet();
 
+        // Host startup is the slow part this timeout covers; stop here if it used the budget.
+        Xunit.TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
+
         var groups = AdminNavComposition.Compose(
             Factory.Services.GetRequiredService<IEnumerable<ISectionAdminNav>>());
 

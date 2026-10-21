@@ -17,6 +17,7 @@ public class DiResolutionSmokeTests(HumansTestDatabase database) : IntegrationTe
     [HumansFact(Timeout = 60000)]
     public async Task All_application_registrations_resolve_from_a_real_app_scope()
     {
+        var ct = TestContext.Current.CancellationToken;
         await using var scope = Factory.Services.CreateAsyncScope();
 
         var failures = new List<string>();
@@ -26,6 +27,7 @@ public class DiResolutionSmokeTests(HumansTestDatabase database) : IntegrationTe
                      .GroupBy(d => d.ServiceType)
                      .OrderBy(g => g.Key.FullName, StringComparer.Ordinal))
         {
+            ct.ThrowIfCancellationRequested();
             try
             {
                 if (group.Count() == 1)
@@ -71,6 +73,7 @@ public class DiResolutionSmokeTests(HumansTestDatabase database) : IntegrationTe
     [HumansFact(Timeout = 60000)]
     public async Task Every_scheduled_recurring_job_resolves_from_a_real_app_scope()
     {
+        var ct = TestContext.Current.CancellationToken;
         var contributedJobs = RecurringJobExtensions.ContributedJobs(Factory.Services).ToList();
 
         Assert.NotEmpty(contributedJobs);
@@ -87,6 +90,7 @@ public class DiResolutionSmokeTests(HumansTestDatabase database) : IntegrationTe
 
         foreach (var job in contributedJobs)
         {
+            ct.ThrowIfCancellationRequested();
             try
             {
                 scope.ServiceProvider.GetRequiredService(job.JobType);

@@ -268,7 +268,7 @@ public class TempDataCookieValidationMiddlewareTests
     [HumansFact(Timeout = 10_000)]
     public async Task HostileChunkCount_IsBoundedByCookiesActuallySent()
     {
-        var context = new DefaultHttpContext();
+        var context = new DefaultHttpContext { RequestAborted = Xunit.TestContext.Current.CancellationToken };
         // The chunk marker is client-supplied and this middleware runs on every dynamic request.
         // Generating C1..C2147483647 names from it would burn billions of iterations (and wrap
         // the counter), so the declared count must never drive the loop bound. The xUnit timeout
