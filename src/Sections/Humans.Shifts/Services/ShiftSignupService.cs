@@ -259,6 +259,13 @@ internal sealed class ShiftSignupService(
             return SignupResult.Fail(localizer["Shifts_Bail_AlreadyBailed"]);
         }
 
+        if (signup.Status is not (SignupStatus.Pending or SignupStatus.Confirmed))
+        {
+            logger.LogWarning("Bail attempted on inactive signup {SignupId} in {Status} state by actor {ActorUserId}",
+                signupId, signup.Status, actorUserId);
+            return SignupResult.Fail(localizer["Shifts_Bail_NotActive"]);
+        }
+
         if (signup.Shift.IsEarlyEntry && calendar.IsEarlyEntryClosed(now) && !isPrivileged)
             return SignupResult.Fail(localizer["Shifts_Bail_EarlyEntryClosed"]);
 

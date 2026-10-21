@@ -91,7 +91,7 @@ Nobodies Collective runs multi-day events (e.g., Nowhere) where volunteers are n
 
 **Acceptance Criteria:**
 - View upcoming, pending, and past shifts on /Shifts/Mine
-- Bail from confirmed or pending signups
+- Bail from confirmed or pending signups. A stale request for a Refused, Cancelled or NoShow signup returns localized refusal feedback without changing its history.
 - Range bail via `BailRangeAsync` — bails all signups sharing a `SignupBlockId` (build/strike date-range signups)
 - Build shift bail blocked after EE close for non-privileged users
 - Reusable `ShiftSignupsViewComponent` shows categorized signups (upcoming/pending/past) on Dashboard and HumanDetail pages

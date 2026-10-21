@@ -686,6 +686,33 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansTheory]
+    [InlineData(SignupStatus.Refused, "Shifts_Bail_NotActive")]
+    [InlineData(SignupStatus.Cancelled, "Shifts_Bail_NotActive")]
+    [InlineData(SignupStatus.NoShow, "Shifts_Bail_NotActive")]
+    [InlineData(SignupStatus.Bailed, "Shifts_Bail_AlreadyBailed")]
+    public async Task Bail_TerminalSignup_ReturnsLocalizedRefusalWithoutChangingHistory(
+        SignupStatus status, string key)
+    {
+        var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var userId = Guid.NewGuid();
+        var signup = SeedSignup(userId, shift.Id, status);
+        signup.StatusReason = "Previous decision";
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        _localizer[key].Returns(new LocalizedString(key, "translated rejection"));
+
+        var result = await _service.BailAsync(signup.Id, userId, "stale form");
+
+        result.Success.Should().BeFalse();
+        result.Error.Should().Be("translated rejection");
+        var stored = await ShiftsDb.ShiftSignups.FindAsync([signup.Id], TestContext.Current.CancellationToken);
+        stored!.Status.Should().Be(status);
+        stored.StatusReason.Should().Be("Previous decision");
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Notifier.ReceivedCalls().Should().BeEmpty();
+        _viewInvalidator.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData("refuse", 1000)]
     [InlineData("refuse", 1001)]
     [InlineData("bail", 1000)]
