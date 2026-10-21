@@ -10,6 +10,7 @@ using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Base.Interfaces;
+using Humans.Users.Contracts;
 
 namespace Humans.GoogleIntegration;
 
@@ -46,6 +47,16 @@ public sealed class Section : ISection
         services.AddSingleton<IGoogleResourceRepository, GoogleResourceRepository>();
         services.AddSingleton<IGoogleSyncOutboxRepository, GoogleSyncOutboxRepository>();
         services.AddSingleton<IGoogleSyncLogRepository, GoogleSyncLogRepository>();
+        services.AddSingleton<IWorkspaceIdentityRepository, WorkspaceIdentityRepository>();
+
+        // google_workspace_identities (Users decomposition commit 15): reads, the Users seam,
+        // the Article 15/17 slice and the account-merge fold.
+        services.AddScoped<WorkspaceIdentityService>();
+        services.AddScoped<IWorkspaceIdentityManagement>(sp => sp.GetRequiredService<WorkspaceIdentityService>());
+        services.AddScoped<IGoogleIntegrationService>(sp => sp.GetRequiredService<WorkspaceIdentityService>());
+        services.AddScoped<IGoogleIntegrationWrite>(sp => sp.GetRequiredService<WorkspaceIdentityService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<WorkspaceIdentityService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<WorkspaceIdentityService>());
 
         services.AddScoped<GoogleSyncLogService>();
         services.AddScoped<IGoogleSyncLogService>(sp => sp.GetRequiredService<GoogleSyncLogService>());

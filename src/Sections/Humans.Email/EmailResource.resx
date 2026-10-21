@@ -46,4 +46,72 @@
   <data name="Email_ComposerSelfTest_Subject" xml:space="preserve"><value>[Test] {0}</value></data>
   <data name="Email_ComposerSelfTest_DefaultSubject" xml:space="preserve"><value>[Test] Email composer preview</value></data>
   <data name="Email_UnsubscribeFooter" xml:space="preserve"><value>Unsubscribe from these emails</value></data>
+  <data name="Email_Outbox_AdminTitle" xml:space="preserve"><value>Emails</value></data>
+  <data name="Email_Outbox_BackToAdmin" xml:space="preserve"><value>Back to Admin</value></data>
+  <data name="Email_Outbox_BackToProfile" xml:space="preserve"><value>Back to Profile</value></data>
+  <data name="Email_Outbox_DescriptionAdmin" xml:space="preserve"><value>Emails the system has sent to this human.</value></data>
+  <data name="Email_Outbox_DescriptionSelf" xml:space="preserve"><value>Emails the system has sent to you (within the last 150 days).</value></data>
+  <data name="Email_Outbox_Empty" xml:space="preserve"><value>No emails on record.</value></data>
+  <data name="Email_Outbox_Subject" xml:space="preserve"><value>Subject</value></data>
+  <data name="Email_Outbox_MyTitle" xml:space="preserve"><value>My Emails</value></data>
+  <data name="Email_SendMessage_Title" xml:space="preserve"><value>Send {0} a message</value><comment>{0} = recipient name</comment></data>
+  <data name="Email_SendMessage_Breadcrumb" xml:space="preserve"><value>Send Message</value></data>
+  <data name="Email_SendMessage_Heading" xml:space="preserve"><value>Send {0} a message</value><comment>{0} = recipient name</comment></data>
+  <data name="Email_SendMessage_MessageLabel" xml:space="preserve"><value>Message</value></data>
+  <data name="Email_SendMessage_IncludeContactInfo" xml:space="preserve"><value>Include my contact info</value></data>
+  <data name="Email_SendMessage_IncludeContactInfoHelp" xml:space="preserve"><value>Your name and email will be included so they can reply to you directly.</value></data>
+  <data name="Email_SendMessage_Send" xml:space="preserve"><value>Send Message</value></data>
+  <data name="Email_SendMessage_Success" xml:space="preserve"><value>Your message has been sent to {0}.</value><comment>{0} = recipient name</comment></data>
+  <data name="Email_SendMessage_OptedOut" xml:space="preserve"><value>This human has opted out of receiving messages.</value></data>
+  <data name="Email_BreadcrumbNavigation" xml:space="preserve"><value>Breadcrumb</value></data>
+  <data name="Email_CommPrefs_Title" xml:space="preserve"><value>Communication Preferences</value></data>
+  <data name="Email_CommPrefs_Description" xml:space="preserve"><value>Choose which communications you receive and how.</value></data>
+  <data name="Email_CommPrefs_Category" xml:space="preserve"><value>Category</value></data>
+  <data name="Email_CommPrefs_Email" xml:space="preserve"><value>Email</value></data>
+  <data name="Email_CommPrefs_Alert" xml:space="preserve"><value>Alert</value></data>
+  <data name="Email_CommPrefs_BackToProfile" xml:space="preserve"><value>Back to Profile</value></data>
+  <data name="Email_CommPrefs_BackToDashboard" xml:space="preserve"><value>Back to Dashboard</value></data>
+  <data name="Email_CommPrefs_OneClick_Prompt" xml:space="preserve"><value>You clicked an unsubscribe link from {0} emails.</value></data>
+  <data name="Email_CommPrefs_OneClick_Hint" xml:space="preserve"><value>One-click unsubscribe, or fine-tune the matrix below.</value></data>
+  <data name="Email_CommPrefs_OneClick_Button" xml:space="preserve"><value>Unsubscribe from {0}</value></data>
+  <data name="Email_CommPrefs_OneClick_Done" xml:space="preserve"><value>Unsubscribed. You can re-enable any category below.</value></data>
+  <data name="Email_CommPrefs_UpdateSource" xml:space="preserve"><value>Source</value></data>
+  <data name="Email_CommPrefs_UpdatedAt" xml:space="preserve"><value>Updated</value></data>
+  <data name="Email_CommPrefs_AlwaysOn" xml:space="preserve"><value>Always on</value></data>
+  <data name="Email_Unsubscribe_Title" xml:space="preserve"><value>Unsubscribe from Emails</value></data>
+  <data name="Email_Unsubscribe_Heading" xml:space="preserve"><value>Unsubscribe from {0} emails?</value><comment>{0} = category name</comment></data>
+  <data name="Email_Unsubscribe_Greeting" xml:space="preserve"><value>Hi {0},</value><comment>{0} = display name</comment></data>
+  <data name="Email_Unsubscribe_ConfirmMessage" xml:space="preserve"><value>If you confirm, you will no longer receive {0} emails from Humans.</value><comment>{0} = category name</comment></data>
+  <data name="Email_Unsubscribe_ConfirmButton" xml:space="preserve"><value>Confirm Unsubscribe</value></data>
+  <data name="Email_Unsubscribe_DoneTitle" xml:space="preserve"><value>You've been unsubscribed</value></data>
+  <data name="Email_Unsubscribe_DoneMessage" xml:space="preserve"><value>You will no longer receive {0} emails from Humans.</value><comment>{0} = category name</comment></data>
+  <data name="Email_Unsubscribe_DoneManage" xml:space="preserve"><value>You can manage all your communication preferences from your</value></data>
+  <data name="Email_Unsubscribe_DoneManageLink" xml:space="preserve"><value>communication preferences</value></data>
+  <data name="Email_Unsubscribe_BackHome" xml:space="preserve"><value>Back to home</value></data>
+  <data name="Email_Unsubscribe_ExpiredTitle" xml:space="preserve"><value>Unsubscribe link expired</value></data>
+  <data name="Email_Unsubscribe_ExpiredHeading" xml:space="preserve"><value>This unsubscribe link has expired</value></data>
+  <data name="Email_Unsubscribe_ExpiredMessage" xml:space="preserve"><value>Please use the link from a more recent email, or</value></data>
+  <data name="Email_Unsubscribe_ExpiredSignIn" xml:space="preserve"><value>sign in to manage your communication preferences</value></data>
+  <data name="Email_CommPrefs_Name_System" xml:space="preserve"><value>System</value></data>
+  <data name="Email_CommPrefs_Name_CampaignCodes" xml:space="preserve"><value>Campaign Codes</value></data>
+  <data name="Email_CommPrefs_Name_FacilitatedMessages" xml:space="preserve"><value>Facilitated Messages</value></data>
+  <data name="Email_CommPrefs_Name_Ticketing" xml:space="preserve"><value>Ticketing</value></data>
+  <data name="Email_CommPrefs_Name_VolunteerUpdates" xml:space="preserve"><value>Volunteer Updates</value></data>
+  <data name="Email_CommPrefs_Name_TeamUpdates" xml:space="preserve"><value>Team Updates</value></data>
+  <data name="Email_CommPrefs_Name_Governance" xml:space="preserve"><value>Governance</value></data>
+  <data name="Email_CommPrefs_Name_Marketing" xml:space="preserve"><value>Marketing</value></data>
+  <data name="Email_CommPrefs_Description_System" xml:space="preserve"><value>Critical account, consent, and security notifications. Always on.</value></data>
+  <data name="Email_CommPrefs_Description_CampaignCodes" xml:space="preserve"><value>Discount codes, grants, and campaign redemption codes. Always on.</value></data>
+  <data name="Email_CommPrefs_Description_FacilitatedMessages" xml:space="preserve"><value>Messages sent to you by other humans via Humans.</value></data>
+  <data name="Email_CommPrefs_Description_Ticketing" xml:space="preserve"><value>Purchase confirmations and event information.</value></data>
+  <data name="Email_CommPrefs_Description_VolunteerUpdates" xml:space="preserve"><value>Shift changes, schedule updates, and volunteer notifications.</value></data>
+  <data name="Email_CommPrefs_Description_TeamUpdates" xml:space="preserve"><value>Drive permissions, team member additions, and removals.</value></data>
+  <data name="Email_CommPrefs_Description_Governance" xml:space="preserve"><value>Board voting, tier applications, role assignments, and onboarding reviews.</value></data>
+  <data name="Email_CommPrefs_Description_Marketing" xml:space="preserve"><value>Mailing list and promotions.</value></data>
+  <data name="Email_CommPrefs_TicketingYear" xml:space="preserve"><value>Ticketing — {0}</value></data>
+  <data name="Email_CommPrefs_TicketingLocked" xml:space="preserve"><value>Locked — you have a ticket for this year</value></data>
+  <data name="Email_CommPrefs_Name_EventOperations" xml:space="preserve"><value>Event Operations</value></data>
+  <data name="Email_CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Community Updates</value></data>
+  <data name="Email_CommPrefs_AlwaysOnCategoryCannotChange" xml:space="preserve"><value>Cannot change always-on categories.</value></data>
+  <data name="Email_CommPrefs_LoadFailed" xml:space="preserve"><value>Failed to load communication preferences.</value></data>
 </root>

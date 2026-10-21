@@ -5,8 +5,8 @@ namespace Humans.Tickets.Data;
 
 /// <summary>
 /// Per-section database context for the Tickets section: maps only <c>ticket_orders</c>,
-/// <c>ticket_attendees</c>, <c>ticket_sync_state</c> and
-/// <c>ticket_transfer_requests</c>, with its own
+/// <c>ticket_attendees</c>, <c>ticket_sync_state</c>,
+/// <c>ticket_transfer_requests</c> and <c>tickets_event_participations</c>, with its own
 /// <c>__EFMigrationsHistory_Tickets</c> table and migrations under
 /// <c>Data/Migrations/</c>. Same database, same connection — the split is a
 /// code-side partition of the EF model.
@@ -28,6 +28,7 @@ internal sealed class TicketsDbContext(DbContextOptions<TicketsDbContext> option
     public DbSet<TicketAttendee> TicketAttendees => Set<TicketAttendee>();
     public DbSet<TicketSyncState> TicketSyncStates => Set<TicketSyncState>();
     public DbSet<TicketTransferRequest> TicketTransferRequests => Set<TicketTransferRequest>();
+    public DbSet<EventParticipation> EventParticipations => Set<EventParticipation>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -37,5 +38,6 @@ internal sealed class TicketsDbContext(DbContextOptions<TicketsDbContext> option
         builder.ApplyConfiguration(new TicketAttendeeConfiguration());
         builder.ApplyConfiguration(new TicketSyncStateConfiguration());
         builder.ApplyConfiguration(new TicketTransferRequestConfiguration());
+        builder.ApplyConfiguration(new EventParticipationConfiguration());
     }
 }

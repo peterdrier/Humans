@@ -45,7 +45,7 @@ public class ProfileTests
     {
         var profile = CreateProfile();
 
-        profile.MembershipTier.Should().Be(MembershipTier.Volunteer);
+        profile.MembershipTier.Should().Be(LegacyMembershipTier.Volunteer);
     }
 
     [HumansFact]
@@ -57,10 +57,10 @@ public class ProfileTests
     }
 
     [HumansTheory]
-    [InlineData(ConsentCheckStatus.Pending)]
-    [InlineData(ConsentCheckStatus.Cleared)]
-    [InlineData(ConsentCheckStatus.Flagged)]
-    public void Profile_CanSetConsentCheckStatus(ConsentCheckStatus status)
+    [InlineData(LegacyConsentCheckStatus.Pending)]
+    [InlineData(LegacyConsentCheckStatus.Cleared)]
+    [InlineData(LegacyConsentCheckStatus.Flagged)]
+    public void Profile_CanSetConsentCheckStatus(LegacyConsentCheckStatus status)
     {
         var profile = CreateProfile();
 
@@ -76,12 +76,12 @@ public class ProfileTests
         var clock = new FakeClock(Instant.FromUtc(2026, 2, 15, 10, 0));
         var coordinatorId = Guid.NewGuid();
 
-        profile.ConsentCheckStatus = ConsentCheckStatus.Cleared;
+        profile.ConsentCheckStatus = LegacyConsentCheckStatus.Cleared;
         profile.ConsentCheckAt = clock.GetCurrentInstant();
         profile.ConsentCheckedByUserId = coordinatorId;
         profile.ConsentCheckNotes = "Looks good";
 
-        profile.ConsentCheckStatus.Should().Be(ConsentCheckStatus.Cleared);
+        profile.ConsentCheckStatus.Should().Be(LegacyConsentCheckStatus.Cleared);
         profile.ConsentCheckAt.Should().NotBeNull();
         profile.ConsentCheckedByUserId.Should().Be(coordinatorId);
         profile.ConsentCheckNotes.Should().Be("Looks good");
@@ -104,10 +104,10 @@ public class ProfileTests
     }
 
     [HumansTheory]
-    [InlineData(MembershipTier.Volunteer)]
-    [InlineData(MembershipTier.Colaborador)]
-    [InlineData(MembershipTier.Asociado)]
-    public void Profile_CanSetMembershipTier(MembershipTier tier)
+    [InlineData(LegacyMembershipTier.Volunteer)]
+    [InlineData(LegacyMembershipTier.Colaborador)]
+    [InlineData(LegacyMembershipTier.Asociado)]
+    public void Profile_CanSetMembershipTier(LegacyMembershipTier tier)
     {
         var profile = CreateProfile();
 

@@ -187,9 +187,9 @@ The shapes imply:
   signature overloads are forbidden by standing policy D13
   (`memory/process/debt-sweep-standing-policy.md`); jobs re-register at startup and a job
   queued across a signature change is dropped.
-- **Sync writes to Users** — marking the person's Google email valid/rejected is Users'
-  data, written through Users' own `TrySetGoogleEmailStatusFromSyncAsync` — a narrow
-  public write, not a leak.
+- **Sync verdicts stay in-section** — marking the person's Google identity valid/rejected
+  writes GoogleIntegration's own `google_workspace_identities` (Users decomposition
+  commit 15); the former cross-section write into Users is gone.
 - **Paired DI registrations per client type** (real vs stub) chosen by
   `hasGoogleCredentials` in `Section.cs`; the stubs are the test doubles for the whole
   section and are deliberately not in the test project.

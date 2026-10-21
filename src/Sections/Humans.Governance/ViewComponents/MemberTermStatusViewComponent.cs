@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using Humans.Governance.Contracts;
-using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 
@@ -11,7 +10,6 @@ namespace Humans.Governance.ViewComponents;
 /// 90 days, renewal pending, or active. Renders nothing for a plain Volunteer.
 /// </summary>
 public sealed class MemberTermStatusViewComponent(
-    IUserService userService,
     IMembershipCalculator membershipCalculator,
     IGovernanceService applicationService,
     IClock clock) : ViewComponent
@@ -24,7 +22,7 @@ public sealed class MemberTermStatusViewComponent(
             return Content(string.Empty);
         }
 
-        var tier = (await userService.GetUserInfoAsync(userId, ct))?.Profile?.MembershipTier ?? MembershipTier.Volunteer;
+        var tier = await applicationService.GetMembershipTierAsync(userId, ct);
         var isVolunteerMember = (await membershipCalculator.GetMembershipSnapshotAsync(userId, ct)).IsVolunteerMember;
 
         if (!isVolunteerMember || tier == MembershipTier.Volunteer)

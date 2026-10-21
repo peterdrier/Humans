@@ -6,6 +6,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Settings.Contracts;
+using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Humans.Shifts.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -84,6 +85,7 @@ public class ShiftManagementArchitectureTests
         services.AddSingleton(Substitute.For<IAdminAuthorizationService>());
         services.AddSingleton(Substitute.For<IEarlyEntryInvalidator>());
         services.AddSingleton(Substitute.For<IUserService>());
+        services.AddSingleton(Substitute.For<ITicketService>());
         // Only constructed, never connected: the repositories build their contexts lazily.
         services.AddSingleton(Substitute.For<IHostEnvironment>());
         services.AddSingleton<QueryStatistics>();

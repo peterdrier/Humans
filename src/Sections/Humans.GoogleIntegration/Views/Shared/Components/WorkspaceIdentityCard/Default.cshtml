@@ -1,0 +1,45 @@
+@model WorkspaceIdentityCardViewModel
+@* Admin-only page (/Users/Admin/{id}): English copy, no localization keys. *@
+@{
+    var badgeClass = Model.Status switch
+    {
+        GoogleEmailStatus.Valid => "bg-success",
+        GoogleEmailStatus.Rejected => "bg-danger",
+        _ => "bg-secondary"
+    };
+}
+<div class="card mb-4">
+    <div class="card-header">Google Sync</div>
+    <div class="card-body">
+        <div class="mb-2">
+            <span class="badge @badgeClass me-1">@Model.Status</span>
+            @if (Model.Status == GoogleEmailStatus.Rejected)
+            {
+                <small class="text-danger">Email rejected by Google sync</small>
+            }
+        </div>
+        <div class="d-flex justify-content-between small text-muted mb-2">
+            <span>Google service email:</span>
+            <code class="text-break ms-2">@(Model.GoogleEmail ?? "—")</code>
+        </div>
+        @if (Model.IsAdmin)
+        {
+            <form asp-controller="Google" asp-action="RerunGoogleSync" asp-route-id="@Model.UserId" method="post" class="mb-2"
+                  data-confirm="Re-run Google sync for this user? This enqueues AddUserToTeamResources for all their teams.">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-warning btn-sm w-100">
+                    <i class="fa-solid fa-rotate-right me-1"></i>Re-run Google Sync
+                </button>
+            </form>
+        }
+        <a asp-controller="Google" asp-action="Human" asp-route-id="@Model.UserId"
+           class="btn btn-outline-secondary btn-sm w-100">View Google Sync Audit</a>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">@@nobodies.team Email</div>
+    <div class="card-body">
+        <vc:nobodies-email-badge user-id="@Model.UserId" mode="detail" />
+    </div>
+</div>

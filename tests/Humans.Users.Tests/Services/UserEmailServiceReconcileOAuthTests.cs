@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
+using Humans.GoogleIntegration.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -21,6 +22,7 @@ public class UserEmailServiceReconcileOAuthTests
 {
     private readonly IUserRepository _repository = Substitute.For<IUserRepository>();
     private readonly IAccountMergeService _mergeService = Substitute.For<IAccountMergeService>();
+    private readonly IGoogleIntegrationWrite _googleIdentity = Substitute.For<IGoogleIntegrationWrite>();
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly UserManager<User> _userManager;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 11, 12, 0));
@@ -36,7 +38,7 @@ public class UserEmailServiceReconcileOAuthTests
         var store = Substitute.For<IUserStore<User>>();
         _userManager = Substitute.For<UserManager<User>>(
             store, null, null, null, null, null, null, null, null);
-        _serviceProvider = new ServiceLocatorBuilder().With(_mergeService).Build();
+        _serviceProvider = new ServiceLocatorBuilder().With(_mergeService).With(_googleIdentity).Build();
 
         _service = new UserEmailService(
             _repository,
@@ -147,6 +149,8 @@ public class UserEmailServiceReconcileOAuthTests
             rowToUpdate: Arg.Is<UserEmail?>(r => r != null && r.Id == rowId),
             rowToInsert: Arg.Is<UserEmail?>(r => r == null),
             Arg.Any<CancellationToken>());
+        // The renamed-away address stops being the Google identity.
+        await _googleIdentity.Received(1).ClearIfAddressAsync(userId, "old@example.com", Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
             AuditAction.GoogleEmailRenamed,
             Arg.Any<string>(), userId,
@@ -162,9 +166,9 @@ public class UserEmailServiceReconcileOAuthTests
         // Signing user has two rows:
         //   tagged row at old@example.com (Provider/ProviderKey set, IsPrimary=true, IsGoogle=true, verified)
         //   sibling row at new@example.com (unverified, no flags)
-        // Reconcile must move the tag onto the sibling, union the flags
-        // (sibling ends up IsPrimary=true + IsGoogle=true), force IsVerified=true,
-        // and delete the old tagged row.
+        // Reconcile must move the tag onto the sibling, union IsPrimary
+        // (sibling ends up IsPrimary=true), force IsVerified=true, delete the old
+        // tagged row, and clear the old address as the Google identity.
         var userId = Guid.NewGuid();
         var oldRowId = Guid.NewGuid();
         var siblingId = Guid.NewGuid();
@@ -203,7 +207,8 @@ public class UserEmailServiceReconcileOAuthTests
         sibling.ProviderKey.Should().Be(ProviderKey);
         sibling.IsVerified.Should().BeTrue("OAuth callback proves ownership; tag-move force-verifies");
         sibling.IsPrimary.Should().BeTrue("flag-union: old row had IsPrimary=true");
-        sibling.IsGoogle.Should().BeTrue("flag-union: old row had IsGoogle=true");
+        sibling.IsGoogle.Should().BeFalse("the legacy IsGoogle flag is frozen (Users decomposition commit 15)");
+        await _googleIdentity.Received(1).ClearIfAddressAsync(userId, "old@example.com", Arg.Any<CancellationToken>());
 
         // Atomic plan: update the sibling AND delete the old tagged row in
         // one transaction.
@@ -342,6 +347,7 @@ public class UserEmailServiceReconcileOAuthTests
         result.DisplacedRowId.Should().Be(displacedRowId);
         result.DisplacedEmail.Should().Be("shared@example.com");
         result.DisplacedUserLeftWithoutVerifiedEmail.Should().BeFalse();
+        await _googleIdentity.Received(1).ClearIfAddressAsync(displacedUserId, "shared@example.com", Arg.Any<CancellationToken>());
 
         // Atomic plan: the displaced row is deleted AND the signing user's
         // NewRowCreated insert happens in the same transaction.

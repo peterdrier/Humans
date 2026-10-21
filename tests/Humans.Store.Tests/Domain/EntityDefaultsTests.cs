@@ -27,8 +27,6 @@ public class EntityDefaultsTests
     [HumansFact]
     public void New_payment_defaults_to_paid()
     {
-        // The column default was dropped after AddStorePaymentStatus ran, so this initializer is
-        // the only thing that settles a sync or manual insert. Paid is also the enum's zero member.
         var p = new Payment();
 
         p.Status.Should().Be(PaymentStatus.Paid);

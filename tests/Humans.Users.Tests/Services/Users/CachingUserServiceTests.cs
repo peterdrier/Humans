@@ -82,8 +82,8 @@ public class CachingUserServiceTests
             Id = Guid.NewGuid(),
             UserId = user.Id,
             Year = 2026,
-            Status = ParticipationStatus.Ticketed,
-            Source = ParticipationSource.TicketSync,
+            Status = LegacyParticipationStatus.Ticketed,
+            Source = LegacyParticipationSource.TicketSync,
         };
         var original = UserInfoFactory.Create(user, [], [participation], [], profile, [], [], [], []);
         var options = new DbContextOptionsBuilder<UsersDbContext>()
@@ -119,7 +119,9 @@ public class CachingUserServiceTests
         refreshed.BurnerName.Should().Be("After");
         refreshed.PreferredLanguage.Should().Be("es");
         refreshed.Profile.Should().BeEquivalentTo(original.Profile);
+#pragma warning disable HUM_USER_PARTICIPATIONS // the frozen legacy slice must survive a user-row refresh: Tickets' fallback reads it
         refreshed.EventParticipations.Should().BeEquivalentTo(original.EventParticipations);
+#pragma warning restore HUM_USER_PARTICIPATIONS
     }
 
     [HumansFact]
@@ -141,15 +143,17 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task CommittedPreferenceChange_FinishesCacheRefreshAndAuditDespiteRequestCancellation()
+    public async Task CommittedLegacyPreferenceErasure_FinishesCacheRefreshDespiteRequestCancellation()
     {
+        // Email owns the live preferences since Users decomposition commit 14; the frozen legacy rows
+        // are deleted only by erasure, and the cached legacy slice must follow that delete.
         var testCt = Xunit.TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
         var preference = new CommunicationPreference
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            Category = MessageCategory.Marketing,
+            Category = LegacyMessageCategory.Marketing,
             OptedOut = false,
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdateSource = "Profile"
@@ -161,10 +165,11 @@ public class CachingUserServiceTests
             seed.CommunicationPreferences.Add(preference);
             await seed.SaveChangesAsync(testCt);
         }
+#pragma warning disable HUM_USER_COMMPREFS // pins the cache's handling of the frozen legacy slice
         var original = SampleUserInfo(userId) with
         {
             CommunicationPreferences =
-            [new CommunicationPreferenceInfo(preference.Id, preference.Category, false, true,
+            [new LegacyCommunicationPreferenceInfo(preference.Id, preference.Category, false, true,
                 preference.UpdatedAt, preference.UpdateSource, null)]
         };
         var cached = CreateSut();
@@ -174,16 +179,16 @@ public class CachingUserServiceTests
             .Returns(call => new ValueTask<UserInfo?>(ReloadAsync(call.ArgAt<CancellationToken>(1))));
         async Task<UserInfo?> ReloadAsync(CancellationToken readCt)
         {
-            // This reload runs only after the preference has committed.
+            // This reload runs only after the delete has committed.
             await cancellation.CancelAsync();
             readCt.ThrowIfCancellationRequested();
             await using var read = new UsersDbContext(options);
-            var saved = await read.CommunicationPreferences.AsNoTracking().SingleAsync(readCt);
+            var saved = await read.CommunicationPreferences.AsNoTracking().ToListAsync(readCt);
             return original with
             {
                 CommunicationPreferences =
-                [new CommunicationPreferenceInfo(saved.Id, saved.Category, saved.OptedOut, saved.InboxEnabled,
-                    saved.UpdatedAt, saved.UpdateSource, saved.SubscribedAt)]
+                [.. saved.Select(p => new LegacyCommunicationPreferenceInfo(p.Id, p.Category, p.OptedOut, p.InboxEnabled,
+                    p.UpdatedAt, p.UpdateSource, p.SubscribedAt))]
             };
         }
         var services = new ServiceCollection();
@@ -191,20 +196,14 @@ public class CachingUserServiceTests
         await using var provider = services.BuildServiceProvider();
         var interceptor = new UserInfoSaveChangesInterceptor(provider, NullLogger<UserInfoSaveChangesInterceptor>.Instance);
         var interceptedOptions = new DbContextOptionsBuilder<UsersDbContext>(options).AddInterceptors(interceptor).Options;
-        var audit = Substitute.For<IAuditLogService>();
-        var preferences = new CommunicationPreferenceService(
-            new CommunicationPreferenceRepository(new TestDbContextFactory(interceptedOptions)),
-            cached, Substitute.For<IUnsubscribeTokenProvider>(), new FakeClock(preference.UpdatedAt),
-            audit, NullLogger<CommunicationPreferenceService>.Instance);
+        var repository = new CommunicationPreferenceRepository(new TestDbContextFactory(interceptedOptions));
 
-        await preferences.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: true,
-            source: "Profile", cancellation.Token);
+        (await repository.DeleteAllForUserAsync(userId, cancellation.Token)).Should().Be(1);
 
         var refreshed = await cached.GetUserInfoAsync(userId, testCt);
-        refreshed!.CommunicationPreferences.Should().ContainSingle().Which.OptedOut.Should().BeTrue();
-        original.CommunicationPreferences.Single().OptedOut.Should().BeFalse();
-        await audit.Received(1).LogAsync(AuditAction.CommunicationPreferenceChanged, "User", userId,
-            Arg.Any<string>(), "CommunicationPreferenceService");
+        refreshed!.CommunicationPreferences.Should().BeEmpty();
+        original.CommunicationPreferences.Should().ContainSingle();
+#pragma warning restore HUM_USER_COMMPREFS
     }
 
     [HumansTheory]
@@ -510,7 +509,7 @@ public class CachingUserServiceTests
             IsVerified = true,
             IsPrimary = true,
             IsGoogle = true,
-            GoogleEmailStatus = GoogleEmailStatus.Valid,
+            GoogleEmailStatus = LegacyGoogleEmailStatus.Valid,
             Provider = "Google",
             ProviderKey = "subject-xyz",
         };
@@ -519,8 +518,8 @@ public class CachingUserServiceTests
             Id = participationId,
             UserId = userId,
             Year = 2026,
-            Status = ParticipationStatus.Ticketed,
-            Source = ParticipationSource.TicketSync,
+            Status = LegacyParticipationStatus.Ticketed,
+            Source = LegacyParticipationSource.TicketSync,
         };
         var profile = new Profile
         {
@@ -531,7 +530,7 @@ public class CachingUserServiceTests
             LastName = "Tables",
             DateOfBirth = new LocalDate(1990, 7, 4),
             IsApproved = true,
-            MembershipTier = MembershipTier.Asociado,
+            MembershipTier = LegacyMembershipTier.Asociado,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 2, 0, 0),
         };
@@ -582,11 +581,12 @@ public class CachingUserServiceTests
         result.Id.Should().Be(userId);
         result.BurnerName.Should().Be("Octa");
         result.PreferredLanguage.Should().Be("es");
-        result.GoogleEmailStatus.Should().Be(GoogleEmailStatus.Valid);
         result.UserEmails.Should().ContainSingle(e =>
-            e.Id == emailId && e.IsPrimary && e.IsGoogle && e.IsVerified);
+            e.Id == emailId && e.IsPrimary && e.IsVerified);
+#pragma warning disable HUM_USER_PARTICIPATIONS // the legacy table still flows into UserInfo for Tickets' fallback
         result.EventParticipations.Should().ContainSingle(p =>
-            p.Id == participationId && p.Year == 2026 && p.Status == ParticipationStatus.Ticketed);
+            p.Id == participationId && p.Year == 2026 && p.Status == LegacyParticipationStatus.Ticketed);
+#pragma warning restore HUM_USER_PARTICIPATIONS
         result.ExternalLogins.Should().ContainSingle(l =>
             l.Provider == "Google" && l.ProviderKey == "ext-key-1");
         result.Profile.Should().NotBeNull();
@@ -699,83 +699,6 @@ public class CachingUserServiceTests
             .Returns(new ValueTask<UserInfo?>((UserInfo?)null));
         (await sut.GetUserInfoAsync(u1, Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
         (await sut.GetUserInfoAsync(u2, Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task SetParticipationFromTicketSyncAsync_DelegatesAndRefreshesParticipationSlice()
-    {
-        // Decorator forwards unconditionally — idempotency lives in the inner
-        // service / repository (Attended is terminal, identical TicketSync row
-        // is a no-op upsert). The decorator's only job is to delegate, then
-        // refresh the participation slice in the dict.
-        var userId = Guid.NewGuid();
-        var stale = new EventParticipation
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Year = 2026,
-            Status = ParticipationStatus.NotAttending,
-            Source = ParticipationSource.UserDeclared,
-            DeclaredAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        };
-        var fresh = new EventParticipation
-        {
-            Id = stale.Id,
-            UserId = userId,
-            Year = 2026,
-            Status = ParticipationStatus.Ticketed,
-            Source = ParticipationSource.TicketSync,
-            DeclaredAt = null,
-        };
-
-        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(
-                new ValueTask<UserInfo?>(SampleUserInfo(userId, eventParticipations: [stale])),
-                new ValueTask<UserInfo?>(SampleUserInfo(userId, eventParticipations: [fresh])));
-
-        var sut = CreateSut();
-        await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
-
-        await sut.SetParticipationFromTicketSyncAsync(userId, 2026, ParticipationStatus.Ticketed, checkedInAt: null, ct: Xunit.TestContext.Current.CancellationToken);
-
-        await _inner.Received(1).SetParticipationFromTicketSyncAsync(
-            userId, 2026, ParticipationStatus.Ticketed, null, Arg.Any<CancellationToken>());
-        await _inner.Received(2).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
-        // Slice refresh — sibling slices and repos are not touched.
-        var info = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
-        info!.EventParticipations.Should().ContainSingle(p =>
-            p.Year == 2026 && p.Status == ParticipationStatus.Ticketed && p.Source == ParticipationSource.TicketSync);
-    }
-
-    [HumansFact]
-    public async Task RemoveTicketSyncParticipationAsync_DelegatesAndRefreshesParticipationSlice()
-    {
-        var userId = Guid.NewGuid();
-        var existing = new EventParticipation
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Year = 2026,
-            Status = ParticipationStatus.Ticketed,
-            Source = ParticipationSource.TicketSync,
-            DeclaredAt = null,
-        };
-
-        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(
-                new ValueTask<UserInfo?>(SampleUserInfo(userId, eventParticipations: [existing])),
-                new ValueTask<UserInfo?>(SampleUserInfo(userId, eventParticipations: [])));
-
-        var sut = CreateSut();
-        await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
-
-        await sut.RemoveTicketSyncParticipationAsync(userId, 2026, Xunit.TestContext.Current.CancellationToken);
-
-        await _inner.Received(1).RemoveTicketSyncParticipationAsync(userId, 2026, Arg.Any<CancellationToken>());
-        await _inner.Received(2).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
-
-        var info = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
-        info!.EventParticipations.Should().BeEmpty();
     }
 
     // ==========================================================================
@@ -1261,41 +1184,27 @@ public class CachingUserServiceTests
         refreshed.Profile.ProfilePictureContentType.Should().BeNull();
     }
 
-    [HumansFact]
-    public async Task ApplyProfileOnboardingMutationAsync_RefreshesProfileSlice()
+    [HumansTheory]
+    [Xunit.InlineData(UserState.Rejected)]
+    [Xunit.InlineData(UserState.Suspended)]
+    public async Task StateTransitions_RefreshEntry(UserState newState)
     {
         var userId = Guid.NewGuid();
         var sut = CreateSut();
         await PrimeAsync(sut, SampleUserInfo(userId));
+        var ct = Xunit.TestContext.Current.CancellationToken;
 
-        _inner.ApplyProfileOnboardingMutationAsync(
-                userId,
-                Arg.Any<UserProfileOnboardingCommand>(),
-                Arg.Any<CancellationToken>())
-            .Returns(new OnboardingResult(true));
+        _inner.SetRejectedAsync(userId, Arg.Any<CancellationToken>()).Returns(new OnboardingResult(true));
+        _inner.SetSuspensionAsync(userId, true, false, Arg.Any<CancellationToken>()).Returns(new OnboardingResult(true));
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(SampleUserInfo(userId) with { State = newState }));
 
-        StubRefreshEntry(userId, new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            BurnerName = "Alice",
-            FirstName = "Alice",
-            LastName = "Example",
-            IsApproved = true,
-            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            UpdatedAt = Instant.FromUtc(2026, 1, 2, 0, 0),
-        });
+        if (newState == UserState.Rejected)
+            await sut.SetRejectedAsync(userId, ct);
+        else
+            await sut.SetSuspensionAsync(userId, suspended: true, ct: ct);
 
-        await sut.ApplyProfileOnboardingMutationAsync(
-            userId,
-            new UserProfileOnboardingCommand(
-                UserProfileOnboardingMutation.RecordConsentCheck,
-                ActorUserId: Guid.NewGuid(),
-                ConsentCheckStatus: ConsentCheckStatus.Cleared), Xunit.TestContext.Current.CancellationToken);
-
-        var refreshed = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
-        refreshed!.Profile.Should().NotBeNull();
-        refreshed.Profile!.IsApproved.Should().BeTrue();
+        (await sut.GetUserInfoAsync(userId, ct))!.State.Should().Be(newState);
     }
 
     [HumansFact]

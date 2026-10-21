@@ -121,9 +121,9 @@
 
                 @* Flag stays hidden for a cleared human, and that is not the old "the view is the
                    rule" guard — it is a real consequence. RecordConsentCheck sets
-                   Profile.IsApproved = (status == Cleared) (Humans.Users UserService), and
+                   the review's IsApproved = (status == Cleared) (Consent's consent_reviews), and
                    SystemTeamSyncJob gates Colaborador/Asociado team membership on
-                   Profile.IsApproved. So flagging a cleared tier member silently drops them from
+                   that IsApproved. So flagging a cleared tier member silently drops them from
                    their tier team on the next hourly sync — a kick-out dressed as an annotation.
                    Volunteers admission already ignores IsApproved for exactly this reason; the
                    tier path never got the same treatment. Reject below is the intended kick-out

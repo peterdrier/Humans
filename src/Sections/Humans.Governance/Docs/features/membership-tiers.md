@@ -18,7 +18,7 @@
 
 Nobodies Collective has four effective membership tiers, though only three are managed within this system. **All humans start as Volunteers** — the default tier with immediate access once their name is complete and required consents are signed. Humans who want deeper involvement can apply for **Colaborador** status (active contributor) or **Asociado** status (voting member per Spanish nonprofit statutes). **Board** membership is a fourth tier managed through an external process — the system only tracks their role assignments.
 
-Tier is tracked on the `Profile` entity (`MembershipTier` field), not as a role. Tier applications use the existing `Application` entity (extended with a `MembershipTier` field). During initial signup, the application form is embedded inline alongside the profile setup for a streamlined one-shot experience. After initial onboarding, tier applications go through the dedicated Governance Applications route.
+Tier is held in Governance's `governance_membership_tiers` (one row per non-default member), not on the profile and not as a role. Tier applications use the `Application` entity (with a `MembershipTier` field) and always go through the dedicated Governance Applications route; initial profile setup describes the tiers and links there.
 
 ### Three Managed Tiers
 
@@ -109,13 +109,17 @@ MembershipTier:
   Asociado = 2     // Voting member, requires application + Board vote
 ```
 
-### Profile Changes
+### MembershipTierRecord (`governance_membership_tiers`)
 ```
-Profile (existing entity — new field)
-├── MembershipTier: MembershipTier (default Volunteer)
+MembershipTierRecord
+├── UserId: Guid (PK)
+├── Tier: MembershipTier
+├── GrantedAt: Instant
+├── ExpiresAt: LocalDate? (term end)
+├── GrantedByApplicationId: Guid?
 ```
 
-Tier is stored on Profile, **not** as a RoleAssignment. Roles (Admin, Board, ConsentCoordinator, VolunteerCoordinator) are tracked separately via RoleAssignment.
+No row means Volunteer, except while the legacy `profiles.MembershipTier` column still holds an uncopied tier (read fallback until the `governance.profile-tier` data migration reports done). Tier is **not** a RoleAssignment. Roles (Admin, Board, ConsentCoordinator, VolunteerCoordinator) are tracked separately via RoleAssignment.
 
 ### Application Changes
 ```
@@ -153,31 +157,20 @@ Renewal is a new Application entity (same tier). Goes through normal Board votin
 
 ### Lapse
 
-If term expires without renewal, the human is removed from the Colaboradors/Asociados system team and their profile tier is downgraded — to another tier they still hold an active approval for, otherwise to Volunteer.
+If term expires without renewal, the human is removed from the Colaboradors/Asociados system team and their tier is downgraded — to another tier they still hold an active approval for, otherwise to Volunteer.
 
 ## Application Flow
 
-### During Initial Signup (Inline)
-```
-Profile Setup → Tier selection → Colaborador/Asociado form inline → Submit
-    │
-    ├── Profile created (MembershipTier = selected tier)
-    └── Application created (MembershipTier = Colaborador or Asociado)
-    │
-    ▼
-Both proceed through their respective pipelines:
-  - Profile → Consents → Volunteer access (name + consents)
-  - Application → Board Voting → Tier enrollment (parallel)
-```
+Initial profile setup links to the application route below; the application runs in parallel with Volunteer access (name + consents) and never gates it.
 
-### After Onboarding (Dedicated Application Route)
+### Dedicated Application Route
 ```
-Active Volunteer/Colaborador → /Governance/Applications/Create → Fill form → Submit
+Volunteer/Colaborador → /Governance/Applications/Create → Fill form → Submit
     │
     ▼
 Application created → Board Voting → Approve/Reject
     │
-    ├── Approved → Profile.MembershipTier updated, added to tier system team
+    ├── Approved → membership tier row granted, added to tier system team
     └── Rejected → stays at current tier
 ```
 
@@ -185,8 +178,8 @@ Application created → Board Voting → Approve/Reject
 
 1. **Everyone starts as Volunteer** — tier selection is optional
 2. **Volunteer doesn't require an Application** — a legal name plus the required consents is sufficient. The Consent Coordinator's clear/flag review is an independent audit annotation and does not gate admission (`MembershipCalculator` never reads `ConsentCheckStatus`)
-3. **Inline application is one-shot** — only during initial signup, never on subsequent profile edits
-4. **After onboarding, applications use the dedicated route** — profile edit is just profile data
+3. **No inline application** — initial profile setup only links to the application route
+4. **Applications use the dedicated route** — profile edit is just profile data
 5. **Asociados are not in Colaboradors team** — separate system teams
 6. **One pending Application per user** — cannot have multiple active tier applications
 7. **Downgrades are admin-only** — no self-service downgrade

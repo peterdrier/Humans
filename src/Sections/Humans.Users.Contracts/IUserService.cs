@@ -1,10 +1,8 @@
-using NodaTime;
-
 namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Public read contract of the Users section. External sections inject
-/// this interface; it exposes only UserInfo / HumanSearchResult / OnsiteUserRow
+/// this interface; it exposes only UserInfo / HumanSearchResult
 /// projections — no EF entities, no writes, no cache hooks. Writes live on <see cref="IUserWrite"/>.
 ///
 /// <para>
@@ -23,7 +21,7 @@ public interface IUserService
     /// <summary>
     /// Returns the unified <see cref="UserInfo"/> read-model for the given
     /// user, stitched from <c>users</c>, <c>user_emails</c>,
-    /// <c>event_participations</c>, <c>user_logins</c>, <c>profiles</c>,
+    /// <c>event_participations</c> (frozen legacy), <c>user_logins</c>, <c>profiles</c>,
     /// <c>contact_fields</c>, <c>profile_languages</c>, and
     /// <c>volunteer_history_entries</c>. Issue #703: the caching decorator
     /// serves dict hits synchronously; the inner service rebuilds from
@@ -92,33 +90,6 @@ public interface IUserService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns a flat list of every user currently on-site — that is, whose
-    /// participation record for <paramref name="year"/> has status Attended with a
-    /// non-null checked-in timestamp. Caller (Web layer) joins in
-    /// camp / team / governance-role names via the owning section services and
-    /// applies filters. Issue nobodies-collective/Humans#736.
-    /// </summary>
-    /// <remarks>
-    /// Implemented on the caching decorator only — the inner
-    /// <c>UserService</c> derives this from the cached <c>UserInfo</c>
-    /// snapshot and the inner implementation throws
-    /// <see cref="NotSupportedException"/>. Any DI registration that resolves
-    /// the inner service directly (test doubles aside) will hit that throw on
-    /// first call.
-    /// </remarks>
-    Task<IReadOnlyList<OnsiteUserRow>> GetOnsiteUsersAsync(
-        int year, CancellationToken ct = default);
-
-    /// <summary>
-    /// Get all participation records for a given year, projected to the slim
-    /// <see cref="UserParticipationRow"/> shape (no EF entity leaves the
-    /// section). Served from the caching decorator's <see cref="UserInfo"/>
-    /// snapshot.
-    /// </summary>
-    Task<IReadOnlyList<UserParticipationRow>> GetAllParticipationsForYearAsync(
-        int year, CancellationToken ct = default);
-
-    /// <summary>
     /// The row as stored for <paramref name="userId"/>, with no merge redirect:
     /// a merge tombstone comes back as itself, <see cref="UserInfo.MergedToUserId"/>
     /// and <see cref="UserInfo.MergedAt"/> intact. <see cref="UserInfo.MergedUserIds"/>
@@ -151,26 +122,3 @@ public interface IUserService
     /// </summary>
     Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default);
 }
-
-/// <summary>
-/// Slim cross-section projection of an <c>EventParticipation</c> row for a given
-/// year, returned by <see cref="IUserService.GetAllParticipationsForYearAsync"/>.
-/// Carries only the facts consumers diff against (status, source, check-in
-/// instant) keyed by user — no EF entity crosses the section boundary.
-/// </summary>
-public sealed record UserParticipationRow(
-    Guid UserId,
-    ParticipationStatus Status,
-    ParticipationSource Source,
-    Instant? CheckedInAt);
-
-/// <summary>
-/// Per-user row returned from <see cref="IUserService.GetOnsiteUsersAsync"/>.
-/// Names of camps / teams / governance roles are not stitched in here; the Web
-/// layer joins them via the owning section services before rendering. Issue
-/// nobodies-collective/Humans#736.
-/// </summary>
-public sealed record OnsiteUserRow(
-    Guid UserId,
-    string DisplayName,
-    Instant? CheckedInAt);

@@ -136,6 +136,23 @@ Implements `IConsentManagement`, `IConsentService`,
 record counts) pass through to the inner service. Surfaced on
 `/Debug/CacheStats`.
 
+### ConsentReviewService (Scoped, internal; implements `IConsentWrite` + `IUserDataContributor`)
+
+Repository: `IConsentReviewRepository` (Singleton, `IDbContextFactory<LegalDbContext>`).
+
+| Table | R/W |
+|-------|-----|
+| consent_reviews | R/W |
+
+The Consent Coordinator review (Users decomposition commit 12). Serves
+`IConsentService.GetConsentReviewAsync` / `GetConsentReviewsAsync` (forwarded
+by `ConsentService`, passed through `CachingConsentService` uncached), the
+`IConsentWrite` annotations, the `consent.profile-review` copy, and the
+`ConsentReview` export/erasure slice. Until the copy is done, a member with no
+row reads the legacy `profiles` review columns via `IUserService`; the copy
+also calls `IUserWrite.SetRejectedAsync` for a legacy rejection the stored
+state never recorded. No cache.
+
 ### ConsentEmails (Scoped, internal)
 
 No repository. Pure builder — reads `ConsentResource` (via

@@ -34,22 +34,6 @@ internal sealed class EmailsViewModel
     public int MinutesUntilResend { get; set; }
 
     /// <summary>
-    /// The email currently selected for Google services (Groups, Drive).
-    /// Null means OAuth email is used (default).
-    /// </summary>
-    public string? GoogleServiceEmail { get; set; }
-
-    /// <summary>
-    /// Whether the user has a verified @nobodies.team email (which auto-locks Google preference).
-    /// </summary>
-    public bool HasNobodiesTeamEmail { get; set; }
-
-    /// <summary>
-    /// Status of the Google email for sync operations.
-    /// </summary>
-    public GoogleEmailStatus GoogleEmailStatus { get; set; }
-
-    /// <summary>
     /// The user this grid is acting on. For self contexts this is the current user;
     /// for admin contexts this is the target user (route param), not the actor.
     /// </summary>
@@ -78,10 +62,9 @@ internal sealed class EmailsViewModel
 
     /// <summary>
     /// Admin-only diagnostic: the cached <c>UserInfo</c> for the target user.
-    /// The view reads <c>Email</c>/<c>PrimaryEmail</c>/<c>GoogleEmail</c>
+    /// The view reads <c>Email</c>/<c>PrimaryEmail</c>
     /// directly — these are what the rest of the app actually consumes
-    /// (outbound mail, Google identity, the legacy <c>User.Email</c>
-    /// override). Null in self contexts and for non-Admin actors.
+    /// (outbound mail, the legacy <c>User.Email</c> override). Null in self contexts and for non-Admin actors.
     /// </summary>
     public UserInfo? TargetUserInfo { get; init; }
 
@@ -202,15 +185,6 @@ internal sealed class EmailRowViewModel
     public Guid Id { get; set; }
     public string Email { get; set; } = string.Empty;
     public bool IsVerified { get; set; }
-    public bool IsGoogle { get; set; }
-
-    /// <summary>
-    /// Per-address Google sync status (#687). `Rejected` means Google refused this specific
-    /// address (no Google account behind it); `Valid` means a Google API call accepted it.
-    /// Drives the per-row badge and the Retry control on the rejected canonical row.
-    /// </summary>
-    public GoogleEmailStatus GoogleEmailStatus { get; set; }
-
     public bool IsPrimary { get; set; }
     public ContactFieldVisibility? Visibility { get; set; }
     public bool IsPendingVerification { get; set; }

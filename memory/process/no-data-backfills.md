@@ -7,7 +7,7 @@ EF migrations are schema-only. Any pass that mutates data — `UPDATE`, `INSERT`
 
 When a bulk data fix is the right move, the canonical path is an **admin screen** with a two-step flow:
 
-1. **Review** — page lists every row that would be touched, with enough context for the operator to sanity-check (counts, samples, the rule being applied). Same shape as the EmailProblems page (`/Profile/Admin/EmailProblems`) and its `Backfill all (N)` button.
+1. **Review** — page lists every row that would be touched, with enough context for the operator to sanity-check (counts, samples, the rule being applied). Every such copy is an `ISectionDataMigrations` contribution listed on the one screen, `/Debug/DataMigrations` ([Debug.md](../../src/Sections/Humans.Debug/Docs/Debug.md#data-migrations)).
 2. **Confirm + apply** — explicit operator click (with `data-confirm` text), POST handler calls a service method, audit log records the action.
 
 **Forbidden:**
@@ -29,5 +29,5 @@ Migration-time data writes are uniquely dangerous: they run unattended at deploy
 
 - When designing a fix that tightens an invariant, scope is "enforce on writes + surface existing violations via scanner." Stop there.
 - When asked "but what about the rows already in the wrong state?" the default answer is "they show up in `/Profile/Admin/EmailProblems` (or the relevant scanner) and get fixed through the UI." Only propose a bulk admin screen if Peter asks.
-- If a bulk admin screen is genuinely warranted, model it on the existing `BackfillLegacyEmails` flow: count + list visible to the operator, explicit `data-confirm`, audit-logged POST handler.
+- If a bulk fix is genuinely warranted, register it as a data migration (`ISectionDataMigrations` in the owning section) — never a new per-section Temp screen. `/Debug/DataMigrations` supplies the every-row list, the `data-confirm` Apply and the `DataMigrationApplied` audit; the anonymous `/api/data-migrations` reports when production is done.
 - Migration files themselves: zero data SQL. If EF generated something that includes a data statement, regenerate.

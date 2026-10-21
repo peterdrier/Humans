@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
 
@@ -11,7 +12,8 @@ namespace Humans.MailerLite.Services.Audiences;
 /// </summary>
 internal abstract class ShiftViewAudienceBase(
     IShiftView shiftView,
-    IUserService users) : MailerLiteAudienceBase(users)
+    IUserService users,
+    ICommunicationPreferenceService prefs) : MailerLiteAudienceBase(users, prefs)
 {
     /// <summary>Whether this person's shift signups put them in the audience.</summary>
     protected abstract bool Matches(ShiftUserSummary summary);

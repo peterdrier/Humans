@@ -193,7 +193,7 @@ internal sealed class EmailOutboxService(
 
     /// <summary>
     /// GDPR Article 15 slice — the same per-user outbox history the human already
-    /// reads at <c>/Profile/Me/Outbox</c>, uncapped.
+    /// reads at <c>/Email/Outbox</c>, uncapped.
     /// </summary>
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {

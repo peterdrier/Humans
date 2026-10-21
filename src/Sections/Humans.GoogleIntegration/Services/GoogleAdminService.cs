@@ -19,7 +19,7 @@ internal sealed class GoogleAdminService(
     ITeamWrite teamWrite,
     ITeamResourceManagement teamResourceService,
     IUserService userService,
-    IUserWrite userWrite,
+    IGoogleIntegrationService workspaceIdentities,
     IUserEmailService userEmailService,
     IAuditLogService auditLogService,
     ILogger<GoogleAdminService> logger) : IGoogleAdminService
@@ -531,10 +531,9 @@ internal sealed class GoogleAdminService(
                     ErrorMessage: $"{email} is already linked to a human.");
             }
 
-            // Add verified email; orchestrator stamps IsGoogle. Reset GoogleEmailStatus so reconciliation resumes (#687).
+            // Add verified email. A verified @nobodies.team address is the member's Google identity
+            // on read, with its own (Unknown) verdict, so reconciliation resumes (#687).
             await userEmailService.AddVerifiedEmailAsync(userId, email, ct);
-            await userWrite.TrySetGoogleEmailStatusFromSyncAsync(
-                userId, GoogleEmailStatus.Unknown, ct);
 
             // Enqueue re-sync for team memberships (outbox writes owned by Teams service).
             await teamWrite.EnqueueGoogleResyncForUserTeamsAsync(userId, ct);
@@ -650,29 +649,17 @@ internal sealed class GoogleAdminService(
     {
         try
         {
-            // Read UserEmails through the owning section service (design-rules §2c).
-            // The service returns row snapshots so this caller can read per-row
-            // IsVerified / IsGoogle / Provider flags.
+            // The Google identity is this section's own (google_workspace_identities).
             var allUsers = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
             var allUserIds = allUsers.Select(u => u.Id).ToList();
-            var emailsByUserId = await userEmailService.GetEntitiesByUserIdsAsync(allUserIds, ct);
+            var identities = await workspaceIdentities.GetWorkspaceIdentitiesAsync(allUserIds, ct);
 
             var nobodiesUsers = allUsers
-                .Select(u =>
+                .Select(u => new
                 {
-                    var emails = emailsByUserId.TryGetValue(u.Id, out var list)
-                        ? list
-                        : [];
-                    var googleEmail = emails
-                        .Where(e => e.IsVerified && e.IsGoogle)
-                        .Select(e => e.Email)
-                        .FirstOrDefault()
-                        ?? emails
-                            .Where(e => e.IsVerified && e.Provider != null)
-                            .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
-                            .Select(e => e.Email)
-                            .FirstOrDefault();
-                    return new { u.Id, DisplayName = u.BurnerName, GoogleEmail = googleEmail };
+                    u.Id,
+                    DisplayName = u.BurnerName,
+                    GoogleEmail = identities.TryGetValue(u.Id, out var identity) ? identity.Email : null,
                 })
                 .Where(x => x.GoogleEmail is not null &&
                     x.GoogleEmail.EndsWith($"@{NobodiesTeamDomain}", StringComparison.OrdinalIgnoreCase))

@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Microsoft.Extensions.DependencyModel;
 using System.Reflection;
 using AwesomeAssertions;
@@ -40,13 +41,15 @@ public class ServiceBoundaryArchitectureTests
     /// </remarks>
     private static readonly HashSet<string> MarkersDroppedForBaseCycle =
     [
+        // Moved from Humans.Users' Contracts/ folder (where it carried IOrchestrator) so Gdpr can
+        // inject it (Users decomposition, commit 0); AccountDeletionService carries the marker.
+        "Humans.Users.Contracts.IAccountDeletionService",
         "Humans.Users.Contracts.IAccountProvisioningService",
         "Humans.Users.Contracts.ICommunicationPreferenceService",
         "Humans.Users.Contracts.IContactFieldService",
         "Humans.Users.Contracts.IHumanLifecycleService",
         "Humans.Users.Contracts.IProfileEditorService",
         "Humans.Users.Contracts.IUserEmailService",
-        "Humans.Users.Contracts.IUserParticipationBackfillService",
         "Humans.Users.Contracts.IUserService",
     ];
 

@@ -10,6 +10,12 @@
   Clear / violations service surface, the admin EmailFlagViolations page, and the Profile Emails grid behavior on N>1 violations — review when these change.
 -->
 
+> **Superseded in part (Users decomposition commit 15).** The `IsGoogle` half of this spec is
+> retired: the Google Workspace identity is GoogleIntegration's `google_workspace_identities`,
+> resolved at read time, so there is no `IsGoogle` invariant to violate. `ClearGoogleAsync` and the
+> `ClearGoogle` routes are gone, `UserEmailFlagViolation` carries the primary counts only, and the
+> EmailFlagViolations page lists `IsPrimary` violations. The `IsPrimary` half below stands.
+
 # Email Flag Violations — Admin & Self Remediation
 
 Resolves [issue #650](https://github.com/nobodies-collective/Humans/issues/650).

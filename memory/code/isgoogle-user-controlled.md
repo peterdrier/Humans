@@ -1,14 +1,14 @@
 ---
 name: isgoogle-user-controlled
-description: "`UserEmail.IsGoogle` is user-set — never auto-set it in merges/syncs/dedup; the sanctioned auto-pick only runs when adding a brand-new row."
+description: "The Google Workspace identity (GoogleIntegration `google_workspace_identities`) is user-set — never write it from merges/syncs/dedup; defaults resolve at read time."
 ---
 
-`UserEmail.IsGoogle` is user-controlled whenever there's a user choice to preserve — the user toggles it themselves to indicate "this is my Google identity email." The rule has nuance: it applies to merges/syncs, not to add-row flows.
+A member's Google Workspace identity — GoogleIntegration's `google_workspace_identities` row, formerly `UserEmail.IsGoogle` (frozen since Users decomposition commit 15) — is user-controlled: only the member or an admin designates it (`IWorkspaceIdentityManagement.SetAsync`, from the Emails grid's Google column) or provisioning a @nobodies.team mailbox does.
 
-- **Never auto-set during merges, syncs, account folds, or duplicate resolution** when the user already has an `IsGoogle=true` row. Don't propagate `IsGoogle` from a source account during a merge; don't flip it during sync. The user's choice is sticky.
-- **The sanctioned auto-pick is the invariant helper that runs after adding a new `UserEmail` row.** It picks a winner (prefer the org email domain, else the current `IsGoogle` row, else most-recent) — but if there's already exactly one `IsGoogle` row matching the winner, it's a no-op. The user's existing choice is preserved unless an obviously better winner exists (a newly-verified org-domain row).
-- **The OAuth callback's email-update upsert path** must also route through that invariant helper after the write — it's an add-row flow, not a sync.
+- **Never write it during merges, syncs, account folds, or duplicate resolution.** A merge deletes the archived account's row and leaves the survivor's alone; a sync writes only the verdict (`SetStatusFromSyncAsync`, for the attempted address), never the address.
+- **Defaults are resolved at read time, never stamped.** With no usable designation, `GetWorkspaceIdentityAsync` picks a verified @nobodies.team address, else the verified primary, else the first verified address. A verified @nobodies.team address outranks a non-@nobodies designation. Don't reintroduce an "invariant helper" that writes a winner after each email mutation.
+- **An address leaving the account clears the designation** (`IGoogleIntegrationWrite.ClearIfAddressAsync`, a cleared row so the frozen legacy flag can't resurrect it) — the only automatic write.
 
-**Why:** an earlier "never automatically" framing was overbroad. The original concern was specifically about merges/syncs overriding user-set state, not about the add-row invariant helper that resolves a genuine vacuum (no existing `IsGoogle` row at all).
+**Why:** the user's choice is sticky; merges and syncs that overrode user-set state were the original bug. The old add-row invariant helper (`EnsureGoogleInvariantAsync`) became a read-time resolution when the identity moved to GoogleIntegration.
 
-**How to apply:** designing a merge/sync/repair flow → never touch `IsGoogle`. Designing an add-row flow (insert/upsert) → route through the invariant helper. If unsure which category applies, ask.
+**How to apply:** designing a merge/sync/repair flow → never touch the identity. An address-removal flow → call `ClearIfAddressAsync` after the commit. If unsure which category applies, ask.

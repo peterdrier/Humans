@@ -302,9 +302,9 @@
                     (<code>ISectionChrome</code>): Users (<code>&lt;vc:profile-card&gt;</code>,
                     <code>_ProfileCard</code>/<code>_HumanPopover</code>, <code>&lt;vc:human-summary&gt;</code>,
                     <code>&lt;vc:communication-preferences-panel&gt;</code>,
-                    <code>&lt;vc:nobodies-email-badge&gt;</code>, <code>&lt;vc:membership-tier-badge&gt;</code>)
-                    and Shifts (the rota cards, <code>&lt;vc:dietary-missing-banner&gt;</code>) — no
-                    hand-written card for either of them here.
+                    <code>&lt;vc:nobodies-email-badge&gt;</code>), Shifts (the rota cards,
+                    <code>&lt;vc:dietary-missing-banner&gt;</code>) and Governance
+                    (<code>&lt;vc:membership-tier-badge&gt;</code>) — no hand-written card for any of them here.
                 </div>
                 <vc:chrome-slot name="@ChromeSlots.WidgetGallery" />
 
@@ -320,7 +320,7 @@
                         Badges showing volunteer event profile info — skills, quirks, dietary, languages, optional medical.
                     </div>
                     @ParamsBlock(
-                        ("@@model", "<code>VolunteerBadgesViewModel</code> (skills from VEP; dietary/medical from Profile)")
+                        ("@@model", "<code>VolunteerBadgesViewModel</code> (skills from VEP; dietary from Cantina, medical from Profile)")
                     )
                     @AuthLine("<code>ShowMedical=true</code> only when the viewer is allowed to see medical info — gate at the call site.")
                     <div class="wg-card-example @(Model.SampleVolunteerProfile is null ? "is-empty" : "")">
@@ -987,7 +987,7 @@
                             BodyName = "widget-gallery-email-body",
                             BodyValue = "**Hello** — this is a _preview_ of a human-composed email.",
                             BodyLabel = "Message",
-                            Category = nameof(Humans.Users.Contracts.MessageCategory.FacilitatedMessages),
+                            Category = nameof(Humans.Email.Contracts.MessageCategory.FacilitatedMessages),
                             RecipientCount = 42,
                             RecipientSummary = "Kitchen team rota volunteers",
                         })

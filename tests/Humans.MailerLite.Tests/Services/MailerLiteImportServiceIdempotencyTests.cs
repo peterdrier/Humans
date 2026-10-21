@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.MailerLite.Services.Dtos;
@@ -116,6 +117,7 @@ internal sealed class IdempotencyHarness
             _users,
             _provisioning,
             _prefs,
+            Substitute.For<ICommunicationPreferenceWrite>(),
             Audit.Mock,
             InMemoryMailerLiteRepository.New(),
             new FakeClock(Instant.FromUtc(2026, 5, 12, 12, 0)),

@@ -17,14 +17,6 @@
             </div>
         </div>
 
-        @if (Model.CanViewOnsiteChip && Model.OnsiteSince is not null)
-        {
-            <span class="badge text-bg-success mb-2" title="@Localizer["Profile_OnsiteTitle"].Value">
-                <i class="fa-solid fa-circle-check"></i>
-                @Localizer["Profile_OnsiteSince", Model.OnsiteSince.Value.ToDateTime()]
-            </span>
-        }
-
         @if (Model.IsOwnProfile)
         {
         }
@@ -72,27 +64,12 @@
         }
         <vc:profile-card user-id="@Model.UserId" view-mode="@cardViewMode" />
 
-        @if (Model.TeamMessageOptions.Count > 0)
-        {
-            <div class="d-flex flex-wrap gap-2 mb-4">
-                @foreach (var team in Model.TeamMessageOptions)
-                {
-                    <a asp-controller="ProfileView" asp-action="SendMessage"
-                       asp-route-id="@Model.UserId" asp-route-teamId="@team.TeamId"
-                       class="btn btn-outline-primary">
-                        <i class="fa-solid fa-envelope me-1"></i>
-                        @Localizer["SendMessage_FromTeamButton", Model.DisplayName, team.TeamName]
-                    </a>
-                }
-            </div>
-        }
-
         @if (Model.IsOwnProfile)
         {
             <vc:my-camps />
         }
 
-        @* Section-contributed parts (IUserPart), e.g. the Events card; each auto-hides when empty *@
+        @* Section-contributed parts (IUserPart), e.g. Tickets' onsite chip; each auto-hides when empty *@
         <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.Profile" user-id="@Model.UserId" view-mode="@cardViewMode" />
 
         @if (!Model.IsOwnProfile && Model.CanViewShiftSignups)
@@ -135,37 +112,6 @@
                           title="@Localizer["Profile_SentMessages"].Value"
                           empty-text="@Localizer["Profile_NoSentMessages"].Value" />
         }
-
-        @if (Model.IsOwnProfile && Model.CampaignGrants.Any())
-        {
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h5 class="mb-0">@Localizer["Profile_MyCodes"]</h5>
-                </div>
-                <div class="card-body p-0">
-                    @{
-                        Func<Humans.Campaigns.Contracts.CampaignGrantSummary, IHtmlContent> redeemedCell =
-                            @<text>
-                                @if (item.RedeemedAt.HasValue)
-                                {
-                                    <span class="badge bg-success">@item.RedeemedAt.Value.ToDate()</span>
-                                }
-                                else
-                                {
-                                    <span class="text-muted">&mdash;</span>
-                                }
-                            </text>;
-                        var grantsTable = TableModel.For(Model.CampaignGrants.OrderByDescending(g => g.AssignedAt).ToList())
-                            .Column(Localizer["Profile_Campaign"].Value, g => g.CampaignTitle)
-                            .Column(Localizer["Profile_Code"].Value, g => g.Code)
-                            .Column(Localizer["Profile_Assigned"].Value, g => g.AssignedAt, c => c.Date())
-                            .Template(Localizer["Profile_Redeemed"].Value, redeemedCell)
-                            .Build();
-                    }
-                    <partial name="_Table" model="grantsTable" />
-                </div>
-            </div>
-        }
     </div>
 
     @if (Model.IsOwnProfile)
@@ -186,12 +132,13 @@
                         }
                     </a>
                     <a asp-controller="ShiftProfile" asp-action="ShiftInfo" class="list-group-item list-group-item-action">@Localizer["Profile_ShiftInfo"]</a>
-                    <a asp-controller="Profile" asp-action="DietaryMedical" class="list-group-item list-group-item-action">@Localizer["Profile_DietaryMedical_PageTitle"]</a>
+                    <a asp-controller="CantinaProfile" asp-action="Dietary" class="list-group-item list-group-item-action">@Localizer["Users_Profile_DietaryLink"]</a>
+                    <a asp-controller="Profile" asp-action="Medical" class="list-group-item list-group-item-action">@Localizer["Profile_DietaryMedical_MedicalConditions_Title"]</a>
                     <a asp-controller="ProfileEmails" asp-action="Emails" class="list-group-item list-group-item-action">@Localizer["Emails_Title"]</a>
-                    <a asp-controller="Profile" asp-action="CommunicationPreferences" class="list-group-item list-group-item-action">@Localizer["CommPrefs_Title"]</a>
+                    <a asp-controller="CommunicationPreferences" asp-action="Index" class="list-group-item list-group-item-action">@Localizer["CommPrefs_Title"]</a>
                     <a asp-controller="Governance" asp-action="Index" class="list-group-item list-group-item-action">@SharedLocalizer["Nav_Governance"]</a>
-                    <a asp-controller="Profile" asp-action="Privacy" class="list-group-item list-group-item-action">@Localizer["ProfilePrivacy_Title"]</a>
-                    <a asp-controller="Profile" asp-action="MyOutbox" class="list-group-item list-group-item-action">@Localizer["Profile_MyEmails"]</a>
+                    <a asp-controller="MyData" asp-action="Index" class="list-group-item list-group-item-action">@Localizer["ProfilePrivacy_Title"]</a>
+                    <a asp-controller="MemberOutbox" asp-action="MyOutbox" class="list-group-item list-group-item-action">@Localizer["Profile_MyEmails"]</a>
                 </div>
             </div>
         </div>

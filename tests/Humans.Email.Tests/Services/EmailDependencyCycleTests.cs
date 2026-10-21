@@ -52,7 +52,7 @@ public sealed class EmailDependencyCycleTests
         services.AddScoped<IEmailBodyComposer>(_ => Substitute.For<IEmailBodyComposer>());
         services.AddScoped<IImmediateOutboxProcessor>(_ => Substitute.For<IImmediateOutboxProcessor>());
         services.AddScoped<IHumansMetrics>(_ => Substitute.For<IHumansMetrics>());
-        services.AddScoped<ICommunicationPreferenceService>(_ => Substitute.For<ICommunicationPreferenceService>());
+        services.AddScoped<ICommunicationPreferenceManagement>(_ => Substitute.For<ICommunicationPreferenceManagement>());
         services.AddScoped<NodaTime.IClock>(_ => Substitute.For<NodaTime.IClock>());
         services.AddScoped<UserManager<User>>(_ =>
             Substitute.For<UserManager<User>>(userStore, null, null, null, null, null, null, null, null));
@@ -119,9 +119,12 @@ public sealed class EmailDependencyCycleTests
         ProjectReferencesOf("Humans.Email").Should().BeSubsetOf(
             [
                 "Humans.AuditLog", "Humans.Base", "Humans.Campaigns", "Humans.Email.Contracts",
-                "Humans.Gdpr", "Humans.Settings", "Humans.Users.Contracts"
+                "Humans.Gdpr", "Humans.Settings", "Humans.Tickets.Contracts", "Humans.Users.Contracts"
             ],
-            because: "Email is a crosscut: it may lose section references, never gain one");
+            because: "Email is a crosscut: it may lose section references, never gain one. "
+                + "Tickets.Contracts (a Base-only leaf) arrived with "
+                + "communication preferences (Users decomposition commit 14): the preferences panel "
+                + "locks the Ticketing row through ITicketService.GetUserTicketHoldingsAsync");
 
     private static IEnumerable<string> ProjectReferencesOf(string projectName)
     {

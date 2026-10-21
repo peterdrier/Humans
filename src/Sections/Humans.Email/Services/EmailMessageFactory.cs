@@ -20,7 +20,7 @@ internal sealed class EmailMessageFactory(
     IStringLocalizer<EmailResource> localizer,
     ILogger<EmailMessageFactory> logger) : IEmailMessageFactory
 {
-    public EmailMessage FacilitatedMessage(string recipientEmail, string recipientName, string senderName, string messageText, bool includeContactInfo, string? senderEmail, string? culture = null)
+    public EmailMessage FacilitatedMessage(string recipientEmail, string recipientName, string senderName, string messageText, bool includeContactInfo, string? senderEmail, string? culture = null, string? replyTo = null)
     {
         using (new CultureScope(culture, logger))
         {
@@ -35,7 +35,7 @@ internal sealed class EmailMessageFactory(
                 Lf("Email_FacilitatedMessage_Subject", senderName),
                 Lf("Email_FacilitatedMessage_Body", Encode(recipientName), Encode(senderName), sanitizedMessage, contactInfoHtml),
                 "facilitated_message", MessageCategory.FacilitatedMessages,
-                ReplyTo: includeContactInfo ? senderEmail : null, Culture: CultureInfo.CurrentUICulture.Name);
+                ReplyTo: replyTo ?? (includeContactInfo ? senderEmail : null), Culture: CultureInfo.CurrentUICulture.Name);
         }
     }
 

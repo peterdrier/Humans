@@ -242,7 +242,7 @@ public class DevLoginControllerTests
         Substitute.For<ITeamSeeding>(),
         Substitute.For<ISystemTeamSync>(),
         _users,
-        Substitute.For<IUserWrite>(),
+        Substitute.For<IConsentWrite>(),
         Substitute.For<IAuditLogService>(),
         Substitute.For<ICampService>(),
         Substitute.For<ICampSeeding>(),

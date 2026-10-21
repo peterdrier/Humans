@@ -28,9 +28,13 @@ issue ref, a verdict of `close` / `edit` / `relabel` / `keep`, and the one-sente
 that is the finding's one prose description. Cap the pass at the section's open issues: one line
 each, never a budget.
 
-**A run may not mutate an existing GitHub issue.** No close, no edit, no relabel, no comment on
-another issue — including issues this run's own findings duplicate, and including a `keep`.
-Peter enacts every verdict after review. A carry-forward item you report as still open is a
+**A run never mutates an existing GitHub issue.** No close, no edit and no relabel, including
+on issues this run's own findings duplicate. Peter enacts every verdict. The thread writes
+nothing itself. For each issue its return also carries a **comment draft**: the current state in
+one to three sentences, checked against the code (paths, lines, PRs), plus the recommended
+close, edit or relabel when the verdict isn't `keep`. When that state matches the issue's last
+section-doctor comment in the dump, the draft is `no comment`. Main re-checks each draft and
+posts it in Phase 7. A carry-forward item you report as still open is a
 candidate only: main re-checks it against the code before it is ranked.
 
 **Issue scope is whatever the main thread proved it can read.** The thread has no GitHub tool:
@@ -53,7 +57,8 @@ never queries GitHub itself. Main builds that file before dispatch:
 2. **List the section's open issues** in every repo that proved reachable, into the file:
    one status line per repo at the head (`peterdrier/Humans: covered` /
    `nobodies-collective/Humans: not covered: <reason>`), then each issue's ref, title, labels
-   and body — the labels are what the spec-quality lens's section-label check reads.
+   and body (the spec-quality lens's section-label check reads the labels). Add the latest
+   comment containing `<!-- section-doctor -->`, if there is one.
 
 Both repos are in scope whenever they are readable; the environment decides, not a flag. The
 thread's return names the repos it reviewed exactly as the status lines say, and `## Threads`

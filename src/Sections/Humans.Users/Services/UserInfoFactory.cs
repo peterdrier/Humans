@@ -27,7 +27,7 @@ internal static class UserInfoFactory
             externalLogins,
             ToProfileInfo(profile, contactFields, profileLanguages, volunteerHistory),
             communicationPreferences
-                .Select(c => new CommunicationPreferenceInfo(
+                .Select(c => new LegacyCommunicationPreferenceInfo(
                     c.Id, c.Category, c.OptedOut, c.InboxEnabled,
                     c.UpdatedAt, c.UpdateSource, c.SubscribedAt))
                 .ToList());

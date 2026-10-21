@@ -1504,4 +1504,6 @@
   <data name="Application_SignificantContributionTooLong" xml:space="preserve"><value>La contribución significativa no debe superar los 2000 caracteres.</value></data>
   <data name="Application_RoleUnderstandingTooLong" xml:space="preserve"><value>La explicación del rol no debe superar los 2000 caracteres.</value></data>
   <data name="Document_LegalLabel" xml:space="preserve"><value>Legal</value></data>
+  <data name="Todo_Medical_Title" xml:space="preserve"><value>¿Algo de tu salud que deban saber los coordinadores?</value></data>
+  <data name="Todo_Medical_Pending" xml:space="preserve"><value>Opcional. Solo lo veis tú y los No-Info Admins.</value></data>
 </root>

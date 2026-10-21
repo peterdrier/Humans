@@ -68,10 +68,10 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
     private static readonly string[] ProfilePrefixes =
     [
         "Profile_", "ProfileEdit_", "ProfilePrivacy_", "ProfileCard_", "CommPrefs_",
-        "Emails_", "EmailGrid_", "Outbox_", "LinkedAccounts_", "VerifyEmail_",
-        "SendMessage_", "Users_Unsubscribe_", "AccountStatus_", "AccountDeletion_",
+        "Emails_", "EmailGrid_", "Email_Outbox_", "LinkedAccounts_", "VerifyEmail_",
+        "SendMessage_", "Users_Unsubscribe_", "AccountStatus_",
         "AdminHuman_", "AdminHumans_", "AdminHumanDetail_", "AdminDetail_",
-        "AdminAddRole_", "AdminRoles_", "Enum_",
+        "Enum_",
         "Dashboard_", "Governance_", "Common_", "Nav_",
     ];
 
@@ -80,10 +80,10 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
     [
         ("/Profile/Me/Edit", "Edit Profile"),                                // ProfileEdit_Title
         ("/Profile/Me/Emails", "Email Addresses"),                           // Emails_Title
-        ("/Profile/Me/Privacy", "My Data"),                                  // ProfilePrivacy_Title
-        ("/Profile/Me/DietaryMedical", "Dietary"),                           // Profile_DietaryMedical_PageTitle
-        ("/Profile/Me/CommunicationPreferences", "Communication Preferences"),// CommPrefs_Title
-        ("/Profile/Me/Outbox", "My Emails"),                                 // Profile_MyEmails
+        ("/Consent/MyData", "My Data"),                                      // Consent_MyData_Title (served by Consent)
+        ("/Profile/Me/Medical", "Medical conditions"),                       // Profile_DietaryMedical_MedicalConditions_Title
+        ("/Email/CommunicationPreferences", "Communication Preferences"),    // CommPrefs_Title (served by Email)
+        ("/Email/Outbox", "My Emails"),                                      // Email_Outbox_MyTitle (served by Email)
     ];
 
     [HumansFact(Timeout = 180000)]
@@ -242,7 +242,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
                  {
                      ("/Profile/Me/Edit", "Editar perfil"),          // ProfileEdit_Title
                      ("/Profile/Me/Emails", "Direcciones de correo"),// Emails_Title
-                     ("/Profile/Me/Privacy", "Mis datos"),           // ProfilePrivacy_Title
+                     ("/Consent/MyData", "Mis datos"),               // Consent_MyData_Title (served by Consent)
                  })
         {
             var response = await Client.GetAsync(url, ct);
