@@ -494,7 +494,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task Withdraw_AfterApproval_LeavesTheGrantConsumed()
+    public async Task Withdraw_AfterApproval_IsRefused_AndLeavesTheGrantConsumed()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -504,7 +504,9 @@ public sealed partial class ExpenseReportServiceTests
 
         var result = await _sut.WithdrawWithResultAsync(id, submitter, TestContext.Current.CancellationToken);
 
-        result.Succeeded.Should().BeTrue(result.Error?.ResourceKey);
+        result.Succeeded.Should().BeFalse();
+        result.Error!.ResourceKey.Should().Be("Expenses_Flash_WithdrawFailed");
+        (await _sut.GetAsync(id, TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Approved);
         await _preapprovalWrites.DidNotReceive().ReleaseAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 

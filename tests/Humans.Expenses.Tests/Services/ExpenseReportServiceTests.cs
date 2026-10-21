@@ -2021,6 +2021,42 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
+    public async Task WithdrawAsync_FlipsCoordinatorEndorsedToWithdrawn()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatusAsync(reportId, submitter, category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.CoordinatorEndorsed);
+
+        (await _sut.WithdrawWithResultAsync(reportId, submitter, TestContext.Current.CancellationToken))
+            .Succeeded.Should().BeTrue();
+
+        (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Status
+            .Should().Be(ExpenseReportStatus.Withdrawn);
+    }
+
+    [HumansFact]
+    public async Task WithdrawAsync_RefusesApproved_WithoutAudit()
+    {
+        // Approval has already queued the Holded push; withdrawing would leave the booking behind.
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatusAsync(reportId, submitter, category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Approved);
+
+        var result = await _sut.WithdrawWithResultAsync(reportId, submitter, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Error!.ResourceKey.Should().Be("Expenses_Flash_WithdrawFailed");
+        (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Status
+            .Should().Be(ExpenseReportStatus.Approved);
+        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(
+            default, null!, Guid.Empty, null!, Guid.Empty);
+    }
+
+    [HumansFact]
     public async Task WithdrawAsync_WritesAudit_AfterSave()
     {
         var (_, category) = SetupActiveYear();
@@ -3351,7 +3387,7 @@ public sealed partial class ExpenseReportServiceTests
                 LastPaymentDate: null, TotalPaid: 0m));
 
         if (withdrawn)
-            ((await _sut.WithdrawWithResultAsync(reportId, userId, TestContext.Current.CancellationToken)).Succeeded).Should().BeTrue();
+            await MarkWithdrawnAfterApprovalAsync(reportId);
 
         var report = await _sut.GetAsync(reportId, TestContext.Current.CancellationToken);
         var timeline = await _sut.GetHoldedTimelineAsync(report!, TestContext.Current.CancellationToken);
@@ -3392,7 +3428,7 @@ public sealed partial class ExpenseReportServiceTests
                 LastPaymentDate: null, TotalPaid: 0m));
 
         if (withdrawn)
-            ((await _sut.WithdrawWithResultAsync(reportId, userId, TestContext.Current.CancellationToken)).Succeeded).Should().BeTrue();
+            await MarkWithdrawnAfterApprovalAsync(reportId);
 
         var report = await _sut.GetAsync(reportId, TestContext.Current.CancellationToken);
         var timeline = await _sut.GetHoldedTimelineAsync(report!, TestContext.Current.CancellationToken);
@@ -4182,6 +4218,16 @@ public sealed partial class ExpenseReportServiceTests
             .Returns(MakeCategorySnapshot(categoryId, teamId));
         _teamService.IsUserCoordinatorOfTeamAsync(teamId, coordinatorUserId,
             Arg.Any<CancellationToken>()).Returns(true);
+    }
+
+    /// <summary>A report withdrawn after approval before that was refused: the row exists in
+    /// production, but no current code path produces it.</summary>
+    private async Task MarkWithdrawnAfterApprovalAsync(Guid reportId)
+    {
+        await using var ctx = new ExpensesDbContext(_expensesOptions);
+        var report = await ctx.ExpenseReports.SingleAsync(r => r.Id == reportId, TestContext.Current.CancellationToken);
+        report.Status = ExpenseReportStatus.Withdrawn;
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
     private async Task SeedReportWithStatusAsync(

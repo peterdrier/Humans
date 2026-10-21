@@ -309,10 +309,11 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         var r = await ctx.ExpenseReports
             .FirstOrDefaultAsync(x => x.Id == reportId, ct);
         if (r is null) return false;
-        // Withdraw is valid only from Submitted/CoordinatorEndorsed/Approved. Draft has no
-        // Withdraw path, so a direct POST must not succeed; Withdrawn is terminal.
-        if (r.Status is ExpenseReportStatus.Draft
-                     or ExpenseReportStatus.Withdrawn) return false;
+        // Withdraw is valid only from Submitted/CoordinatorEndorsed. Draft has no Withdraw path,
+        // Approved has already queued its Holded push, and Withdrawn is terminal, so a direct POST
+        // must not succeed for any of them.
+        if (r.Status is not (ExpenseReportStatus.Submitted
+                             or ExpenseReportStatus.CoordinatorEndorsed)) return false;
         r.Status = ExpenseReportStatus.Withdrawn;
         r.UpdatedAt = updatedAt;
         await ctx.SaveChangesAsync(ct);
@@ -445,10 +446,11 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
     public async Task<IReadOnlyList<Guid>> GetFailedOutboxReportIdsAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Only what a finance admin can actually act on. A report withdrawn after approval leaves
-        // its queued event behind to be written off later; that report is absent from the review
-        // queue and RequeueHoldedPush refuses it, so counting it would leave a banner nobody can
-        // clear. Create events only, for the reason on GetLatestOutboxForReportAsync.
+        // Only what a finance admin can actually act on. Withdrawal after approval is no longer
+        // possible, but reports withdrawn after approval before that rule still carry their queued
+        // event; such a report is absent from the review queue and RequeueHoldedPush refuses it,
+        // so counting it would leave a banner nobody can clear. Create events only, for the
+        // reason on GetLatestOutboxForReportAsync.
         var actionable = ctx.ExpenseReports.AsNoTracking()
             .Where(r => r.Status == ExpenseReportStatus.Approved)
             .Select(r => r.Id);

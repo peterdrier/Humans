@@ -54,7 +54,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     [Xunit.InlineData("Edit", ExpenseReportStatus.Draft)]
     [Xunit.InlineData("Submit", ExpenseReportStatus.Draft)]
     [Xunit.InlineData("Withdraw", ExpenseReportStatus.Submitted)]
-    [Xunit.InlineData("Withdraw", ExpenseReportStatus.Approved)]
+    [Xunit.InlineData("Withdraw", ExpenseReportStatus.CoordinatorEndorsed)]
     public async Task Merged_submitter_keeps_owner_access_without_granting_it_to_another_human(
         string operationName, ExpenseReportStatus status)
     {
@@ -135,13 +135,23 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     }
 
     [HumansFact]
-    public async Task Submitter_CanWithdraw_ApprovedReport()
+    public async Task Submitter_CanWithdraw_CoordinatorEndorsedReport()
     {
-        // Per src/Sections/Humans.Expenses/Docs/Expenses.md invariants: terminal alternates include
-        // Withdrawn from Approved (before SEPA payout is sent).
-        var report = MakeReport(SubmitterId, ExpenseReportStatus.Approved);
+        var report = MakeReport(SubmitterId, ExpenseReportStatus.CoordinatorEndorsed);
         var result = await EvaluateAsync(CreateUser(SubmitterId), report, ExpenseReportOperation.Withdraw);
         result.Should().BeTrue();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(ExpenseReportStatus.Draft)]
+    [Xunit.InlineData(ExpenseReportStatus.Approved)]
+    [Xunit.InlineData(ExpenseReportStatus.Withdrawn)]
+    public async Task Submitter_CannotWithdraw_OutsideThePendingWindow(ExpenseReportStatus status)
+    {
+        // Approval queues the Holded push, so an Approved report is past withdrawing.
+        var report = MakeReport(SubmitterId, status);
+        var result = await EvaluateAsync(CreateUser(SubmitterId), report, ExpenseReportOperation.Withdraw);
+        result.Should().BeFalse();
     }
 
     // ─── Submitter cannot approve/endorse/coordinatorreject ──────────────────

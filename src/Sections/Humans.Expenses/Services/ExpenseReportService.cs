@@ -97,8 +97,9 @@ internal sealed class ExpenseReportService(
             var submitter = await userService.GetUserInfoAsync(report.SubmitterUserId, ct);
             foreach (var id in submitter?.AllUserIds ?? [report.SubmitterUserId])
             {
-                // Withdrawal does not undo a Holded booking. Count the actual documents regardless of
-                // report status; RegisteredAmount excludes lines that have not been pushed yet.
+                // Count the actual documents regardless of report status: reports withdrawn after
+                // approval before that was refused still have their Holded booking.
+                // RegisteredAmount excludes lines that have not been pushed yet.
                 memberRegisteredTotal += (await repo.GetForSubmitterAsync(id, ct)).Sum(RegisteredAmount);
             }
 
@@ -998,11 +999,16 @@ internal sealed class ExpenseReportService(
             if (!await IsSubmitterAsync(report, submitterUserId, ct))
                 return ExpenseMutationResult.Failure("Expenses_Validation_OnlySubmitterCanWithdraw");
 
+            // Approval queues the Holded push, so only a report still pending approval can be
+            // withdrawn; the repository refuses anything else too.
+            if (!IsPendingApproval(report.Status))
+                return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
+
             var now = clock.GetCurrentInstant();
-            // Withdrawn before approval, a held pre-approval goes back to the member to file again;
-            // after approval it was consumed and stays so. A grant revoked while the report was
-            // pending is not held any more and is left alone, so the withdrawal still goes through.
-            var heldGrant = report.PreapprovalGrantId is { } grantId && IsPendingApproval(report.Status)
+            // A held pre-approval goes back to the member to file again. A grant revoked while
+            // the report was pending is not held any more and is left alone, so the withdrawal
+            // still goes through.
+            var heldGrant = report.PreapprovalGrantId is { } grantId
                 ? await preapprovals.GetGrantAsync(grantId, ct)
                 : null;
             var releasesGrant = heldGrant?.Status == GrantStatus.Claimed;

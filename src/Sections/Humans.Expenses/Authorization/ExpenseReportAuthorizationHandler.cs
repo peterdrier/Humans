@@ -80,10 +80,10 @@ internal sealed class ExpenseReportAuthorizationHandler(IBudgetService budgetSer
                 return;
             }
 
+            // Approval queues the Holded push, so an Approved report is past withdrawing.
             if (op == ExpenseReportOperation.Withdraw &&
                 resource.Status is ExpenseReportStatus.Submitted
-                    or ExpenseReportStatus.CoordinatorEndorsed
-                    or ExpenseReportStatus.Approved)
+                    or ExpenseReportStatus.CoordinatorEndorsed)
             {
                 context.Succeed(requirement);
                 return;

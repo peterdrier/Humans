@@ -187,7 +187,7 @@ public sealed class ExpensesControllerTests
     [Xunit.InlineData(ExpenseReportStatus.Draft, true, false)]
     [Xunit.InlineData(ExpenseReportStatus.Submitted, true, true)]
     [Xunit.InlineData(ExpenseReportStatus.CoordinatorEndorsed, true, true)]
-    [Xunit.InlineData(ExpenseReportStatus.Approved, true, true)]
+    [Xunit.InlineData(ExpenseReportStatus.Approved, true, false)]
     [Xunit.InlineData(ExpenseReportStatus.Withdrawn, true, false)]
     [Xunit.InlineData(ExpenseReportStatus.Submitted, false, false)]
     [Xunit.InlineData(ExpenseReportStatus.Approved, false, false)]

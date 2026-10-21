@@ -90,8 +90,8 @@ list is `Expenses.md`; these are the ones a change is most likely to break silen
 - **Approved closes the claim.** Approve and finance-reject accept only Submitted or
   CoordinatorEndorsed (`Data/ExpenseRepository.cs:315`, `Data/ExpenseRepository.cs:353`);
   endorse and coordinator-reject only Submitted (`Data/ExpenseRepository.cs:279`,
-  `Data/ExpenseRepository.cs:297`); the only move out of Approved is Withdrawn
-  (`Data/ExpenseRepository.cs:264`). No payment state is ever stamped on a claim.
+  `Data/ExpenseRepository.cs:297`); nothing moves a claim out of Approved, withdrawal
+  included (`Data/ExpenseRepository.cs:305`). No payment state is ever stamped on a claim.
 - **Payable is the only figure payment math uses** — `min(Total, MaxAmount)`
   (`Contracts/ExpenseReportDto.cs:19`).
 - **A decider's form replaces the cap outright**, blank clears it

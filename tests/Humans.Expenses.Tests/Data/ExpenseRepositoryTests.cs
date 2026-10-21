@@ -324,6 +324,33 @@ public class ExpenseRepositoryTests
         (await _sut.GetByIdAsync(r.Id, ct))!.Status.Should().Be(status);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(ExpenseReportStatus.Draft)]
+    [Xunit.InlineData(ExpenseReportStatus.Approved)]
+    [Xunit.InlineData(ExpenseReportStatus.Withdrawn)]
+    public async Task WithdrawAsync_RefusesAnythingButSubmittedOrEndorsed(ExpenseReportStatus status)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var r = MakeReport(status: status);
+        await SeedAsync(r);
+
+        (await _sut.WithdrawAsync(r.Id, Instant.FromUtc(2026, 5, 3, 12, 0), ct)).Should().BeFalse();
+        (await _sut.GetByIdAsync(r.Id, ct))!.Status.Should().Be(status);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(ExpenseReportStatus.Submitted)]
+    [Xunit.InlineData(ExpenseReportStatus.CoordinatorEndorsed)]
+    public async Task WithdrawAsync_WithdrawsAPendingReport(ExpenseReportStatus status)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var r = MakeReport(status: status);
+        await SeedAsync(r);
+
+        (await _sut.WithdrawAsync(r.Id, Instant.FromUtc(2026, 5, 3, 12, 0), ct)).Should().BeTrue();
+        (await _sut.GetByIdAsync(r.Id, ct))!.Status.Should().Be(ExpenseReportStatus.Withdrawn);
+    }
+
     [HumansFact]
     public async Task ApproveAsync_StampsApproval_AndInsertsOutboxRow()
     {
@@ -458,7 +485,7 @@ public class ExpenseRepositoryTests
     [HumansFact]
     public async Task GetFailedOutboxReportIdsAsync_SkipsReportsFinanceCannotAction()
     {
-        // Withdrawn after approval: absent from the review queue, and RequeueHoldedPush refuses it.
+        // Withdrawn after approval (legacy rows from before that was refused): absent from the review queue, and RequeueHoldedPush refuses it.
         // Counting it would leave a banner nobody can clear.
         var withdrawn = MakeReport(status: ExpenseReportStatus.Withdrawn);
         var approved = MakeReport(status: ExpenseReportStatus.Approved);

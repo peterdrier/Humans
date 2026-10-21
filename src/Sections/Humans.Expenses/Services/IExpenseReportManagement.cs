@@ -93,9 +93,9 @@ internal interface IExpenseReportManagement : IExpenseReportService, IApplicatio
     Task<ExpenseMutationResult> SubmitWithResultAsync(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, CancellationToken ct = default);
 
-    /// <summary>Withdrawal stays the submitter's own decision — there is no on-behalf path. Withdrawn
-    /// before approval, a pre-approved report releases its grant; after approval the grant stays
-    /// consumed.</summary>
+    /// <summary>Withdrawal stays the submitter's own decision; there is no on-behalf path. Only a
+    /// Submitted or CoordinatorEndorsed report can be withdrawn; a pre-approved one releases its
+    /// grant. Approved reports are refused: approval has already queued the Holded push.</summary>
     Task<ExpenseMutationResult> WithdrawWithResultAsync(
         Guid reportId, Guid submitterUserId, CancellationToken ct = default);
 
