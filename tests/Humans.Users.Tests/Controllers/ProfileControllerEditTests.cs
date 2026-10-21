@@ -16,7 +16,6 @@ using Humans.Tickets.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Email.Contracts;
-using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
@@ -61,7 +60,6 @@ public class ProfileControllerEditTests
         Substitute.For<IGovernanceWrite>();
     private readonly IOnboardingIntake _onboardingService = Substitute.For<IOnboardingIntake>();
     private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
-    private readonly IGdprService _gdprService = Substitute.For<IGdprService>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
     private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
@@ -98,13 +96,11 @@ public class ProfileControllerEditTests
             _onboardingService,
             Substitute.For<IShiftSignups>(),
             _settings,
-            _gdprService,
             _configuration,
             new ConfigurationRegistry(),
             NullLogger<ProfileController>.Instance,
             localizer,
             sharedLocalizer,
-            new FakeClock(Instant.FromUtc(2026, 5, 9, 12, 0)),
             _governanceService,
             _governanceWrite,
             _accountDeletionService,
@@ -532,42 +528,11 @@ public class ProfileControllerEditTests
     }
 
     [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task AccountWallPages_StopLoadingAfterRequestCancellation(bool deletion)
-    {
-        using var request = new CancellationTokenSource();
-        _controller.HttpContext.RequestAborted = request.Token;
-        ((ClaimsIdentity)_controller.User.Identity!).AddClaim(
-            new Claim(Humans.Base.Authorization.RoleChecks.UserStateClaimType, nameof(UserState.Suspended)));
-        var now = Instant.FromUtc(2026, 10, 3, 0, 0);
-        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(call =>
-        {
-            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(new User
-            {
-                Id = _userId,
-                PreferredLanguage = "en",
-                DeletionRequestedAt = now,
-                DeletionScheduledFor = now + Duration.FromDays(30),
-            }.ToUserInfo());
-        });
-        var wall = new UserController(_userService, _accountDeletionService, Substitute.For<IStringLocalizer<UsersResource>>())
-        {
-            ControllerContext = _controller.ControllerContext,
-        };
-        Func<Task<IActionResult>> load = deletion ? wall.Deletion : wall.Status;
-        (await load()).Should().BeOfType<ViewResult>();
-        await request.CancelAsync();
-        await load.Should().ThrowAsync<OperationCanceledException>();
-    }
-
-    [HumansTheory]
     [InlineData(null)]
     [InlineData(10)]
     [InlineData(30)]
     [InlineData(60)]
-    public async Task DeletionPages_report_the_later_of_grace_deadline_and_ticket_hold(int? holdDays)
+    public async Task Privacy_reports_the_later_of_grace_deadline_and_ticket_hold(int? holdDays)
     {
         var now = Instant.FromUtc(2026, 10, 3, 0, 0);
         var user = new User
@@ -582,38 +547,6 @@ public class ProfileControllerEditTests
 
         var privacy = (await _controller.Privacy()).Should().BeOfType<ViewResult>().Subject;
         privacy.Model.Should().BeOfType<PrivacyViewModel>().Which.DeletionScheduledFor.Should().Be(expectedDate);
-
-        var wall = new UserController(_userService, _accountDeletionService, Substitute.For<IStringLocalizer<UsersResource>>())
-        {
-            ControllerContext = _controller.ControllerContext,
-        };
-        var deletion = (await wall.Deletion()).Should().BeOfType<ViewResult>().Subject;
-        deletion.Model.Should().BeOfType<PendingDeletionViewModel>().Which.ScheduledFor.Should().Be(expectedDate);
-    }
-
-    [HumansFact]
-    public async Task DownloadData_ExportFailure_ShowsErrorAndReturnsToPrivacy()
-    {
-        _gdprService.ExportForUserAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<GdprExport>(new InvalidOperationException("contributor failed")));
-
-        var result = await _controller.DownloadData(TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Privacy");
-        _controller.TempData[TempDataKeys.ErrorMessage].Should().Be("Error_TryAgainLater");
-    }
-
-    [HumansFact]
-    public async Task DownloadData_CancelledRequest_PropagatesCancellation()
-    {
-        using var cancellation = new CancellationTokenSource();
-        await cancellation.CancelAsync();
-        _gdprService.ExportForUserAsync(_userId, cancellation.Token)
-            .Returns(Task.FromException<GdprExport>(new OperationCanceledException(cancellation.Token)));
-
-        var act = () => _controller.DownloadData(cancellation.Token);
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [HumansFact]

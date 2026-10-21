@@ -32,7 +32,7 @@
                     <li>@Localizer["ProfilePrivacy_ExportTeams"]</li>
                     <li>@Localizer["ProfilePrivacy_ExportRoles"]</li>
                 </ul>
-                <a asp-action="DownloadData" class="btn btn-primary">
+                <a asp-controller="MemberData" asp-action="DownloadData" class="btn btn-primary">
                     @Localizer["ProfilePrivacy_DownloadMyData"]
                 </a>
             </div>
@@ -112,7 +112,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@SharedLocalizer["Common_Cancel"]</button>
-                    <form asp-action="RequestDeletion" method="post" class="d-inline">
+                    <form asp-controller="MemberData" asp-action="RequestDeletion" method="post" class="d-inline">
                         @Html.AntiForgeryToken()
                         <button type="submit" class="btn btn-danger">@Localizer["ProfilePrivacy_YesDeleteMyAccount"]</button>
                     </form>

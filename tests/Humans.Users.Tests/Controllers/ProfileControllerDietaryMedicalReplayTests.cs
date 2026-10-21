@@ -8,7 +8,6 @@ using Humans.Tickets.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Email.Contracts;
-using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
@@ -89,13 +88,11 @@ public class ProfileControllerDietaryMedicalReplayTests
             Substitute.For<IOnboardingIntake>(),
             _signupService,
             Substitute.For<ISettingsService>(),
-            Substitute.For<IGdprService>(),
             configuration,
             new ConfigurationRegistry(),
             NullLogger<ProfileController>.Instance,
             localizer,
             sharedLocalizer,
-            new FakeClock(Instant.FromUtc(2026, 5, 25, 12, 0)),
             Substitute.For<IGovernanceService>(),
             Substitute.For<IGovernanceWrite>(),
             Substitute.For<IAccountDeletionService>(),

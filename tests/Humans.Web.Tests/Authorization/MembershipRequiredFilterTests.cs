@@ -44,8 +44,16 @@ public class MembershipRequiredFilterTests
             .FirstOrDefault(t => t is not null)
         ?? throw new InvalidOperationException(
             "Humans.Email.Controllers.MemberOutboxController not found in any section assembly.");
-    private static readonly Type UserControllerType = typeof(ProfileController).Assembly
-        .GetType("Humans.Users.Controllers.UserController", throwOnError: true)!;
+    // MemberDataController and UserController are internal to Humans.Gdpr: the member's own
+    // export/deletion-request actions and the account-status wall / pending-deletion landing.
+    private static readonly Type MemberDataControllerType = GdprControllerType("MemberDataController");
+    private static readonly Type UserControllerType = GdprControllerType("UserController");
+
+    private static Type GdprControllerType(string name) =>
+        SectionDiscoveryExtensions.SectionAssemblies()
+            .Select(a => a.GetType($"Humans.Gdpr.Controllers.{name}", throwOnError: false))
+            .FirstOrDefault(t => t is not null)
+        ?? throw new InvalidOperationException($"Humans.Gdpr.Controllers.{name} not found in any section assembly.");
     [HumansFact]
     public async Task Active_user_reaches_a_non_exempt_controller()
     {
@@ -149,8 +157,8 @@ public class MembershipRequiredFilterTests
             (typeof(ProfileController), nameof(ProfileController.CommunicationPreferences)),
             (typeof(ProfileController), nameof(ProfileController.UpdatePreference)),
             (typeof(ProfileController), nameof(ProfileController.Notifications)),
-            (typeof(ProfileController), nameof(ProfileController.DownloadData)),
-            (typeof(ProfileController), nameof(ProfileController.RequestDeletion)),
+            (MemberDataControllerType, "DownloadData"),
+            (MemberDataControllerType, "RequestDeletion"),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.Emails)),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.AddEmail)),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.SetPrimary)),
@@ -187,6 +195,7 @@ public class MembershipRequiredFilterTests
         {
             typeof(ProfileController), typeof(ProfileEmailsController),
             OnboardingWidgetControllerType, UserControllerType, MemberOutboxControllerType,
+            MemberDataControllerType,
         })
         {
             var methods = type.GetMethods().Where(m => m.DeclaringType == type
@@ -415,6 +424,7 @@ public class MembershipRequiredFilterTests
             "Account" => typeof(AccountController),
             "Language" => typeof(LanguageController),
             "User" => UserControllerType,
+            "MemberData" => MemberDataControllerType,
             _ => typeof(HomeController),
         };
         var actionDescriptor = new ControllerActionDescriptor

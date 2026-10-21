@@ -149,7 +149,7 @@ These are managed by `UserManager<User>` / `SignInManager<User>` / `RoleManager<
 
 ## Routing
 
-The section's controllers (`Controllers/`): `ProfileController` (`/Profile/Me/*`, the member's own profile), `ProfileEmailsController` (`/Profile/Me/Emails/*` and `/Profile/{id}/Admin/Emails/*`), `ProfileViewController` (`/Profile/{id}`, `/Profile/Picture`, popovers, `/Profile/Search`), `ProfileApiController` (`/api/profiles/*`), `UserController` (`/User/*`), `GuestAccountController` (`/Guest/*`), `UnsubscribeController` (`/Unsubscribe/*`), `UsersAdminController` (`/Users/Admin/*`), `UsersAdminAccountMergesController`, `ProfileAdminController` (`/Profile/Admin/EmailProblems/*`). The section's one-off copies are data migrations (`SectionDataMigrations`, below), run from Debug's `/Debug/DataMigrations`. The Profile, User, Guest, API and admin routes are tabled under [Part 2 — Routing](#routing-1); Part 1 covers identity and unsubscribe.
+The section's controllers (`Controllers/`): `ProfileController` (`/Profile/Me/*`, the member's own profile), `ProfileEmailsController` (`/Profile/Me/Emails/*` and `/Profile/{id}/Admin/Emails/*`), `ProfileViewController` (`/Profile/{id}`, `/Profile/Picture`, popovers, `/Profile/Search`), `ProfileApiController` (`/api/profiles/*`), `GuestAccountController` (`/Guest/*`), `UnsubscribeController` (`/Unsubscribe/*`), `UsersAdminController` (`/Users/Admin/*`), `UsersAdminAccountMergesController`, `ProfileAdminController` (`/Profile/Admin/EmailProblems/*`). The section's one-off copies are data migrations (`SectionDataMigrations`, below), run from Debug's `/Debug/DataMigrations`. The Profile, User, Guest, API and admin routes are tabled under [Part 2 — Routing](#routing-1); Part 1 covers identity and unsubscribe.
 
 Authentication routes are served by `AccountController`, which lives in `Humans.Web/Controllers/` (the Shell) but dispatches into this section's services (`ExternalLoginService`, `IMagicLinkService`, `AccountProvisioningService`):
 
@@ -172,10 +172,7 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 - `POST /Unsubscribe/{token}` — submits the confirmation form (legacy path only; new-format tokens redirect to the comms-preferences page on GET)
 - `POST /Unsubscribe/OneClick` — RFC 8058 one-click unsubscribe (no anti-forgery token by design)
 
-**`UserController`** (`/User/*`, `[Authorize]`, exempt from `MembershipRequiredFilter` because these are its redirect targets; each action self-checks `UserState`):
-- `GET /User/Status` — account-status wall for non-`Active` states
-- `GET /User/Deletion` — deletion-pending landing
-- `POST /User/Deletion/Cancel` — cancel a pending deletion (`IAccountDeletionService.CancelDeletionAsync`)
+**Served by Gdpr, not this section:** `/User/Status`, `/User/Deletion`, `/User/Deletion/Cancel` (`UserController`), `POST /Profile/Me/Privacy/RequestDeletion` and `GET /Profile/Me/DownloadData` (`MemberDataController`) — the URLs are unchanged. They inject `IAccountDeletionService` from `Humans.Users.Contracts`; the deletion work (grace period, ticket hold, audit, email, the timestamps on `users` behind `IUserWrite`, the anonymize job) stays here.
 
 **`GuestAccountController`** (`/Guest/*`, profileless-account self-service):
 - `GET /Guest/CommunicationPreferences`, `POST /Guest/CommunicationPreferences/Update` — `[AllowAnonymous]`; accept an unsubscribe token in place of a session
@@ -619,8 +616,8 @@ Self-service profile functionality lives under `/Profile`, split by shape across
 | `/Profile/Me/CommunicationPreferences/Update` | POST — save one category's preference |
 | `/Profile/Me/Notifications` | Permanent redirect to `/Profile/Me/CommunicationPreferences` |
 | `/Profile/Me/Privacy` | Privacy / deletion status |
-| `/Profile/Me/Privacy/RequestDeletion` | POST — start the 30-day deletion countdown |
-| `/Profile/Me/DownloadData` | GDPR Article 15 JSON export download |
+| `/Profile/Me/Privacy/RequestDeletion` | POST — start the 30-day deletion countdown — served by Gdpr's `MemberDataController`; the Privacy page's form posts to it |
+| `/Profile/Me/DownloadData` | GDPR Article 15 JSON export download — served by Gdpr's `MemberDataController`; linked from the Privacy page |
 | `/Profile/Me/Outbox` | Own email outbox — served by Email's `MemberOutboxController`, linked from the Profile page |
 | `/Profile/{id}` | View another human's profile |
 | `/Profile/{id}/Popover` | Quick profile popup |
@@ -777,7 +774,7 @@ Email Problems remediation buttons use the shared `data-confirm` handler: each c
 
 ### Account deletion cascade
 
-Account deletion cascades (user-requested / admin-initiated / expiry-triggered) are orchestrated by `IAccountDeletionService` (`src/Sections/Humans.Users/Services/AccountDeletionService.cs`). The interface is declared on the `Humans.Users.Contracts` leaf, not the section's `Contracts/` folder, so Gdpr's deletion screens can inject it; it carries no `IOrchestrator` marker there (the leaf cannot name Base), and `AccountDeletionService` carries it instead. `ProfileService` owns only profile-picture storage (`IProfilePictureService`); profile-data anonymization is `IUserManagement.AnonymizeProfileForDeletionAsync`. User-initiated deletion request and cancel both live on `IAccountDeletionService` (`RequestDeletionAsync`, `CancelDeletionAsync`). `ProfileController.RequestDeletion` (signed-in users with profiles), `GuestAccountController.RequestDeletion` (profileless users) and `UserController.CancelDeletion` call the orchestrator directly — no manual `User.DeletionRequestedAt`/`DeletionScheduledFor`/`DeletionEligibleAfter` writes anywhere else. The orchestrator computes the optional `DeletionEligibleAfter` (post-event hold for current-event ticket holders) inline via `ITicketService.GetUserTicketHoldingsAsync` so every entry point gets the same treatment.
+Account deletion cascades (user-requested / admin-initiated / expiry-triggered) are orchestrated by `IAccountDeletionService` (`src/Sections/Humans.Users/Services/AccountDeletionService.cs`). The interface is declared on the `Humans.Users.Contracts` leaf, not the section's `Contracts/` folder, so Gdpr's deletion screens can inject it; it carries no `IOrchestrator` marker there (the leaf cannot name Base), and `AccountDeletionService` carries it instead. `ProfileService` owns only profile-picture storage (`IProfilePictureService`); profile-data anonymization is `IUserManagement.AnonymizeProfileForDeletionAsync`. User-initiated deletion request and cancel both live on `IAccountDeletionService` (`RequestDeletionAsync`, `CancelDeletionAsync`). Gdpr's `MemberDataController.RequestDeletion` (signed-in users with profiles), `GuestAccountController.RequestDeletion` (profileless users) and Gdpr's `UserController.CancelDeletion` call the orchestrator directly — no manual `User.DeletionRequestedAt`/`DeletionScheduledFor`/`DeletionEligibleAfter` writes anywhere else. The orchestrator computes the optional `DeletionEligibleAfter` (post-event hold for current-event ticket holders) inline via `ITicketService.GetUserTicketHoldingsAsync` so every entry point gets the same treatment.
 
 Deletion requests invalidate the user's shift authorization and view caches after the write attempt, including failures in later membership/role cleanup or the confirmation email. Those failures still propagate; cache cleanup never reports an incomplete cascade as successful.
 

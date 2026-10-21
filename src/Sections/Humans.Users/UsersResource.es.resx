@@ -150,10 +150,6 @@
   <data name="Profile_DeletionAlreadyPending" xml:space="preserve">
     <value>Ya existe una solicitud de eliminación pendiente.</value>
   </data>
-  <data name="Profile_DeletionRequested" xml:space="preserve">
-    <value>Se ha solicitado la eliminación de la cuenta. Su cuenta será eliminada el {0} a menos que cancele la solicitud.</value>
-    <comment>{0} = deletion date</comment>
-  </data>
   <data name="Profile_NoDeletionPending" xml:space="preserve">
     <value>No hay ninguna solicitud de eliminación pendiente.</value>
   </data>
@@ -839,15 +835,7 @@
   <!-- ======================== -->
   <!-- Account status page      -->
   <!-- ======================== -->
-  <data name="AccountStatus_Title" xml:space="preserve"><value>Estado de la cuenta</value></data>
   <data name="AccountStatus_HeadingSuspended" xml:space="preserve"><value>Tu cuenta ha sido suspendida</value></data>
-  <data name="AccountStatus_HeadingRejected" xml:space="preserve"><value>Tu cuenta ha sido rechazada</value></data>
-  <data name="AccountStatus_HeadingDeleted" xml:space="preserve"><value>Tu cuenta ha sido eliminada</value></data>
-  <data name="AccountStatus_HeadingMerged" xml:space="preserve"><value>Tu cuenta ha sido fusionada</value></data>
-  <data name="AccountStatus_HeadingUnavailable" xml:space="preserve"><value>Tu cuenta no está disponible</value></data>
-  <data name="AccountStatus_ContactInfo" xml:space="preserve"><value>Contacta con un administrador para más información:</value></data>
-  <data name="AccountStatus_ReasonLabel" xml:space="preserve"><value>Motivo:</value></data>
-  <data name="AccountStatus_ReferenceId" xml:space="preserve"><value>ID de referencia:</value></data>
   <data name="AccountStatus_ConsentSuspendedBody" xml:space="preserve"><value>Tu acceso está suspendido hasta que completes los consentimientos legales requeridos.</value></data>
   <data name="AccountStatus_HeadingAdminSuspended" xml:space="preserve"><value>Tu cuenta ha sido suspendida por un administrador</value></data>
   <data name="AccountStatus_ReviewConsents" xml:space="preserve"><value>Revisar los consentimientos requeridos</value></data>
@@ -855,11 +843,6 @@
   <!-- ======================== -->
   <!-- Account deletion         -->
   <!-- ======================== -->
-  <data name="AccountDeletion_Title" xml:space="preserve"><value>Eliminación de cuenta pendiente</value></data>
-  <data name="AccountDeletion_Heading" xml:space="preserve"><value>Tu cuenta está programada para eliminación</value></data>
-  <data name="AccountDeletion_ScheduledFor" xml:space="preserve"><value>Se eliminará permanentemente el {0} a menos que la canceles.</value></data>
-  <data name="AccountDeletion_Unscheduled" xml:space="preserve"><value>Se eliminará permanentemente a menos que la canceles.</value></data>
-  <data name="AccountDeletion_CancelButton" xml:space="preserve"><value>Cancelar solicitud de eliminación</value></data>
 
   <!-- ======================== -->
   <!-- Admin: member list       -->

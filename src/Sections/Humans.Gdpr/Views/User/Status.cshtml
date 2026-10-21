@@ -1,14 +1,14 @@
-@model Humans.Users.Models.AccountStatusViewModel
+@model Humans.Gdpr.Models.AccountStatusViewModel
 @{
-    ViewData["Title"] = Localizer["AccountStatus_Title"].Value;
+    ViewData["Title"] = Localizer["Gdpr_AccountStatus_Title"].Value;
     var headingKey = Model.State switch
     {
-        UserState.Suspended => "AccountStatus_HeadingSuspended",
-        UserState.AdminSuspended => "AccountStatus_HeadingAdminSuspended",
-        UserState.Rejected => "AccountStatus_HeadingRejected",
-        UserState.Deleted => "AccountStatus_HeadingDeleted",
-        UserState.Merged => "AccountStatus_HeadingMerged",
-        _ => "AccountStatus_HeadingUnavailable",
+        UserState.Suspended => "Gdpr_AccountStatus_HeadingSuspended",
+        UserState.AdminSuspended => "Gdpr_AccountStatus_HeadingAdminSuspended",
+        UserState.Rejected => "Gdpr_AccountStatus_HeadingRejected",
+        UserState.Deleted => "Gdpr_AccountStatus_HeadingDeleted",
+        UserState.Merged => "Gdpr_AccountStatus_HeadingMerged",
+        _ => "Gdpr_AccountStatus_HeadingUnavailable",
     };
 }
 
@@ -19,26 +19,26 @@
             <h1 class="h4 mb-3">@Localizer[headingKey]</h1>
             @if (Model.State == UserState.Suspended)
             {
-                <p class="text-muted mb-3">@Localizer["AccountStatus_ConsentSuspendedBody"]</p>
+                <p class="text-muted mb-3">@Localizer["Gdpr_AccountStatus_ConsentSuspendedBody"]</p>
                 <a asp-controller="OnboardingWidget" asp-action="Consents" class="btn btn-primary mb-3">
-                    @Localizer["AccountStatus_ReviewConsents"]
+                    @Localizer["Gdpr_AccountStatus_ReviewConsents"]
                 </a>
             }
             else
             {
                 <p class="text-muted mb-2">
-                    @Localizer["AccountStatus_ContactInfo"]
+                    @Localizer["Gdpr_AccountStatus_ContactInfo"]
                     <a href="mailto:@Model.ContactEmail">@Model.ContactEmail</a>
                 </p>
             }
             @if (!string.IsNullOrWhiteSpace(Model.RejectionReason))
             {
                 <div class="alert alert-secondary text-start mt-3 mb-0">
-                    <strong>@Localizer["AccountStatus_ReasonLabel"]</strong> @Model.RejectionReason
+                    <strong>@Localizer["Gdpr_AccountStatus_ReasonLabel"]</strong> @Model.RejectionReason
                 </div>
             }
             <p class="text-muted small mt-4 mb-0">
-                @Localizer["AccountStatus_ReferenceId"] <code>@Model.UserId</code>
+                @Localizer["Gdpr_AccountStatus_ReferenceId"] <code>@Model.UserId</code>
             </p>
         </div>
     </div>

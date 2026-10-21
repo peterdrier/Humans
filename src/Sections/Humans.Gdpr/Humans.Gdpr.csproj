@@ -1,18 +1,18 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
-  <!--
-    Still Microsoft.NET.Sdk, not Sdk.Razor: Gdpr has one controller and no views, because
-    its only action returns File() or a redirect. /Guest/DownloadData lives here because
-    the only data surface it names is this section's own IGdprService;
-    /Profile/Me/DownloadData stays on Users' ProfileController, since moving it would
-    change a URL.
-  -->
+  <PropertyGroup>
+    <!-- MVC views/controllers, not Blazor components. -->
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
 
   <ItemGroup>
-    <!-- GuestDataController: [Authorize], IActionResult, File()/RedirectToAction — the
-         framework reference is not transitive through the Humans.Base ProjectReference
-         below, so every controller-owning section declares its own (Auth's shape). -->
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <!--
+      Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
+      The controllers use IActionResult/ILogger; the views come from the Razor SDK.
+    -->
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
+    <Using Include="Microsoft.Extensions.Logging" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,9 +24,11 @@
   <ItemGroup>
     <!--
       No Humans.Infrastructure and no Humans.UI reference: Gdpr owns no tables, so there is
-      no DbContext, no repository and no AddSectionDbContext call, and it has no views. The
-      orchestrator injects IEnumerable<IUserDataContributor> from its own Contracts/ folder, IUserService
-      for the merge lineage the export envelope carries, IClock and ILogger — nothing else.
+      no DbContext, no repository and no AddSectionDbContext call. Its views (the
+      account-status wall, the pending-deletion landing) render over Base's shared view layer.
+      The orchestrator injects IEnumerable<IUserDataContributor> from its own Contracts/ folder, IUserService
+      for the merge lineage the export envelope carries, IClock and ILogger. The controllers add
+      Users.Contracts' IAccountDeletionService for the member's own deletion request and cancel.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />

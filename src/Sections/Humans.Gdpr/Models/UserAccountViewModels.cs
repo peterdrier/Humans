@@ -1,6 +1,6 @@
 using Humans.Users.Contracts;
 
-namespace Humans.Users.Models;
+namespace Humans.Gdpr.Models;
 
 /// <summary>The account-status wall shown to Suspended/AdminSuspended/Rejected/Deleted/Merged users.</summary>
 internal sealed class AccountStatusViewModel

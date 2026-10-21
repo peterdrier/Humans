@@ -65,7 +65,7 @@ change.
 
 ```
 ┌─────────────────────────┐
-│ ProfileController /     │
+│ MemberDataController /  │
 │ GuestDataController     │
 └────────────┬────────────┘
              │

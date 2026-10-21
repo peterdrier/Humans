@@ -18,7 +18,6 @@
 | `UsersAdminController.Audience` | Action | `Admin` | `PolicyNames.AdminOnly` (override on the class-level `HumanAdminBoardOrAdmin` controller) |
 | `UsersAdminAccountMergesController` | Class | `Admin` | `PolicyNames.AdminOnly` (account-merge surface at `/Users/Admin/AccountMerges`; `Index`, `Merge`, `MergeRequest`, `Dismiss`, `Close` all inherit) |
 | `ProfileAdminController` | Class | `Admin` | `PolicyNames.AdminOnly` |
-| `UserController` | Class | `[Authorize]` (authenticated) | — (account-status wall + cancel-deletion landings at `/User`; exempt from `MembershipRequiredFilter` since these ARE the redirect targets — each action self-checks the caller's `UserState`) |
 | `UnsubscribeController` | Class | (no class-level `[Authorize]`) | — |
 | `GuestAccountController` | Class | `[Authorize]` (authenticated) | — (profileless-account self-service: comms preferences, GDPR erasure) |
 | `GuestAccountController.CommunicationPreferences` (GET) / `UpdatePreference` (POST) | Action | `AllowAnonymous` | Override (accepts an unsubscribe token in place of a session; see `EndpointAuthorizationTests` allowlist) |

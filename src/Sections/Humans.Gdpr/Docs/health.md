@@ -86,7 +86,7 @@ ledger, a fix that adds public surface either way.
   `src/Sections/Humans.Gdpr/Services/GdprService.cs:84`.
 - **No route exports another person's data.** Neither download action accepts a user id;
   both resolve the caller's own: `src/Sections/Humans.Gdpr/Controllers/GuestDataController.cs:38`
-  and `src/Sections/Humans.Users/Controllers/ProfileController.cs:881`.
+  and `src/Sections/Humans.Gdpr/Controllers/MemberDataController.cs` (`DownloadData`).
 - **Every declared category is either erased in full or states a lawful basis** of real
   length: `tests/Humans.Web.Tests/Services/Gdpr/GdprErasureCoverageTests.cs:103`, over
   instances built uninitialised at
@@ -119,7 +119,8 @@ ledger, a fix that adds public surface either way.
 - **Gdpr does not register the contributor forwarding factories.** Each belongs beside the
   service that owns it; registering them here would make this section name every other
   section's internal service type.
-- **`/Profile/Me/DownloadData` is not moved here.** Moving it would change a URL.
+- **The `/Profile/Me/Privacy` page is not here.** It stays on Users until it moves to Consent; `MemberDataController` keeps the
+  `Profile/Me` route prefix so the export and deletion-request URLs did not change.
 - **The deletion lifecycle is not here.** Grace period, ticket hold, audit entry and
   confirmation email belong to `AccountDeletionService` under Users.
 - **The export does not refuse an undeclared portion.** Dropping it would hand the person

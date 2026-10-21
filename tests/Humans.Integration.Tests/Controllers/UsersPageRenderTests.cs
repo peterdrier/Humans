@@ -69,7 +69,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
     [
         "Profile_", "ProfileEdit_", "ProfilePrivacy_", "ProfileCard_", "CommPrefs_",
         "Emails_", "EmailGrid_", "Email_Outbox_", "LinkedAccounts_", "VerifyEmail_",
-        "SendMessage_", "Users_Unsubscribe_", "AccountStatus_", "AccountDeletion_",
+        "SendMessage_", "Users_Unsubscribe_", "AccountStatus_",
         "AdminHuman_", "AdminHumans_", "AdminHumanDetail_", "AdminDetail_",
         "Enum_",
         "Dashboard_", "Governance_", "Common_", "Nav_",

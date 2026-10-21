@@ -150,10 +150,6 @@
   <data name="Profile_DeletionAlreadyPending" xml:space="preserve">
     <value>Ein Löschantrag ist bereits ausstehend.</value>
   </data>
-  <data name="Profile_DeletionRequested" xml:space="preserve">
-    <value>Kontolöschung beantragt. Ihr Konto wird am {0} gelöscht, sofern Sie nicht widerrufen.</value>
-    <comment>{0} = deletion date</comment>
-  </data>
   <data name="Profile_NoDeletionPending" xml:space="preserve">
     <value>Kein Löschantrag ausstehend.</value>
   </data>
@@ -839,15 +835,7 @@
   <!-- ======================== -->
   <!-- Account status page      -->
   <!-- ======================== -->
-  <data name="AccountStatus_Title" xml:space="preserve"><value>Kontostatus</value></data>
   <data name="AccountStatus_HeadingSuspended" xml:space="preserve"><value>Dein Konto wurde gesperrt</value></data>
-  <data name="AccountStatus_HeadingRejected" xml:space="preserve"><value>Dein Konto wurde abgelehnt</value></data>
-  <data name="AccountStatus_HeadingDeleted" xml:space="preserve"><value>Dein Konto wurde gelöscht</value></data>
-  <data name="AccountStatus_HeadingMerged" xml:space="preserve"><value>Dein Konto wurde zusammengeführt</value></data>
-  <data name="AccountStatus_HeadingUnavailable" xml:space="preserve"><value>Dein Konto ist nicht verfügbar</value></data>
-  <data name="AccountStatus_ContactInfo" xml:space="preserve"><value>Kontaktiere einen Administrator für weitere Informationen:</value></data>
-  <data name="AccountStatus_ReasonLabel" xml:space="preserve"><value>Grund:</value></data>
-  <data name="AccountStatus_ReferenceId" xml:space="preserve"><value>Referenz-ID:</value></data>
   <data name="AccountStatus_ConsentSuspendedBody" xml:space="preserve"><value>Dein Zugang ist gesperrt, bis du die erforderlichen rechtlichen Einwilligungen abschließt.</value></data>
   <data name="AccountStatus_HeadingAdminSuspended" xml:space="preserve"><value>Dein Konto wurde von einem Administrator gesperrt</value></data>
   <data name="AccountStatus_ReviewConsents" xml:space="preserve"><value>Erforderliche Einwilligungen prüfen</value></data>
@@ -855,11 +843,6 @@
   <!-- ======================== -->
   <!-- Account deletion         -->
   <!-- ======================== -->
-  <data name="AccountDeletion_Title" xml:space="preserve"><value>Ausstehende Kontolöschung</value></data>
-  <data name="AccountDeletion_Heading" xml:space="preserve"><value>Dein Konto ist zur Löschung vorgemerkt</value></data>
-  <data name="AccountDeletion_ScheduledFor" xml:space="preserve"><value>Es wird am {0} endgültig gelöscht, sofern du nicht abbrichst.</value></data>
-  <data name="AccountDeletion_Unscheduled" xml:space="preserve"><value>Es wird endgültig gelöscht, sofern du nicht abbrichst.</value></data>
-  <data name="AccountDeletion_CancelButton" xml:space="preserve"><value>Löschanforderung abbrechen</value></data>
 
   <!-- ======================== -->
   <!-- Admin: member list       -->

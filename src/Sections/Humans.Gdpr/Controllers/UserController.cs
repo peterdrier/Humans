@@ -4,22 +4,24 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Base;
 using Humans.Base.Authorization;
-using Humans.Users.Models;
+using Humans.Gdpr.Models;
 using Humans.Users.Contracts;
 
-namespace Humans.Users.Controllers;
+namespace Humans.Gdpr.Controllers;
 
 /// <summary>
 /// Landing pages for non-Active users — the account-status wall (Suspended/Rejected/Deleted/Merged)
 /// and the pending-deletion cancel screen. Exempt from <c>MembershipRequiredFilter</c> (these
-/// ARE the redirect targets), so each action self-checks the caller's state.
+/// ARE the redirect targets), so each action self-checks the caller's state. Lives in Gdpr
+/// because the deletion lifecycle (request, grace period, cancel) is a subject right;
+/// the deletion work itself is Users' <see cref="IAccountDeletionService"/>.
 /// </summary>
 [Authorize]
 [Route("User")]
 internal sealed class UserController(
     IUserService userService,
     IAccountDeletionService accountDeletionService,
-    IStringLocalizer<UsersResource> localizer) : HumansControllerBase(userService)
+    IStringLocalizer<GdprResource> localizer) : HumansControllerBase(userService)
 {
     [HttpGet("Status")]
     public async Task<IActionResult> Status()
@@ -61,8 +63,6 @@ internal sealed class UserController(
         return View(viewModel);
     }
 
-    // Moved from ProfileController per the Profile* retirement — the cancel-deletion lever lives
-    // with the User section now.
     [HttpPost("Deletion/Cancel")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CancelDeletion()
@@ -74,11 +74,11 @@ internal sealed class UserController(
         var result = await accountDeletionService.CancelDeletionAsync(user.Id);
         if (result.Success)
         {
-            SetSuccess(localizer["Profile_DeletionCancelled"].Value);
+            SetSuccess(localizer["Gdpr_Deletion_Cancelled"].Value);
             return RedirectToAction("Index", "Home");
         }
 
-        SetError(localizer["Profile_NoDeletionPending"].Value);
+        SetError(localizer["Gdpr_Deletion_NotPending"].Value);
         return RedirectToAction(nameof(Deletion));
     }
 }

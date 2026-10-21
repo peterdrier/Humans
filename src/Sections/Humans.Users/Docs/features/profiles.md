@@ -217,7 +217,7 @@ Users must provide at least one Burner CV entry **or** check the "No prior burn 
 
 Members can download all their personal data as JSON from `/Profile/Me/DownloadData`. The export includes profile fields, contact fields, volunteer history, consent records, team memberships, applications, and role assignments. Response headers disable caching (`no-store`).
 
-**Route:** `GET /Profile/Me/DownloadData`
+**Route:** `GET /Profile/Me/DownloadData` (served by Gdpr's `MemberDataController`)
 
 ### Account Deletion (Right to Erasure)
 
@@ -286,9 +286,9 @@ This two-step approach ensures Google deprovisioning uses the same tested code p
 | Route | Method | Purpose |
 |-------|--------|---------|
 | `/Profile/Me/Privacy` | GET | View deletion status, data export link |
-| `/Profile/Me/Privacy/RequestDeletion` | POST | Start 30-day deletion countdown |
-| `/User/Deletion/Cancel` | POST | Cancel pending deletion (`UserController`) |
-| `/Profile/Me/DownloadData` | GET | Download personal data as JSON |
+| `/Profile/Me/Privacy/RequestDeletion` | POST | Start 30-day deletion countdown (Gdpr's `MemberDataController`) |
+| `/User/Deletion/Cancel` | POST | Cancel pending deletion (Gdpr's `UserController`) |
+| `/Profile/Me/DownloadData` | GET | Download personal data as JSON (Gdpr's `MemberDataController`) |
 
 ## Related Features
 

@@ -1,0 +1,73 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Gdpr_AccountStatus_Title" xml:space="preserve"><value>Estado de la cuenta</value></data>
+  <data name="Gdpr_AccountStatus_HeadingSuspended" xml:space="preserve"><value>Tu cuenta ha sido suspendida</value></data>
+  <data name="Gdpr_AccountStatus_HeadingAdminSuspended" xml:space="preserve"><value>Tu cuenta ha sido suspendida por un administrador</value></data>
+  <data name="Gdpr_AccountStatus_HeadingRejected" xml:space="preserve"><value>Tu cuenta ha sido rechazada</value></data>
+  <data name="Gdpr_AccountStatus_HeadingDeleted" xml:space="preserve"><value>Tu cuenta ha sido eliminada</value></data>
+  <data name="Gdpr_AccountStatus_HeadingMerged" xml:space="preserve"><value>Tu cuenta ha sido fusionada</value></data>
+  <data name="Gdpr_AccountStatus_HeadingUnavailable" xml:space="preserve"><value>Tu cuenta no está disponible</value></data>
+  <data name="Gdpr_AccountStatus_ConsentSuspendedBody" xml:space="preserve"><value>Tu acceso está suspendido hasta que completes los consentimientos legales requeridos.</value></data>
+  <data name="Gdpr_AccountStatus_ReviewConsents" xml:space="preserve"><value>Revisar los consentimientos requeridos</value></data>
+  <data name="Gdpr_AccountStatus_ContactInfo" xml:space="preserve"><value>Contacta con un administrador para más información:</value></data>
+  <data name="Gdpr_AccountStatus_ReasonLabel" xml:space="preserve"><value>Motivo:</value></data>
+  <data name="Gdpr_AccountStatus_ReferenceId" xml:space="preserve"><value>ID de referencia:</value></data>
+  <data name="Gdpr_AccountDeletion_Title" xml:space="preserve"><value>Eliminación de cuenta pendiente</value></data>
+  <data name="Gdpr_AccountDeletion_Heading" xml:space="preserve"><value>Tu cuenta está programada para eliminación</value></data>
+  <data name="Gdpr_AccountDeletion_ScheduledFor" xml:space="preserve"><value>Se eliminará permanentemente el {0} a menos que la canceles.</value></data>
+  <data name="Gdpr_AccountDeletion_Unscheduled" xml:space="preserve"><value>Se eliminará permanentemente a menos que la canceles.</value></data>
+  <data name="Gdpr_AccountDeletion_CancelButton" xml:space="preserve"><value>Cancelar solicitud de eliminación</value></data>
+  <data name="Gdpr_Deletion_Requested" xml:space="preserve">
+    <value>Se ha solicitado la eliminación de la cuenta. Su cuenta será eliminada el {0} a menos que cancele la solicitud.</value>
+    <comment>{0} = deletion date</comment>
+  </data>
+  <data name="Gdpr_Deletion_AlreadyPending" xml:space="preserve">
+    <value>Ya existe una solicitud de eliminación pendiente.</value>
+  </data>
+  <data name="Gdpr_Deletion_NotPending" xml:space="preserve">
+    <value>No hay ninguna solicitud de eliminación pendiente.</value>
+  </data>
+  <data name="Gdpr_Deletion_Cancelled" xml:space="preserve">
+    <value>La eliminación de la cuenta ha sido cancelada.</value>
+  </data>
+</root>

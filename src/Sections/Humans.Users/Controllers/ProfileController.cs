@@ -15,7 +15,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
-using Humans.Gdpr.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Users.Models;
@@ -51,7 +50,6 @@ internal sealed class ProfileController(
     IOnboardingIntake onboardingService,
     IShiftSignups shiftSignupService,
     ISettingsService settingsService,
-    IGdprService gdprExportService,
     IConfiguration configuration,
     ConfigurationRegistry configRegistry,
     ILogger<ProfileController> logger,
@@ -59,7 +57,6 @@ internal sealed class ProfileController(
     // The tier-application copy and the generic Common_/Validation_ strings this controller
     // formats stayed in SharedResource at the Users carve — Governance renders the same form.
     IStringLocalizer<SharedResource> sharedLocalizer,
-    IClock clock,
     IGovernanceService governanceService,
     IGovernanceWrite governanceWrite,
     IAccountDeletionService accountDeletionService,
@@ -624,28 +621,6 @@ internal sealed class ProfileController(
         return View(viewModel);
     }
 
-    [HttpPost("Me/Privacy/RequestDeletion")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RequestDeletion()
-    {
-        var user = await GetCurrentUserInfoAsync();
-        if (user is null)
-            return NotFound();
-
-        var result = await accountDeletionService.RequestDeletionAsync(user.Id);
-        if (!result.Success)
-        {
-            if (string.Equals(result.ErrorKey, "AlreadyPending", StringComparison.Ordinal))
-                SetError(localizer["Profile_DeletionAlreadyPending"].Value);
-            return RedirectToAction(nameof(Privacy));
-        }
-
-        SetSuccess(string.Format(CultureInfo.CurrentCulture,
-            localizer["Profile_DeletionRequested"].Value,
-            result.EffectiveDeletionDate?.ToDateTimeUtc().ToDate() ?? ""));
-        return RedirectToAction(nameof(Privacy));
-    }
-
     [HttpGet("Me/DietaryMedical")]
     public async Task<IActionResult> DietaryMedical(
         string? returnAction = null,
@@ -843,35 +818,6 @@ internal sealed class ProfileController(
 
     [HttpGet("Me/Notifications")]
     public IActionResult Notifications() => RedirectToActionPermanent(nameof(CommunicationPreferences));
-
-    [HttpGet("Me/DownloadData")]
-    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-    public async Task<IActionResult> DownloadData(CancellationToken ct)
-    {
-        var user = await GetCurrentUserInfoAsync(ct);
-        if (user is null)
-            return NotFound();
-
-        try
-        {
-            var export = await gdprExportService.ExportForUserAsync(user.Id, ct);
-
-            var bytes = GdprExportSerializer.Serialize(export);
-            var fileName = $"nobodies-profiles-export-{clock.GetCurrentInstant().ToDateTimeUtc().ToInvariantDate()}.json";
-
-            return File(bytes, "application/json", fileName);
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to export data for user {UserId}", user.Id);
-            SetError(sharedLocalizer["Error_TryAgainLater"].Value);
-            return RedirectToAction(nameof(Privacy));
-        }
-    }
 
     // ─── Helpers ─────────────────────────────────────────────────────
 
