@@ -33,7 +33,7 @@ public sealed class TeamMessageButtonsViewComponentTests
         _users.GetUserInfoAsync(_targetId, Arg.Any<CancellationToken>()).Returns(new UserInfo(
             _targetId, "Target", false, "en", null, Instant.FromUnixTimeSeconds(0),
             null, null, null, null, null, null, null,
-            null, null, null, [], [], null, []));
+            null, null, null, [], [], null));
     }
 
     [HumansFact]

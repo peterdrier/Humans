@@ -65,7 +65,7 @@ When a user opts out of Facilitated Messages, the "Send Message" button is hidde
 - `UpdateSource` (string) — how it was set: "Profile" (signed-in profile UI), "Guest" (signed-in Guest dashboard, profileless), "MagicLink" (anonymous unsubscribe-token endpoints), "OneClick" (RFC 8058 List-Unsubscribe), "Default" (historical lazy seed), "DataMigration"
 - `SubscribedAt` (Instant, nullable) — earliest known opt-in instant for this category; stamped on first opt-in transition or import from a source with a real subscribe date, preserved across later opt-out/re-opt cycles
 
-Until the legacy table is dropped, a (user, category) with no row here falls back to Users' frozen `communication_preferences` row (read through `UserInfo`); the first write seeds from it, and the `email.communication-preferences` data migration copies the rest.
+The `email.communication-preferences` data migration copied Users' frozen rows here and has been retired. Rows with a null `OptedOut`, left from the copy period, read as no preference.
 
 **Enum:** `MessageCategory` (`Humans.Email.Contracts`) — stored as string in DB
 - Active: System, CampaignCodes, FacilitatedMessages, Ticketing, VolunteerUpdates, TeamUpdates, Governance, Marketing

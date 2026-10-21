@@ -17,18 +17,12 @@ internal static class UserInfoFactory
         Profile? profile,
         IReadOnlyList<ContactField> contactFields,
         IReadOnlyList<ProfileLanguage> profileLanguages,
-        IReadOnlyList<VolunteerHistoryEntry> volunteerHistory,
-        IReadOnlyList<CommunicationPreference> communicationPreferences) =>
+        IReadOnlyList<VolunteerHistoryEntry> volunteerHistory) =>
         UserInfo.Create(
             user,
             userEmails,
             externalLogins,
-            ToProfileInfo(profile, contactFields, profileLanguages, volunteerHistory),
-            communicationPreferences
-                .Select(c => new LegacyCommunicationPreferenceInfo(
-                    c.Id, c.Category, c.OptedOut, c.InboxEnabled,
-                    c.UpdatedAt, c.UpdateSource, c.SubscribedAt))
-                .ToList());
+            ToProfileInfo(profile, contactFields, profileLanguages, volunteerHistory));
 
     private static ProfileInfo? ToProfileInfo(
         Profile? profile,

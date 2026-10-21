@@ -46,7 +46,7 @@ public sealed class Section : ISection, IIssueQueueOwner
         // Catches Identity-machinery writes (UpdateAsync, LastLoginAt, OAuth UserEmail).
         // Singleton, resolved onto every section's DbContext and DbContextFactory pipelines via
         // IEnumerable<IInterceptor> — the interceptor pattern-matches
-        // User/UserEmail/CommunicationPreference wherever they are saved.
+        // User/UserEmail/AspNetUserLogins wherever they are saved.
         // A section owns its own interceptors; Base names none of them.
         services.AddSingleton<UserInfoSaveChangesInterceptor>();
         services.AddSingleton<IInterceptor>(sp => sp.GetRequiredService<UserInfoSaveChangesInterceptor>());

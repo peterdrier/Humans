@@ -98,7 +98,7 @@ public sealed class ProfileCardViewComponentTests
         var now = Instant.FromUtc(2026, 1, 1, 0, 0);
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
-            UserInfo.Create(new User { Id = userId, BurnerName = "Ada" }, [], [], null, [])));
+            UserInfo.Create(new User { Id = userId, BurnerName = "Ada" }, [], [], null)));
         var parent = new TeamInfo(Guid.NewGuid(), "Hidden", null, "hidden", true, false,
             SystemTeamType.None, false, false, true, false, now,
             [new(Guid.NewGuid(), userId, "Ada", null, null, TeamMemberRole.Member, now)]);

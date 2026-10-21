@@ -91,8 +91,7 @@ public class HumanViewComponentTests
             },
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
 
         var userService = Substitute.For<IUserService>();
         userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);

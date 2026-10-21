@@ -184,7 +184,7 @@ Repositories: `IUserRepository`, `ICommunicationPreferenceRepository`.
 | IdentityUserLogins | R | IUserRepository |
 | Profiles | R/W | IUserRepository |
 | ContactFields | R | IUserRepository |
-| CommunicationPreferences | R/D (frozen legacy rows: `UserInfo.CommunicationPreferences` for Email's fallback, the `LegacyCommunicationPreferences` export slice, and erasure) | ICommunicationPreferenceRepository |
+| CommunicationPreferences | R/D (frozen legacy rows: the `LegacyCommunicationPreferences` export slice and erasure, until USERS-20) | ICommunicationPreferenceRepository |
 | ProfileLanguages | R/W | IUserRepository |
 | VolunteerHistoryEntries | R | IUserRepository |
 

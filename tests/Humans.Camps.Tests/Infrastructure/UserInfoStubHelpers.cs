@@ -26,7 +26,6 @@ internal static class UserInfoStubHelpers
             profile: profile,
             [],
             [],
-            [],
             []);
 
     /// <summary>

@@ -332,8 +332,7 @@ public class UserEmailServiceTests
             profile: null,
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
 
     // Stub IUserManagement to expose the given UserEmail rows through the GetAllUserInfosAsync iteration.
     private void StubAllUserInfosFromRows(IReadOnlyList<UserEmail> rows)

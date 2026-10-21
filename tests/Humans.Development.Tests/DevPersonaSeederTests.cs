@@ -89,8 +89,7 @@ public class DevPersonaSeederTests
             profile: UserFixtures.Profile(
                 burnerName: "Dev Board",
                 firstName: "Dev",
-                lastName: "Board"),
-            []);
+                lastName: "Board"));
 
     private static MembershipSnapshot Snapshot(params Guid[] missingVersionIds) => new(
         MembershipStatus.Active,
@@ -198,7 +197,7 @@ public class DevPersonaSeederTests
         _users.GetUserInfoAsync(profileless, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
                 new User { Id = profileless, DisplayName = "Dev Guest" },
-                [], [], profile: null, [])));
+                [], [], profile: null)));
 
         await BuildSut().EnsureActiveAsync(profileless);
 

@@ -1076,8 +1076,7 @@ public sealed class TicketTransferServiceTests
         user: user,
         userEmails: [],
         externalLogins: [],
-        profile: profile,
-        communicationPreferences: []);
+        profile: profile);
 
     private static TicketAttendee MakeAttendee(
         Guid id, Guid orderId, Guid attendeeMatchedUserId, TicketAttendeeStatus status,

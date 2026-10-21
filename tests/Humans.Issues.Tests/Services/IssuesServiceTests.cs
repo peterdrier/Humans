@@ -178,8 +178,7 @@ public sealed class IssuesServiceTests
                 user: user,
                 userEmails: [],
                 externalLogins: [],
-                profile: null,
-                communicationPreferences: []);
+                profile: null);
     }
 
     private User SeedUser(Guid? id = null, string displayName = "Test User")

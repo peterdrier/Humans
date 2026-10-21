@@ -278,7 +278,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
             .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Active));
         _userService.GetUserInfoAsync(member.UserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
-                new User { Id = member.UserId, PreferredLanguage = "es" }, [], [], null, [])));
+                new User { Id = member.UserId, PreferredLanguage = "es" }, [], [], null)));
         if (lookupFails)
             _userService.GetUserInfoAsync(member.UserId, Arg.Any<CancellationToken>())
                 .Returns(ValueTask.FromException<UserInfo?>(new IOException("Language lookup unavailable")));

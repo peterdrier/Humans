@@ -62,7 +62,7 @@ public class CommunicationPreferencesControllerTests
     }
 
     private UserInfo Viewer() => UserInfo.Create(
-        new User { Id = _userId, DisplayName = "Human", PreferredLanguage = "en" }, [], [], profile: null, []);
+        new User { Id = _userId, DisplayName = "Human", PreferredLanguage = "en" }, [], [], profile: null);
 
     [HumansFact]
     public void Routes_AreEmailUrls_AndRequireSignIn()

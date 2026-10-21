@@ -83,13 +83,9 @@ internal sealed class UserService(
             volunteerHistory = profile.VolunteerHistory.ToList();
         }
 
-        var communicationPreferences = await communicationPreferenceRepo
-            .GetByUserIdReadOnlyAsync(userId, ct);
-
         var info = UserInfoFactory.Create(
             user, userEmails, externalLogins,
-            profile, contactFields, languages, volunteerHistory,
-            communicationPreferences);
+            profile, contactFields, languages, volunteerHistory);
 
         return info;
     }
@@ -116,12 +112,6 @@ internal sealed class UserService(
             .GroupBy(c => c.ProfileId)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<ContactField>)g.ToList());
 
-
-        var allPreferences = await communicationPreferenceRepo.GetAllAsync(ct);
-        var preferencesByUser = allPreferences
-            .GroupBy(p => p.UserId)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<CommunicationPreference>)g.ToList());
-
         var result = new List<UserInfo>(users.Count);
         foreach (var user in users)
         {
@@ -139,12 +129,9 @@ internal sealed class UserService(
                 volunteerHistory = profile.VolunteerHistory.ToList();
             }
 
-            var preferences = preferencesByUser.TryGetValue(user.Id, out var pp) ? pp : [];
-
             var info = UserInfoFactory.Create(
                 user, emails, logins,
-                profile, contactFields, languages, volunteerHistory,
-                preferences);
+                profile, contactFields, languages, volunteerHistory);
             result.Add(info);
         }
 

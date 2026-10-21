@@ -59,8 +59,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
         var info = UserInfo.Create(
             new User { Id = userId, BurnerName = "Ana", CreatedAt = Now, State = state, MergedAt = mergedAt },
             [], [],
-            profile ?? UserFixtures.Profile(burnerName: "Ana", firstName: "Ana", lastName: "García"),
-            []);
+            profile ?? UserFixtures.Profile(burnerName: "Ana", firstName: "Ana", lastName: "García"));
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
         _users.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
         _all.Add(info);

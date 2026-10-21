@@ -345,7 +345,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
         id, burnerName, false, language, null, Instant.FromUtc(2026, 1, 1, 0, 0),
         null, null, null, null, null, null, null,
         null, null, null, [], [],
-        profile ?? UserFixtures.Profile(burnerName: burnerName), []);
+        profile ?? UserFixtures.Profile(burnerName: burnerName));
 
     public void Dispose()
     {

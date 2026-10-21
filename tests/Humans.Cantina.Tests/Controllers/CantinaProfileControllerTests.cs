@@ -63,7 +63,7 @@ public class CantinaProfileControllerTests
 
         _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = _userId, BurnerName = "Test Human", PreferredLanguage = "en" },
-                [], [], null, []));
+                [], [], null));
     }
 
     [HumansFact]

@@ -5,8 +5,7 @@ namespace Humans.Email.Services;
 
 /// <summary>
 /// Email's own communication-preference surface: the public reads and writes plus what only Email
-/// calls — the member's channel toggles, the unsubscribe tokens and headers the send path stamps,
-/// and the <c>email.communication-preferences</c> copy.
+/// calls — the member's channel toggles, and the unsubscribe tokens and headers the send path stamps.
 /// </summary>
 internal interface ICommunicationPreferenceManagement
     : ICommunicationPreferenceService, ICommunicationPreferenceWrite, IApplicationService
@@ -30,13 +29,5 @@ internal interface ICommunicationPreferenceManagement
 
     /// <summary>A browser-friendly unsubscribe URL for email footers.</summary>
     string GenerateBrowserUnsubscribeUrl(Guid userId, MessageCategory category);
-
-    /// <summary>Every legacy Users row with no row here yet for its user and category.</summary>
-    Task<IReadOnlyList<UncopiedPreference>> GetUncopiedLegacyPreferencesAsync(CancellationToken ct = default);
-
-    /// <summary>Copies <see cref="GetUncopiedLegacyPreferencesAsync"/>; idempotent. Returns rows written.</summary>
-    Task<int> CopyLegacyPreferencesAsync(CancellationToken ct = default);
 }
 
-/// <summary>A legacy row the <c>email.communication-preferences</c> copy has still to write.</summary>
-internal sealed record UncopiedPreference(Guid UserId, CommunicationPreferenceSnapshot Preference);

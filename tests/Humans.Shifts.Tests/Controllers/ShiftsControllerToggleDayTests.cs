@@ -137,8 +137,7 @@ public class ShiftsControllerToggleDayTests
             profile: profile,
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
     }
 
     [HumansFact]

@@ -131,6 +131,6 @@ public sealed class SendReConsentReminderJobTests
         var user = new User { Id = Guid.NewGuid(), BurnerName = "Member", LastConsentReminderSentAt = sentAt };
         return UserInfo.Create(user,
             [new UserEmail { Id = Guid.NewGuid(), UserId = user.Id, Email = email, IsVerified = true, IsPrimary = true }],
-            [], null, []);
+            [], null);
     }
 }

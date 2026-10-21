@@ -94,5 +94,5 @@ public class BackdoorControllerTests
 
     private static UserInfo Info(Guid id, UserState state) => UserInfo.Create(
         new User { Id = id, State = state, PreferredLanguage = "en" },
-        [], [], profile: null, []);
+        [], [], profile: null);
 }

@@ -102,8 +102,7 @@ public sealed class VolunteerTrackingExportServiceTests
             profile: null,
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
 
     [HumansFact]
     public async Task EmptyRange_ReturnsModelWithNoGroupsButFullMetadata()

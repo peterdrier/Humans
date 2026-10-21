@@ -269,7 +269,6 @@ public class EventsApiControllerTests
             user: user,
             userEmails: [],
             externalLogins: [],
-            profile: profile,
-            communicationPreferences: []);
+            profile: profile);
     }
 }

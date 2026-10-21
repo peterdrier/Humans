@@ -120,8 +120,7 @@ public class PersonSearchMatcherTests
             profile: profile,
             contactFields: contactEntities,
             profileLanguages: [],
-            volunteerHistory: cvEntities,
-            communicationPreferences: []);
+            volunteerHistory: cvEntities);
     }
 
     [HumansFact]

@@ -94,8 +94,7 @@ public class OnboardingWidgetControllerConsentsTests
         },
         userEmails: [],
         externalLogins: [],
-        profile: profile,
-        communicationPreferences: []);
+        profile: profile);
 
     [HumansFact]
     public async Task SignConsent_Post_CallsConsentService_AndRedirectsThroughIndexDispatcher()

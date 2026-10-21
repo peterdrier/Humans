@@ -42,7 +42,7 @@ public class ShiftProfileControllerTests
         var users = Substitute.For<IUserService>();
         var userId = Guid.NewGuid();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], null, [])));
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], null)));
         var profile = new VolunteerEventProfile { Id = Guid.NewGuid(), UserId = userId };
         shifts.GetOrCreateShiftProfileAsync(userId).Returns(profile);
         var http = new DefaultHttpContext
@@ -90,7 +90,7 @@ public class ShiftProfileControllerTests
         var users = Substitute.For<IUserService>();
         var userId = Guid.NewGuid();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], null, [])));
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], null)));
         shifts.GetOrCreateShiftProfileAsync(userId).Returns(new VolunteerEventProfile { Id = Guid.NewGuid(), UserId = userId });
         var http = new DefaultHttpContext
         {

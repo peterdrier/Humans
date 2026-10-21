@@ -54,7 +54,7 @@ public sealed class DuplicateAccountServiceTests
             CreatedAt = Now,
             UpdatedAt = Now,
         };
-        return UserInfoFactory.Create(user, emails, [], profile, [], [], [], []);
+        return UserInfoFactory.Create(user, emails, [], profile, [], [], []);
     }
 
     [HumansFact]

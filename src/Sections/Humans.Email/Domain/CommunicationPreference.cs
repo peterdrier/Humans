@@ -17,10 +17,9 @@ internal sealed class CommunicationPreference
     public MessageCategory Category { get; init; }
 
     /// <summary>
-    /// True when the member opted out of email for the category. Null marks a preference reset to
-    /// "nothing recorded" while a frozen legacy Users row still backs this user and category: the
-    /// row shadows the legacy value so the read fallback never brings it back. Written only in that
-    /// case; a reset with no legacy row deletes the row instead.
+    /// True when the member opted out of email for the category. Null marks a cleared row, written
+    /// before the <c>email.communication-preferences</c> copy was retired to shadow a frozen legacy
+    /// Users row. Nothing writes one now; reads treat it as nothing recorded.
     /// </summary>
     public bool? OptedOut { get; set; }
 

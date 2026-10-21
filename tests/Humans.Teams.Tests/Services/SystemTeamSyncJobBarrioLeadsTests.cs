@@ -123,7 +123,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
             VolunteerHistory: []);
         var user = UserInfo.Create(member,
             [new UserEmail { Id = Guid.NewGuid(), UserId = member.Id, Email = "member@example.com", IsVerified = true, IsPrimary = true }],
-            [], profile, []);
+            [], profile);
         var team = new TeamInfo(SystemTeamIds.Volunteers, "Volunteers", null, "volunteers",
             true, true, SystemTeamType.Volunteers, false, false, false, false, default, []);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });

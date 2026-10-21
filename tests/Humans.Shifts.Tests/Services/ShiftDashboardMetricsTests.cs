@@ -1150,8 +1150,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
                 profile: null,
                 contactFields: [],
                 profileLanguages: [],
-                volunteerHistory: [],
-                communicationPreferences: [])).ToList();
+                volunteerHistory: [])).ToList();
             return Task.FromResult(result);
         }
 

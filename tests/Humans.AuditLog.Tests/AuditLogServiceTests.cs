@@ -390,7 +390,7 @@ public class AuditLogServiceTests : IDisposable
     /// <summary>A record listing the given ids as accounts merged into <paramref name="userId"/>.</summary>
     private static UserInfo WithMergedIds(Guid userId, params Guid[] mergedUserIds)
     {
-        var info = UserInfo.Create(new User { Id = userId, PreferredLanguage = "en" }, [], [], null, []);
+        var info = UserInfo.Create(new User { Id = userId, PreferredLanguage = "en" }, [], [], null);
         return info with { MergedUserIds = mergedUserIds };
     }
 }

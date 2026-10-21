@@ -229,6 +229,5 @@ public sealed class EventsModerationControllerTests
         new User { Id = userId, DisplayName = "Moderator", PreferredLanguage = "en", CreatedAt = Instant.MinValue },
         userEmails: [],
         externalLogins: [],
-        profile: UserFixtures.Profile(burnerName: "Moderator", firstName: "Mod", lastName: "Erator"),
-        communicationPreferences: []);
+        profile: UserFixtures.Profile(burnerName: "Moderator", firstName: "Mod", lastName: "Erator"));
 }

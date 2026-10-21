@@ -82,7 +82,6 @@ public class VolunteerTrackingControllerTests
                     profile: null,
                     [],
                     [],
-                    [],
                     [])));
         }
 
@@ -865,8 +864,7 @@ public class VolunteerTrackingControllerTests
             profile: profile,
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
     }
 
     // These tests only care about the burn's Id (it is what gets forwarded to

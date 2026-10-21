@@ -116,8 +116,7 @@ public sealed class ConsentControllerTests
         },
         userEmails: [],
         externalLogins: [],
-        profile: profile,
-        communicationPreferences: []);
+        profile: profile);
 
     [HumansFact]
     public async Task Index_RendersPendingRowsFirstUtcDatesAndTenHistoryItems()

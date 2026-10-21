@@ -640,8 +640,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             profile: profile,
             contactFields: fields,
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
     }
 

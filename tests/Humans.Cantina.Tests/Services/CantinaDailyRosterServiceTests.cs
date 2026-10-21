@@ -253,8 +253,7 @@ public class CantinaDailyRosterServiceTests
                         },
                         userEmails: [],
                         externalLogins: [],
-                        profile: UserFixtures.Profile(burnerName: ""),
-                        communicationPreferences: []),
+                        profile: UserFixtures.Profile(burnerName: "")),
                 }));
 
         var result = await _service.GetDailyRosterAsync(dayOffset: 0, ct: Xunit.TestContext.Current.CancellationToken);
@@ -381,8 +380,7 @@ public class CantinaDailyRosterServiceTests
                 user: new User { Id = p.UserId, DisplayName = p.Profile.BurnerName, BurnerName = p.Profile.BurnerName, PreferredLanguage = "en" },
                 userEmails: [],
                 externalLogins: [],
-                profile: p.Profile,
-                communicationPreferences: []));
+                profile: p.Profile));
         _userRead.GetUserInfosAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict));

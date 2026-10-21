@@ -756,6 +756,5 @@ public class FinanceControllerTests
         IdentityEmailColumn: null,
         UserEmails: [],
         ExternalLogins: [],
-        Profile: null,
-        CommunicationPreferences: []);
+        Profile: null);
 }

@@ -102,8 +102,7 @@ public class ShiftsControllerNameGateTests
             },
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
 
     [HumansFact]
     public async Task Index_NamelessUser_RedirectsToOnboardingWidget()

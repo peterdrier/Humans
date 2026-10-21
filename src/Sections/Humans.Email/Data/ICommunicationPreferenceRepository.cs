@@ -13,8 +13,6 @@ internal interface ICommunicationPreferenceRepository : IRepository
 {
     Task<IReadOnlyList<CommunicationPreference>> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
 
-    Task<IReadOnlyList<CommunicationPreference>> GetAllAsync(CancellationToken ct = default);
-
     Task<IReadOnlyList<CommunicationPreference>> GetByCategoryAsync(MessageCategory category, CancellationToken ct = default);
 
     Task<IReadOnlyList<CommunicationPreference>> GetForUsersAsync(
@@ -28,9 +26,6 @@ internal interface ICommunicationPreferenceRepository : IRepository
 
     /// <summary>Deletes the user+category row. Returns false when there was none.</summary>
     Task<bool> DeleteAsync(Guid userId, MessageCategory category, CancellationToken ct = default);
-
-    /// <summary>Inserts <paramref name="row"/> unless the user+category already has one. Returns whether it wrote.</summary>
-    Task<bool> TryInsertAsync(CommunicationPreference row, CancellationToken ct = default);
 
     /// <summary>
     /// Makes each listed user's rows exactly the given set, in one save: rows are updated in place by

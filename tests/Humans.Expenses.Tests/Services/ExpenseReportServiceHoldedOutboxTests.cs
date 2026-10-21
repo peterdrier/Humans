@@ -259,7 +259,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     // Built directly: the shared UserInfoStubHelpers read through a UsersDbContext this
     // test project cannot see.
     private static UserInfo MinimalUserInfo(User user) =>
-        UserInfo.Create(user, [], [], profile: null, []);
+        UserInfo.Create(user, [], [], profile: null);
 
     private static HoldedPurchaseDocumentDto MakePurchaseDoc(Instant? approvedAt = null) => new()
     {

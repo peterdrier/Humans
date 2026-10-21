@@ -39,7 +39,7 @@ public sealed class ExpensesControllerTests
         var sourceId = Guid.NewGuid();
         var reportId = Guid.NewGuid();
         var lineId = Guid.NewGuid();
-        var user = UserInfo.Create(new User { Id = actorId }, [], [], null, [])
+        var user = UserInfo.Create(new User { Id = actorId }, [], [], null)
             with
         { MergedUserIds = [isMergedSubmitter ? sourceId : Guid.NewGuid()] };
         var users = Substitute.For<IUserService>();
@@ -150,7 +150,7 @@ public sealed class ExpensesControllerTests
         reports.ReceivedCalls().Should().BeEmpty();
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
-                new User { Id = actorId, PreferredLanguage = "en" }, [], [], null, [])));
+                new User { Id = actorId, PreferredLanguage = "en" }, [], [], null)));
 
         // A missing report must not reach authorization or any mutation.
         (await InvokeAsync(controller, action, reportId)).Should().BeOfType<NotFoundResult>();
@@ -198,7 +198,7 @@ public sealed class ExpensesControllerTests
         var reportId = Guid.NewGuid();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = actorId }, [], [], null, []));
+            .Returns(UserInfo.Create(new User { Id = actorId }, [], [], null));
         var report = new ExpenseReportDto
         {
             Id = reportId,
@@ -270,7 +270,7 @@ public sealed class ExpensesControllerTests
         var reportId = Guid.NewGuid();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = actorId }, [], [], null, []));
+            UserInfo.Create(new User { Id = actorId }, [], [], null));
         var reports = Substitute.For<IExpenseReportManagement>();
         reports.GetAsync(reportId).Returns(new ExpenseReportDto
         {
@@ -330,7 +330,7 @@ public sealed class ExpensesControllerTests
         var actorId = Guid.NewGuid();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = actorId }, [], [], null, []));
+            UserInfo.Create(new User { Id = actorId }, [], [], null));
         var reports = Substitute.For<IExpenseReportManagement>();
         reports.GetForSubmitterAsync(actorId, Arg.Any<CancellationToken>()).Returns([]);
         reports.GetCoordinatorQueueAsync(actorId, Arg.Any<CancellationToken>()).Returns([new ExpenseReportDto
@@ -380,7 +380,7 @@ public sealed class ExpensesControllerTests
         var categoryId = Guid.NewGuid();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = actorId }, [], [], null, []));
+            .Returns(UserInfo.Create(new User { Id = actorId }, [], [], null));
         var first = new ExpenseReportDto
         {
             Id = Guid.NewGuid(),

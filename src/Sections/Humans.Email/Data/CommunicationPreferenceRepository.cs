@@ -17,12 +17,6 @@ internal sealed class CommunicationPreferenceRepository(IDbContextFactory<EmailD
         return await ctx.CommunicationPreferences.AsNoTracking().Where(cp => cp.UserId == userId).ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<CommunicationPreference>> GetAllAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.CommunicationPreferences.AsNoTracking().ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<CommunicationPreference>> GetByCategoryAsync(
         MessageCategory category, CancellationToken ct = default)
     {
@@ -63,17 +57,6 @@ internal sealed class CommunicationPreferenceRepository(IDbContextFactory<EmailD
             return false;
 
         ctx.CommunicationPreferences.Remove(existing);
-        await ctx.SaveChangesAsync(ct);
-        return true;
-    }
-
-    public async Task<bool> TryInsertAsync(CommunicationPreference row, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        if (await ctx.CommunicationPreferences.AnyAsync(cp => cp.UserId == row.UserId && cp.Category == row.Category, ct))
-            return false;
-
-        ctx.CommunicationPreferences.Add(row);
         await ctx.SaveChangesAsync(ct);
         return true;
     }

@@ -57,8 +57,7 @@ public class OnboardingWidgetStateTests
         },
         userEmails: [],
         externalLogins: [],
-        profile: profile,
-        communicationPreferences: []);
+        profile: profile);
 
     [HumansFact]
     public async Task GetCurrentStep_CancelsTheActiveEventReadWhenTheRequestIsAbandoned()

@@ -1417,8 +1417,7 @@ public sealed class CampaignServiceTests
             user: user,
             userEmails: [],
             externalLogins: [],
-            profile: null,
-            communicationPreferences: []);
+            profile: null);
         _people[userId] = info;
         return info;
     }

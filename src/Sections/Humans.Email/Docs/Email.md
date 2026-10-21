@@ -82,7 +82,7 @@ spikes seen in Google Postmaster, since `email_outbox_messages` is pruned after
 | Id | Guid | PK |
 | UserId | Guid | Bare column, no FK or nav |
 | Category | MessageCategory | Stored as string (max 50) |
-| OptedOut | bool? | true = no email for this category; **null = cleared row** (a reset, or a merge source) that shadows the legacy row so the fallback cannot resurrect it |
+| OptedOut | bool? | true = no email for this category; **null = cleared row** left from before the legacy copy was retired; reads skip it |
 | InboxEnabled | bool | true = informational in-app notifications for this category show (actionable ones always do) |
 | UpdatedAt | Instant | Last change |
 | UpdateSource | string (100) | Who changed it — see [`update-source-attribution`](../../../../memory/code/update-source-attribution.md) |
@@ -90,7 +90,7 @@ spikes seen in Google Postmaster, since `email_outbox_messages` is pruned after
 
 **Unique index:** `(UserId, Category)`.
 
-**Legacy fallback (until the retirement PR):** a (user, category) with no row here reads Users' frozen row from `UserInfo.CommunicationPreferences` (`[Obsolete(HUM_USER_COMMPREFS)]`, read only by `CommunicationPreferenceService.LegacyRows`). Single-user reads go through `GetUserInfoAsync` (merge chains resolved forward); writes and the copy use the raw id. A write seeds its untouched fields from the legacy row; a reset with a legacy row writes a cleared row, otherwise deletes. The data migration `email.communication-preferences` (Email's `SectionDataMigrations`, run from `/Debug/DataMigrations`) copies every legacy row without a row here; cleared rows count as present.
+**Cleared rows:** a row with a null `OptedOut` was written before the `email.communication-preferences` copy was retired, to shadow a frozen Users row. Nothing writes one now; reads skip it, a write replaces it and the merge fold drops it. Single-user reads go through `GetUserInfoAsync` (merge chains resolved forward); writes use the raw id. A reset deletes the row.
 
 ### MessageCategory
 
@@ -222,7 +222,7 @@ The communication-preference routes moved from Users in decomposition commit 14 
 
 ## Cross-Section Dependencies
 
-- **Users:** `IUserEmailService.FindByAddressAsync` (exact form, verified only) — resolves `UserId` from a recipient address so `OutboxEmailService` can link outbox rows to users. `IUserService.GetUserInfoAsync` / `GetRawUserInfoAsync` / `GetAllRawUserInfosAsync` for the frozen legacy preference rows. Users' merge orchestrator fans out to Email's two `IUserMerge` implementations; Email only mutates its own rows.
+- **Users:** `IUserEmailService.FindByAddressAsync` (exact form, verified only) — resolves `UserId` from a recipient address so `OutboxEmailService` can link outbox rows to users. `IUserService.GetUserInfoAsync` to resolve a merged-away id forward on preference reads. Users' merge orchestrator fans out to Email's two `IUserMerge` implementations; Email only mutates its own rows.
 - **Tickets:** `ITicketService` — the guest preferences page locks Ticketing on for a matched ticket holder. `Humans.Email` references `Humans.Tickets.Contracts` (a Base-only leaf) for it.
 - **Consumers of `ICommunicationPreferenceService`:** Notifications (inbox switch), MailerLite (audience opt-outs and the import's `ICommunicationPreferenceWrite`), Debug (marketing set), Users (profile card's facilitated-message button), Teams (send as team: its profile buttons and composer refuse an opted-out recipient), and the views that name `MessageCategory`.
 - **Campaigns:** `ICampaignWrite` receives the delivery status; Campaigns queues campaign wave messages via this section; per-grant latest-status is mirrored to `CampaignGrant.LatestEmailStatus` / `LatestEmailAt`.

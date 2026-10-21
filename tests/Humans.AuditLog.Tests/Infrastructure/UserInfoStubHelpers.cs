@@ -16,6 +16,5 @@ internal static class UserInfoStubHelpers
             [],
             [],
             profile: profile ?? UserFixtures.Profile(
-                burnerName: displayName),
-            []);
+                burnerName: displayName));
 }

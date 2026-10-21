@@ -118,8 +118,7 @@ public class ProfileApiControllerTests
             profile: null,
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
 
     private static UserInfo MakeUserInfo(
         Guid userId,
@@ -154,8 +153,7 @@ public class ProfileApiControllerTests
             profile: profile,
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
     }
 
     [HumansTheory]

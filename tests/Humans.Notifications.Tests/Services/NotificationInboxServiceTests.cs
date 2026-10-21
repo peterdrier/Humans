@@ -213,7 +213,7 @@ public class NotificationInboxServiceTests : IDisposable
                 [resolverId] = new(
                     resolverId, "Resolver", false, "en", null, Instant.FromUnixTimeSeconds(0),
                     null, null, null, null, null, null, null,
-                    null, null, null, [], [], null, []),
+                    null, null, null, [], [], null),
             }));
 
         var result = await _service.GetInboxAsync(

@@ -445,8 +445,7 @@ public class NotificationMeterProviderTests : IDisposable
                 profile: UserFixtures.Profile(
                     burnerName: "B",
                     firstName: "F",
-                    lastName: "L"),
-                communicationPreferences: []);
+                    lastName: "L"));
         }).ToList();
 
     private static CampInfo MakeCampInfoWithPendingRequest(Guid leadUserId, int year = 2026)

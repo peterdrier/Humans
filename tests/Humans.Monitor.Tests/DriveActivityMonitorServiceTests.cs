@@ -551,8 +551,7 @@ public class DriveActivityMonitorServiceTests
             IdentityEmailColumn: email,
             UserEmails: [],
             ExternalLogins: externalLogins,
-            Profile: null,
-            CommunicationPreferences: []);
+            Profile: null);
 
     private UserInfo BuildUserInfoWithNullEmail(params UserExternalLoginInfo[] externalLogins) =>
         new(
@@ -574,8 +573,7 @@ public class DriveActivityMonitorServiceTests
             IdentityEmailColumn: null,
             UserEmails: [],
             ExternalLogins: externalLogins,
-            Profile: null,
-            CommunicationPreferences: []);
+            Profile: null);
 
     private static DriveActivityEvent BuildPermissionChangeEvent(
         string actorPersonName, string addedRole, string targetUser) =>

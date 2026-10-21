@@ -121,8 +121,7 @@ public class ShiftsControllerDietaryGateTests
                 },
                 contactFields: [],
                 profileLanguages: [],
-                volunteerHistory: [],
-                communicationPreferences: []));
+                volunteerHistory: []));
     }
 
     // ---- Lockout-flag computation on the top-level VM (Task 6.2) ----

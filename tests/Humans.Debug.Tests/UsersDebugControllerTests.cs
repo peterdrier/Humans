@@ -30,8 +30,7 @@ public class UsersDebugControllerTests
             id, displayName, false, "en", null, Instant.FromUtc(2026, 1, 1, 0, 0),
             null, null, null, null, null, null, null,
             null, null, null, [], [],
-            hasProfile ? UserFixtures.Profile(burnerName: displayName, firstName: "First", lastName: "Last") : null,
-            []);
+            hasProfile ? UserFixtures.Profile(burnerName: displayName, firstName: "First", lastName: "Last") : null);
     }
 
     private static IConsentService NoReviews()

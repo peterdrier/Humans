@@ -68,7 +68,6 @@ Repository: `ICommunicationPreferenceRepository` (Singleton, `IDbContextFactory<
 | Table | R/W |
 |-------|-----|
 | CommunicationPreferences | R/W |
-| Users' `communication_preferences` (frozen legacy) | R only via `IUserService` (`UserInfo.CommunicationPreferences`) — never the table |
 
 Implements `ICommunicationPreferenceService`, `ICommunicationPreferenceWrite`,
 the internal `ICommunicationPreferenceManagement`, `IUserDataContributor` and

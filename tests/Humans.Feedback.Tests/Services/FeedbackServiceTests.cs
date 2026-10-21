@@ -1036,8 +1036,7 @@ public sealed class FeedbackServiceTests
             user: user,
             userEmails: [],
             externalLogins: [],
-            profile: null,
-            communicationPreferences: []);
+            profile: null);
         _people[id] = info;
         return info;
     }

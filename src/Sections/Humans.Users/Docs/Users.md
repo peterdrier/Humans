@@ -35,7 +35,7 @@ The User aggregate and its identity surface. Profile-adjacent User properties (G
 
 - A **User** is the ASP.NET Core Identity aggregate for every human in the system. Authenticates via Google OAuth or magic link. The entity extends `IdentityUser<Guid>`.
 - **Account Provisioning** creates new `User` rows from an OAuth login (`ExternalLoginService.CompleteExternalLoginAsync`, dispatched from `AccountController.ExternalLoginCallback`), a magic-link signup (`AccountController.CompleteSignup`), or an import (`AccountProvisioningService.FindOrCreateUserByEmailAsync` for ticket / MailerLite contacts). All three paths look up an existing user across `UserEmail` records and `User.Email` (with gmail/googlemail equivalence) before creating a new row.
-- **Communication preferences and unsubscribe** moved to Email (`email_communication_preferences`, Users decomposition commit 14): `ICommunicationPreferenceService`, the unsubscribe tokens, `/Email/Unsubscribe/*`, `/Email/Guest/CommunicationPreferences*` and `/Email/CommunicationPreferences*` are Email's. Users keeps the frozen legacy `communication_preferences` table — no longer written — for Email's read fallback and the `email.communication-preferences` copy.
+- **Communication preferences and unsubscribe** moved to Email (`email_communication_preferences`, Users decomposition commit 14): `ICommunicationPreferenceService`, the unsubscribe tokens, `/Email/Unsubscribe/*`, `/Email/Guest/CommunicationPreferences*` and `/Email/CommunicationPreferences*` are Email's. Users keeps the frozen legacy `communication_preferences` table — written only by erasure, read only by Users' export — until its drop (USERS-20).
 - **Event Participation** moved to Tickets (`tickets_event_participations`, Users decomposition commit 13). Users keeps the frozen legacy `event_participations` table — no longer written, read only by Users' export — until its drop (USERS-19).
 - **Account deletion** is a 30-day grace period: `User.DeletionRequestedAt` + `DeletionScheduledFor` are stamped when a user requests deletion (with optional `DeletionEligibleAfter` for ticket-holder event holds). `ProcessAccountDeletionsJob` runs daily and calls `IAccountDeletionService.AnonymizeExpiredAccountAsync` for each due user. That job and `SuspendNonCompliantMembersJob` live in `Humans.Users/Jobs/` and are registered and scheduled by concrete type from Users' own `Section.cs` / `SectionJobs.cs` through the Shell's Hangfire scheduler. Those call sites are inside the section, so `ProcessAccountDeletionsJob` is `internal sealed`; `SuspendNonCompliantMembersJob` is still `public` and has no caller outside Users either.
 - Identity sub-tables (renamed to `users`, `user_claims`, `user_logins`, `user_tokens`, `roles`, `user_roles` per Postgres convention in `UsersDbContext.OnModelCreating`) are managed by ASP.NET Identity's `UserManager<User>` / `SignInManager<User>`. Controllers may inject those framework services directly (design-rules §2a exception).
@@ -272,7 +272,7 @@ The deletion cascade is `AccountDeletionService` (`Humans.Users/Services/`), the
 - **Teams:** `ITeamWrite.RevokeAllMembershipsAsync` (same grace-period revoke), `RemoveMemberFromAllTeamsCache`.
 - **Shifts:** `IShiftAuthorizationInvalidator.Invalidate`, `IShiftViewInvalidator.InvalidateUser` — cross-cutting cache drops only; the Shifts data itself is erased by that section's own contributor.
 
-Communication preferences are Email's (Users decomposition commit 14). The only remaining write to the frozen `communication_preferences` table is erasure; `UserInfoSaveChangesInterceptor` still pattern-matches `CommunicationPreference` saves and refreshes the legacy slice (`RefreshCommunicationPreferencesAsync`).
+Communication preferences are Email's (Users decomposition commit 14). The only remaining write to the frozen `communication_preferences` table is erasure; the rows are no longer on `UserInfo`, so no cache refresh follows it.
 
 Inbound (other sections → Users) — the typical direction:
 
@@ -490,7 +490,7 @@ No shadow columns (`IsOAuth` and `DisplayOrder` are gone from the table; `HUM000
 
 **Table:** `communication_preferences`
 
-**Legacy, no longer written.** Communication preferences moved to Email's `email_communication_preferences` (Users decomposition commit 14; see `Humans.Email/Docs/Email.md`). This table stays until the `email.communication-preferences` copy reports done in production and a drop PR removes it.
+**Legacy, no longer written.** Communication preferences moved to Email's `email_communication_preferences` (Users decomposition commit 14; see `Humans.Email/Docs/Email.md`). The `email.communication-preferences` copy has been retired; the table stays, read only by Users' export and deleted by erasure, until the USERS-20 drop PR removes it.
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -503,7 +503,7 @@ No shadow columns (`IsOAuth` and `DisplayOrder` are gone from the table; `HUM000
 | UpdateSource | string (100) | Last writer |
 | SubscribedAt | Instant? | First opt-in |
 
-The rows still load into `UserInfo.CommunicationPreferences` (`[Obsolete(HUM_USER_COMMPREFS)]`), read only by Email's `CommunicationPreferenceService.LegacyRows`. Users no longer folds the table on account merge — Email folds the effective preferences. Erasure still deletes the rows.
+The rows no longer load into `UserInfo`. Users no longer folds the table on account merge — Email folds the effective preferences. Erasure still deletes the rows.
 
 **Unique constraint:** `(UserId, Category)`. **Indexes:** `UserId`.
 
@@ -552,11 +552,11 @@ Nothing here is written. Each row is read only by its new owner's fallback and d
 | `profiles.MembershipTier` | Governance `governance_membership_tiers` | `governance.profile-tier` (retired, no reader left) | USERS-17 |
 | `profiles` review columns (`ConsentCheck*`, `RejectionReason`, `RejectedAt`, `RejectedByUserId`, `IsApproved`) and the `ConsentCheckStatus` index | Consent `consent_reviews` | `consent.profile-review` (retired, no reader left) | USERS-18 |
 | `event_participations` table | Tickets `tickets_event_participations` | `tickets.event-participations` (retired, no reader left) | USERS-19 |
-| `communication_preferences` table | Email `email_communication_preferences` | `email.communication-preferences` | USERS-20 |
+| `communication_preferences` table | Email `email_communication_preferences` | `email.communication-preferences` (retired, no reader left) | USERS-20 |
 | `user_emails.IsGoogle`, `user_emails.GoogleEmailStatus` | GoogleIntegration `google_workspace_identities` | `google.workspace-identities` | USERS-21 |
 | `users.UnsubscribedFromCampaigns`, `users.SuppressScheduleChangeEmails`, `users.GoogleEmailStatus` | none (dead, no migration) | none | USERS-12 to USERS-14 (per-case approval) |
 
-The `Legacy*` enums still type the frozen columns, so each one leaves `Users.Contracts` for Users' internal `Domain` with its retirement PR (`LegacyMembershipTier` and `LegacyConsentCheckStatus` have; the participation enums stay public while `User.EventParticipations` reaches them) and is deleted with its drop row.
+The `Legacy*` enums still type the frozen columns, so each one leaves `Users.Contracts` for Users' internal `Domain` with its retirement PR (`LegacyMembershipTier`, `LegacyConsentCheckStatus` and `LegacyMessageCategory` have; the participation enums stay public while `User.EventParticipations` reaches them) and is deleted with its drop row.
 
 ### LegacyMembershipTier
 
@@ -572,7 +572,7 @@ Frozen copy of Consent's `ConsentCheckStatus` (`Pending` 0, `Cleared` 1, `Flagge
 
 ### LegacyMessageCategory
 
-Frozen copy of Email's `MessageCategory` (System 0, EventOperations 1, CommunityUpdates 2, Marketing 3, Governance 4, CampaignCodes 5, FacilitatedMessages 6, Ticketing 7, VolunteerUpdates 8, TeamUpdates 9) typing the legacy `communication_preferences.Category` column, stored as string. The live enum and its meaning live in `Humans.Email.Contracts`; deleted with the `email.communication-preferences` retirement PR.
+Frozen copy of Email's `MessageCategory` (System 0, EventOperations 1, CommunityUpdates 2, Marketing 3, Governance 4, CampaignCodes 5, FacilitatedMessages 6, Ticketing 7, VolunteerUpdates 8, TeamUpdates 9) typing the legacy `communication_preferences.Category` column, stored as string. Internal to Users (`Humans.Users.Domain`) since the `email.communication-preferences` retirement; deleted with the USERS-20 drop. The live enum and its meaning live in `Humans.Email.Contracts`.
 
 ## Routing
 

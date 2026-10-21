@@ -91,11 +91,6 @@ internal sealed class UserInfoSaveChangesInterceptor(
         {
             await RunAsync("RefreshExternalLogins", userId, () => refresher.RefreshExternalLoginsAsync(userId, ct));
         }
-
-        foreach (var userId in affected.CommunicationPreferenceUserIds.Except(affected.DeletedUserIds))
-        {
-            await RunAsync("RefreshCommunicationPreferences", userId, () => refresher.RefreshCommunicationPreferencesAsync(userId, ct));
-        }
     }
 
     private async Task RunAsync(string operation, Guid userId, Func<Task> work)
@@ -139,9 +134,6 @@ internal sealed class UserInfoSaveChangesInterceptor(
                 case IdentityUserLogin<Guid> uil:
                     affected.ExternalLoginUserIds.Add(uil.UserId);
                     break;
-                case CommunicationPreference cp:
-                    affected.CommunicationPreferenceUserIds.Add(cp.UserId);
-                    break;
             }
         }
         return affected;
@@ -181,13 +173,11 @@ internal sealed class UserInfoSaveChangesInterceptor(
         public HashSet<Guid> DeletedUserIds { get; } = [];
         public HashSet<Guid> UserEmailUserIds { get; } = [];
         public HashSet<Guid> ExternalLoginUserIds { get; } = [];
-        public HashSet<Guid> CommunicationPreferenceUserIds { get; } = [];
 
         public bool HasWork =>
             Users.Count > 0 ||
             DeletedUserIds.Count > 0 ||
             UserEmailUserIds.Count > 0 ||
-            ExternalLoginUserIds.Count > 0 ||
-            CommunicationPreferenceUserIds.Count > 0;
+            ExternalLoginUserIds.Count > 0;
     }
 }

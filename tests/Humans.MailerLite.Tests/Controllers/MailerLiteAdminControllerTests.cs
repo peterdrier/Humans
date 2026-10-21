@@ -353,8 +353,7 @@ public class MailerLiteAdminControllerTests
                 UpdatedAt = now,
             }],
             externalLogins: [],
-            profile: null,
-            communicationPreferences: []);
+            profile: null);
     }
 
     private static async IAsyncEnumerable<MailerLiteSubscriber> EmptyAsync()
@@ -377,7 +376,6 @@ public class MailerLiteAdminControllerTests
             },
             userEmails: [],
             externalLogins: [],
-            profile: null,
-            communicationPreferences: []);
+            profile: null);
     }
 }

@@ -55,8 +55,7 @@ public class DietaryProfileTests
         var info = UserInfo.Create(
             new User { Id = resolvesTo ?? id, BurnerName = "Ana", CreatedAt = Now },
             [], [],
-            UserFixtures.Profile(medicalConditions: medical),
-            []);
+            UserFixtures.Profile(medicalConditions: medical));
         _users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(info);
         _users.GetRawUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(info);
         if (resolvesTo is null)

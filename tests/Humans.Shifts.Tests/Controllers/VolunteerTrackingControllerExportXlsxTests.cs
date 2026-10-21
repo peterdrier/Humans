@@ -139,8 +139,7 @@ public sealed class VolunteerTrackingControllerExportXlsxTests
                 profile: profile,
                 contactFields: [],
                 profileLanguages: [],
-                volunteerHistory: [],
-                communicationPreferences: [])));
+                volunteerHistory: [])));
 
         // Sub-period offsets mirror the EventSettings entity defaults
         // (FirstCrew=-25, SetupWeek=-16, PreEventWeek=-9, FinishingWeekend=-4),

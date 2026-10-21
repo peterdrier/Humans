@@ -58,7 +58,7 @@ public class PaymentDetailsTests
     {
         var info = UserInfo.Create(
             new User { Id = resolvesTo ?? id, BurnerName = "Ana", CreatedAt = Now },
-            [], [], UserFixtures.Profile(), []);
+            [], [], UserFixtures.Profile());
         _users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(info);
         _users.GetRawUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(info);
         return info;

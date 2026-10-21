@@ -772,8 +772,7 @@ public class VolunteerTrackingServiceTests
                         profile: null,
                         contactFields: [],
                         profileLanguages: [],
-                        volunteerHistory: [],
-                        communicationPreferences: []))
+                        volunteerHistory: []))
                     .ToList();
                 return Task.FromResult<IReadOnlyCollection<UserInfo>>(users);
             });

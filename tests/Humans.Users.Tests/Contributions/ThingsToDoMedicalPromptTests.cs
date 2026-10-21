@@ -120,6 +120,5 @@ public class ThingsToDoMedicalPromptTests
         profile: new Profile { UserId = userId, BurnerName = "Test", MedicalConditions = medical },
         contactFields: [],
         profileLanguages: [],
-        volunteerHistory: [],
-        communicationPreferences: []);
+        volunteerHistory: []);
 }

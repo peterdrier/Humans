@@ -335,7 +335,7 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
                 {
                     [outboxEvent.UserId] = UserInfo.Create(
                         new User { Id = survivorId, UserName = "s", Email = "s@example.org" },
-                        [], [], null, []),
+                        [], [], null),
                 }));
         _googleSyncService.AddUserToTeamResourcesAsync(outboxEvent.TeamId, outboxEvent.UserId,
                 Arg.Any<CancellationToken>(), Arg.Any<GoogleSyncSource>())

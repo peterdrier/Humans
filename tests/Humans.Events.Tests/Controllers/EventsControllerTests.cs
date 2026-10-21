@@ -877,7 +877,6 @@ public class EventsControllerTests
             user: user,
             userEmails: [],
             externalLogins: [],
-            profile: profile,
-            communicationPreferences: []);
+            profile: profile);
     }
 }

@@ -35,7 +35,7 @@ public class GuestAccountControllerTests
         _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.ArgAt<string>(0), call.ArgAt<string>(0)));
 
         _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(user, [], [], profile: null, [])));
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(user, [], [], profile: null)));
 
         var ctrl = new GuestAccountController(
             _userService,
@@ -209,7 +209,7 @@ public class GuestAccountControllerTests
             ct.ThrowIfCancellationRequested();
             if (abandon && string.Equals(boundary, "Preferences", StringComparison.Ordinal))
                 await request.CancelAsync();
-            return UserInfo.Create(user, [], [], null, []);
+            return UserInfo.Create(user, [], [], null);
         }
         _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(call => ReadUser(call.Arg<CancellationToken>()));

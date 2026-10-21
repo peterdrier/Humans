@@ -45,7 +45,7 @@ public class UnsubscribeServiceTests
     }
 
     private static UserInfo CreateUserInfo(User user) =>
-        UserInfo.Create(user, [], [], null, []);
+        UserInfo.Create(user, [], [], null);
 
     [HumansFact]
     public async Task ValidateTokenAsync_ReturnsValid_ForNewFormatToken()

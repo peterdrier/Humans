@@ -27,7 +27,6 @@ internal static class UserInfoStubHelpers
             profile: profile,
             [],
             [],
-            [],
             []);
 
     public static UserInfo MakeUserInfo(Guid userId, Profile? profile = null, string displayName = "User")
@@ -48,7 +47,6 @@ internal static class UserInfoStubHelpers
             [],
             [],
             profile: resolvedProfile,
-            [],
             [],
             [],
             []);

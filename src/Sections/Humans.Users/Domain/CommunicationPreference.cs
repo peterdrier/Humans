@@ -1,14 +1,13 @@
 using NodaTime;
 
-using Humans.Users.Contracts;
 
 namespace Humans.Users.Domain;
 
 /// <summary>
 /// The frozen legacy <c>communication_preferences</c> row. Email owns the live preferences in
 /// <c>email_communication_preferences</c> since Users decomposition commit 14; this table is no longer
-/// written except by erasure, is read into the obsolete <see cref="UserInfo.CommunicationPreferences"/>
-/// for Email's fallback and copy, and is dropped once <c>email.communication-preferences</c> reports done.
+/// written except by erasure, is read only by Users' GDPR export since the
+/// <c>email.communication-preferences</c> copy was retired, and is dropped by USERS-20.
 /// </summary>
 internal sealed class CommunicationPreference
 {

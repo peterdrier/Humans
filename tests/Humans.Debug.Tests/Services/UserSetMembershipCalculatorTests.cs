@@ -168,7 +168,6 @@ public class UserSetMembershipCalculatorTests
             },
             userEmails: [],
             externalLogins: [],
-            profile: profile,
-            communicationPreferences: []);
+            profile: profile);
     }
 }

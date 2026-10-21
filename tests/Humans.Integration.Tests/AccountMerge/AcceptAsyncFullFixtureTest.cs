@@ -100,14 +100,14 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
             b.WithSourceLanguage($"x-{runTag.Substring(0, 4)}", LanguageProficiency.Native);
 
             // CommunicationPreference — source-only category.
-            b.WithSourceCommPref(LegacyMessageCategory.VolunteerUpdates, optedOut: true);
+            b.WithSourceCommPref(MessageCategory.VolunteerUpdates, optedOut: true);
 
             // IdentityUserLogin — source-only key (logins keyed on
             // (provider, key); two users can never share the same key).
             b.WithSourceLogin("Google", sourceLoginKey);
 
             // EventParticipation — source-only year.
-            b.WithSourceEventParticipation(2024, LegacyParticipationStatus.Attended);
+            b.WithSourceEventParticipation(2024, ParticipationStatus.Attended);
 
             // Application — source-only.
             b.WithSourceApplication();
@@ -222,10 +222,10 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
             .Should().Be(0, "all UserEmails re-FK or collapse off the source");
         (await db.Set<IdentityUserLogin<Guid>>().AsNoTracking().CountAsync(l => l.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0, "all logins re-FK to target");
-        (await db.CommunicationPreferences.AsNoTracking().CountAsync(cp => cp.UserId == sourceId, TestContext.Current.CancellationToken))
-            .Should().Be(0);
-        (await ticketsDb.EventParticipations.AsNoTracking().CountAsync(ep => ep.UserId == sourceId && ep.Status != null, TestContext.Current.CancellationToken))
-            .Should().Be(0, "Tickets clears the source's participations; the legacy Users rows stay frozen");
+        (await emailDb.CommunicationPreferences.AsNoTracking().CountAsync(cp => cp.UserId == sourceId, TestContext.Current.CancellationToken))
+            .Should().Be(0, "Email folds the source's preferences onto the target");
+        (await ticketsDb.EventParticipations.AsNoTracking().CountAsync(ep => ep.UserId == sourceId, TestContext.Current.CancellationToken))
+            .Should().Be(0, "Tickets folds the source's participations onto the target");
         (await governanceDb.Applications.AsNoTracking().CountAsync(a => a.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0);
         (await authDb.RoleAssignments.AsNoTracking().CountAsync(ra =>
@@ -315,7 +315,7 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
         (await emailDb.CommunicationPreferences.AsNoTracking()
                 .AnyAsync(cp => cp.UserId == targetId
                     && cp.Category == MessageCategory.VolunteerUpdates && cp.OptedOut == true, TestContext.Current.CancellationToken))
-            .Should().BeTrue("source legacy CommPref folded into target's Email row");
+            .Should().BeTrue("source CommPref folded into target's Email row");
 
         (await ticketsDb.EventParticipations.AsNoTracking()
                 .AnyAsync(ep => ep.UserId == targetId && ep.Year == 2024

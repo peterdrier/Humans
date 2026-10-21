@@ -52,8 +52,7 @@ public class MyDataControllerTests
             },
             userEmails: [],
             externalLogins: [],
-            profile: null,
-            communicationPreferences: []);
+            profile: null);
 
     [HumansFact]
     public async Task Index_returns_NotFound_without_a_user()

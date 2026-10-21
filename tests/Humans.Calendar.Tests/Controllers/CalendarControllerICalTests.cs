@@ -737,7 +737,7 @@ public class CalendarControllerICalTests
         _users.GetUserInfoAsync(_viewer, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
                 new User { Id = _viewer, State = UserState.Active, PreferredLanguage = "en" },
-                [], [], profile: null, [])));
+                [], [], profile: null)));
 
     private async Task<CalendarMonthViewModel> IndexModelAsync()
     {

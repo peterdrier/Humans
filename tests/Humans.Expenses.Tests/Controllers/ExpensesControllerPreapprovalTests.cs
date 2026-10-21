@@ -40,7 +40,7 @@ public sealed class ExpensesControllerPreapprovalTests
     public ExpensesControllerPreapprovalTests()
     {
         _users.GetUserInfoAsync(_actorId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = _actorId }, [], [], null, []));
+            UserInfo.Create(new User { Id = _actorId }, [], [], null));
         _reports.GetForSubmitterAsync(_actorId, Arg.Any<CancellationToken>()).Returns([]);
         _reports.GetCoordinatorQueueAsync(_actorId, Arg.Any<CancellationToken>()).Returns([]);
         _budget.GetEffectiveCoordinatorTeamIdsAsync(_actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());

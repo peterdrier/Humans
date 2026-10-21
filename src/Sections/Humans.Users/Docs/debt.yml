@@ -37,7 +37,7 @@ inbox:
     review: panel
   - added: 2026-10-21
     id: USERS-20
-    what: "Drop the communication_preferences table (Users) and delete the CommunicationPreference entity, its configuration and the User navigation if one remains. Replaced by data migration email.communication-preferences; blocked on CENTRAL-94 (the retirement PR) merged and deployed. The production done reading of email.communication-preferences (quoted with its date) is the standing approval in memory/architecture/no-drops-until-prod-verified.md; the drop is its own generated migration with a baseline entry in NoDestructiveMigrationOps.baseline.txt whose Approval line cites that reading and Evidence line cites the retirement PR."
+    what: "Drop the communication_preferences table (Users) and delete the CommunicationPreference entity, its configuration, the internal LegacyMessageCategory enum, Users' LegacyCommunicationPreferences export slice and erase, and the User navigation if one remains. Replaced by data migration email.communication-preferences; blocked on CENTRAL-94 (the retirement PR) merged and deployed. The production done reading of email.communication-preferences (quoted with its date) is the standing approval in memory/architecture/no-drops-until-prod-verified.md; the drop is its own generated migration with a baseline entry in NoDestructiveMigrationOps.baseline.txt whose Approval line cites that reading and Evidence line cites the retirement PR."
     review: panel
   - added: 2026-10-21
     id: USERS-21

@@ -93,7 +93,7 @@ public class AttendeeContactImportServicePlanTests
         harness.Users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(
                 new User { Id = userId, MergedToUserId = null },
-                [], [], null, []));
+                [], [], null));
 
         var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -122,7 +122,7 @@ public class AttendeeContactImportServicePlanTests
         // The user read resolves the merge chain forward (#1704): asking for the merged-away
         // id hands back the surviving row.
         harness.Users.GetUserInfoAsync(deadId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = liveId }, [], [], null, []));
+            .Returns(UserInfo.Create(new User { Id = liveId }, [], [], null));
 
         var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 

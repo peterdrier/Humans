@@ -157,8 +157,7 @@ public sealed class TicketTransferService_OnwardTransferTests
                 user: carol,
                 userEmails: [],
                 externalLogins: [],
-                profile: carolProfile,
-                communicationPreferences: []));
+                profile: carolProfile));
         _userEmailService.GetPrimaryEmailAsync(UserC, Arg.Any<CancellationToken>())
             .Returns("carol@example.com");
         _transferRepo.GetBySenderAsync(UserB, Arg.Any<CancellationToken>())

@@ -166,7 +166,7 @@ public sealed class CachingConsentServiceTests
         using var cancellation = new CancellationTokenSource();
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
-        var user = UserInfo.Create(new User { Id = userId }, [], [], null, [])
+        var user = UserInfo.Create(new User { Id = userId }, [], [], null)
             with
         { MergedUserIds = [Guid.NewGuid()] };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
@@ -211,7 +211,7 @@ public sealed class CachingConsentServiceTests
         var userId = Guid.NewGuid();
         var sourceIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
         var versionId = Guid.NewGuid();
-        var user = UserInfo.Create(new User { Id = userId }, [], [], null, [])
+        var user = UserInfo.Create(new User { Id = userId }, [], [], null)
             with
         { MergedUserIds = sourceIds };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);

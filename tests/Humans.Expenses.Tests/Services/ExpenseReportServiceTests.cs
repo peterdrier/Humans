@@ -144,8 +144,7 @@ public sealed partial class ExpenseReportServiceTests
         },
         userEmails: [],
         externalLogins: [],
-        profile: profile,
-        communicationPreferences: []);
+        profile: profile);
 
     // ─────────────────────────────── 4.2 ─────────────────────────────────────
 
@@ -154,7 +153,7 @@ public sealed partial class ExpenseReportServiceTests
     {
         var actorId = Guid.NewGuid();
         _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = actorId }, [], [], null, []));
+            UserInfo.Create(new User { Id = actorId }, [], [], null));
         _budgetService.GetEffectiveCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         using var request = new CancellationTokenSource();
         var controller = new ExpensesController(_userService, _sut, _budgetService, _holdedFinance, _finance, _preapprovals,
@@ -200,7 +199,7 @@ public sealed partial class ExpenseReportServiceTests
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             if (abandon && string.Equals(boundary, "Report", StringComparison.Ordinal)) await request.CancelAsync();
-            return UserInfo.Create(new User { Id = actorId }, [], [], null, []);
+            return UserInfo.Create(new User { Id = actorId }, [], [], null);
         }
         _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(ReadActor);
         var authorization = Substitute.For<IAuthorizationService>();
@@ -249,7 +248,7 @@ public sealed partial class ExpenseReportServiceTests
         _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = actorId }, [], [], null, []));
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = actorId }, [], [], null));
         });
         var controller = new ExpensesController(_userService, _sut, _budgetService, _holdedFinance, _finance, _preapprovals,
             Substitute.For<IAuthorizationService>(), Clock, NullLogger<ExpensesController>.Instance, _localizer)
@@ -295,7 +294,7 @@ public sealed partial class ExpenseReportServiceTests
             lineType: ExpenseLineType.Invoice, ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
         await SeedReportWithStatus(Guid.NewGuid(), actorId, category.Id, year.Id, ExpenseReportStatus.Submitted);
         _budgetService.GetEffectiveCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
-        var actor = UserInfo.Create(new User { Id = actorId }, [], [], null, []);
+        var actor = UserInfo.Create(new User { Id = actorId }, [], [], null);
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo> { [actorId] = actor }));
         using var request = new CancellationTokenSource();
@@ -357,12 +356,12 @@ public sealed partial class ExpenseReportServiceTests
         foreach (var userId in new[] { namedId, blankId, missingId })
             await SeedReportWithStatus(Guid.NewGuid(), userId, category.Id, year.Id, ExpenseReportStatus.Submitted);
         _userService.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = viewerId }, [], [], null, []));
+            UserInfo.Create(new User { Id = viewerId }, [], [], null));
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(
             new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
             {
-                [namedId] = UserInfo.Create(new User { Id = namedId, BurnerName = "Known member" }, [], [], null, []),
-                [blankId] = UserInfo.Create(new User { Id = blankId, BurnerName = " " }, [], [], null, []),
+                [namedId] = UserInfo.Create(new User { Id = namedId, BurnerName = "Known member" }, [], [], null),
+                [blankId] = UserInfo.Create(new User { Id = blankId, BurnerName = " " }, [], [], null),
             }));
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
@@ -580,7 +579,7 @@ public sealed partial class ExpenseReportServiceTests
         var survivorId = Guid.NewGuid();
         var sourceId = Guid.NewGuid();
         var otherId = Guid.NewGuid();
-        var survivor = UserInfo.Create(new User { Id = survivorId }, [], [], null, [])
+        var survivor = UserInfo.Create(new User { Id = survivorId }, [], [], null)
             with
         { MergedUserIds = [sourceId] };
         _userService.GetUserInfoAsync(survivorId, Arg.Any<CancellationToken>()).Returns(survivor);
@@ -967,7 +966,7 @@ public sealed partial class ExpenseReportServiceTests
             var actorId = Guid.NewGuid();
             var reportId = Guid.NewGuid();
             _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
-                UserInfo.Create(new User { Id = actorId }, [], [], null, []));
+                UserInfo.Create(new User { Id = actorId }, [], [], null));
             var reports = Substitute.For<IExpenseReportManagement>();
             reports.GetAsync(reportId, Arg.Any<CancellationToken>()).Returns(new ExpenseReportDto
             {
@@ -2923,7 +2922,7 @@ public sealed partial class ExpenseReportServiceTests
             .Returns(UserInfo.Create(
                 user: new User { Id = userId, DisplayName = burnerName, BurnerName = burnerName, PreferredLanguage = language, CreatedAt = FakeNow },
                 userEmails: [], externalLogins: [],
-                profile: null, communicationPreferences: []));
+                profile: null));
         _userEmailService.GetNotificationTargetEmailsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string> { [userId] = email });
@@ -3172,7 +3171,7 @@ public sealed partial class ExpenseReportServiceTests
             return Task.FromResult<BudgetYearDetail?>(null);
         });
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = userId }, [], [], null, []));
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], null));
         _budgetService.GetEffectiveCoordinatorTeamIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         var reports = Substitute.For<IExpenseReportManagement>();
         reports.GetForSubmitterAsync(userId, Arg.Any<CancellationToken>()).Returns([]);

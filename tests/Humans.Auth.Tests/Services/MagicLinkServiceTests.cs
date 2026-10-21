@@ -175,8 +175,7 @@ public sealed class MagicLinkServiceTests : IDisposable
             user,
             [],
             [],
-            null,
-            []);
+            null);
 
     [HumansFact]
     public async Task SendMagicLinkAsync_RateLimited_DoesNotSendEmail()

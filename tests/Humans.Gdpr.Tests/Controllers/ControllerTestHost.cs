@@ -33,6 +33,6 @@ internal static class ControllerTestHost
     {
         var user = new User { Id = id, PreferredLanguage = "en" };
         configure?.Invoke(user);
-        return UserInfo.Create(user, [], [], profile, []);
+        return UserInfo.Create(user, [], [], profile);
     }
 }
