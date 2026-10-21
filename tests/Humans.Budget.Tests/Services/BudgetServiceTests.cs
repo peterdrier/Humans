@@ -1767,6 +1767,24 @@ public sealed class BudgetServiceTests
         summary.ExpenseSlices.Select(sl => sl.Name).Should().BeEquivalentTo(["Ops", "VAT Liability"]);
     }
 
+    [HumansFact]
+    public void ComputeBudgetSummaryWithBuffers_totals_line_items_excluding_cashflow_only()
+    {
+        var groupId = Guid.NewGuid();
+        var cat = new BudgetCategoryDetail(Guid.NewGuid(), groupId, "Ops", 0m, ExpenditureType.OpEx, null, 0,
+        [
+            new BudgetLineItemDetail(Guid.NewGuid(), Guid.NewGuid(), "Income", 200m, null, null, null, 0, false, false, 0),
+            new BudgetLineItemDetail(Guid.NewGuid(), Guid.NewGuid(), "Equipment", -50m, null, null, null, 0, false, false, 0),
+            new BudgetLineItemDetail(Guid.NewGuid(), Guid.NewGuid(), "Loan", 999m, null, null, null, 0, false, true, 0)
+        ]);
+        IReadOnlyList<BudgetGroupDetail> groups =
+        [
+            new(groupId, Guid.NewGuid(), "Main", 0, false, false, false, null, [cat])
+        ];
+
+        _service.ComputeBudgetSummaryWithBuffers(groups).TotalLineItems.Should().Be(150m);
+    }
+
     // ─── GDPR export follows the merge chain ────────────────────────────────
 
     [HumansFact]

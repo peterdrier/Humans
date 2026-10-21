@@ -158,6 +158,8 @@ public sealed class BudgetSummaryResult
     public decimal TotalIncome { get; init; }
     public decimal TotalExpenses { get; init; }
     public decimal NetBalance { get; init; }
+    /// <summary>Signed sum of every budget line item, cashflow-only items excluded.</summary>
+    public decimal TotalLineItems { get; init; }
     public required IReadOnlyList<BudgetSliceResult> IncomeSlices { get; init; }
     public required IReadOnlyList<BudgetSliceResult> ExpenseSlices { get; init; }
 }
