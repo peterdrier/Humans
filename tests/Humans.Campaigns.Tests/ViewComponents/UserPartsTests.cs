@@ -8,7 +8,6 @@ using Humans.Campaigns.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
-using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using NodaTime;
 using NSubstitute;
 using Microsoft.AspNetCore.Mvc.Rendering;

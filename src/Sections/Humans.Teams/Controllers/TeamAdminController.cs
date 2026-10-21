@@ -5,7 +5,6 @@ using Humans.Teams.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Humans.Tickets.Contracts;
-using Humans.Teams.Domain;
 using Humans.Base.Extensions;
 using Humans.Base.Models;
 using Humans.Teams.Models;

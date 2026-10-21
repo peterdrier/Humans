@@ -4,7 +4,6 @@ using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using NodaTime;
 
 namespace Humans.Tickets.ViewComponents;
 

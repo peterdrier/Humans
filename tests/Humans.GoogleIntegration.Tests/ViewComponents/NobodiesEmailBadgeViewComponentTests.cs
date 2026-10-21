@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.GoogleIntegration.Tests.ViewComponents;
 

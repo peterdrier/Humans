@@ -160,7 +160,7 @@ public sealed class IssuesServiceTests
             .Returns(call => new ValueTask<UserInfo?>(Info(call.ArgAt<Guid>(0))));
 
         svc.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call => (IReadOnlyDictionary<Guid, UserInfo>)call
+            .Returns(call => call
                 .ArgAt<IReadOnlyCollection<Guid>>(0)
                 .Select(Info)
                 .OfType<UserInfo>()
@@ -513,7 +513,7 @@ public sealed class IssuesServiceTests
         (await act.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
         var saved = await _repository.GetByIdAsync(issueId, TestContext.Current.CancellationToken);
         saved.Should().NotBeNull();
-        FileStorage.Files.Should().ContainKey(saved!.ScreenshotStoragePath!);
+        FileStorage.Files.Should().ContainKey(saved.ScreenshotStoragePath!);
         FileStorage.Files[saved.ScreenshotStoragePath!].Should().Equal(1, 2, 3);
     }
 
@@ -690,7 +690,7 @@ public sealed class IssuesServiceTests
         var handler = SeedUser(Guid.NewGuid(), "Handler");
         handler.PreferredLanguage = "invalid!";
         _roleService.GetActiveUserIdsInRoleAsync(RoleNames.Admin, Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<Guid>)[handler.Id]);
+            .Returns([handler.Id]);
 
         await _service.SubmitIssueAsync(reporter.Id, IssueCategory.Bug, "Title", "Detail",
             null, null, null, null, null, ct: TestContext.Current.CancellationToken);
@@ -716,7 +716,7 @@ public sealed class IssuesServiceTests
             ? SeedUser(Guid.NewGuid(), "First handler") : reporter;
         failedRecipient.PreferredLanguage = "es";
         _roleService.GetActiveUserIdsInRoleAsync(RoleNames.Admin, Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<Guid>)[failedRecipient.Id, second.Id]);
+            .Returns([failedRecipient.Id, second.Id]);
         _notificationService.SendAsync(
             Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
             Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string?>(), Arg.Any<string?>(),
@@ -768,7 +768,7 @@ public sealed class IssuesServiceTests
             SeedUser(recipientId, "Recipient").Email = "recipient@test.com";
         Db.Users.Single(user => user.Id == recipientId).PreferredLanguage = "es";
         _roleService.GetActiveUserIdsInRoleAsync(RoleNames.Admin, Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<Guid>)[recipientId]);
+            .Returns([recipientId]);
         var title = string.Concat(Enumerable.Repeat("🚀", 200));
         var detail = string.Concat(Enumerable.Repeat("📚", 5000));
         Guid issueId;
@@ -1549,10 +1549,10 @@ public sealed class IssuesServiceTests
         result.NotFound.Should().BeFalse();
 
         var cleared = await _service.SetGitHubIssueNumberAsync(issueId, Admin, null, Admin.UserId,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
         cleared.Succeeded.Should().BeTrue();
         (await _issuesDb.Issues.AsNoTracking().SingleAsync(i => i.Id == issueId,
-            Xunit.TestContext.Current.CancellationToken)).GitHubIssueNumber.Should().BeNull();
+            TestContext.Current.CancellationToken)).GitHubIssueNumber.Should().BeNull();
     }
 
     [HumansTheory]
@@ -1560,7 +1560,7 @@ public sealed class IssuesServiceTests
     [InlineData(-1)]
     public async Task SetGitHubIssueNumberAsync_RejectsNonpositiveNumbersWithoutChangingLink(int number)
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         await _service.SetGitHubIssueNumberAsync(issueId, Admin, 123, Admin.UserId, ct);
         AuditLog.ClearReceivedCalls();
@@ -1679,7 +1679,7 @@ public sealed class IssuesServiceTests
 
         var tickets = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Tickets", "Tickets");
         var camps = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Camps", "Camps");
-        var unrouted = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Unrouted", null);
+        var unrouted = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Unrouted");
 
         var result = await _service.GetIssueListAsync(new IssueListFilter(), Admin, ct: TestContext.Current.CancellationToken);
 
@@ -1717,7 +1717,7 @@ public sealed class IssuesServiceTests
         await SeedIssueRowAsync(viewerId, IssueStatus.Triage, "Mine, elsewhere", "Camps");
         await SeedIssueRowAsync(strangerId, IssueStatus.Resolved, "Terminal, my section", "Tickets");
         await SeedIssueRowAsync(strangerId, IssueStatus.InProgress, "Being worked, my section", "Tickets");
-        await SeedIssueRowAsync(strangerId, IssueStatus.Open, "Unrouted", null);
+        await SeedIssueRowAsync(strangerId, IssueStatus.Open, "Unrouted");
 
         var count = await _service.GetActionableCountForViewerAsync(
             new IssueViewer(viewerId, [RoleNames.TicketAdmin]),
@@ -2446,7 +2446,7 @@ public sealed class IssuesServiceTests
         _userService.GetUserInfoAsync(archived, Arg.Any<CancellationToken>())
             .Returns(_ => new ValueTask<UserInfo?>(Info(survivor)));
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call => (IReadOnlyDictionary<Guid, UserInfo>)call
+            .Returns(call => call
                 .ArgAt<IReadOnlyCollection<Guid>>(0)
                 .Select(id => (Key: id, Info: Info(id == archived ? survivor : id)))
                 .Where(x => x.Info is not null)

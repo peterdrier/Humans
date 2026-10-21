@@ -1,11 +1,9 @@
 using AwesomeAssertions;
 using Humans.Governance.Contracts;
 using Humans.Governance.ViewComponents;
-using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
-using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using System.Security.Claims;

@@ -17,7 +17,6 @@ using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
 using System.Net;
-using System.Text;
 using Microsoft.Extensions.Localization;
 using Humans.Base.Helpers;
 
@@ -106,7 +105,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     [InlineData("<")]
     public async Task ComposerSelfSend_ValidMaximumSubject_QueuesWithoutLosingTheFullSubject(string character)
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
         var localizer = Substitute.For<IStringLocalizer<EmailResource>>();
         localizer["Email_ComposerSelfTest_Subject"].Returns(new LocalizedString("subject", "[Test] {0}"));
@@ -137,9 +136,9 @@ public sealed class OutboxEmailServiceTests : IDisposable
     public async Task SendAsync_SubjectAtUnicodeCharacterLimit_PreservesHeaderAndBody()
     {
         var subject = string.Concat(Enumerable.Repeat("😀", 1000));
-        await _service.SendAsync(Message(subject: subject), Xunit.TestContext.Current.CancellationToken);
+        await _service.SendAsync(Message(subject: subject), TestContext.Current.CancellationToken);
 
-        var row = (await _emailDb.EmailOutboxMessages.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken))
+        var row = (await _emailDb.EmailOutboxMessages.AsNoTracking().ToListAsync(TestContext.Current.CancellationToken))
             .Should().ContainSingle().Subject;
         row.Subject.Should().Be(subject);
         row.HtmlBody.Should().Be(Message().HtmlBody);
@@ -150,7 +149,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     [InlineData(false)]
     public async Task SendAsync_StableDeliveryId_ReusesOnlyExplicitlyIdentifiedDeliveries(bool stable)
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var message = Message() with { DeliveryId = stable ? Guid.NewGuid() : null };
         await _service.SendAsync(message, ct);
         await _service.SendAsync(message with { Subject = "Changed on retry" }, ct);
@@ -212,9 +211,9 @@ public sealed class OutboxEmailServiceTests : IDisposable
             .Returns(call => composer.Compose(call.ArgAt<string>(0), call.ArgAt<string?>(1), call.ArgAt<string?>(2)));
         const string html = "<h2>Confirm address</h2><p><a href=\"https://humans.example/verify?t=A%2FB&amp;email=a%40example.com\">Verify email</a></p>";
 
-        await _service.SendAsync(Message(html: html), Xunit.TestContext.Current.CancellationToken);
+        await _service.SendAsync(Message(html: html), TestContext.Current.CancellationToken);
 
-        var queued = await _emailDb.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var queued = await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken);
         queued.PlainTextBody.Should().Be(
             "Confirm address\n\nVerify email (https://humans.example/verify?t=A%2FB&email=a%40example.com)");
         queued.HtmlBody.Should().Contain("https://humans.example/verify?t=A%2FB&amp;email=a%40example.com");
@@ -252,17 +251,17 @@ public sealed class OutboxEmailServiceTests : IDisposable
         await _service.SendAsync(message, TestContext.Current.CancellationToken);
 
         var queued = await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken);
-        queued.HtmlBody.Should().Contain(System.Net.WebUtility.HtmlEncode(expected));
-        queued.HtmlBody.Should().Contain(System.Net.WebUtility.HtmlEncode(unsubscribeUrl));
+        queued.HtmlBody.Should().Contain(WebUtility.HtmlEncode(expected));
+        queued.HtmlBody.Should().Contain(WebUtility.HtmlEncode(unsubscribeUrl));
         System.Globalization.CultureInfo.CurrentUICulture.Name.Should().Be("de");
     }
 
     [HumansFact]
     public async Task SendAsync_CreatesOutboxRowWithCorrectFields()
     {
-        await _service.SendAsync(Message(subject: "Access Suspended", html: "<p>Hello Alice</p>"), Xunit.TestContext.Current.CancellationToken);
+        await _service.SendAsync(Message(subject: "Access Suspended", html: "<p>Hello Alice</p>"), TestContext.Current.CancellationToken);
 
-        var msg = await _emailDb.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var msg = await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken);
         msg.RecipientEmail.Should().Be("alice@example.com");
         msg.RecipientName.Should().Be("Alice");
         msg.Subject.Should().Be("Access Suspended");
@@ -278,21 +277,21 @@ public sealed class OutboxEmailServiceTests : IDisposable
     {
         await _service.SendAsync(
             Message(template: "account_deleted", html: "<p>Goodbye</p>", doNotPersist: true),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         await _transport.Received(1).SendAsync(
             "alice@example.com", "Alice", "Subject",
             Arg.Is<string>(h => h.Contains("<p>Goodbye</p>")), "plain-text-stub",
             Arg.Any<string?>(), Arg.Any<IDictionary<string, string>?>(), Arg.Any<CancellationToken>(), true, "account_deleted");
 
-        (await _emailDb.EmailOutboxMessages.AnyAsync(Xunit.TestContext.Current.CancellationToken))
+        (await _emailDb.EmailOutboxMessages.AnyAsync(TestContext.Current.CancellationToken))
             .Should().BeFalse();
     }
 
     [HumansFact]
     public async Task SendAsync_WithoutDoNotPersist_DoesNotCallTransportDirectly()
     {
-        await _service.SendAsync(Message(), Xunit.TestContext.Current.CancellationToken);
+        await _service.SendAsync(Message(), TestContext.Current.CancellationToken);
 
         await _transport.DidNotReceive().SendAsync(
             Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -303,7 +302,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     [HumansFact]
     public async Task SendAsync_RecordsEmailQueuedMetricKeyedOnTemplate()
     {
-        await _service.SendAsync(Message(template: "access_suspended"), Xunit.TestContext.Current.CancellationToken);
+        await _service.SendAsync(Message(template: "access_suspended"), TestContext.Current.CancellationToken);
         _metrics.Received(1).RecordEmailQueued("access_suspended");
     }
 
@@ -311,7 +310,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     [MemberData(nameof(TimeSensitiveTemplateNames))]
     public async Task SendAsync_TimeSensitiveTemplate_RunsImmediateProcessor(string template)
     {
-        await _service.SendAsync(Message(template: template), Xunit.TestContext.Current.CancellationToken);
+        await _service.SendAsync(Message(template: template), TestContext.Current.CancellationToken);
         _immediate.Received(1).TriggerImmediate();
     }
 
@@ -338,7 +337,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     [HumansFact]
     public async Task SendAsync_OrdinaryTemplate_DoesNotRunImmediateProcessor()
     {
-        await _service.SendAsync(Message(template: "access_suspended"), Xunit.TestContext.Current.CancellationToken);
+        await _service.SendAsync(Message(template: "access_suspended"), TestContext.Current.CancellationToken);
         _immediate.DidNotReceive().TriggerImmediate();
     }
 
@@ -348,9 +347,9 @@ public sealed class OutboxEmailServiceTests : IDisposable
         await _service.SendAsync(Message(
             template: "facilitated_message",
             category: MessageCategory.FacilitatedMessages,
-            replyTo: "dave@example.com"), Xunit.TestContext.Current.CancellationToken);
+            replyTo: "dave@example.com"), TestContext.Current.CancellationToken);
 
-        var msg = await _emailDb.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var msg = await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken);
         msg.ReplyTo.Should().Be("dave@example.com");
     }
 
@@ -361,9 +360,9 @@ public sealed class OutboxEmailServiceTests : IDisposable
         _userEmailService.FindByAddressAsync("alice@example.com", false, true, Arg.Any<CancellationToken>())
             .Returns([UserEmailFixtures.Row(userId, "alice@example.com")]);
 
-        await _service.SendAsync(Message(category: null), Xunit.TestContext.Current.CancellationToken);
+        await _service.SendAsync(Message(category: null), TestContext.Current.CancellationToken);
 
-        var msg = await _emailDb.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var msg = await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken);
         msg.ExtraHeaders.Should().NotContain("List-Unsubscribe", "always-send mail carries no List-Unsubscribe headers");
         msg.ExtraHeaders.Should().Contain("Feedback-ID");
         await _commPrefService.DidNotReceive()
@@ -378,9 +377,9 @@ public sealed class OutboxEmailServiceTests : IDisposable
         _userEmailService.FindByAddressAsync("alice@example.com", false, true, Arg.Any<CancellationToken>())
             .Returns([UserEmailFixtures.Row(userId, "alice@example.com")]);
 
-        await _service.SendAsync(Message(template: "signup_rejected", category: MessageCategory.System), Xunit.TestContext.Current.CancellationToken);
+        await _service.SendAsync(Message(template: "signup_rejected", category: MessageCategory.System), TestContext.Current.CancellationToken);
 
-        var msg = await _emailDb.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var msg = await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken);
         msg.ExtraHeaders.Should().NotContain("List-Unsubscribe");
         msg.ExtraHeaders.Should().Contain("Feedback-ID");
         await _commPrefService.DidNotReceive()
@@ -395,9 +394,9 @@ public sealed class OutboxEmailServiceTests : IDisposable
         await _service.SendAsync(Message(
             template: "campaign_code", category: MessageCategory.CampaignCodes,
             campaignGrantId: grantId, campaignId: campaignId),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
-        var msg = await _emailDb.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var msg = await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken);
         var headers = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(msg.ExtraHeaders!);
         headers!["Feedback-ID"].Should().Be($"campaign_code:{campaignId}:CampaignCodes:humans-nobodies");
     }
@@ -408,9 +407,9 @@ public sealed class OutboxEmailServiceTests : IDisposable
         var grantId = Guid.NewGuid();
         await _service.SendAsync(Message(
             template: "campaign_code", category: MessageCategory.CampaignCodes, campaignGrantId: grantId),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
-        var msg = await _emailDb.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var msg = await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken);
         var headers = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(msg.ExtraHeaders!);
         headers!["Feedback-ID"].Should().Be($"campaign_code:none:CampaignCodes:humans-nobodies");
     }
@@ -420,7 +419,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     {
         await _service.SendAsync(
             Message(template: "account_deleted", doNotPersist: true),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         await _transport.Received(1).SendAsync(
             Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(),
@@ -440,9 +439,9 @@ public sealed class OutboxEmailServiceTests : IDisposable
 
         await _service.SendAsync(Message(
             recipient: "charlie@example.com", name: "Charlie",
-            template: "added_to_team", category: MessageCategory.TeamUpdates), Xunit.TestContext.Current.CancellationToken);
+            template: "added_to_team", category: MessageCategory.TeamUpdates), TestContext.Current.CancellationToken);
 
-        (await _emailDb.EmailOutboxMessages.ToListAsync(Xunit.TestContext.Current.CancellationToken)).Should()
+        (await _emailDb.EmailOutboxMessages.ToListAsync(TestContext.Current.CancellationToken)).Should()
             .BeEmpty("the email is suppressed because the user opted out of TeamUpdates");
     }
 
@@ -464,9 +463,9 @@ public sealed class OutboxEmailServiceTests : IDisposable
 
         await _service.SendAsync(Message(
             recipient: "grace@example.com", name: "Grace",
-            template: "application_approved", category: MessageCategory.Governance), Xunit.TestContext.Current.CancellationToken);
+            template: "application_approved", category: MessageCategory.Governance), TestContext.Current.CancellationToken);
 
-        var msg = await _emailDb.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var msg = await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken);
         msg.UserId.Should().Be(userId);
         msg.ExtraHeaders.Should().NotBeNull("List-Unsubscribe headers must be stamped for opt-outable mail");
         _bodyComposer.Received().Compose(Arg.Any<string>(), "https://example.com/Unsubscribe/abc");
@@ -485,9 +484,9 @@ public sealed class OutboxEmailServiceTests : IDisposable
         await _service.SendAsync(Message(
             recipient: "zoe@example.com", name: "Zoe",
             template: "application_approved", category: MessageCategory.Governance,
-            replyTo: "reply@example.com", userId: userId, campaignGrantId: grantId), Xunit.TestContext.Current.CancellationToken);
+            replyTo: "reply@example.com", userId: userId, campaignGrantId: grantId), TestContext.Current.CancellationToken);
 
-        var msg = await _emailDb.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var msg = await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken);
         msg.UserId.Should().Be(userId);
         msg.CampaignGrantId.Should().Be(grantId);
         msg.ReplyTo.Should().Be("reply@example.com");
@@ -506,13 +505,13 @@ public sealed class OutboxEmailServiceTests : IDisposable
         var userId = Guid.NewGuid();
 
         await _service.SendAsync(Message(
-            template: "campaign_code", category: MessageCategory.CampaignCodes, userId: userId), Xunit.TestContext.Current.CancellationToken);
+            template: "campaign_code", category: MessageCategory.CampaignCodes, userId: userId), TestContext.Current.CancellationToken);
 
-        var msg = await _emailDb.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var msg = await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken);
         msg.ExtraHeaders.Should().NotContain("List-Unsubscribe", "campaign codes are always-on; there is no opt-out to advertise");
         await _commPrefService.DidNotReceive()
             .IsOptedOutAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<CancellationToken>());
         _commPrefService.DidNotReceive().GenerateUnsubscribeHeaders(Arg.Any<Guid>(), Arg.Any<MessageCategory>());
-        _bodyComposer.Received().Compose(Arg.Any<string>(), null);
+        _bodyComposer.Received().Compose(Arg.Any<string>());
     }
 }

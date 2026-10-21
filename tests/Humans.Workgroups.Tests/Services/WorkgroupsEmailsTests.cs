@@ -2,7 +2,6 @@ using System.Reflection;
 using AwesomeAssertions;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
-using Humans.Users.Contracts;
 using Humans.Workgroups.Services;
 using Humans.Workgroups.Tests.Infrastructure;
 

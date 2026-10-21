@@ -61,7 +61,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             .With<IGoogleIntegrationService>()
             .With(teamResourceService)
             .With(userService)
-            .With<IUserService>(userService)
+            .With(userService)
             .Build();
         var shiftManagementService = new ShiftManagementService(
             new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock),
@@ -72,7 +72,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             Substitute.For<IShiftViewInvalidator>(),
             new EventCalendarResolver(Substitute.For<ISettingsService>()),
             Clock,
-            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+            Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), NullLogger<ShiftManagementService>.Instance);
         _service = new TeamService(
             new TeamRepository(TeamsDbFactory),
             AuditLog,

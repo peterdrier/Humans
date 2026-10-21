@@ -134,11 +134,11 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         var outcome = await _fx.Service.CastBallotAsync(
             vote.Id, userId, AssemblyBallotChoice.Yes, null,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         outcome.Should().Be(BallotSubmissionOutcome.Recorded);
         var ballot = await _fx.Db.AssemblyBallots
-            .FirstAsync(b => b.VoteId == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .FirstAsync(b => b.VoteId == vote.Id, TestContext.Current.CancellationToken);
         ballot.Revision.Should().Be(1);
         ballot.Choice.Should().Be(AssemblyBallotChoice.Yes);
         await _fx.NotificationResolve.Received(1).ResolveBySourceAsync(
@@ -156,10 +156,10 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .Returns(Task.FromException(new InvalidOperationException("inbox unavailable")));
 
         var outcome = await _fx.Service.CastBallotAsync(
-            vote.Id, userId, AssemblyBallotChoice.Yes, null, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, userId, AssemblyBallotChoice.Yes, null, TestContext.Current.CancellationToken);
 
         outcome.Should().Be(BallotSubmissionOutcome.Recorded);
-        (await _fx.Db.AssemblyBallots.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+        (await _fx.Db.AssemblyBallots.CountAsync(TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
     [HumansFact]
@@ -169,11 +169,11 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         var outcome = await _fx.Service.CastBallotAsync(
             vote.Id, Guid.NewGuid(), AssemblyBallotChoice.Yes, null,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         outcome.Should().Be(BallotSubmissionOutcome.NotOnRoster);
-        await _fx.NotificationResolve.DidNotReceiveWithAnyArgs().ResolveBySourceAsync(default, default, default, default);
-        (await _fx.Db.AssemblyBallots.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        await _fx.NotificationResolve.DidNotReceiveWithAnyArgs().ResolveBySourceAsync(default, default);
+        (await _fx.Db.AssemblyBallots.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansFact]
@@ -184,20 +184,20 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         await _fx.AddRosterRowAsync(vote.Id, userId, isOfficial: true);
 
         await _fx.Service.CastBallotAsync(
-            vote.Id, userId, AssemblyBallotChoice.Yes, null, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, userId, AssemblyBallotChoice.Yes, null, TestContext.Current.CancellationToken);
         var firstCastAt = (await _fx.Db.AssemblyBallots
             .AsNoTracking()
-            .FirstAsync(b => b.VoteId == vote.Id, Xunit.TestContext.Current.CancellationToken)).CastAt;
+            .FirstAsync(b => b.VoteId == vote.Id, TestContext.Current.CancellationToken)).CastAt;
 
         _fx.Clock.AdvanceHours(1);
         var outcome = await _fx.Service.CastBallotAsync(
-            vote.Id, userId, AssemblyBallotChoice.No, null, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, userId, AssemblyBallotChoice.No, null, TestContext.Current.CancellationToken);
 
         outcome.Should().Be(BallotSubmissionOutcome.Recorded);
         var ballot = await _fx.Db.AssemblyBallots
             .AsNoTracking()
             .Include(b => b.History)
-            .FirstAsync(b => b.VoteId == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .FirstAsync(b => b.VoteId == vote.Id, TestContext.Current.CancellationToken);
         ballot.Revision.Should().Be(2);
         ballot.Choice.Should().Be(AssemblyBallotChoice.No);
         ballot.CastAt.Should().Be(firstCastAt);
@@ -223,7 +223,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         await _fx.AddRosterRowAsync(vote.Id, userId, isOfficial: true);
 
         await _fx.Service.CastBallotAsync(
-            vote.Id, userId, AssemblyBallotChoice.Yes, null, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, userId, AssemblyBallotChoice.Yes, null, TestContext.Current.CancellationToken);
 
         await _fx.Audit.Received().LogAsync(
             AuditAction.AssemblyBallotCast,
@@ -240,7 +240,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         await _fx.AddRosterRowAsync(vote.Id, userId, isOfficial: true);
 
         await _fx.Service.CastBallotAsync(
-            vote.Id, userId, AssemblyBallotChoice.Yes, null, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, userId, AssemblyBallotChoice.Yes, null, TestContext.Current.CancellationToken);
 
         // An audit row keeps its ActorUserId forever, so naming the ballot id would leave a
         // permanent join from an erased person to the row holding their choice.
@@ -258,7 +258,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             vote, AssemblyVoteKind.RankedChoice, ["a", new string('k', 101)]);
 
         var voteId = await _fx.Service.CreateDraftAsync(
-            draft, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            draft, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         voteId.Should().BeNull(
             "the key column is varchar(100) — an over-long key is a validation message, not a 500");
@@ -277,7 +277,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         };
 
         var voteId = await _fx.Service.CreateDraftAsync(
-            draft, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            draft, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         voteId.Should().BeNull(
             "the title is copied into the email subject and the notification title, both bounded, "
@@ -298,7 +298,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         };
 
         var voteId = await _fx.Service.CreateDraftAsync(
-            draft, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            draft, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         voteId.Should().BeNull(
             "every culture's title is a subject line — the official one is not the only one sent");
@@ -314,7 +314,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         };
 
         var voteId = await _fx.Service.CreateDraftAsync(
-            draft, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            draft, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         voteId.Should().BeNull(
             "the InfoUrl column is varchar(2000) — an over-long link is a validation message, not a 500");
@@ -330,7 +330,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         };
 
         var voteId = await _fx.Service.CreateDraftAsync(
-            draft, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            draft, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         voteId.Should().BeNull("the OfficialCulture column is varchar(10)");
     }
@@ -345,7 +345,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         };
 
         var voteId = await _fx.Service.CreateDraftAsync(
-            draft, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            draft, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         voteId.Should().BeNull(
             "instant runoff has no 2/3 rule, so the pair would store an acta claiming a "
@@ -362,7 +362,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         };
 
         var voteId = await _fx.Service.CreateDraftAsync(
-            draft, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            draft, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         voteId.Should().BeNull(
             "an undefined kind stores no options but counts as instant-runoff, which opens a vote nobody can win");
@@ -376,7 +376,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         var ballot = await _fx.Repository.UpsertBallotAsync(
             vote.Id, roster.Id, AssemblyBallotChoice.Yes, null, _fx.Clock.GetCurrentInstant(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         ballot.Should().BeNull("closure persists the closed status before it counts the ballots");
         _fx.Db.AssemblyBallots.Should().BeEmpty();
@@ -394,7 +394,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         _fx.Clock.AdvanceMinutes(10);
 
         var results = await _fx.Service.GetResultsAsync(
-            vote.Id, userId, viewerIsBoardOrAdmin: false, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, userId, viewerIsBoardOrAdmin: false, TestContext.Current.CancellationToken);
 
         results.Should().NotBeNull("a process that died between the two writes must not leave the page blank forever");
         (await _fx.Db.AssemblyVotes.SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken)).ResultJson.Should().NotBeNull();
@@ -407,12 +407,12 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
         vote.ClosedByUserId = adminId;
         _fx.Db.AssemblyVotes.Update(vote);
-        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _fx.Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
         _fx.Clock.AdvanceMinutes(10);
 
         await _fx.Service.GetResultsAsync(
-            vote.Id, adminId, viewerIsBoardOrAdmin: false, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, adminId, viewerIsBoardOrAdmin: false, TestContext.Current.CancellationToken);
 
         await _fx.Audit.Received(1).LogAsync(
             AuditAction.AssemblyVoteStopped, AuditEntityTypes.AssemblyVote, vote.Id,
@@ -430,7 +430,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
 
         var tracked = await _fx.Db.AssemblyVotes.SingleAsync(
-            v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         tracked.OpenedByUserId = officer;
         tracked.ClosedByUserId = officer;
         _fx.Db.AssemblyVotePeeks.Add(new AssemblyVotePeek
@@ -440,10 +440,10 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             AdminUserId = officer,
             PeekedAt = _fx.Clock.GetCurrentInstant()
         });
-        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _fx.Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var slices = await _fx.Service.ContributeForUserAsync(
-            officer, Xunit.TestContext.Current.CancellationToken);
+            officer, TestContext.Current.CancellationToken);
 
         // The officer is on no roster, so the voting-record slice is empty — without the
         // actor slice their activity would be missing from the export entirely.
@@ -468,10 +468,10 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         await _fx.AddRosterRowAsync(vote.Id, userId, isOfficial: true);
         await _fx.Service.CastBallotAsync(
             vote.Id, userId, AssemblyBallotChoice.Yes, null,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         var slices = await _fx.Service.ContributeForUserAsync(
-            userId, Xunit.TestContext.Current.CancellationToken);
+            userId, TestContext.Current.CancellationToken);
 
         var json = System.Text.Json.JsonSerializer.Serialize(
             slices.Single(x => string.Equals(
@@ -489,7 +489,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         await _fx.AddRosterRowAsync(vote.Id, userId, isOfficial: true);
 
         var outcome = await _fx.Service.CastBallotAsync(
-            vote.Id, userId, AssemblyBallotChoice.Yes, null, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, userId, AssemblyBallotChoice.Yes, null, TestContext.Current.CancellationToken);
 
         outcome.Should().Be(BallotSubmissionOutcome.VoteNotOpen);
     }
@@ -509,7 +509,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         var outcome = await _fx.Service.CastBallotAsync(
             vote.Id, userId, AssemblyBallotChoice.Ranked, ["a", "a"],
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         outcome.Should().Be(BallotSubmissionOutcome.InvalidBallot);
     }
@@ -525,7 +525,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         var outcome = await _fx.Service.CastBallotAsync(
             vote.Id, userId, AssemblyBallotChoice.Ranked, ["a", "nonexistent"],
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         outcome.Should().Be(BallotSubmissionOutcome.InvalidBallot);
     }
@@ -539,7 +539,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         var outcome = await _fx.Service.CastBallotAsync(
             vote.Id, userId, AssemblyBallotChoice.Ranked, ["a"],
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         outcome.Should().Be(BallotSubmissionOutcome.InvalidBallot);
     }
@@ -555,7 +555,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         var outcome = await _fx.Service.CastBallotAsync(
             vote.Id, userId, AssemblyBallotChoice.Yes, null,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         outcome.Should().Be(BallotSubmissionOutcome.InvalidBallot);
     }
@@ -571,7 +571,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         var outcome = await _fx.Service.CastBallotAsync(
             vote.Id, userId, AssemblyBallotChoice.Ranked, ["b"],
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         outcome.Should().Be(BallotSubmissionOutcome.Recorded);
     }
@@ -591,12 +591,12 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         _fx.Clock.AdvanceMinutes(10);
 
         var detail = await _fx.Service.GetVoteForMemberAsync(
-            vote.Id, userId, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, userId, TestContext.Current.CancellationToken);
 
         detail!.Status.Should().Be(AssemblyVoteStatus.Closed);
         var stored = await _fx.Db.AssemblyVotes
             .AsNoTracking()
-            .FirstAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .FirstAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.Status.Should().Be(AssemblyVoteStatus.Closed);
         stored.ResultJson.Should().NotBeNull();
         stored.ClosedByUserId.Should().BeNull();
@@ -611,17 +611,17 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         await _fx.AddRosterRowAsync(vote.Id, userId, isOfficial: true);
         _fx.Clock.AdvanceMinutes(10);
 
-        await _fx.Service.GetVoteForMemberAsync(vote.Id, userId, Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.GetVoteForMemberAsync(vote.Id, userId, TestContext.Current.CancellationToken);
         var firstResultJson = (await _fx.Db.AssemblyVotes
             .AsNoTracking()
-            .FirstAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken)).ResultJson;
+            .FirstAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken)).ResultJson;
 
         _fx.Clock.AdvanceMinutes(5);
-        await _fx.Service.GetVoteForMemberAsync(vote.Id, userId, Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.GetVoteForMemberAsync(vote.Id, userId, TestContext.Current.CancellationToken);
 
         var secondResultJson = (await _fx.Db.AssemblyVotes
             .AsNoTracking()
-            .FirstAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken)).ResultJson;
+            .FirstAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken)).ResultJson;
         secondResultJson.Should().Be(firstResultJson);
         await _fx.Audit.Received(1).LogAsync(
             AuditAction.AssemblyVoteClosed,
@@ -637,12 +637,12 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         _fx.Clock.AdvanceMinutes(10);
 
         var closedCount = await _fx.Service.RunLapseAndReminderSweepAsync(
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         closedCount.Should().Be(1);
         var stored = await _fx.Db.AssemblyVotes
             .AsNoTracking()
-            .FirstAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .FirstAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.Status.Should().Be(AssemblyVoteStatus.Closed);
     }
 
@@ -656,7 +656,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
 
         var result = await _fx.Service.StopAsync(
-            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Should().Be(AssemblyVoteActionResult.WrongState);
     }
@@ -667,7 +667,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Cancelled);
 
         var result = await _fx.Service.StopAsync(
-            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Should().Be(AssemblyVoteActionResult.WrongState);
     }
@@ -678,7 +678,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
 
         var result = await _fx.Service.CancelAsync(
-            vote.Id, "reason", Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, "reason", Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Should().Be(AssemblyVoteActionResult.WrongState);
     }
@@ -690,7 +690,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         var result = await _fx.Service.ExtendAsync(
             vote.Id, _fx.Clock.GetCurrentInstant() + Duration.FromDays(2), Guid.NewGuid(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         result.Should().Be(AssemblyVoteActionResult.WrongState);
     }
@@ -703,7 +703,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         await _fx.AddRosterRowAsync(vote.Id, userId, isOfficial: true);
 
         var outcome = await _fx.Service.CastBallotAsync(
-            vote.Id, userId, AssemblyBallotChoice.Yes, null, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, userId, AssemblyBallotChoice.Yes, null, TestContext.Current.CancellationToken);
 
         outcome.Should().Be(BallotSubmissionOutcome.VoteNotOpen);
     }
@@ -714,7 +714,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
 
         var result = await _fx.Service.OpenAsync(
-            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Should().Be(AssemblyVoteActionResult.WrongState);
     }
@@ -733,26 +733,26 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         // Close the vote for real so it carries a stored result to protect.
         _fx.Db.ChangeTracker.Clear();
-        var stored = await _fx.Db.AssemblyVotes.FirstAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+        var stored = await _fx.Db.AssemblyVotes.FirstAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.ResultJson = "{\"official\":{}}";
-        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _fx.Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
 
-        await _fx.Service.EraseForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.EraseForUserAsync(userId, TestContext.Current.CancellationToken);
 
         var rosterAfter = await _fx.Db.AssemblyVoteRosterEntries
             .AsNoTracking()
-            .FirstAsync(r => r.Id == roster.Id, Xunit.TestContext.Current.CancellationToken);
+            .FirstAsync(r => r.Id == roster.Id, TestContext.Current.CancellationToken);
         rosterAfter.UserId.Should().BeNull();
 
         var voteAfter = await _fx.Db.AssemblyVotes
             .AsNoTracking()
-            .FirstAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .FirstAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         voteAfter.ResultJson.Should().Be("{\"official\":{}}");
 
         var ballotAfter = await _fx.Db.AssemblyBallots
             .AsNoTracking()
-            .FirstAsync(b => b.RosterId == roster.Id, Xunit.TestContext.Current.CancellationToken);
+            .FirstAsync(b => b.RosterId == roster.Id, TestContext.Current.CancellationToken);
         ballotAfter.Choice.Should().Be(AssemblyBallotChoice.Yes);
     }
 
@@ -779,12 +779,12 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         _fx.Clock.AdvanceMinutes(10);
 
         var result = await _fx.Service.CancelAsync(
-            vote.Id, "changed our minds", Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, "changed our minds", Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Should().Be(AssemblyVoteActionResult.WrongState);
         var stored = await _fx.Db.AssemblyVotes
             .AsNoTracking()
-            .FirstAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .FirstAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.Status.Should().Be(AssemblyVoteStatus.Closed);
         stored.ResultJson.Should().NotBeNull();
         stored.CancelReason.Should().BeNull();
@@ -800,12 +800,12 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         _fx.Clock.AdvanceMinutes(10);
 
         var result = await _fx.Service.StopAsync(
-            vote.Id, adminId, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, adminId, TestContext.Current.CancellationToken);
 
         result.Should().Be(AssemblyVoteActionResult.WrongState);
         var stored = await _fx.Db.AssemblyVotes
             .AsNoTracking()
-            .FirstAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .FirstAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.Status.Should().Be(AssemblyVoteStatus.Closed);
         stored.ClosedByUserId.Should().BeNull();
     }
@@ -984,14 +984,14 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             vote.Id,
             _fx.DraftFor(vote, AssemblyVoteKind.RankedChoice, ["c", "d"]),
             Guid.NewGuid(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         result.Should().Be(AssemblyVoteActionResult.Ok);
         var keys = await _fx.Db.AssemblyVoteOptions
             .AsNoTracking()
             .Where(o => o.VoteId == vote.Id)
             .Select(o => o.Key)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+            .ToListAsync(TestContext.Current.CancellationToken);
         keys.Should().BeEquivalentTo(["c", "d"]);
     }
 
@@ -1006,11 +1006,11 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         _fx.Clock.AdvanceMinutes(50);
 
         await _fx.Service.GetVoteForMemberAsync(
-            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         var stored = await _fx.Db.AssemblyVotes
             .AsNoTracking()
-            .FirstAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .FirstAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.ClosedAt.Should().Be(closesAt);
     }
 
@@ -1022,12 +1022,12 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var adminId = Guid.NewGuid();
 
         var result = await _fx.Service.StopAsync(
-            vote.Id, adminId, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, adminId, TestContext.Current.CancellationToken);
 
         result.Should().Be(AssemblyVoteActionResult.Ok);
         var stored = await _fx.Db.AssemblyVotes
             .AsNoTracking()
-            .FirstAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .FirstAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.ClosedAt.Should().Be(_fx.Clock.GetCurrentInstant(),
             "an Admin stop really does close the vote now, unlike a lapse");
     }
@@ -1044,7 +1044,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         _fx.Clock.AdvanceMinutes(10);
 
         var results = await _fx.Service.GetResultsAsync(
-            vote.Id, userId, viewerIsBoardOrAdmin: false, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, userId, viewerIsBoardOrAdmin: false, TestContext.Current.CancellationToken);
 
         results!.Result.ComputedAt.Should().NotBe(Instant.MinValue,
             "an Instant needs NodaTime's converters — the default ones silently read back MinValue");
@@ -1073,7 +1073,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             ]);
 
         var voteId = await _fx.Service.CreateDraftAsync(
-            draft, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            draft, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         voteId.Should().BeNull(
             "an option with a key but no label would open as a blank line on a binding ballot");
@@ -1092,7 +1092,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var actor = Guid.NewGuid();
         await _fx.Service.ReassignAsync(
             source, target, actor, _fx.Clock.GetCurrentInstant(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         // The merge leaves the roster row and the ballot alone, so the visible record that
         // it found them is the audit entry — on the vote, which is the entity a Board member
@@ -1121,19 +1121,19 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         // The author already wrote the Spanish title themselves; only the blanks may be filled.
         var tracked = await _fx.Db.AssemblyVotes.SingleAsync(
-            v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         tracked.Title = new GovernanceLocalizedText(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["en"] = "Test vote",
             ["es"] = "Mi propio título"
         });
-        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _fx.Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
 
         StubTranslation("es");
 
         var filled = await _fx.Service.PreFillTranslationsAsync(
-            vote.Id, ["en", "es"], Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, ["en", "es"], Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         // Official text and the two option labels — the authored Spanish title is not one of them.
         filled.Should().Be(3);
@@ -1141,7 +1141,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var stored = await _fx.Db.AssemblyVotes
             .Include(v => v.Options)
             .AsNoTracking()
-            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
 
         stored.Title.Resolve("es", "en").Should().Be("Mi propio título",
             "a machine translation never overwrites what the Board wrote");
@@ -1160,7 +1160,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         StubTranslation("es");
 
         var filled = await _fx.Service.PreFillTranslationsAsync(
-            vote.Id, ["en", "es"], Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, ["en", "es"], Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         filled.Should().Be(0,
             "translating a motion the electorate is already voting on would change what some members read");
@@ -1169,7 +1169,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             Arg.Any<CancellationToken>());
 
         var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
-            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.Title.HasCulture("es").Should().BeFalse();
     }
 
@@ -1185,26 +1185,26 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .Returns(async ci =>
             {
                 var tracked = await _fx.Db.AssemblyVotes.SingleAsync(
-                    v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+                    v => v.Id == vote.Id, TestContext.Current.CancellationToken);
                 tracked.Title = new GovernanceLocalizedText(
                     new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                     {
                         ["en"] = "The motion the Board actually wants"
                     });
                 tracked.UpdatedAt = _fx.Clock.GetCurrentInstant() + Duration.FromMinutes(5);
-                await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+                await _fx.Db.SaveChangesAsync(TestContext.Current.CancellationToken);
                 _fx.Db.ChangeTracker.Clear();
 
-                return (IReadOnlyList<string>)[.. ci.Arg<IReadOnlyList<string>>().Select(t => "ES:" + t)];
+                return [.. ci.Arg<IReadOnlyList<string>>().Select(t => "ES:" + t)];
             });
 
         var filled = await _fx.Service.PreFillTranslationsAsync(
-            vote.Id, ["en", "es"], Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, ["en", "es"], Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         filled.Should().Be(0, "nothing was stored, so nothing was filled");
 
         var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
-            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.Title.Resolve("en", "en").Should().Be("The motion the Board actually wants",
             "the Board's own wording outranks a machine translation of the wording it replaced");
         stored.Title.HasCulture("es").Should().BeFalse();
@@ -1242,12 +1242,12 @@ public sealed class AssemblyVoteServiceTests : IDisposable
                 _ => throw new InvalidOperationException("email lookup is down"));
 
         var result = await _fx.Service.OpenAsync(
-            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Should().Be(AssemblyVoteActionResult.Ok);
 
         var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
-            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.Status.Should().Be(AssemblyVoteStatus.Open,
             "the roster is snapshotted and the vote is open — a failed lookup cannot unwind that");
     }
@@ -1259,19 +1259,19 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         var result = await _fx.Service.CancelAsync(
             vote.Id, new string('x', 4001), Guid.NewGuid(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         result.Should().Be(AssemblyVoteActionResult.Invalid,
             "the column is varchar(4000) — an over-long reason is a rejection, not a 500");
 
         var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
-            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.Status.Should().Be(AssemblyVoteStatus.Open);
     }
 
     [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task CancelAsync_WithANearMaximumReason_PreservesTheFullAuditReason(bool splitPair)
     {
         var vote = await _fx.AddVoteAsync();
@@ -1282,7 +1282,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var expectedDescription = prefix + reason;
 
         await _fx.Service.CancelAsync(
-            vote.Id, reason, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, reason, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         await _fx.Audit.Received(1).LogAsync(
             AuditAction.AssemblyVoteCancelled, Arg.Any<string>(), Arg.Any<Guid>(),
@@ -1298,7 +1298,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
 
         var tracked = await _fx.Db.AssemblyVotes.SingleAsync(
-            v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         tracked.CreatedByUserId = source;
         tracked.OpenedByUserId = source;
         tracked.ClosedByUserId = source;
@@ -1309,15 +1309,15 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             AdminUserId = source,
             PeekedAt = _fx.Clock.GetCurrentInstant()
         });
-        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _fx.Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
 
         await _fx.Service.ReassignAsync(
             source, target, Guid.NewGuid(), _fx.Clock.GetCurrentInstant(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
-            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.ClosedByUserId.Should().Be(target,
             "the acta names the closer, and the source account is about to become a tombstone");
         stored.OpenedByUserId.Should().Be(target);
@@ -1325,7 +1325,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             "otherwise the author's GDPR export loses every vote they drafted");
 
         var peek = await _fx.Db.AssemblyVotePeeks.AsNoTracking()
-            .SingleAsync(p => p.VoteId == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(p => p.VoteId == vote.Id, TestContext.Current.CancellationToken);
         peek.AdminUserId.Should().Be(target,
             "the peek list is published on the results page and must name the surviving human");
     }
@@ -1348,7 +1348,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var opened = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
         var closed = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
 
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
 
         var draftedRow = await _fx.Db.AssemblyVotes.SingleAsync(v => v.Id == drafted.Id, ct);
         draftedRow.CreatedByUserId = source;
@@ -1403,19 +1403,19 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         // What an Admin's Extend or Cancel form would be holding: the vote as it was Open.
         var stale = await _fx.Repository.GetByIdAsync(
-            vote.Id, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
 
         await _fx.Service.StopAsync(
-            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
 
         var written = await _fx.Repository.UpdateAsync(
-            stale!, AssemblyVoteStatus.Open, ct: Xunit.TestContext.Current.CancellationToken);
+            stale!, AssemblyVoteStatus.Open, ct: TestContext.Current.CancellationToken);
 
         written.Should().BeFalse();
         var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
-            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.Status.Should().Be(AssemblyVoteStatus.Closed,
             "a closed vote never reopens, whatever an earlier read was holding");
         stored.ResultJson.Should().NotBeNull("and its stored tally is not blanked either");
@@ -1428,12 +1428,12 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var vote = await _fx.AddVoteAsync(closesAt: closesAt);
 
         var stale = await _fx.Repository.GetByIdAsync(
-            vote.Id, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
 
         await _fx.Service.ExtendAsync(
             vote.Id, closesAt + Duration.FromHours(4), Guid.NewGuid(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
 
         // The lapse sweep decided from the deadline it read, which the Extend has since moved.
@@ -1442,11 +1442,11 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         stale.ClosedByUserId = null;
 
         var written = await _fx.Repository.UpdateAsync(
-            stale, AssemblyVoteStatus.Open, ct: Xunit.TestContext.Current.CancellationToken);
+            stale, AssemblyVoteStatus.Open, ct: TestContext.Current.CancellationToken);
 
         written.Should().BeFalse();
         var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
-            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.Status.Should().Be(AssemblyVoteStatus.Open,
             "the extension is the newer fact, and the electorate was told the vote is still open");
     }
@@ -1466,11 +1466,11 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([asociado]));
 
         var stale = await _fx.Repository.GetByIdAsync(
-            vote.Id, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
 
         var opened = await _fx.Service.OpenAsync(
-            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
         opened.Should().Be(AssemblyVoteActionResult.Ok);
         _fx.Db.ChangeTracker.Clear();
 
@@ -1485,16 +1485,16 @@ public sealed class AssemblyVoteServiceTests : IDisposable
                 Label = new GovernanceLocalizedText(
                     new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["en"] = "C" })
             }],
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         written.Should().BeFalse();
         var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
-            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.Status.Should().Be(AssemblyVoteStatus.Open, "an edit never un-opens a vote");
         var keys = await _fx.Db.AssemblyVoteOptions.AsNoTracking()
             .Where(o => o.VoteId == vote.Id)
             .Select(o => o.Key)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+            .ToListAsync(TestContext.Current.CancellationToken);
         keys.Should().BeEquivalentTo(["a", "b"],
             "the electorate is already reading these options");
     }
@@ -1510,16 +1510,16 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([asociado]));
 
         var opened = await _fx.Service.OpenAsync(
-            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
         opened.Should().Be(AssemblyVoteActionResult.Ok);
         _fx.Db.ChangeTracker.Clear();
 
         var deleted = await _fx.Repository.DeleteAsync(
-            vote.Id, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, TestContext.Current.CancellationToken);
 
         deleted.Should().BeFalse();
         (await _fx.Db.AssemblyVotes.AsNoTracking()
-            .AnyAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken))
+            .AnyAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken))
             .Should().BeTrue("the roster is frozen and the electorate has been told to vote");
     }
 
@@ -1534,13 +1534,13 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([asociado]));
 
         var opened = await _fx.Service.OpenAsync(
-            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
         opened.Should().Be(AssemblyVoteActionResult.Ok);
         _fx.Db.ChangeTracker.Clear();
 
         // A second Open that was building its roster while the first one committed.
         var stored = await _fx.Repository.GetByIdAsync(
-            vote.Id, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
 
         var written = await _fx.Repository.OpenWithRosterAsync(
@@ -1552,12 +1552,12 @@ public sealed class AssemblyVoteServiceTests : IDisposable
                 UserId = Guid.NewGuid(),
                 IsOfficial = true
             }],
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         written.Should().BeFalse();
         var roster = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
             .Where(r => r.VoteId == vote.Id)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+            .ToListAsync(TestContext.Current.CancellationToken);
         roster.Should().ContainSingle("the roster is written exactly once, at the open that won")
             .Which.UserId.Should().Be(asociado);
     }
@@ -1571,7 +1571,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         _fx.StubActiveUsers(member);
         await _fx.AddRosterRowAsync(vote.Id, member, isOfficial: true);
 
-        await _fx.Service.RunLapseAndReminderSweepAsync(Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.RunLapseAndReminderSweepAsync(TestContext.Current.CancellationToken);
 
         await _fx.Audit.Received(1).LogAsync(
             AuditAction.AssemblyVoteRemindersSent,
@@ -1595,7 +1595,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         await _fx.AddRosterRowAsync(vote.Id, survivor, isOfficial: true);
         await _fx.AddRosterRowAsync(vote.Id, source, isOfficial: false);
 
-        await _fx.Service.RunLapseAndReminderSweepAsync(Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.RunLapseAndReminderSweepAsync(TestContext.Current.CancellationToken);
 
         await _fx.Audit.Received(1).LogAsync(
             AuditAction.AssemblyVoteRemindersSent,
@@ -1625,13 +1625,13 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             });
 
         var result = await _fx.Service.OpenAsync(
-            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Should().Be(AssemblyVoteActionResult.Invalid,
             "a vote that opens already lapsed gives its electorate no chance to vote");
 
         var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
-            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.Status.Should().Be(AssemblyVoteStatus.Draft);
         await _fx.Email.DidNotReceive()
             .SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
@@ -1674,7 +1674,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .Do(_ => order.Add("email"));
 
         (await _fx.Service.OpenAsync(
-                vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken))
+                vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken))
             .Should().Be(AssemblyVoteActionResult.Ok);
 
         order.Should().StartWith(["notification"], "the notification is emitted first");
@@ -1709,7 +1709,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             });
 
         (await _fx.Service.OpenAsync(
-                vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken))
+                vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken))
             .Should().Be(AssemblyVoteActionResult.Ok);
 
         sent.Should().Be(1, "the batch ends at the cancellation instead of mailing the rest");
@@ -1739,7 +1739,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             });
 
         (await _fx.Service.OpenAsync(
-                vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken))
+                vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken))
             .Should().Be(AssemblyVoteActionResult.Ok);
 
         sent.Should().Be(1, "a lapsed deadline ends the batch as surely as a cancellation");
@@ -1761,12 +1761,12 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         _fx.Clock.AdvanceHours(1);
 
         var (_, recorded) = await _fx.Service.PeekAsync(
-            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         recorded.Should().BeFalse();
         var peeks = await _fx.Db.AssemblyVotePeeks.AsNoTracking()
             .Where(p => p.VoteId == vote.Id)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+            .ToListAsync(TestContext.Current.CancellationToken);
         peeks.Should().BeEmpty();
     }
 
@@ -1778,17 +1778,17 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var roster = await _fx.AddRosterRowAsync(vote.Id, Guid.NewGuid(), isOfficial: true);
         await _fx.Repository.StampReminderSentAsync(
             [roster.Id], _fx.Clock.GetCurrentInstant(), vote.ClosesAt,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
 
         (await _fx.Service.ExtendAsync(
                 vote.Id, _fx.Clock.GetCurrentInstant() + Duration.FromDays(7), Guid.NewGuid(),
-                Xunit.TestContext.Current.CancellationToken))
+                TestContext.Current.CancellationToken))
             .Should().Be(AssemblyVoteActionResult.Ok);
         _fx.Db.ChangeTracker.Clear();
 
         var pending = await _fx.Repository.GetRosterNeedingReminderAsync(
-            vote.Id, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, TestContext.Current.CancellationToken);
 
         pending.Select(r => r.Id).Should().Equal([roster.Id],
             "the stamp meant 'told about the old deadline', and the new one decides whether "
@@ -1809,15 +1809,15 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         _fx.Clock.AdvanceMinutes(1);
         await _fx.Repository.StampReminderSentAsync(
             [roster.Id], _fx.Clock.GetCurrentInstant(), vote.ClosesAt,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
 
         await _fx.Repository.ClearReminderStampsAsync(
-            vote.Id, extendedAt, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, extendedAt, TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
 
         (await _fx.Repository.GetRosterNeedingReminderAsync(
-                vote.Id, Xunit.TestContext.Current.CancellationToken))
+                vote.Id, TestContext.Current.CancellationToken))
             .Should().BeEmpty();
     }
 
@@ -1844,7 +1844,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .Do(_ => _fx.Clock.AdvanceHours(3));
 
         (await _fx.Service.OpenAsync(
-                vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken))
+                vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken))
             .Should().Be(AssemblyVoteActionResult.Ok);
 
         await _fx.NotificationResolve.Received().ResolveBySourceKeyAsync(
@@ -1862,18 +1862,18 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         // Both admins read the vote at its original deadline; the longer extension commits.
         (await _fx.Service.ExtendAsync(
-                vote.Id, longer, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken))
+                vote.Id, longer, Guid.NewGuid(), TestContext.Current.CancellationToken))
             .Should().Be(AssemblyVoteActionResult.Ok);
         _fx.Db.ChangeTracker.Clear();
 
         var result = await _fx.Service.ExtendAsync(
-            vote.Id, shorter, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, shorter, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Should().Be(AssemblyVoteActionResult.Invalid,
             "the second admin's extension is shorter than the deadline now in force");
 
         var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
-            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.ClosesAt.Should().Be(longer, "an extension never moves the deadline backwards");
     }
 
@@ -1883,12 +1883,12 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var vote = await _fx.AddVoteAsync(
             closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(6));
         var stale = await _fx.Repository.GetByIdAsync(
-            vote.Id, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
 
         var longer = _fx.Clock.GetCurrentInstant() + Duration.FromDays(7);
         (await _fx.Service.ExtendAsync(
-                vote.Id, longer, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken))
+                vote.Id, longer, Guid.NewGuid(), TestContext.Current.CancellationToken))
             .Should().Be(AssemblyVoteActionResult.Ok);
         _fx.Db.ChangeTracker.Clear();
 
@@ -1899,11 +1899,11 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var written = await _fx.Repository.UpdateAsync(
             stale,
             AssemblyVoteStatus.Open,
-            ct: Xunit.TestContext.Current.CancellationToken);
+            ct: TestContext.Current.CancellationToken);
 
         written.Should().BeFalse();
         var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
-            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.ClosesAt.Should().Be(longer);
     }
 
@@ -1922,7 +1922,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         var outcome = await _fx.Service.CastBallotAsync(
             vote.Id, survivor, AssemblyBallotChoice.No, null,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         // One human holding two rows on one vote is the merge's recorded defect. Resolving
         // them to the blank row would let this member cast a second ballot into a binding
@@ -1930,7 +1930,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         outcome.Should().Be(BallotSubmissionOutcome.Recorded);
         var ballots = await _fx.Db.AssemblyBallots
             .Where(b => b.VoteId == vote.Id)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+            .ToListAsync(TestContext.Current.CancellationToken);
         ballots.Should().HaveCount(1);
         ballots[0].RosterId.Should().Be(votedRow.Id);
         ballots[0].Choice.Should().Be(AssemblyBallotChoice.No);
@@ -1948,7 +1948,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         var outcome = await _fx.Service.CastBallotAsync(
             vote.Id, survivor, AssemblyBallotChoice.Yes, null,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         // The merge leaves the roster row on the merged-away id, so the entitlement is only
         // reachable by walking the chain. Without that, the human who merged their accounts
@@ -1956,7 +1956,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         outcome.Should().Be(BallotSubmissionOutcome.Recorded);
         var ballots = await _fx.Db.AssemblyBallots.AsNoTracking()
             .Where(b => b.VoteId == vote.Id)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+            .ToListAsync(TestContext.Current.CancellationToken);
         ballots.Should().ContainSingle().Which.RosterId.Should().Be(row.Id);
     }
 
@@ -1970,7 +1970,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         await _fx.AddRosterRowAsync(vote.Id, mergedAway, isOfficial: true);
 
         var detail = await _fx.Service.GetVoteForMemberAsync(
-            vote.Id, survivor, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, survivor, TestContext.Current.CancellationToken);
 
         detail!.IsOnRoster.Should().BeTrue(
             "off-roster would hide the ballot form from a member the frozen roster entitled");
@@ -1988,7 +1988,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         await _fx.AddBallotAsync(vote.Id, row.Id, AssemblyBallotChoice.No);
 
         var slices = await _fx.Service.ContributeForUserAsync(
-            survivor, Xunit.TestContext.Current.CancellationToken);
+            survivor, TestContext.Current.CancellationToken);
 
         // Erasure already follows the merge chain, so an export that does not is the same
         // data reachable for deletion but invisible to the subject who asked for it.
@@ -2007,13 +2007,13 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Closed);
 
         var tracked = await _fx.Db.AssemblyVotes.SingleAsync(
-            v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         tracked.OpenedByUserId = survivor;
         tracked.ClosedByUserId = survivor;
-        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _fx.Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var slices = await _fx.Service.ContributeForUserAsync(
-            mergedAway, Xunit.TestContext.Current.CancellationToken);
+            mergedAway, TestContext.Current.CancellationToken);
 
         // The mirror image of the ballot slice: ReassignAsync moves the actor columns onto the
         // survivor, so the archived id owns none and the raw id returns an empty slice. The
@@ -2039,7 +2039,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         string phase, string language, string expectedCulture)
     {
         using var actorCulture = new CultureScope("fr");
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var member = Guid.NewGuid();
         _fx.StubActiveUsers(member);
         var info = (await _fx.Users.GetUserInfosAsync([member], ct))[member]
@@ -2083,7 +2083,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var row = await _fx.AddRosterRowAsync(vote.Id, mergedAway, isOfficial: true, notified: false);
 
         await _fx.Service.RunLapseAndReminderSweepAsync(
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         // The merge leaves the roster row on the archived id deliberately — it records who
         // was entitled when the vote opened. Users resolves that id forward, so the member is
@@ -2094,7 +2094,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             Arg.Any<CancellationToken>());
 
         var stamped = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
-            .SingleAsync(r => r.Id == row.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(r => r.Id == row.Id, TestContext.Current.CancellationToken);
         stamped.ReminderSentAt.Should().NotBeNull();
     }
 
@@ -2113,13 +2113,13 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var survivorRow = await _fx.AddRosterRowAsync(vote.Id, survivor, isOfficial: true);
         await _fx.AddBallotAsync(vote.Id, survivorRow.Id, AssemblyBallotChoice.Yes);
 
-        await _fx.Service.RunLapseAndReminderSweepAsync(Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.RunLapseAndReminderSweepAsync(TestContext.Current.CancellationToken);
 
         await _fx.Email.DidNotReceive().SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == "assembly_vote_reminder"),
             Arg.Any<CancellationToken>());
         var stored = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
-            .SingleAsync(r => r.Id == archivedRow.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(r => r.Id == archivedRow.Id, TestContext.Current.CancellationToken);
         stored.ReminderSentAt.Should().BeNull();
     }
 
@@ -2134,7 +2134,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var row = await _fx.AddRosterRowAsync(vote.Id, mergedAway, isOfficial: true, notified: false);
 
         await _fx.Service.RunLapseAndReminderSweepAsync(
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         await _fx.Email.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == "assembly_vote_opened"
@@ -2142,7 +2142,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             Arg.Any<CancellationToken>());
 
         var stamped = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
-            .SingleAsync(r => r.Id == row.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(r => r.Id == row.Id, TestContext.Current.CancellationToken);
         stamped.NotifiedAt.Should().NotBeNull();
     }
 
@@ -2161,7 +2161,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var survivorRow = await _fx.AddRosterRowAsync(vote.Id, survivor, isOfficial: true, notified: false);
 
         await _fx.Service.RunLapseAndReminderSweepAsync(
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         await _fx.Email.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == "assembly_vote_opened"
@@ -2170,7 +2170,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         var rows = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
             .Where(r => r.VoteId == vote.Id)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+            .ToListAsync(TestContext.Current.CancellationToken);
         rows.Should().HaveCount(2).And.OnlyContain(r => r.NotifiedAt != null);
         rows.Select(r => r.Id).Should().BeEquivalentTo([archivedRow.Id, survivorRow.Id]);
     }
@@ -2189,7 +2189,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         await _fx.Service.ReassignAsync(
             source, target, Guid.NewGuid(), _fx.Clock.GetCurrentInstant(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         // One human enrolled twice and voting twice is a defect in the vote itself. The
         // merge must not re-point or collapse either row: doing so destroys the only record
@@ -2197,14 +2197,14 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         // merged-away id, so nothing becomes unreachable.
         var rows = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
             .Where(r => r.VoteId == vote.Id)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+            .ToListAsync(TestContext.Current.CancellationToken);
         rows.Select(r => r.UserId).Should().BeEquivalentTo([source, target],
             "the roster records who was entitled when the vote opened, not who holds the "
             + "account today");
 
         var ballots = await _fx.Db.AssemblyBallots.AsNoTracking()
             .Where(b => b.VoteId == vote.Id)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+            .ToListAsync(TestContext.Current.CancellationToken);
         ballots.Select(b => b.RosterId).Should().BeEquivalentTo([sourceRow.Id, targetRow.Id],
             "both ballots stay where they were cast");
     }
@@ -2222,17 +2222,17 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         // The extension commits between the opening email going out and its stamp landing.
         (await _fx.Service.ExtendAsync(
                 vote.Id, announced + Duration.FromDays(3), Guid.NewGuid(),
-                Xunit.TestContext.Current.CancellationToken))
+                TestContext.Current.CancellationToken))
             .Should().Be(AssemblyVoteActionResult.Ok);
         _fx.Db.ChangeTracker.Clear();
 
         await _fx.Repository.StampNotifiedAsync(
             [row.Id], _fx.Clock.GetCurrentInstant(), announced,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
 
         var stored = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
-            .FirstAsync(r => r.Id == row.Id, Xunit.TestContext.Current.CancellationToken);
+            .FirstAsync(r => r.Id == row.Id, TestContext.Current.CancellationToken);
         stored.NotifiedAt.Should().BeNull(
             "the stamp excludes the row from the retry sweep, so it must never stand for a "
             + "deadline this member was not told");
@@ -2248,7 +2248,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         (await _fx.Service.ExtendAsync(
                 vote.Id, announced + Duration.FromDays(2), Guid.NewGuid(),
-                Xunit.TestContext.Current.CancellationToken))
+                TestContext.Current.CancellationToken))
             .Should().Be(AssemblyVoteActionResult.Ok);
         _fx.Db.ChangeTracker.Clear();
 
@@ -2257,11 +2257,11 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         // extension's own stamp-clearing has already run.
         await _fx.Repository.StampReminderSentAsync(
             [roster.Id], _fx.Clock.GetCurrentInstant(), announced,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
 
         (await _fx.Repository.GetRosterNeedingReminderAsync(
-                vote.Id, Xunit.TestContext.Current.CancellationToken))
+                vote.Id, TestContext.Current.CancellationToken))
             .Select(r => r.Id)
             .Should().Equal([roster.Id],
                 "the next sweep tells them the deadline now in force");
@@ -2280,11 +2280,11 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         // write takes the row's lock. The announced deadline is part of the legal record, so
         // the newer fact wins and the terminal write still goes through.
         var stale = await _fx.Db.AssemblyVotes.AsNoTracking()
-            .FirstAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .FirstAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         var live = await _fx.Db.AssemblyVotes.FirstAsync(
-            v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         live.ClosesAt = extended;
-        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _fx.Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
 
         stale.Status = AssemblyVoteStatus.Closed;
@@ -2292,11 +2292,11 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         stale.ClosedByUserId = Guid.NewGuid();
 
         var written = await _fx.Repository.UpdateAsync(
-            stale, AssemblyVoteStatus.Open, ct: Xunit.TestContext.Current.CancellationToken);
+            stale, AssemblyVoteStatus.Open, ct: TestContext.Current.CancellationToken);
 
         written.Should().BeTrue("a Stop is legitimate whatever the deadline did");
         var persisted = await _fx.Db.AssemblyVotes.AsNoTracking()
-            .FirstAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .FirstAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         persisted.Status.Should().Be(AssemblyVoteStatus.Closed);
         persisted.ClosesAt.Should().Be(extended, "the extension is the newer fact");
     }
@@ -2326,7 +2326,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
                 _fx.Db.ChangeTracker.Clear();
             });
 
-        await _fx.Service.RunLapseAndReminderSweepAsync(Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.RunLapseAndReminderSweepAsync(TestContext.Current.CancellationToken);
 
         sent.Should().Be(1,
             "the deadline is re-read per recipient — an extended vote is out of reminder range");
@@ -2344,13 +2344,13 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var missedRow = await _fx.AddRosterRowAsync(
             vote.Id, missed, isOfficial: true, notified: false);
 
-        await _fx.Service.RunLapseAndReminderSweepAsync(Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.RunLapseAndReminderSweepAsync(TestContext.Current.CancellationToken);
 
         // Closing is five days out, so no reminder is due: every send here is the retry.
         await _fx.Email.Received(1)
             .SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
         var stored = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
-            .SingleAsync(r => r.Id == missedRow.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(r => r.Id == missedRow.Id, TestContext.Current.CancellationToken);
         stored.NotifiedAt.Should().NotBeNull(
             "the stamp is what stops the next sweep sending it again");
 
@@ -2389,7 +2389,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
                 _fx.Db.ChangeTracker.Clear();
             });
 
-        await _fx.Service.RunLapseAndReminderSweepAsync(Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.RunLapseAndReminderSweepAsync(TestContext.Current.CancellationToken);
 
         sent.Should().Be(1, "eligibility is re-read per recipient, not trusted from the list");
     }
@@ -2403,10 +2403,10 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         // Both admins read the vote as Open; the first one's stop commits.
         var second = await _fx.Repository.GetByIdAsync(
-            vote.Id, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
 
-        (await _fx.Service.StopAsync(vote.Id, first, Xunit.TestContext.Current.CancellationToken))
+        (await _fx.Service.StopAsync(vote.Id, first, TestContext.Current.CancellationToken))
             .Should().Be(AssemblyVoteActionResult.Ok);
         _fx.Db.ChangeTracker.Clear();
 
@@ -2416,11 +2416,11 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         second.ClosedByUserId = Guid.NewGuid();
 
         var written = await _fx.Repository.UpdateAsync(
-            second, AssemblyVoteStatus.Open, ct: Xunit.TestContext.Current.CancellationToken);
+            second, AssemblyVoteStatus.Open, ct: TestContext.Current.CancellationToken);
 
         written.Should().BeFalse("the row is Closed, not the Open this write read");
         var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
-            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.ClosedByUserId.Should().Be(first, "the acta names whoever's close actually landed");
         stored.ResultJson.Should().NotBeNull();
     }
@@ -2432,7 +2432,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             status: AssemblyVoteStatus.Draft, kind: AssemblyVoteKind.YesNo);
 
         var stale = await _fx.Repository.GetByIdAsync(
-            vote.Id, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
 
         // A Board edit lands while the roster is being built from that read.
@@ -2441,7 +2441,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
                 vote.Id,
                 _fx.DraftFor(vote, AssemblyVoteKind.YesNo, []),
                 Guid.NewGuid(),
-                Xunit.TestContext.Current.CancellationToken))
+                TestContext.Current.CancellationToken))
             .Should().Be(AssemblyVoteActionResult.Ok);
         _fx.Db.ChangeTracker.Clear();
 
@@ -2458,15 +2458,15 @@ public sealed class AssemblyVoteServiceTests : IDisposable
                 UserId = Guid.NewGuid(),
                 IsOfficial = true
             }],
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         written.Should().BeFalse();
         var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
-            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.Status.Should().Be(AssemblyVoteStatus.Draft,
             "the electorate would have been computed from content the vote no longer has");
         (await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
-            .AnyAsync(r => r.VoteId == vote.Id, Xunit.TestContext.Current.CancellationToken))
+            .AnyAsync(r => r.VoteId == vote.Id, TestContext.Current.CancellationToken))
             .Should().BeFalse();
     }
 
@@ -2478,19 +2478,19 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         // A close that got its status down and then died: no result, no audit entry.
         var closing = await _fx.Db.AssemblyVotes
-            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         closing.Status = AssemblyVoteStatus.Closed;
         closing.ClosedAt = closing.ClosesAt;
-        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _fx.Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
         _fx.Clock.AdvanceMinutes(10);
 
         // A list read, not a read of that vote's own page.
         await _fx.Service.GetVotesForMemberAsync(
-            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
-            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.ResultJson.Should().NotBeNull(
             "an interrupted close must not wait for somebody to open that one vote");
         await _fx.Audit.Received(1).LogAsync(
@@ -2505,17 +2505,17 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(2));
 
         var closing = await _fx.Db.AssemblyVotes
-            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         closing.Status = AssemblyVoteStatus.Closed;
         closing.ClosedAt = closing.ClosesAt;
-        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _fx.Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
         _fx.Clock.AdvanceMinutes(10);
 
-        await _fx.Service.RunLapseAndReminderSweepAsync(Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.RunLapseAndReminderSweepAsync(TestContext.Current.CancellationToken);
 
         var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
-            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.ResultJson.Should().NotBeNull(
             "the sweep queries Open votes, and this one is Closed with its tally still owed");
     }
@@ -2529,18 +2529,18 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         // A close whose status write has just committed: its own tail — the audit entry, the
         // notification, the tally — is running in another request right now.
         var closing = await _fx.Db.AssemblyVotes
-            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         closing.Status = AssemblyVoteStatus.Closed;
         closing.ClosedAt = closing.ClosesAt;
         closing.UpdatedAt = _fx.Clock.GetCurrentInstant();
-        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _fx.Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
 
         await _fx.Service.GetVotesForMemberAsync(
-            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         var stored = await _fx.Db.AssemblyVotes.AsNoTracking()
-            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.ResultJson.Should().BeNull(
             "the close is running, not interrupted; the request that owns it stores the tally");
         await _fx.Audit.DidNotReceive().LogAsync(
@@ -2557,7 +2557,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         // Straight at the repository: the service settles first, so the only way to reach the
         // peek write on a closed row is the race this guards.
         (await _fx.Service.StopAsync(
-                vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken))
+                vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken))
             .Should().Be(AssemblyVoteActionResult.Ok);
         _fx.Db.ChangeTracker.Clear();
 
@@ -2569,11 +2569,11 @@ public sealed class AssemblyVoteServiceTests : IDisposable
                 AdminUserId = Guid.NewGuid(),
                 PeekedAt = _fx.Clock.GetCurrentInstant()
             },
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         recorded.Should().BeFalse();
         (await _fx.Db.AssemblyVotePeeks.AsNoTracking()
-            .AnyAsync(p => p.VoteId == vote.Id, Xunit.TestContext.Current.CancellationToken))
+            .AnyAsync(p => p.VoteId == vote.Id, TestContext.Current.CancellationToken))
             .Should().BeFalse("the results page publishes peeks, and nobody looked early");
     }
 
@@ -2589,14 +2589,14 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         _fx.Clock.AdvanceMinutes(90);
         var extended = _fx.Clock.GetCurrentInstant() + Duration.FromHours(5);
         var stored = await _fx.Db.AssemblyVotes
-            .SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.ClosesAt = extended;
-        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _fx.Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
 
         var outcome = await _fx.Service.CastBallotAsync(
             vote.Id, member, AssemblyBallotChoice.Yes, null,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         outcome.Should().Be(BallotSubmissionOutcome.Recorded,
             "the vote is open until the extended deadline, whatever this request read first");

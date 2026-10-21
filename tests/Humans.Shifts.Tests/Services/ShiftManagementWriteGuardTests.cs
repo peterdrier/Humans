@@ -253,10 +253,9 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
         var tag = SeedTag("Heavy lifting");
         await SaveAllAsync(Ct);
-        await _service.UpdateRotaAsync(rota, [tag.Id]);
+        await _service.UpdateRotaAsync(EditOf(rota, rota.Name, [tag.Id]));
 
-        rota.Name = "Renamed";
-        await _service.UpdateRotaAsync(rota);
+        await _service.UpdateRotaAsync(EditOf(rota, "Renamed", tagIds: null));
 
         var saved = await ShiftsDb.Rotas.AsNoTracking().Include(r => r.Tags)
             .SingleAsync(r => r.Id == rota.Id, Ct);
@@ -270,14 +269,26 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
         var tag = SeedTag("Heavy lifting");
         await SaveAllAsync(Ct);
-        await _service.UpdateRotaAsync(rota, [tag.Id]);
+        await _service.UpdateRotaAsync(EditOf(rota, rota.Name, [tag.Id]));
 
-        await _service.UpdateRotaAsync(rota, []);
+        await _service.UpdateRotaAsync(EditOf(rota, rota.Name, []));
 
         var saved = await ShiftsDb.Rotas.AsNoTracking().Include(r => r.Tags)
             .SingleAsync(r => r.Id == rota.Id, Ct);
         saved.Tags.Should().BeEmpty();
     }
+
+    [HumansFact]
+    public async Task UpdateRotaAsync_MissingRota_ReturnsFalse()
+    {
+        var updated = await _service.UpdateRotaAsync(EditOf(new Rota { Id = Guid.NewGuid(), Name = "Gone" }, "Gone", tagIds: null));
+
+        updated.Should().BeFalse();
+    }
+
+    private static UpdateRotaInput EditOf(Rota rota, string name, IReadOnlyList<Guid>? tagIds) => new(
+        rota.Id, name, rota.Description, rota.PracticalInfo, rota.Priority, rota.Policy,
+        rota.Period, rota.IsVisibleToVolunteers, tagIds);
 
     // ============================================================
     // MoveRotaToTeamAsync — the five rejection paths

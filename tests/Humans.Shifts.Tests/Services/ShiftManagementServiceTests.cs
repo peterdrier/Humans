@@ -118,6 +118,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             });
         repo.SetRotaTagsAsync(rota.Id, Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(failure));
+        repo.GetRotaAsync(rota.Id, RotaReadShape.None, Arg.Any<CancellationToken>()).Returns(rota);
         string? cachedName = "Old snapshot";
         var invalidator = Substitute.For<IShiftViewInvalidator>();
         invalidator.When(x => x.InvalidateRota(rota.Id)).Do(_ => cachedName = null);
@@ -128,7 +129,9 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
         Func<Task> mutate = () => create
             ? service.CreateRotaAsync(rota, [Guid.NewGuid()])
-            : service.UpdateRotaAsync(rota, [Guid.NewGuid()]);
+            : service.UpdateRotaAsync(new UpdateRotaInput(
+                rota.Id, rota.Name, rota.Description, rota.PracticalInfo, rota.Priority,
+                rota.Policy, rota.Period, rota.IsVisibleToVolunteers, [Guid.NewGuid()]));
 
         (await mutate.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
         cachedName ??= (await real.GetRotaAsync(
@@ -511,7 +514,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     [Xunit.InlineData("admin-staffing")]
     [Xunit.InlineData("tags")]
     [Xunit.InlineData("profile")]
-    [Xunit.InlineData("rota")]
     [Xunit.InlineData("shift")]
     public async Task BrowseReads_CanceledToken_ReachesColdSource(string boundary)
     {
@@ -531,12 +533,71 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             "admin-staffing" => () => _service.GetStaffingSnapshotAsync(es.Id, ct: aborted.Token),
             "tags" => () => _service.GetTagsAsync(ct: aborted.Token),
             "profile" => () => _service.GetShiftProfileAsync(Guid.NewGuid(), aborted.Token),
-            "rota" => () => _service.GetRotaByIdAsync(rota.Id, aborted.Token),
             "shift" => () => _service.GetShiftByIdAsync(Guid.NewGuid(), aborted.Token),
             _ => () => _service.GetDepartmentsWithRotasAsync(es.Id, aborted.Token)
         };
 
         await read.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
+    public async Task GetShiftByIdAsync_AnswersForAShiftWhoseEventHasNoCalendar()
+    {
+        // Settings knows no event at all: the ownership read must still find the shift,
+        // or deleting/voluntelling an existing shift would 404.
+        var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
+        var shift = SeedShift(rota, dayOffset: 2);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var service = new ShiftManagementService(
+            new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock), AuditLog, AdminAuthorization,
+            new ServiceLocatorBuilder().With(_teamService).Build(), Cache,
+            Substitute.For<IShiftViewInvalidator>(),
+            new EventCalendarResolver(Substitute.For<Humans.Settings.Contracts.ISettingsService>()), Clock,
+            EarlyEntryInvalidator, Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+
+        var found = await service.GetShiftByIdAsync(shift.Id, Xunit.TestContext.Current.CancellationToken);
+
+        found.Should().NotBeNull();
+        found!.Shift.Id.Should().Be(shift.Id);
+        found.Shift.DayOffset.Should().Be(2);
+        found.Rota.Id.Should().Be(rota.Id);
+        found.Rota.TeamId.Should().Be(rota.TeamId);
+    }
+
+    [HumansFact]
+    public async Task GetRotasByDepartmentAsync_CarriesEveryShiftAndSignup()
+    {
+        var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
+        var shift = SeedShift(rota, dayOffset: 1);
+        SeedSignup(shift, SeedUser("Alice"), SignupStatus.Confirmed);
+        SeedSignup(shift, SeedUser("Bob"), SignupStatus.Pending);
+        SeedSignup(shift, SeedUser("Carol"), SignupStatus.Bailed);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var rows = await _service.GetRotasByDepartmentAsync(rota.TeamId, es.Id, Xunit.TestContext.Current.CancellationToken);
+
+        var row = rows.Should().ContainSingle().Subject;
+        row.Rota.Id.Should().Be(rota.Id);
+        var shiftRow = row.Shifts.Should().ContainSingle().Subject;
+        shiftRow.Shift.Id.Should().Be(shift.Id);
+        shiftRow.ConfirmedCount.Should().Be(1);
+        shiftRow.Signups.Select(s => s.Status).Should().BeEquivalentTo(
+            [SignupStatus.Confirmed, SignupStatus.Pending, SignupStatus.Bailed]);
+    }
+
+    [HumansFact]
+    public async Task UpdateShiftProfileAsync_CreatesTheRowOnceThenUpdatesIt()
+    {
+        var userId = Guid.NewGuid();
+
+        await _service.UpdateShiftProfileAsync(new ShiftVolunteerProfileInfo(userId, ["Cooking"], [], ["English"]));
+        await _service.UpdateShiftProfileAsync(new ShiftVolunteerProfileInfo(userId, ["Driving"], ["Early bird"], []));
+
+        var saved = await ShiftsDb.VolunteerEventProfiles.AsNoTracking()
+            .SingleAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
+        saved.Skills.Should().Equal("Driving");
+        saved.Quirks.Should().Equal("Early bird");
+        saved.Languages.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -1272,7 +1333,9 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         // Assert: rota gone, pending signups removed by cascade-delete. We query
         // through the service so we hit the same factory-managed context the
         // delete used (the test's Db caches the tracked rota).
-        (await _service.GetRotaByIdAsync(rota.Id)).Should().BeNull();
+        (await ShiftsDb.Rotas.AsNoTracking()
+            .AnyAsync(r => r.Id == rota.Id, Xunit.TestContext.Current.CancellationToken))
+            .Should().BeFalse();
         (await ShiftsDb.ShiftSignups
             .AsNoTracking()
             .Where(s => s.Id == pending1.Id || s.Id == pending2.Id)

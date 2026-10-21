@@ -3,7 +3,6 @@ using Humans.Base.Extensions;
 using Humans.Gdpr.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
-using Humans.Tickets.Domain;
 using Humans.Users.Contracts;
 using NodaTime;
 using EventParticipation = Humans.Tickets.Domain.EventParticipation;

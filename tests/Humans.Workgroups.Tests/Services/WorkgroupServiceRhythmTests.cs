@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using NSubstitute.ExceptionExtensions;
 using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Services;
 using Humans.Workgroups.Tests.Infrastructure;

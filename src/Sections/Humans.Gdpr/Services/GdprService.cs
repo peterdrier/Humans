@@ -1,7 +1,6 @@
 using Humans.Base.Extensions;
 using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Gdpr.Services;

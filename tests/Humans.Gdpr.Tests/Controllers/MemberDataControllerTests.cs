@@ -56,7 +56,7 @@ public class MemberDataControllerTests
         var result = await Create(signedIn: false).DownloadData(TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<NotFoundResult>();
-        await _gdpr.DidNotReceiveWithAnyArgs().ExportForUserAsync(default, default);
+        await _gdpr.DidNotReceiveWithAnyArgs().ExportForUserAsync(default);
     }
 
     [HumansFact]
@@ -120,7 +120,7 @@ public class MemberDataControllerTests
         var result = await Create(signedIn: false).RequestDeletion();
 
         result.Should().BeOfType<NotFoundResult>();
-        await _deletion.DidNotReceiveWithAnyArgs().RequestDeletionAsync(default, default);
+        await _deletion.DidNotReceiveWithAnyArgs().RequestDeletionAsync(default);
     }
 
     [HumansFact]

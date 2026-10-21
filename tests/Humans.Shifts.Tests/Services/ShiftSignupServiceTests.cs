@@ -53,8 +53,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             .Returns(call => UserInfoStubHelpers.MakeUserInfo(call.Arg<Guid>()) with { State = UserState.Active });
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
-            .With<ITeamService>(_teamService)
-            .With<IRoleAssignmentService>(_roleAssignmentService)
+            .With(_teamService)
+            .With(_roleAssignmentService)
             .With<ITicketService>()
             .With(_users)
             .With<ICampService>()
@@ -225,7 +225,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         pause.Armed = true;
         await using var firstDb = new ShiftsDbContext(options);
         await using var secondDb = new ShiftsDbContext(options);
-        var services = new ServiceLocatorBuilder().With<ITeamService>(_teamService).Build();
+        var services = new ServiceLocatorBuilder().With(_teamService).Build();
         ShiftSignupService NewService(ShiftsDbContext db) => new(
             new ShiftRepository(factory, db, Clock), new VolunteerTrackingRepository(db),
             Substitute.For<IShiftManagement>(), NewCalendarResolver(), AuditLog, Notifier,
@@ -1766,8 +1766,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var earlyEntry = Substitute.For<IEarlyEntryInvalidator>();
         earlyEntry.When(x => x.InvalidateUser(userId)).Do(_ => cachedConfirmed = null);
         var serviceProvider = new ServiceLocatorBuilder()
-            .With(_teamService).With<ITeamService>(_teamService)
-            .With<IRoleAssignmentService>(_roleAssignmentService).With(_users).Build();
+            .With(_teamService).With(_teamService)
+            .With(_roleAssignmentService).With(_users).Build();
         var service = new ShiftSignupService(
             repo, Substitute.For<IVolunteerTrackingRepository>(), _shiftMgmt, NewCalendarResolver(),
             AuditLog, Notifier, AdminAuthorization, _viewInvalidator, earlyEntry, serviceProvider,
@@ -1840,8 +1840,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         var settings = Substitute.For<Humans.Settings.Contracts.ISettingsService>();
         var serviceProvider = new ServiceLocatorBuilder()
-            .With(_teamService).With<ITeamService>(_teamService)
-            .With<IRoleAssignmentService>(_roleAssignmentService).With(_users).Build();
+            .With(_teamService).With(_teamService)
+            .With(_roleAssignmentService).With(_users).Build();
         var service = new ShiftSignupService(
             _repo, Substitute.For<IVolunteerTrackingRepository>(), _shiftMgmt, new EventCalendarResolver(settings),
             AuditLog, Notifier, AdminAuthorization, _viewInvalidator, Substitute.For<IEarlyEntryInvalidator>(),
@@ -2464,6 +2464,38 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             _localizer[key, Arg.Any<object[]>()].Returns(call => new LocalizedString(key,
                 string.Format(culture, resources.GetString(key, culture)!, call.Arg<object[]>())));
         }
+    }
+
+    [HumansFact]
+    public async Task GetByUserAsync_ResolvesEachSignupAgainstItsOwnEvent()
+    {
+        // Same DayOffset + StartTime in two events in different time zones: the
+        // instants can only differ if each row is resolved against its own calendar.
+        var (_, madridRota, madridShift) = SeedShiftScenario(SignupPolicy.Public);
+        var (aucklandEs, aucklandRota, _) = SeedShiftScenario(SignupPolicy.Public);
+        aucklandEs.IsActive = false;
+        aucklandEs.TimeZoneId = "Pacific/Auckland";
+        aucklandEs.GateOpeningDate = new LocalDate(2025, 1, 15);
+        aucklandRota.Name = "Southern Rota";
+        var aucklandShift = SeedShift(aucklandRota, dayOffset: 1, startHour: 10, durationHours: 4);
+        var userId = Guid.NewGuid();
+        SeedSignup(userId, madridShift.Id, SignupStatus.Confirmed);
+        SeedSignup(userId, aucklandShift.Id, SignupStatus.Pending);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var rows = await _service.GetByUserAsync(userId, ct: TestContext.Current.CancellationToken);
+
+        rows.Should().HaveCount(2);
+        var madrid = rows.Single(r => r.ShiftId == madridShift.Id);
+        madrid.RotaName.Should().Be(madridRota.Name);
+        madrid.Status.Should().Be(SignupStatus.Confirmed);
+        // 2026-07-02 10:00 Europe/Madrid = 08:00Z
+        madrid.AbsoluteStart.Should().Be(Instant.FromUtc(2026, 7, 2, 8, 0));
+        var auckland = rows.Single(r => r.ShiftId == aucklandShift.Id);
+        auckland.RotaName.Should().Be("Southern Rota");
+        auckland.EventSettingsId.Should().Be(aucklandEs.Id);
+        // 2025-01-16 10:00 Pacific/Auckland = 2025-01-15 21:00Z
+        auckland.AbsoluteStart.Should().Be(Instant.FromUtc(2025, 1, 15, 21, 0));
     }
 
     // ============================================================

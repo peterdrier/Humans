@@ -96,7 +96,7 @@ public class ShiftsControllerUserActiveSignupsTests
         if (string.Equals(boundary, "coordinators", StringComparison.Ordinal))
             _shiftMgmt.GetCoordinatorTeamIdsAsync(_userId, Arg.Any<CancellationToken>()).ReturnsForAnyArgs(Read<Guid>);
         else if (string.Equals(boundary, "signups", StringComparison.Ordinal))
-            _signupService.GetByUserAsync(_userId, ct: Arg.Any<CancellationToken>()).ReturnsForAnyArgs(Read<ShiftSignup>);
+            _signupService.GetByUserAsync(_userId, ct: Arg.Any<CancellationToken>()).ReturnsForAnyArgs(Read<ShiftSignupSummary>);
         else if (string.Equals(boundary, "browse", StringComparison.Ordinal))
             _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>()).ReturnsForAnyArgs(Read<UrgentShiftInfo>);
         else
@@ -139,7 +139,19 @@ public class ShiftsControllerUserActiveSignupsTests
         {
             _shiftView.GetUserAsync(_userId, Arg.Any<CancellationToken>()).Returns(
                 new ShiftUserView(_userId, null, null, null, [],
-                    [MakeSignup(ActiveBurnId, "Gate", 1, new LocalTime(10, 0), SignupStatus.Confirmed)]));
+                    [new ShiftSignup
+                    {
+                        Id = Guid.NewGuid(),
+                        Status = SignupStatus.Confirmed,
+                        Shift = new Shift
+                        {
+                            Id = Guid.NewGuid(),
+                            DayOffset = 1,
+                            StartTime = new LocalTime(10, 0),
+                            Duration = Duration.FromHours(4),
+                            Rota = new Rota { Id = Guid.NewGuid(), EventSettingsId = ActiveBurnId, Name = "Gate" },
+                        },
+                    }]));
             if (string.Equals(boundary, "approval", StringComparison.Ordinal))
             {
                 var closedBurn = ActiveBurn with { EarlyEntryClose = _clock.GetCurrentInstant() - Duration.FromSeconds(1) };
@@ -239,7 +251,7 @@ public class ShiftsControllerUserActiveSignupsTests
         var translated = resources.GetString(key, System.Globalization.CultureInfo.CurrentUICulture)!;
         _localizer[key].Returns(new LocalizedString(key, translated));
         var blockId = Guid.NewGuid();
-        _signupService.BailRangeAsync(blockId, _userId, null).Returns(new BailRangeResult(key));
+        _signupService.BailRangeAsync(blockId, _userId).Returns(new BailRangeResult(key));
         var controller = BuildSut();
 
         (await controller.BailRange(blockId)).Should().BeOfType<RedirectToActionResult>();
@@ -254,7 +266,7 @@ public class ShiftsControllerUserActiveSignupsTests
     {
         var blockId = Guid.NewGuid();
         var fault = new InvalidOperationException("database diagnostic");
-        _signupService.BailRangeAsync(blockId, _userId, null)
+        _signupService.BailRangeAsync(blockId, _userId)
             .Returns(Task.FromException<BailRangeResult>(fault));
         var controller = BuildSut();
 
@@ -295,23 +307,23 @@ public class ShiftsControllerUserActiveSignupsTests
         return ctrl;
     }
 
-    // Rota carries only EventSettingsId — the EventSettings navigation is deliberately
-    // left unpopulated so a regression back to reading it off the graph fails here.
-    private static ShiftSignup MakeSignup(
-        Guid burnId, string rotaName, int dayOffset, LocalTime start, SignupStatus status) =>
-        new()
-        {
-            Id = Guid.NewGuid(),
-            Status = status,
-            Shift = new Shift
-            {
-                Id = Guid.NewGuid(),
-                DayOffset = dayOffset,
-                StartTime = start,
-                Duration = Duration.FromHours(4),
-                Rota = new Rota { Id = Guid.NewGuid(), EventSettingsId = burnId, Name = rotaName },
-            },
-        };
+    // The service resolves each signup against its own burn; the summary carries the
+    // resolved instants. An unknown burn id still gets instants (off the active burn)
+    // so only the controller's burn lookup can drop it.
+    private static ShiftSignupSummary MakeSignup(
+        Guid burnId, string rotaName, int dayOffset, LocalTime start, SignupStatus status)
+    {
+        var burn = burnId == PastBurnId ? PastBurn : ActiveBurn;
+        var shift = new Shift { Id = Guid.NewGuid(), DayOffset = dayOffset, StartTime = start, Duration = Duration.FromHours(4) };
+        return new ShiftSignupSummary(
+            Id: Guid.NewGuid(), ShiftId: shift.Id, SignupBlockId: null, Status: status,
+            RotaId: Guid.NewGuid(), RotaName: rotaName, RotaDescription: null, RotaPracticalInfo: null,
+            TeamId: Guid.NewGuid(), EventSettingsId: burnId,
+            Date: burn.GateOpeningDate.PlusDays(dayOffset), Period: ShiftPeriod.Event,
+            IsAllDay: false, WindowStart: start, WindowEnd: start.PlusHours(4), DurationHours: 4,
+            ShiftDescription: null,
+            AbsoluteStart: shift.GetAbsoluteStart(burn), AbsoluteEnd: shift.GetAbsoluteEnd(burn));
+    }
 
     private static BurnSettingsInfo MakeBurn(
         Guid id, string name, int year, string timeZoneId, LocalDate gateOpening) =>

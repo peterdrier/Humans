@@ -3,7 +3,6 @@ using System.Text.RegularExpressions;
 using Humans.Base.Extensions;
 using Humans.Campaigns.Domain;
 using Humans.Email.Contracts;
-using Humans.Users.Contracts;
 
 namespace Humans.Campaigns.Services;
 

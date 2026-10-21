@@ -1358,7 +1358,7 @@ public class SurveyServiceTests
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(new List<UserInfo>
         {
-            UserWithLastLogin(Guid.NewGuid(), recentLogin, UserState.Active),         // included
+            UserWithLastLogin(Guid.NewGuid(), recentLogin),         // included
             UserWithLastLogin(Guid.NewGuid(), recentLogin, UserState.Bare),           // mid-onboarding → included
             UserWithLastLogin(Guid.NewGuid(), recentLogin),                           // legacy null state → included
             UserWithLastLogin(Guid.NewGuid(), recentLogin, UserState.Rejected),       // status wall → excluded
@@ -2492,7 +2492,7 @@ public class SurveyServiceTests
             TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
-        result!.ParticipationId.Should().Be(participation.Id);
+        result.ParticipationId.Should().Be(participation.Id);
         result.DraftResponseId.Should().Be(capturedDraft!.Id);
         result.DraftAnswers.Should().BeEmpty();
         capturedDraft.InvitationId.Should().Be(participation.Id);
@@ -2534,7 +2534,7 @@ public class SurveyServiceTests
             TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
-        result!.ParticipationId.Should().Be(participation.Id);
+        result.ParticipationId.Should().Be(participation.Id);
         result.DraftResponseId.Should().BeNull();
         result.DraftAnswers.Should().ContainSingle()
             .Which.SelectedOptionValues.Should().ContainSingle("yes");
@@ -2609,7 +2609,7 @@ public class SurveyServiceTests
             TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
-        result!.DraftResponseId.Should().Be(draft.Id);
+        result.DraftResponseId.Should().Be(draft.Id);
         result.DraftAnswers.Should().ContainSingle()
             .Which.Should().BeEquivalentTo(new SurveyDraftAnswer(
                 questionId, ["yes"], "saved", null));

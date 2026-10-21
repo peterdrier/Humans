@@ -26,50 +26,6 @@ version: 1
 next_id: 98
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
-  - id: grandfathered-hum0031-controller-logic
-    title: Controller business logic over ratchet thresholds (HUM0031)
-    detect: "build:HUM0031"
-    review: panel
-    last_swept: 2026-06-12
-    remaining: 0
-    parked: "Peter 2026-08-07 — frozen until the per-section assembly split (nobodies-collective/Humans#866) lands. Do not lower the thresholds; do not burn down any HUM0031 grandfather that reappears before then."
-    notes: >-
-      PARKED — Peter 2026-08-07: BOTH dials are off. Do not lower the
-      thresholds in ControllerBusinessLogicAnalyzer, and do not burn down any
-      [Grandfathered("HUM0031", …)] method that appears before the freeze
-      lifts. Rotation skips this theme until
-      the per-section assembly split (nobodies-collective/Humans#866) lands —
-      the controllers relocate then, so the work is churn against code that is
-      about to move, and in the meantime it is a distraction. The burn-down
-      issue nobodies-collective/Humans#857 is closed for the same reason.
-      Re-open this theme only when #866 has shipped. The analyzer stays live at
-      Error for NEW breaches — that is not parked.
-      remaining: 0 since peterdrier/Humans#1156 burned down all 15
-      grandfathers; the entry stays because it IS the park — retiring it at
-      zero would let the Phase 2 staleness check re-create the theme unparked
-      the moment a HUM0031 grandfather reappears.
-      Prior sweep findings from 2026-06-12, kept for whenever this restarts:
-      12 distinct warning sites, all grandfathered (14 grandfathers total —
-      AccountController.ExternalLoginCallback and
-      EventsController.BulkUploadTemplate no longer fire; their justification
-      counts disagree with the analyzer's current counting).
-      EventsModerationController.ProcessActionAsync fixed + de-grandfathered
-      2026-06-12 (audit E7). Raw grep of a
-      full-solution build log double-counts each site (26 lines = 13 sites);
-      detect means DISTINCT sites. The rule is "no business
-      logic in controllers"; the cc/statement metric is only a proxy
-      detector. Exactly two valid fixes: (a) move the domain decisions into
-      the section's application service — new/changed interface surface
-      needs per-item Peter approval (skip-and-ask); (b) the method is
-      genuinely presentation (sorting/filtering/paging/VM mapping) over a
-      low threshold — grandfather stays, record it as a
-      threshold-calibration finding. FORBIDDEN: splitting the method into
-      controller-local private helpers / VM factories to satisfy the metric
-      — tried 2026-06-12 on 12 methods, rejected and reverted (dodged the
-      metric, moved zero domain decisions). Litmus per statement: would a
-      Hangfire job doing the same operation need this line? Yes → service.
-      Form-apply model: DietaryMedicalViewModel.ToCommand() →
-      profileEditorService.SaveDietaryMedicalAsync(userId, command).
   - id: grandfathered-hum0028-invalidators
     title: Invalidator interface ratchet (HUM0028)
     detect: "build:HUM0028"
@@ -163,38 +119,35 @@ themes:
     title: Application services returning entities from reads
     detect: "grep -cv '^#\\|^$' tests/Humans.Web.Tests/Architecture/Baselines/ApplicationServiceEntityReadReturns.baseline.txt"
     review: panel
-    last_swept: never
-    remaining: 13
-    parked: "Peter 2026-09-20 — one refactor, outside the nightly process. Every entry changes a public return type, so a sweep worker asks on all of them and ships nothing; rotation skips it until that refactor is scheduled."
+    last_swept: 2026-10-21
+    remaining: 0
     notes: >-
-      PARKED 2026-09-20 (see `parked:`). `remaining` counts real violations
-      the scan can no longer see (IAccountProvisioningService.FindOrCreateUserByEmailAsync
-      returning User / UserEmail / EventParticipation, coverage lost when G5
-      lane 3b dropped the IApplicationService marker from that interface, as
-      the baseline header records) beyond what the baseline file's locator
-      lines hold — `detect` counts the file, not the debt.
+      Drained 2026-10-21: all 13 baseline locator lines fixed (Teams, Events,
+      Shifts, IMagicLinkService), plus the three hidden
+      IAccountProvisioningService rows (unscanned since G5 lane 3b dropped its
+      IApplicationService marker; its results now carry the user id, not User)
+      and IMagicLinkService.VerifyLoginTokenAsync (returns `bool` now). The
+      marker cannot return (Base -> Users.Contracts cycle), so that interface
+      stays review-guarded.
       Convert to DTO/Info returns (read-model pattern, design-rules §15).
       Remove each fixed locator line from the baseline file — never add lines.
-      PASSED OVER as #2 rotation candidate (sweep 2026-06-14): all entries are
-      public-interface read methods whose fix CHANGES the return type
-      entity→DTO — a surface-changing refactor that ripples to every caller
-      (e.g. IUserService.GetByIdsAsync:User and ITeamService.GetTeamByIdAsync:Team
-      are called pervasively). Per the work-loop's skip-and-ask rule
-      (public-surface changes), each item is skip-and-ask, so a sweep can't burn
-      these down mechanically — they need Peter's go on doing entity→DTO return
-      migrations as sweep work vs. dedicated per-method PRs. last_swept stays
-      `never` (not per-item audited; only pattern-classified this run).
   - id: baseline-display-sort
     title: Display sorting below the presentation layer
     detect: "grep -cv '^#\\|^$' tests/Humans.Web.Tests/Architecture/Baselines/DisplaySortInControllers.baseline.txt"
     review: light
-    last_swept: 2026-10-10
+    last_swept: 2026-10-21
     remaining: 0
-    baseline_entries: 18
-    not_actionable: 18
+    baseline_entries: 0
+    not_actionable: 0
     notes: >-
-      Re-measured 2026-10-10: only 18 TicketRepository sorts remain, all
-      explicitly parked pending the paged-grid redesign. Teams roster ordering
+      Drained 2026-10-21: the last 18 rows (TicketRepository order/attendee
+      grid sort helpers) were sort-before-SQL-Skip/Take on the paged admin
+      grids, so each is now marked `// arch:db-sort-ok`; the baseline is empty.
+      Their old single marker sat above the first `if` and covered nothing.
+      Both grids gained a `ThenBy(Id)` pagination tie-breaker; the attendee/
+      order CSV export sorts (falsely marked "export stable order") moved to
+      TicketController.
+      Re-measured 2026-10-10: Teams roster ordering
       now belongs to the controller, preserving the existing priority/name/slot
       order; its redundant repository sort and three baseline entries are gone.
       `remaining` is what rotation sizes the work by; `baseline_entries` is

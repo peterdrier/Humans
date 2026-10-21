@@ -107,6 +107,8 @@
                             <th class="text-end">Ticket Income ex VAT</th>
                             <th class="text-end">Stripe Fees</th>
                             <th class="text-end">TT Fees</th>
+                            <th class="text-end">Stripe Fee VAT</th>
+                            <th class="text-end">Withheld Tax</th>
                             <th class="text-end">Refunded Gross</th>
                         </tr>
                     </thead>
@@ -125,6 +127,8 @@
                                 <td class="text-end">@m.TicketIncomeExVat.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                                 <td class="text-end">@m.StripeFees.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                                 <td class="text-end">@m.ApplicationFees.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@m.FeeTax.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@m.WithheldTax.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                                 <td class="text-end">@m.RefundedGross.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                             </tr>
                         }
@@ -150,6 +154,8 @@
                             <td class="text-end">@mExVat.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                             <td class="text-end">@Model.MonthlySales.Sum(m => m.StripeFees).ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                             <td class="text-end">@Model.MonthlySales.Sum(m => m.ApplicationFees).ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@Model.MonthlySales.Sum(m => m.FeeTax).ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                            <td class="text-end">@Model.MonthlySales.Sum(m => m.WithheldTax).ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                             <td class="text-end">@Model.MonthlySales.Sum(m => m.RefundedGross).ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                         </tr>
                     </tfoot>

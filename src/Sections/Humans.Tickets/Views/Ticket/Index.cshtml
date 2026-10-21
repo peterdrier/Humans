@@ -55,7 +55,7 @@
                     <h3 class="card-title">@Model.Currency @Model.Revenue.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</h3>
                     @if (Model.TotalStripeFees > 0 || Model.TotalApplicationFees > 0)
                     {
-                        var totalFees = Model.TotalStripeFees + Model.TotalApplicationFees;
+                        var totalFees = Model.TotalStripeFees + Model.TotalApplicationFees + Model.TotalFeeTax;
                         var feePct = Model.Revenue > 0 ? Math.Round(totalFees / Model.Revenue * 100, 1) : 0;
                         <small class="text-muted">@feePct.ToString(System.Globalization.CultureInfo.CurrentUICulture)% in fees</small>
                     }
@@ -74,6 +74,14 @@
                             @if (Model.TotalApplicationFees > 0)
                             {
                                 <text> / TT: @Model.Currency @Model.TotalApplicationFees.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</text>
+                            }
+                            @if (Model.TotalFeeTax > 0)
+                            {
+                                <text> / Fee VAT: @Model.Currency @Model.TotalFeeTax.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</text>
+                            }
+                            @if (Model.TotalWithheldTax > 0)
+                            {
+                                <text> / Withheld: @Model.Currency @Model.TotalWithheldTax.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</text>
                             }
                         </small>
                     }

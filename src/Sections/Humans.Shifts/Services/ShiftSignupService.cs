@@ -1099,8 +1099,19 @@ internal sealed class ShiftSignupService(
         return new();
     }
 
-    public Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null, CancellationToken ct = default) =>
-        repo.GetForUsersAsync([userId], eventSettingsId, ct);
+    public async Task<IReadOnlyList<ShiftSignupSummary>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null, CancellationToken ct = default)
+    {
+        var signups = await repo.GetForUsersAsync([userId], eventSettingsId, ct);
+        var result = new List<ShiftSignupSummary>(signups.Count);
+        foreach (var signup in signups)
+        {
+            if (signup.Shift?.Rota is null) continue;
+            if (await calendarResolver.GetAsync(signup.Shift.Rota.EventSettingsId, ct) is { } calendar)
+                result.Add(ShiftUserSummaryProjection.ToSummary(signup, calendar));
+        }
+
+        return result;
+    }
 
     public async Task<ShiftSignupTeamProbe?> GetTeamProbeAsync(Guid id, ShiftSignupTeamProbeScope scope)
     {

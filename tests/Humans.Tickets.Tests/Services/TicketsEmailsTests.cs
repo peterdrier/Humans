@@ -4,7 +4,6 @@ using Humans.Email.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
 using Humans.Tickets.Tests.Infrastructure;
-using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Tests.Services;
 

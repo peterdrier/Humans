@@ -1,7 +1,6 @@
 using System.Globalization;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
-using Humans.Users.Contracts;
 
 namespace Humans.Email.Services;
 

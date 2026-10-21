@@ -118,8 +118,8 @@ public sealed class FacilitatedMessageControllerTests
         var result = await _controller.SendMessage(_targetId, new SendMessageViewModel { Message = "Hello" }, Ct);
 
         result.Should().BeOfType<RedirectToActionResult>();
-        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
-        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid), default, default);
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -128,7 +128,7 @@ public sealed class FacilitatedMessageControllerTests
         var result = await _controller.SendMessage(_viewerId, new SendMessageViewModel { Message = "Hello" }, Ct);
 
         result.Should().BeOfType<RedirectToActionResult>();
-        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
     }
 
     [HumansFact]
@@ -139,7 +139,7 @@ public sealed class FacilitatedMessageControllerTests
         var result = await _controller.SendMessage(_targetId, new SendMessageViewModel(), Ct);
 
         result.Should().BeOfType<ViewResult>();
-        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
     }
 
     [HumansFact]
@@ -155,7 +155,7 @@ public sealed class FacilitatedMessageControllerTests
         await _audit.Received(1).LogAsync(
             AuditAction.FacilitatedMessageSent, "User", _targetId,
             Arg.Is<string>(d => d.Contains("contact info shared: yes", StringComparison.Ordinal)),
-            _viewerId, null, null);
+            _viewerId);
     }
 
     [HumansTheory]

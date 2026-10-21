@@ -43,14 +43,13 @@
         - HUM0031: controller business-logic thresholds. Error by default; a
           grandfathered offender method carries [Grandfathered("HUM0031", ...)]
           to downgrade to warning. A new breach (no [Grandfathered]) fires
-          Error. FROZEN (Peter, 2026-08-07): the thresholds are hardcoded in
-          ControllerBusinessLogicAnalyzer at 40/15 and do NOT ratchet down,
-          and no HUM0031 grandfather is to be refactored away, until the
-          per-section assembly split (nobodies-collective/Humans#866) lands.
-          peterdrier/Humans#1156 already cleared all 15, so this entry is
-          currently inert — keep it anyway, so a grandfather added during the
-          freeze does not break the build. Exit condition: revisit after #866,
-          not before.
+          Error. The thresholds are hardcoded in ControllerBusinessLogicAnalyzer
+          and FIXED at 40/15 (Peter, 2026-10-21): a backstop, never ratcheted.
+          Whether a controller carries business logic is judged by intent in
+          section-doctor's regular runs, not by these numbers.
+          peterdrier/Humans#1156 cleared all 15 grandfathers, so this entry is
+          inert; it stays so a grandfather (ordinary debt) never breaks the
+          build. Permanent.
     -->
     <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0010;HUM0011;HUM0028;HUM0031;HUM_USER_DISPLAYNAME;HUM_USER_NORMALIZEDEMAIL</WarningsNotAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>

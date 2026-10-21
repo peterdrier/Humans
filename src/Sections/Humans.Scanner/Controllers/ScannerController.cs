@@ -10,7 +10,6 @@ using Humans.Scanner.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
-using Humans.Users.Contracts;
 
 namespace Humans.Scanner.Controllers;
 

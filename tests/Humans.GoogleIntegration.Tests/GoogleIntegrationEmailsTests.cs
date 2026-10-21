@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Tests.Infrastructure;
-using Humans.Users.Contracts;
 
 namespace Humans.GoogleIntegration.Tests;
 

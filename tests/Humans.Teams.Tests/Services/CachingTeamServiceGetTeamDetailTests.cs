@@ -40,8 +40,8 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
 
         var services = new ServiceCollection();
         services.AddSingleton(userService);
-        services.AddSingleton<IUserService>(userService);
-        services.AddSingleton<IRoleAssignmentService>(_roleAssignmentService);
+        services.AddSingleton(userService);
+        services.AddSingleton(_roleAssignmentService);
         services.AddKeyedScoped<ITeamManagementService>(
             CachingTeamService.InnerServiceKey,
             (_, _) => _innerTeamService);
@@ -244,7 +244,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         var privileged = role is RoleNames.Admin or RoleNames.Board or RoleNames.TeamsAdmin;
         rootPage.ChildTeams.Select(team => team.Id).Should().Equal(privileged ? new[] { hiddenChild.Id } : []);
         var parentId = childPage.Team.ParentTeam?.Id;
-        parentId.Should().Be(privileged ? hiddenParent.Id : (Guid?)null);
+        parentId.Should().Be(privileged ? hiddenParent.Id : null);
         childPage.Team.DisplayName.Should().Be(privileged ? "PrivateParent - VisibleChild" : "VisibleChild");
     }
 

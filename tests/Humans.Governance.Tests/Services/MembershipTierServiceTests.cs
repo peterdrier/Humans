@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Base.Interfaces;
 using Humans.Governance.Contracts;
 using Humans.Governance.Data;
 using Humans.Governance.Domain;

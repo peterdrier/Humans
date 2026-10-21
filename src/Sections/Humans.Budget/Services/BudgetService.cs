@@ -729,7 +729,10 @@ internal sealed class BudgetService(
                 TicketCount: w.TicketCount,
                 Revenue: w.Revenue,
                 StripeFees: w.StripeFees,
-                TicketTailorFees: w.TicketTailorFees))
+                TicketTailorFees: w.TicketTailorFees,
+                StripeFeeTax: w.StripeFeeTax,
+                StripeFeesTaxUnknown: w.StripeFeesTaxUnknown,
+                StripeFeesUntaxed: w.StripeFeesUntaxed))
             .ToList();
 
         var changed = await repository.SyncTicketingActualsAsync(

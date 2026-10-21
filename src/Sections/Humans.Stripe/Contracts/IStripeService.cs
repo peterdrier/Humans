@@ -78,12 +78,23 @@ public interface IStripeService : IApplicationService
     Task<IReadOnlyList<StoreCheckoutSessionData>?> ListStoreCheckoutSessionsAsync(CancellationToken ct = default);
 }
 
-/// <summary>EUR fee amounts and payment method data extracted from a Stripe PaymentIntent's charge.</summary>
+/// <summary>
+/// EUR fee amounts and payment method data extracted from a Stripe PaymentIntent's charge,
+/// one per Stripe balance-transaction fee bucket.
+/// </summary>
+/// <param name="PaymentMethod">Stripe payment method type (e.g. "card").</param>
+/// <param name="PaymentMethodDetail">Card brand for cards; otherwise null.</param>
+/// <param name="StripeFee">Processing cost: <c>stripe_fee</c> plus <c>payment_method_passthrough_fee</c>.</param>
+/// <param name="ApplicationFee">The platform's (Ticket Tailor's) <c>application_fee</c>.</param>
+/// <param name="FeeTax">Stripe's <c>tax</c> bucket: VAT Stripe charged on its fees.</param>
+/// <param name="WithheldTax">Stripe's <c>withheld_tax</c> bucket: tax withheld from the payout.</param>
 public record StripePaymentDetails(
     string PaymentMethod,
     string? PaymentMethodDetail,
     decimal StripeFee,
-    decimal ApplicationFee);
+    decimal ApplicationFee,
+    decimal FeeTax,
+    decimal WithheldTax);
 
 /// <summary>Categorized Stripe Checkout webhook event the Store cares about.</summary>
 public enum StoreCheckoutEventKind

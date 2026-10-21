@@ -85,7 +85,7 @@
             {
                 <form asp-action="PostComment" asp-route-id="@Model.Id" method="post" class="mt-3">
                     @Html.AntiForgeryToken()
-                    @await Html.PartialAsync("_EmailComposer", new Humans.Base.Models.EmailComposerViewModel
+                    @await Html.PartialAsync("_EmailComposer", new EmailComposerViewModel
                     {
                         BodyName = "Content",
                         BodyLabel = Localizer["Issue_ComposerPlaceholder"].Value,

@@ -32,13 +32,7 @@ public sealed class EventsModerationControllerTests
     {
         var moderatorId = Guid.NewGuid();
         var settingsId = Guid.NewGuid();
-        var guideEvent = new Event
-        {
-            Id = Guid.NewGuid(),
-            CampId = isCampEvent ? Guid.NewGuid() : null,
-            Title = "Approved event",
-            Status = EventStatus.Approved
-        };
+        var guideEvent = MakeEvent(isCampEvent ? Guid.NewGuid() : null, EventStatus.Approved) with { Title = "Approved event" };
         _guide.GetEventForModerationAsync(guideEvent.Id, Arg.Any<CancellationToken>()).Returns(guideEvent);
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(new EventGuideSettingsView(
             Guid.NewGuid(), settingsId, Instant.MinValue, Instant.MaxValue, Instant.MaxValue, 100,
@@ -62,26 +56,15 @@ public sealed class EventsModerationControllerTests
 
         result.Should().BeOfType<ViewResult>();
         controller.ModelState[nameof(model.RecurrenceDays)]!.Errors.Should().ContainSingle();
-        guideEvent.Title.Should().Be("Approved event");
-        await _guide.DidNotReceive().AdminUpdateAsync(Arg.Any<Event>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _guide.DidNotReceive().AdminUpdateAsync(
+            Arg.Any<Guid>(), Arg.Any<EventEdit>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
     public async Task Approve_pending_event_applies_the_approval_with_submitter_edit_url()
     {
         var moderatorId = Guid.NewGuid();
-        var guideEvent = new Event
-        {
-            Id = Guid.NewGuid(),
-            SubmitterUserId = Guid.NewGuid(),
-            CategoryId = Guid.NewGuid(),
-            GuideSharedVenueId = Guid.NewGuid(),
-            Title = "Pending event",
-            Description = "Description",
-            StartAt = Instant.FromUtc(2026, 8, 1, 18, 0),
-            DurationMinutes = 60,
-            Status = EventStatus.Pending,
-        };
+        var guideEvent = MakeEvent(null, EventStatus.Pending) with { Title = "Pending event" };
         _guide.GetEventForModerationAsync(guideEvent.Id, Arg.Any<CancellationToken>()).Returns(guideEvent);
         _users.GetUserInfoAsync(moderatorId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfoFor(moderatorId)));
@@ -101,7 +84,7 @@ public sealed class EventsModerationControllerTests
     public async Task Withdraw_approved_event_records_the_moderator()
     {
         var moderatorId = Guid.NewGuid();
-        var guideEvent = new Event { Id = Guid.NewGuid(), Title = "Approved event", Status = EventStatus.Approved };
+        var guideEvent = MakeEvent(null, EventStatus.Approved) with { Title = "Approved event" };
         _guide.GetEventForModerationAsync(guideEvent.Id, Arg.Any<CancellationToken>()).Returns(guideEvent);
         _users.GetUserInfoAsync(moderatorId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfoFor(moderatorId)));
@@ -110,8 +93,8 @@ public sealed class EventsModerationControllerTests
 
         await controller.Withdraw(new ModerationActionFormModel { EventId = guideEvent.Id });
 
-        await _guide.Received(1).ModeratorWithdrawAsync(guideEvent, moderatorId, Arg.Any<CancellationToken>());
-        await _guide.DidNotReceive().WithdrawEventAsync(Arg.Any<Event>(), Arg.Any<CancellationToken>());
+        await _guide.Received(1).ModeratorWithdrawAsync(guideEvent.Id, moderatorId, Arg.Any<CancellationToken>());
+        await _guide.DidNotReceive().WithdrawEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -165,10 +148,8 @@ public sealed class EventsModerationControllerTests
         var categoryId = Guid.NewGuid();
         var venueId = Guid.NewGuid();
         var settings = BurnFixtures.Burn(year: 2026);
-        var guideEvent = new Event
+        var guideEvent = MakeEvent(isCampEvent ? Guid.NewGuid() : null, EventStatus.Pending) with
         {
-            Id = Guid.NewGuid(),
-            CampId = isCampEvent ? Guid.NewGuid() : null,
             CategoryId = categoryId,
             GuideSharedVenueId = venueId,
             StartAt = Instant.FromUtc(2026, 8, 1, 12, 0),
@@ -224,6 +205,12 @@ public sealed class EventsModerationControllerTests
         controller.Url.Action(Arg.Any<UrlActionContext>()).Returns($"/Events/Submit/{eventId}/Edit");
         return controller;
     }
+
+    private static EventInfo MakeEvent(Guid? campId, EventStatus status) => new(
+        Guid.NewGuid(), campId, campId == null ? Guid.NewGuid() : null, Guid.NewGuid(), Guid.NewGuid(),
+        "Music", "music", false, null, "Test Event", "Description", null, null,
+        Instant.FromUtc(2026, 8, 1, 18, 0), 60, false, null, null, status,
+        Instant.FromUtc(2026, 7, 1, 0, 0), Instant.FromUtc(2026, 7, 1, 0, 0), []);
 
     private static UserInfo UserInfoFor(Guid userId) => UserInfo.Create(
         new User { Id = userId, DisplayName = "Moderator", PreferredLanguage = "en", CreatedAt = Instant.MinValue },

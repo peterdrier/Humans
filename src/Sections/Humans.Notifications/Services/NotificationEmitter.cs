@@ -7,7 +7,6 @@ using Humans.Notifications.Contracts;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using Humans.Teams.Contracts;
-using Humans.Users.Contracts;
 
 namespace Humans.Notifications.Services;
 

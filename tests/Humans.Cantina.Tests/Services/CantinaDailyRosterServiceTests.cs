@@ -4,7 +4,6 @@ using AwesomeAssertions;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Cantina.Contracts;
-using Humans.Cantina.Domain;
 using Humans.Cantina.Services;
 using NodaTime;
 using NodaTime.Testing;

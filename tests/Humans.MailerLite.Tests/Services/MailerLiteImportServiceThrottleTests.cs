@@ -156,8 +156,7 @@ internal sealed class ThrottleHarness
             .FindOrCreateUserByEmailAsync(
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<ContactSource>(),
                 Arg.Any<CancellationToken>())
-            .Returns(_ => new AccountProvisioningResult(
-                new User { Id = Guid.NewGuid(), MergedToUserId = null }, Created: true));
+            .Returns(_ => new AccountProvisioningResult(Guid.NewGuid(), Created: true));
 
         // Default: no pref row for new humans → first write counts as a flip.
         _prefs

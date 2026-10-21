@@ -96,7 +96,7 @@ public class SepaWithdrawTests
     {
         Seed();
 
-        var result = await MakeService().WithdrawSepaTransferAsync(TransferId, Actor, Xunit.TestContext.Current.CancellationToken);
+        var result = await MakeService().WithdrawSepaTransferAsync(TransferId, Actor, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue(result.Message);
         result.Message.Should().Contain("4800.00 EUR").And.Contain("payable again");
@@ -131,7 +131,7 @@ public class SepaWithdrawTests
             paymentRefs: string.Equals(state, "payments", StringComparison.Ordinal) ? "pay-1" : null,
             withdrawnAt: string.Equals(state, "withdrawn", StringComparison.Ordinal) ? FixedNow : null);
 
-        var result = await MakeService().WithdrawSepaTransferAsync(TransferId, Actor, Xunit.TestContext.Current.CancellationToken);
+        var result = await MakeService().WithdrawSepaTransferAsync(TransferId, Actor, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain(state switch
@@ -141,7 +141,7 @@ public class SepaWithdrawTests
             "payments" => "already posted Holded payment(s) pay-1",
             _ => "already withdrawn",
         });
-        await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferWithdrawnAsync(default, default, default, default);
+        await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferWithdrawnAsync(default, default, default);
         _audit.ReceivedCalls().Should().BeEmpty();
         _emailService.ReceivedCalls().Should().BeEmpty();
     }
@@ -149,7 +149,7 @@ public class SepaWithdrawTests
     [HumansFact]
     public async Task Withdraw_UnknownTransfer_IsRefused()
     {
-        var result = await MakeService().WithdrawSepaTransferAsync(Guid.NewGuid(), Actor, Xunit.TestContext.Current.CancellationToken);
+        var result = await MakeService().WithdrawSepaTransferAsync(Guid.NewGuid(), Actor, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("no longer exists");
@@ -162,7 +162,7 @@ public class SepaWithdrawTests
         _userEmails.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string>());
 
-        var result = await MakeService().WithdrawSepaTransferAsync(TransferId, Actor, Xunit.TestContext.Current.CancellationToken);
+        var result = await MakeService().WithdrawSepaTransferAsync(TransferId, Actor, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         await _repo.Received(1).SaveSepaTransferWithdrawnAsync(TransferId, FixedNow, Actor, Arg.Any<CancellationToken>());

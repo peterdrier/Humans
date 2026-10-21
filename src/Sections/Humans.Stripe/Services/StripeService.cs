@@ -201,24 +201,49 @@ internal sealed class StripeService(
 
         decimal stripeFee = 0;
         decimal applicationFee = 0;
+        decimal feeTax = 0;
+        decimal withheldTax = 0;
         if (bt.FeeDetails is not null)
         {
             foreach (var fd in bt.FeeDetails)
             {
                 if (!string.Equals(fd.Currency, "eur", StringComparison.OrdinalIgnoreCase))
                     throw new InvalidOperationException("Stripe fee does not declare EUR currency.");
-                if (string.Equals(fd.Type, "stripe_fee", StringComparison.Ordinal))
-                    stripeFee += FromStripeMinorUnits(fd.Amount);
-                else if (string.Equals(fd.Type, "application_fee", StringComparison.Ordinal))
-                    applicationFee += FromStripeMinorUnits(fd.Amount);
+                var amount = FromStripeMinorUnits(fd.Amount);
+                switch (fd.Type)
+                {
+                    // Pass-through network/method fees are processing cost, same as Stripe's own fee.
+                    case "stripe_fee" or "payment_method_passthrough_fee":
+                        stripeFee += amount;
+                        break;
+                    case "application_fee":
+                        applicationFee += amount;
+                        break;
+                    case "tax":
+                        feeTax += amount;
+                        break;
+                    case "withheld_tax":
+                        withheldTax += amount;
+                        break;
+                }
             }
         }
+
+        // An unknown future fee type would otherwise vanish from the books silently.
+        var captured = stripeFee + applicationFee + feeTax + withheldTax;
+        var total = FromStripeMinorUnits(bt.Fee);
+        if (captured != total)
+            logger.LogWarning(
+                "PaymentIntent {Id}: fee buckets sum to {Captured} but the balance transaction fee is {Total}; an unrecognised fee type is unaccounted for.",
+                paymentIntentId, captured, total);
 
         return new StripePaymentDetails(
             PaymentMethod: methodType,
             PaymentMethodDetail: methodDetail,
             StripeFee: stripeFee,
-            ApplicationFee: applicationFee);
+            ApplicationFee: applicationFee,
+            FeeTax: feeTax,
+            WithheldTax: withheldTax);
     }
 
     public StoreCheckoutWebhookEvent? ParseStoreCheckoutEvent(string body, string signature)

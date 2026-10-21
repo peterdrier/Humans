@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Shifts.Services;
+using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Domain;
@@ -288,12 +289,25 @@ internal sealed class MySignupItem
     public bool BailLocked { get; set; }
 }
 
+/// <summary>
+/// A pending signup on the department admin page's approval list, with the shift it
+/// is for, that shift's confirmed count (capacity check) and its rota's name.
+/// </summary>
+internal sealed record ShiftAdminPendingSignup(
+    Guid Id,
+    Guid UserId,
+    Guid? SignupBlockId,
+    Instant CreatedAt,
+    ShiftInfo Shift,
+    int ShiftConfirmedCount,
+    string RotaName);
+
 internal sealed class ShiftAdminViewModel
 {
     public TeamInfo Department { get; set; } = null!;
     public BurnSettingsInfo EventSettings { get; set; } = null!;
-    public List<Rota> Rotas { get; set; } = [];
-    public List<ShiftSignup> PendingSignups { get; set; } = [];
+    public List<ShiftAdminRota> Rotas { get; set; } = [];
+    public List<ShiftAdminPendingSignup> PendingSignups { get; set; } = [];
     public int TotalSlots { get; set; }
     public int ConfirmedCount { get; set; }
     public bool CanManageShifts { get; set; }

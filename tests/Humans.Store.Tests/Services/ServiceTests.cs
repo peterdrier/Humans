@@ -1564,7 +1564,7 @@ public class ServiceTests
         result.ErrorKey.Should().Be("Store_PaymentPositive");
         result.SessionUrl.Should().BeNull();
         await _stripeService.DidNotReceiveWithAnyArgs().CreateCheckoutSessionAsync(default, default,
-            default!, default!, default, default!, default);
+            default!, default!, default, default!);
     }
 
     [HumansTheory]
@@ -1620,7 +1620,7 @@ public class ServiceTests
             .Should().BeOfType<RedirectToActionResult>();
         controller.TempData["ErrorMessage"].Should().Be(localizer["Store_PaymentAboveBalance", 10m].Value);
         await _stripeService.DidNotReceiveWithAnyArgs().CreateCheckoutSessionAsync(default, default,
-            default!, default!, default, default!, default);
+            default!, default!, default, default!);
 
         (await controller.Pay(order.Id, 5m, TestContext.Current.CancellationToken))
             .Should().BeOfType<RedirectToActionResult>();

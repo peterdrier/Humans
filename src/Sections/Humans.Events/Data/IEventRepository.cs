@@ -76,6 +76,8 @@ internal interface IEventRepository : IRepository
     Task<Dictionary<EventStatus, int>> GetModerationStatusCountsAsync(CancellationToken ct = default);
     Task<IReadOnlyList<Event>> GetEventsByStatusAsync(EventStatus status, CancellationToken ct = default);
     Task<Event?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default);
+    /// <summary>Read-only load with Category, EventVenue and moderation history; never pass the result to a save.</summary>
+    Task<Event?> GetEventWithDetailsAsync(Guid eventId, CancellationToken ct = default);
     Task<IReadOnlyList<CampEventOverlap>> GetActiveCampEventsAsync(CancellationToken ct = default);
     /// <summary>Persists the (already-transitioned) event + appends the moderation action in one transaction.</summary>
     Task SaveEventAndModerationActionAsync(Event guideEvent, EventModerationAction action, CancellationToken ct = default);

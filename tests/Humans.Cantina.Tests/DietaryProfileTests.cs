@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base;
-using Humans.Base.Interfaces;
 using Humans.Cantina.Contracts;
 using Humans.Cantina.Data;
 using Humans.Cantina.Domain;

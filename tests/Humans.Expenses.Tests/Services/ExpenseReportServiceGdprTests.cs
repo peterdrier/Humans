@@ -171,7 +171,7 @@ public class ExpenseReportServiceGdprTests
 
         // PayeeIban in the report should be masked
         var reportsSlice = slices.Single(s => string.Equals(s.SectionName, "ExpenseReports", StringComparison.Ordinal));
-        var json = System.Text.Json.JsonSerializer.Serialize(reportsSlice.Data);
+        var json = JsonSerializer.Serialize(reportsSlice.Data);
         json.Should().Contain("ES12****012");
         json.Should().NotContain("ES1234567890123456789012");
     }
@@ -242,7 +242,7 @@ public class ExpenseReportServiceGdprTests
         var slices = await _sut.ContributeForUserAsync(UserId, Xunit.TestContext.Current.CancellationToken);
 
         var reportsSlice = slices.Single(s => string.Equals(s.SectionName, "ExpenseReports", StringComparison.Ordinal));
-        var json = System.Text.Json.JsonSerializer.Serialize(reportsSlice.Data);
+        var json = JsonSerializer.Serialize(reportsSlice.Data);
         // Both report IDs should appear
         json.Should().Contain(ownReport.Id.ToString());
         json.Should().Contain(sourceReport.Id.ToString());

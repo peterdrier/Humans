@@ -39,6 +39,8 @@ internal sealed class TicketDashboardPageBuilder(
             TicketsRemaining = totalCapacity - stats.TicketsSold,
             TotalStripeFees = stats.TotalStripeFees,
             TotalApplicationFees = stats.TotalApplicationFees,
+            TotalFeeTax = stats.TotalFeeTax,
+            TotalWithheldTax = stats.TotalWithheldTax,
             NetRevenue = stats.NetRevenue,
             FeesByPaymentMethod = stats.FeesByPaymentMethod,
             DailySales = stats.DailySalesPoints,

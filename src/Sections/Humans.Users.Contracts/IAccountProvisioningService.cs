@@ -17,7 +17,7 @@ public interface IAccountProvisioningService
     /// <param name="displayName">Display name for the new account. Falls back to email prefix if null/empty.</param>
     /// <param name="source">Where this contact was imported from.</param>
     /// <param name="ct">Cancellation token.</param>
-    /// <returns>The existing or newly created User, and whether a new account was created.</returns>
+    /// <returns>The existing or newly created user's id, and whether a new account was created.</returns>
     Task<AccountProvisioningResult> FindOrCreateUserByEmailAsync(
         string email, string? displayName, ContactSource source,
         CancellationToken ct = default);
@@ -49,13 +49,17 @@ public interface IAccountProvisioningService
 /// <summary>
 /// Result of a find-or-create operation.
 /// </summary>
-/// <param name="User">The existing or newly created user.</param>
+/// <param name="UserId">The existing or newly created user's id.</param>
 /// <param name="Created">True if a new account was created; false if an existing one was found.</param>
-public record AccountProvisioningResult(User User, bool Created);
+public record AccountProvisioningResult(Guid UserId, bool Created);
 
+/// <summary>
+/// Result of a magic-link signup. <paramref name="UserId"/> is the account to sign in,
+/// null when <paramref name="Outcome"/> is <see cref="MagicLinkSignupCompletionOutcome.Failed"/>.
+/// </summary>
 public sealed record MagicLinkSignupCompletionResult(
     MagicLinkSignupCompletionOutcome Outcome,
-    User? User);
+    Guid? UserId);
 
 public enum MagicLinkSignupCompletionOutcome
 {

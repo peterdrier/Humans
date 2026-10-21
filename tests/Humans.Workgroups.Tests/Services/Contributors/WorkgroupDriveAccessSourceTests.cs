@@ -3,7 +3,6 @@ using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Testing;
 using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Services.Contributors;

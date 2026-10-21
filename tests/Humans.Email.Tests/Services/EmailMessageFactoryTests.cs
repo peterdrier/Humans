@@ -2,7 +2,6 @@ using Humans.Email.Contracts;
 using Xunit;
 using AwesomeAssertions;
 using Humans.Email.Services;
-using Humans.Users.Contracts;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -43,8 +42,8 @@ public sealed class EmailMessageFactoryTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(true)]
-    [Xunit.InlineData(false)]
+    [InlineData(true)]
+    [InlineData(false)]
     public void FacilitatedMessage_WithReplyTo_RoutesRepliesThereWhateverTheContactChoice(bool includeContactInfo)
     {
         var msg = _factory.FacilitatedMessage(

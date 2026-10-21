@@ -8,6 +8,7 @@ using Humans.Teams.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Shifts.Models;
+using Humans.Shifts.Services.Dtos;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
@@ -85,7 +86,7 @@ public sealed class ShiftAdminPageBuilderTests
         using var cancellation = new CancellationTokenSource();
         var userId = Guid.NewGuid();
         _shiftManagement.GetRotasByDepartmentAsync(Department.Id, Event.Id, Arg.Any<CancellationToken>())
-            .Returns(new[] { MakeRota(MakeShift(MakePending(userId))) });
+            .Returns([MakeRota(MakeShift(MakePending(userId)))]);
         _membership.GetUsersWithAllRequiredConsentsForTeamAsync(
                 Arg.Any<IEnumerable<Guid>>(), SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid>());
@@ -202,7 +203,7 @@ public sealed class ShiftAdminPageBuilderTests
     // Helpers
     // ============================================================
 
-    private void StubRotas(params Rota[] rotas) =>
+    private void StubRotas(params ShiftAdminRota[] rotas) =>
         _shiftManagement.GetRotasByDepartmentAsync(Department.Id, Event.Id)
             .Returns(rotas.ToList());
 
@@ -219,51 +220,15 @@ public sealed class ShiftAdminPageBuilderTests
             Now: TestNow));
     }
 
-    private static Rota MakeRota(params Shift[] shifts)
-    {
-        var rota = new Rota
-        {
-            Id = Guid.NewGuid(),
-            EventSettingsId = Event.Id,
-            TeamId = Department.Id,
-            Name = "Test Rota",
-            Priority = ShiftPriority.Normal,
-            Policy = SignupPolicy.Public,
-            Period = RotaPeriod.Event,
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow
-        };
-        foreach (var shift in shifts)
-            rota.Shifts.Add(shift);
-        return rota;
-    }
+    private static ShiftAdminRota MakeRota(params ShiftAdminShift[] shifts) => new(
+        new RotaInfo(Guid.NewGuid(), Event.Id, Department.Id, "Test Rota", null, null,
+            ShiftPriority.Normal, SignupPolicy.Public, RotaPeriod.Event, false, []),
+        shifts);
 
-    private static Shift MakeShift(params ShiftSignup[] signups)
-    {
-        var shift = new Shift
-        {
-            Id = Guid.NewGuid(),
-            RotaId = Guid.NewGuid(),
-            DayOffset = 1,
-            StartTime = new LocalTime(8, 0),
-            Duration = Duration.FromHours(4),
-            MinVolunteers = 2,
-            MaxVolunteers = 5,
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow
-        };
-        foreach (var signup in signups)
-            shift.ShiftSignups.Add(signup);
-        return shift;
-    }
+    private static ShiftAdminShift MakeShift(params ShiftAdminSignup[] signups) => new(
+        new ShiftInfo(Guid.NewGuid(), Guid.NewGuid(), null, 1, new LocalTime(8, 0), 4, 2, 5, false, false, false),
+        signups);
 
-    private static ShiftSignup MakePending(Guid userId) => new()
-    {
-        Id = Guid.NewGuid(),
-        UserId = userId,
-        ShiftId = Guid.NewGuid(),
-        Status = SignupStatus.Pending,
-        CreatedAt = TestNow,
-        UpdatedAt = TestNow
-    };
+    private static ShiftAdminSignup MakePending(Guid userId) =>
+        new(Guid.NewGuid(), userId, null, SignupStatus.Pending, TestNow);
 }
