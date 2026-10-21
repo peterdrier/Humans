@@ -1,6 +1,6 @@
 using Hangfire;
 using Humans.Base.Interfaces;
-using Humans.Finance.Contracts;
+using Humans.Finance.Services;
 using Humans.Holded.Contracts;
 using Microsoft.Extensions.Options;
 
@@ -9,14 +9,9 @@ namespace Humans.Finance.Jobs;
 /// <summary>Nightly pull of Holded purchase docs into Finance's mirror (budget-category actuals,
 /// the unmatched queue). The schedule lives in <c>SectionJobs.cs</c>; the ledger mirror's own
 /// nightly sweep is Holded's <c>HoldedSyncJob</c>, which reads none of this.</summary>
-/// <remarks>
-/// It is public, and stays public, because Hangfire needs the concrete type at registration;
-/// HUM0034 makes every other public type in a section an error. That public constructor is why it
-/// takes <see cref="IHoldedFinanceWrite"/> rather than Finance's internal management interface.
-/// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class HoldedDocSyncJob(
-    IHoldedFinanceWrite finance,
+internal sealed class HoldedDocSyncJob(
+    IHoldedFinanceManagement finance,
     IOptions<HoldedClientOptions> holdedOptions,
     ILogger<HoldedDocSyncJob> logger) : IRecurringJob
 {

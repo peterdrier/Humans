@@ -43,7 +43,7 @@ Composed by `Service` using `IHoldedRepository`, `IHoldedClient`, `IClock`
 and the facade's logger. Owns purchase-document fetching and matching,
 `HoldedExpenseDocs` snapshot replacement and `HoldedDocSyncStates` writes. Reads the
 category map and managed-account registry; no Budget, user or email dependency.
-The existing `IHoldedFinanceWrite.SyncAsync` entry point delegates here; its callers are Finance's own `HoldedDocSyncJob` (nightly) and `FinanceController.RunHoldedSync` (manual), never another section. The facade passes its duplicate-document check in, run over the fetched documents before the snapshot is written (it reads `IExpenseHoldedBookingService`, which the sync itself never does).
+The internal `IHoldedFinanceManagement.SyncAsync` entry point delegates here; its callers are Finance's own `HoldedDocSyncJob` (nightly) and `FinanceController.RunHoldedSync` (manual), never another section. The facade passes its duplicate-document check in, run over the fetched documents before the snapshot is written (it reads `IExpenseHoldedBookingService`, which the sync itself never does).
 
 ### Service (Scoped)
 

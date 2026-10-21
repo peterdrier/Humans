@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
-using Humans.Finance.Contracts;
 using Humans.Finance.Jobs;
+using Humans.Finance.Services;
 using Humans.Holded.Contracts;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -18,7 +18,7 @@ namespace Humans.Finance.Tests;
 /// </summary>
 public class HoldedDocSyncJobTests
 {
-    private readonly IHoldedFinanceWrite _finance = Substitute.For<IHoldedFinanceWrite>();
+    private readonly IHoldedFinanceManagement _finance = Substitute.For<IHoldedFinanceManagement>();
     private readonly CapturingLogger<HoldedDocSyncJob> _logger = new();
 
     private HoldedDocSyncJob MakeJob(string apiKey) =>
@@ -61,5 +61,14 @@ public class HoldedDocSyncJobTests
         new SectionJobs().Jobs(Substitute.For<IServiceProvider>())
             .Should().ContainSingle(j => j.JobType == typeof(HoldedDocSyncJob))
             .Which.Should().Be(new RecurringJobDescriptor("holded-doc-sync", typeof(HoldedDocSyncJob), "45 2 * * *"));
+    }
+
+    /// <summary>The job is internal; Hangfire only needs its ExecuteAsync to be public.</summary>
+    [HumansFact]
+    public void InternalJob_IsAcceptedByHangfire()
+    {
+        var job = Hangfire.Common.Job.FromExpression<HoldedDocSyncJob>(j => j.ExecuteAsync(CancellationToken.None));
+
+        job.Type.Should().Be(typeof(HoldedDocSyncJob));
     }
 }
