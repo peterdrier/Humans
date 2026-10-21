@@ -137,8 +137,9 @@
         </table>
     </div>
     <div class="card-footer text-muted small">
-        <strong>Sync now</strong> pulls purchase docs and sweeps the trailing ledger window;
-        <strong>Full resync</strong> replaces the mirror from inception.
+        <strong>Sync now</strong> sweeps the trailing ledger window;
+        <strong>Full resync</strong> replaces the mirror from inception. Purchase docs are Finance's
+        own sync, run from <a href="/Finance/HoldedUnmatched">Unmatched docs</a>.
         @if (Model.CreditorBindings is int bindings)
         {
             <text>Creditor bindings: @bindings.</text>

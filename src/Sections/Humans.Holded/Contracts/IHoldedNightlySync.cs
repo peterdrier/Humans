@@ -7,6 +7,6 @@ namespace Humans.Holded.Contracts;
 /// </summary>
 public interface IHoldedNightlySync
 {
-    /// <summary>Purchase docs (Finance) then the ledger mirror (Holded). No-ops without an API key.</summary>
+    /// <summary>The ledger mirror's trailing-window sweep. No-ops without an API key.</summary>
     Task RunAsync(CancellationToken ct = default);
 }

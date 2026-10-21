@@ -26,6 +26,8 @@ Two edges the line settles:
 Look for, each as its own check:
 
 1. **Read path that writes.** A GET action or view component that calls a write or mutating member.
+   HUM0038 already fails the build for `I*Write` members and `[ExternalWrite]` methods; look for the
+   rest (mutating `I*Service` / `I*Management` members, writes reached through a helper).
 2. **Post-mutation sequencing.** An action that calls a mutation, then decides which other domain
    calls follow (notifications, sync, compensation). Which consequences follow a change is a fact.
 3. **Computed fact.** A total, price, eligibility or status predicate (`CanEdit`, `CanWithdraw`,

@@ -1,5 +1,5 @@
-using Humans.Base.Authorization;
 using Humans.Base.Controllers;
+using Humans.GoogleIntegration.Authorization;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Models;
 using Humans.GoogleIntegration.Services;
@@ -16,6 +16,7 @@ namespace Humans.GoogleIntegration.Controllers;
 /// A team's linked Google resources: link, unlink, permission level, inherited-access
 /// restriction and single-resource sync. Gated per team: TeamsAdmin/Board/Admin, or a
 /// coordinator of the team's department (sub-team coordinators manage at department level).
+/// The per-team gate is <see cref="TeamResourceAuthorizationHandler"/>.
 /// </summary>
 [Authorize]
 [Route("Google/Teams/{slug}/Resources")]
@@ -23,6 +24,7 @@ internal sealed class TeamResourcesController(
     IUserService userService,
     ITeamService teamService,
     ITeamResourceManagement teamResources,
+    IAuthorizationService authorizationService,
     IGoogleSyncManagement googleSync,
     ILogger<TeamResourcesController> logger,
     IStringLocalizer<GoogleIntegrationResource> localizer) : HumansControllerBase(userService)
@@ -73,6 +75,7 @@ internal sealed class TeamResourcesController(
         return View(viewModel);
     }
 
+    [Authorize]
     [HttpPost("LinkDrive")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> LinkDriveResource(string slug, LinkDriveResourceModel model)
@@ -98,6 +101,7 @@ internal sealed class TeamResourcesController(
         return RedirectToAction(nameof(Index), new { slug });
     }
 
+    [Authorize]
     [HttpPost("LinkGroup")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> LinkGroup(string slug, LinkGroupModel model)
@@ -123,6 +127,7 @@ internal sealed class TeamResourcesController(
         return RedirectToAction(nameof(Index), new { slug });
     }
 
+    [Authorize]
     [HttpPost("{resourceId}/PermissionLevel")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdatePermissionLevel(string slug, Guid resourceId, DrivePermissionLevel level)
@@ -148,6 +153,7 @@ internal sealed class TeamResourcesController(
         return RedirectToAction(nameof(Index), new { slug });
     }
 
+    [Authorize]
     [HttpPost("{resourceId}/RestrictInheritedAccess")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ToggleRestrictInheritedAccess(string slug, Guid resourceId, [BindRequired] bool restrict)
@@ -185,6 +191,7 @@ internal sealed class TeamResourcesController(
         return RedirectToAction(nameof(Index), new { slug });
     }
 
+    [Authorize]
     [HttpPost("{resourceId}/Unlink")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnlinkResource(string slug, Guid resourceId)
@@ -204,6 +211,7 @@ internal sealed class TeamResourcesController(
         return RedirectToAction(nameof(Index), new { slug });
     }
 
+    [Authorize]
     [HttpPost("{resourceId}/Sync")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncResource(string slug, Guid resourceId)
@@ -262,22 +270,12 @@ internal sealed class TeamResourcesController(
             return (NotFound(), user, null!);
         }
 
-        if (!await CanManageResourcesAsync(team, user.Id, ct))
+        if (!(await authorizationService.AuthorizeAsync(User, team, TeamResourceManageRequirement.Instance)).Succeeded)
         {
             return (Forbid(), user, team);
         }
 
         return (null, user, team);
-    }
-
-    private async Task<bool> CanManageResourcesAsync(TeamInfo team, Guid userId, CancellationToken ct)
-    {
-        if (RoleChecks.IsTeamsAdminBoardOrAdmin(User))
-            return true;
-
-        // Sub-team managers cannot manage Google resources — check at department level.
-        var checkTeamId = team.ParentTeamId ?? team.Id;
-        return await teamResources.CanManageTeamResourcesAsync(checkTeamId, userId, ct);
     }
 
     private async Task<bool> ResourceMatchesTeamAsync(Guid resourceId, Guid teamId)
