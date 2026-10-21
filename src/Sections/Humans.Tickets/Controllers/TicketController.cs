@@ -253,7 +253,7 @@ internal sealed class TicketController(
         var bytes = HumansCsv.WriteBytes(csv =>
         {
             csv.WriteRow("Name", "Email", "Ticket Type", "Price", "Status", "Order ID");
-            foreach (var a in rows)
+            foreach (var a in rows.OrderBy(a => a.AttendeeName, StringComparer.CurrentCulture))
             {
                 csv.WriteRow(a.AttendeeName, a.AttendeeEmail, a.TicketTypeName, a.Price, a.Status, a.VendorOrderId);
             }
@@ -275,7 +275,7 @@ internal sealed class TicketController(
         {
             csv.WriteRow("Date", "Purchaser", "Email", "Tickets", "Amount", "Currency",
                 "Code", "Discount", "Donation", "VAT", "Payment Method", "Stripe Fee", "TT Fee", "Status");
-            foreach (var o in rows)
+            foreach (var o in rows.OrderByDescending(o => o.PurchasedAt))
             {
                 csv.WriteRow(
                     o.Date,

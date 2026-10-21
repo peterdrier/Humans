@@ -69,12 +69,12 @@ internal interface ITicketManagement : ITicketService, IApplicationService
         int page, int pageSize, CancellationToken ct = default);
 
     /// <summary>
-    /// Get all attendees for CSV export, ordered by name.
+    /// Get all attendees for CSV export, unordered; the export controller orders them.
     /// </summary>
     Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync(Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Get all orders for CSV export, ordered by purchase date descending.
+    /// Get all orders for CSV export, unordered; the export controller orders them.
     /// </summary>
     Task<List<OrderExportRow>> GetOrderExportDataAsync(Guid actorUserId, CancellationToken ct = default);
 

@@ -225,13 +225,19 @@ themes:
     title: Display sorting below the presentation layer
     detect: "grep -cv '^#\\|^$' tests/Humans.Web.Tests/Architecture/Baselines/DisplaySortInControllers.baseline.txt"
     review: light
-    last_swept: 2026-10-10
+    last_swept: 2026-10-21
     remaining: 0
-    baseline_entries: 18
-    not_actionable: 18
+    baseline_entries: 0
+    not_actionable: 0
     notes: >-
-      Re-measured 2026-10-10: only 18 TicketRepository sorts remain, all
-      explicitly parked pending the paged-grid redesign. Teams roster ordering
+      Drained 2026-10-21: the last 18 rows (TicketRepository order/attendee
+      grid sort helpers) were sort-before-SQL-Skip/Take on the paged admin
+      grids, so each is now marked `// arch:db-sort-ok`; the baseline is empty.
+      Their old single marker sat above the first `if` and covered nothing.
+      Both grids gained a `ThenBy(Id)` pagination tie-breaker; the attendee/
+      order CSV export sorts (falsely marked "export stable order") moved to
+      TicketController.
+      Re-measured 2026-10-10: Teams roster ordering
       now belongs to the controller, preserving the existing priority/name/slot
       order; its redundant repository sort and three baseline entries are gone.
       `remaining` is what rotation sizes the work by; `baseline_entries` is
