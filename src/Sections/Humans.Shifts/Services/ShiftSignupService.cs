@@ -1508,7 +1508,11 @@ internal sealed class ShiftSignupService(
     public async Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
         Guid userId, string reason, CancellationToken ct = default)
     {
+        var eventIds = await GetSignupEventIdsAsync([userId], ct);
         var cancelled = await repo.CancelActiveSignupsForUserAsync(userId, reason, ct);
+        if (cancelled.Count > 0)
+            foreach (var eventId in eventIds)
+                shiftMgmt.InvalidateDashboardCaches(eventId);
         viewInvalidator.InvalidateUser(userId);
         foreach (var (_, shiftId) in cancelled)
             viewInvalidator.InvalidateShift(shiftId);
@@ -1521,10 +1525,15 @@ internal sealed class ShiftSignupService(
         CancellationToken ct = default)
     {
         await adminAuthorization.RequireCurrentUserIsAdminAsync(ct);
+        var eventIds = await GetSignupEventIdsAsync(userIds, ct);
         var deleted = await repo.DeleteAllForUsersAsync(userIds, ct);
         // Repo doesn't return affected shift ids; cheap at our small scale to drop all and lazy-rebuild.
         if (deleted > 0)
+        {
             viewInvalidator.InvalidateAll();
+            foreach (var eventId in eventIds)
+                shiftMgmt.InvalidateDashboardCaches(eventId);
+        }
         else
         {
             foreach (var userId in userIds)
@@ -1606,6 +1615,7 @@ internal sealed class ShiftSignupService(
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {
+        var eventIds = await GetSignupEventIdsAsync([sourceUserId], ct);
         var movedCount = await repo.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 
         viewInvalidator.InvalidateUser(sourceUserId);
@@ -1616,6 +1626,8 @@ internal sealed class ShiftSignupService(
 
         if (movedCount > 0)
         {
+            foreach (var eventId in eventIds)
+                shiftMgmt.InvalidateDashboardCaches(eventId);
             earlyEntryInvalidator.InvalidateUser(sourceUserId);
             earlyEntryInvalidator.InvalidateUser(targetUserId);
 
@@ -1626,6 +1638,11 @@ internal sealed class ShiftSignupService(
                 targetUserId, nameof(User));
         }
     }
+
+    private async Task<IReadOnlyList<Guid>> GetSignupEventIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct) =>
+        (await repo.GetForUsersAsync(userIds, ct: ct))
+            .Select(s => s.Shift.Rota.EventSettingsId).Distinct().ToList();
 
     private sealed record RangeSignupCandidateSelection(
         List<Shift> Shifts,

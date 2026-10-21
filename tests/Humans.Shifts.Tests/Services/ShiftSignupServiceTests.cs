@@ -2341,6 +2341,50 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     // Account-merge fold — ShiftSignupReassigned
     // ============================================================
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SignupLifecycleMutation_RefreshesWarmDashboard(bool merging)
+    {
+        var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        SeedSignup(source, shift.Id, SignupStatus.Confirmed);
+        if (merging) SeedSignup(target, shift.Id, SignupStatus.Confirmed);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        (await _shiftMgmt.GetDashboardOverviewAsync(es.Id)).FilledSlots.Should().Be(merging ? 2 : 1);
+
+        if (merging)
+            await _service.ReassignAsync(source, target, Guid.NewGuid(), TestNow, TestContext.Current.CancellationToken);
+        else
+            await _service.CancelActiveSignupsForUserAsync(source, "Account deletion", TestContext.Current.CancellationToken);
+
+        (await _shiftMgmt.GetDashboardOverviewAsync(es.Id)).FilledSlots.Should().Be(merging ? 1 : 0);
+    }
+
+    [HumansFact]
+    public async Task BulkSignupDeletion_InvalidatesAffectedEventDashboards()
+    {
+        var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var user = Guid.NewGuid();
+        SeedSignup(user, shift.Id, SignupStatus.Confirmed);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        var repo = Substitute.For<IShiftManagementRepository>();
+        repo.GetForUsersAsync(Arg.Any<IReadOnlyCollection<Guid>>(), null, Arg.Any<CancellationToken>())
+            .Returns(c => _repo.GetForUsersAsync(c.Arg<IReadOnlyCollection<Guid>>(), ct: c.Arg<CancellationToken>()));
+        repo.DeleteAllForUsersAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(1);
+        var management = Substitute.For<IShiftManagement>();
+        var service = new ShiftSignupService(repo, Substitute.For<IVolunteerTrackingRepository>(), management,
+            NewCalendarResolver(), AuditLog, Notifier, AdminAuthorization, _viewInvalidator,
+            Substitute.For<IEarlyEntryInvalidator>(), new ServiceLocatorBuilder().Build(),
+            Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
+
+        await service.DeleteAllForUsersAsync([user], TestContext.Current.CancellationToken);
+
+        management.Received(1).InvalidateDashboardCaches(es.Id);
+    }
+
     [HumansFact]
     public async Task Reassign_WhenSourceHasSignups_WritesShiftSignupReassignedOnce()
     {
