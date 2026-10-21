@@ -9,12 +9,13 @@ namespace Humans.Auth.Services;
 /// Singleton caching decorator for <see cref="IRoleAssignmentManagement"/>.
 /// Caches the full set of <c>role_assignments</c> rows so
 /// <see cref="GetActiveCountsByRoleAsync"/> and <see cref="GetActiveForUserAsync"/>
-/// are derived in memory at any clock instant. Invalidated wholesale via explicit
-/// <c>IRoleAssignmentCacheInvalidator.InvalidateAll()</c> calls inside
-/// <c>RoleAssignmentService</c>'s mutating methods, and via
-/// <c>IRoleAssignmentWrite.InvalidateRoleAssignmentCache()</c> from
-/// <c>AccountMergeService</c> after a merge fold. No EF interceptor —
-/// all writes go through <c>RoleAssignmentService</c>.
+/// are derived in memory at any clock instant. Cleared wholesale by
+/// <c>RoleAssignmentService</c> right after each of its repository writes, merge fold
+/// (<c>IUserMerge.ReassignAsync</c>) and GDPR erasure included — those two reach the
+/// inner service directly, not through this decorator, and the Board team sync inside
+/// Assign/End must read the new row set, so the eviction cannot wait for the
+/// pass-through to return. No EF interceptor — all writes go through
+/// <c>RoleAssignmentService</c>.
 /// </summary>
 /// <remarks>
 /// Warmed on startup via the <see cref="TrackedCache{TKey,TValue}"/> base, wholesale
@@ -23,8 +24,7 @@ namespace Humans.Auth.Services;
 /// </remarks>
 internal sealed class CachingRoleAssignmentService
     : TrackedCache<Guid, RoleAssignmentRow>,
-      IRoleAssignmentManagement,
-      IRoleAssignmentCacheInvalidator
+      IRoleAssignmentManagement
 {
     /// <summary>
     /// DI service key under which the undecorated (inner)
@@ -62,8 +62,6 @@ internal sealed class CachingRoleAssignmentService
         }
         return counts;
     }
-
-    public void InvalidateAll() => Clear();
 
     protected override async Task WarmAllAsync(CancellationToken ct)
     {
@@ -143,17 +141,6 @@ internal sealed class CachingRoleAssignmentService
             .Select(row => new RoleAssignmentSnapshot(row.RoleName, row.ValidTo))
             .ToList();
     }
-
-    public void InvalidateClaimsCacheForUser(Guid userId)
-    {
-        using var scope = _scopeFactory.CreateScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IRoleAssignmentManagement>(InnerServiceKey);
-        inner.InvalidateClaimsCacheForUser(userId);
-    }
-
-    // Implemented directly on the decorator (it IS the cache invalidator);
-    // no need to flow through the inner service.
-    void IRoleAssignmentWrite.InvalidateRoleAssignmentCache() => InvalidateAll();
 
     private async Task<TResult> WithInner<TResult>(Func<IRoleAssignmentManagement, Task<TResult>> action)
     {

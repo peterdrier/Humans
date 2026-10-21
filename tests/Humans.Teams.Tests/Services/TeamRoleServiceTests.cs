@@ -23,6 +23,7 @@ using Humans.Teams.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
+using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using RoleAssignmentService = Humans.Auth.Services.RoleAssignmentService;
 using TeamService = Humans.Teams.Services.TeamService;
@@ -41,8 +42,9 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             AuditLog,
             Notifier,
             Substitute.For<ISystemTeamSync>(),
-            Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
-            Substitute.For<IRoleAssignmentCacheInvalidator>(),
+            new CachingRoleAssignmentService(
+                Substitute.For<IServiceScopeFactory>(), Clock,
+                NullLogger<CachingRoleAssignmentService>.Instance),
             Clock,
             NullLogger<RoleAssignmentService>.Instance);
         var teamResourceService = Substitute.For<ITeamResourceService>();

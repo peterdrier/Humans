@@ -7,7 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
@@ -37,7 +36,6 @@ internal sealed class SystemTeamSyncJob(
     IAuditLogService auditLogService,
     IEmailService emailService,
     TeamsEmails emailMessages,
-    IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
     IHumansMetrics metrics,
     ILogger<SystemTeamSyncJob> logger,
     IClock clock) : ISystemTeamSync
@@ -568,9 +566,6 @@ internal sealed class SystemTeamSyncJob(
                 relatedEntityId: auditUserId, relatedEntityType: nameof(User));
         }
 
-        // Refresh sidebar claims for Volunteers churn before the 60s TTL.
-        InvalidateUserCachesForSystemTeamMembershipChanges(team.SystemTeamType, affectedUserIds);
-
         logger.LogInformation(
             "Synced {TeamName} team: added {AddCount}, removed {RemoveCount}",
             team.Name, toAdd.Count, toRemove.Count);
@@ -603,21 +598,6 @@ internal sealed class SystemTeamSyncJob(
                         user.Id, team.Id);
                 }
             }
-        }
-    }
-
-    private void InvalidateUserCachesForSystemTeamMembershipChanges(
-        SystemTeamType systemTeamType,
-        IEnumerable<Guid> userIds)
-    {
-        if (systemTeamType != SystemTeamType.Volunteers)
-        {
-            return;
-        }
-
-        foreach (var userId in userIds)
-        {
-            roleAssignmentClaimsInvalidator.Invalidate(userId);
         }
     }
 }

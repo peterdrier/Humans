@@ -267,8 +267,8 @@ Outbound (Users → other sections). `Humans.Users.csproj` references, all acycl
 
 The deletion cascade is `AccountDeletionService` (`Humans.Users/Services/`), the one Users service that explicitly bridges higher-level sections:
 - **Gdpr:** `IGdprService.EraseForUserAsync` — the erasure fan-out lives in Gdpr; `AccountDeletionService` resolves the merge chain, calls it per id, and invalidates each archived id's cache as its erasure completes. It names no section to erase; Gdpr fans out over its own `IUserDataContributor` roster.
-- Auth role projections for contact visibility, duplicate detection and profile cards use `IRoleAssignmentService`. Deletion-time revocation and post-merge cache invalidation go through `IRoleAssignmentWrite`; the admin assign/end pages are Auth's own.
-- **Auth:** `IRoleAssignmentWrite.RevokeAllActiveAsync` (grace-period revoke on the deletion *request*), `IRoleAssignmentClaimsCacheInvalidator.Invalidate`.
+- Auth role projections for contact visibility, duplicate detection and profile cards use `IRoleAssignmentService`. Deletion-time revocation goes through `IRoleAssignmentWrite` (Auth evicts its own caches, merge fold included); the admin assign/end pages are Auth's own.
+- **Auth:** `IRoleAssignmentWrite.RevokeAllActiveAsync` (grace-period revoke on the deletion *request*).
 - **Teams:** `ITeamWrite.RevokeAllMembershipsAsync` (same grace-period revoke), `RemoveMemberFromAllTeamsCache`.
 - **Shifts:** `IShiftAuthorizationInvalidator.Invalidate`, `IShiftViewInvalidator.InvalidateUser` — cross-cutting cache drops only; the Shifts data itself is erased by that section's own contributor.
 

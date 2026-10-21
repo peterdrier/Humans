@@ -15,8 +15,9 @@ The inner `IRoleAssignmentManagement` is wrapped by
 The full `role_assignments` row set is held in memory so
 cross-section reads (`GetActiveCountsByRoleAsync`, `GetActiveForUserAsync`)
 derive at any clock instant without a query. Invalidation is service-level:
-the inner service's writes call `IRoleAssignmentCacheInvalidator.InvalidateAll()`
-directly (single writer, so no EF interceptor needed).
+the inner service clears the decorator's cache (`CachingRoleAssignmentService.Clear()`,
+the concrete owner, no invalidator interface) right after each of its repository writes,
+merge fold and erasure included (single writer, so no EF interceptor needed).
 
 ### RoleAssignmentsController / RoleAssignmentsCardViewComponent
 
@@ -32,10 +33,9 @@ Repository: `IRoleAssignmentRepository`.
 |-------|-----|
 | RoleAssignments | R/W |
 
-| Cache (via invalidators) | Invalidate |
-|-------------------------|------------|
-| `Auth.RoleAssignmentRow` TrackedCache (`IRoleAssignmentCacheInvalidator`) | yes (wholesale flush on write) |
-| `claims:{userId}` (`IRoleAssignmentClaimsCacheInvalidator`) | yes |
+| Cache | Invalidate |
+|-------|------------|
+| `Auth.RoleAssignmentRow` TrackedCache (`CachingRoleAssignmentService`, injected concretely) | yes (wholesale `Clear()` right after each repository write, before the Board team sync reads roles back) |
 
 Cross-section calls via `IUserService`, `ISystemTeamSync`,
 `IAuditLogService`, `INotificationEmitter`. Implements `IUserDataContributor` for GDPR exports
@@ -45,9 +45,9 @@ and `IUserMerge` for account merges.
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
-| `TrackedCache<Guid, RoleAssignmentRow>` (`Auth.RoleAssignmentRow`, in-process, no `IMemoryCache`) | Per-Entity (warmed on startup) | yes | yes | yes (wholesale, via `IRoleAssignmentCacheInvalidator.InvalidateAll`) |
+| `TrackedCache<Guid, RoleAssignmentRow>` (`Auth.RoleAssignmentRow`, in-process, no `IMemoryCache`) | Per-Entity (warmed on startup) | yes | yes | yes (wholesale `Clear()`, called by the inner `RoleAssignmentService`) |
 
-Implements `IRoleAssignmentManagement` (hence `IRoleAssignmentService`, `IRoleAssignmentWrite`), `IRoleAssignmentCacheInvalidator`.
+Implements `IRoleAssignmentManagement` (hence `IRoleAssignmentService`, `IRoleAssignmentWrite`).
 Resolves the keyed Scoped inner per-call via `IServiceScopeFactory`.
 Surfaced on `/Debug/CacheStats`.
 

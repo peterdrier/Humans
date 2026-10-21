@@ -305,7 +305,7 @@ A coordinator can relay a one-off message to another member on behalf of a team,
 **Outbound** — every `ProjectReference` of `Humans.Teams.csproj` beyond Base and its own leaf, and what it is for:
 
 - **Users.Contracts**: `IUserService.GetUserInfosAsync` batch-resolves `UserInfo` for nav-stripped reads, projected straight into DTOs; `IUserService` feeds the reconciler.
-- **Auth:** `IRoleAssignmentService` for role-holder reads and `IAdminAuthorizationService` for the actor checks; `IRoleAssignmentClaimsCacheInvalidator` after Coordinators reconciliation.
+- **Auth:** `IRoleAssignmentService` for role-holder reads and `IAdminAuthorizationService` for the actor checks.
 - **GoogleIntegration:** each team can have linked Google resources (Drive folders, Groups). Membership changes append events through `IGoogleSyncOutboxService`, whose processor calls `IGoogleSyncWrite.AddUserToTeamResourcesAsync` for joins (a leave event needs no call: reconciliation removes the access); `TeamDriveAccessSource` supplies expected Drive access; `ITeamResourceService` / `ITeamResourceWrite` for the Resources page, the Google-group reconciliation and send as team's linked-and-synced group check.
 - **Shifts.Contracts:** `IShiftManagementService` for the team page's shifts card; `IShiftAuthorizationInvalidator` after coordinator changes. Rotas belong to a department or sub-team, and coordinator/manager status is what scopes their shift management.
 - **Notifications.Contracts:** `INotificationEmitter` on join-request events; `INotificationMeterCacheInvalidator`.

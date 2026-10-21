@@ -128,9 +128,8 @@ No repository. Implements `SuspendNonCompliantMembersJob`'s body
 have not re-consented after the grace period and runs each suspension's
 downstream side effects. Cross-section calls via `IUserService`,
 `IMembershipCalculator`, `IEmailService`, the section's own `UsersEmails` builder, `INotificationEmitter`,
-`IAuditLogService`, `IHumansMetrics`, plus `IActiveTeamsCacheInvalidator`,
-`IRoleAssignmentClaimsCacheInvalidator`, and `IShiftAuthorizationInvalidator`
-for cache eviction. Google access ends at the next Google reconciliation,
+`IAuditLogService`, `IHumansMetrics`, plus `IActiveTeamsCacheInvalidator`
+and `IShiftAuthorizationInvalidator` for cache eviction. Google access ends at the next Google reconciliation,
 which excludes suspended humans. No direct DB access or `IMemoryCache`.
 
 ### UsersEmails (Scoped, internal)
@@ -258,8 +257,8 @@ No repository. GDPR right-to-deletion orchestrator. Fans out over
 `IRoleAssignmentWrite`, `IGdprService` (runs every section's
 `IUserDataContributor` erasure), `ITicketService`, `IAuditLogService`,
 `IEmailService` (messages built by `UsersEmails`). Invalidates
-`IUserInfoInvalidator`, `IRoleAssignmentClaimsCacheInvalidator`,
-`IShiftAuthorizationInvalidator`, `IShiftViewInvalidator`. No cache, no
+`IUserInfoInvalidator`, `IShiftAuthorizationInvalidator`,
+`IShiftViewInvalidator`. No cache, no
 direct DB access — all writes go through owning services.
 
 ### AccountMergeService (Scoped)

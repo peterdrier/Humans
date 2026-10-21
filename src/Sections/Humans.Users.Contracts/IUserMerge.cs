@@ -14,8 +14,9 @@ namespace Humans.Users.Contracts;
 /// there is NO wrapping <c>TransactionScope</c>. Implementations MUST therefore
 /// be idempotent: re-running "move source's rows to target" after a partial
 /// failure must be a safe no-op (a re-FK of an already-moved row must not error).
-/// Defer cache invalidation to the orchestrator, which evicts in a <c>finally</c>
-/// after all steps complete.
+/// An implementation that owns a cache over the rows it moves evicts it itself once
+/// its own step returns (Auth, Camps and Workgroups do); the orchestrator still
+/// evicts the caches it reaches in a <c>finally</c> after all steps complete.
 /// </para>
 /// </summary>
 public interface IUserMerge

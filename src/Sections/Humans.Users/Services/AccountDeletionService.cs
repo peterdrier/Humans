@@ -2,7 +2,6 @@ using Humans.Base.Extensions;
 using Humans.Users.Services;
 using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Onboarding.Contracts;
@@ -24,7 +23,6 @@ internal sealed class AccountDeletionService(
     IGdprService gdprService,
     ITicketService ticketQueryService,
     IUserInfoInvalidator userInfoInvalidator,
-    IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
     IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
     IShiftViewInvalidator shiftViewInvalidator,
     IAuditLogService auditLogService,
@@ -140,7 +138,6 @@ internal sealed class AccountDeletionService(
         // run against the inner UserService, so nothing behind the caching
         // decorator has seen the collapse yet.
         await userInfoInvalidator.InvalidateAsync(userId, ct);
-        roleAssignmentClaimsInvalidator.Invalidate(userId);
         shiftAuthorizationInvalidator.Invalidate(userId);
         shiftViewInvalidator.InvalidateUser(userId);
 
@@ -187,7 +184,6 @@ internal sealed class AccountDeletionService(
         await userInfoInvalidator.InvalidateAsync(userId, ct);
         teamService.RemoveMemberFromAllTeamsCache(userId);
         teamService.InvalidateActiveTeamsCache();
-        roleAssignmentClaimsInvalidator.Invalidate(userId);
         shiftAuthorizationInvalidator.Invalidate(userId);
         shiftViewInvalidator.InvalidateUser(userId);
 
