@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Finance.Models;
 using Humans.Finance.Services;
@@ -23,6 +24,7 @@ internal sealed class FinanceController(
     IUserService userService,
     IHoldedFinanceManagement holdedFinance,
     IHoldedFinanceAdminService holdedConnector,
+    IExpenseReportService expenseReports,
     CashFlowService cashFlow,
     ILogger<FinanceController> logger) : HumansControllerBase(userService)
 {
@@ -334,8 +336,16 @@ internal sealed class FinanceController(
     [HttpGet("Creditors/{accountNum:int}")]
     public async Task<IActionResult> CreditorStatement(int accountNum)
     {
+        if (GetCurrentUserId() is not { } viewerUserId) return Challenge();
         var ledger = await holdedFinance.GetCreditorLedgerAsync(accountNum, HttpContext.RequestAborted);
         if (ledger is null) return NotFound();
+
+        // The finance-admin review queue is every submitted report; the ones booked to this
+        // supplier account are the other side of the ledger, newest approval first.
+        var reports = (await expenseReports.GetReviewQueueAsync(viewerUserId, isFinanceAdmin: true, HttpContext.RequestAborted))
+            .Where(r => r.HoldedSupplierAccountNum == accountNum)
+            .OrderByDescending(r => r.ApprovedAt ?? r.SubmittedAt ?? r.CreatedAt)
+            .ToList();
 
         // The running balance is the service's (CreditorLedgerLine.RunningBalance); the page
         // shows newest activity first, lines within an entry in order.
@@ -346,7 +356,7 @@ internal sealed class FinanceController(
             .ThenByDescending(r => r.Line.EntryNumber)
             .ThenBy(r => r.Line.Line)
             .ToList();
-        return View(new CreditorStatementVm(ledger, lines));
+        return View(new CreditorStatementVm(ledger, lines, reports));
     }
 
     // Holded labels a payment with the purchase it settles; shown that way, a payment reads like a

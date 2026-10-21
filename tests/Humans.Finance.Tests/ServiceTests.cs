@@ -136,10 +136,19 @@ public class HoldedFinanceServiceTests
         });
         var service = MakeService();
         var controller = new FinanceController(_users, service, service,
+            Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
             new CashFlowService(_budget, Substitute.For<Humans.Tickets.Contracts.ITicketService>()),
             NullLogger<FinanceController>.Instance)
         {
-            ControllerContext = new() { HttpContext = new DefaultHttpContext() }
+            ControllerContext = new()
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
+                        [new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())],
+                        authenticationType: "test")),
+                },
+            }
         };
         Func<Task<IActionResult>> read = page switch
         {

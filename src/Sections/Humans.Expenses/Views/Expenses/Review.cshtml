@@ -2,6 +2,8 @@
 @using Microsoft.AspNetCore.Html
 @{
     ViewData["Title"] = Localizer["Expenses_ReviewQueueTitle"].Value;
+    // Use the full window width so the columns fit on one line on wide screens.
+    ViewData["BodyClass"] = "page-wide";
 }
 
 <nav aria-label="@Localizer["Expenses_BreadcrumbNavigation"]" class="mb-3">
@@ -50,6 +52,11 @@ else
 {
     Func<ExpenseReportDto, IHtmlContent> reportCell =
         @<text><a asp-action="Detail" asp-route-id="@item.Id">@item.Id.ToString()[..8]…</a></text>;
+    Func<ExpenseReportDto, IHtmlContent> creditorCell =
+        @<text>@if (item.HoldedSupplierAccountNum is { } accountNum)
+        {
+            <a href="/Finance/Creditors/@accountNum">@accountNum</a>
+        }</text>;
     @* One table per status rather than one status column: the queue is read as three separate
        piles of work, and grouping leaves each pile independently sortable and filterable. *@
     foreach (var group in Model.ByStatus)
@@ -57,6 +64,9 @@ else
         var rows = group.ToList();
         var builder = TableModel.For(rows)
             .Id($"review-{group.Key}")
+            @* One line per row; the subject is already capped at 80 characters, and a narrow
+               screen scrolls the table sideways instead. *@
+            .Css("text-nowrap")
             .Template(Localizer["Expenses_ColReport"].Value, reportCell);
         @* Finance-admin only (the set is empty for everyone else), so no localization keys. *@
         if (rows.Any(r => Model.FailedHoldedPushReportIds.Contains(r.Id)))
@@ -73,6 +83,12 @@ else
                     ? (Model.IsRevoked(r.Id) ? $"{grant.ProgramName} ({Localizer["Expenses_Preapprovals_RevokedBadge"].Value})" : grant.ProgramName)
                     : "",
                 c => c.SelectFilter());
+        }
+        @* Finance-admin only: the Holded supplier account the report booked to, linking to the
+           creditor statement so both sides of a booking can be compared. No localization keys. *@
+        if (Model.IsFinanceAdmin)
+        {
+            builder = builder.Template("Creditor", creditorCell);
         }
         builder = builder.RowCss(r =>
             Model.FailedHoldedPushReportIds.Contains(r.Id) ? "table-danger"

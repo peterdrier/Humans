@@ -396,6 +396,11 @@ h5, .h5 { font-size: 1.1rem; }
     padding-bottom: 3rem;
 }
 
+/* A page with a wide table opts into the full window width (ViewData["BodyClass"] = "page-wide"). */
+body.page-wide .main-content {
+    max-width: 100%;
+}
+
 @media (max-width: 899.98px) {
     .main-content {
         padding-top: 2rem;

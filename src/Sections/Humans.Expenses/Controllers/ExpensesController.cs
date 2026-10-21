@@ -761,6 +761,7 @@ internal sealed class ExpensesController(
                 Grants = await ResolveGrantsAsync(reports, HttpContext.RequestAborted),
                 FailedHoldedPushReportIds = (await service.GetFailedHoldedPushReportIdsAsync(
                     isFinanceAdmin, HttpContext.RequestAborted)).ToHashSet(),
+                IsFinanceAdmin = isFinanceAdmin,
             });
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

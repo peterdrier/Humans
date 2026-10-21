@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Globalization;
 using AwesomeAssertions;
 using Humans.Budget.Contracts;
+using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Finance.Controllers;
 using Humans.Finance.Models;
@@ -36,9 +37,14 @@ public class FinanceControllerTests
     private readonly IHoldedFinanceAdminService _connector = Substitute.For<IHoldedFinanceAdminService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
+    private readonly IExpenseReportService _expenses = Substitute.For<IExpenseReportService>();
+
+    public FinanceControllerTests() =>
+        _expenses.GetReviewQueueAsync(Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<ExpenseReportDto>());
 
     private FinanceController MakeController() =>
-        new(_users, _finance, _connector, new CashFlowService(_budget, Substitute.For<ITicketService>()),
+        new(_users, _finance, _connector, _expenses, new CashFlowService(_budget, Substitute.For<ITicketService>()),
             NullLogger<FinanceController>.Instance)
         {
             ControllerContext = new() { HttpContext = new DefaultHttpContext() }
@@ -441,7 +447,7 @@ public class FinanceControllerTests
         _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>())
             .Returns((HoldedCreditorLedger?)null);
 
-        (await MakeController().CreditorStatement(40000002)).Should().BeOfType<NotFoundResult>();
+        (await MakeControllerWithHttpContext(Ana).CreditorStatement(40000002)).Should().BeOfType<NotFoundResult>();
     }
 
     [HumansFact]
@@ -458,7 +464,7 @@ public class FinanceControllerTests
                 Ledger(entry: 7, line: 1, day2),
             ]));
 
-        var controller = MakeController();
+        var controller = MakeControllerWithHttpContext(Ana);
         var result = await controller.CreditorStatement(40000002);
         var model = result.Should().BeOfType<ViewResult>().Subject.Model
             .Should().BeOfType<CreditorStatementVm>().Subject;
@@ -480,7 +486,7 @@ public class FinanceControllerTests
                 Ledger(entry: 7, line: 1, day2) with { Credit = 0m, Debit = 20m, RunningBalance = 80m },
             ]));
 
-        var model = (await MakeController().CreditorStatement(40000002))
+        var model = (await MakeControllerWithHttpContext(Ana).CreditorStatement(40000002))
             .Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<CreditorStatementVm>().Subject;
 
         // The service accumulates; the page only presents newest first.
@@ -494,7 +500,7 @@ public class FinanceControllerTests
         _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>())
             .Returns(new HoldedCreditorLedger(40000002, 25m, 0m, []));
 
-        var result = await MakeController().CreditorStatement(40000002);
+        var result = await MakeControllerWithHttpContext(Ana).CreditorStatement(40000002);
 
         result.Should().BeOfType<ViewResult>().Subject.Model
             .Should().BeOfType<CreditorStatementVm>().Subject.OwedBalance.Should().Be(-25m);
@@ -513,12 +519,50 @@ public class FinanceControllerTests
             ],
             new HoldedContactInfo("Ana López", null, null, null, null, null, null, null)));
 
-        var model = (await MakeController().CreditorStatement(40000002))
+        var model = (await MakeControllerWithHttpContext(Ana).CreditorStatement(40000002))
             .Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<CreditorStatementVm>().Subject;
 
         model.Lines.Select(r => (r.Line.EntryNumber, r.Description)).Should().Equal(
             (3, "Payment: Ana López → NCA"), (2, "Payment: NCA → Ana López"), (1, "Tent pegs"));
     }
+
+    [HumansFact]
+    public async Task CreditorStatement_ListsOnlyTheExpenseReportsBookedToTheAccount_NewestApprovalFirst()
+    {
+        _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>())
+            .Returns(new HoldedCreditorLedger(40000002, 0m, 0m, []));
+        _expenses.GetReviewQueueAsync(Ana, true, Arg.Any<CancellationToken>()).Returns(
+        [
+            Report(40000002, Instant.FromUtc(2026, 3, 1, 0, 0)),
+            Report(40000009, Instant.FromUtc(2026, 3, 5, 0, 0)),
+            Report(40000002, Instant.FromUtc(2026, 3, 9, 0, 0)),
+            Report(null, Instant.FromUtc(2026, 3, 7, 0, 0)),
+        ]);
+
+        var model = (await MakeControllerWithHttpContext(Ana).CreditorStatement(40000002))
+            .Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<CreditorStatementVm>().Subject;
+
+        model.ExpenseReports.Select(r => r.ApprovedAt).Should().Equal(
+            Instant.FromUtc(2026, 3, 9, 0, 0), Instant.FromUtc(2026, 3, 1, 0, 0));
+    }
+
+    private static ExpenseReportDto Report(int? supplierAccountNum, Instant approvedAt) => new()
+    {
+        Id = Guid.NewGuid(),
+        SubmitterUserId = Ana,
+        HoldedAccountNumber = 0,
+        BudgetCategoryId = null,
+        BudgetYearId = null,
+        Status = ExpenseReportStatus.Approved,
+        PayeeName = "Ana",
+        PayeeIban = "",
+        Total = 10m,
+        ApprovedAt = approvedAt,
+        HoldedSupplierAccountNum = supplierAccountNum,
+        CreatedAt = approvedAt,
+        UpdatedAt = approvedAt,
+        Lines = [],
+    };
 
     // ─── Connector index ─────────────────────────────────────────────────────────
 

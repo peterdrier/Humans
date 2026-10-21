@@ -248,6 +248,9 @@ internal sealed class ExpenseReviewViewModel
     /// <summary>Report id → the pre-approval it files against. Empty hides the column; a revoked
     /// grant flags its row from the moment of revocation.</summary>
     public required IReadOnlyDictionary<Guid, GrantOption> Grants { get; init; }
+    /// <summary>Shows the Creditor column: the Holded supplier account each report booked to,
+    /// linking to its creditor statement. Finance admins only.</summary>
+    public bool IsFinanceAdmin { get; init; }
 
     public bool IsRevoked(Guid reportId) =>
         Grants.TryGetValue(reportId, out var grant) && grant.Status == GrantStatus.Revoked;

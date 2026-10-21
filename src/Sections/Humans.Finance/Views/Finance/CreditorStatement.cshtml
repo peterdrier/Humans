@@ -113,3 +113,37 @@
         </table>
     }
 </div>
+
+<div class="card mt-4">
+    <div class="card-header">Expense reports booked to this account (submitted and later; approved reports are the ones pushed to Holded)</div>
+    @if (Model.ExpenseReports.Count == 0)
+    {
+        <div class="card-body text-muted text-center py-4">No expense reports are booked to this account.</div>
+    }
+    else
+    {
+        <table class="table table-sm table-hover mb-0 align-middle">
+            <thead><tr>
+                <th>Report</th>
+                <th>Status</th>
+                <th>Subject</th>
+                <th>Approved</th>
+                <th class="text-end">Holded documents</th>
+                <th class="text-end">Payable</th>
+            </tr></thead>
+            <tbody>
+            @foreach (var r in Model.ExpenseReports)
+            {
+                <tr>
+                    <td class="text-nowrap"><a href="/Expenses/@r.Id">@r.Id.ToString()[..8]…</a></td>
+                    <td class="text-nowrap">@r.Status</td>
+                    <td>@r.Note</td>
+                    <td class="text-nowrap">@(r.ApprovedAt?.InZone(madrid).Date.ToInvariantDate())</td>
+                    <td class="text-end">@r.HoldedDocIds.Count</td>
+                    <td class="text-end">@r.Payable.ToEuro()</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
