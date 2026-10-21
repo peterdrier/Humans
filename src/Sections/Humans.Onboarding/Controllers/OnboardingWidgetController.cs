@@ -102,7 +102,7 @@ internal sealed class OnboardingWidgetController(
             ModelState.AddModelError(string.Empty, localizer["Onboarding_ProfileSaveFailed"]);
             return View(vm);
         }
-        await onboardingService.SetConsentCheckPendingIfEligibleAsync(userId, ct);
+        await onboardingService.ProfileSavedAsync(userId, ct);
 
         return RedirectToAction(nameof(Shifts));
     }
@@ -257,7 +257,7 @@ internal sealed class OnboardingWidgetController(
             userId, documentVersionId, explicitConsent: true, ipAddress, userAgent, ct);
 
         if (result.Success)
-            await onboardingService.SetConsentCheckPendingIfEligibleAsync(userId, ct);
+            await onboardingService.ConsentSignedAsync(userId, ct);
 
         if (!result.Success)
         {

@@ -231,7 +231,7 @@ GitHub document discovery, metadata/raw content, commit-summary and prefix-conte
 
 ## Cross-Section Dependencies
 
-- **Profiles/Onboarding:** `ConsentService` has no profile dependency and does **not** call into Profile or Onboarding after a consent submit — the threshold check (`OnboardingService.SetConsentCheckPendingIfEligibleAsync`) is invoked by the controller (`ConsentController.Submit`, `OnboardingWidgetController`) as a peer call alongside `ConsentService.SubmitConsentAsync`.
+- **Profiles/Onboarding:** `ConsentService` has no profile dependency and does **not** call into Profile or Onboarding after a consent submit — the controller (`ConsentController.Submit`, `OnboardingWidgetController`) reports the signature with `IOnboardingIntake.ConsentSignedAsync` after `ConsentService.SubmitConsentAsync`, and Onboarding runs the threshold check.
 - **Teams:** `ITeamService` — `LegalDocumentSyncService` stitches team names in memory (replaces `.Include(d => d.Team)`); legal documents are team-scoped (Volunteers team = global).
 - **Email:** Consent owns its two templates — `ConsentEmails` (internal) builds each `EmailMessage` from Consent's own `Consent_Email_*` keys in `ConsentResource`, rendered in the recipient's culture via `CultureScope`; `ConsentEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists them at `/Email/EmailPreview`. Email supplies transport only — `IEmailService.SendAsync` (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651).
 - **AuditLog:** `IAuditLogService` records legal-document administration and version publication through its existing write contract.

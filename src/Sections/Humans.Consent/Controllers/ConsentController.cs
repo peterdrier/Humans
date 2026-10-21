@@ -87,8 +87,8 @@ internal sealed class ConsentController(
                 return RedirectToAction(nameof(Index));
             }
 
-            // Peer-call: ConsentService does not call into Onboarding (avoids inverted arrow).
-            await onboardingService.SetConsentCheckPendingIfEligibleAsync(user.Id);
+            // ConsentService does not call into Onboarding (avoids inverted arrow); report the signature.
+            await onboardingService.ConsentSignedAsync(user.Id);
 
             SetConsentSubmitSuccessFlash(result);
         }
