@@ -12,8 +12,8 @@ complexity > 15** on a controller method. Those numbers are **fixed permanently*
 **Why:** a statement or branch count is a smell, not intent. Ten lines can be domain logic and fifty
 can be honest view-model assembly. The numbers only catch the worst offenders; the real question,
 "is this controller making a domain decision?", needs judgment, so it lives in section-doctor's
-controller-intent check, run on every section regularly, with the litmus *would a Hangfire job doing
-the same domain operation need this line?*
+controller-intent check, run on every section regularly, `threads/controller-intent.md`, with the line
+*a controller may change how a fact looks, never what the fact is*
 
 **How to apply:**
 

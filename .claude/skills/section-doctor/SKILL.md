@@ -210,6 +210,7 @@ is worth more than any model swap); Shape and Behavior & bugs stay on main.
 |---|---|---|
 | Shape | main | `/simplify`'s method against the target: shape mismatches, duplicated pipelines, pass-throughs, over-general options, dead and over-exposed surface, per-method external-caller counts |
 | Behavior & bugs | main | walk each flow against the invariants; run real shipped content (markdown, resx, templates, seed data) through the real pipeline; read the auth paths by hand |
+| Controller intent | `doctor-reader` (opus low) | `threads/controller-intent.md` |
 | Freshness | `doctor-reader` (opus low) | `threads/freshness.md` |
 | Conformance | detectors on main + haiku | `threads/conformance.md` |
 | Tests | `doctor-reader` (opus low) | `threads/tests.md` |

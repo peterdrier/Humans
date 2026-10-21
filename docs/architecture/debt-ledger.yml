@@ -57,8 +57,8 @@ themes:
       threshold-calibration finding. FORBIDDEN: splitting the method into
       controller-local private helpers / VM factories to satisfy the metric
       — tried 2026-06-12 on 12 methods, rejected and reverted (dodged the
-      metric, moved zero domain decisions). Litmus per statement: would a
-      Hangfire job doing the same operation need this line? Yes → service.
+      metric, moved zero domain decisions). The line: a controller may change
+      how a fact looks, never what the fact is. Facts → service.
       Form-apply model: DietaryMedicalViewModel.ToCommand() →
       profileEditorService.SaveDietaryMedicalAsync(userId, command).
   - id: grandfathered-hum0028-invalidators
