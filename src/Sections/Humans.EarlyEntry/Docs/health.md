@@ -80,7 +80,7 @@ whether `Sources.Count > 1`.
   (`src/Sections/Humans.EarlyEntry/Services/EarlyEntryService.cs:20`).
 - Both reads are live on every call; nothing is cached, so no write in any contributing
   section has to signal this one (`src/Sections/Humans.EarlyEntry/Section.cs:16`; pinned:
-  `EarlyEntryArchitectureTests.SectionRegistersOnlyTheUncachedOrchestrator`,
+  `EarlyEntryArchitectureTests.SectionRegistersTheOrchestratorPerRequest`,
   `EarlyEntryServiceTests.GetForUserAsync_ReadsTheProvidersOnEveryCall`).
 - The transfer wizard asks for the signed-in user's own early entry
   (`src/Sections/Humans.Tickets/Controllers/TicketTransferController.cs:30`); the gate card asks

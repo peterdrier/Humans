@@ -67,7 +67,7 @@ verbatim; the nav entry is the section's own "Early Entry" group. The route is n
   request scope (the home page asks twice), so a grant written in any contributing section shows
   on the next request and no section has to tell this one about its writes
   (`EarlyEntryServiceTests.GetForUserAsync_GathersOncePerScope_AndFreshInTheNext`,
-  `EarlyEntryArchitectureTests.SectionRegistersOnlyTheUncachedOrchestrator`).
+  `EarlyEntryArchitectureTests.SectionRegistersTheOrchestratorPerRequest`).
 - Per human: earliest date wins, sources are distinct and ordinal-compared in provider order,
   and `HasMultiple` is `Sources.Count > 1`.
 - The roster is gated by `ShiftDashboardAccess`

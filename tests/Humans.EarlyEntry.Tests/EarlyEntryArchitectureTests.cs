@@ -25,14 +25,14 @@ public class EarlyEntryArchitectureTests
     }
 
     [HumansFact]
-    public void SectionRegistersOnlyTheUncachedOrchestrator()
+    public void SectionRegistersTheOrchestratorPerRequest()
     {
-        // No cache, so no eviction surface: writers in other sections never call in here.
+        // Scoped, so the once-per-request gather never outlives the request and writers
+        // in other sections never have to call in here.
         var services = new ServiceCollection();
         new Section().Register(services, new ConfigurationBuilder().Build());
 
-        var registration = services.Should().ContainSingle().Subject;
-        registration.ServiceType.Should().Be(typeof(IEarlyEntryService));
+        var registration = services.Should().ContainSingle(d => d.ServiceType == typeof(IEarlyEntryService)).Subject;
         registration.ImplementationType.Should().Be(typeof(EarlyEntryService));
         registration.Lifetime.Should().Be(ServiceLifetime.Scoped);
     }
