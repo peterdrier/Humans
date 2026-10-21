@@ -5368,6 +5368,25 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task Asociado_eligibility_does_not_need_the_consent_coordinator_review()
+    {
+        var userId = Guid.NewGuid();
+        var asociado = Asociado(userId);
+        _approved.Remove(userId);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(asociado);
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(new List<UserInfo> { asociado });
+        var survey = SurveyWith(SurveyStatus.Draft, SurveyAudienceType.Asociados, null);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _repo.GetInvitedUserIdsAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
+        var service = CreateService();
+
+        (await service.IsEligibleAsociadoAsync(userId, TestContext.Current.CancellationToken))
+            .Should().BeTrue();
+        (await service.PreviewAudienceCountAsync(survey.Id, TestContext.Current.CancellationToken))
+            .Should().Be(1);
+    }
+
+    [HumansFact]
     public async Task IsEligibleAsociadoAsync_rejects_a_stored_id_that_resolves_to_another_user()
     {
         // peterdrier/Humans#1704: every caller passes an id a draft, invitation or response is stored under. An

@@ -333,7 +333,7 @@ internal sealed class ApplicationDecisionService(
 
         application.Withdraw(clock);
         var boardMemberIds = await GetBoardMemberIdsAsync(ct);
-        await repository.UpdateAsync(application, ct);
+        await repository.FinalizeAsync(application, ct);
 
         InvalidateVotingBadges(boardMemberIds);
 

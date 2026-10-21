@@ -64,6 +64,70 @@ public class ExpenseReportViewTests
         html.Should().Contain($">{HtmlEncoder.Default.Encode(expected)}</span>");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, false)] // category coordinator: views the report, neither submitter nor finance admin
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(false, true)]
+    public async Task Detail_ShowsReportLocalPaymentStatus_ToEveryViewer_AndAccountWideRows_OnlyToSubmitterAndFinance(
+        bool isSubmitter, bool isFinanceAdmin)
+    {
+        var html = await RenderAsync("Detail", new ExpenseDetailViewModel
+        {
+            Report = Report(ExpenseReportStatus.Approved),
+            BookingLabel = "2026",
+            IsSubmitter = isSubmitter,
+            CanBindCreditor = isFinanceAdmin,
+            HoldedTimeline = new ExpenseHoldedTimeline
+            {
+                RegisteredInHolded = true,
+                OwedToMember = 0m,
+                MemberRegisteredTotal = 0m,
+                // Account-wide: other advances and the whole creditor account's payment history.
+                OtherAmount = 17m,
+                Paid = true,
+                PaidOn = new NodaTime.LocalDate(2026, 3, 9),
+                TotalPaid = 913m,
+                SyncState = ExpenseHoldedSyncState.Pushed,
+            },
+        });
+
+        var privileged = isSubmitter || isFinanceAdmin;
+        html.Should().Contain("Payment status").And.Contain("Registered in Holded");
+        html.Contains("Includes", StringComparison.Ordinal).Should().Be(privileged);
+        html.Contains("913", StringComparison.Ordinal).Should().Be(privileged);
+        html.Contains("2026-03-09", StringComparison.Ordinal).Should().Be(privileged);
+        html.Contains("Holded sync", StringComparison.Ordinal).Should().Be(isFinanceAdmin);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(false, true)]
+    public async Task Detail_ShowsOwedToYou_AndAwaitingPayment_OnlyToTheirAudience(
+        bool isSubmitter, bool isFinanceAdmin)
+    {
+        var html = await RenderAsync("Detail", new ExpenseDetailViewModel
+        {
+            Report = Report(ExpenseReportStatus.Approved),
+            BookingLabel = "2026",
+            IsSubmitter = isSubmitter,
+            CanBindCreditor = isFinanceAdmin,
+            HoldedTimeline = new ExpenseHoldedTimeline
+            {
+                RegisteredInHolded = true,
+                OwedToMember = 40m,
+                MemberRegisteredTotal = 40m,
+                OtherAmount = 0m,
+                Paid = false,
+                TotalPaid = 0m,
+                SyncState = ExpenseHoldedSyncState.Pushed,
+            },
+        });
+
+        html.Contains("owed to you", StringComparison.Ordinal).Should().Be(isSubmitter);
+        html.Contains("Awaiting payment", StringComparison.Ordinal).Should().Be(isSubmitter || isFinanceAdmin);
+    }
+
     private static ExpenseReportDto Report(ExpenseReportStatus status, string? note = null) => new()
     {
         Id = Guid.NewGuid(),
@@ -91,7 +155,10 @@ public class ExpenseReportViewTests
         builder.Services.AddLocalization();
         builder.Services.AddControllersWithViews()
             .AddApplicationPart(typeof(ExpensesResource).Assembly)
-            .AddApplicationPart(typeof(HumanViewComponent).Assembly);
+            .AddApplicationPart(typeof(HumanViewComponent).Assembly)
+            .AddApplicationPart(typeof(Humans.AuditLog.ViewComponents.AuditLogViewComponent).Assembly);
+        builder.Services.AddSingleton(Substitute.For<Humans.AuditLog.Contracts.IAuditViewerService>());
+        builder.Services.AddHttpContextAccessor();
         var url = Substitute.For<IUrlHelper>();
         url.Action(Arg.Any<UrlActionContext>()).Returns("/");
         var urls = Substitute.For<IUrlHelperFactory>();
