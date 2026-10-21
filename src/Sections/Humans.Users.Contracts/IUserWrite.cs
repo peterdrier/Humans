@@ -30,15 +30,6 @@ public interface IUserWrite
     // ---- Profile storage commands ----
 
     /// <summary>
-    /// Suspends or unsuspends: writes <c>users.State</c> only (unsuspending re-classifies from the
-    /// remaining signals). <paramref name="adminSuspension"/> picks <see cref="UserState.AdminSuspended"/>
-    /// over the consent <see cref="UserState.Suspended"/>. <c>NotFound</c> without a profile. Audit,
-    /// notification and the reason belong to the caller.
-    /// </summary>
-    Task<OnboardingResult> SetSuspensionAsync(
-        Guid userId, bool suspended, bool adminSuspension = false, CancellationToken ct = default);
-
-    /// <summary>
     /// Records a signup rejection as the stored state (<see cref="UserState.Rejected"/>, which
     /// outranks everything but merge and deletion and is carried forward by every later
     /// re-classification). The reason, time and reviewer are Consent's review
