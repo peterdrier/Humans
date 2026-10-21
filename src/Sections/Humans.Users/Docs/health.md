@@ -4,8 +4,8 @@
 
 Users is the register of people. It knows who each person is (one account, the addresses
 that prove it, how they sign in), what they have told us about themselves (the profile: names,
-place, birthday without a year, picture, languages, volunteer history, dietary and medical
-needs, contact handles with a visibility each), which kinds of mail they will accept, whether
+place, birthday without a year, picture, languages, volunteer history, medical
+needs (food answers moved to Cantina), contact handles with a visibility each), which kinds of mail they will accept, whether
 they were at the event in a given year, and where their account is in its life: bare,
 active, suspended, rejected, deleting, deleted, or folded into another account.
 
@@ -24,7 +24,7 @@ People manage themselves under `/Profile/Me/*`; member admins manage people unde
 | **Resolve a person** | id → snapshot; ids → snapshots; everyone; text → ranked matches; address → snapshot | `IUserService` over the cached `UserInfo` dictionary |
 | **Address ownership** | which rows hold address X (`FindByAddressAsync`: aliased or exact, verified or any — callers pick the cardinality; prefix+suffix for the dev seeder); which addresses does account Y hold (all / verified / primary / Google / nobodies.team) | `IUserEmailService` over the cached snapshot; `IUserRepository.GetUserEmailsByAddressAsync` behind the write paths |
 | **Address mutation** | add, verify, promote, demote, hide, delete, link/unlink a provider, reconcile the OAuth claim | `IUserEmailService` writes → `IUserManagement` storage commands → repository |
-| **Profile mutation** | save the edit form; save dietary/medical; set picture; set tier; stub a profile; replace languages / history | `IProfileEditorService` (validation + file) → `IUserManagement` (row) → repository |
+| **Profile mutation** | save the edit form; save medical conditions; set picture; set tier; stub a profile; replace languages / history | `IProfileEditorService` (validation + file) → `IUserManagement` (row) → repository |
 | **Contact handles** | what can this viewer see of that owner; save the owner's list | `IContactFieldService` |
 | **Mail consent** | is Y opted out of category C; flip it; mint / validate an unsubscribe token | `ICommunicationPreferenceService`, `IUnsubscribeService`, `IUnsubscribeTokenProvider` |
 | **Presence** | for year N: declare not attending, undo, ticket-sync upsert/remove, admin backfill; who was on site | `IUserService` participation methods, `IUserService.GetOnsiteUsersAsync`, `IUserParticipationBackfillService` |
@@ -113,7 +113,6 @@ The shapes imply one register with one cache and one write funnel:
 - No DB unique index on `IsPrimary` — the service is the contract
   (`memory/architecture/db-enforcement-minimal.md`).
 - No `SurfaceBudget` on `IUserService` while the Users+Profiles merge settles.
-- No dietary-preference enum — legacy free text stays readable.
 - No custom repository over the Identity tables — `UserManager` owns them.
 - No tests asserting absences (stripped navs, banned method-name tokens).
 - No separate profile cache — `UserInfo` is the one read model.

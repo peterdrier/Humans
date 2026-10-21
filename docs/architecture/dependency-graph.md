@@ -107,6 +107,7 @@ graph LR
     CampRole[CampRoleService]:::camps
 
     Cantina[CantinaRosterService]:::cantina
+    Dietary[DietaryProfileService]:::cantina
 
     CityPlan[CityPlanningService]:::cityplanning
 
@@ -314,6 +315,7 @@ graph LR
     Cantina --> SettingsSvc
     Cantina --> User
     Cantina --> Audit
+    Dietary --> User
 
     %% CityPlanning
     CityPlan --> Camp

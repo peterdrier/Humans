@@ -44,12 +44,7 @@ public sealed record UserProfileSaveCommand(
     string? EmergencyContactRelationship,
     bool NoPriorBurnExperience,
     UserProfilePictureMutation PictureMutation,
-    string? ProfilePictureContentType,
-    // Edit-page-owned dietary fields (meal pref + allergies). Intolerances +
-    // medical are written separately via UserProfileDietaryMedicalCommand.
-    string? DietaryPreference = null,
-    List<string>? Allergies = null,
-    string? AllergyOtherText = null);
+    string? ProfilePictureContentType);
 
 public enum UserProfilePictureMutation
 {

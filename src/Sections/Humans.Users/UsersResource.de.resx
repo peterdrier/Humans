@@ -210,35 +210,9 @@
   <data name="Profile_WhatsApp" xml:space="preserve">
     <value>WhatsApp</value>
   </data>
-  <data name="Profile_DietaryMedical_PageTitle" xml:space="preserve"><value>Ernährungs- und medizinische Angaben</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Label" xml:space="preserve"><value>Ernährungsweise</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Omnivore" xml:space="preserve"><value>Omnivor</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Vegetarian" xml:space="preserve"><value>Vegetarisch</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Vegan" xml:space="preserve"><value>Vegan</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Pescatarian" xml:space="preserve"><value>Pescetarisch</value></data>
-  <data name="Profile_DietaryMedical_Allergies_Label" xml:space="preserve"><value>Allergien</value></data>
-  <data name="Profile_DietaryMedical_AllergyOther_Label" xml:space="preserve"><value>Andere Allergie — bitte beschreiben</value></data>
-  <data name="Profile_DietaryMedical_Intolerances_Label" xml:space="preserve"><value>Unverträglichkeiten</value></data>
-  <data name="Profile_DietaryMedical_IntoleranceOther_Label" xml:space="preserve"><value>Andere Unverträglichkeit — bitte beschreiben</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Only visible to you and the No-Info Admins. Anything coordinators should know — diabetes, epilepsy, severe injuries, etc.</value></data>
-  <data name="Profile_DietaryMedical_Saved" xml:space="preserve"><value>Deine Ernährungs- und medizinischen Angaben wurden gespeichert.</value></data>
-  <data name="Profile_DietaryMedical_AllergyOther_Required" xml:space="preserve"><value>Bitte beschreibe die andere Allergie.</value></data>
-  <data name="Profile_DietaryMedical_IntoleranceOther_Required" xml:space="preserve"><value>Bitte beschreibe die andere Unverträglichkeit.</value></data>
-  <data name="Profile_DietaryMedical_LoadFailed" xml:space="preserve"><value>Die Ernährungs- und medizinischen Angaben konnten nicht geladen werden.</value></data>
-  <data name="Profile_DietaryMedical_SaveFailed" xml:space="preserve"><value>Die Ernährungs- und medizinischen Angaben konnten nicht gespeichert werden.</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Erkrankungen</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Only visible to you and No-Info Admins.</value></data>
-  <data name="Profile_DietaryMedical_Allergy_Dairy" xml:space="preserve"><value>Milchprodukte</value></data>
-  <data name="Profile_DietaryMedical_Allergy_Egg" xml:space="preserve"><value>Ei</value></data>
-  <data name="Profile_DietaryMedical_Allergy_Peanut" xml:space="preserve"><value>Erdnuss</value></data>
-  <data name="Profile_DietaryMedical_Allergy_Sesame" xml:space="preserve"><value>Sesam</value></data>
-  <data name="Profile_DietaryMedical_Allergy_Shellfish" xml:space="preserve"><value>Schalentiere</value></data>
-  <data name="Profile_DietaryMedical_Allergy_Soy" xml:space="preserve"><value>Soja</value></data>
-  <data name="Profile_DietaryMedical_Allergy_Treenut" xml:space="preserve"><value>Schalenfrucht</value></data>
-  <data name="Profile_DietaryMedical_Allergy_WheatGluten" xml:space="preserve"><value>Weizen/Gluten</value></data>
-  <data name="Profile_DietaryMedical_Intolerance_Gluten" xml:space="preserve"><value>Gluten</value></data>
-  <data name="Profile_DietaryMedical_Intolerance_Histamine" xml:space="preserve"><value>Histamin</value></data>
-  <data name="Profile_DietaryMedical_Intolerance_Lactose" xml:space="preserve"><value>Laktose</value></data>
   <data name="Profile_MarkedAt" xml:space="preserve"><value>Markiert am</value></data>
   <data name="Profile_MarkedBy" xml:space="preserve"><value>Markiert von</value></data>
   <data name="Profile_MyEmails" xml:space="preserve"><value>Meine E-Mails</value></data>
@@ -930,12 +904,6 @@
   <data name="Users_NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Hat ein @nobodies.team-E-Mail-Konto</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Importiert · noch kein Profil</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>Diese Person existiert im System, hat aber noch kein Profil ausgefüllt (zum Beispiel wurde sie aus einer Mailingliste oder dem Ticketing importiert).</value></data>
-  <data name="Users_Profile_ShiftSignupFailed" xml:space="preserve"><value>Die Anmeldung zur Schicht ist fehlgeschlagen.</value></data>
-  <data name="Users_Profile_ShiftSignupSucceeded" xml:space="preserve"><value>Erfolgreich zur Schicht angemeldet!</value></data>
-  <data name="Users_Profile_ShiftSignupSucceededWithWarning" xml:space="preserve"><value>Erfolgreich zur Schicht angemeldet. Hinweis: {0}</value><comment>{0} = signup warning</comment></data>
-  <data name="Users_Profile_ShiftRangeSignupFailed" xml:space="preserve"><value>Die Anmeldung zum Schichtzeitraum ist fehlgeschlagen.</value></data>
-  <data name="Users_Profile_ShiftRangeSignupSucceeded" xml:space="preserve"><value>Erfolgreich zum Schichtzeitraum angemeldet!</value></data>
-  <data name="Users_Profile_ShiftRangeSignupSucceededWithWarning" xml:space="preserve"><value>Erfolgreich zum Schichtzeitraum angemeldet. Hinweis: {0}</value><comment>{0} = signup warning</comment></data>
   <data name="Users_Profile_AlwaysOnCategoryCannotChange" xml:space="preserve"><value>Immer aktive Kategorien können nicht geändert werden.</value></data>
   <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>Dein Zugang wurde gesperrt: {0}</value></data>
   <data name="Users_Notification_ViewProfile" xml:space="preserve"><value>Profil ansehen</value></data>
@@ -975,4 +943,7 @@
   <data name="Users_EmailUpdate_UnverifiedTarget" xml:space="preserve">
     <value>Nur verifizierte E-Mail-Adressen können Kontobenachrichtigungen erhalten.</value>
   </data>
+  <data name="Users_Profile_DietaryLink" xml:space="preserve"><value>Ernährungsangaben</value></data>
+  <data name="Users_Medical_Saved" xml:space="preserve"><value>Deine medizinischen Angaben wurden gespeichert.</value></data>
+  <data name="Users_Medical_SaveFailed" xml:space="preserve"><value>Die medizinischen Angaben konnten nicht gespeichert werden.</value></data>
 </root>

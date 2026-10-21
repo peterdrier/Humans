@@ -320,7 +320,7 @@
                         Badges showing volunteer event profile info — skills, quirks, dietary, languages, optional medical.
                     </div>
                     @ParamsBlock(
-                        ("@@model", "<code>VolunteerBadgesViewModel</code> (skills from VEP; dietary/medical from Profile)")
+                        ("@@model", "<code>VolunteerBadgesViewModel</code> (skills from VEP; dietary from Cantina, medical from Profile)")
                     )
                     @AuthLine("<code>ShowMedical=true</code> only when the viewer is allowed to see medical info — gate at the call site.")
                     <div class="wg-card-example @(Model.SampleVolunteerProfile is null ? "is-empty" : "")">

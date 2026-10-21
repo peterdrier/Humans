@@ -141,7 +141,7 @@ public class OnboardingWidgetControllerNamesTests
     {
         var userId = Guid.NewGuid();
         _profileEditor.SaveProfileAsync(userId, Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
-            .Returns(new ProfileEditResult(false, ErrorKey: "Profile_DietaryMedical_AllergyOther_Required"));
+            .Returns(new ProfileEditResult(false, ErrorKey: "Profile_BurnerCVRequired"));
         var ctrl = BuildSut(userId);
 
         var result = await ctrl.Names(new NamesViewModel
@@ -274,7 +274,6 @@ public class OnboardingWidgetControllerNamesTests
             "Drifted",
             Arg.Is<ProfileSaveRequest>(r =>
                 r.LastName == "NowSet" &&
-                r.DietaryPreference == null && r.Allergies == null && r.AllergyOtherText == null &&
                 r.City == "Madrid" &&
                 r.Bio == "existing bio"),
             Arg.Any<CancellationToken>());

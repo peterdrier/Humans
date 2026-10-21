@@ -1,19 +1,15 @@
 # Humans.Cantina — Contracts
 
-Empty on purpose.
+`ICantinaService` (+ `DietaryProfileInfo`): the read surface for members' dietary answers.
+Consumers: Shifts (signup gate, missing-dietary banner, volunteer search and admin badges) and
+Users (the medical prompt only shows while dietary is still open). The DTO carries no medical
+field.
 
-`Contracts/` holds everything consumed from outside the section (G5-SECTION-TEMPLATE.md
-step 5b). Cantina is a pure **consumer**: it owns no tables, and nothing outside it names a
-Cantina type. `ICantinaRosterService` had exactly one caller — the section's own controller —
-so it stayed in `Services/`, `internal`, rather than being promoted here because of its name
-(Calendar's rule: decide from the consumer list, never from the name). It survives at all
-because `IApplicationService` is the marker the service layer is defined by
-(`docs/architecture/peters-hard-rules.md`), not because anything needs the seam.
+No `ICantinaWrite`: only Cantina's own `/Profile/Me/Dietary` form writes.
 
-The two things outside the section that mention "Cantina" are neither references to this
-project: the admin nav reaches `/Cantina/Roster` by controller *name*, and
-`RoleNames.CantinaAdmin` / `PolicyNames.CantinaAdminOrAdmin` are `string` constants in
-`Humans.Base`.
+A folder rather than a `Humans.Cantina.Contracts` project: Cantina references only the
+`Shifts.Contracts` and `Users.Contracts` leaves, never the Shifts or Users projects, so the
+consumers' references close no cycle ([`section-project-cycle-fix`](../../../../memory/architecture/section-project-cycle-fix.md)).
 
-A folder rather than a `Humans.Cantina.Contracts` project: folder vs. project is decided by
-where the consumer lives, and there are no consumers at all.
+`ICantinaRosterService` had exactly one caller — the section's own controller — so it stays in
+`Services/`, `internal` (decide from the consumer list, never from the name).

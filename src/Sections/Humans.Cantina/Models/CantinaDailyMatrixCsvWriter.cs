@@ -1,9 +1,9 @@
+using Humans.Cantina.Domain;
 using System.Globalization;
 using Humans.Base.Csv;
 using Humans.Base.Extensions;
 using Humans.Cantina.Services.Dtos;
 using NodaTime;
-using Humans.Users.Contracts;
 
 namespace Humans.Cantina.Models;
 

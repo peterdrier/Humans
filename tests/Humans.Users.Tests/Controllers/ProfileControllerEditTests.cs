@@ -94,7 +94,6 @@ public class ProfileControllerEditTests
             _contactFields,
             _commPrefService,
             _onboardingService,
-            Substitute.For<IShiftSignups>(),
             _settings,
             _configuration,
             new ConfigurationRegistry(),
@@ -425,7 +424,6 @@ public class ProfileControllerEditTests
             ApplicationAdditionalInfo = new string('x', 1001),
             ApplicationSignificantContribution = new string('x', 2001),
             ApplicationRoleUnderstanding = new string('x', 2001),
-            AllergyOtherText = new string('x', 501),
             BirthdayMonth = 13,
             BirthdayDay = 32,
         },
@@ -446,18 +444,9 @@ public class ProfileControllerEditTests
             ("ApplicationAdditionalInfo", "Validation_MaxLength", ["", 1000]),
             ("ApplicationSignificantContribution", "Validation_MaxLength", ["", 2000]),
             ("ApplicationRoleUnderstanding", "Validation_MaxLength", ["", 2000]),
-            ("AllergyOtherText", "Validation_MaxLength", ["", 500]),
             ("BirthdayMonth", "Validation_Range", ["", 1, 12]),
             ("BirthdayDay", "Validation_Range", ["", 1, 31]));
-        AssertErrors(new DietaryMedicalViewModel
-        {
-            AllergyOtherText = new string('x', 501),
-            IntoleranceOtherText = new string('x', 501),
-            MedicalConditions = new string('x', 4001),
-        },
-            ("DietaryPreference", "Validation_Required", []),
-            ("AllergyOtherText", "Validation_MaxLength", ["", 500]),
-            ("IntoleranceOtherText", "Validation_MaxLength", ["", 500]),
+        AssertErrors(new MedicalViewModel { MedicalConditions = new string('x', 4001) },
             ("MedicalConditions", "Validation_MaxLength", ["", 4000]));
         AssertErrors(new ProfileViewModel
         {
@@ -502,7 +491,7 @@ public class ProfileControllerEditTests
     }
 
     [HumansTheory]
-    [InlineData("DietaryMedical")]
+    [InlineData("Medical")]
     [InlineData("CommunicationPreferences")]
     public async Task ProfileReadPages_StopLoadingAfterRequestCancellation(string page)
     {
@@ -517,7 +506,7 @@ public class ProfileControllerEditTests
             .Returns(call => ReadViewer(call.Arg<CancellationToken>()));
         Func<Task<IActionResult>> load = page switch
         {
-            "DietaryMedical" => () => _controller.DietaryMedical(),
+            "Medical" => () => _controller.Medical(request.Token),
             _ => () => _controller.CommunicationPreferences(),
         };
         (await load()).Should().BeOfType<ViewResult>();
@@ -700,72 +689,6 @@ public class ProfileControllerEditTests
     }
 
     [HumansFact]
-    public async Task Edit_Post_WithDietary_WritesMealPrefAndAllergiesToProfile()
-    {
-        _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns([]);
-
-        var model = MakeValidModel(MembershipTier.Volunteer);
-        model.DietaryPreference = "Vegan";
-        model.Allergies = ["Peanut", "Other"];
-        model.AllergyOtherText = "Kiwi";
-
-        await _controller.Edit(model);
-
-        // Meal-pref + allergies are persisted through the Profile save request.
-        await _profileEditorService.Received(1).SaveProfileAsync(
-            _userId,
-            Arg.Any<string>(),
-            Arg.Is<ProfileSaveRequest>(r =>
-                r.DietaryPreference == "Vegan"
-                && r.Allergies != null && r.Allergies.Contains("Peanut") && r.Allergies.Contains("Other")
-                && r.AllergyOtherText == "Kiwi"),
-            Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task Edit_Post_WithDietary_DoesNotTouchIntolerancesOrMedical()
-    {
-        // The Edit page owns only meal-pref + allergies (carried on ProfileSaveRequest,
-        // which has no intolerance/medical fields). Intolerances + medical are written
-        // only by the DietaryMedical page via SaveDietaryMedicalAsync — never from Edit.
-        _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns([]);
-
-        var model = MakeValidModel(MembershipTier.Volunteer);
-        model.DietaryPreference = "Vegan";
-        model.Allergies = ["Peanut"];
-
-        await _controller.Edit(model);
-
-        await _profileEditorService.Received(1).SaveProfileAsync(
-            _userId, Arg.Any<string>(),
-            Arg.Is<ProfileSaveRequest>(r => r.DietaryPreference == "Vegan"),
-            Arg.Any<CancellationToken>());
-        await _profileEditorService.DidNotReceiveWithAnyArgs()
-            .SaveDietaryMedicalAsync(default, default!, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task Edit_Post_AllergyOtherWithoutText_IsInvalidAndDoesNotSaveProfile()
-    {
-        _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns([]);
-
-        var model = MakeValidModel(MembershipTier.Volunteer);
-        model.Allergies = ["Other"];
-        model.AllergyOtherText = "   "; // whitespace-only triggers the required rule
-
-        var result = await _controller.Edit(model);
-
-        result.Should().BeOfType<ViewResult>();
-        _controller.ModelState.IsValid.Should().BeFalse();
-        _controller.ModelState.ContainsKey(nameof(model.AllergyOtherText)).Should().BeTrue();
-        await _profileEditorService.DidNotReceiveWithAnyArgs()
-            .SaveProfileAsync(default, default!, default!, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
     public async Task Edit_Post_ServiceRefusal_UsesExistingLocalizedFeedbackAndStopsAfterSaveEffects()
     {
         _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
@@ -782,29 +705,53 @@ public class ProfileControllerEditTests
         await _onboardingService.DidNotReceiveWithAnyArgs().SetConsentCheckPendingIfEligibleAsync(default, default);
     }
 
+    // ─── /Profile/Me/Medical (GDPR Art. 9, owner-only) ─────────────────────────
+
     [HumansFact]
-    public async Task Edit_Get_PopulatesDietaryFieldsAndPreservesTagReadCancellation()
+    public async Task Medical_Get_ShowsOnlyTheSignedInMembersOwnConditions()
     {
-        using var cancellation = new CancellationTokenSource();
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(BuildUserInfo(new Profile
-            {
-                UserId = _userId,
-                BurnerName = "Burner",
-                FirstName = "First",
-                LastName = "Last",
-                DietaryPreference = "Pescatarian",
-                Allergies = ["Dairy", "Other"],
-                AllergyOtherText = "Mango",
-            }));
+            .Returns(BuildUserInfo(new Profile { UserId = _userId, BurnerName = "Burner", MedicalConditions = "Epilepsy" }));
 
-        var result = await _controller.Edit(ct: cancellation.Token);
+        var result = await _controller.Medical(CancellationToken.None);
 
-        var viewModel = result.Should().BeOfType<ViewResult>().Subject
-            .Model.Should().BeOfType<ProfileViewModel>().Subject;
-        viewModel.DietaryPreference.Should().Be("Pescatarian");
-        viewModel.Allergies.Should().BeEquivalentTo(["Dairy", "Other"]);
-        viewModel.AllergyOtherText.Should().Be("Mango");
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<MedicalViewModel>()
+            .Which.MedicalConditions.Should().Be("Epilepsy");
+        await _userService.Received().GetUserInfoAsync(_userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData("  Diabetes  ", "Diabetes")]
+    [InlineData("   ", null)]
+    public async Task Medical_Post_SavesTheTrimmedConditions_ForTheSignedInMemberOnly(string posted, string? saved)
+    {
+        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(BuildUserInfo(new Profile { UserId = _userId, BurnerName = "Burner" }));
+
+        var result = await _controller.Medical(new MedicalViewModel { MedicalConditions = posted });
+
+        await _userService.Received(1).SaveMedicalConditionsAsync(_userId, saved, Arg.Any<CancellationToken>());
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(ProfileController.Index));
+    }
+
+    [HumansFact]
+    public async Task Medical_Post_InvalidModel_DoesNotSave()
+    {
+        _controller.ModelState.AddModelError(nameof(MedicalViewModel.MedicalConditions), "Validation_MaxLength");
+
+        var result = await _controller.Medical(new MedicalViewModel { MedicalConditions = "x" });
+
+        result.Should().BeOfType<ViewResult>();
+        await _userService.DidNotReceiveWithAnyArgs().SaveMedicalConditionsAsync(default, default, default);
+    }
+
+    [HumansFact]
+    public void Medical_Post_RequiresAntiforgery()
+    {
+        typeof(ProfileController).GetMethods()
+            .Single(m => string.Equals(m.Name, nameof(ProfileController.Medical), StringComparison.Ordinal)
+                && m.GetCustomAttribute<HttpPostAttribute>() is not null)
+            .GetCustomAttribute<ValidateAntiForgeryTokenAttribute>().Should().NotBeNull();
     }
 
     private static ProfileViewModel MakeValidModel(

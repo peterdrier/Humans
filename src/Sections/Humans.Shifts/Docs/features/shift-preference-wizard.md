@@ -18,7 +18,7 @@ Volunteers need to tell coordinators about their skills, work style preferences,
 This is the first of three related features:
 - **33 — Shift Preference Wizard** (this feature): Collect skills, work style, languages
 - **34 — Shift Recommendation Engine**: Fuzzy-match preferences against available shifts (not yet specced)
-- **[35 — Dietary & Medical Nudge](../../../Humans.Users/Docs/features/dietary-medical-nudge.md)**: Collect dietary/allergy/medical info when a human signs up for a 6+ hour shift where the cantina provides meals (shipped — a full page, not a modal)
+- **[35 — Dietary Nudge](../../../Humans.Cantina/Docs/features/dietary-nudge.md)**: Collect dietary/allergy info (Cantina; medical is Users' own form) when a human signs up for a 6+ hour shift where the cantina provides meals (shipped — a full page, not a modal)
 
 ## Authorization
 
@@ -85,7 +85,7 @@ The set of time preference values should be a `static readonly` array (like the 
 
 ### Fields Removed From This Page (Not Deleted)
 
-The following fields are not editable on `/Profile/Me/ShiftInfo`; they live on `Profile` ([Dietary & Medical Nudge](../../../Humans.Users/Docs/features/dietary-medical-nudge.md)), and the corresponding `VolunteerEventProfile` columns are unused pending a deferred drop:
+The following fields are not editable on `/Profile/Me/ShiftInfo`; food answers live in Cantina and medical on `Profile` ([Dietary Nudge](../../../Humans.Cantina/Docs/features/dietary-nudge.md)), and the corresponding `VolunteerEventProfile` columns are unused pending a deferred drop:
 - `DietaryPreference`
 - `Allergies[]` + `AllergyOtherText`
 - `Intolerances[]` + `IntoleranceOtherText`
@@ -141,4 +141,4 @@ Option labels and time-preference descriptions are localized in all six cultures
 - [Issue #273](https://github.com/nobodies-collective/Humans/issues/273): Dashboard "Things to do" wizard card
 - [Issue #186](https://github.com/nobodies-collective/Humans/issues/186): Custom labels/tags on rotas (future matching input)
 - Feature 34 — Shift Recommendation Engine (not yet specced)
-- [Feature 35 — Dietary & Medical Nudge](../../../Humans.Users/Docs/features/dietary-medical-nudge.md) (shipped)
+- [Feature 35 — Dietary Nudge](../../../Humans.Cantina/Docs/features/dietary-nudge.md) (shipped)

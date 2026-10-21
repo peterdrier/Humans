@@ -478,16 +478,6 @@ internal sealed class UserService(
         profile.EmergencyContactRelationship = command.EmergencyContactRelationship;
         profile.NoPriorBurnExperience = command.NoPriorBurnExperience;
 
-        // Edit page owns meal preference + allergies (not intolerances/medical —
-        // those are written via SaveDietaryMedicalAsync). Only touch these when
-        // the command carries them, so a non-dietary save path can't clobber.
-        if (command.DietaryPreference is not null || command.Allergies is not null || command.AllergyOtherText is not null)
-        {
-            profile.DietaryPreference = string.IsNullOrWhiteSpace(command.DietaryPreference) ? null : command.DietaryPreference;
-            profile.Allergies = command.Allergies ?? [];
-            profile.AllergyOtherText = command.AllergyOtherText;
-        }
-
         profile.UpdatedAt = now;
 
         // LocalDate year=4 lets Feb 29 validate.
@@ -602,9 +592,9 @@ internal sealed class UserService(
         }
     }
 
-    public async Task SaveDietaryMedicalAsync(
+    public async Task SaveMedicalConditionsAsync(
         Guid userId,
-        UserProfileDietaryMedicalCommand command,
+        string? medicalConditions,
         CancellationToken ct = default)
     {
         using var _ = await ProfileStubLockFor(userId).AcquireAsync(logger, ct);
@@ -623,12 +613,7 @@ internal sealed class UserService(
             await repo.AddAsync(profile, ct);
         }
 
-        profile.DietaryPreference = command.DietaryPreference;
-        profile.Allergies = command.Allergies;
-        profile.AllergyOtherText = command.AllergyOtherText;
-        profile.Intolerances = command.Intolerances;
-        profile.IntoleranceOtherText = command.IntoleranceOtherText;
-        profile.MedicalConditions = command.MedicalConditions;
+        profile.MedicalConditions = medicalConditions;
         profile.UpdatedAt = now;
 
         await repo.UpdateAsync(profile, ct);
@@ -1170,8 +1155,9 @@ internal sealed class UserService(
             profile.EmergencyContactName,
             profile.EmergencyContactPhone,
             profile.EmergencyContactRelationship,
-            // Dietary + medical (moved here from VolunteerEventProfile). Included in
-            // the data-subject export — this is the owner's own export of their data.
+            // Legacy food columns: still held here (incl. archived merge rows) until the
+            // cantina.profile-dietary retirement drops them, so they stay in the export. The live
+            // answers are Cantina's DietaryProfile slice (Users decomposition commit 10).
             profile.DietaryPreference,
             profile.Allergies,
             profile.AllergyOtherText,

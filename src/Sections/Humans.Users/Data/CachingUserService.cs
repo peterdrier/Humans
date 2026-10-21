@@ -665,14 +665,14 @@ internal sealed class CachingUserService(
         return result;
     }
 
-    public async Task SaveDietaryMedicalAsync(
+    public async Task SaveMedicalConditionsAsync(
         Guid userId,
-        UserProfileDietaryMedicalCommand command,
+        string? medicalConditions,
         CancellationToken ct = default)
     {
         await WithInnerAsync(async inner =>
         {
-            await inner.SaveDietaryMedicalAsync(userId, command, ct);
+            await inner.SaveMedicalConditionsAsync(userId, medicalConditions, ct);
             return true;
         });
         await RefreshEntryAsync(userId);

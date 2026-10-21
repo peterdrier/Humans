@@ -1,20 +1,17 @@
-namespace Humans.Users.Contracts;
+namespace Humans.Cantina.Domain;
 
 /// <summary>
-/// Canonical option lists for the dietary/medical profile section.
-/// Single source of truth for the chips/checkboxes rendered on the
-/// volunteer's DietaryMedical form and the labels used by the Cantina
-/// daily-roster roll-up. Users owns them because Users' profile-edit path
-/// is what filters a submission against these lists before persisting it;
-/// Cantina only reads and aggregates.
+/// Canonical option lists for a member's dietary profile. Single source of truth for the
+/// chips/checkboxes on the <c>/Profile/Me/Dietary</c> form, the filter the save applies before
+/// persisting, and the labels the roster roll-up counts.
 /// </summary>
-public static class DietaryOptions
+internal static class DietaryOptions
 {
     /// <summary>
     /// Sentinel value used in <see cref="AllergyOptions"/> and
     /// <see cref="IntoleranceOptions"/> to flag a free-text follow-up.
     /// When selected, the corresponding "*OtherText" field on
-    /// <c>VolunteerEventProfile</c> carries the user-supplied detail.
+    /// <see cref="DietaryProfile"/> carries the user-supplied detail.
     /// </summary>
     public const string OtherOption = "Other";
 

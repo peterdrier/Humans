@@ -3,6 +3,7 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base;
 using Humans.Base.Interfaces;
+using Humans.Cantina.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
@@ -15,27 +16,26 @@ using NSubstitute;
 namespace Humans.Users.Tests.Contributions;
 
 /// <summary>
-/// Covers the dietary-medical nudge gate in Users' <see cref="SectionThingsToDo"/> contribution.
-/// Spec: src/Sections/Humans.Users/Docs/features/dietary-medical-nudge.md (US-35.5)
+/// Covers the optional medical-conditions prompt in Users' <see cref="SectionThingsToDo"/>: shown
+/// while Cantina's dietary nudge is open and no medical conditions are on file (Users
+/// decomposition commit 10). The dietary nudge itself is Cantina's (DietaryProfileTests).
 /// </summary>
-public class ThingsToDoDietaryGateTests
+public class ThingsToDoMedicalPromptTests
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
+    private readonly ICantinaService _cantina = Substitute.For<ICantinaService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>();
     private readonly IServiceProvider _services;
     private readonly SectionThingsToDo _sut = new();
 
-    public ThingsToDoDietaryGateTests()
+    public ThingsToDoMedicalPromptTests()
     {
-        // Each [key] returns a LocalizedString whose Value == key. Lets tests
-        // assert against the key name (no resx lookup needed).
+        // Each [key] returns a LocalizedString whose Value == key.
         _localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
-        // Default profile snapshot — a volunteer member, so the consent-check entry
-        // is skipped and the list stays focused on what these tests care about.
+        // A volunteer member, so the consent-check entry is skipped.
         _membershipCalculator.GetMembershipSnapshotAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new MembershipSnapshot(
                 Status: MembershipStatus.Active,
@@ -46,7 +46,7 @@ public class ThingsToDoDietaryGateTests
 
         _services = new ServiceCollection()
             .AddSingleton(_userService)
-            .AddSingleton(_shiftMgmt)
+            .AddSingleton(_cantina)
             .AddSingleton(_shiftView)
             .AddSingleton(_membershipCalculator)
             .AddSingleton(_localizer)
@@ -55,45 +55,56 @@ public class ThingsToDoDietaryGateTests
     }
 
     [HumansFact]
-    public async Task DietaryEntryAppearsWithNoShiftCopyWhenNoQualifyingSignup()
+    public async Task MedicalPromptShowsWhileTheDietaryNudgeIsOpen()
     {
-        var userId = StubUser(dietary: null);
-        _shiftMgmt.HasQualifyingCantinaSignupAsync(userId, Arg.Any<CancellationToken>()).Returns(false);
+        var userId = StubUser(dietary: null, medical: null);
 
         var entries = await _sut.EntriesAsync(_services, Principal(userId));
 
-        var dietary = entries.Should().ContainSingle(e => e.Key == "dietary-medical").Subject;
-        dietary.IsDone.Should().BeFalse();
-        dietary.Description.Should().Be("Todo_DietaryMedical_NoShift_Pending");
+        var medical = entries.Should().ContainSingle(e => e.Key == "medical").Subject;
+        medical.Controller.Should().Be("Profile");
+        medical.Action.Should().Be("Medical");
+        medical.Description.Should().Be("Todo_Medical_Pending");
+        medical.IsDone.Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task DietaryEntryUsesExistingCopyWhenHasQualifyingSignup()
+    public async Task MedicalPromptGoesAwayOnceTheFoodQuestionIsAnswered()
     {
-        var userId = StubUser(dietary: null);
-        _shiftMgmt.HasQualifyingCantinaSignupAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
+        var userId = StubUser(dietary: "Vegan", medical: null);
 
         var entries = await _sut.EntriesAsync(_services, Principal(userId));
 
-        entries.Should().ContainSingle(e => e.Key == "dietary-medical")
-            .Which.Description.Should().Be("Todo_DietaryMedical_Pending");
+        entries.Should().NotContain(e => e.Key == "medical", "members with nothing to declare are never nagged");
     }
 
     [HumansFact]
-    public async Task DietaryEntryNotAddedWhenDietaryFilled()
+    public async Task MedicalPromptNotShownWhenConditionsAreOnFile()
     {
-        var userId = StubUser(dietary: "Vegetarian");
-        _shiftMgmt.HasQualifyingCantinaSignupAsync(userId, Arg.Any<CancellationToken>()).Returns(false);
+        var userId = StubUser(dietary: null, medical: "Epilepsy");
 
         var entries = await _sut.EntriesAsync(_services, Principal(userId));
 
-        entries.Should().NotContain(e => e.Key == "dietary-medical");
+        entries.Should().NotContain(e => e.Key == "medical");
+        await _cantina.DidNotReceiveWithAnyArgs().GetDietaryProfileAsync(default, default);
     }
 
-    private Guid StubUser(string? dietary)
+    [HumansFact]
+    public async Task UsersNoLongerContributesTheDietaryNudge()
+    {
+        var userId = StubUser(dietary: null, medical: null);
+
+        var entries = await _sut.EntriesAsync(_services, Principal(userId));
+
+        entries.Should().NotContain(e => e.Key == "dietary-medical" || e.Key == "dietary");
+    }
+
+    private Guid StubUser(string? dietary, string? medical)
     {
         var userId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoWith(userId, dietary));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoWith(userId, medical));
+        _cantina.GetDietaryProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(dietary is null ? null : new DietaryProfileInfo(userId, dietary, [], null, [], null));
         _shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<ShiftUserSummary>(new ShiftUserSummary(userId, [], [])));
         return userId;
@@ -102,12 +113,12 @@ public class ThingsToDoDietaryGateTests
     private static ClaimsPrincipal Principal(Guid userId) =>
         new(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"));
 
-    private static UserInfo UserInfoWith(Guid userId, string? dietary) => UserInfoFactory.Create(
+    private static UserInfo UserInfoWith(Guid userId, string? medical) => UserInfoFactory.Create(
         user: new User { Id = userId, DisplayName = "Test", PreferredLanguage = "en" },
         userEmails: [],
         eventParticipations: [],
         externalLogins: [],
-        profile: new Profile { UserId = userId, BurnerName = "Test", DietaryPreference = dietary },
+        profile: new Profile { UserId = userId, BurnerName = "Test", MedicalConditions = medical },
         contactFields: [],
         profileLanguages: [],
         volunteerHistory: [],

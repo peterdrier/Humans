@@ -123,6 +123,11 @@
       component moves to the leaf.
     -->
     <ProjectReference Include="..\Humans.Shifts\Humans.Shifts.csproj" />
+    <!--
+      Humans.Cantina: ICantinaService (Contracts/ folder), read by SectionThingsToDo to pair the
+      medical prompt with the dietary nudge. Acyclic: Cantina references Users.Contracts only.
+    -->
+    <ProjectReference Include="..\Humans.Cantina\Humans.Cantina.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
   </ItemGroup>

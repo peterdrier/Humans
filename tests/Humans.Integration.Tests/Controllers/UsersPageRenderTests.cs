@@ -81,7 +81,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
         ("/Profile/Me/Edit", "Edit Profile"),                                // ProfileEdit_Title
         ("/Profile/Me/Emails", "Email Addresses"),                           // Emails_Title
         ("/Profile/Me/Privacy", "My Data"),                                  // Consent_MyData_Title (served by Consent)
-        ("/Profile/Me/DietaryMedical", "Dietary"),                           // Profile_DietaryMedical_PageTitle
+        ("/Profile/Me/Medical", "Medical conditions"),                       // Profile_DietaryMedical_MedicalConditions_Title
         ("/Profile/Me/CommunicationPreferences", "Communication Preferences"),// CommPrefs_Title
         ("/Profile/Me/Outbox", "My Emails"),                                 // Email_Outbox_MyTitle (served by Email)
     ];

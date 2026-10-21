@@ -50,6 +50,8 @@ public class MembershipRequiredFilterTests
     private static readonly Type UserControllerType = GdprControllerType("UserController");
     // MyDataController is internal to Humans.Consent: the My Data page shell at /Profile/Me/Privacy.
     private static readonly Type MyDataControllerType = SectionControllerType("Humans.Consent", "MyDataController");
+    // CantinaProfileController is internal to Humans.Cantina: the dietary form at /Profile/Me/Dietary.
+    private static readonly Type CantinaProfileControllerType = SectionControllerType("Humans.Cantina", "CantinaProfileController");
 
     private static Type GdprControllerType(string name) => SectionControllerType("Humans.Gdpr", name);
 
@@ -157,7 +159,9 @@ public class MembershipRequiredFilterTests
             (typeof(ProfileController), nameof(ProfileController.UndoNotAttending)),
             (MemberOutboxControllerType, "MyOutbox"),
             (MyDataControllerType, "Index"),
-            (typeof(ProfileController), nameof(ProfileController.DietaryMedical)),
+            (typeof(ProfileController), nameof(ProfileController.Medical)),
+            (CantinaProfileControllerType, "Dietary"),
+            (CantinaProfileControllerType, "LegacyDietaryMedical"),
             (typeof(ProfileController), nameof(ProfileController.CommunicationPreferences)),
             (typeof(ProfileController), nameof(ProfileController.UpdatePreference)),
             (typeof(ProfileController), nameof(ProfileController.Notifications)),
@@ -199,7 +203,7 @@ public class MembershipRequiredFilterTests
         {
             typeof(ProfileController), typeof(ProfileEmailsController),
             OnboardingWidgetControllerType, UserControllerType, MemberOutboxControllerType,
-            MemberDataControllerType, MyDataControllerType,
+            MemberDataControllerType, MyDataControllerType, CantinaProfileControllerType,
         })
         {
             var methods = type.GetMethods().Where(m => m.DeclaringType == type

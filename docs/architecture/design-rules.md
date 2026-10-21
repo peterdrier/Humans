@@ -281,7 +281,7 @@ The table-owning sections are listed below. The other section projects own no ta
 | **City Planning** | `CityPlanningService` | `city_planning_settings`, `camp_polygons`, `camp_polygon_histories` |
 | **Calendar** | `CalendarService`, `CalendarFeedTokenService`, `ICalFeedService` (the personal iCal feed fan-out — owns no tables) | `calendar_events`, `calendar_event_exceptions`, `calendar_feed_tokens` |
 | **Shifts** | `ShiftManagementService`, `ShiftSignupService`, `VolunteerTrackingService` | `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availability`, `volunteer_event_profiles`, `volunteer_build_statuses`, `shift_tags`, `volunteer_tag_preferences`, `rota_shift_tags` |
-| **Cantina** | `CantinaRosterService` | *(no owned tables — reads the on-site cohort via `IShiftManagementService`, the active event via `ISettingsService`, and dietary fields via `IUserService`)* |
+| **Cantina** | `CantinaRosterService`, `DietaryProfileService` | `cantina_dietary_profiles` *(the roster reads the on-site cohort via `IShiftManagementService`, the active event via `ISettingsService`, and dietary answers via `ICantinaService`)* |
 | **Budget** | `BudgetService` | `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections` |
 | **Expenses** | `ExpenseReportService` | `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events` |
 | **Finance** | `IHoldedFinanceService` (`Humans.Finance`; implemented by the section-internal `Service`) | `holded_expense_docs`, `holded_category_map`, `holded_creditor_contacts`, `holded_doc_sync_state`, `holded_managed_accounts`, `sepa_payout_files`, `sepa_payout_transfers` |

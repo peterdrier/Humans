@@ -138,7 +138,7 @@ Only controllers a non-Active user must still reach are exempt wholesale:
 - **GovernanceApplications**, **Issues**, **Notifications** — any logged-in user. `Issues` inherited the exemption from `Feedback` when Issues replaced it (nobodies-collective/Humans#977): the Help widget renders for any authenticated user, so someone stuck mid-onboarding or on the status wall must still be able to report that they are stuck
 - **Survey** — tokenised survey answering; invited non-Active users must reach it (`[AllowAnonymous]`)
 
-**Profile** and **ProfileEmails** are not exempt wholesale — only specific own-profile actions are (edit, privacy/download-data/deletion-request, dietary/medical, communication preferences, notifications settings, and email management). Other Profile/ProfileEmails actions still require `UserState == Active`.
+**Profile** and **ProfileEmails** are not exempt wholesale — only specific own-profile actions are (edit, privacy/download-data/deletion-request, medical (plus Cantina's own-dietary form), communication preferences, notifications settings, and email management). Other Profile/ProfileEmails actions still require `UserState == Active`.
 
 `Deleted`/`Merged` accounts are walled off before any of the above: only `Account`, `Language`, and `User/Status` reach them — none of the other exemptions apply, so a lingering cookie can't be used to edit an anonymized profile.
 

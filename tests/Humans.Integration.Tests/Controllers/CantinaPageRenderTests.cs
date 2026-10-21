@@ -45,6 +45,7 @@ public class CantinaPageRenderTests(HumansTestDatabase database) : IntegrationTe
     [
         ("/Cantina/Roster", "Cantina weekly roster"),   // Cantina_Roster_PageTitle
         ("/Cantina/Roster/Day", "humans on site"),      // Cantina_Day_TotalOnSite
+        ("/Profile/Me/Dietary", "Dietary info"),        // Cantina_Dietary_PageTitle
     ];
 
     [HumansFact(Timeout = 120000)]

@@ -60,6 +60,11 @@ internal sealed class Profile
     [PersonalData]
     public string? EmergencyContactRelationship { get; set; }
 
+    // Legacy food columns: the answers live in Cantina's cantina_dietary_profiles (Users
+    // decomposition commit 10). Read only through the obsolete ProfileInfo fields by Cantina's
+    // fallback and the cantina.profile-dietary copy; still exported and erased here until the
+    // retirement PR drops them.
+
     /// <summary>Dietary preference (e.g., "Vegan", "Vegetarian", "Omnivore", "Pescatarian").</summary>
     [PersonalData]
     public string? DietaryPreference { get; set; }

@@ -103,13 +103,13 @@ internal interface IUserManagement : IUserService, IUserWrite, IUserMerge
         IReadOnlyList<CVEntry>? volunteerHistory = null);
 
     /// <summary>
-    /// Persists the six dietary + medical Profile columns (the DietaryMedical page).
-    /// Leaves all other profile fields untouched. MedicalConditions is GDPR Art. 9 —
-    /// the caller owns ownership/authorization checks.
+    /// Persists the member's medical conditions (the <c>/Profile/Me/Medical</c> page), creating
+    /// the profile row if there is none. Leaves every other profile field untouched.
+    /// MedicalConditions is GDPR Art. 9 — the caller owns ownership/authorization checks.
     /// </summary>
-    Task SaveDietaryMedicalAsync(
+    Task SaveMedicalConditionsAsync(
         Guid userId,
-        UserProfileDietaryMedicalCommand command,
+        string? medicalConditions,
         CancellationToken ct = default);
 
     /// <summary>

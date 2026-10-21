@@ -1,7 +1,9 @@
+using Humans.Cantina.Domain;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
+using Humans.Cantina.Contracts;
 using Humans.Cantina.Services.Dtos;
 using NodaTime;
 using Humans.Users.Contracts;
@@ -12,10 +14,9 @@ namespace Humans.Cantina.Services;
 /// Application-layer implementation of <see cref="ICantinaRosterService"/>.
 /// The on-site cohort (who is around each day) comes from
 /// <see cref="IShiftManagementService.GetOnSiteUserIdsForDayAsync"/>; the display
-/// name and the dietary data (preference, allergies, intolerances) both come from the
-/// cross-section <see cref="IUserService"/> — the name off <see cref="UserInfo"/>
-/// already resolved, the dietary fields off its nested <see cref="ProfileInfo"/>,
-/// where they live. The service unions the days into a
+/// name comes off the cross-section <see cref="IUserService"/>'s <see cref="UserInfo"/>,
+/// already resolved, and the dietary data (preference, allergies, intolerances) from this
+/// section's own <see cref="ICantinaService"/>. The service unions the days into a
 /// unique-humans cohort and computes the weekly aggregates the Cantina UI needs.
 /// <c>MedicalConditions</c> is never read here — the cantina plans around food, not medical history.
 /// </summary>
@@ -26,6 +27,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
     private readonly IShiftManagementService _shiftMgmt;
     private readonly ISettingsService _settingsService;
     private readonly IUserService _userRead;
+    private readonly ICantinaService _dietary;
     private readonly IClock _clock;
     private readonly IAuditLogService _audit;
 
@@ -37,12 +39,14 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         IShiftManagementService shiftMgmt,
         ISettingsService settingsService,
         IUserService userRead,
+        ICantinaService dietary,
         IClock clock,
         IAuditLogService audit)
     {
         _shiftMgmt = shiftMgmt;
         _settingsService = settingsService;
         _userRead = userRead;
+        _dietary = dietary;
         _clock = clock;
         _audit = audit;
     }
@@ -122,19 +126,18 @@ internal sealed class CantinaRosterService : ICantinaRosterService
 
         var uniqueUserIds = daysOnSiteByUserId.Keys.ToList();
 
-        // One batched, cache-friendly read for the whole on-site cohort. UserInfo is
-        // the single source below for both halves of a row: the display name (already
-        // resolved by Users) and the Profile that carries dietary preference,
-        // allergies and intolerances.
+        // One batched, cache-friendly read of names for the whole on-site cohort (UserInfo,
+        // already resolved by Users) and one of their dietary profiles.
         var userInfoById = uniqueUserIds.Count == 0
             ? new Dictionary<Guid, UserInfo>()
             : await _userRead.GetUserInfosAsync(uniqueUserIds, ct).ConfigureAwait(false);
+        var dietById = await _dietary.GetDietaryProfilesAsync(uniqueUserIds, ct).ConfigureAwait(false);
 
         // Build per-day summaries (counts only) from the POST-injection on-site
         // map so arrival-day people are counted on their arrival date — keeping
         // the weekly strip consistent with the daily drill-down. Dietary is
         // per-user, so a day's "unanswered" count is over that day's user ids.
-        var days = BuildDaySummaries(daysOnSiteByUserId, weekStartOffset, weekStartDate, userInfoById);
+        var days = BuildDaySummaries(daysOnSiteByUserId, weekStartOffset, weekStartDate, dietById);
 
         if (uniqueUserIds.Count == 0)
         {
@@ -157,7 +160,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
 
         // Unique-humans dietary cohort — every aggregate below is computed over
         // this list so a person on-site multiple days contributes exactly once.
-        var uniqueProfiles = BuildUniqueProfiles(uniqueUserIds, userInfoById);
+        var uniqueProfiles = BuildUniqueProfiles(uniqueUserIds, dietById);
 
         // The 7 calendar dates of the week, used to compute NoShift as the
         // complement of each person's on-site days.
@@ -166,7 +169,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         // People are returned in unspecified order. The controller sorts, via
         // CantinaRosterAssembler in this section's Models/ (see
         // memory/architecture/display-sort-in-controllers.md).
-        var people = BuildWeeklyPeople(uniqueUserIds, userInfoById, daysOnSiteByUserId, weekDays);
+        var people = BuildWeeklyPeople(uniqueUserIds, userInfoById, dietById, daysOnSiteByUserId, weekDays);
 
         var dietaryBreakdown = BuildDietaryBreakdown(uniqueProfiles, uniqueUserIds.Count);
         var (allergyRollup, allergyOther) = BuildRollup(
@@ -312,8 +315,9 @@ internal sealed class CantinaRosterService : ICantinaRosterService
                 People: Array.Empty<DailyPersonRowDto>());
         }
 
-        // Names and dietary from the cached UserInfo for the day's cohort.
+        // Names from the cached UserInfo, dietary from this section's profiles, for the day's cohort.
         var userInfoById = await _userRead.GetUserInfosAsync(userIds, ct).ConfigureAwait(false);
+        var dietById = await _dietary.GetDietaryProfilesAsync(userIds, ct).ConfigureAwait(false);
 
         // People — built in the order the cohort read returned (caller is expected
         // to sort for display via CantinaRosterAssembler.WithSortedPeople; see
@@ -322,7 +326,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         foreach (var id in userIds)
         {
             userInfoById.TryGetValue(id, out var info);
-            var profile = info?.Profile;
+            dietById.TryGetValue(id, out var profile);
 
             IReadOnlySet<string> allergies = profile?.Allergies is { Count: > 0 } a
                 ? new HashSet<string>(a, StringComparer.Ordinal)
@@ -457,7 +461,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         IReadOnlyDictionary<Guid, List<LocalDate>> daysOnSiteByUserId,
         int weekStartOffset,
         LocalDate? weekStartDate,
-        IReadOnlyDictionary<Guid, UserInfo> userInfoById)
+        IReadOnlyDictionary<Guid, DietaryProfileInfo> dietById)
     {
         var days = new List<DayRosterSummaryDto>(DaysPerWeek);
         for (var i = 0; i < DaysPerWeek; i++)
@@ -477,8 +481,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
                         continue;
 
                     total++;
-                    if (!userInfoById.TryGetValue(id, out var info)
-                        || string.IsNullOrEmpty(info.Profile?.DietaryPreference))
+                    if (!dietById.TryGetValue(id, out var diet) || !diet.HasPreference)
                         unanswered++;
                 }
             }
@@ -493,15 +496,15 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         return days;
     }
 
-    private static List<ProfileInfo> BuildUniqueProfiles(
+    private static List<DietaryProfileInfo> BuildUniqueProfiles(
         IReadOnlyList<Guid> uniqueUserIds,
-        IReadOnlyDictionary<Guid, UserInfo> userInfoById)
+        IReadOnlyDictionary<Guid, DietaryProfileInfo> dietById)
     {
-        var uniqueProfiles = new List<ProfileInfo>(uniqueUserIds.Count);
+        var uniqueProfiles = new List<DietaryProfileInfo>(uniqueUserIds.Count);
         foreach (var id in uniqueUserIds)
         {
-            if (userInfoById.TryGetValue(id, out var info) && info.Profile is not null)
-                uniqueProfiles.Add(info.Profile);
+            if (dietById.TryGetValue(id, out var diet))
+                uniqueProfiles.Add(diet);
         }
 
         return uniqueProfiles;
@@ -517,6 +520,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
     private static List<RosterPersonDto> BuildWeeklyPeople(
         IReadOnlyList<Guid> uniqueUserIds,
         IReadOnlyDictionary<Guid, UserInfo> userInfoById,
+        IReadOnlyDictionary<Guid, DietaryProfileInfo> dietById,
         IReadOnlyDictionary<Guid, List<LocalDate>> daysOnSiteByUserId,
         IReadOnlyList<LocalDate> weekDays)
     {
@@ -524,7 +528,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         foreach (var id in uniqueUserIds)
         {
             userInfoById.TryGetValue(id, out var info);
-            var profile = info?.Profile;
+            dietById.TryGetValue(id, out var profile);
             var daysList = daysOnSiteByUserId[id];
             daysList.Sort();
 
@@ -601,7 +605,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
     }
 
     private static IReadOnlyDictionary<string, int> BuildDietaryBreakdown(
-        IReadOnlyList<ProfileInfo> uniqueProfiles, int totalUniqueOnSite)
+        IReadOnlyList<DietaryProfileInfo> uniqueProfiles, int totalUniqueOnSite)
     {
         var dict = new Dictionary<string, int>(DietaryOptions.DietaryPreferences.Count + 1, StringComparer.Ordinal);
         foreach (var pref in DietaryOptions.DietaryPreferences)
@@ -626,9 +630,9 @@ internal sealed class CantinaRosterService : ICantinaRosterService
     }
 
     private static (IReadOnlyList<RollupItemDto> Rollup, IReadOnlyList<string> OtherEntries) BuildRollup(
-        IReadOnlyList<ProfileInfo> uniqueProfiles,
-        Func<ProfileInfo, IReadOnlyList<string>> pickChips,
-        Func<ProfileInfo, string?> pickOtherText,
+        IReadOnlyList<DietaryProfileInfo> uniqueProfiles,
+        Func<DietaryProfileInfo, IReadOnlyList<string>> pickChips,
+        Func<DietaryProfileInfo, string?> pickOtherText,
         IReadOnlyList<string> canonicalLabels)
     {
         var counts = new Dictionary<string, int>(canonicalLabels.Count, StringComparer.Ordinal);
