@@ -52,4 +52,82 @@
   <data name="Auth_Email_MagicLinkSignup_Body" xml:space="preserve">
     <value>&lt;p&gt;Willkommen bei Nobodies!&lt;/p&gt;&lt;p&gt;Klicke auf den folgenden Link, um dein Konto zu erstellen:&lt;/p&gt;&lt;p&gt;&lt;a href="{0}"&gt;Konto erstellen&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Dieser Link läuft in 15 Minuten ab und kann nur einmal verwendet werden.&lt;/p&gt;&lt;p&gt;Falls du dies nicht angefordert hast, kannst du diese E-Mail ignorieren.&lt;/p&gt;</value>
   </data>
+  <data name="Auth_Roles_Title" xml:space="preserve">
+    <value>Rollenzuweisungen</value>
+  </data>
+  <data name="Auth_Roles_All" xml:space="preserve">
+    <value>Alle</value>
+  </data>
+  <data name="Auth_Roles_HideInactive" xml:space="preserve">
+    <value>Inaktive ausblenden</value>
+  </data>
+  <data name="Auth_Roles_ShowInactive" xml:space="preserve">
+    <value>Inaktive anzeigen</value>
+  </data>
+  <data name="Auth_Roles_User" xml:space="preserve">
+    <value>Benutzer</value>
+  </data>
+  <data name="Auth_Roles_ValidFrom" xml:space="preserve">
+    <value>Gültig ab</value>
+  </data>
+  <data name="Auth_Roles_ValidTo" xml:space="preserve">
+    <value>Gültig bis</value>
+  </data>
+  <data name="Auth_Roles_Assignments" xml:space="preserve">
+    <value>Rollenzuweisungen</value>
+  </data>
+  <data name="Auth_Roles_AddRole" xml:space="preserve">
+    <value>Rolle hinzufügen</value>
+  </data>
+  <data name="Auth_Roles_Ended" xml:space="preserve">
+    <value>Beendet</value>
+  </data>
+  <data name="Auth_Roles_From" xml:space="preserve">
+    <value>Von</value>
+  </data>
+  <data name="Auth_Roles_To" xml:space="preserve">
+    <value>bis</value>
+  </data>
+  <data name="Auth_Roles_EndConfirm" xml:space="preserve">
+    <value>Diese Rollenzuweisung beenden?</value>
+  </data>
+  <data name="Auth_Roles_End" xml:space="preserve">
+    <value>Beenden</value>
+  </data>
+  <data name="Auth_Roles_NoAssignments" xml:space="preserve">
+    <value>Keine Rollenzuweisungen.</value>
+  </data>
+  <data name="Auth_AddRole_Title" xml:space="preserve">
+    <value>Rolle hinzufügen</value>
+  </data>
+  <data name="Auth_AddRole_SelectRole" xml:space="preserve">
+    <value>Rolle auswählen...</value>
+  </data>
+  <data name="Auth_AddRole_AdminDesc" xml:space="preserve">
+    <value>Vollständiger Systemzugriff</value>
+  </data>
+  <data name="Auth_AddRole_BoardDesc" xml:space="preserve">
+    <value>Vorstandsmitglied-Berechtigungen</value>
+  </data>
+  <data name="Auth_AddRole_TeamsAdminDesc" xml:space="preserve">
+    <value>Alle Teams und Mitgliedschaften verwalten</value>
+  </data>
+  <data name="Auth_AddRole_ConsentCoordinatorDesc" xml:space="preserve">
+    <value>Sicherheitsprüfungen beim Onboarding</value>
+  </data>
+  <data name="Auth_AddRole_CampAdminDesc" xml:space="preserve">
+    <value>Lagerplan und Platzierungsphasen verwalten</value>
+  </data>
+  <data name="Auth_AddRole_VolunteerCoordinatorDesc" xml:space="preserve">
+    <value>Onboarding-Begleitung, systemweite Schichtverwaltung</value>
+  </data>
+  <data name="Auth_AddRole_NoInfoAdminDesc" xml:space="preserve">
+    <value>Schichtanmeldungen genehmigen, medizinische Daten einsehen</value>
+  </data>
+  <data name="Auth_AddRole_NotesLabel" xml:space="preserve">
+    <value>Notizen (optional)</value>
+  </data>
+  <data name="Auth_AddRole_NotesPlaceholder" xml:space="preserve">
+    <value>Grund der Zuweisung</value>
+  </data>
 </root>

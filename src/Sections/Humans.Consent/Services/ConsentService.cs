@@ -209,6 +209,13 @@ internal sealed class ConsentService(
         return new ConsentSubmitResult(true, DocumentName: version.LegalDocumentName);
     }
 
+    // The Coordinator review is ConsentReviewService's table; IConsentService carries its reads.
+    public Task<ConsentReviewInfo> GetConsentReviewAsync(Guid userId, CancellationToken ct = default) =>
+        serviceProvider.GetRequiredService<ConsentReviewService>().GetReviewAsync(userId, ct);
+
+    public Task<IReadOnlyDictionary<Guid, ConsentReviewInfo>> GetConsentReviewsAsync(CancellationToken ct = default) =>
+        serviceProvider.GetRequiredService<ConsentReviewService>().GetReviewsAsync(ct);
+
     public async Task<int> GetConsentRecordCountAsync(Guid userId, CancellationToken ct = default)
     {
         var chainIds = await GetChainFollowIdsAsync(userId, ct);

@@ -335,6 +335,12 @@ internal sealed class ShiftInfoViewModel
     [StringLength(200, ErrorMessage = "Validation_MaxLength")]
     public string? LanguageOtherText { get; set; }
 
+    /// <summary>Tag catalog for the preference picker. Not posted back; repopulated on every render.</summary>
+    public IReadOnlyList<ShiftTagSummary> AllShiftTags { get; set; } = [];
+
+    /// <summary>IDs of the shift tags the volunteer marked as preferred.</summary>
+    public List<Guid> EditableShiftTagIds { get; set; } = [];
+
     internal static readonly string[] SkillOptions = ["Bartending", "First Aid", "Driving", "Sound", "Electrical", "Construction", "Cooking", "Art", "DJ", "Other"];
     internal static readonly string[] LanguageOptions = ["English", "Spanish", "German", "French", "Italian", "Portuguese", "Catalan", "Other"];
 

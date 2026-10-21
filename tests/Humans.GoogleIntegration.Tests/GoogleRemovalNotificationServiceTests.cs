@@ -28,6 +28,7 @@ public sealed class GoogleRemovalNotificationServiceTests
         _service = new GoogleRemovalNotificationService(
             _userEmailService,
             _userService,
+            WorkspaceIdentityFakes.ResolvingThrough(_userService),
             _emailService,
             _emailMessages,
             NullLogger<GoogleRemovalNotificationService>.Instance);
@@ -74,6 +75,8 @@ public sealed class GoogleRemovalNotificationServiceTests
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [userId] = user.ToUserInfo(user.UserEmails.ToList()) }));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(user.ToUserInfo(user.UserEmails.ToList()));
 
         await _service.NotifyRemovalAsync(
             "old@nobodies.team",
@@ -101,16 +104,17 @@ public sealed class GoogleRemovalNotificationServiceTests
     public async Task NotifyRemovalAsync_SecondaryCleanup_SendsVariant2(string language, string expectedCulture)
     {
         using var actorCulture = new CultureScope("fr");
-        // Variant 2 fixture: the removed address has IsGoogle=true, AND a
-        // sibling row also has IsGoogle=true that is not being removed.
-        // The selector picks the sibling as the surviving primary.
+        // Variant 2 fixture: the workspace identity is a sibling row that is
+        // not being removed, so the notice names it as the surviving account.
         var userId = Guid.NewGuid();
         var user = BuildUserWithEmails(
             userId,
             "Alice",
             language,
-            ("old@nobodies.team", verified: true, isGoogle: true),
+            ("old@nobodies.team", verified: true, isGoogle: false),
             ("new@nobodies.team", verified: true, isGoogle: true));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(user.ToUserInfo(user.UserEmails.ToList()));
 
         _userEmailService.FindByAddressAsync("old@nobodies.team", false, true, Arg.Any<CancellationToken>())
             .Returns([UserEmailFixtures.Row(userId, "old@nobodies.team")]);

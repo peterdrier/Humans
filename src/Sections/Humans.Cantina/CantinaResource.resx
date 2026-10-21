@@ -63,4 +63,37 @@
   <data name="Cantina_Matrix_OtherIntolerance" xml:space="preserve"><value>Other intolerance</value></data>
   <data name="Cantina_Matrix_OtherIntoleranceText" xml:space="preserve"><value>Other intolerance text</value></data>
   <data name="Cantina_Matrix_Totals" xml:space="preserve"><value>TOTALS</value></data>
+  <data name="Cantina_Dietary_DietaryPreference_Label" xml:space="preserve"><value>Dietary preference</value></data>
+  <data name="Cantina_Dietary_DietaryPreference_Omnivore" xml:space="preserve"><value>Omnivore</value></data>
+  <data name="Cantina_Dietary_DietaryPreference_Vegetarian" xml:space="preserve"><value>Vegetarian</value></data>
+  <data name="Cantina_Dietary_DietaryPreference_Vegan" xml:space="preserve"><value>Vegan</value></data>
+  <data name="Cantina_Dietary_DietaryPreference_Pescatarian" xml:space="preserve"><value>Pescatarian</value></data>
+  <data name="Cantina_Dietary_Allergies_Label" xml:space="preserve"><value>Allergies</value></data>
+  <data name="Cantina_Dietary_AllergyOther_Label" xml:space="preserve"><value>Other allergy — please describe</value></data>
+  <data name="Cantina_Dietary_Intolerances_Label" xml:space="preserve"><value>Intolerances</value></data>
+  <data name="Cantina_Dietary_IntoleranceOther_Label" xml:space="preserve"><value>Other intolerance — please describe</value></data>
+  <data name="Cantina_Dietary_Allergy_Dairy" xml:space="preserve"><value>Dairy</value></data>
+  <data name="Cantina_Dietary_Allergy_Egg" xml:space="preserve"><value>Egg</value></data>
+  <data name="Cantina_Dietary_Allergy_Peanut" xml:space="preserve"><value>Peanut</value></data>
+  <data name="Cantina_Dietary_Allergy_Sesame" xml:space="preserve"><value>Sesame</value></data>
+  <data name="Cantina_Dietary_Allergy_Shellfish" xml:space="preserve"><value>Shellfish</value></data>
+  <data name="Cantina_Dietary_Allergy_Soy" xml:space="preserve"><value>Soy</value></data>
+  <data name="Cantina_Dietary_Allergy_Treenut" xml:space="preserve"><value>Tree nut</value></data>
+  <data name="Cantina_Dietary_Allergy_WheatGluten" xml:space="preserve"><value>Wheat/Gluten</value></data>
+  <data name="Cantina_Dietary_Intolerance_Gluten" xml:space="preserve"><value>Gluten</value></data>
+  <data name="Cantina_Dietary_Intolerance_Histamine" xml:space="preserve"><value>Histamine</value></data>
+  <data name="Cantina_Dietary_Intolerance_Lactose" xml:space="preserve"><value>Lactose</value></data>
+  <data name="Cantina_Dietary_AllergyOther_Required" xml:space="preserve"><value>Please describe your "Other" allergy.</value></data>
+  <data name="Cantina_Dietary_IntoleranceOther_Required" xml:space="preserve"><value>Please describe your "Other" intolerance.</value></data>
+  <data name="Cantina_Dietary_ShiftSignupFailed" xml:space="preserve"><value>Shift signup failed.</value></data>
+  <data name="Cantina_Dietary_ShiftSignupSucceeded" xml:space="preserve"><value>Signed up successfully!</value></data>
+  <data name="Cantina_Dietary_ShiftSignupSucceededWithWarning" xml:space="preserve"><value>Signed up successfully. Note: {0}</value><comment>{0} = signup warning</comment></data>
+  <data name="Cantina_Dietary_ShiftRangeSignupFailed" xml:space="preserve"><value>Shift range signup failed.</value></data>
+  <data name="Cantina_Dietary_ShiftRangeSignupSucceeded" xml:space="preserve"><value>Signed up for date range!</value></data>
+  <data name="Cantina_Dietary_ShiftRangeSignupSucceededWithWarning" xml:space="preserve"><value>Signed up for date range. Note: {0}</value><comment>{0} = signup warning</comment></data>
+  <data name="Cantina_Dietary_BreadcrumbNavigation" xml:space="preserve"><value>Breadcrumb</value></data>
+  <data name="Cantina_Dietary_PageTitle" xml:space="preserve"><value>Dietary info</value></data>
+  <data name="Cantina_Dietary_Saved" xml:space="preserve"><value>Your dietary info has been saved.</value></data>
+  <data name="Cantina_Dietary_SaveFailed" xml:space="preserve"><value>Failed to save dietary info.</value></data>
+  <data name="Cantina_Dietary_LoadFailed" xml:space="preserve"><value>Failed to load dietary info.</value></data>
 </root>

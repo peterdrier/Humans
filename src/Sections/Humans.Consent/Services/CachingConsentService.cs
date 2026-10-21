@@ -35,7 +35,9 @@ namespace Humans.Consent.Services;
 /// (<see cref="GetConsentDashboardAsync"/>,
 /// <see cref="GetConsentReviewDetailAsync"/>,
 /// <see cref="GetConsentRecordCountAsync"/>,
-/// <see cref="GetPendingDocumentNamesAsync"/>)
+/// <see cref="GetPendingDocumentNamesAsync"/>,
+/// <see cref="GetConsentReviewAsync"/>,
+/// <see cref="GetConsentReviewsAsync"/>)
 /// either need richer record data (history view) or are off the hot
 /// path; they pass through to the inner service.
 /// </para>
@@ -163,6 +165,12 @@ internal sealed class CachingConsentService(
     public Task<IReadOnlyList<string>> GetPendingDocumentNamesAsync(
         Guid userId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetPendingDocumentNamesAsync(userId, ct));
+
+    public Task<ConsentReviewInfo> GetConsentReviewAsync(Guid userId, CancellationToken ct = default) =>
+        WithInner(inner => inner.GetConsentReviewAsync(userId, ct));
+
+    public Task<IReadOnlyDictionary<Guid, ConsentReviewInfo>> GetConsentReviewsAsync(CancellationToken ct = default) =>
+        WithInner(inner => inner.GetConsentReviewsAsync(ct));
 
     // ==========================================================================
     // Writes — synchronous invalidation before return

@@ -1,3 +1,4 @@
+using Humans.Governance.Contracts;
 using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.Base.Enums;

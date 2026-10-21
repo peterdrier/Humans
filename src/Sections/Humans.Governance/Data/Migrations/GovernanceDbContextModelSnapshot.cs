@@ -431,6 +431,29 @@ namespace Humans.Governance.Data.Migrations
                     b.ToTable("board_votes", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Governance.Domain.MembershipTierRecord", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<LocalDate?>("ExpiresAt")
+                        .HasColumnType("date");
+
+                    b.Property<Instant>("GrantedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("GrantedByApplicationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Tier")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("governance_membership_tiers", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Governance.Domain.ApplicationStateHistory", b =>
                 {
                     b.HasOne("Humans.Governance.Domain.Application", "Application")

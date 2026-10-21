@@ -65,9 +65,10 @@ and records each column in the debt ledger for an evidence-gated drop PR.
   `IUserWrite`/`IUserManagement`.
 - **Screens** land in the owner's own controller under its own route, or stay on the Users page through
   a `UserPart` (`IUserPart` + `UserPartSlots.Profile` / `ProfileSidebar` / `AdminDetail` /
-  `AdminDetailSidebar`; Tickets and Calendar already do this). The `/Profile/Me/*` prefix is allowed on
-  another section's controller (Shifts' `ShiftProfileController` is the precedent) so member URLs can
-  stay stable where that matters.
+  `AdminDetailSidebar`; Tickets and Calendar already do this). A moved page takes the owner's own URL
+  (`/<Section>/...`, admin pages `/<Section>/Admin/...`), with no redirect or alias from the old one
+  ([`moved-pages-take-owner-urls`](../../../memory/product/moved-pages-take-owner-urls.md)); only a URL
+  baked into sent emails or an external system stays, pending Peter's call.
 - **Merge and GDPR:** the owner registers an `IUserMerge` (fold on account merge) and an
   `IUserDataContributor` (export + erase) for its new table; the slice leaves `UserService.ContributeForUserAsync`.
 - **Audit:** every write the owner performs on a member's behalf keeps its audit entry (same

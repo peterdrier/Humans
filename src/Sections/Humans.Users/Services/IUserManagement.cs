@@ -13,6 +13,15 @@ namespace Humans.Users.Services;
 internal interface IUserManagement : IUserService, IUserWrite, IUserMerge
 {
     /// <summary>
+    /// Suspends or unsuspends: writes <c>users.State</c> only (unsuspending re-classifies from the
+    /// remaining signals). <paramref name="adminSuspension"/> picks <see cref="UserState.AdminSuspended"/>
+    /// over the consent <see cref="UserState.Suspended"/>. <c>NotFound</c> without a profile. Audit,
+    /// notification and the reason belong to the caller.
+    /// </summary>
+    Task<OnboardingResult> SetSuspensionAsync(
+        Guid userId, bool suspended, bool adminSuspension = false, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the user ids of every account with <c>DeletionScheduledFor</c>
     /// in the past (or equal to <paramref name="now"/>) and with
     /// <c>DeletionEligibleAfter</c> either null or already elapsed. Used by
@@ -21,24 +30,6 @@ internal interface IUserManagement : IUserService, IUserWrite, IUserMerge
     /// </summary>
     Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
         Instant now, CancellationToken ct = default);
-
-    /// <summary>
-    /// Declare that the user is not attending this year's event. Upserts a
-    /// UserDeclared NotAttending row unless the user is already Attended (in
-    /// which case the declaration is logged and ignored).
-    /// </summary>
-    Task DeclareNotAttendingAsync(Guid userId, int year, CancellationToken ct = default);
-
-    /// <summary>
-    /// Undo a "not attending" declaration. Removes the record.
-    /// Only works if the current status is NotAttending with Source=UserDeclared.
-    /// </summary>
-    Task<bool> UndoNotAttendingAsync(Guid userId, int year, CancellationToken ct = default);
-
-    /// <summary>
-    /// Bulk import historical participation data after admin confirmation; counts and audits changed records.
-    /// </summary>
-    Task<int> BackfillParticipationsAsync(int year, List<(Guid UserId, ParticipationStatus Status)> entries, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
     /// Applies the identity-level fields of the GDPR expiry anonymization
@@ -103,13 +94,13 @@ internal interface IUserManagement : IUserService, IUserWrite, IUserMerge
         IReadOnlyList<CVEntry>? volunteerHistory = null);
 
     /// <summary>
-    /// Persists the six dietary + medical Profile columns (the DietaryMedical page).
-    /// Leaves all other profile fields untouched. MedicalConditions is GDPR Art. 9 —
-    /// the caller owns ownership/authorization checks.
+    /// Persists the member's medical conditions (the <c>/Profile/Me/Medical</c> page), creating
+    /// the profile row if there is none. Leaves every other profile field untouched.
+    /// MedicalConditions is GDPR Art. 9 — the caller owns ownership/authorization checks.
     /// </summary>
-    Task SaveDietaryMedicalAsync(
+    Task SaveMedicalConditionsAsync(
         Guid userId,
-        UserProfileDietaryMedicalCommand command,
+        string? medicalConditions,
         CancellationToken ct = default);
 
     /// <summary>

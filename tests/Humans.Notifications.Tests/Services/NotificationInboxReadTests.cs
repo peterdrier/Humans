@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using System.Security.Claims;
@@ -50,7 +51,7 @@ public sealed class NotificationInboxReadTests : IDisposable
         _sut = new NotificationInboxRead(
             _inbox,
             new NotificationMeterProvider(
-                _users, _google, _teams, _tickets, _applications, _camps, _cache,
+                _users, Substitute.For<IConsentService>(), _google, _teams, _tickets, _applications, _camps, _cache,
                 NullLogger<NotificationMeterProvider>.Instance,
                 _localization.GetRequiredService<IStringLocalizer<NotificationsResource>>()));
     }

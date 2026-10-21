@@ -17,7 +17,7 @@ public class UserInfoTests
     };
 
     [HumansFact]
-    public void Create_carries_communication_preferences_projection()
+    public void Create_carries_legacy_communication_preferences_projection()
     {
         var userId = Guid.NewGuid();
         var prefs = new[]
@@ -26,7 +26,7 @@ public class UserInfoTests
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
-                Category = MessageCategory.Marketing,
+                Category = LegacyMessageCategory.Marketing,
                 OptedOut = false,
                 InboxEnabled = true,
                 UpdatedAt = Instant.FromUtc(2026, 4, 1, 0, 0),
@@ -37,7 +37,7 @@ public class UserInfoTests
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
-                Category = MessageCategory.Governance,
+                Category = LegacyMessageCategory.Governance,
                 OptedOut = true,
                 InboxEnabled = false,
                 UpdatedAt = Instant.FromUtc(2026, 4, 2, 0, 0),
@@ -58,214 +58,13 @@ public class UserInfoTests
             communicationPreferences: prefs);
 
         // Marketing (3) sorts before Governance (4) by enum value ascending.
+#pragma warning disable HUM_USER_COMMPREFS // pins the frozen legacy slice Email's fallback and copy read
         info.CommunicationPreferences.Should().HaveCount(2);
         info.CommunicationPreferences.Select(c => c.Category)
-            .Should().Equal(MessageCategory.Marketing, MessageCategory.Governance);
+            .Should().Equal(LegacyMessageCategory.Marketing, LegacyMessageCategory.Governance);
         info.CommunicationPreferences[0].OptedOut.Should().BeFalse();
         info.CommunicationPreferences[0].UpdateSource.Should().Be("Profile");
-    }
-
-    [HumansFact]
-    public void GoogleEmailStatus_falls_back_to_verified_provider_row_when_no_IsGoogle_row()
-    {
-        // Legacy users predating the IsGoogle column have no IsGoogle row; sync
-        // targets the verified provider (OAuth) row, so its rejection must drive suppression.
-        var userId = Guid.NewGuid();
-        var providerRow = new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Email = "fallback@example.com",
-            IsVerified = true,
-            IsGoogle = false,
-            Provider = "Google",
-            ProviderKey = "sub-1",
-            GoogleEmailStatus = GoogleEmailStatus.Rejected,
-            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        };
-
-        var info = UserInfoFactory.Create(
-            MinimalUser(userId), [providerRow], [], [], profile: null, [], [], [], []);
-
-        info.GoogleEmailStatus.Should().Be(GoogleEmailStatus.Rejected);
-    }
-
-    [HumansFact]
-    public void GoogleEmailStatus_prefers_IsGoogle_row_over_provider_fallback()
-    {
-        var userId = Guid.NewGuid();
-        var now = Instant.FromUtc(2026, 1, 1, 0, 0);
-        var isGoogleRow = new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Email = "canonical@example.com",
-            IsVerified = true,
-            IsGoogle = true,
-            Provider = "Google",
-            ProviderKey = "sub-canon",
-            GoogleEmailStatus = GoogleEmailStatus.Valid,
-            CreatedAt = now,
-            UpdatedAt = now,
-        };
-        var providerFallback = new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Email = "fallback@example.com",
-            IsVerified = true,
-            IsGoogle = false,
-            Provider = "Google",
-            ProviderKey = "sub-fb",
-            GoogleEmailStatus = GoogleEmailStatus.Rejected,
-            CreatedAt = now,
-            UpdatedAt = now,
-        };
-
-        var info = UserInfoFactory.Create(
-            MinimalUser(userId), [isGoogleRow, providerFallback], [], [], profile: null, [], [], [], []);
-
-        info.GoogleEmailStatus.Should().Be(GoogleEmailStatus.Valid);
-    }
-
-    [HumansFact]
-    public void MarketingOptedOut_is_null_when_no_marketing_pref()
-    {
-        var info = UserInfoFactory.Create(
-            MinimalUser(),
-            [],
-            [],
-            [],
-            profile: null,
-            [],
-            [],
-            [],
-            []);
-
-        info.MarketingOptedOut.Should().BeNull();
-    }
-
-    [HumansFact]
-    public void MarketingOptedOut_reflects_pref_when_present()
-    {
-        var userId = Guid.NewGuid();
-        var prefs = new[]
-        {
-            new CommunicationPreference
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Category = MessageCategory.Marketing,
-                OptedOut = true,
-                InboxEnabled = true,
-                UpdatedAt = Instant.FromUtc(2026, 4, 1, 0, 0),
-                UpdateSource = "Profile",
-            },
-        };
-
-        var info = UserInfoFactory.Create(
-            MinimalUser(userId),
-            [],
-            [],
-            [],
-            profile: null,
-            [],
-            [],
-            [],
-            prefs);
-
-        info.MarketingOptedOut.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public void HasTicket_true_when_any_participation_is_Ticketed_or_Attended()
-    {
-        var participations = new[]
-        {
-            new EventParticipation
-            {
-                Id = Guid.NewGuid(),
-                UserId = Guid.NewGuid(),
-                Year = 2026,
-                Status = ParticipationStatus.Ticketed,
-                Source = ParticipationSource.TicketSync,
-            }
-        };
-
-        var info = UserInfoFactory.Create(
-            MinimalUser(),
-            [],
-            participations,
-            [],
-            profile: null,
-            [],
-            [],
-            [],
-            []);
-
-        info.HasTicket.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public void HasTicketForYear_only_matches_the_requested_year()
-    {
-        var participations = new[]
-        {
-            new EventParticipation
-            {
-                Id = Guid.NewGuid(),
-                UserId = Guid.NewGuid(),
-                Year = 2025,
-                Status = ParticipationStatus.Attended,
-                Source = ParticipationSource.TicketSync,
-            }
-        };
-
-        var info = UserInfoFactory.Create(
-            MinimalUser(),
-            [],
-            participations,
-            [],
-            profile: null,
-            [],
-            [],
-            [],
-            []);
-
-        info.HasTicketForYear(2025).Should().BeTrue();
-        info.HasTicketForYear(2026).Should().BeFalse();
-        // Year-agnostic accessor still sees the prior-year ticket.
-        info.HasTicket.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public void HasTicket_false_when_only_NotAttending_or_no_participations()
-    {
-        var participations = new[]
-        {
-            new EventParticipation
-            {
-                Id = Guid.NewGuid(),
-                UserId = Guid.NewGuid(),
-                Year = 2026,
-                Status = ParticipationStatus.NotAttending,
-                Source = ParticipationSource.UserDeclared,
-            }
-        };
-
-        var info = UserInfoFactory.Create(
-            MinimalUser(),
-            [],
-            participations,
-            [],
-            profile: null,
-            [],
-            [],
-            [],
-            []);
-
-        info.HasTicket.Should().BeFalse();
+#pragma warning restore HUM_USER_COMMPREFS
     }
 
     // nobodies-collective/Humans#1098: User.BurnerName is the sole source. The Profile.BurnerName

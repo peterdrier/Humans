@@ -32,6 +32,7 @@
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
     <!-- The agent's user snapshot lists the caller's still-open feedback reports.
          Contracts/ is a folder on Humans.Feedback (its other consumers are all in Shell),
          so the reference is to the section project — acyclic, and the assembly boundary

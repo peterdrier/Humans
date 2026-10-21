@@ -15,10 +15,6 @@ internal sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         b.Property(x => x.MethodName)
             .HasConversion<string>()
             .HasMaxLength(50);
-        // Stored as string. The column default served the AddStorePaymentStatus migration
-        // (existing pre-async rows landed on Paid without a data backfill); EF-side it was the
-        // enum-zero sentinel trap (HasDefaultValue on the CLR default), so it was dropped after
-        // that migration ran — the entity's C# initializer covers inserts.
         b.Property(x => x.Status)
             .HasConversion<string>()
             .HasMaxLength(50);

@@ -117,8 +117,19 @@ public class User : IdentityUser<Guid>
 
     public bool IsDeletionPending => DeletionRequestedAt.HasValue;
 
+    /// <summary>
+    /// DEPRECATED: Email's per-category preferences (<c>email_communication_preferences</c>) are the
+    /// source of truth. No reader or writer remains; the column is retained until its drop PR
+    /// (debt ledger USERS-12).
+    /// </summary>
+    [Obsolete("No reader or writer; retained for the DB column until a drop migration (debt ledger USERS-12).")]
     public bool UnsubscribedFromCampaigns { get; set; }
 
+    /// <summary>
+    /// DEPRECATED: nothing reads this opt-out any more. No reader or writer remains; the column is
+    /// retained until its drop PR (debt ledger USERS-13).
+    /// </summary>
+    [Obsolete("No reader or writer; retained for the DB column until a drop migration (debt ledger USERS-13).")]
     public bool SuppressScheduleChangeEmails { get; set; }
 
     /// <summary>
@@ -129,7 +140,7 @@ public class User : IdentityUser<Guid>
     /// remains; the column is retained only so EF keeps it until a later drop migration.
     /// </summary>
     [Obsolete("Moved to UserEmail.GoogleEmailStatus (per-address) — #687. Do not read or write; retained for the DB column until a drop migration.")]
-    public GoogleEmailStatus GoogleEmailStatus { get; set; } = GoogleEmailStatus.Unknown;
+    public LegacyGoogleEmailStatus GoogleEmailStatus { get; set; } = LegacyGoogleEmailStatus.Unknown;
 
     /// <summary>Source of this user; null for self-registered.</summary>
     public ContactSource? ContactSource { get; set; }

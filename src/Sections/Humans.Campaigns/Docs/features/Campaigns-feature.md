@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Campaigns/**
-  src/Sections/Humans.Users/Services/UnsubscribeService.cs
-  src/Sections/Humans.Users/Controllers/UnsubscribeController.cs
+  src/Sections/Humans.Email/Services/UnsubscribeService.cs
+  src/Sections/Humans.Email/Controllers/UnsubscribeController.cs
   src/Sections/Humans.Tickets/Services/TicketSyncService.cs
 -->
 <!-- freshness:flag-on-change
@@ -58,20 +58,20 @@ Pages:
 
 ## Unsubscribe
 
-- Route: `/Unsubscribe/{token}` — public, no auth required
-- **New-format tokens** (signed via `CommunicationPreferences` Data Protection purpose, category-aware): redirect to the public communication-preferences page (`/Guest/CommunicationPreferences?utoken=…`) where the user toggles per-category opt-outs.
+- Route: `/Email/Unsubscribe/{token}` — public, no auth required
+- **New-format tokens** (signed via `CommunicationPreferences` Data Protection purpose, category-aware): redirect to the public communication-preferences page (`/Email/Guest/CommunicationPreferences?utoken=…`) where the user toggles per-category opt-outs.
 - **Legacy tokens** (signed via `CampaignUnsubscribe` time-limited Data Protection purpose, campaign-only): show a confirmation page and POST to confirm. Sets the `Marketing` category preference to opted-out via `ICommunicationPreferenceService.UpdatePreferenceAsync`. `User.UnsubscribedFromCampaigns` is **not** flipped — the per-category `CommunicationPreference` table is the source of truth.
-- RFC 8058 one-click POST (`/Unsubscribe/OneClick`) also routes through `UnsubscribeService.ConfirmUnsubscribeAsync`.
+- RFC 8058 one-click POST (`/Email/Unsubscribe/OneClick`) also routes through `UnsubscribeService.ConfirmUnsubscribeAsync`.
 - Campaign emails carry no unsubscribe footer link and no `List-Unsubscribe` header: `CampaignCodes` is always-on, so `OutboxEmailService` skips unsubscribe stamping for it (nobodies-collective/Humans#1032). Only opt-outable categories reach this endpoint.
 
 ## Self-Service Code Lookup
 
-Humans can view their campaign codes on their profile page. The profile page shows a "My Codes" section listing all `CampaignGrant` records for the current user, including the campaign title and the code value.
+Humans can view their campaign codes on their profile page. The profile page shows a "My Codes" card (Campaigns' `MyCodesViewComponent`, contributed to the profile user-part slot) listing the current user's grants from Active or Completed campaigns, with the campaign title, code, assigned date and redeemed state. Admins see every grant on `/Users/Admin/{id}` in the "Campaign Codes" card (`CampaignCodesViewComponent`).
 
 ## Authorization
 
 - `/Campaigns/Admin` routes: `Admin` role required (`PolicyNames.AdminOnly`), except `GET /Campaigns/Admin/{id}` (detail) and `POST /Campaigns/Admin/{id}/GenerateCodes`, which use `PolicyNames.TicketAdminOrAdmin`
-- `/Unsubscribe/{token}`: public (no authentication required)
+- `/Email/Unsubscribe/{token}`: public (no authentication required)
 - Profile code lookup: authenticated user, own profile only
 
 ## Data Relationships

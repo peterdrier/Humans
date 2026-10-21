@@ -7,7 +7,7 @@ namespace Humans.Store.Authorization;
 /// <summary>
 /// Resource-based authorization requirement for Store order operations.
 /// Used with IAuthorizationService.AuthorizeAsync(User, order, requirement)
-/// where the resource is a Order.
+/// where the resource is an <c>OrderDto</c>, <c>OrderCreateContext</c> or <c>OrderLineContext</c>.
 /// </summary>
 internal sealed class OrderOperationRequirement : IAuthorizationRequirement
 {
@@ -18,11 +18,11 @@ internal sealed class OrderOperationRequirement : IAuthorizationRequirement
     public static readonly OrderOperationRequirement EditCounterparty = new(nameof(EditCounterparty));
     /// <summary>Initiate Stripe Checkout to pay against the order. Allowed regardless of order state — payments continue after invoice issuance.</summary>
     public static readonly OrderOperationRequirement Pay = new(nameof(Pay));
-    /// <summary>Delete a zero-balance order. Admin-only — camp leads and team coordinators cannot delete their own orders.</summary>
+    /// <summary>Delete a zero-balance Open order. Store admins, plus TeamsAdmin on team orders — camp leads and team coordinators cannot delete their own orders.</summary>
     public static readonly OrderOperationRequirement Delete = new(nameof(Delete));
-    /// <summary>Issue the order's Holded factura. Admin-only, and never on a non-billable team order.</summary>
+    /// <summary>Issue the order's Holded factura. Store admins only, and never on a non-billable team order.</summary>
     public static readonly OrderOperationRequirement IssueInvoice = new(nameof(IssueInvoice));
-    /// <summary>Record a deposit return or a refund against the order. Admin-only, and never on a non-billable team order.</summary>
+    /// <summary>Record a deposit return against the order. Store admins only, and never on a non-billable team order.</summary>
     public static readonly OrderOperationRequirement RecordPayment = new(nameof(RecordPayment));
     /// <summary>Record a <c>Refund</c> payment (money sent back out). Finance admin and Admin only — narrower than <see cref="RecordPayment"/>, which Store admins hold for deposit returns.</summary>
     public static readonly OrderOperationRequirement Refund = new(nameof(Refund));

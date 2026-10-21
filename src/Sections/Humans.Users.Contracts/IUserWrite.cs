@@ -11,53 +11,7 @@ namespace Humans.Users.Contracts;
 // No marker interface — see Humans.Users.Contracts.csproj.
 public interface IUserWrite
 {
-    /// <summary>
-    /// Set participation status from ticket sync. Handles the lifecycle rules:
-    /// - Valid ticket → Ticketed (<paramref name="checkedInAt"/> ignored)
-    /// - Checked in → Attended (permanent)
-    /// - Ticket purchase overrides NotAttending
-    /// <para>
-    /// <paramref name="checkedInAt"/> is the vendor-reported gate-arrival
-    /// instant. Stored on <see cref="EventParticipation.CheckedInAt"/> when an
-    /// Attended row is created, upgraded, or has no arrival timestamp yet. Never overwritten once
-    /// non-null — matches the "Attended is permanent" invariant (issue
-    /// nobodies-collective/Humans#736).
-    /// </para>
-    /// </summary>
-    Task SetParticipationFromTicketSyncAsync(
-        Guid userId,
-        int year,
-        ParticipationStatus status,
-        Instant? checkedInAt,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Remove a TicketSync-sourced participation record when a user no longer has valid tickets.
-    /// Does not remove UserDeclared or AdminBackfill records.
-    /// Does not remove Attended records (permanent).
-    /// </summary>
-    Task RemoveTicketSyncParticipationAsync(Guid userId, int year, CancellationToken ct = default);
-
     // ---- User storage commands ----
-
-    /// <summary>
-    /// Sync-driven Google status write targeting the user's canonical verified
-    /// <see cref="UserEmail.IsGoogle"/> address — status is per-address (#687),
-    /// not on the user. Preserves the "Rejected is terminal" invariant: once the
-    /// address is flagged <see cref="GoogleEmailStatus.Rejected"/> (Google HTTP
-    /// 403 on a group/drive add), a later successful sync MUST NOT flip that same
-    /// address back to <see cref="GoogleEmailStatus.Valid"/>. The user clears it
-    /// by selecting a different Google email — a fresh row that starts
-    /// <see cref="GoogleEmailStatus.Unknown"/> — so a rejection never strands sync
-    /// after the address changes. Call this from any outbox-processor /
-    /// reconciliation writer; the invariant lives here so a future second caller
-    /// cannot silently bypass it. Returns true if a write occurred, false if
-    /// short-circuited by the rule or the target row no longer exists. When
-    /// <c>googleEmailId</c> is supplied, updates that verified row owned by the user,
-    /// even if another address has since become their selected Google email.
-    /// </summary>
-    Task<bool> TrySetGoogleEmailStatusFromSyncAsync(
-        Guid userId, GoogleEmailStatus status, CancellationToken ct = default, Guid? googleEmailId = null);
 
     /// <summary>
     /// Sets <c>User.PreferredLanguage</c>. Invalidates the UserInfo cache on
@@ -76,40 +30,12 @@ public interface IUserWrite
     // ---- Profile storage commands ----
 
     /// <summary>
-    /// Updates <c>Profile.MembershipTier</c> on the user's profile.
-    /// Returns false when no profile exists.
+    /// Records a signup rejection as the stored state (<see cref="UserState.Rejected"/>, which
+    /// outranks everything but merge and deletion and is carried forward by every later
+    /// re-classification). The reason, time and reviewer are Consent's review
+    /// (<c>IConsentWrite.RecordRejectionAsync</c>). <c>NotFound</c> without a profile.
     /// </summary>
-    Task<bool> SetMembershipTierAsync(
-        Guid userId,
-        MembershipTier tier,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Applies a consolidated onboarding/profile-state mutation to the user's
-    /// profile. Audit/logging policy remains with the caller.
-    /// </summary>
-    Task<OnboardingResult> ApplyProfileOnboardingMutationAsync(
-        Guid userId,
-        UserProfileOnboardingCommand command,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Sets or clears the profile IBAN. Returns false when no profile exists.
-    /// The caller owns validation and audit logging.
-    /// </summary>
-    Task<bool> SetProfileIbanAsync(Guid userId, string? iban, CancellationToken ct = default);
-
-    /// <summary>
-    /// Downgrades expired membership tiers and returns each user id with the
-    /// tier that was written.
-    /// </summary>
-    Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>>
-        DowngradeMembershipTierForExpiredAsync(
-            MembershipTier currentTier,
-            IReadOnlyCollection<Guid> userIdsToKeep,
-            IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
-            Instant now,
-            CancellationToken ct = default);
+    Task<OnboardingResult> SetRejectedAsync(Guid userId, CancellationToken ct = default);
 
     // ---- Consent-reminder storage command ----
 

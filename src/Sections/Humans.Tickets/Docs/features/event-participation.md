@@ -2,9 +2,7 @@
   src/Sections/Humans.Tickets/**
   src/Sections/Humans.Shifts/Services/BurnSettingsService.cs
   src/Sections/Humans.Gate/Services/GateService.cs
-  src/Sections/Humans.Users.Contracts/EventParticipation.cs
   src/Sections/Humans.Shifts/Domain/EventSettings.cs
-  src/Sections/Humans.Users/Data/Configurations/EventParticipationConfiguration.cs
   src/Sections/Humans.Shifts/Data/Configurations/EventSettingsConfiguration.cs
 -->
 <!-- freshness:flag-on-change
@@ -34,19 +32,22 @@ Track yearly event participation status for each human, enabling self-service op
 ### As an admin, I can see who still needs a ticket
 - "Who Hasn't Bought" excludes humans who declared not attending
 
+### As a human (or a ticket admin), I can see when I arrived onsite
+- My own profile shows an "Onsite since {time}" chip once I'm Attended with a gate check-in for the active event year; ticket admins, Board and Admin see it on anyone's profile; nobody else does
+
 ### As an admin, I can backfill historical data
 - CSV import of UserId,Status pairs for a given year
 - Available via Tickets > Backfill tab (admin only)
 
 ## Data Model
 
-### EventParticipation
+### EventParticipation (`tickets_event_participations`, Tickets-owned since Users decomposition commit 13)
 | Property | Type | Notes |
 |----------|------|-------|
 | Id | Guid | PK |
-| UserId | Guid | FK to User (Cascade) |
+| UserId | Guid | User id (no FK — cross-section) |
 | Year | int | Event year |
-| Status | ParticipationStatus | NotAttending, Ticketed, Attended, NoShow |
+| Status | ParticipationStatus? | NotAttending, Ticketed, Attended, NoShow; `null` = cleared (kept only where a legacy Users row backs that user and year) |
 | DeclaredAt | Instant? | When user self-declared NotAttending |
 | CheckedInAt | Instant? | Earliest gate check-in for the year; write-once (never overwritten once set) |
 | Source | ParticipationSource | UserDeclared, TicketSync, AdminBackfill |
@@ -69,6 +70,18 @@ Added `Year` (int) to EventSettings so participation records can be linked to th
 | Ticketed -> (removed) | All valid tickets voided/transferred |
 
 Attended is permanent -- cannot be reverted by any mechanism.
+
+## Legacy data and the move from Users
+
+Until Users decomposition commit 13 the records lived in Users' `event_participations`. That table is now frozen: nothing writes it, and the only reader is `EventParticipationService`, which answers a user and year with no Tickets record from the legacy row and seeds every write from it. A removal that a legacy row backs leaves a cleared record so the legacy value cannot return. The `tickets.event-participations` data migration (`/Debug/DataMigrations`) copies the legacy rows; a later PR retires the fallback and drops the table.
+
+## Account merge
+
+`EventParticipationService` (`IUserMerge`) folds the merged-away account's years into the survivor: the higher status wins (`Attended > Ticketed > NoShow > NotAttending`) and brings its source and declaration time; the first check-in time is kept. The source's records are cleared.
+
+## GDPR
+
+Export slice `EventParticipations` (Tickets). Retained on erasure, unchanged from when Users owned the table.
 
 ## Related Features
 

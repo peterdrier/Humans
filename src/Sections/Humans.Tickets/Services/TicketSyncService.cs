@@ -26,7 +26,7 @@ internal sealed class TicketSyncService(
     ITicketCacheInvalidator ticketCache,
     ITicketVendorCacheInvalidator vendorCache,
     IUserService userService,
-    IUserWrite userWrite,
+    IEventParticipationManagement participations,
     ICampaignWrite campaignService,
     ISettingsService settingsService) : ITicketSyncService, IUserMerge
 {
@@ -424,7 +424,7 @@ internal sealed class TicketSyncService(
     }
 
     /// <summary>
-    /// Derive EventParticipation records from current ticket data.
+    /// Derive event-participation records from current ticket data.
     /// For each matched user: 1+ valid tickets → Ticketed, any checked-in → Attended.
     /// If user had Ticketed from TicketSync but now has 0 valid tickets → remove record.
     /// <para>
@@ -433,7 +433,7 @@ internal sealed class TicketSyncService(
     /// check-in resource by <see cref="ITicketRepository.ApplyCheckInsAsync"/>),
     /// NOT inferred from <see cref="TicketAttendeeStatus"/> — TicketTailor keeps a
     /// scanned ticket's status "valid". The earliest scan across a user's tickets
-    /// is passed to <see cref="IUserWrite.SetParticipationFromTicketSyncAsync"/>;
+    /// is passed to <see cref="ITicketWrite.SetParticipationFromTicketSyncAsync"/>;
     /// the repo's "never overwrite non-null CheckedInAt" rule keeps the first value.
     /// Issue nobodies-collective/Humans#736.
     /// </para>
@@ -467,11 +467,11 @@ internal sealed class TicketSyncService(
                     return (Statuses: statuses, CheckedInAt: earliestScan);
                 });
 
-        // Current participation state from the in-memory UserInfo cache (zero DB).
-        // Diffing against it lets us skip the per-user upsert — and the cache-slice
-        // refresh it triggers — for the vast majority of ticket-holders whose status
+        // Current participation state for the year, read once. Diffing against it lets us
+        // skip the per-user upsert for the vast majority of ticket-holders whose status
         // hasn't changed since the last 15-minute sync.
-        var current = (await userService.GetAllParticipationsForYearAsync(year, ct))
+        var current = (await participations.GetAllParticipationsAsync(ct))
+            .Where(ep => ep.Year == year)
             .ToDictionary(ep => ep.UserId);
 
         foreach (var (userId, info) in userTickets)
@@ -490,7 +490,7 @@ internal sealed class TicketSyncService(
                     && existing.CheckedInAt is not null)
                     continue;
 
-                await userWrite.SetParticipationFromTicketSyncAsync(
+                await participations.SetParticipationFromTicketSyncAsync(
                     userId, year, ParticipationStatus.Attended, info.CheckedInAt, ct);
             }
             else if (hasValidTicket)
@@ -501,7 +501,7 @@ internal sealed class TicketSyncService(
                     or { Status: ParticipationStatus.Ticketed, Source: ParticipationSource.TicketSync })
                     continue;
 
-                await userWrite.SetParticipationFromTicketSyncAsync(
+                await participations.SetParticipationFromTicketSyncAsync(
                     userId, year, ParticipationStatus.Ticketed, checkedInAt: null, ct);
             }
         }
@@ -517,7 +517,7 @@ internal sealed class TicketSyncService(
                 !info.Statuses.Any(s =>
                     s == TicketAttendeeStatus.Valid || s == TicketAttendeeStatus.CheckedIn))
             {
-                await userWrite.RemoveTicketSyncParticipationAsync(ep.UserId, year, ct);
+                await participations.RemoveTicketSyncParticipationAsync(ep.UserId, year, ct);
             }
         }
     }

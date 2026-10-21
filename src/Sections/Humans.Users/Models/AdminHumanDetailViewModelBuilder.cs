@@ -1,6 +1,4 @@
-using Humans.Auth.Contracts;
 using Humans.Base.Helpers;
-using Humans.Campaigns.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
@@ -12,22 +10,14 @@ internal static class AdminHumanDetailViewModelBuilder
     public static AdminHumanDetailViewModel Build(
         UserInfo info,
         IReadOnlyList<UserApplicationSnapshot> applications,
+        MembershipTier membershipTier,
         IReadOnlyList<UserEmailRowSnapshot> userEmails,
         int consentCount,
-        IReadOnlyList<RoleAssignmentSummarySnapshot> roleAssignments,
-        IReadOnlyDictionary<Guid, string> roleCreatorNamesByUserId,
-        IReadOnlyList<CampaignGrantSummary> campaignGrants,
-        int outboxCount,
-        Instant now,
-        string? rejectedByName,
-        string? revealedIban)
+        Instant now)
     {
         ArgumentNullException.ThrowIfNull(info);
         ArgumentNullException.ThrowIfNull(applications);
         ArgumentNullException.ThrowIfNull(userEmails);
-        ArgumentNullException.ThrowIfNull(roleAssignments);
-        ArgumentNullException.ThrowIfNull(roleCreatorNamesByUserId);
-        ArgumentNullException.ThrowIfNull(campaignGrants);
 
         var profile = info.Profile;
 
@@ -46,15 +36,9 @@ internal static class AdminHumanDetailViewModelBuilder
             State = info.State,
             AdminNotes = profile?.AdminNotes,
             PreferredLanguage = info.PreferredLanguage,
-            MembershipTier = profile?.MembershipTier ?? MembershipTier.Volunteer,
-            ConsentCheckStatus = profile?.ConsentCheckStatus,
-            RejectionReason = profile?.RejectionReason,
-            RejectedAt = profile?.RejectedAt?.ToDateTimeUtc(),
-            RejectedByName = rejectedByName,
+            MembershipTier = membershipTier,
             ApplicationCount = applications.Count,
             ConsentCount = consentCount,
-            CampaignGrants = campaignGrants,
-            OutboxCount = outboxCount,
             Applications = applications
                 .OrderByDescending(a => a.SubmittedAt)
                 .Take(5)
@@ -64,18 +48,6 @@ internal static class AdminHumanDetailViewModelBuilder
                     Status = a.Status,
                     SubmittedAt = a.SubmittedAt.ToDateTimeUtc()
                 }).ToList(),
-            RoleAssignments = roleAssignments.Select(ra => new AdminRoleAssignmentViewModel
-            {
-                Id = ra.Id,
-                UserId = ra.UserId,
-                RoleName = ra.RoleName,
-                ValidFrom = ra.ValidFrom.ToDateTimeUtc(),
-                ValidTo = ra.ValidTo?.ToDateTimeUtc(),
-                Notes = ra.Notes,
-                IsActive = ra.IsActive(now),
-                CreatedByName = GetRoleCreatorName(roleCreatorNamesByUserId, ra),
-                CreatedAt = ra.CreatedAt.ToDateTimeUtc()
-            }).ToList(),
             Languages = (profile?.Languages ?? []).Select(pl => new ProfileLanguageDisplayViewModel
             {
                 LanguageCode = pl.LanguageCode,
@@ -83,29 +55,15 @@ internal static class AdminHumanDetailViewModelBuilder
                 Proficiency = pl.Proficiency
             }).ToList(),
             OAuthEmail = info.Email,
-            GoogleServiceEmail = userEmails
-                .Where(e => e.IsVerified && e.IsGoogle)
-                .Select(e => e.Email)
-                .FirstOrDefault()
-                ?? info.Email,
-            GoogleEmailStatus = info.GoogleEmailStatus,
             UserEmails = userEmails
                 .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
                 .Select(e => new AdminUserEmailViewModel
                 {
                     Email = e.Email,
-                    IsGoogle = e.IsGoogle,
                     IsVerified = e.IsVerified,
                     IsPrimary = e.IsPrimary,
                     Visibility = e.Visibility,
                 }).ToList(),
-            MaskedIban = string.IsNullOrEmpty(profile?.Iban)
-                ? null
-                : IbanFormatter.Mask(profile.Iban),
-            RevealedIban = revealedIban,
         };
     }
-
-    private static string? GetRoleCreatorName(IReadOnlyDictionary<Guid, string> namesByUserId, RoleAssignmentSummarySnapshot roleAssignment) =>
-        namesByUserId.TryGetValue(roleAssignment.CreatedByUserId, out var name) ? name : null;
 }

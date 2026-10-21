@@ -187,10 +187,10 @@ See [Profiles — Account Deletion](../../../src/Sections/Humans.Users/Docs/feat
 **Process**:
 ```
 1. SyncVolunteersTeamAsync()
-   - Eligible: HasRequiredNameFields (legal name entered), !IsSuspended, RejectedAt is null, with all required Volunteers-team consents — i.e. NAME + CONSENTS
+   - Eligible: HasRequiredNameFields (legal name entered), !IsSuspended, not rejected (Consent's review), with all required Volunteers-team consents — i.e. NAME + CONSENTS
    - Add: New eligible users
    - Remove: Users who lost eligibility (suspended, rejected, or consent lapsed)
-   - (Profile.ConsentCheckStatus and Profile.IsApproved are CC audit annotations; not consulted)
+   - (The Consent review's Status and IsApproved are CC audit annotations; not consulted)
 
 2. SyncCoordinatorsTeamAsync()
    - Eligible: Users who are Coordinator of any user-created team + Coordinators-team consents
@@ -210,7 +210,7 @@ See [Profiles — Account Deletion](../../../src/Sections/Humans.Users/Docs/feat
 **System Teams**:
 | Team | Eligibility Criteria |
 |------|---------------------|
-| Volunteers | HasRequiredNameFields AND !IsSuspended AND RejectedAt is null AND HasAllRequiredConsentsForTeam(Volunteers) — name + consents (ConsentCheckStatus/IsApproved not consulted) |
+| Volunteers | HasRequiredNameFields AND !IsSuspended AND !review.IsRejected AND HasAllRequiredConsentsForTeam(Volunteers) — name + consents (ConsentCheckStatus/IsApproved not consulted) |
 | Coordinators | TeamMember.Role = Coordinator (non-system teams) AND HasAllRequiredConsentsForTeam(Coordinators) |
 | Board | RoleAssignment.RoleName = "Board" AND active AND HasAllRequiredConsentsForTeam(Board) |
 

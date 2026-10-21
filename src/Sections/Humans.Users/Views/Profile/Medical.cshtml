@@ -1,0 +1,46 @@
+@model Humans.Users.Models.MedicalViewModel
+@{
+    ViewData["Title"] = Localizer["Profile_DietaryMedical_MedicalConditions_Title"].Value;
+}
+
+@* GDPR Art. 9 data: this page only ever shows the signed-in member their own medical conditions.
+   Anyone else sees them only through MedicalDataViewer-gated surfaces. *@
+<div class="row">
+    <div class="col-12" style="max-width: 720px; margin: 0 auto;">
+        <nav aria-label="@Localizer["Users_BreadcrumbNavigation"]">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a></li>
+                <li class="breadcrumb-item active" aria-current="page">@Localizer["Profile_DietaryMedical_MedicalConditions_Title"]</li>
+            </ol>
+        </nav>
+
+        <h1>@Localizer["Profile_DietaryMedical_MedicalConditions_Title"]</h1>
+
+        <form asp-action="Medical" method="post" novalidate>
+            @Html.AntiForgeryToken()
+
+            @if (ViewData.ModelState.ErrorCount > 0)
+            {
+                <div class="alert alert-danger mb-3" id="validationSummary">
+                    <div asp-validation-summary="All"></div>
+                </div>
+            }
+
+            <div class="mb-4">
+                <p class="text-muted small">@Localizer["Profile_DietaryMedical_MedicalConditions_Hint"]</p>
+                <textarea asp-for="MedicalConditions" class="form-control" rows="4" maxlength="4000"></textarea>
+                <span asp-validation-for="MedicalConditions" class="text-danger"></span>
+                <div class="form-text">@Localizer["Profile_DietaryMedical_MedicalConditions_VisibilityNote"]</div>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <a asp-action="Index" class="btn btn-outline-secondary">@SharedLocalizer["Common_Cancel"]</a>
+                <button type="submit" class="btn btn-primary">@SharedLocalizer["Common_Save"]</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

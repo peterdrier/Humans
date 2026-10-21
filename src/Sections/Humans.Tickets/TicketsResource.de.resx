@@ -90,4 +90,11 @@
   <data name="Tickets_TicketTransfer_Email_Cancelled_Subject" xml:space="preserve"><value>Ticketübertragung abgebrochen</value></data>
   <data name="Tickets_TicketTransfer_Email_Cancelled_Body" xml:space="preserve"><value>&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Die angefragte Übertragung des Tickets &lt;strong&gt;{1}&lt;/strong&gt; auf &lt;strong&gt;{2}&lt;/strong&gt; wurde nicht abgeschlossen.&lt;/p&gt;{3}&lt;p&gt;Wenn du Fragen hast, antworte auf diese E-Mail, und unser Ticketteam hilft dir weiter.&lt;/p&gt;</value></data>
   <data name="Tickets_TicketTransfer_Email_Cancelled_Reason" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Grund:&lt;/strong&gt; {0}&lt;/p&gt;</value></data>
+  <data name="Tickets_Onsite_Since" xml:space="preserve"><value>Vor Ort seit {0}</value></data>
+  <data name="Tickets_Onsite_Title" xml:space="preserve"><value>Am Tor eingecheckt</value></data>
+  <data name="Tickets_NotAttending_Declared" xml:space="preserve"><value>Du wurdest für dieses Jahr als nicht teilnehmend markiert.</value></data>
+  <data name="Tickets_NotAttending_Failed" xml:space="preserve"><value>Etwas ist schiefgelaufen. Bitte versuche es erneut.</value></data>
+  <data name="Tickets_NotAttending_NoActiveEvent" xml:space="preserve"><value>Es ist keine aktive Veranstaltung konfiguriert.</value></data>
+  <data name="Tickets_NotAttending_Undone" xml:space="preserve"><value>Deine Erklärung wurde entfernt.</value></data>
+  <data name="Tickets_NotAttending_UndoFailed" xml:space="preserve"><value>Die Erklärung konnte nicht rückgängig gemacht werden; möglicherweise hat die Ticketsynchronisierung deinen Status aktualisiert.</value></data>
 </root>

@@ -7,7 +7,7 @@ In **public-facing** text (views non-admin members see, localization strings, em
 
 It applies across all locales (the word "humans" is kept in English even in es/de/fr/it translations). Internal code (entity names, variable names) is unaffected.
 
-**"Users" is allowed on admin/diagnostic screens** when it specifically refers to the `users` DB table or `IUserService` cache — e.g., admin dashboard stat tiles ("Total users", "Active (has profile)"), debug surfaces (`/Users/Admin/Debug`), nav labels for admin-only tools. Admins benefit from the precise distinction between "row in the users table" (~3 k, includes imported contacts) and "human with a complete profile" (~979). Don't extend this carve-out to anything a non-admin sees.
+**"Users" is allowed on admin/diagnostic screens** when it specifically refers to the `users` DB table or `IUserService` cache — e.g., admin dashboard stat tiles ("Total users", "Active (has profile)"), debug surfaces (`/Debug/Users`), nav labels for admin-only tools. Admins benefit from the precise distinction between "row in the users table" (~3 k, includes imported contacts) and "human with a complete profile" (~979). Don't extend this carve-out to anything a non-admin sees.
 
 **Why:** Branding decision by Nobodies Collective. The word "humans" carries the org's identity; "members" and "volunteers" sound generic and miss the framing. "Users" is technically accurate vocabulary that's useful when an admin needs to talk about the underlying account/table state.
 

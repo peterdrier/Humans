@@ -743,4 +743,8 @@ internal sealed class EventService(
         await repo.DeleteFavouritesAndPreferenceForUserAsync(userId, ct);
         await repo.ClearSubmitterHostForUserAsync(userId, ct);
     }
+
+    /// <summary>Reached through the decorator's <c>IUserMerge</c>; stays idempotent.</summary>
+    public Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>
+        repo.ReassignToUserAsync(mergedFromUserId, mergedToUserId, now, ct);
 }

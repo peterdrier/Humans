@@ -115,6 +115,7 @@ public class TeamServiceSlugRaceTests
             Substitute.For<IEarlyEntryInvalidator>(),
             new ServiceLocatorBuilder()
                 .With<IGoogleSyncOutboxService>()
+                .With<IGoogleIntegrationService>()
                 .Build(),
             clock,
             NullLogger<TeamService>.Instance);

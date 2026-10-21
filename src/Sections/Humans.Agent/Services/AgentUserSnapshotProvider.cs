@@ -2,6 +2,7 @@ using Humans.Auth.Contracts;
 using Humans.Base.Extensions;
 using Humans.Consent.Contracts;
 using Humans.Feedback.Contracts;
+using Humans.Governance.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
@@ -17,6 +18,7 @@ internal sealed class AgentUserSnapshotProvider(
     IUserService users,
     IRoleAssignmentService roles,
     ITeamService teams,
+    IGovernanceService governance,
     IConsentService consents,
     IFeedbackService feedback,
     ITicketService tickets,
@@ -42,6 +44,8 @@ internal sealed class AgentUserSnapshotProvider(
         var ticketHoldings = await tickets.GetUserTicketHoldingsAsync(userId, cancellationToken);
         var openTickets = ticketHoldings.OpenTicketOrderIds;
         var upcomingShifts = await LoadUpcomingShiftsAsync(userId, cancellationToken);
+        var tier = await governance.GetMembershipTierAsync(userId, cancellationToken);
+        var review = await consents.GetConsentReviewAsync(userId, cancellationToken);
 
         var roleAssignments = activeRoles
             .Select(r => (r.RoleName, r.ValidTo?.ToIso8601() ?? "—"))
@@ -51,8 +55,8 @@ internal sealed class AgentUserSnapshotProvider(
             UserId: userId,
             DisplayName: user?.BurnerName ?? string.Empty,
             PreferredLocale: user?.PreferredLanguage ?? "es",
-            Tier: profile?.MembershipTier.ToString() ?? "Volunteer",
-            IsApproved: profile?.IsApproved ?? false,
+            Tier: tier.ToString(),
+            IsApproved: profile is not null && review.IsApproved,
             RoleAssignments: roleAssignments,
             Teams: teamMemberships,
             PendingConsentDocs: pendingDocs,

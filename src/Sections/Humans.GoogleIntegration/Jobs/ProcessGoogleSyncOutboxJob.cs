@@ -7,7 +7,7 @@ namespace Humans.GoogleIntegration.Jobs;
 /// <summary>
 /// Runs the Google sync outbox drain every 10 minutes via Hangfire. The queue semantics —
 /// the batch pick-up, the per-event dispatch, the permanent-vs-retry classification and the
-/// user GoogleEmailStatus mirror — live inside the GoogleIntegration section behind
+/// Google identity verdicts — live inside the GoogleIntegration section behind
 /// <see cref="IGoogleSyncOutboxProcessor"/>; this job is the scheduler shim around it.
 /// </summary>
 /// <remarks>

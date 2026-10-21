@@ -28,6 +28,7 @@ public class MembershipCalculatorTests
     private readonly Dictionary<Guid, SeedTeamRow> _teamsById = new();
     private readonly Dictionary<Guid, List<RequiredDocumentVersionSnapshot>> _requiredVersionsByTeam = new();
     private readonly Dictionary<Guid, HashSet<Guid>> _consentedVersionsByUser = new();
+    private readonly Dictionary<Guid, ConsentReviewInfo> _reviews = [];
 
     public MembershipCalculatorTests()
     {
@@ -105,6 +106,10 @@ public class MembershipCalculatorTests
                 return Task.FromResult<IReadOnlySet<Guid>>(set);
             });
 
+        _consentService.GetConsentReviewAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ci => _reviews.GetValueOrDefault(ci.Arg<Guid>()) ?? ConsentReviewInfo.None(ci.Arg<Guid>()));
+        _consentService.GetConsentReviewsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => (IReadOnlyDictionary<Guid, ConsentReviewInfo>)new Dictionary<Guid, ConsentReviewInfo>(_reviews));
         _consentService.GetConsentMapForUsersAsync(
             Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
@@ -796,8 +801,12 @@ public class MembershipCalculatorTests
             burnerName: "Tester",
             firstName: "Test",
             lastName: "User",
-            isApproved: isApproved,
             createdAt: _clock.GetCurrentInstant());
+        _reviews[userId] = ConsentReviewInfo.None(userId) with
+        {
+            Status = isApproved ? ConsentCheckStatus.Cleared : null,
+            IsApproved = isApproved,
+        };
         _statesByUserId[userId] = isSuspended ? UserState.Suspended : UserState.Active;
     }
 

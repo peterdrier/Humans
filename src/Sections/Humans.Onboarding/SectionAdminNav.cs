@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
@@ -21,10 +22,12 @@ internal static class PillCounts
 {
     public static async ValueTask<int?> ReviewQueue(IServiceProvider sp)
     {
-        // Pending-consent-review count lives on Users' UserInfo snapshot
-        // (NeedsConsentReview) — read directly via the section's public read surface.
+        // Pending-consent-review count: Users' UserInfo snapshot plus Consent's review map
+        // (ConsentReviewPredicates.NeedsConsentReview), read through their public surfaces.
         var users = sp.GetRequiredService<IUserService>();
-        var count = (await users.GetAllUserInfosAsync()).Count(u => u.NeedsConsentReview);
+        var reviews = await sp.GetRequiredService<IConsentService>().GetConsentReviewsAsync();
+        var count = (await users.GetAllUserInfosAsync()).Count(u =>
+            u.NeedsConsentReview(reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id)));
         return count > 0 ? count : null;
     }
 }

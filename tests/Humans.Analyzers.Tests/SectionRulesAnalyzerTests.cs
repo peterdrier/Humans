@@ -179,6 +179,48 @@ public class SectionRulesAnalyzerTests
     }
 
     [HumansFact]
+    public async Task Fires_on_public_Management_interface_under_Contracts()
+    {
+        var source = SectionEntryPoint + """
+
+            namespace Humans.Test.Contracts
+            {
+                public interface ITestManagement { }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new SectionRulesAnalyzer(),
+            "Humans.Test",
+            source,
+            ReferencedStubs);
+
+        diagnostics.Should().ContainSingle(d => IsHum0034(d));
+    }
+
+    [HumansFact]
+    public async Task Fires_on_public_Management_interface_in_Contracts_leaf()
+    {
+        const string source = """
+            namespace Humans.Test.Contracts
+            {
+                public interface ITestWrite { }
+                public interface ITestManagement { }
+                internal interface IOtherManagement { }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new SectionRulesAnalyzer(),
+            "Humans.Test.Contracts",
+            source,
+            ReferencedStubs);
+
+        diagnostics.Where(IsHum0034).Should().ContainSingle()
+            .Which.GetMessage().Should().Contain("ITestManagement");
+    }
+
+    [HumansFact]
     public async Task Does_not_fire_on_IRecurringJob_implementor_under_Jobs()
     {
         var source = SectionEntryPoint + """

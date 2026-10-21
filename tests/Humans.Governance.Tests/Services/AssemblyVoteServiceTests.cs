@@ -1,3 +1,4 @@
+using Humans.Governance.Contracts;
 using Humans.Base.Extensions;
 using AwesomeAssertions;
 using System.Security.Claims;

@@ -7,8 +7,8 @@ namespace Humans.Governance.Services;
 
 /// <summary>
 /// Full Governance tier-application service surface. Other sections depend on
-/// <see cref="IGovernanceService"/> for reads and <see cref="IGovernanceWrite"/> for the submit
-/// path; this adds the renewal-reminder members and admin reads used inside the section.
+/// <see cref="IGovernanceService"/> for reads and <see cref="IGovernanceWrite"/> for the tier
+/// term expiry; this adds the renewal-reminder members and admin reads used inside the section.
 /// </summary>
 internal interface IGovernanceManagement : IGovernanceService, IGovernanceWrite, IApplicationService
 {

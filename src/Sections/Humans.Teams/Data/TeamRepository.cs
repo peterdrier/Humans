@@ -47,17 +47,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         return await db.Teams.FindAsync([teamId], ct);
     }
 
-    public async Task<Team?> GetBySlugWithRelationsAsync(string normalizedSlug, CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-        return await db.Teams
-            .AsNoTracking()
-            .Include(t => t.Members.Where(m => m.LeftAt == null))
-            .Include(t => t.ParentTeam)
-            .Include(t => t.ChildTeams)
-            .FirstOrDefaultAsync(t => t.Slug == normalizedSlug || t.CustomSlug == normalizedSlug, ct);
-    }
-
     public async Task<bool> SlugExistsAsync(string slug, Guid? excludingTeamId, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
@@ -533,13 +522,11 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         Guid teamId, string lowerName, Guid? excludingId, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
-        var q = db.Set<TeamRoleDefinition>()
-#pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
-            .Where(d => d.TeamId == teamId && d.Name.ToLower() == lowerName);
-#pragma warning restore MA0011
+        var q = db.Set<TeamRoleDefinition>().Where(d => d.TeamId == teamId);
         if (excludingId.HasValue)
             q = q.Where(d => d.Id != excludingId.Value);
-        return await q.AnyAsync(ct);
+        var names = await q.Select(d => d.Name).ToListAsync(ct);
+        return names.Exists(n => string.Equals(n, lowerName, StringComparison.OrdinalIgnoreCase));
     }
 
     public async Task<bool> OtherRoleHasIsManagementAsync(
@@ -646,7 +633,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
     }
 
     public async Task<IReadOnlyList<TeamRoleAssignment>> MarkMemberLeftAsync(
-        Guid teamMemberId, Instant leftAt, CancellationToken ct = default)
+        Guid teamMemberId, Instant leftAt, Guid? mergeIntoMemberId = null, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         var member = await db.TeamMembers.FirstOrDefaultAsync(tm => tm.Id == teamMemberId, ct)
@@ -658,8 +645,29 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             .Where(a => a.TeamMemberId == teamMemberId)
             .ToListAsync(ct);
 
-        if (roleAssignments.Count > 0)
+        if (mergeIntoMemberId is { } targetId)
+        {
+            var target = await db.TeamMembers.FirstOrDefaultAsync(
+                m => m.Id == targetId && m.Id != member.Id && m.TeamId == member.TeamId && m.LeftAt == null, ct)
+                ?? throw new InvalidOperationException("Active survivor membership not found on the same team");
+            var targetDefinitions = (await db.Set<TeamRoleAssignment>()
+                    .Where(a => a.TeamMemberId == targetId)
+                    .Select(a => a.TeamRoleDefinitionId).ToListAsync(ct))
+                .ToHashSet();
+            foreach (var assignment in roleAssignments)
+            {
+                if (targetDefinitions.Contains(assignment.TeamRoleDefinitionId))
+                    db.Set<TeamRoleAssignment>().Remove(assignment);
+                else
+                    db.Entry(assignment).Property(nameof(TeamRoleAssignment.TeamMemberId)).CurrentValue = targetId;
+            }
+            if (member.Role == TeamMemberRole.Coordinator)
+                target.Role = TeamMemberRole.Coordinator;
+        }
+        else if (roleAssignments.Count > 0)
+        {
             db.Set<TeamRoleAssignment>().RemoveRange(roleAssignments);
+        }
 
         member.LeftAt = leftAt;
 

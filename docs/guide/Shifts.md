@@ -16,7 +16,7 @@
   src/Sections/Humans.Shifts/Domain/ShiftSignup.cs
   src/Sections/Humans.Shifts/Domain/ShiftTag.cs
   src/Sections/Humans.Shifts/Domain/EventSettings.cs
-  src/Sections/Humans.Users.Contracts/EventParticipation.cs
+  src/Sections/Humans.Tickets.Contracts/EventParticipationInfo.cs
   src/Sections/Humans.Shifts/Domain/VolunteerEventProfile.cs
   src/Sections/Humans.Shifts/Domain/VolunteerTagPreference.cs
   src/Sections/Humans.Shifts/Domain/GeneralAvailability.cs
@@ -44,7 +44,7 @@ The section also captures the data that makes scheduling work: your shift prefer
 |---|---|---|
 | Browse shifts | `/Shifts` | Find and sign up for shifts across all departments |
 | My shifts | `/Shifts/Mine` | See your upcoming, pending, and past signups; bail if needed |
-| Shift preferences wizard | `/Profile/Me/ShiftInfo` | Tell coordinators about your skills, work style, and languages |
+| Shift preferences wizard | `/Shifts/ShiftInfo` | Tell coordinators about your skills, work style, and languages |
 | Team shift admin | `/Teams/{slug}/Shifts` | Coordinators: manage rotas and shifts for a department |
 | Event settings | `/Settings#event` (calendar) and `/Settings#shifts` (browsing toggle, volunteer cap) | Admin: configure event dates, timezone, early-entry capacity, and shift-specific knobs |
 
@@ -52,7 +52,7 @@ Your dashboard also surfaces shift info — upcoming signups, or a guided discov
 
 ## As a Volunteer
 
-**Set your preferences first.** At `/Profile/Me/ShiftInfo`, walk through the three-step wizard: skills (Bartending, Cooking, Sound, First Aid, Driving, etc.), work style (Early Bird / Night Owl / All Day / No Preference, plus toggles like Sober Shift, Work In Shade, No Heights), and languages. Change any of it later. Coordinators use this to match you with shifts that fit.
+**Set your preferences first.** At `/Shifts/ShiftInfo`, walk through the three-step wizard: skills (Bartending, Cooking, Sound, First Aid, Driving, etc.), work style (Early Bird / Night Owl / All Day / No Preference, plus toggles like Sober Shift, Work In Shade, No Heights), and languages. Change any of it later. Coordinators use this to match you with shifts that fit.
 
 **Browse shifts at `/Shifts`.** Filter by department, date range, period (Set-up / Event / Strike), or a specific day. Tag filters live above the list — click a tag like "Heavy lifting" or "Meeting new people" to narrow the view. Open the preferences panel to save tag preferences so matching shifts are highlighted with a star. Consecutive all-day Set-up and Strike shifts in the same rota are compressed into date ranges; click to expand individual days.
 

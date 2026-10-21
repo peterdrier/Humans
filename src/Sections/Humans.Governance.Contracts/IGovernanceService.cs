@@ -1,5 +1,4 @@
 using Humans.Base.Interfaces;
-using Humans.Users.Contracts;
 using NodaTime;
 
 namespace Humans.Governance.Contracts;
@@ -57,16 +56,16 @@ public interface IGovernanceService : IApplicationService
         Guid userId, MembershipTier tier, LocalDate today, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the per-user "other active tier" map: for each user with an
-    /// Approved application for a non-<paramref name="excludeTier"/>
-    /// non-Volunteer tier that is still active on <paramref name="today"/>,
-    /// returns the tier. Each user maps to a single entry (the first Approved
-    /// row found); callers use this to decide whether a tier-downgrade
-    /// should land at Volunteer or at the alternate tier. Used by
-    /// <c>SystemTeamSyncJob.SyncTierTeamAsync</c>.
+    /// The member's current membership tier (<c>governance_membership_tiers</c>; Volunteer when
+    /// they hold none). Follows an account merge to the surviving account.
     /// </summary>
-    Task<IReadOnlyDictionary<Guid, MembershipTier>> GetOtherActiveTierAssignmentsAsync(
-        MembershipTier excludeTier, LocalDate today, CancellationToken ct = default);
+    Task<MembershipTier> GetMembershipTierAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Every member whose tier is not Volunteer, keyed by user id. Callers default an absent id to
+    /// <see cref="MembershipTier.Volunteer"/>, which is nearly everyone.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, MembershipTier>> GetMembershipTiersAsync(CancellationToken ct = default);
 }
 
 /// <summary>

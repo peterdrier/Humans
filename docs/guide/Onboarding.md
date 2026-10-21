@@ -46,7 +46,7 @@ If you are brand new, start with [GettingStarted.md](GettingStarted.md).
 - `/Welcome` — the explainer for people who are not signed in yet.
 - `/` — Home dashboard with your "Things to do" checklist.
 - `/Profile/Me/Edit` — profile setup (one-shot during onboarding, then a regular edit page).
-- `/Profile/Me/ShiftInfo` — skills, work-style preferences, and languages used to staff shifts.
+- `/Shifts/ShiftInfo` — skills, work-style preferences, and languages used to staff shifts.
 - `/Consent` — the legal documents to read and sign.
 - `/Account/Login` — Google sign-in and the "Send me a login link" magic-link option.
 - `/Guest` — a dashboard for accounts that never get a profile. The name gate turns those accounts away today, so in practice only a named member sees it.
@@ -90,7 +90,7 @@ The guided flow only asks for the three names. The full profile — pronouns, lo
 birthday, contact fields — lives at `/Profile/Me/Edit` and you can fill it in whenever you
 like. It asks for your pronouns, location, bio, birthday, and any contact fields you want to share. An emergency contact is optional but recommended.
 
-A separate step (`/Profile/Me/ShiftInfo`) walks you through your skills, work-style preferences, and languages. Coordinators search by skill to find the right person for a role, so a thin profile is harder to place — fill these in honestly and fully even if you're not sure what you'll end up doing.
+A separate step (`/Shifts/ShiftInfo`) walks you through your skills, work-style preferences, and languages. Coordinators search by skill to find the right person for a role, so a thin profile is harder to place — fill these in honestly and fully even if you're not sure what you'll end up doing.
 
 During this one-shot setup you also see a tier selector. Leave it on **Volunteer** unless you want to apply for Colaborador or Asociado — picking one reveals a short inline application form submitted alongside your profile. After initial onboarding, the profile edit page shows profile fields only; the tier selector does not reappear.
 

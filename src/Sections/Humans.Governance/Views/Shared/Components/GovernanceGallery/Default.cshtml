@@ -1,0 +1,41 @@
+@using Microsoft.AspNetCore.Html
+@using Humans.Governance.ViewComponents
+@model Guid
+
+@* The widget-gallery card this section owns, rendered against the signed-in admin (UsersGallery's
+   and ShiftsGallery's shape). The wg-* CSS classes are the gallery page's; this renders inside it. *@
+
+@functions {
+    private static IHtmlContent ParamsBlock(params (string Name, string Description)[] entries)
+    {
+        var html = new System.Text.StringBuilder();
+        html.Append("<dl class=\"wg-params\">");
+        foreach (var (name, desc) in entries)
+        {
+            html.Append($"<dt>{System.Net.WebUtility.HtmlEncode(name)}</dt><dd>{desc}</dd>");
+        }
+        html.Append("</dl>");
+        return new HtmlString(html.ToString());
+    }
+}
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">&lt;vc:membership-tier-badge&gt;</span>
+            <span class="wg-card-kind kind-vc">ViewComponent</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Governance/ViewComponents/MembershipTierBadgeViewComponent.cs</span>
+    </div>
+    <div class="wg-card-note">
+        The member's Colaborador/Asociado tier badge beside their name on the dashboard. Renders
+        nothing for a plain Volunteer, which is nearly everyone — so it's empty here unless your
+        account holds a tier.
+    </div>
+    @ParamsBlock(
+        ("userId", "<code>Guid</code> — required")
+    )
+    <div class="wg-card-example">
+        @await Component.InvokeAsync(typeof(MembershipTierBadgeViewComponent), new { userId = Model })
+    </div>
+</div>

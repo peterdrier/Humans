@@ -6,6 +6,7 @@
 @using Humans.Base.Extensions
 @using Humans.Cantina
 @using Humans.Cantina.Controllers
+@using Humans.Cantina.Domain
 @using Humans.Cantina.Models
 @using Humans.Cantina.Services.Dtos
 @using Humans.Base.Constants
@@ -16,6 +17,7 @@
 @using Microsoft.Extensions.Localization
 @using NodaTime
 @inject IStringLocalizer<CantinaResource> Localizer
+@inject IStringLocalizer<SharedResource> SharedLocalizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @* Nothing in these views is a <vc:…>, but a section can only addTagHelper against
    Humans.Base — a Shell-resident component renders as inert literal markup (step 6). *@

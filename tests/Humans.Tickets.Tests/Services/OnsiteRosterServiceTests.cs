@@ -6,13 +6,13 @@ using Humans.Tickets.Services;
 using Humans.Base.Enums;
 using NodaTime;
 using NSubstitute;
-using Humans.Users.Contracts;
+using Humans.Tickets.Contracts;
 
 namespace Humans.Tickets.Tests.Services;
 
 public class OnsiteRosterServiceTests
 {
-    private readonly IUserService _users = Substitute.For<IUserService>();
+    private readonly IEventParticipationManagement _users = Substitute.For<IEventParticipationManagement>();
     private readonly ICampService _camps = Substitute.For<ICampService>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
@@ -20,20 +20,23 @@ public class OnsiteRosterServiceTests
     private OnsiteRosterService NewService() =>
         new(_users, _camps, _teams, _roles);
 
+    private static EventParticipationInfo Onsite(Guid userId, Instant? checkedInAt) =>
+        new(userId, 2026, ParticipationStatus.Attended, ParticipationSource.TicketSync, null, checkedInAt);
+
     [HumansFact]
     public async Task GetRosterAsync_YearZero_ReturnsEmpty()
     {
         var service = NewService();
         var result = await service.GetRosterAsync(0, null, null, null, Xunit.TestContext.Current.CancellationToken);
         result.Rows.Should().BeEmpty();
-        await _users.DidNotReceive().GetOnsiteUsersAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await _users.DidNotReceive().GetAllParticipationsAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
     public async Task GetRosterAsync_EmptyOnsite_ReturnsEmpty()
     {
-        _users.GetOnsiteUsersAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new List<OnsiteUserRow>());
+        _users.GetAllParticipationsAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<EventParticipationInfo>());
 
         var service = NewService();
         var result = await service.GetRosterAsync(2026, null, null, null, Xunit.TestContext.Current.CancellationToken);
@@ -49,11 +52,11 @@ public class OnsiteRosterServiceTests
         var bobId = Guid.NewGuid();
         var ts = Instant.FromUtc(2026, 7, 8, 12, 0);
 
-        _users.GetOnsiteUsersAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new List<OnsiteUserRow>
+        _users.GetAllParticipationsAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<EventParticipationInfo>
             {
-                new(aliceId, "Alice", ts),
-                new(bobId, "Bob", ts),
+                Onsite(aliceId, ts),
+                Onsite(bobId, ts),
             });
 
         _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
@@ -80,11 +83,11 @@ public class OnsiteRosterServiceTests
         var bobId = Guid.NewGuid();
         var ts = Instant.FromUtc(2026, 7, 8, 12, 0);
 
-        _users.GetOnsiteUsersAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new List<OnsiteUserRow>
+        _users.GetAllParticipationsAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<EventParticipationInfo>
             {
-                new(aliceId, "Alice", ts),
-                new(bobId, "Bob", ts),
+                Onsite(aliceId, ts),
+                Onsite(bobId, ts),
             });
 
         _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
@@ -106,18 +109,17 @@ public class OnsiteRosterServiceTests
     [HumansFact]
     public async Task GetRosterAsync_SkipsRowsWithNullCheckedInAt()
     {
-        // OnsiteUserRow.CheckedInAt is null when the snapshot view of the cache
-        // happens to have an Attended row without a stored timestamp. The service
-        // filters these out — they don't belong in a "currently onsite" view.
+        // An Attended row can lack a stored check-in timestamp. The service filters
+        // these out — they don't belong in a "currently onsite" view.
         var nullId = Guid.NewGuid();
         var liveId = Guid.NewGuid();
         var ts = Instant.FromUtc(2026, 7, 8, 12, 0);
 
-        _users.GetOnsiteUsersAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new List<OnsiteUserRow>
+        _users.GetAllParticipationsAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<EventParticipationInfo>
             {
-                new(nullId, "NoTimestamp", null),
-                new(liveId, "Live", ts),
+                Onsite(nullId, null),
+                Onsite(liveId, ts),
             });
         _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>());
@@ -141,8 +143,8 @@ public class OnsiteRosterServiceTests
         var campId = Guid.NewGuid();
         var seasonId = Guid.NewGuid();
 
-        _users.GetOnsiteUsersAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new List<OnsiteUserRow> { new(aliceId, "Alice", ts) });
+        _users.GetAllParticipationsAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<EventParticipationInfo> { Onsite(aliceId, ts) });
 
         _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>

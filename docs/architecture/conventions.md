@@ -211,8 +211,8 @@ All pages are server-rendered with Razor. The following use `fetch()` for the sp
 | `Humans.Scanner/wwwroot/js/scanner/tickets.js` (`Views/Scanner/Tickets.cshtml`) | Ticket card loaded via Razor partial (`_TicketCard`) on barcode hit | Partial-via-AJAX |
 | `Humans.Gate/wwwroot/js/gate/gate.js` (`Views/Gate/Index.cshtml`) | Verdict card loaded via Razor partial (`_VerdictCard`) on barcode scan; decision POST returns the final card | Partial-via-AJAX |
 | `Humans.Users/Views/Profile/Edit.cshtml` | Burner-name collision count on keystroke | Search input |
-| `Humans.Users/Views/Profile/CommunicationPreferences.cshtml` | Per-preference toggle POST without reload | Progressive enhancement |
-| `Humans.Users/Views/GuestAccount/CommunicationPreferences.cshtml` | Same toggles on the tokenless guest page | Progressive enhancement |
+| `Humans.Email/Views/CommunicationPreferences/Index.cshtml` | Per-preference toggle POST without reload | Progressive enhancement |
+| `Humans.Email/Views/GuestAccount/CommunicationPreferences.cshtml` | Same toggles on the tokenless guest page | Progressive enhancement |
 | `Humans.Agent/Views/Shared/Components/HelpWidget/Default.cshtml` (`<vc:help-widget>`) | In-place feedback submit without leaving the page | Progressive enhancement |
 | `Humans.Agent/wwwroot/js/agent/widget.js` | Streamed answer from `/Agent/Ask` (SSE) | Progressive enhancement |
 | `Humans.CityPlanning/wwwroot/js/city-planning/**` | Barrio, container and overview maps read and write `/api/city-planning/*` | Interactive map |

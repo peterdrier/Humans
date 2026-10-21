@@ -1,5 +1,4 @@
 using Humans.Governance.Contracts;
-using Humans.Shifts.Contracts;
 using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 
@@ -10,26 +9,20 @@ internal static class ProfileEditViewModelBuilder
     public static ProfileViewModel Build(
         UserInfo info,
         IReadOnlyList<UserApplicationSnapshot> applications,
-        IReadOnlyList<ShiftTagSummary> allShiftTags,
-        IReadOnlyList<ShiftTagPreferenceInfo> preferredShiftTags,
+        bool isApproved,
         bool preview,
         Func<ProfileInfo, string?> customPictureUrl)
     {
         ArgumentNullException.ThrowIfNull(info);
         ArgumentNullException.ThrowIfNull(applications);
-        ArgumentNullException.ThrowIfNull(allShiftTags);
-        ArgumentNullException.ThrowIfNull(preferredShiftTags);
         ArgumentNullException.ThrowIfNull(customPictureUrl);
 
         var profile = info.Profile;
 
         var isTierLocked = profile is not null && applications.Any(a =>
             a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.Approved);
-        var pendingApplication = profile is null || !profile.IsApproved
-            ? applications.FirstOrDefault(a => a.Status == ApplicationStatus.Submitted)
-            : null;
         var hasCustomPicture = profile?.HasCustomPicture == true;
-        var isInitialSetup = profile is null || !profile.IsApproved || preview;
+        var isInitialSetup = profile is null || !isApproved || preview;
 
         return new ProfileViewModel
         {
@@ -61,12 +54,7 @@ internal static class ProfileEditViewModelBuilder
             EmergencyContactRelationship = profile?.EmergencyContactRelationship,
             CanViewLegalName = true,
             IsInitialSetup = isInitialSetup,
-            SelectedTier = profile?.MembershipTier ?? MembershipTier.Volunteer,
             IsTierLocked = isTierLocked,
-            ApplicationMotivation = pendingApplication?.Motivation,
-            ApplicationAdditionalInfo = pendingApplication?.AdditionalInfo,
-            ApplicationSignificantContribution = pendingApplication?.SignificantContribution,
-            ApplicationRoleUnderstanding = pendingApplication?.RoleUnderstanding,
             NoPriorBurnExperience = profile?.NoPriorBurnExperience ?? false,
             ShowPrivateFirst = string.IsNullOrEmpty(profile?.FirstName)
                 && string.IsNullOrEmpty(profile?.LastName)
@@ -93,11 +81,7 @@ internal static class ProfileEditViewModelBuilder
                 Id = pl.Id,
                 LanguageCode = pl.LanguageCode,
                 Proficiency = pl.Proficiency
-            }).ToList(),
-            AllShiftTags = allShiftTags
-                .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
-                .ToList(),
-            EditableShiftTagIds = preferredShiftTags.Select(t => t.ShiftTagId).ToList()
+            }).ToList()
         };
     }
 

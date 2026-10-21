@@ -75,7 +75,7 @@ public sealed class DeletionConfirmationLeavesNoOutboxRowTests : IDisposable
             _transport,
             Substitute.For<IHumansMetrics>(),
             new FakeClock(Now),
-            Substitute.For<ICommunicationPreferenceService>(),
+            Substitute.For<ICommunicationPreferenceManagement>(),
             NullLogger<OutboxEmailService>.Instance);
 
         var userService = Substitute.For<IUserManagement>();

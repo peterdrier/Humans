@@ -2,6 +2,7 @@ using System.Diagnostics.Metrics;
 using NodaTime;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
+using Humans.Consent.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Web.Services;
@@ -150,6 +151,8 @@ public sealed class HumansMetricsService : PolledGaugeService, IHumansMetrics
 
         // Read off cached UserInfo snapshot — avoids full profile scan per scrape.
         var userInfos = await userService.GetAllUserInfosAsync().ConfigureAwait(false);
+        var reviews = await scope.ServiceProvider.GetRequiredService<IConsentService>()
+            .GetConsentReviewsAsync().ConfigureAwait(false);
 
         int activeCount = 0, suspendedCount = 0, pendingCount = 0, inactiveCount = 0;
         foreach (var userInfo in userInfos)
@@ -162,7 +165,7 @@ public sealed class HumansMetricsService : PolledGaugeService, IHumansMetrics
             {
                 suspendedCount++;
             }
-            else if (!userInfo.IsApproved)
+            else if (!(reviews.TryGetValue(userInfo.Id, out var review) && review.IsApproved))
             {
                 pendingCount++;
             }
