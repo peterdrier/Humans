@@ -116,6 +116,27 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         result.Team.Slug.Should().Be("public");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task GetTeamDetailAsync_OmitsUnsafeStoredActionsWithoutMutatingSource(bool authenticated)
+    {
+        var team = MakeTeam("Public", isPublicPage: true);
+        team.CallsToAction =
+        [
+            new CallToAction { Text = "Unsafe", Url = "javascript:alert(1)" },
+            new CallToAction { Text = "Obfuscated", Url = "java\tscript:alert(1)" },
+            new CallToAction { Text = "Join", Url = "/join" }
+        ];
+        SeedTeams(team);
+
+        var result = await _pages.GetTeamDetailAsync("public", authenticated ? Guid.NewGuid() : null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        result!.Team.CallsToAction.Should().ContainSingle().Which.Url.Should().Be("/join");
+        team.CallsToAction.Should().HaveCount(3);
+    }
+
     [HumansFact]
     public async Task GetTeamDetailAsync_AnonymousHiddenTeam_ReturnsNullWithoutRepositoryReads()
     {

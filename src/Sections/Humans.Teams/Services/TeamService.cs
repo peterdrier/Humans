@@ -388,6 +388,9 @@ internal sealed class TeamService(
             if (normalizedCallsToAction.Count(c => c.Style == CallToActionStyle.Primary) > 1)
                 throw new TeamPageRuleException("Only one primary call to action is allowed.");
 
+            if (normalizedCallsToAction.Any(c => !IsSafeCallToActionUrl(c.Url)))
+                throw new TeamPageRuleException("Calls to action require a relative URL or an HTTP, HTTPS or mailto URL.");
+
             var canBePublic = !team.IsSystemTeam && !team.ParentTeamId.HasValue;
 
             if (isPublicPage && !canBePublic)
@@ -427,6 +430,13 @@ internal sealed class TeamService(
             return new TeamPageUpdateResult(false, null);
         }
     }
+
+    // Shared by writes and the page projection so unsafe legacy values never become links.
+    internal static bool IsSafeCallToActionUrl(string? url) =>
+        !string.IsNullOrWhiteSpace(url)
+        && !url.Any(char.IsControl)
+        && Uri.TryCreate(url, UriKind.RelativeOrAbsolute, out var uri)
+        && (!uri.IsAbsoluteUri || uri.Scheme is "http" or "https" or "mailto");
 
     private sealed class TeamPageRuleException : InvalidOperationException
     {
