@@ -910,7 +910,7 @@ internal sealed class SurveyService(
             invitation.UserId,
             definition,
             draftAnswers,
-            HasResumableDraft: draft is not null,
+            DraftResponseId: draft?.Id,
             IsEligible: isEligible);
     }
 

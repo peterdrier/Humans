@@ -58,7 +58,7 @@ public class HumanLifecycleServiceTests
     [HumansTheory]
     [Xunit.InlineData("a")]
     [Xunit.InlineData("😀")]
-    public async Task SuspendAsync_LongReason_BoundsNoticePreviewAndPreservesAudit(string character)
+    public async Task SuspendAsync_LongReason_LeavesBoundingToNotificationsAndPreservesAudit(string character)
     {
         var userId = Guid.NewGuid();
         var adminId = Guid.NewGuid();
@@ -73,10 +73,8 @@ public class HumanLifecycleServiceTests
 
         result.Success.Should().BeTrue();
         var body = (string)_notificationService.ReceivedCalls().Single().GetArguments()[5]!;
-        body.EnumerateRunes().Count().Should().Be(2000);
-        body.Should().StartWith("Tu acceso ha sido suspendido: ");
-        body.Should().EndWith("…");
-        body.Should().NotContain("�");
+        // Notifications owns the column limit and bounds the copy itself.
+        body.Should().Be("Tu acceso ha sido suspendido: " + notes);
         await _auditLogService.Received(1).LogAsync(
             AuditAction.MemberSuspended, nameof(User), userId,
             "Suspended: " + notes, adminId);

@@ -26,50 +26,6 @@ version: 1
 next_id: 97
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
-  - id: grandfathered-hum0031-controller-logic
-    title: Controller business logic over ratchet thresholds (HUM0031)
-    detect: "build:HUM0031"
-    review: panel
-    last_swept: 2026-06-12
-    remaining: 0
-    parked: "Peter 2026-08-07 — frozen until the per-section assembly split (nobodies-collective/Humans#866) lands. Do not lower the thresholds; do not burn down any HUM0031 grandfather that reappears before then."
-    notes: >-
-      PARKED — Peter 2026-08-07: BOTH dials are off. Do not lower the
-      thresholds in ControllerBusinessLogicAnalyzer, and do not burn down any
-      [Grandfathered("HUM0031", …)] method that appears before the freeze
-      lifts. Rotation skips this theme until
-      the per-section assembly split (nobodies-collective/Humans#866) lands —
-      the controllers relocate then, so the work is churn against code that is
-      about to move, and in the meantime it is a distraction. The burn-down
-      issue nobodies-collective/Humans#857 is closed for the same reason.
-      Re-open this theme only when #866 has shipped. The analyzer stays live at
-      Error for NEW breaches — that is not parked.
-      remaining: 0 since peterdrier/Humans#1156 burned down all 15
-      grandfathers; the entry stays because it IS the park — retiring it at
-      zero would let the Phase 2 staleness check re-create the theme unparked
-      the moment a HUM0031 grandfather reappears.
-      Prior sweep findings from 2026-06-12, kept for whenever this restarts:
-      12 distinct warning sites, all grandfathered (14 grandfathers total —
-      AccountController.ExternalLoginCallback and
-      EventsController.BulkUploadTemplate no longer fire; their justification
-      counts disagree with the analyzer's current counting).
-      EventsModerationController.ProcessActionAsync fixed + de-grandfathered
-      2026-06-12 (audit E7). Raw grep of a
-      full-solution build log double-counts each site (26 lines = 13 sites);
-      detect means DISTINCT sites. The rule is "no business
-      logic in controllers"; the cc/statement metric is only a proxy
-      detector. Exactly two valid fixes: (a) move the domain decisions into
-      the section's application service — new/changed interface surface
-      needs per-item Peter approval (skip-and-ask); (b) the method is
-      genuinely presentation (sorting/filtering/paging/VM mapping) over a
-      low threshold — grandfather stays, record it as a
-      threshold-calibration finding. FORBIDDEN: splitting the method into
-      controller-local private helpers / VM factories to satisfy the metric
-      — tried 2026-06-12 on 12 methods, rejected and reverted (dodged the
-      metric, moved zero domain decisions). Litmus per statement: would a
-      Hangfire job doing the same operation need this line? Yes → service.
-      Form-apply model: DietaryMedicalViewModel.ToCommand() →
-      profileEditorService.SaveDietaryMedicalAsync(userId, command).
   - id: grandfathered-hum0028-invalidators
     title: Invalidator interface ratchet (HUM0028)
     detect: "build:HUM0028"

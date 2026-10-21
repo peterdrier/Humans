@@ -63,9 +63,7 @@ internal sealed partial class LegalDocumentSyncService(
             .Select(d =>
             {
                 var teamName = teams.TryGetValue(d.TeamId, out var team) ? team.Name : string.Empty;
-                var currentVersion = d.Versions
-                    .Where(v => v.EffectiveFrom <= now)
-                    .MaxBy(v => v.EffectiveFrom);
+                var currentVersion = CurrentVersionAt(d, now);
 
                 Instant? lastSyncedAt = d.LastSyncedAt == default ? null : d.LastSyncedAt;
 
@@ -87,6 +85,12 @@ internal sealed partial class LegalDocumentSyncService(
             .ToList();
     }
 
+    /// <summary>The version in force at <paramref name="now"/>: latest already-effective one.</summary>
+    private static DocumentVersion? CurrentVersionAt(LegalDocument document, Instant now) =>
+        document.Versions
+            .Where(v => v.EffectiveFrom <= now)
+            .MaxBy(v => v.EffectiveFrom);
+
     public async Task<AdminLegalDocumentEditDetail?> GetLegalDocumentWithVersionsAsync(
         Guid documentId,
         CancellationToken cancellationToken = default)
@@ -104,6 +108,7 @@ internal sealed partial class LegalDocumentSyncService(
             document.GracePeriodDays,
             document.GitHubFolderPath,
             document.LastSyncedAt,
+            CurrentVersionAt(document, clock.GetCurrentInstant())?.VersionNumber,
             document.Versions
                 .Select(v => new AdminLegalDocumentVersionDetail(
                     v.Id,

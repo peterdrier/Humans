@@ -23,11 +23,10 @@ namespace Humans.Analyzers;
 /// parse the request, call services, and format/sort/filter the response.</item>
 /// </list>
 /// The thresholds are deliberately generous: they're calibrated to flag only
-/// the worst offenders (~15 methods at introduction). They are <b>frozen</b>
-/// at 40/15 — do not lower them, and do not burn down any
-/// <c>[Grandfathered]</c> method that appears — until the per-section assembly split
-/// (nobodies-collective/Humans#866) lands; until then the churn is a
-/// distraction (nobodies-collective/Humans#857). Replaces the retired
+/// the worst offenders (~15 methods at introduction). They are <b>fixed</b>
+/// at 40/15 as a backstop and never ratchet down; whether a smaller method
+/// still carries business logic is a judgment of intent, made by
+/// section-doctor's regular runs rather than by a number. Replaces the retired
 /// <c>NoBusinessLogicInControllersRule</c> ratchet test, whose regex
 /// heuristic was noisy and only saw public action signatures
 /// (nobodies-collective/Humans#793). Source rule:
@@ -73,10 +72,9 @@ public sealed class ControllerBusinessLogicAnalyzer : DiagnosticAnalyzer
         description:
             "Controllers are the display layer: parse, delegate, format. A method this large or this " +
             "branchy is making decisions that belong in an application service. Thresholds are " +
-            "hardcoded and frozen at 40/15; a grandfathered method carries " +
-            "[Grandfathered(\"HUM0031\", …)] which downgrades to Warning. Do not refactor grandfathered " +
-            "methods and do not lower the thresholds until the per-section assembly split " +
-            "(nobodies-collective/Humans#866) lands.");
+            "hardcoded and fixed at 40/15 as a backstop, never ratcheted; a grandfathered method carries " +
+            "[Grandfathered(\"HUM0031\", …)] which downgrades to Warning. Below the thresholds, " +
+            "controller intent is judged by section-doctor, not by this analyzer.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 

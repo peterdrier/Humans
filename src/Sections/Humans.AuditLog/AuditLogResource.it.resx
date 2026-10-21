@@ -251,6 +251,8 @@
   <data name="Enum_AuditAction_CityPlanningLimitZoneDeleted" xml:space="preserve"><value>Zona limite urbanistica eliminata</value></data>
   <data name="Enum_AuditAction_CityPlanningOfficialZonesUpdated" xml:space="preserve"><value>Zone ufficiali della pianificazione urbanistica aggiornate</value></data>
   <data name="Enum_AuditAction_CityPlanningOfficialZonesDeleted" xml:space="preserve"><value>Zone ufficiali della pianificazione urbanistica eliminate</value></data>
+  <data name="Enum_AuditAction_CityPlanningPlacementDatesUpdated" xml:space="preserve"><value>Date di posizionamento della pianificazione urbanistica aggiornate</value></data>
+  <data name="Enum_AuditAction_CityPlanningRegistrationInfoUpdated" xml:space="preserve"><value>Informazioni di registrazione della pianificazione urbanistica aggiornate</value></data>
   <data name="Enum_AuditAction_ExpenseCreatedOnBehalf" xml:space="preserve"><value>Spesa creata per conto di</value></data>
   <data name="Enum_AuditAction_ExpenseEditedOnBehalf" xml:space="preserve"><value>Spesa modificata per conto di</value></data>
   <data name="Enum_AuditAction_ExpensePayeeIbanUpdated" xml:space="preserve"><value>IBAN del beneficiario aggiornato</value></data>

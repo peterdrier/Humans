@@ -198,6 +198,58 @@ public sealed class RideshareControllerTests
         await _rideshare.DidNotReceiveWithAnyArgs().ExpressInterestAsync(default, default, default, default, default);
     }
 
+    [HumansTheory]
+    [InlineData("", true)]
+    [InlineData("2", true)]
+    [InlineData("two", false)]
+    public async Task Interest_BindsTheRealForm_AClearedSeatsBoxTakesTheDefault(string seats, bool accepted)
+    {
+        var tripId = Guid.NewGuid();
+        var controller = BuildController();
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        _rideshare.ExpressInterestAsync(_me, tripId, null, Arg.Any<int>(), null, Arg.Any<CancellationToken>())
+            .Returns(new RideshareMutationResult());
+        var fields = new FormCollection(new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["tripId"] = tripId.ToString(),
+            ["seats"] = seats
+        });
+        var method = typeof(RideshareController).GetMethod(nameof(RideshareController.Interest))!;
+        var arguments = new Dictionary<string, object?>(StringComparer.Ordinal);
+        foreach (var parameter in method.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)))
+        {
+            var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
+            var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+            {
+                Metadata = metadata,
+                CacheToken = parameter
+            });
+            var binding = await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
+                new FormValueProvider(BindingSource.Form, fields, CultureInfo.InvariantCulture),
+                new ControllerParameterDescriptor { Name = parameter.Name!, ParameterType = parameter.ParameterType, ParameterInfo = parameter },
+                metadata, value: null);
+            arguments[parameter.Name!] = binding.IsModelSet ? binding.Model : null;
+        }
+
+        var result = await controller.Interest((Guid)arguments["tripId"]!, (Guid?)arguments["requestId"],
+            (int?)arguments["seats"], (string?)arguments["message"], Ct);
+
+        if (accepted)
+        {
+            result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Mine");
+            await _rideshare.Received(1).ExpressInterestAsync(_me, tripId, null,
+                seats.Length == 0 ? 0 : int.Parse(seats, CultureInfo.InvariantCulture), null, Ct);
+        }
+        else
+        {
+            result.Should().BeOfType<BadRequestObjectResult>();
+            await _rideshare.DidNotReceiveWithAnyArgs().ExpressInterestAsync(default, default, default, default, default);
+        }
+    }
+
     [HumansFact]
     public async Task OfferPost_AnUnparsableDate_RerendersTheFormWithADateError()
     {

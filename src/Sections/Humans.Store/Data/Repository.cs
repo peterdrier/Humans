@@ -8,8 +8,6 @@ namespace Humans.Store.Data;
 /// non-test file that touches <c>DbContext.Products</c>,
 /// <c>DbContext.Orders</c>, <c>DbContext.OrderLines</c>,
 /// <c>DbContext.Payments</c>, or <c>DbContext.Invoices</c>.
-/// Nothing reads or writes <c>DbContext.TreasurySyncStates</c>; the table
-/// ships unused (see <c>Docs/Store.md</c>, treasury sync).
 /// </summary>
 /// <remarks>
 /// Follows design-rules §15b: registered as Singleton, injects
