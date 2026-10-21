@@ -1,6 +1,11 @@
 <!-- freshness:triggers
   src/Sections/Humans.Store/**
   src/Sections/Humans.Stripe/**
+  src/Humans.Base/Authorization/RoleChecks.cs
+  src/Sections/Humans.Camps/Contracts/**
+  src/Sections/Humans.Teams.Contracts/**
+  src/Sections/Humans.Holded/Contracts/**
+  src/Sections/Humans.Backdoor/Controllers/BackdoorStoreController.cs
 -->
 <!-- freshness:flag-on-change
   Store catalog editing, order lifecycle, OrderableUntil gate, invoice issuance idempotency, Stripe Checkout / webhook signature verification, and resource-based authorization — review when Store services/entities/controllers/auth handlers/Stripe surfaces change.
@@ -56,9 +61,9 @@ A camp's order against a season.
 | CampSeasonId | Guid? | FK only — no nav. Set for camp orders; null for team orders. |
 | TeamId | Guid? | FK only — no nav. Set for team orders; null for camp orders. |
 | Year | int | Event year the catalog draws from. Always set on write; resolved from `CampSeason.Year` for legacy camp rows. |
-| Label | string(100)? | `[Obsolete]` — removed from the UI (#816) and from every DTO and code path since; the column ships, nothing reads or writes it |
+| Label | string(100)? | `[Obsolete]` — still mapped; nothing reads or writes it (nobodies-collective/Humans#816) |
 | State | OrderState (int) | Open or InvoiceIssued; team orders stay Open |
-| CounterpartyName / CounterpartyVatId / CounterpartyAddress / CounterpartyCountryCode / CounterpartyEmail | string? | Editable by Camp Lead while Open; FinanceAdmin always. Never populated on team orders. |
+| CounterpartyName / CounterpartyVatId / CounterpartyAddress / CounterpartyCountryCode / CounterpartyEmail | string? | Editable by Camp Lead while Open; Store admins (StoreAdmin, FinanceAdmin, Admin) always. Never populated on team orders. |
 | IssuedInvoiceId | Guid? | Set when invoice is issued (camp orders only) |
 | CreatedAt / UpdatedAt | Instant | |
 
@@ -175,7 +180,13 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 - `/Store` — Camp Lead and department-coordinator order browse + create + line edit. Each counterparty (camp-you-lead or department-you-coordinate) is rendered as its own card; when there are none, the page renders its localized read-only catalog alert. Catalog unit-price/VAT breakdowns use the same six-culture label as order lines. A privileged reader (StoreAdmin/FinanceAdmin/Admin **or** TeamsAdmin) sees every camp season and department for the year, not just the ones they lead/coordinate; per-row Create/Delete affordances are resolved against `OrderAuthorizationHandler` rather than a blanket admin flag.
 - `/Store/Order/{id}` — Order detail. Lines display the **effective** unit price (live catalog price for an Open order, frozen snapshot once InvoiceIssued — #816). Camp orders show summary cards (lines subtotal, VAT, deposits, deposits returned, total cleared payments, and a last box that reads "Balance owed" at a zero or positive balance and "Refund amount" — the positive amount the org owes the camp — at a negative one; the balance and total exclude `Pending`/`Failed`, and deposit returns count as payments), a "price changes since this order started" table (rendered by `<vc:audit-log layout="table">` over the order's product ids — Store does not read audit), the recorded-payments list (date, method, **status** Paid/Pending/Failed, Stripe/external reference, amount) with a "€X pending settlement" banner when async mandates are uncleared, the Pay button, and a collapsed-by-default counterparty section. Team orders show only lines + add-line form + a "non-billable" footer (no counterparty form, no Pay, no payments list).
+- `/Store/Order/Create/{campSeasonId}` — POST: creates the camp season's order (authorized as `Create` against the season; refusals redirect to `/Store` with localized feedback).
 - `/Store/Team/{teamId}/Create` — POST: department coordinator creates their team's order for the active event year.
+- `/Store/Order/{id}/Pay` — POST: starts a Stripe Checkout session for the camp order and redirects to Stripe.
+- `/Store/Order/{id}/Delete` — POST: deletes an order (`Delete` requirement) while Open, at zero balance and with no payment rows; redirects to `/Store`.
+- `/Store/Order/{id}/AddLine` — POST: adds a product line (`productId`, `qty`); authorized against an `OrderLineContext` carrying the product's deadline.
+- `/Store/Order/{id}/RemoveLine` — POST: removes a line (`lineId`); gated like AddLine.
+- `/Store/Order/{id}/UpdateCounterparty` — POST: edits the billing details (`EditCounterparty` requirement).
 - `/Store/Admin/Catalog` — StoreAdmin catalog CRUD (`StoreAdminController`, policy `StoreCatalogAdmin`).
 - `/Store/Admin/Catalog/Edit[/{id}]` — Create / edit product.
 - `/Store/Admin/Catalog/Save` — POST save product.
@@ -231,7 +242,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 - An order may be deleted only while `Open`, at zero balance, **and with no payment rows of any status** — payments cascade on delete, and a paid-in-full or pending-only order reads zero-balance, so the payment check is what keeps money records from being deleted with their order (`Service.DeleteOrderAsync`).
 - Team orders stay in **Open** indefinitely. The implicit close-out signal is per-product `OrderableUntil` — once every catalog product has passed its deadline, the order is effectively read-only.
 - Lines may only be added or removed while the order is `Open` AND `today <= Product.OrderableUntil`. The deadline gate is per-product and identical for camp and team orders. It is enforced at the **authorization layer** (`OrderAuthorizationHandler`, using the `OrderLineContext` resource): non-admins are denied past the deadline; Store admins are exempt and may edit lines on any Open order regardless of `OrderableUntil`. `Service.AddLineAsync` / `RemoveLineAsync` do not throw on a passed deadline — they only annotate the audit entry with `(past order deadline …)` when the line is edited past it.
-- Counterparty fields (`CounterpartyName`, `CounterpartyVatId`, `CounterpartyAddress`, `CounterpartyCountryCode`, `CounterpartyEmail`) are editable only while the order is `Open` (Camp Lead) or by FinanceAdmin/Admin always.
+- Counterparty fields (`CounterpartyName`, `CounterpartyVatId`, `CounterpartyAddress`, `CounterpartyCountryCode`, `CounterpartyEmail`) are editable only while the order is `Open` (Camp Lead) or by Store admins (StoreAdmin, FinanceAdmin, Admin) always.
 - Billing-detail edits respect the storage limits: name 200, tax ID 50, address 500, country code 2, email 320 characters. An overlong field returns a localized refusal before changing any fields, timestamp, persistence or audit; values within those limits are preserved without truncation.
 - Line snapshots (`UnitPriceSnapshot`, `VatRateSnapshot`, `DepositAmountSnapshot`) are written at add-time and never recomputed. **Effective pricing differs by order state (#816):** an `Open` order is a live running tab — `BalanceCalculator.Compute` reprices its lines to the *current* catalog price for the event year (falling back to the snapshot when the product is absent from the catalog), so catalog edits DO propagate to Open orders. An `InvoiceIssued` order is frozen and always reads each line's add-time snapshot.
 - Catalog saves require an explicit unit price, VAT rate and active choice. Missing fields cannot reset prices/VAT or reactivate a product; explicit zero values and false remain valid.
@@ -300,7 +311,8 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 - **Settings:** `ISettingsService.GetActiveEventSettingsAsync()` for the active event's `Year` and `TimeZoneId` — used to (a) resolve the active catalog year on `/Store` and `/Store/Admin/Catalog`, (b) populate `Year` on new team orders, and (c) compute "today in event time zone" for the `OrderableUntil` deadline gate.
 - **Auth/Roles:** `RoleNames.StoreAdmin` (this section), `RoleNames.FinanceAdmin`, `RoleNames.Admin`.
 - **Holded connector** (`Humans.Holded`, through its `Contracts/` folder): `IHoldedClient.UpsertContactAsync`, `CreateSalesDocumentAsync` / `ApproveSalesDocumentAsync` / `GetSalesDocumentAsync` (kind-parameterized over invoice vs sales receipt), and `ListAccountingAccountsAsync` for the account-number → account-id resolution. Never the connector's internals — the vendor stays swappable (`memory/architecture/vendor-connectors-own-sections.md`).
-- **Stripe** (`Humans.Stripe`): `IStripeService.CreateCheckoutSessionAsync` for camp-lead payments; `StoreStripeWebhookController` for `checkout.session.completed` ingestion. Checkout creation is marked `[ExternalWrite]` on both the Store wrapper and Stripe contract; the Pay action keeps its order read cancellable and passes `CancellationToken.None` for the vendor write.
+- **Stripe** (`Humans.Stripe`): `IStripeService.CreateCheckoutSessionAsync` for camp-lead payments; `StoreStripeWebhookController` for ingestion of the four `checkout.session.*` events it handles (completed, async_payment_succeeded, async_payment_failed, expired). Checkout creation is marked `[ExternalWrite]` on both the Store wrapper and Stripe contract; the Pay action keeps its order read cancellable and passes `CancellationToken.None` for the vendor write.
+- **Users:** `IUserService` resolves the current user in `StoreController` and `StoreAdminController` (via `HumansControllerBase`).
 - **Audit Log:** `IAuditLogService` for every mutation.
 - **Backdoor** (consumer): `/api/backdoor/store/*` reads the accounting export through `IStoreAccountingRead` (`Contracts/`) — order lines with effective price / VAT / revenue account / invoice number, and `Paid` payments with their Stripe payment intent ids, per year. Amounts come from the same `BalanceCalculator` pass as `/Store/Admin/Summary`, so an order's `LineGross` rows sum to the summary's total. Unlike the summary, the export selects orders by their persisted `Year` (`GetOrdersForYearWithLinesAndPaymentsAsync`, plus legacy `Year = 0` rows via the year's season ids), not through the counterparty — an order whose camp was deleted since, or whose team was reparented, still exports, labelled `(unknown camp)` / `(unknown team)`, because the money on it is still in the books (peterdrier/Humans#1719).
 
@@ -317,16 +329,16 @@ The Store section uses `IStripeService` (`Humans.Stripe.Contracts`; internal imp
 
 **Owning services:** `Service`
 **Owned tables:** `store_products`, `store_orders`, `store_order_lines`, `store_payments`, `store_invoices`, `store_treasury_sync_state`
-**Status:** (A) Migrated (peterdrier/Humans store-foundation, 2026-04-30).
+**Status:** (A) Migrated.
 **Project:** `src/Sections/Humans.Store` — the whole vertical is one assembly: `Domain/ Data/ Services/ Controllers/ Models/ Views/ Authorization/ Docs/ Contracts/` plus `Section.cs`. Everything is `internal` except `Section`, `StoreResource`, and the accounting read contract in `Contracts/` (`IStoreAccountingRead`, its two DTOs and the `OrderCounterpartyType` / `OrderState` enums they carry).
 
-- `Service` (`Services/Service.cs`) depends only on Base abstractions — nothing in Store reaches another section's internals.
+- `Service` (`Services/Service.cs`) reaches other sections only through their public contracts (see Cross-section calls below) — nothing in Store reaches another section's internals.
 - `Repository` (`Data/Repository.cs`, §15b Singleton + `IDbContextFactory<StoreDbContext>`) is the only type that touches Store tables. `IStoreRepository` keeps its prefix where the rest of the internals drop theirs, because it derives from `IRepository` and cannot itself be called that (#866 design §6a). Store publishes **one cross-section read contract**, `IStoreAccountingRead` (`Contracts/IStoreAccountingRead.cs`), implemented by `Service` for Backdoor's `/api/backdoor/store` export (peterdrier/Humans#1719) — two year-filtered reads returning DTOs, never entities. Store's own `SectionAdminTiles` resolves `Service` directly for its admin dashboard tile; the summary DTO graph it uses stays `internal`. Store still has no caching decorator (see below).
 - **Decorator decision — no caching decorator.** Store is admin / camp-lead only, low-traffic; same rationale as Budget / Governance.
 - **Schema decision — one polymorphic `Order`, not a second table.** Nullable `CampSeasonId` / `TeamId` on the same row was chosen over a separate `store_team_orders` table so team orders reuse the existing catalog, line, authorization and audit machinery instead of duplicating it for the non-billable case. The "exactly one of the two is non-null" invariant is service-enforced, not a DB constraint.
 - **Cross-domain navs:** none. `CampSeasonId`, `ProductId`, `AddedByUserId`, `RecordedByUserId`, `IssuedByUserId` are all FK-only with no navigation property. Intra-section back-navs `OrderLine.Order` and `Payment.Order` are aggregate-local and are kept.
-- **Cross-section calls** route through `ICampService` (camp / camp-season lookups), `ITeamService` (department lookups for team orders), `ISettingsService` (active event year + time-zone), `IAuditLogService`, `IHoldedClient`, `IStripeService`.
-- **Architecture test:** none — `StoreArchitectureTests` was deleted at G5. Both its assertions became false or vacuous once the section became one assembly (the assembly now contains `StoreDbContext` by design, and interface-implementation is a tautology). What it encoded is policed by `ApplicationServiceDbContextInjectionAnalyzer` plus the assembly boundary itself. Store's unit tests live in `tests/Humans.Store.Tests`; its controller tests stay in `Humans.Integration.Tests`.
+- **Cross-section calls** route through `ICampService` (camp / camp-season lookups), `ITeamService` (department lookups for team orders), `ISettingsService` (active event year + time-zone), `IUserService` (current-user resolution in the controllers), `IAuditLogService`, `IHoldedClient`, `IStripeService`.
+- **Architecture test:** none — `StoreArchitectureTests` was deleted at G5. Both its assertions became false or vacuous once the section became one assembly (the assembly now contains `StoreDbContext` by design, and interface-implementation is a tautology). What it encoded is policed by the `DbContextOwnershipRule` analyzer (HUM0009: only repositories use a section DbContext) plus the assembly boundary itself. Store's unit tests live in `tests/Humans.Store.Tests`; its controller tests stay in `Humans.Integration.Tests`.
 
 ### Configuration
 
