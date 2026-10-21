@@ -224,6 +224,12 @@ internal sealed class TicketTransferService(
         var attendee = request.OriginalTicketAttendee
             ?? await ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct);
         if (attendee is null) return RefuseAdmin(transferRequestId, adminUserId, "Original attendee missing.");
+        // Pending requests can outlive the ticket's eligibility. Recheck the current
+        // synced attendee before the irreversible vendor void, not just at request creation.
+        if (attendee.CheckedInAt is not null || attendee.Status == TicketAttendeeStatus.CheckedIn)
+            return RefuseAdmin(transferRequestId, adminUserId, "Original ticket has already been checked in and cannot be transferred.");
+        if (attendee.Status != TicketAttendeeStatus.Valid)
+            return RefuseAdmin(transferRequestId, adminUserId, "Original ticket is no longer valid and cannot be transferred.");
         await WriteToVendorAsync(request, attendee, ct);
 
         // Once a vendor void has committed it is irreversible — the recorded outcome must persist

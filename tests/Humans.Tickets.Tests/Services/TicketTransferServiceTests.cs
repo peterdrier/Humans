@@ -527,6 +527,43 @@ public sealed class TicketTransferServiceTests
 
     // ── ProcessTransferAsync (automated void+reissue) ───────────────────────────
 
+    [HumansTheory]
+    [Xunit.InlineData(TicketAttendeeStatus.Valid, true, false)]
+    [Xunit.InlineData(TicketAttendeeStatus.Valid, true, true)]
+    [Xunit.InlineData(TicketAttendeeStatus.CheckedIn, false, false)]
+    [Xunit.InlineData(TicketAttendeeStatus.CheckedIn, false, true)]
+    [Xunit.InlineData(TicketAttendeeStatus.Void, false, false)]
+    [Xunit.InlineData(TicketAttendeeStatus.Void, false, true)]
+    public async Task Process_TicketNoLongerTransferable_RefusesBeforeVendorWrite(
+        TicketAttendeeStatus status, bool checkedIn, bool includedAttendee)
+    {
+        var req = MakePending(Guid.NewGuid());
+        var attendee = MakeAttendee(_attendeeId, _orderId, _senderId, status,
+            checkedIn ? _now : null);
+        if (includedAttendee) req.OriginalTicketAttendee = attendee;
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+        _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>()).Returns(attendee);
+        _vendor.VoidIssuedTicketAsync("tkt_original", true, Arg.Any<CancellationToken>())
+            .Returns(new VoidIssuedTicketResult("tkt_original", "hold_123"));
+        _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new VendorTicketDto("tt_new", null, "Alice Smith", "alice@example.com", "Full Week", 0m, "valid"));
+
+        var result = await _service.ProcessTransferAsync(
+            req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.OperatorRefusal.Should().Contain(status == TicketAttendeeStatus.Void
+            ? "no longer valid" : "checked in");
+        req.Status.Should().Be(TicketTransferStatus.Pending);
+        req.VendorResult.Should().Be(TicketTransferVendorResult.NotAttempted);
+        _vendor.ReceivedCalls().Should().BeEmpty();
+        await _transferRepo.DidNotReceive().UpdateAsync(req, Arg.Any<CancellationToken>());
+        await _ticketRepo.DidNotReceive().UpsertAttendeesAsync(
+            Arg.Any<IReadOnlyList<TicketAttendee>>(), Arg.Any<CancellationToken>());
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        _auditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task Process_VoidToHoldThenReissue_KeepsOriginalPrice_MarksApproved()
     {

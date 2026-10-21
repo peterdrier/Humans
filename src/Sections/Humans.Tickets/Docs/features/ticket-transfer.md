@@ -54,7 +54,8 @@ A receiver selected before an account merge must be selected again: confirmation
 - **Step A:** the Sender's transferable tickets render as admission stubs (`<vc:ticket-stub>`); pick one.
 - Gate-checked-in tickets are not transferable: a gate scan keeps the ticket's `Status = Valid` but stamps
   `TicketAttendee.CheckedInAt`, so transferability requires `Status == Valid` **and** `CheckedInAt == null`
-  (guarded in the stub list's `CanSendTransfer`, the confirm step, and `CreateRequestAsync`).
+  (guarded in the stub list's `CanSendTransfer`, the confirm step, `CreateRequestAsync`, and again in
+  `ProcessTransferAsync` before any vendor write).
 - **Step B:** the recipient is chosen with the standard `<vc:human-search>` component (`scope=Name`,
   `allow-email=true`) — search by burner name, or paste an exact email to resolve a single match.
 - **Step C:** a server-side confirm step resolves the Receiver's legal name + primary email (the search
@@ -85,6 +86,9 @@ Member request and cancellation errors are localized in all six cultures. Unknow
   paid orders whose valid-ticket count dropped below what was issued (manual-reconciliation aid).
 - The Detail page shows the ticket/order context, both parties, the reason, a "View order in
   TicketTailor" link, and processing instructions that match the active path.
+- Before **Process transfer**, the current synced attendee must still be `Valid` with no `CheckedInAt`.
+  Otherwise the service refuses without vendor calls or request changes, and the detail page explains why
+  automatic processing is unavailable. Manual completion and partial-reissue recovery remain available.
 - **Process transfer** voids the original ticket
   to a hold and reissues the same ticket type to the Receiver via the TicketTailor API, writes the swapped
   attendee rows, and sets `Approved` (`VendorResult = Succeeded`). On vendor failure the request **stays
