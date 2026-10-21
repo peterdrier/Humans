@@ -38,10 +38,6 @@ Repository: `IApplicationRepository`.
 |-----------|-----|------|-------|------------|
 | `NavBadge:Voting:{userId}` (`IVotingBadgeCacheInvalidator`) | 2 min | yes | yes | yes (per voter, via `IVotingBadgeCacheInvalidator`) |
 
-| Cache (via invalidators) | Invalidate |
-|-------------------------|------------|
-| `NotificationMeters` (`INotificationMeterCacheInvalidator`) | yes |
-
 Cross-section calls via `IUserService`,
 `IRoleAssignmentService`, `IEmailService`, `IUserEmailService`, `INotificationEmitter`,
 `ISystemTeamSync`, `IAuditLogService`, `IHumansMetrics`,

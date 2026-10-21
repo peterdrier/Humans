@@ -216,7 +216,7 @@ Every value of `NotificationSource` at the time of writing appears in exactly on
 - `INotificationEmitter`, `INotificationService`, `INotificationAutoResolve`, `INotificationRetention`, `NotificationSource`, `NotificationClass`, `NotificationPriority`, `NotificationSourceMapping`.
 - `NotificationService`, `NotificationEmitter`, `NotificationInboxService`, `NotificationMeterProvider`, `NotificationRepository`, `CleanupNotificationsJob`, the `IUserMerge` and `IUserDataContributor` participation (the board holds nothing to export; a merged or deleted user's entries go with the owning section's state and the next reconcile).
 - Controller routes Resolve, Dismiss, MarkRead, MarkAllRead, BulkResolve, BulkDismiss, ClickThrough, and the inbox views behind them.
-- `INotificationMeterCacheInvalidator` and its two call sites; `CacheKeys.NotificationBadgeCounts`, `NotificationMeters`, `CampLeadJoinRequestsBadge`.
+- `CacheKeys.NotificationBadgeCounts`, `NotificationMeterProvider.CountsCacheKey`, `CampLeadJoinRequestsBadge`.
 - The 35 emitting call sites across Teams, Shifts, Issues, Camps, Auth, Governance, Feedback, Onboarding, Users, Campaigns, GoogleIntegration, Consent, Rideshare; the three auto-resolve call sites.
 - `ISectionThingsToDo` and its three implementations, `ThingsToDoViewComponent` in Base.
 - Users' `CommunicationPreference.InboxEnabled`: property override first, column drop in the same drop PR as the tables, per [`no-column-drops-for-decoupling`](../../../../../memory/architecture/no-column-drops-for-decoupling.md).

@@ -78,7 +78,6 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             AuditLog,
             Notifier,
             shiftManagementService,
-            Substitute.For<INotificationMeterCacheInvalidator>(),
             ShiftAuthInvalidator,
             AdminAuthorization,
             EarlyEntryInvalidator,

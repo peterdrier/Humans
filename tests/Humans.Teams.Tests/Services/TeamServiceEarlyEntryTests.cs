@@ -37,7 +37,6 @@ public sealed class TeamServiceEarlyEntryTests
     private readonly IEarlyEntryInvalidator _eeInvalidator = Substitute.For<IEarlyEntryInvalidator>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
     private readonly TeamService _service;
-    private readonly INotificationMeterCacheInvalidator _meterInvalidator = Substitute.For<INotificationMeterCacheInvalidator>();
 
     public TeamServiceEarlyEntryTests()
     {
@@ -46,7 +45,6 @@ public sealed class TeamServiceEarlyEntryTests
             _audit,
             Substitute.For<INotificationEmitter>(),
             Substitute.For<IShiftManagement>(),
-            _meterInvalidator,
             Substitute.For<IShiftAuthorizationInvalidator>(),
             Substitute.For<IAdminAuthorizationService>(),
             _eeInvalidator,
@@ -405,10 +403,6 @@ public sealed class TeamServiceEarlyEntryTests
     [HumansFact]
     public async Task EraseForUserAsync_EndsMembershipsDeletesRequestsAndGrantsInvalidates()
     {
-        using var cache = new MemoryCache(new MemoryCacheOptions());
-        var invalidator = new NotificationMeterCacheInvalidator(cache);
-        _meterInvalidator.When(x => x.Invalidate()).Do(_ => invalidator.Invalidate());
-        cache.Set(CacheKeys.NotificationMeters, 2);
         var userId = Guid.NewGuid();
         _repo.GetEarlyEntryGrantsForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<TeamEarlyEntryGrant> { Grant(Guid.NewGuid(), userId), Grant(Guid.NewGuid(), userId) });
@@ -419,7 +413,6 @@ public sealed class TeamServiceEarlyEntryTests
         await _repo.Received(1).DeleteJoinRequestsForUserAsync(userId, Arg.Any<CancellationToken>());
         await _repo.Received(1).RemoveEarlyEntryGrantsForUserAsync(userId, Arg.Any<CancellationToken>());
         _eeInvalidator.Received(1).InvalidateUser(userId);
-        cache.TryGetValue<int>(CacheKeys.NotificationMeters, out _).Should().BeFalse();
     }
 
     [HumansFact]
@@ -441,10 +434,6 @@ public sealed class TeamServiceEarlyEntryTests
     [HumansFact]
     public async Task ReassignAsync_FoldsGrantsToTargetAndInvalidatesBoth()
     {
-        using var cache = new MemoryCache(new MemoryCacheOptions());
-        var invalidator = new NotificationMeterCacheInvalidator(cache);
-        _meterInvalidator.When(x => x.Invalidate()).Do(_ => invalidator.Invalidate());
-        cache.Set(CacheKeys.NotificationMeters, 2);
         var source = Guid.NewGuid();
         var target = Guid.NewGuid();
         _repo.GetActiveByUserIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -455,7 +444,6 @@ public sealed class TeamServiceEarlyEntryTests
         await _repo.Received(1).ReassignEarlyEntryGrantsAsync(source, target, Arg.Any<CancellationToken>());
         _eeInvalidator.Received(1).InvalidateUser(source);
         _eeInvalidator.Received(1).InvalidateUser(target);
-        cache.TryGetValue<int>(CacheKeys.NotificationMeters, out _).Should().BeFalse();
     }
 
     // ==========================================================================
