@@ -81,7 +81,7 @@ A shift qualifies when `Shift.IsAllDay` (08:00–18:00) **or** `Shift.Duration �
 |---|---|---|
 | `UserId` | `uuid` PK | |
 | `DietaryPreference` | `varchar(200)?` | Non-empty ⇒ answered |
-| `DeclinedToAnswer` | `bool` (default `false`) | "I don't want to answer"; food fields empty; cleared by a save |
+| `DeclinedToAnswer` | `bool?` (null = unanswered) | "I don't want to answer"; food fields empty; cleared by a save |
 | `Allergies` | `jsonb` list | |
 | `AllergyOtherText` | `varchar(500)?` | Only with `Other` |
 | `Intolerances` | `jsonb` list | |

@@ -131,7 +131,7 @@ internal sealed class DietaryProfileService(
 
     private static DietaryProfileInfo ToInfo(DietaryProfile row) => new(
         row.UserId, row.DietaryPreference, row.Allergies, row.AllergyOtherText, row.Intolerances, row.IntoleranceOtherText,
-        row.DeclinedToAnswer);
+        row.DeclinedToAnswer == true);
 
     private static DietaryProfile ToEntity(DietaryProfileInfo info, Instant now) => new()
     {
