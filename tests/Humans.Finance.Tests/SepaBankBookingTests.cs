@@ -1698,6 +1698,135 @@ public class SepaBankBookingTests
         await AssertNothingPostedAsync();
     }
 
+    // ─── Equal amounts: indistinguishable lines and transfers pair as a set ─────────
+
+    /// <summary>One file of <paramref name="transfers"/> transfers of €30 to as many members, and
+    /// <paramref name="lines"/> textless €30 lines dated inside its window. The first member is the
+    /// fixture's; <paramref name="unboundSecond"/> leaves the second with no Holded binding.</summary>
+    private void SeedEqualAmountSet(int lines, int transfers, bool unboundSecond = false, Guid? secondFileId = null)
+    {
+        var users = new[] { _userId, Guid.NewGuid(), Guid.NewGuid() };
+        var accounts = new[] { Account, OtherAccount, 40000009 };
+        var ids = new[] { TransferId, OtherTransferId, Guid.NewGuid() };
+        SeedRows(Enumerable.Range(0, transfers)
+            .Select(i => Row(ids[i], users[i], accounts[i], fileId: i == 1 && secondFileId is { } f ? f : MatchedFileId))
+            .ToArray());
+        for (var i = 1; i < transfers; i++)
+        {
+            SeedTransfer(30m, ids[i], users[i], accounts[i]);
+            SeedBinding(users[i], accounts[i]);
+        }
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(
+            Enumerable.Range(0, transfers)
+                .Where(i => !(unboundSecond && i == 1))
+                .Select(i => new HoldedCreditorContact
+                {
+                    UserId = users[i], HoldedContactId = "c1", SupplierAccountNum = accounts[i], Source = CreditorContactSource.Auto,
+                })
+                .ToList());
+        SeedOwed(30m, (OtherAccount, 30m), (40000009, 30m));
+        SeedMovements(Enumerable.Range(1, lines).Select(i => Movement("mov-" + i, description: Textless)).ToArray());
+    }
+
+    [HumansFact]
+    public async Task Page_TwoTextlessLines_TwoTransfersOfTheAmountInOneFile_PairAsASet_AndTheFileBooks()
+    {
+        // Which €30 line paid which €30 transfer is unknowable and does not matter: each transfer
+        // books its own creditor account, and the lines carry no text. Line by id, transfer by account.
+        SeedEqualAmountSet(lines: 2, transfers: 2);
+        var actor = Guid.NewGuid();
+        var service = MakeService();
+
+        var (rows, _, unmatched, _) = await service.GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
+        var result = await service.BookSepaFileMatchesAsync(MatchedFileId, actor);
+
+        unmatched.Should().BeEmpty();
+        rows.Should().OnlyContain(r => r.CanBook && !r.CandidateMatchedByText);
+        rows.Single(r => r.TransferId == TransferId).CandidateBankMovementId.Should().Be("mov-1");
+        rows.Single(r => r.TransferId == OtherTransferId).CandidateBankMovementId.Should().Be("mov-2");
+        result.Succeeded.Should().BeTrue(result.Message);
+        result.Message.Should().Contain("Booked all 2 transfers");
+        await _repo.Received(1).SaveSepaTransferBookingAsync(
+            TransferId, FixedNow, actor, "mov-1", Arg.Any<Instant?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _repo.Received(1).SaveSepaTransferBookingAsync(
+            OtherTransferId, FixedNow, actor, "mov-2", Arg.Any<Instant?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Booking_TextlessSetLine_AgainstTheOtherTransferOfTheSet_Refuses()
+    {
+        SeedEqualAmountSet(lines: 2, transfers: 2);
+
+        var result = await MakeService().BookSepaTransferAsync(TransferId, "mov-2", Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain("does not match this transfer");
+        await AssertNothingPostedAsync();
+    }
+
+    [HumansFact]
+    public async Task TwoTextlessLines_ThreeTransfersOfTheAmount_StayAmbiguous()
+    {
+        SeedEqualAmountSet(lines: 2, transfers: 3);
+        var service = MakeService();
+
+        var (rows, _, unmatched, _) = await service.GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
+        var result = await service.BookSepaTransferAsync(TransferId, "mov-1", Guid.NewGuid());
+
+        rows.Should().OnlyContain(r => !r.CanBook);
+        unmatched.Should().HaveCount(2).And.OnlyContain(l => l.Reason.Contains("3 unbooked transfers are for"));
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain("3 unbooked transfers match");
+        await AssertNothingPostedAsync();
+    }
+
+    [HumansFact]
+    public async Task OneTextlessLine_TwoTransfersOfTheAmountInOneFile_StaysAmbiguous()
+    {
+        SeedEqualAmountSet(lines: 1, transfers: 2);
+        var service = MakeService();
+
+        var (rows, _, unmatched, _) = await service.GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
+        var result = await service.BookSepaTransferAsync(TransferId, "mov-1", Guid.NewGuid());
+
+        rows.Should().OnlyContain(r => !r.CanBook);
+        unmatched.Should().ContainSingle().Which.Reason.Should().Contain("2 unbooked transfers are for");
+        result.Succeeded.Should().BeFalse();
+        await AssertNothingPostedAsync();
+    }
+
+    [HumansFact]
+    public async Task TwoTextlessLines_TwoTransfersOfTheAmountInTwoFiles_StayAmbiguous()
+    {
+        SeedEqualAmountSet(lines: 2, transfers: 2, secondFileId: Guid.NewGuid());
+        var service = MakeService();
+
+        var (rows, _, unmatched, _) = await service.GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
+        var result = await service.BookSepaTransferAsync(TransferId, "mov-1", Guid.NewGuid());
+
+        rows.Should().OnlyContain(r => !r.CanBook);
+        unmatched.Should().HaveCount(2);
+        result.Succeeded.Should().BeFalse();
+        await AssertNothingPostedAsync();
+    }
+
+    [HumansFact]
+    public async Task Page_TextlessSet_WithANotBookableTransfer_StaysOnThePanel_AndTheFileIsNotOffered()
+    {
+        SeedEqualAmountSet(lines: 2, transfers: 2, unboundSecond: true);
+        var service = MakeService();
+
+        var (rows, _, unmatched, _) = await service.GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
+        var result = await service.BookSepaFileMatchesAsync(MatchedFileId, Guid.NewGuid());
+
+        rows.Should().OnlyContain(r => !r.CanBook);
+        rows.Single(r => r.TransferId == OtherTransferId).NotBookableReason.Should().Contain("no Holded contact binding");
+        unmatched.Should().HaveCount(2);
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain("2 of the file's 2 unbooked transfers have no Sabadell line");
+        await AssertNothingPostedAsync();
+    }
+
     [HumansFact]
     public async Task BookFile_FeedUnreadable_RefusesAndPostsNothing()
     {

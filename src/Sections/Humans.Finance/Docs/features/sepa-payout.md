@@ -98,8 +98,9 @@ same `Service.BookSepaTransferAsync(transferId, bankMovementId, actorUserId)`
    creditor account (the `<account> - NCA - <name>` remittance text) it is this transfer's
    `SupplierAccountNum`; a textless line is not also some multi-transfer file's total; exactly one
    unbooked transfer (of that account, or of any account for a textless line) matches it on amount
-   and date; no other pending line could have paid this transfer; no other row already carries this
-   movement id.
+   and date — or, for a textless line, it is one of an equal-count set (below) and this transfer is
+   the one the set's order gives it; no other pending line could have paid this transfer; no other
+   row already carries this movement id.
 3. **Live balance.** `client.ListAccountingAccountsAsync()`, the row for the creditor account,
    `owedNow = -Balance` — the account's live total, not a windowed reconstruction. It gates nothing;
    it is what the audit entry names when the transfer pays more than the account owes.
@@ -195,7 +196,7 @@ ledger, so paying one would post against a document that does not exist for acco
 | `Sepa:*` identity, `Sepa:TreasuryAccountId` or `Sepa:TreasuryLedgerAccount` unset | one banner for the whole screen; no buttons |
 | Already booked | the row renders as `Booked`; a re-POST pays nothing and says so |
 | No bank line yet | no button; "waiting for the Sabadell line" |
-| Ambiguous match (two unbooked transfers generated inside the feed window fit one line — of its account, or of any account when its text names none) | the line renders in the "needs a human" panel; both are settled in Holded by hand |
+| Ambiguous match (two unbooked transfers generated inside the feed window fit one line — of its account, or of any account when its text names none — and they are not an equal-count set of one file) | the line renders in the "needs a human" panel; both are settled in Holded by hand |
 | A textless line whose amount is also a multi-transfer file's total | neither the transfer nor the file takes it; the panel says so |
 | A file with an unbooked transfer that has no line | no Book file button; the card says how many of its transfers are matched |
 | A textless line dated outside the tolerance of every file of its amount | the panel; widen the tolerance on the page if it is that file's |
@@ -277,8 +278,13 @@ back with every booking from that view, so the booking re-validates under the wi
 paired with. A line whose text names the account is bound only from below (no earlier than the
 tolerance before the file), as before. Nothing else is inferred:
 
-- two unbooked transfers of that amount, in any files, make the line ambiguous — the panel names
-  the count and a human books it in Holded;
+- two unbooked transfers of that amount make the line ambiguous — the panel names the count and a
+  human books it in Holded — unless they are a **set**: N unbooked transfers of one amount in one
+  file, exactly N textless lines of that amount inside its window, and no other line that could be
+  paying any of them. Which line paid which is then unknowable and accounting-neutral (each transfer
+  books its own creditor account; the lines carry no text), so they pair one to one, line by Holded
+  id against transfer by creditor account. Unequal counts, transfers spread over two files, or a
+  transfer in the set that cannot be booked keep every line of the set on the panel;
 - two pending lines of that amount that could each have paid one transfer leave it unpaired, both in
   the panel;
 - a line whose amount is also a multi-transfer file's total is left to a human, since it could be

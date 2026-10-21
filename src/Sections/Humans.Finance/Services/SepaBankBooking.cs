@@ -186,6 +186,18 @@ internal sealed class SepaBankBooking(
                 continue;
             }
 
+            // Equal amounts in one file, as many textless lines: the set pairs one to one. A member
+            // that cannot be booked keeps the whole set on the panel, so Book file never books
+            // half of it.
+            if (account is null && matches.Count > 1
+                && TextlessSetPairs(live, movements, m, tolerance) is { Count: > 0 } set
+                && set.All(p => p.Row.NotBookableReason is null))
+            {
+                candidateByTransfer[set.Single(p => string.Equals(p.Line.Id, m.Id, StringComparison.Ordinal)).Row.TransferId]
+                    = (m, false);
+                continue;
+            }
+
             var files = batchFilesByLine.GetValueOrDefault(m.Id) ?? [];
             // It renders on its file's card, with the Process button.
             if (files.Count == 1 && batchByFile.TryGetValue(files[0], out var batch)
@@ -1061,8 +1073,20 @@ internal sealed class SepaBankBooking(
 
             var matches = UnbookedMatches(all, account, transfer.Amount, m.Date, tolerance);
             if (matches.Count > 1)
-                return $"{matches.Count} unbooked transfers match that Sabadell line — Humans cannot tell "
-                       + "which it paid; settle it in Holded by hand. Nothing was posted.";
+            {
+                // The page's set pairing, re-run here: the set's own rival check stands in for the
+                // one below.
+                var own = account is null
+                    ? TextlessSetPairs(all, lines, m, tolerance)
+                        .FirstOrDefault(p => string.Equals(p.Line.Id, m.Id, StringComparison.Ordinal)).Row
+                    : null;
+                if (own is null)
+                    return $"{matches.Count} unbooked transfers match that Sabadell line — Humans cannot tell "
+                           + "which it paid; settle it in Holded by hand. Nothing was posted.";
+                return own.TransferId == transfer.Id
+                    ? null
+                    : "That Sabadell line does not match this transfer — nothing was posted.";
+            }
             if (matches.Count != 1 || matches[0].TransferId != transfer.Id)
                 return "That Sabadell line does not match this transfer — nothing was posted.";
 
@@ -1306,6 +1330,39 @@ internal sealed class SepaBankBooking(
             // one — the same rule BatchLineRefusal applies.
             && !f.Any(r => r.IsBooked && !string.Equals(r.HoldedBankMovementId, m.Id, StringComparison.Ordinal))
             && InWindow(f.First(), m.Date, tolerance, bounded: true));
+
+    /// <summary>The one-to-one pairing of a textless line's set: the unbooked transfers of its amount
+    /// — two or more, all of one file — with the textless lines that match exactly those transfers,
+    /// when the two counts are equal and no other unbooked line could be paying any of them. Which
+    /// line paid which transfer is then unknowable and accounting-neutral (each transfer books its
+    /// own creditor account; the lines carry no text), so the assignment is simply line by id
+    /// against transfer by creditor account. Empty when the set does not pair: unequal counts, two
+    /// files, a named line or a whole-file candidate among the lines.</summary>
+    private List<(HoldedBankMovementDto Line, SepaPayoutTransferRow Row)> TextlessSetPairs(
+        IReadOnlyList<SepaPayoutTransferRow> rows, IReadOnlyList<HoldedBankMovementDto> feed,
+        HoldedBankMovementDto m, int tolerance)
+    {
+        var set = UnbookedMatches(rows, null, Math.Abs(m.Amount), m.Date, tolerance);
+        if (set.Count < 2 || set.Select(r => r.FileId).Distinct().Count() > 1) return [];
+        var ids = set.Select(r => r.TransferId).ToHashSet();
+        var claimants = feed
+            .Where(x => NeedsAMatch(x)
+                        && !rows.Any(r => string.Equals(r.HoldedBankMovementId, x.Id, StringComparison.Ordinal)))
+            .Select(x => (Line: x, Account: RemittanceAccountNum(x.Description)))
+            .Select(x => (x.Line, x.Account, Matches:
+                UnbookedMatches(rows, x.Account, Math.Abs(x.Line.Amount), x.Line.Date, tolerance)
+                    .Select(r => r.TransferId).ToHashSet()))
+            .Where(x => x.Matches.Overlaps(ids))
+            .ToList();
+        if (claimants.Count != set.Count
+            || claimants.Any(x => x.Account is not null || !x.Matches.SetEquals(ids)
+                                  || TextlessLineFitsAFile(rows, x.Line, tolerance)))
+            return [];
+        return claimants
+            .OrderBy(x => x.Line.Id, StringComparer.Ordinal)
+            .Zip(set.OrderBy(r => r.SupplierAccountNum), (x, r) => (x.Line, r))
+            .ToList();
+    }
 
     /// <summary>The files whose whole total <paramref name="m"/> could be the one debit of. More than
     /// one is ambiguous and waits for a human.</summary>
