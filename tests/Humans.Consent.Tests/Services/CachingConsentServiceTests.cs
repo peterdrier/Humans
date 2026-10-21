@@ -27,16 +27,20 @@ public sealed class CachingConsentServiceTests
     {
         // The batched lookup answers per id exactly as the single one does, as the real one does.
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(async call =>
-            {
-                var infos = new Dictionary<Guid, UserInfo>();
-                foreach (var id in call.ArgAt<IReadOnlyCollection<Guid>>(0))
-                {
-                    if (await _userService.GetUserInfoAsync(id, call.ArgAt<CancellationToken>(1)) is { } info)
-                        infos[id] = info;
-                }
-                return (IReadOnlyDictionary<Guid, UserInfo>)infos;
-            });
+            .Returns(call => GetUserInfosOneByOneAsync(
+                call.ArgAt<IReadOnlyCollection<Guid>>(0), call.ArgAt<CancellationToken>(1)));
+    }
+
+    private async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosOneByOneAsync(
+        IReadOnlyCollection<Guid> ids, CancellationToken ct)
+    {
+        var infos = new Dictionary<Guid, UserInfo>();
+        foreach (var id in ids)
+        {
+            if (await _userService.GetUserInfoAsync(id, ct) is { } info)
+                infos[id] = info;
+        }
+        return infos;
     }
 
     private CachingConsentService CreateSut()

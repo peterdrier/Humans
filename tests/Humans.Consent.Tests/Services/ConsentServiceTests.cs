@@ -93,7 +93,8 @@ public sealed class ConsentServiceTests : ConsentTestHarness
                     createdAt: Clock.GetCurrentInstant())));
 
         var services = new ServiceCollection();
-        services.AddKeyedScoped<IConsentManagement>(CachingConsentService.InnerServiceKey, (_, _) => _service);
+        services.AddKeyedScoped<IConsentManagement>(CachingConsentService.InnerServiceKey, (_, _) =>
+            _service ?? throw new InvalidOperationException("ConsentService is built below, before any test runs."));
         _cache = new CachingConsentService(_legalDocumentSyncService, _userService, Clock,
             services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
             NullLogger<CachingConsentService>.Instance);

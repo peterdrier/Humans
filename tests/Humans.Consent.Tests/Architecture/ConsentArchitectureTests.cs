@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 using NSubstitute;
+using Humans.Users.Contracts;
 using ConsentService = Humans.Consent.Services.ConsentService;
 
 namespace Humans.Consent.Tests.Architecture;
@@ -97,9 +98,10 @@ public sealed class ConsentArchitectureTests
     {
         var services = new ServiceCollection();
         // The section registers against the host's baseline; the caching
-        // singletons only need logging and a clock to construct.
+        // singletons only need logging, a clock and Users' singleton IUserService to construct.
         services.AddLogging();
         services.AddSingleton(Substitute.For<IClock>());
+        services.AddSingleton(Substitute.For<IUserService>());
 
         new Section().Register(services, new ConfigurationBuilder().Build());
 
