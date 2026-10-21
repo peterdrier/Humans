@@ -32,8 +32,6 @@ public class AccountDeletionServiceTests
     private readonly IGdprService _gdprService = Substitute.For<IGdprService>();
     private readonly ITicketService _ticketQueryService = Substitute.For<ITicketService>();
     private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
-    private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator =
-        Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator =
         Substitute.For<IShiftAuthorizationInvalidator>();
     private readonly IShiftViewInvalidator _shiftViewInvalidator =
@@ -58,7 +56,6 @@ public class AccountDeletionServiceTests
             _gdprService,
             _ticketQueryService,
             _userInfoInvalidator,
-            _roleAssignmentClaimsInvalidator,
             _shiftAuthorizationInvalidator,
             _shiftViewInvalidator,
             _auditLogService,
@@ -384,7 +381,6 @@ public class AccountDeletionServiceTests
         // contributors run against the inner UserService.
         await _userInfoInvalidator.Received(1).InvalidateAsync(
             userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
-        _roleAssignmentClaimsInvalidator.Received(1).Invalidate(userId);
         _shiftAuthorizationInvalidator.Received(1).Invalidate(userId);
     }
 
@@ -442,7 +438,6 @@ public class AccountDeletionServiceTests
         await _gdprService.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
 
         _teamService.Received(1).RemoveMemberFromAllTeamsCache(userId);
-        _roleAssignmentClaimsInvalidator.Received(1).Invalidate(userId);
         _shiftAuthorizationInvalidator.Received(1).Invalidate(userId);
     }
 

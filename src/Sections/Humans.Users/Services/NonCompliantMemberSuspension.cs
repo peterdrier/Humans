@@ -23,8 +23,7 @@ namespace Humans.Users.Services;
 /// (<see cref="IUserManagement"/>) so this never touches another section's
 /// DbContext directly (design-rules §2c). Cross-cutting cache invalidation routes
 /// through invalidator interfaces
-/// (<see cref="IRoleAssignmentClaimsCacheInvalidator"/>,
-/// <see cref="IShiftAuthorizationInvalidator"/>) rather than IMemoryCache.
+/// (<see cref="IShiftAuthorizationInvalidator"/>) rather than IMemoryCache.
 /// </remarks>
 internal sealed class NonCompliantMemberSuspension(
     IUserManagement userService,
@@ -34,7 +33,6 @@ internal sealed class NonCompliantMemberSuspension(
     UsersEmails emailMessages,
     INotificationEmitter notificationService,
     IAuditLogService auditLogService,
-    IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
     IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
     IHumansMetrics metrics,
     ILogger<NonCompliantMemberSuspension> logger) : INonCompliantMemberSuspension
@@ -141,7 +139,6 @@ internal sealed class NonCompliantMemberSuspension(
                 $"{user.BurnerName} suspended for missing required document consent (grace period expired)",
                 AuditActor);
 
-            roleAssignmentClaimsInvalidator.Invalidate(user.Id);
             shiftAuthorizationInvalidator.Invalidate(user.Id);
             activeTeamsCacheInvalidator.Invalidate();
         }

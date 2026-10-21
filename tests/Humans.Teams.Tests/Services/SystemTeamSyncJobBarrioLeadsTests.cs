@@ -47,7 +47,6 @@ public class SystemTeamSyncJobBarrioLeadsTests
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly TeamsEmails _emailMessages = TestTeamsEmails.Create();
-    private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
 
     private SystemTeamSyncJob CreateJob(IMembershipCalculator? membershipCalculator = null, ITeamResourceService? resources = null)
@@ -75,7 +74,6 @@ public class SystemTeamSyncJobBarrioLeadsTests
             _auditLogService,
             _emailService,
             _emailMessages,
-            _roleAssignmentClaimsInvalidator,
             _metrics,
             NullLogger<SystemTeamSyncJob>.Instance,
             _clock);

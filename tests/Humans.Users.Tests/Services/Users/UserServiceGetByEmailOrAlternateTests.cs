@@ -32,7 +32,6 @@ public sealed class UserServiceGetByEmailOrAlternateTests : ServiceTestHarness
             _repo,
             communicationPreferenceRepository,
             AdminAuthorization,
-            Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
             Substitute.For<IFileStorage>(),
             Clock,
             NullLogger<UserService>.Instance, AuditLog);

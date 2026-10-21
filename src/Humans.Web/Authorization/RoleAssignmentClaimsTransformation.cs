@@ -1,9 +1,7 @@
 using Humans.Auth.Contracts;
 using System.Security.Claims;
-using Humans.Base.Caching;
 using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.Extensions.Caching.Memory;
 using Humans.Users.Contracts;
 
 namespace Humans.Web.Authorization;
@@ -11,12 +9,13 @@ namespace Humans.Web.Authorization;
 /// <summary>
 /// Syncs active role assignments to Identity role claims and stamps the user's stored
 /// <see cref="UserState"/> as a claim, the single source of truth for app access.
-/// Runs per authenticated request; cached 60s per user.
+/// Runs per authenticated request and derives the claims fresh each time: both inputs
+/// are served from in-memory caches (Users' <c>UserInfo</c>, Auth's role-assignment rows)
+/// that their owners keep current, so a per-user claims cache bought nothing but staleness.
 /// </summary>
 public class RoleAssignmentClaimsTransformation(
     IRoleAssignmentService roleAssignments,
-    IUserService userService,
-    IMemoryCache cache) : IClaimsTransformation
+    IUserService userService) : IClaimsTransformation
 {
     /// <summary>Carries the user's stored <see cref="UserState"/> enum name.</summary>
     /// <remarks>Defined on <see cref="RoleChecks"/> so section views can read it.</remarks>
@@ -24,8 +23,6 @@ public class RoleAssignmentClaimsTransformation(
 
     public const string ActiveClaimValue = "true";
     public const string ClaimsAddedMarkerType = "RoleAssignmentClaimsAdded";
-
-    private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(60);
 
     /// <summary>The stored <see cref="UserState"/> stamped on the principal, or null if absent.</summary>
     public static UserState? GetUserState(ClaimsPrincipal principal) => RoleChecks.GetUserState(principal);
@@ -53,11 +50,7 @@ public class RoleAssignmentClaimsTransformation(
             return principal;
         }
 
-        var claims = await cache.GetOrCreateAsync(CacheKeys.RoleAssignmentClaims(userId), async entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
-            return await LoadClaimsAsync(userId);
-        }) ?? [];
+        var claims = await LoadClaimsAsync(userId);
 
         var identity = new ClaimsIdentity();
         foreach (var claim in claims)

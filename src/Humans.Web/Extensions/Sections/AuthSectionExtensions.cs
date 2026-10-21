@@ -15,12 +15,10 @@ internal static class AuthSectionExtensions
 {
     internal static IServiceCollection AddAuthSection(this IServiceCollection services)
     {
-        // Two implementations of section-owned interfaces that live in Shell and cannot
-        // move: HttpCurrentUserContext reads IHttpContextAccessor, and the claims cache
-        // being invalidated belongs to Shell's RoleAssignmentClaimsTransformation.
+        // An implementation of a section-owned interface that lives in Shell and cannot
+        // move: HttpCurrentUserContext reads IHttpContextAccessor.
         // Governance's rule — the section that owns the file is not always the section that
         // owns the line — read from the implementation side.
-        services.AddScoped<IRoleAssignmentClaimsCacheInvalidator, RoleAssignmentClaimsCacheInvalidator>();
         services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
 
         // The magic-link sign-in path (IMagicLinkService + IMagicLinkUrlBuilder +

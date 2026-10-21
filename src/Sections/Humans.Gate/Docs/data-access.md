@@ -68,7 +68,7 @@ gate terminal *sign-in*, not gate *admission*: `GateLoginThrottle`
 (`src/Humans.Web/Services/`, `GateLoginFailures:{sourceIp}` — per-IP
 terminal sign-in throttle) and `GateTerminalAccountSeeder`
 (`src/Sections/Humans.Tickets/Services/`), which provisions the shared
-kiosk account and fires `InvalidateUserAccess` (claims / shift-auth /
+kiosk account and fires `InvalidateUserAccess` (shift-auth /
 active-teams eviction).
 
 ### Background jobs (`Humans.Gate/Jobs/`)

@@ -52,13 +52,13 @@ own shape is a candidate for removal.
 | S3 | *What does this person hold?* | `GetActiveForUserAsync`, `GetByUserIdAsync` | Active-only vs. full history |
 | S4 | *Render the admin list / one row* | `GetFilteredAsync`, `GetByIdAsync` | The only paged, display-stitched shape |
 | S5 | *Change who holds what* | `AssignRoleAsync`, `EndRoleAsync`, `RevokeAllActiveAsync` | The invariant-bearing shape; the overlap check is the repository's, asked only from inside `AssignRoleAsync` |
-| S6 | *Flush a cache on my behalf* | `InvalidateClaimsCacheForUser`, `InvalidateRoleAssignmentCache` | Not a question about roles at all — see §3 |
+| S6 | *Flush a cache on my behalf* | — (gone 2026-10-21, HUM0028) | Was `InvalidateClaimsCacheForUser` and `InvalidateRoleAssignmentCache` — see §3 |
 | S7 | *Sign this person in from an emailed link* | `SendMagicLinkAsync`, `VerifyLoginTokenAsync`, `VerifySignupToken`, `VerifyAndConsumeSignupTokenAsync`, `ReleaseSignupToken`, `FindUserByVerifiedEmailAsync` | `IMagicLinkService`; the signup members split read (form prefill), redemption, and un-redemption when provisioning fails |
 | S8 | *Stop this request unless it is a full Admin* | `RequireCurrentUserIsAdminAsync` | `IAdminAuthorizationService` |
 | S9 | *May this principal manage this role name?* | `RoleAssignmentOperationRequirement` + its handler | ASP.NET resource-based, Shell-invoked |
 | S10 | *Who is the current user?* | `ICurrentUserContext.UserId` | Declared here, implemented in Shell |
 
-S1–S4 are `IRoleAssignmentService`; S5 and S6 are `IRoleAssignmentWrite`; the internal
+S1–S4 are `IRoleAssignmentService`; S5 is `IRoleAssignmentWrite`; the internal
 `IRoleAssignmentManagement` joins both and adds only what the section itself asks for.
 Implemented-but-uncontracted shapes ride along on the inner service: GDPR export/erasure
 (`IUserDataContributor`) and account-merge re-FK (`IUserMerge`). Both are crosscut interfaces
@@ -92,11 +92,11 @@ Written fresh from the shapes above, not from today's tree.
   configures in `Program.cs`, and the actions that do more than render or challenge provision
   users through `Humans.Users`. None of them writes `role_assignments`. That is a deliberate
   boundary, not an unfinished move.
-- **S6 does not belong on a role-assignment contract.** The cache-flush verbs sit on
-  `IRoleAssignmentWrite` so that one caller — Users' `AccountMergeService` — can poke
-  Auth's caches after a merge fold commits. The target shape is that a merge tells Auth *a
-  merge happened* (the `IUserMerge` seam it already implements) and Auth decides what to
-  invalidate. Recorded as a seam (§5), not struck: it is a public-surface change.
+- **S6 does not belong on a role-assignment contract — and is gone.** The cache-flush verbs
+  sat on `IRoleAssignmentWrite` so Users' `AccountMergeService` could poke Auth's caches after
+  a merge fold. Since 2026-10-21 (HUM0028) the merge tells Auth *a merge happened* through
+  `IUserMerge.ReassignAsync` and Auth clears its own row cache there; the per-user claims cache
+  the other verb flushed was dropped, so both members left the contract.
 
 ## 4. Invariants
 
@@ -116,11 +116,10 @@ Stated so a violation is recognisable, each with the line that enforces it. Thes
    call a method and be translated). What this forbids is a second *predicate*, not a second
    implementation: an in-memory read that spells the comparison out where a method is in reach
    is the violation.
-5. Assign, end, and the bulk revoke invalidate the row cache and the claims cache for the
-   affected user before the call returns (`Services/RoleAssignmentService.cs:131`,
-   `Services/RoleAssignmentService.cs:194`, `Services/RoleAssignmentService.cs:259`). The merge
-   path (`ReassignAsync`) is the exception by contract: it leaves invalidation to
-   `AccountMergeService.MergeAsync`, which flushes after the merge's commit point.
+5. Assign, end, the bulk revoke and the merge fold (`ReassignAsync`) clear the row cache right
+   after their repository write, before the Board team sync reads roles back
+   (`Services/RoleAssignmentService.cs`). There is no claims cache to flush: the Shell's
+   claims transformation derives claims per request from the row cache.
 6. Every single-row write leaves an audit entry attributed to the actor
    (`Services/RoleAssignmentService.cs:125`, `Services/RoleAssignmentService.cs:188`), and
    best-effort notifies the affected person; a notification failure never fails the write
@@ -147,8 +146,6 @@ Stated so a violation is recognisable, each with the line that enforces it. Thes
 
 Reserved, not ranked, not built:
 
-- **S6's inversion.** Cache invalidation flowing from the merge seam rather than three public
-  flush verbs. Public-surface change; needs Peter.
 - **Cached S1/S2 derivations.** The decorator holds every row but still passes `HasActiveRoleAsync`
   and friends through to SQL. The cached row shape can already answer them; the migration was
   left "incremental as new callers arrive". Doing it is behaviour-preserving but changes the
@@ -190,8 +187,6 @@ Settled decisions that read as smells. Stop re-litigating these.
 - **`FindForMutationAsync` reads `AsNoTracking`.** Correct here — `UpdateAsync` re-attaches to
   a *fresh* context, so tracking in the read context would buy nothing. That leaves its body
   identical to `GetByIdAsync`'s; the two names say which caller mutates, so they stay two.
-- **`IRoleAssignmentCacheInvalidator` carries `[Grandfathered]` HUM0028.** Known debt with an
-  issue; not a pattern to copy and not today's cleanup.
 - **`MagicLinkService` releases the cooldown reservation on a failed send.** A failed send
   must not consume the user's cooldown. The login cooldown is the in-memory reservation alone;
   it closes the overlapping-request race and is deliberately not persisted.

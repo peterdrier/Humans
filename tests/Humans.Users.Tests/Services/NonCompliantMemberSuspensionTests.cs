@@ -30,7 +30,6 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     private readonly UsersEmails _emailMessages = TestUsersEmails.Create();
     private readonly INotificationEmitter _notificationService;
     private readonly IAuditLogService _auditLogService;
-    private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator;
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator;
     private readonly IActiveTeamsCacheInvalidator _activeTeamsCacheInvalidator;
     private readonly HumansMetricsService _metrics;
@@ -46,7 +45,6 @@ public class NonCompliantMemberSuspensionTests : IDisposable
         _emailService = Substitute.For<IEmailService>();
         _notificationService = Substitute.For<INotificationEmitter>();
         _auditLogService = Substitute.For<IAuditLogService>();
-        _roleAssignmentClaimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
         _shiftAuthorizationInvalidator = Substitute.For<IShiftAuthorizationInvalidator>();
         _activeTeamsCacheInvalidator = Substitute.For<IActiveTeamsCacheInvalidator>();
         _clock = new FakeClock(Now);
@@ -56,7 +54,6 @@ public class NonCompliantMemberSuspensionTests : IDisposable
         _sut = new NonCompliantMemberSuspension(
             _userService, _activeTeamsCacheInvalidator, _membershipCalculator,
             _emailService, _emailMessages, _notificationService, _auditLogService,
-            _roleAssignmentClaimsInvalidator,
             _shiftAuthorizationInvalidator, _metrics, logger);
     }
 
@@ -288,7 +285,6 @@ public class NonCompliantMemberSuspensionTests : IDisposable
 
         await _sut.SuspendNonCompliantAsync(TestContext.Current.CancellationToken);
 
-        _roleAssignmentClaimsInvalidator.Received(1).Invalidate(user.Id);
         _shiftAuthorizationInvalidator.Received(1).Invalidate(user.Id);
         _activeTeamsCacheInvalidator.Received(1).Invalidate();
     }

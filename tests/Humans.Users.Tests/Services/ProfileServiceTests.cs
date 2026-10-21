@@ -50,7 +50,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             _userRepository,
             _communicationPreferenceRepository,
             AdminAuthorization,
-            Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
             _pictureStorage,
             Clock,
             NullLogger<UserService>.Instance, AuditLog);
@@ -288,7 +287,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var service = new UserService(
             new UserRepository(new TestDbContextFactory(options), Clock),
             _communicationPreferenceRepository, AdminAuthorization,
-            Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
             _pictureStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
         var command = new UserProfileSaveCommand(
             "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
@@ -328,7 +326,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             .ThrowsAsync(new IOException("Could not verify the committed picture"));
         var service = new UserService(
             repo, _communicationPreferenceRepository, AdminAuthorization,
-            Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
             _pictureStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
         var command = new UserProfileSaveCommand(
             "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
@@ -357,7 +354,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             failingRepo,
             _communicationPreferenceRepository,
             AdminAuthorization,
-            Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
             _pictureStorage,
             Clock,
             NullLogger<UserService>.Instance, AuditLog);
@@ -386,7 +382,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var sut = new UserService(
             new UserRepository(new TestDbContextFactory(options), Clock),
             _communicationPreferenceRepository, AdminAuthorization,
-            Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
             _pictureStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
         var command = new UserProfileSaveCommand(
             "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
@@ -610,8 +605,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
                 c.Arg<IReadOnlyList<ProfileLanguage>>(), c.Arg<CancellationToken>()));
         repository.GetOwnerUserIdAsync(profileId, Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Owner lookup failed"));
-        var service = new UserService(repository, _communicationPreferenceRepository, AdminAuthorization,
-            Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(), _pictureStorage,
+        var service = new UserService(repository, _communicationPreferenceRepository, AdminAuthorization, _pictureStorage,
             Clock, NullLogger<UserService>.Instance, AuditLog);
 
         var act = () => service.SaveProfileLanguagesAsync(profileId,
@@ -629,7 +623,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         userRepository,
         _communicationPreferenceRepository,
         AdminAuthorization,
-        Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
         Substitute.For<IFileStorage>(),
         Clock,
         NullLogger<UserService>.Instance, AuditLog);

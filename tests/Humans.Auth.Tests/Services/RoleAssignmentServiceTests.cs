@@ -5,7 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using Humans.Auth.Tests.Infrastructure;
-using Humans.Base.Interfaces.Caching;
 using Humans.Auth.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
@@ -27,7 +26,6 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
 {
     private readonly IRoleAssignmentRepository _repository;
     private readonly IUserService _userService;
-    private readonly IRoleAssignmentClaimsCacheInvalidator _claimsInvalidator;
     private readonly CachingRoleAssignmentService _rowCache;
     private readonly ISystemTeamSync _systemTeamSync;
     private readonly RoleAssignmentService _service;
@@ -39,7 +37,6 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
 
         _userService = NewStubUserService();
 
-        _claimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
         _systemTeamSync = Substitute.For<ISystemTeamSync>();
 
         // The real row cache, wrapping the service under test the way Section.cs wires it,
@@ -58,45 +55,9 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
             AuditLog,
             Notifier,
             _systemTeamSync,
-            _claimsInvalidator,
             _rowCache,
             Clock,
             NullLogger<RoleAssignmentService>.Instance);
-    }
-
-    [HumansFact]
-    public async Task AssignRoleAsync_InvalidatesCachedClaimsForUser()
-    {
-        var userId = Guid.NewGuid();
-        var assignerId = Guid.NewGuid();
-        await SeedUserAsync(userId, "Target User");
-        await SeedUserAsync(assignerId, "Admin User");
-
-        var result = await _service.AssignRoleAsync(
-            userId, RoleNames.Board, assignerId, null, TestContext.Current.CancellationToken);
-
-        result.Success.Should().BeTrue();
-        _claimsInvalidator.Received(1).Invalidate(userId);
-    }
-
-    [HumansFact]
-    public async Task EndRoleAsync_InvalidatesCachedClaimsForUser()
-    {
-        var userId = Guid.NewGuid();
-        var enderId = Guid.NewGuid();
-        await SeedUserAsync(userId, "Target User");
-        await SeedUserAsync(enderId, "Admin User");
-        var assignment = await AddAssignmentAsync(
-            userId,
-            RoleNames.Board,
-            Clock.GetCurrentInstant() - Duration.FromDays(1),
-            null);
-
-        var result = await _service.EndRoleAsync(
-            assignment.Id, enderId, null, TestContext.Current.CancellationToken);
-
-        result.Success.Should().BeTrue();
-        _claimsInvalidator.Received(1).Invalidate(userId);
     }
 
     [HumansFact]
@@ -416,7 +377,7 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
     }
 
     [HumansFact]
-    public async Task RevokeAllActiveAsync_EndsAllActive_AndInvalidatesClaims()
+    public async Task RevokeAllActiveAsync_EndsAllActive()
     {
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId, "Target");
@@ -431,7 +392,6 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
             .Where(ra => ra.UserId == userId)
             .ToListAsync(TestContext.Current.CancellationToken);
         remaining.All(ra => ra.ValidTo.HasValue).Should().BeTrue();
-        _claimsInvalidator.Received(1).Invalidate(userId);
     }
 
     [HumansFact]
@@ -503,6 +463,26 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
         var result = await _service.IsUserBoardMemberAsync(user.Id, TestContext.Current.CancellationToken);
 
         result.Should().Be(expected);
+    }
+
+    [HumansFact]
+    public async Task ReassignAsync_EvictsRowCache_SoTheSurvivorHoldsTheMovedRoles()
+    {
+        // The merge fold reaches this service directly (IUserMerge), not through the
+        // caching decorator, so the service itself must drop the row cache.
+        var ct = TestContext.Current.CancellationToken;
+        var archived = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        await SeedUserAsync(archived, "Archived");
+        await SeedUserAsync(survivor, "Survivor");
+        await AddAssignmentAsync(archived, RoleNames.Board, Clock.GetCurrentInstant() - Duration.FromDays(3), null);
+        (await _rowCache.GetActiveForUserAsync(survivor, ct)).Should().BeEmpty();
+
+        await _service.ReassignAsync(archived, survivor, Guid.NewGuid(), Clock.GetCurrentInstant(), ct);
+
+        (await _rowCache.GetActiveForUserAsync(survivor, ct))
+            .Select(r => r.RoleName).Should().Equal(RoleNames.Board);
+        (await _rowCache.GetActiveForUserAsync(archived, ct)).Should().BeEmpty();
     }
 
     [HumansFact]

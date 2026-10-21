@@ -23,7 +23,6 @@ internal sealed class AccountMergeService(
     IEnumerable<IUserMerge> userMerges,
     IUserManagement userService,
     IActiveTeamsCacheInvalidator activeTeamsCacheInvalidator,
-    IRoleAssignmentWrite roleAssignmentService,
     INotificationService notificationService,
     IConsentCacheInvalidator consentCacheInvalidator) : IAccountMergeService, IUserDataContributor
 {
@@ -160,9 +159,6 @@ internal sealed class AccountMergeService(
         }
         finally
         {
-            roleAssignmentService.InvalidateClaimsCacheForUser(archivedUserId);
-            roleAssignmentService.InvalidateClaimsCacheForUser(survivorUserId);
-            roleAssignmentService.InvalidateRoleAssignmentCache();
             notificationService.InvalidateBadgeCachesForUsers([archivedUserId, survivorUserId]);
             consentCacheInvalidator.InvalidateUser(archivedUserId);
             consentCacheInvalidator.InvalidateUser(survivorUserId);

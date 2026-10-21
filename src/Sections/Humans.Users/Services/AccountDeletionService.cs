@@ -24,7 +24,6 @@ internal sealed class AccountDeletionService(
     IGdprService gdprService,
     ITicketService ticketQueryService,
     IUserInfoInvalidator userInfoInvalidator,
-    IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
     IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
     IShiftViewInvalidator shiftViewInvalidator,
     IAuditLogService auditLogService,
@@ -140,7 +139,6 @@ internal sealed class AccountDeletionService(
         // run against the inner UserService, so nothing behind the caching
         // decorator has seen the collapse yet.
         await userInfoInvalidator.InvalidateAsync(userId, ct);
-        roleAssignmentClaimsInvalidator.Invalidate(userId);
         shiftAuthorizationInvalidator.Invalidate(userId);
         shiftViewInvalidator.InvalidateUser(userId);
 
@@ -187,7 +185,6 @@ internal sealed class AccountDeletionService(
         await userInfoInvalidator.InvalidateAsync(userId, ct);
         teamService.RemoveMemberFromAllTeamsCache(userId);
         teamService.InvalidateActiveTeamsCache();
-        roleAssignmentClaimsInvalidator.Invalidate(userId);
         shiftAuthorizationInvalidator.Invalidate(userId);
         shiftViewInvalidator.InvalidateUser(userId);
 
