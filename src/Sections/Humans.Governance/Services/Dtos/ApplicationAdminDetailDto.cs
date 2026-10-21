@@ -27,4 +27,9 @@ internal sealed record ApplicationAdminDetailDto(
     Instant? ResolvedAt,
     string? ReviewerName,
     string? ReviewNotes,
-    IReadOnlyList<ApplicationStateHistoryDto> History);
+    IReadOnlyList<ApplicationStateHistoryDto> History)
+{
+    /// <summary>Only a Submitted application can be approved or rejected — the status rule
+    /// <c>ApproveAsync</c>/<c>RejectAsync</c> enforce (they also refuse it with no votes cast).</summary>
+    public bool CanApproveReject => Status == ApplicationStatus.Submitted;
+}

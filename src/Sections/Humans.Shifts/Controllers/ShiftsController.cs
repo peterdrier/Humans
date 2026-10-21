@@ -474,12 +474,11 @@ internal sealed class ShiftsController(
     {
         var ct = HttpContext.RequestAborted;
         var active = (await signupService.GetByUserAsync(userId, ct: ct))
-            .Where(s => s.Status is SignupStatus.Pending or SignupStatus.Confirmed)
-            .Where(s => s.Shift?.Rota is not null)
+            .Where(s => s.IsActive)
             .ToList();
 
         var burns = new Dictionary<Guid, BurnSettingsInfo>();
-        foreach (var burnId in active.Select(s => s.Shift.Rota.EventSettingsId).Distinct())
+        foreach (var burnId in active.Select(s => s.EventSettingsId).Distinct())
         {
             if (await burnSettings.GetByIdAsync(burnId, ct) is { } burn)
                 burns[burnId] = burn;
@@ -490,17 +489,17 @@ internal sealed class ShiftsController(
         {
             // Unresolvable burn → skip, matching the old "no EventSettings on the
             // graph → drop the row" guard rather than rendering a bogus time.
-            if (!burns.TryGetValue(s.Shift.Rota.EventSettingsId, out var sEs))
+            if (!burns.TryGetValue(s.EventSettingsId, out var sEs))
                 continue;
 
-            var absStart = s.Shift.GetAbsoluteStart(sEs);
-            var absEnd = s.Shift.GetAbsoluteEnd(sEs);
+            var absStart = s.AbsoluteStart;
+            var absEnd = s.AbsoluteEnd;
             var tz = DateTimeZoneProviders.Tzdb[sEs.TimeZoneId];
             var localStart = absStart.InZone(tz).LocalDateTime;
             var localEnd = absEnd.InZone(tz).LocalDateTime;
             items.Add(new UserSignupConflictItem(
                 Date: localStart.Date,
-                RotaName: s.Shift.Rota.Name,
+                RotaName: s.RotaName,
                 AbsoluteStart: absStart,
                 AbsoluteEnd: absEnd,
                 DisplayStart: DateFormattingExtensions.TimeOfDayPattern.Format(localStart.TimeOfDay),

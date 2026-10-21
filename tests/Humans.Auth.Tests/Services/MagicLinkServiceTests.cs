@@ -353,17 +353,17 @@ public sealed class MagicLinkServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task VerifyLoginTokenAsync_NonexistentUser_ReturnsNull()
+    public async Task VerifyLoginTokenAsync_NonexistentUser_ReturnsFalse()
     {
         _userManager.FindByIdAsync(Arg.Any<string>()).Returns((User?)null);
 
         var result = await _service.VerifyLoginTokenAsync(Guid.NewGuid(), "some-token", Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeNull();
+        result.Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task VerifyLoginTokenAsync_InvalidToken_ReturnsNull()
+    public async Task VerifyLoginTokenAsync_InvalidToken_ReturnsFalse()
     {
         var userId = Guid.NewGuid();
         var user = new User { Id = userId, UserName = "test@test.com" };
@@ -372,11 +372,11 @@ public sealed class MagicLinkServiceTests : IDisposable
 
         var result = await _service.VerifyLoginTokenAsync(userId, "bad-token", Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeNull();
+        result.Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task VerifyLoginTokenAsync_TokenAlreadyConsumed_ReturnsNull()
+    public async Task VerifyLoginTokenAsync_TokenAlreadyConsumed_ReturnsFalse()
     {
         var userId = Guid.NewGuid();
         var user = new User { Id = userId, UserName = "test@test.com" };
@@ -386,11 +386,11 @@ public sealed class MagicLinkServiceTests : IDisposable
 
         var result = await _service.VerifyLoginTokenAsync(userId, "good-token", Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeNull();
+        result.Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task VerifyLoginTokenAsync_ValidToken_ReturnsUser()
+    public async Task VerifyLoginTokenAsync_ValidToken_ReturnsTrue()
     {
         var userId = Guid.NewGuid();
         var user = new User { Id = userId, UserName = "test@test.com" };
@@ -399,8 +399,7 @@ public sealed class MagicLinkServiceTests : IDisposable
 
         var result = await _service.VerifyLoginTokenAsync(userId, "good-token", Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().NotBeNull();
-        result.Id.Should().Be(userId);
+        result.Should().BeTrue();
     }
 
     [HumansFact]
@@ -463,31 +462,5 @@ public sealed class MagicLinkServiceTests : IDisposable
         _service.ReleaseSignupToken("good-token");
 
         _rateLimiter.Received(1).ReleaseTokenReservation("good-token");
-    }
-
-    [HumansFact]
-    public async Task FindUserByVerifiedEmailAsync_FindsByUserEmail()
-    {
-        var userId = Guid.NewGuid();
-        var user = new User { Id = userId, UserName = "alice@gmail.com", DisplayName = "Alice" };
-
-        _userEmailService
-            .FindByAddressAsync("alice@work.com", true, true, Arg.Any<CancellationToken>())
-            .Returns([UserEmailFixtures.Row(userId, "alice@work.com")]);
-        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
-
-        var result = await _service.FindUserByVerifiedEmailAsync("alice@work.com", Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().NotBeNull();
-        result.Id.Should().Be(userId);
-    }
-
-    [HumansFact]
-    public async Task FindUserByVerifiedEmailAsync_NoVerifiedUserEmail_ReturnsNull()
-    {
-        // Only a verified UserEmail row resolves a user. Default substitute returns null.
-        var result = await _service.FindUserByVerifiedEmailAsync("nobody@nowhere.com", Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeNull();
     }
 }

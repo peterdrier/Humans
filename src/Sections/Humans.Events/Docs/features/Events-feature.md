@@ -227,7 +227,7 @@ If any field differs:
 | `ResolveCampEventManagementAsync(slug)` | Camps' `HumansCampControllerBase` helper — auth guard |
 | `BuildBulkUploadTemplateAsync(campId, campName)` | `IEventManagement` — builds the full template CSV (banner + existing camp events), wrapping `GetCampSubmissionsAsync` |
 | `SubmitEventAsync(event)` | `IEventManagement` — submits new events |
-| `UpdateAndResubmitAsync(event)` | `IEventManagement` — updates + resubmits existing events |
+| `UpdateAndResubmitAsync(eventId, edit)` | `IEventManagement` — applies an `EventEdit` + resubmits an existing event |
 | `GetActiveCategoriesAsync()` | `IEventManagement` — category lookup for validation |
 | `ToInstant(date + time, tz)` | `Helpers/EventsTimeHelpers.cs` — date+time → UTC Instant |
 

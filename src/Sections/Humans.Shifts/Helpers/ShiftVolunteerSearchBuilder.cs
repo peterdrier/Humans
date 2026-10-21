@@ -5,6 +5,7 @@ using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
 using Humans.Base.Extensions;
 using Humans.Shifts.Models;
+using Humans.Shifts.Services.Dtos;
 
 namespace Humans.Shifts.Helpers;
 
@@ -42,7 +43,7 @@ internal sealed class ShiftVolunteerSearchBuilder(
     IVolunteerTrackingManagement volunteerTrackingService)
 {
     public async Task<VolunteerSearchBuildResult> BuildForShiftAsync(
-        Shift? shift,
+        ShiftWithRota? shift,
         string? query,
         bool canViewMedical,
         CancellationToken ct = default)
@@ -77,15 +78,15 @@ internal sealed class ShiftVolunteerSearchBuilder(
     }
 
     private async Task<List<VolunteerSearchResult>> BuildAsync(
-        Shift shift,
+        ShiftWithRota shift,
         string query,
         BurnSettingsInfo eventSettings,
         BurnSettingsInfo? activeEvent,
         bool canViewMedical,
         CancellationToken ct)
     {
-        var shiftStart = shift.GetAbsoluteStart(eventSettings);
-        var shiftEnd = shift.GetAbsoluteEnd(eventSettings);
+        var shiftStart = shift.Shift.GetAbsoluteStart(eventSettings);
+        var shiftEnd = shift.Shift.GetAbsoluteEnd(eventSettings);
 
         // Request the full match set (the service short-circuits at `limit`, so a small limit
         // returns an arbitrary subset in non-deterministic cache order) and rank by relevance so
@@ -95,7 +96,7 @@ internal sealed class ShiftVolunteerSearchBuilder(
             .OrderByRelevance()
             .ToList();
 
-        var poolVolunteers = await volunteerTrackingService.GetAvailableForDayAsync(eventSettings.Id, shift.DayOffset, ct);
+        var poolVolunteers = await volunteerTrackingService.GetAvailableForDayAsync(eventSettings.Id, shift.Shift.DayOffset, ct);
         var poolUserIds = poolVolunteers.Select(p => p.UserId).ToHashSet();
 
         // Bulk-fetch the cached view for every candidate user — replaces the
@@ -115,10 +116,10 @@ internal sealed class ShiftVolunteerSearchBuilder(
         // shift), fall back to a per-user signup query for that event so
         // BookedShiftCount/HasOverlap stay accurate.
         var targetIsActive = activeEvent is not null && eventSettings.Id == activeEvent.Id;
-        Dictionary<Guid, IReadOnlyList<ShiftSignup>>? targetEventSignups = null;
+        Dictionary<Guid, IReadOnlyList<ShiftSignupSummary>>? targetEventSignups = null;
         if (!targetIsActive)
         {
-            targetEventSignups = new Dictionary<Guid, IReadOnlyList<ShiftSignup>>(userIds.Count);
+            targetEventSignups = new Dictionary<Guid, IReadOnlyList<ShiftSignupSummary>>(userIds.Count);
             foreach (var id in userIds)
                 targetEventSignups[id] = await signupService.GetByUserAsync(id, eventSettings.Id, ct);
         }
@@ -132,19 +133,15 @@ internal sealed class ShiftVolunteerSearchBuilder(
             var personProfile = info?.Profile;
             diets.TryGetValue(user.UserId, out var diet);
             var signupsForEvent = targetIsActive
-                ? view.Signups
+                ? view.ToSummary().Signups
                 : targetEventSignups![user.UserId];
             var confirmedSignups = signupsForEvent
                 .Where(s => s.Status == SignupStatus.Confirmed
-                    && s.Shift?.Rota?.EventSettingsId == eventSettings.Id)
+                    && s.EventSettingsId == eventSettings.Id)
                 .ToList();
 
             var hasOverlap = confirmedSignups.Any(signup =>
-            {
-                var signupStart = signup.Shift.GetAbsoluteStart(eventSettings);
-                var signupEnd = signup.Shift.GetAbsoluteEnd(eventSettings);
-                return shiftStart < signupEnd && shiftEnd > signupStart;
-            });
+                shiftStart < signup.AbsoluteEnd && shiftEnd > signup.AbsoluteStart);
 
             results.Add(new VolunteerSearchResult
             {

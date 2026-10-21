@@ -200,7 +200,9 @@ public class AccountController(
     {
         returnUrl ??= Url.Content("~/");
 
-        var user = await magicLinkService.VerifyLoginTokenAsync(userId, token);
+        var user = await magicLinkService.VerifyLoginTokenAsync(userId, token)
+            ? await FindIdentityUserAsync(userId)
+            : null;
         if (user is null)
         {
             return View("MagicLinkError");
@@ -325,7 +327,8 @@ public class AccountController(
             throw;
         }
 
-        if (result.User is null)
+        var user = await FindIdentityUserAsync(result.UserId);
+        if (user is null)
         {
             // Provisioning failed and rolled itself back, so the redemption
             // accomplished nothing. Hand the link back rather than making the
@@ -334,11 +337,15 @@ public class AccountController(
             return View("MagicLinkError");
         }
 
-        await signInManager.SignInAsync(result.User, isPersistent: true);
+        await signInManager.SignInAsync(user, isPersistent: true);
         loginMethods.RecordMagicLink();
 
         return RedirectToLocal(returnUrl);
     }
+
+    // Auth and Users contracts hand back ids; the Identity entity SignInManager needs is loaded here.
+    private async Task<User?> FindIdentityUserAsync(Guid? userId) =>
+        userId is { } id ? await userManager.FindByIdAsync(id.ToString()) : null;
 
     // --- Gate terminal ---
 

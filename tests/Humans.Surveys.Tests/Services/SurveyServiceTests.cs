@@ -2233,6 +2233,7 @@ public class SurveyServiceTests
         ctx.InvitationId.Should().Be(invitation.Id);
         ctx.UserId.Should().Be(userId);
         ctx.HasResumableDraft.Should().BeTrue();
+        ctx.DraftResponseId.Should().Be(draft.Id);
         ctx.Definition.Status.Should().Be(SurveyStatus.Open);
         ctx.DraftAnswers.Should().ContainSingle();
         var answer = ctx.DraftAnswers[0];

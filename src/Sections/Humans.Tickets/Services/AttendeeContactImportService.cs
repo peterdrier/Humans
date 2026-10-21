@@ -220,7 +220,7 @@ internal sealed class AttendeeContactImportService(
                 var replacement = await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
                     decision.UnverifiedRowUserId!.Value, decision.UnverifiedEmailIdToDelete!.Value,
                     decision.Email!, decision.AttendeeName, ContactSource.TicketTailor, ct);
-                AttachResolvedAttendees(resolved, replacement.User.Id, state);
+                AttachResolvedAttendees(resolved, replacement.UserId, state);
                 if (replacement.Created) state.Created++;
                 state.Replaced++;
                 return;
@@ -228,7 +228,7 @@ internal sealed class AttendeeContactImportService(
             case AttendeeImportOutcome.CreateNewUser:
                 var createdUser = await provisioning.FindOrCreateUserByEmailAsync(
                     decision.Email!, decision.AttendeeName, ContactSource.TicketTailor, ct);
-                AttachResolvedAttendees(resolved, createdUser.User.Id, state);
+                AttachResolvedAttendees(resolved, createdUser.UserId, state);
                 if (createdUser.Created) state.Created++;
                 return;
         }

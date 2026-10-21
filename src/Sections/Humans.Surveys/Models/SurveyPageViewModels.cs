@@ -1,6 +1,7 @@
 using Humans.Surveys.Contracts;
 using Humans.Base.Attributes;
 using Humans.Surveys.Domain;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
 namespace Humans.Surveys.Models;
 
@@ -98,6 +99,9 @@ internal sealed record SurveyPreviewNoticeModel(
 /// <summary>Posted by one wizard page. <see cref="Answers"/> binds via indexed form fields.</summary>
 internal sealed class SurveyPageInputModel
 {
+    // Non-nullable strings are implicitly [Required]; the public path posts no Token, and blank
+    // grid/ranked values are filtered by the controller, so none of them may fail validation.
+    [ValidateNever]
     public string Token { get; set; } = string.Empty;
     public int Page { get; set; }
     public List<SurveyPostedAnswer> Answers { get; set; } = [];
@@ -120,12 +124,14 @@ internal sealed class SurveyPostedAnswer
 /// <summary>One posted Grid row and its selected column values.</summary>
 internal sealed class SurveyPostedGridRow
 {
+    [ValidateNever]
     public string RowValue { get; set; } = string.Empty;
     public List<string> SelectedColumnValues { get; set; } = [];
 }
 
 internal sealed class SurveyPostedRankedOption
 {
+    [ValidateNever]
     public string OptionValue { get; set; } = string.Empty;
     public string? Selection { get; set; }
 }

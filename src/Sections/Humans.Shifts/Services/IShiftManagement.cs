@@ -51,19 +51,14 @@ internal interface IShiftManagement
     /// Gets all rotas for a department in an event. Section-internal — no
     /// caller outside the section.
     /// </summary>
-    Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId, CancellationToken ct = default);
+    Task<IReadOnlyList<ShiftAdminRota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId, CancellationToken ct = default);
 
     /// <summary>
-    /// Gets or creates the user's shift profile (1:1 with User). Section-internal —
+    /// Saves the user's shift-profile skills, quirks and languages, creating the
+    /// profile row (1:1 with User) when it does not exist yet. Section-internal —
     /// no caller outside the section.
     /// </summary>
-    Task<VolunteerEventProfile> GetOrCreateShiftProfileAsync(Guid userId);
-
-    /// <summary>
-    /// Updates a volunteer shift profile. Section-internal — no caller outside
-    /// the section.
-    /// </summary>
-    Task UpdateShiftProfileAsync(VolunteerEventProfile profile);
+    Task UpdateShiftProfileAsync(ShiftVolunteerProfileInfo profile);
 
     /// <summary>
     /// The Shifts-owned knobs for an event, or null if a rota or knob edit
@@ -95,9 +90,10 @@ internal interface IShiftManagement
     // === Rota ===
 
     /// <summary>
-    /// Updates an existing rota.
+    /// Updates an existing rota's header fields, and its tags when
+    /// <see cref="UpdateRotaInput.TagIds"/> is non-null. Returns false when the rota does not exist.
     /// </summary>
-    Task UpdateRotaAsync(Rota rota, IReadOnlyList<Guid>? tagIds = null);
+    Task<bool> UpdateRotaAsync(UpdateRotaInput input);
 
     /// <summary>
     /// Moves a rota to a different department (parent team).
@@ -109,11 +105,6 @@ internal interface IShiftManagement
     /// Deletes a rota; returns a resource-key refusal for missing rotas or confirmed signups.
     /// </summary>
     Task<ShiftDeletionResult> DeleteRotaAsync(Guid rotaId, Guid actorUserId);
-
-    /// <summary>
-    /// Gets a rota by primary key with shifts included.
-    /// </summary>
-    Task<Rota?> GetRotaByIdAsync(Guid rotaId, CancellationToken ct = default);
 
     // === Shift Summary by Camp ===
 
@@ -171,9 +162,9 @@ internal interface IShiftManagement
     Task<ShiftDeletionResult> DeleteShiftAsync(Guid shiftId, Guid actorUserId);
 
     /// <summary>
-    /// Gets a shift by primary key.
+    /// Gets a shift and its rota's header fields by primary key; null only when the shift does not exist.
     /// </summary>
-    Task<Shift?> GetShiftByIdAsync(Guid shiftId, CancellationToken ct = default);
+    Task<ShiftWithRota?> GetShiftByIdAsync(Guid shiftId, CancellationToken ct = default);
 
     // === Staffing & Summary ===
 
@@ -297,6 +288,18 @@ internal sealed record DepartmentCoveragePie(
             0, 100)
         : 0;
 }
+
+/// <summary>Edit of a rota's header fields; null <see cref="TagIds"/> leaves tags alone.</summary>
+internal sealed record UpdateRotaInput(
+    Guid RotaId,
+    string Name,
+    string? Description,
+    string? PracticalInfo,
+    ShiftPriority Priority,
+    SignupPolicy Policy,
+    RotaPeriod Period,
+    bool IsVisibleToVolunteers,
+    IReadOnlyList<Guid>? TagIds);
 
 internal sealed record UpdateShiftInput(
     Guid ShiftId,

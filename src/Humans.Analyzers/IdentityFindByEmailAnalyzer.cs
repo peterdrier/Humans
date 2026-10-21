@@ -18,8 +18,7 @@ public sealed class IdentityFindByEmailAnalyzer : DiagnosticAnalyzer
         "UserManager.{0} queries the AspNetUsers.Email / NormalizedEmail / " +
         "NormalizedUserName columns directly; those columns are no longer populated " +
         "post-PR 1 of the email-identity-decoupling spec and silently return null. " +
-        "Use IUserEmailService.FindByAddressAsync " +
-        "(or IMagicLinkService.FindUserByVerifiedEmailAsync) for email lookups; " +
+        "Use IUserEmailService.FindByAddressAsync for email lookups; " +
         "FindByIdAsync for id lookups.";
 
     public static readonly DiagnosticDescriptor Rule = new(

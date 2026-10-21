@@ -40,7 +40,8 @@ internal static class ShiftUserSummaryProjection
         this IReadOnlyDictionary<Guid, ShiftUserView> rows) =>
         rows.ToDictionary(kv => kv.Key, kv => kv.Value.ToSummary());
 
-    private static ShiftSignupSummary ToSummary(ShiftSignup signup, EventSettingsInfo settings)
+    /// <summary>Projects one signup (its <c>Shift.Rota</c> loaded) against its event's calendar.</summary>
+    internal static ShiftSignupSummary ToSummary(ShiftSignup signup, EventSettingsInfo settings)
     {
         var shift = signup.Shift;
         var rota = shift.Rota;

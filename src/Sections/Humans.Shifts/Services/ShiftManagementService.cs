@@ -243,19 +243,31 @@ internal sealed class ShiftManagementService(
         }
     }
 
-    public async Task UpdateRotaAsync(Rota rota, IReadOnlyList<Guid>? tagIds = null)
+    public async Task<bool> UpdateRotaAsync(UpdateRotaInput input)
     {
+        var rota = await repo.GetRotaAsync(input.RotaId, RotaReadShape.None);
+        if (rota is null) return false;
+
+        rota.Name = input.Name;
+        rota.Description = input.Description;
+        rota.PracticalInfo = input.PracticalInfo;
+        rota.Priority = input.Priority;
+        rota.Policy = input.Policy;
+        rota.Period = input.Period;
+        rota.IsVisibleToVolunteers = input.IsVisibleToVolunteers;
         rota.UpdatedAt = clock.GetCurrentInstant();
         try
         {
             await repo.SaveRotaAsync(rota, EntityMutationMode.Update);
-            if (tagIds is not null)
-                await repo.SetRotaTagsAsync(rota.Id, tagIds);
+            if (input.TagIds is not null)
+                await repo.SetRotaTagsAsync(rota.Id, input.TagIds);
         }
         finally
         {
             viewInvalidator.InvalidateRota(rota.Id);
         }
+
+        return true;
     }
 
     public async Task<RotaMoveResult> MoveRotaToTeamAsync(MoveRotaInput input)
@@ -319,14 +331,17 @@ internal sealed class ShiftManagementService(
         return new ShiftDeletionResult();
     }
 
-    public Task<Rota?> GetRotaByIdAsync(Guid rotaId, CancellationToken ct = default) =>
-        repo.GetRotaAsync(rotaId, RotaReadShape.Shifts, ct);
-
-    public async Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ShiftAdminRota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId, CancellationToken ct = default)
     {
         var rotas = await repo.GetRotasAsync(eventSettingsId, [teamId], RotaReadShape.View, ct);
         return rotas
             .OrderBy(r => r.Name, StringComparer.Ordinal)
+            .Select(r => new ShiftAdminRota(
+                ToRotaInfo(r),
+                [.. r.Shifts.Select(s => new ShiftAdminShift(
+                    ToShiftInfo(s),
+                    [.. s.ShiftSignups.Select(ss => new ShiftAdminSignup(
+                        ss.Id, ss.UserId, ss.SignupBlockId, ss.Status, ss.CreatedAt))]))]))
             .ToList();
     }
 
@@ -361,7 +376,7 @@ internal sealed class ShiftManagementService(
             }
             else
             {
-                rota = await GetRotaByIdAsync(rotaId.Value, ct);
+                rota = await repo.GetRotaAsync(rotaId.Value, RotaReadShape.Shifts, ct);
                 if (rota is null
                     || rota.EventSettingsId != activeEvent.Id
                     || !teamSet.Contains(rota.TeamId))
@@ -801,8 +816,11 @@ internal sealed class ShiftManagementService(
         return new ShiftDeletionResult(errorKey, confirmedSignups);
     }
 
-    public Task<Shift?> GetShiftByIdAsync(Guid shiftId, CancellationToken ct = default) =>
-        repo.GetShiftAsync(shiftId, ShiftReadShape.Context, ct);
+    public async Task<ShiftWithRota?> GetShiftByIdAsync(Guid shiftId, CancellationToken ct = default)
+    {
+        var shift = await repo.GetShiftAsync(shiftId, ShiftReadShape.Rota, ct);
+        return shift?.Rota is null ? null : new ShiftWithRota(ToShiftInfo(shift), ToRotaInfo(shift.Rota));
+    }
 
     /// <summary>Resolves (period, subPeriod) to inclusive day-offset bounds. subPeriod only narrows when period is Build.</summary>
     private static (int? MinDayOffset, int? MaxDayOffset) GetDayOffsetBounds(
@@ -1037,18 +1055,7 @@ internal sealed class ShiftManagementService(
         string departmentName,
         IReadOnlyList<ShiftSignupInfo> signups) =>
         new(
-            new ShiftInfo(
-                shift.Id,
-                shift.RotaId,
-                shift.Description,
-                shift.DayOffset,
-                shift.StartTime,
-                shift.Duration.TotalHours,
-                shift.MinVolunteers,
-                shift.MaxVolunteers,
-                shift.AdminOnly,
-                shift.IsAllDay,
-                shift.IsEarlyEntry),
+            ToShiftInfo(shift),
             ToRotaInfo(shift.Rota),
             departmentName,
             es.GateOpeningDate.PlusDays(shift.DayOffset),
@@ -1059,6 +1066,21 @@ internal sealed class ShiftManagementService(
             confirmedCount,
             remainingSlots,
             signups);
+
+    /// <summary>Flattens a shift's own fields into the boundary shape.</summary>
+    private static ShiftInfo ToShiftInfo(Shift shift) =>
+        new(
+            shift.Id,
+            shift.RotaId,
+            shift.Description,
+            shift.DayOffset,
+            shift.StartTime,
+            shift.Duration.TotalHours,
+            shift.MinVolunteers,
+            shift.MaxVolunteers,
+            shift.AdminOnly,
+            shift.IsAllDay,
+            shift.IsEarlyEntry);
 
     /// <summary>Flattens a rota's header fields into the boundary shape.</summary>
     private static RotaInfo ToRotaInfo(Rota rota) =>
@@ -2069,29 +2091,26 @@ internal sealed class ShiftManagementService(
         return await repo.GetPendingSignupCountsByTeamAsync(eventSettings.Id, null, null, cancellationToken);
     }
 
-    public async Task<VolunteerEventProfile> GetOrCreateShiftProfileAsync(Guid userId)
+    public async Task UpdateShiftProfileAsync(ShiftVolunteerProfileInfo profile)
     {
-        var existing = await repo.GetVolunteerEventProfileAsync(userId);
-        if (existing is not null) return existing;
-
         var now = clock.GetCurrentInstant();
-        var profile = new VolunteerEventProfile
+        var existing = await repo.GetVolunteerEventProfileAsync(profile.UserId);
+        var entity = existing ?? new VolunteerEventProfile
         {
             Id = Guid.NewGuid(),
-            UserId = userId,
-            CreatedAt = now,
-            UpdatedAt = now
+            UserId = profile.UserId,
+            CreatedAt = now
         };
 
-        await repo.AddVolunteerEventProfileAsync(profile);
-        viewInvalidator.InvalidateUser(userId);
-        return profile;
-    }
+        entity.Skills = [.. profile.Skills];
+        entity.Quirks = [.. profile.Quirks];
+        entity.Languages = [.. profile.Languages];
+        entity.UpdatedAt = now;
 
-    public async Task UpdateShiftProfileAsync(VolunteerEventProfile profile)
-    {
-        profile.UpdatedAt = clock.GetCurrentInstant();
-        await repo.UpdateVolunteerEventProfileAsync(profile);
+        if (existing is null)
+            await repo.AddVolunteerEventProfileAsync(entity);
+        else
+            await repo.UpdateVolunteerEventProfileAsync(entity);
         viewInvalidator.InvalidateUser(profile.UserId);
     }
 

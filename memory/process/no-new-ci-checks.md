@@ -30,5 +30,5 @@ backwards.
 - Before framing anything as "should be automated", ask whether the underlying churn is a migration
   in progress. If it is, the answer is to finish the migration, not to gate on the symptom.
 
-Related: [[hum0031-frozen-until-2027]] — same shape of mistake, re-proposing something Peter has
+Related: [[hum0031-fixed-at-40-15]] — same shape of mistake, re-proposing something Peter has
 already settled.

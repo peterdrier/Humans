@@ -174,3 +174,16 @@ src/Sections/Humans.Users/Data/Migrations/20260920195114_DropUserICalToken.cs:Dr
 # but it comes back empty.
 # Step 4 deviation: ships inside peterdrier/Humans#2052 rather than its own PR, on that approval.
 src/Sections/Humans.Users/Data/Migrations/20261020222225_DropUserMagicLinkSentAt.cs:DropColumn(name=MagicLinkSentAt,table=users)#1
+
+# store_treasury_sync_state — the singleton cursor row (Id, LastSyncAt, SyncStatus, LastError) for
+# a Holded treasury sync job (Store-feature.md US-30.6) that was never built.
+# Evidence: the only references in all of history are the entity TreasurySyncState, its
+# TreasurySyncStateConfiguration, the StoreDbContext DbSet and one entity-defaults unit test;
+# no service, repository, job, view or export ever read or wrote the table. git log -S
+# 'LastSyncAt =' and -S 'TreasurySyncStates' over full history find no writer, and no migration
+# or raw SQL ever inserted a row. The table is empty on every environment. Finance now owns the
+# Holded bank-movement feed, so a future implementation would not use this cursor.
+# Approval: Peter, 2026-10-21, on the Open issues triage thread for peterdrier/Humans#1924:
+# "1924 drop it". Down() recreates the table as the Store baseline defined it; it comes back
+# empty, which is also how it always was.
+src/Sections/Humans.Store/Data/Migrations/20261021133426_DropStoreTreasurySyncState.cs:DropTable(name=store_treasury_sync_state)#1

@@ -262,12 +262,13 @@ public class EventsControllerTests
             .Returns(AuthorizationResult.Success());
         StubEditableGuideSettings();
         var existing = MakeEvent(isCamp ? campId : null, userId,
-            isModerator ? EventStatus.Approved : EventStatus.ResubmitRequested);
-        int? originalRank = isCamp ? 2 : null;
-        existing.PriorityRank = originalRank;
-        existing.DurationMinutes = 180;
-        existing.IsRecurring = true;
-        existing.RecurrenceDays = "0,1";
+            isModerator ? EventStatus.Approved : EventStatus.ResubmitRequested) with
+        {
+            PriorityRank = isCamp ? 2 : null,
+            DurationMinutes = 180,
+            IsRecurring = true,
+            RecurrenceDays = "0,1"
+        };
         _guide.GetEventForModerationAsync(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
         _guide.GetCampEventAsync(existing.Id, campId, Arg.Any<CancellationToken>()).Returns(existing);
         _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
@@ -331,18 +332,20 @@ public class EventsControllerTests
             result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
             controller.ModelState[scenario]!.Errors.Should().ContainSingle();
             writes.Should().BeEmpty();
-            existing.Title.Should().Be("Test Event");
-            existing.PriorityRank.Should().Be(originalRank);
-            existing.DurationMinutes.Should().Be(180);
-            existing.IsRecurring.Should().BeTrue();
-            existing.RecurrenceDays.Should().Be("0,1");
-            existing.StartAt.Should().Be(Instant.FromUtc(2026, 8, 1, 18, 0));
         }
         else
         {
             result.Should().BeOfType<RedirectToActionResult>();
             controller.ModelState.IsValid.Should().BeTrue();
-            var saved = (Event)writes.Should().ContainSingle().Which.GetArguments()[0]!;
+            // Create routes persist a new entity; edit routes send an EventEdit by id.
+            var args = writes.Should().ContainSingle().Which.GetArguments();
+            var saved = args[0] is Event created
+                ? new EventEdit(created.CategoryId, created.GuideSharedVenueId, created.Title, created.Description,
+                    created.StartAt, created.DurationMinutes, created.LocationNote, created.Host,
+                    created.IsRecurring, created.RecurrenceDays, created.PriorityRank)
+                : (EventEdit)args[1]!;
+            if (args[0] is Guid editedId)
+                editedId.Should().Be(existing.Id);
             saved.IsRecurring.Should().Be(checkedChoices);
             if (isCamp)
             {
@@ -407,7 +410,6 @@ public class EventsControllerTests
 
         result.Should().BeOfType<ViewResult>();
         controller.ModelState[nameof(individual.RecurrenceDays)]!.Errors.Should().ContainSingle();
-        guideEvent.Title.Should().Be("Test Event");
         _guide.ReceivedCalls().Should().NotContain(call =>
             call.GetMethodInfo().Name == nameof(IEventManagement.SubmitEventAsync)
             || call.GetMethodInfo().Name == nameof(IEventManagement.UpdateAndResubmitAsync));
@@ -496,7 +498,7 @@ public class EventsControllerTests
         _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(call =>
             Read<CampInfo?>(camp, "Camp", call.Arg<CancellationToken>()));
         _guide.GetCampEventAsync(campEvent.Id, camp.Id, Arg.Any<CancellationToken>()).Returns(call =>
-            Read<Event?>(campEvent, "Event", call.Arg<CancellationToken>()));
+            Read<EventInfo?>(campEvent, "Event", call.Arg<CancellationToken>()));
         _guide.BuildBulkUploadTemplateAsync(camp.Id, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
             Read<byte[]>([], "Template", call.Arg<CancellationToken>()));
         var submitterId = Guid.NewGuid();
@@ -515,7 +517,7 @@ public class EventsControllerTests
         _guide.GetEventSettingsByIdAsync(settings.EventSettingsId, Arg.Any<CancellationToken>()).Returns(call =>
             Read<EventSettingsInfo?>(burn, "Burn", call.Arg<CancellationToken>()));
         _guide.GetEventForModerationAsync(guideEvent.Id, Arg.Any<CancellationToken>()).Returns(call =>
-            Read<Event?>(guideEvent, "Event", call.Arg<CancellationToken>()));
+            Read<EventInfo?>(guideEvent, "Event", call.Arg<CancellationToken>()));
         _guide.GetUserSubmissionsAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
             Read<IReadOnlyList<EventInfo>>([], "Submissions", call.Arg<CancellationToken>()));
         _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
@@ -642,7 +644,7 @@ public class EventsControllerTests
     {
         var eventId = Guid.NewGuid();
         _guide.GetEventForModerationAsync(eventId, Arg.Any<CancellationToken>())
-            .Returns((Event?)null);
+            .Returns((EventInfo?)null);
         var controller = BuildController(Guid.NewGuid(), RoleNames.Admin);
 
         var result = await controller.Edit(eventId);
@@ -845,20 +847,11 @@ public class EventsControllerTests
         BarriosEarlyEntryAllocation: null,
         EarlyEntryClose: null);
 
-    private static Event MakeEvent(Guid? campId, Guid submitterId, EventStatus status) => new()
-    {
-        Id = Guid.NewGuid(),
-        CampId = campId,
-        GuideSharedVenueId = campId == null ? Guid.NewGuid() : null,
-        SubmitterUserId = submitterId,
-        CategoryId = Guid.NewGuid(),
-        Title = "Test Event",
-        Description = "Description",
-        StartAt = Instant.FromUtc(2026, 8, 1, 18, 0),
-        DurationMinutes = 60,
-        Status = status,
-        Category = new EventCategory { Id = Guid.NewGuid(), Name = "Music", Slug = "music", IsSensitive = false },
-    };
+    private static EventInfo MakeEvent(Guid? campId, Guid submitterId, EventStatus status) => new(
+        Guid.NewGuid(), campId, campId == null ? Guid.NewGuid() : null, submitterId, Guid.NewGuid(),
+        "Music", "music", false, null, "Test Event", "Description", null, null,
+        Instant.FromUtc(2026, 8, 1, 18, 0), 60, false, null, null, status,
+        Instant.FromUtc(2026, 7, 1, 0, 0), Instant.FromUtc(2026, 7, 1, 0, 0), []);
 
     private static UserInfo MakeUserInfo(Guid userId, string burnerName)
     {

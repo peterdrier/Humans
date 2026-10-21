@@ -242,6 +242,8 @@ Repository: `IUserRepository`.
 Idempotent provisioning for import jobs. Uses ASP.NET `UserManager<User>`
 for password / identity primitives. Cross-section calls via
 `IUserEmailService`, `IUserService`, `IAuditLogService`. No cache.
+Results carry the user id, never the `User` entity: `AccountProvisioningResult(Guid UserId, bool Created)`
+and `MagicLinkSignupCompletionResult(Outcome, Guid? UserId)`.
 
 New import account creation wraps User, provisioned UserEmail and Profile in one transaction, audits after local commit, then refreshes UserInfo after commit/rollback. Unverified replacements retain their existing outer transaction and refresh.
 
@@ -307,8 +309,8 @@ directly (framework concern, per design-rules §2a — `AspNetUserLogins` is
 the authoritative store for `(Provider, ProviderKey)` → `UserId`) plus
 `IUserService` (login-timestamp recording, stub-profile provisioning on
 create), `IUserEmailService` (`ReconcileOAuthIdentityAsync` — the sole
-caller, pinned by HUM0005), `IMagicLinkService`
-(`FindUserByVerifiedEmailAsync`), and `IClock`. No direct DB access, no
+caller, pinned by HUM0005; `FindByAddressAsync` for the verified-email
+owner), and `IClock`. No direct DB access, no
 `IMemoryCache`. Implements `IExternalLoginService`.
 
 ### UserNameSyncService (Scoped)

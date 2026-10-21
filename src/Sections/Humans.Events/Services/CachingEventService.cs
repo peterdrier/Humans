@@ -238,13 +238,13 @@ internal sealed class CachingEventService(
     public Task<IReadOnlyList<EventInfo>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetUserSubmissionsAsync(userId, ct));
 
-    public Task<Event?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default) =>
+    public Task<EventInfo?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetUserEventAsync(eventId, userId, ct));
 
     public Task<IReadOnlyList<EventInfo>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetCampSubmissionsAsync(campId, ct));
 
-    public Task<Event?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default) =>
+    public Task<EventInfo?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetCampEventAsync(eventId, campId, ct));
 
     public Task<CampSubmissionsSummary> GetCampSubmissionsSummaryAsync(Guid campId, CancellationToken ct = default) =>
@@ -259,39 +259,38 @@ internal sealed class CachingEventService(
         // Submission is Pending, not Approved — no approved-event cache change.
     }
 
-    public Task UpdateAndResubmitAsync(Event guideEvent, CancellationToken ct = default) =>
+    public Task UpdateAndResubmitAsync(Guid eventId, EventEdit edit, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
-            var wasApproved = guideEvent.Status == EventStatus.Approved;
-            await WithInner(inner => inner.UpdateAndResubmitAsync(guideEvent, ct));
-            // Resubmit transitions away from Approved → drop the cache entry.
-            if (wasApproved)
-                _eventCache.Invalidate(guideEvent.Id);
+            await WithInner(inner => inner.UpdateAndResubmitAsync(eventId, edit, ct));
+            // Resubmit never leaves the event Approved → drop any cache entry
+            // (no-op when it was not approved).
+            _eventCache.Invalidate(eventId);
         });
 
-    public Task WithdrawEventAsync(Event guideEvent, CancellationToken ct = default) =>
+    public Task WithdrawEventAsync(Guid eventId, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.WithdrawEventAsync(guideEvent, ct));
-            _eventCache.Invalidate(guideEvent.Id);
+            await WithInner(inner => inner.WithdrawEventAsync(eventId, ct));
+            _eventCache.Invalidate(eventId);
         });
 
-    public Task ModeratorWithdrawAsync(Event guideEvent, Guid actorUserId, CancellationToken ct = default) =>
+    public Task ModeratorWithdrawAsync(Guid eventId, Guid actorUserId, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.ModeratorWithdrawAsync(guideEvent, actorUserId, ct));
-            _eventCache.Invalidate(guideEvent.Id);
+            await WithInner(inner => inner.ModeratorWithdrawAsync(eventId, actorUserId, ct));
+            _eventCache.Invalidate(eventId);
         });
 
-    public Task AdminUpdateAsync(Event guideEvent, Guid actorUserId, string? note, CancellationToken ct = default) =>
+    public Task AdminUpdateAsync(Guid eventId, EventEdit edit, Guid actorUserId, string? note, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.AdminUpdateAsync(guideEvent, actorUserId, note, ct));
+            await WithInner(inner => inner.AdminUpdateAsync(eventId, edit, actorUserId, note, ct));
             // Status is preserved, so an edited Approved event stays approved but its
             // flattened fields changed — re-project the single entry (sets the fresh
             // view if still approved, no-op for any non-approved status). Mirrors the
             // ApplyModerationAsync invalidation contract.
-            await RefreshEventEntryAsync(guideEvent.Id, ct);
+            await RefreshEventEntryAsync(eventId, ct);
         });
 
     public Task<BulkImportResult> BulkImportAsync(
@@ -422,7 +421,7 @@ internal sealed class CachingEventService(
     public Task<IReadOnlyList<EventInfo>> GetEventsByStatusAsync(EventStatus status, CancellationToken ct = default) =>
         WithInner(inner => inner.GetEventsByStatusAsync(status, ct));
 
-    public Task<Event?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default) =>
+    public Task<EventInfo?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetEventForModerationAsync(eventId, ct));
 
     public Task<IReadOnlyList<CampEventOverlap>> GetCampEventsForOverlapAsync(CancellationToken ct = default) =>
