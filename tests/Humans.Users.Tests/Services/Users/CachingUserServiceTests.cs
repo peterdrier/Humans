@@ -125,6 +125,36 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
+    public async Task CommittedUserCreate_AddsTheNewRowToAWarmCache()
+    {
+        // UserManager.CreateAsync (dev personas, the gate-terminal account) lands through
+        // the interceptor; no caller has to signal the new row.
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([]));
+        var cached = CreateSut();
+        (await cached.GetAllRawUserInfosAsync(ct)).Should().BeEmpty(); // warms
+        var services = new ServiceCollection();
+        services.AddSingleton<IUserInfoSliceRefresher>(cached);
+        await using var provider = services.BuildServiceProvider();
+        var interceptor = new UserInfoSaveChangesInterceptor(provider, NullLogger<UserInfoSaveChangesInterceptor>.Instance);
+        var options = new DbContextOptionsBuilder<UsersDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString(), new InMemoryDatabaseRoot())
+            .AddInterceptors(interceptor).Options;
+        var user = SampleUser();
+        user.BurnerName = "Gate Terminal";
+
+        await using (var write = new UsersDbContext(options))
+        {
+            write.Users.Add(user);
+            await write.SaveChangesAsync(ct);
+        }
+
+        (await cached.GetRawUserInfoAsync(user.Id, ct))!.BurnerName.Should().Be("Gate Terminal");
+        await _inner.DidNotReceive().GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task AdminStubProfileCreation_ForwardsAuditActor_AndRefreshesProfile()
     {
         var userId = Guid.NewGuid();
@@ -310,7 +340,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task InvalidateAsync_UserDeleted_RemovesEntry()
+    public async Task RefreshAsync_UserDeleted_RemovesEntry()
     {
         var userId = Guid.NewGuid();
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
@@ -323,14 +353,14 @@ public class CachingUserServiceTests
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>((UserInfo?)null));
 
-        await sut.InvalidateAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await sut.RefreshAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         // Entry should be tombstoned by ReplaceAsync's null-load path.
         (await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
     [HumansFact]
-    public async Task InvalidateAsync_ExistingUser_ReloadsEntry()
+    public async Task RefreshAsync_ExistingUser_ReloadsEntry()
     {
         var userId = Guid.NewGuid();
         var stale = SampleUserInfo(userId, "Before");
@@ -347,7 +377,7 @@ public class CachingUserServiceTests
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(fresh));
 
-        await sut.InvalidateAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await sut.RefreshAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         var hit = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
         hit!.BurnerName.Should().Be("After");
@@ -1552,7 +1582,7 @@ public class CachingUserServiceTests
         var e = Guid.NewGuid();
         _inner.GetUserInfoAsync(e, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(ChainRow(e, mergedTo: c)));
-        await sut.InvalidateAsync(e, Xunit.TestContext.Current.CancellationToken);
+        await sut.RefreshAsync(e, Xunit.TestContext.Current.CancellationToken);
 
         (await sut.GetUserInfoAsync(e, Xunit.TestContext.Current.CancellationToken))!
             .Id.Should().Be(c);
@@ -1598,7 +1628,7 @@ public class CachingUserServiceTests
         var e = Guid.NewGuid();
         _inner.GetUserInfoAsync(e, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(ChainRow(e, mergedTo: c)));
-        await sut.InvalidateAsync(e, Xunit.TestContext.Current.CancellationToken);
+        await sut.RefreshAsync(e, Xunit.TestContext.Current.CancellationToken);
 
         (await sut.GetRawUserInfoAsync(c, Xunit.TestContext.Current.CancellationToken))!
             .MergedUserIds.Should().Equal(new[] { a, b, e }.Order());

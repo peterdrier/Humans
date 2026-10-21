@@ -27,7 +27,6 @@ internal sealed class GateTerminalAccountSeeder(
     UserManager<User> userManager,
     IProfileEditorService profileEditorService,
     IConsentWrite consentWrite,
-    IUserInfoInvalidator userInfoInvalidator,
     IAuditLogService auditLogService,
     IClock clock,
     IMemoryCache cache,
@@ -134,7 +133,6 @@ internal sealed class GateTerminalAccountSeeder(
         }
 
         cache.InvalidateUserAccess(SystemUserIds.GateTerminal);
-        await userInfoInvalidator.InvalidateAsync(SystemUserIds.GateTerminal);
 
         logger.LogWarning("Gate terminal account provisioned by {ActorUserId}", actorUserId);
         return user;

@@ -35,7 +35,6 @@ internal sealed class DevPersonaSeeder(
     IUserEmailService userEmailService,
     IContactFieldService contactFieldService,
     IRoleAssignmentWrite roleAssignmentService,
-    IUserInfoInvalidator userInfoInvalidator,
     ITeamService teamService,
     ITeamWrite teamWrite,
     ITeamSeeding teamSeeding,
@@ -196,7 +195,6 @@ internal sealed class DevPersonaSeeder(
         await EnsureActiveAsync(id);
 
         cache.InvalidateUserAccess(id);
-        await userInfoInvalidator.InvalidateAsync(id);
 
         logger.LogInformation(
             "DEV: seeded persona {Email} with roles [{Roles}]",
@@ -579,8 +577,6 @@ internal sealed class DevPersonaSeeder(
         {
             teamWrite.InvalidateActiveTeamsCache();
             cache.InvalidateUserAccess(coordinatorUserId);
-            // Team membership changes ripple into UserInfo (active-teams shape)
-            await userInfoInvalidator.InvalidateAsync(coordinatorUserId);
             logger.LogInformation(
                 "DEV: ensured coordinator teams — department {DeptId}, sub-team {SubTeamId}",
                 department.Id, subTeam.Id);
@@ -646,8 +642,6 @@ internal sealed class DevPersonaSeeder(
         {
             teamWrite.InvalidateActiveTeamsCache();
             cache.InvalidateUserAccess(userId);
-            // Team membership changes ripple into UserInfo (active-teams shape)
-            await userInfoInvalidator.InvalidateAsync(userId);
         }
     }
 
