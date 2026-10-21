@@ -156,10 +156,17 @@ internal sealed class RideshareController(
     /// <summary>"I'm interested" (rider → trip) or "I can take you" (driver's trip → request pin).</summary>
     [HttpPost("Interest")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Interest(Guid tripId, Guid? requestId, int seats, string? message, CancellationToken ct)
+    public async Task<IActionResult> Interest(Guid tripId, Guid? requestId, int? seats, string? message, CancellationToken ct)
     {
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
+
+        // A cleared seats box posts "seats=", which binds to null and takes the party-size default below.
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed rideshare interest form for user {UserId}", user.Id);
+            return BadRequest(ModelState);
+        }
 
         if (tripId == Guid.Empty)
         {
@@ -168,7 +175,7 @@ internal sealed class RideshareController(
         }
 
         return await RunThenMineAsync(
-            () => rideshare.ExpressInterestAsync(user.Id, tripId, requestId, seats, message, ct),
+            () => rideshare.ExpressInterestAsync(user.Id, tripId, requestId, seats ?? 0, message, ct),
             "Rideshare_InterestSent");
     }
 

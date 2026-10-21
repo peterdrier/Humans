@@ -37,6 +37,21 @@ public class SurveyWizardFlowTests
     private static Dictionary<Guid, AnswerState> Chose(Guid q, params string[] values) =>
         new() { [q] = new AnswerState(values, null, null) };
 
+    [HumansTheory]
+    [Xunit.InlineData(true, true, ResponseAnonymity.Anonymous, ResponseAnonymity.CompletionTracked)]
+    [Xunit.InlineData(false, true, ResponseAnonymity.Anonymous, ResponseAnonymity.Anonymous)]
+    [Xunit.InlineData(false, true, ResponseAnonymity.Identified, ResponseAnonymity.Identified)]
+    [Xunit.InlineData(false, false, ResponseAnonymity.Anonymous, ResponseAnonymity.Identified)]
+    public void Invited_anonymity_follows_vote_then_anonymous_setting(
+        bool isAsociadoVote, bool allowAnonymous, ResponseAnonymity requested, ResponseAnonymity expected)
+    {
+        var editable = new SurveyEditInput(
+            L("T"), LocalizedText.Empty, LocalizedText.Empty, LocalizedText.Empty, LocalizedText.Empty,
+            "en", allowAnonymous, null, null, null, null, null, null, [], isAsociadoVote);
+
+        SurveyWizardFlow.ResolveInvitedAnonymity(editable, requested).Should().Be(expected);
+    }
+
     [HumansFact]
     public void Public_tracked_state_is_accessible_only_to_its_owner()
     {

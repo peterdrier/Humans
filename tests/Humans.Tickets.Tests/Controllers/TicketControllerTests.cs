@@ -209,6 +209,49 @@ public class TicketControllerTests
         }
     }
 
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task PersonalDataExport_OrdersCsvRows(bool attendees)
+    {
+        var actor = Guid.NewGuid();
+        var queries = Substitute.For<ITicketManagement>();
+        queries.GetAttendeeExportDataAsync(actor, Arg.Any<CancellationToken>()).Returns(
+        [
+            new AttendeeExportRow { AttendeeName = "Zara" },
+            new AttendeeExportRow { AttendeeName = "Alice" },
+            new AttendeeExportRow { AttendeeName = "Marta" },
+        ]);
+        queries.GetOrderExportDataAsync(actor, Arg.Any<CancellationToken>()).Returns(
+        [
+            new OrderExportRow { BuyerName = "Mid", PurchasedAt = Instant.FromUtc(2026, 2, 1, 0, 0) },
+            new OrderExportRow { BuyerName = "Old", PurchasedAt = Instant.FromUtc(2026, 1, 1, 0, 0) },
+            new OrderExportRow { BuyerName = "New", PurchasedAt = Instant.FromUtc(2026, 3, 1, 0, 0) },
+        ]);
+        var dashboard = new TicketDashboardPageBuilder(Substitute.For<ITicketVendorService>(),
+            Options.Create(new TicketVendorSettings()), queries, NullLogger<TicketDashboardPageBuilder>.Instance);
+        var controller = new TicketController(queries, Substitute.For<ITicketSyncService>(),
+            Substitute.For<IUserParticipationBackfillService>(), dashboard, Substitute.For<IUserService>(),
+            NullLogger<TicketController>.Instance)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "Test")),
+                },
+            },
+        };
+
+        var result = attendees ? await controller.ExportAttendees() : await controller.ExportOrders();
+
+        var csv = System.Text.Encoding.UTF8.GetString(result.Should().BeOfType<FileContentResult>().Which.FileContents);
+        var names = attendees ? new[] { "Alice", "Marta", "Zara" } : ["New", "Mid", "Old"];
+        var positions = names.Select(n => csv.IndexOf(n, StringComparison.Ordinal)).ToList();
+        positions.Should().OnlyContain(p => p >= 0).And.BeInAscendingOrder();
+    }
+
     [HumansFact]
     public void Class_admits_TicketAdmin_Board_and_Admin()
     {

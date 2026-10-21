@@ -288,6 +288,32 @@ public sealed class EventRepositoryTests : IDisposable
     }
 
     [HumansFact]
+    public async Task PointReads_LoadCategoryVenueAndModerationHistory()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var category = SeedCategory("Workshop", "workshop", 1);
+        var venue = SeedVenue("Main stage", 1);
+        var submitterId = Guid.NewGuid();
+        var campId = Guid.NewGuid();
+        var individual = SeedEvent(category.Id, submitterId, EventStatus.Pending, _clock.GetCurrentInstant(), venueId: venue.Id);
+        var camp = SeedEvent(category.Id, submitterId, EventStatus.Pending, _clock.GetCurrentInstant(), campId: campId);
+        _db.EventModerationActions.Add(BuildModerationAction(individual.Id, Guid.NewGuid(), EventModerationActionType.ResubmitRequested));
+        await _db.SaveChangesAsync(ct);
+
+        var user = await _repo.GetUserEventAsync(individual.Id, submitterId, ct);
+        var details = await _repo.GetEventWithDetailsAsync(individual.Id, ct);
+        var campEvent = await _repo.GetCampEventAsync(camp.Id, campId, ct);
+
+        foreach (var e in new[] { user!, details! })
+        {
+            e.Category.Slug.Should().Be("workshop");
+            e.EventVenue!.Name.Should().Be("Main stage");
+            e.EventModerationActions.Should().ContainSingle();
+        }
+        campEvent!.Category.Slug.Should().Be("workshop");
+    }
+
+    [HumansFact]
     public async Task SaveEventAndModerationActionAsync_KeepsEarlierActions()
     {
         var category = SeedCategory("Workshop", "workshop", 1);

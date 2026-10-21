@@ -58,7 +58,7 @@ FENCE_RE = re.compile(r"^\s*(?:```|~~~)")
 
 
 def git(*args, check=True):
-    return subprocess.run(["git", *args], capture_output=True, text=True, check=check).stdout.strip()
+    return subprocess.run(["git", *args], capture_output=True, text=True, encoding="utf-8", check=check).stdout.strip()
 
 
 def now():
@@ -262,8 +262,8 @@ def cmd_dispatch_log(a):
 
 
 GENERATED_RE = re.compile(r"(\.Designer\.cs|DbContextModelSnapshot\.cs)$")
-THREADS = ("Shape", "Behavior & bugs", "Freshness", "Conformance", "Tests", "Prose & surface",
-           "History", "Comments", "Inbox")
+THREADS = ("Shape", "Behavior & bugs", "Controller intent", "Freshness", "Conformance", "Tests",
+           "Prose & surface", "History", "Comments", "Inbox")
 RUN_FILE_BLOCKS = ("## Assessment summary", "## Findings", "## Debt verified", "## Worked", "## Skipped",
                    "## Retro", "## Needs Peter",
                    "## File coverage", "## Threads")  # "## Ranked findings" is accepted for Findings
@@ -475,7 +475,7 @@ def grep_hits(needle, globs, word=True, exclude=()):
     """Working-tree `git grep -n -F` lines for `needle` under `globs`, minus files in `exclude`;
     hits under `src/` first, then `tests/`, so the first hit is the one worth citing."""
     p = subprocess.run(["git", "grep", "-n", "-I", "-F"] + (["-w"] if word else []) + ["-e", needle, "--", *globs],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, encoding="utf-8")
     hits = [h for h in p.stdout.splitlines() if h.split(":", 1)[0] not in exclude]
     return sorted(hits, key=lambda h: (not h.startswith("src/"), not h.startswith("tests/")))
 
@@ -639,7 +639,7 @@ def cmd_review_pack(a):
     diff = git("diff", "HEAD")
     untracked = git("ls-files", "--others", "--exclude-standard").split()
     for u in untracked:
-        p = subprocess.run(["git", "diff", "--no-index", "--", "/dev/null", u], capture_output=True, text=True)
+        p = subprocess.run(["git", "diff", "--no-index", "--", "/dev/null", u], capture_output=True, text=True, encoding="utf-8")
         diff += "\n" + p.stdout
     if not diff.strip():
         sys.exit("review-pack: the tree has no uncommitted change to review")
@@ -803,7 +803,8 @@ def cmd_runfile(a):
 
 
 def main():
-    signal.signal(signal.SIGPIPE, signal.SIG_DFL)   # `| head` is not an error
+    if hasattr(signal, "SIGPIPE"):                  # absent on Windows
+        signal.signal(signal.SIGPIPE, signal.SIG_DFL)  # `| head` is not an error
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("rundir"); s.add_argument("--ts"); s.set_defaults(fn=cmd_rundir)

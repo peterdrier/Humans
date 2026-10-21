@@ -123,7 +123,7 @@ internal sealed class EventsModerationController(
             return RedirectToAction(nameof(Index), new { tab = EventStatus.Approved });
         }
 
-        await guide.ModeratorWithdrawAsync(guideEvent, moderator.Id);
+        await guide.ModeratorWithdrawAsync(guideEvent.Id, moderator.Id);
 
         logger.LogInformation("Moderator {UserId} withdrew event '{Title}' ({EventId})",
             moderator.Id, guideEvent.Title, model.EventId);
@@ -239,15 +239,13 @@ internal sealed class EventsModerationController(
             return View("AdminEventForm", model);
         }
 
-        ApplyFormToEvent(guideEvent, model, isCampEvent, tz);
-
-        await guide.AdminUpdateAsync(guideEvent, moderator.Id, model.Note);
+        await guide.AdminUpdateAsync(eventId, BuildEdit(model, isCampEvent, tz), moderator.Id, model.Note);
 
         logger.LogInformation(
             "Moderator {UserId} edited event '{Title}' ({EventId}) in place; {Status} status preserved",
-            moderator.Id, guideEvent.Title, eventId, guideEvent.Status);
+            moderator.Id, model.Title, eventId, guideEvent.Status);
 
-        SetSuccess($"Event \"{guideEvent.Title}\" updated.");
+        SetSuccess($"Event \"{model.Title}\" updated.");
         return RedirectToAction(nameof(Index), new { tab = guideEvent.Status });
     }
 
@@ -296,25 +294,19 @@ internal sealed class EventsModerationController(
         model.TimeZoneId = burn.TimeZoneId;
     }
 
-    // Maps the posted form fields onto the event. Camp events carry a priority
-    // rank; individual events carry a venue and the all-day flag.
-    private void ApplyFormToEvent(Event guideEvent, AdminEventFormViewModel model, bool isCampEvent, DateTimeZone? tz)
+    // Parses the posted form into the edit. Camp events carry a priority rank;
+    // individual events carry a venue and the all-day flag.
+    private static EventEdit BuildEdit(AdminEventFormViewModel model, bool isCampEvent, DateTimeZone? tz)
     {
         var (startTime, durationMinutes) = Event.ResolveAllDaySchedule(
             !isCampEvent && model.IsAllDay, model.StartTime, model.DurationMinutes);
-        guideEvent.Title = model.Title;
-        guideEvent.Description = model.Description;
-        guideEvent.CategoryId = model.CategoryId;
-        guideEvent.StartAt = ToInstant(model.StartDate.Add(startTime), tz);
-        guideEvent.DurationMinutes = durationMinutes;
-        guideEvent.LocationNote = model.LocationNote;
-        guideEvent.Host = model.Host;
-        guideEvent.IsRecurring = model.IsRecurring;
-        guideEvent.RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null;
-        if (isCampEvent)
-            guideEvent.PriorityRank = model.PriorityRank;
-        else
-            guideEvent.GuideSharedVenueId = model.VenueId;
+        return new EventEdit(
+            model.CategoryId,
+            isCampEvent ? null : model.VenueId,
+            model.Title, model.Description,
+            ToInstant(model.StartDate.Add(startTime), tz), durationMinutes,
+            model.LocationNote, model.Host, model.IsRecurring, model.RecurrenceDays,
+            isCampEvent ? model.PriorityRank : null);
     }
 
     private async Task<IActionResult> ProcessActionAsync(Guid eventId, EventModerationActionType actionType, string? reason)

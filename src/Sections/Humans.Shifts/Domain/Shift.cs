@@ -88,11 +88,19 @@ internal sealed class Shift
     /// always returns the date at <see cref="AllDayWindowStart"/> (08:00), ignoring the
     /// stored <see cref="StartTime"/>.
     /// </summary>
-    public Instant GetAbsoluteStart(IEventSettingsInfo eventSettings)
+    public Instant GetAbsoluteStart(IEventSettingsInfo eventSettings) =>
+        ResolveAbsoluteStart(DayOffset, StartTime, IsAllDay, eventSettings);
+
+    /// <summary>
+    /// <see cref="GetAbsoluteStart"/> over raw field values, so a flattened shift row resolves
+    /// its instants by the same rule as the entity.
+    /// </summary>
+    internal static Instant ResolveAbsoluteStart(
+        int dayOffset, LocalTime startTime, bool isAllDay, IEventSettingsInfo eventSettings)
     {
         var tz = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
-        var date = eventSettings.GateOpeningDate.PlusDays(DayOffset);
-        var wallTime = IsAllDay ? AllDayWindowStart : StartTime;
+        var date = eventSettings.GateOpeningDate.PlusDays(dayOffset);
+        var wallTime = isAllDay ? AllDayWindowStart : startTime;
         return date.At(wallTime).InZoneLeniently(tz).ToInstant();
     }
 
@@ -101,15 +109,20 @@ internal sealed class Shift
     /// returns the date at <see cref="AllDayWindowEnd"/> (18:00), ignoring the stored
     /// <see cref="Duration"/>. When <c>false</c>, returns start + duration.
     /// </summary>
-    public Instant GetAbsoluteEnd(IEventSettingsInfo eventSettings)
+    public Instant GetAbsoluteEnd(IEventSettingsInfo eventSettings) =>
+        ResolveAbsoluteEnd(DayOffset, StartTime, Duration, IsAllDay, eventSettings);
+
+    /// <summary><see cref="GetAbsoluteEnd"/> over raw field values.</summary>
+    internal static Instant ResolveAbsoluteEnd(
+        int dayOffset, LocalTime startTime, Duration duration, bool isAllDay, IEventSettingsInfo eventSettings)
     {
-        if (IsAllDay)
+        if (isAllDay)
         {
             var tz = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
-            var date = eventSettings.GateOpeningDate.PlusDays(DayOffset);
+            var date = eventSettings.GateOpeningDate.PlusDays(dayOffset);
             return date.At(AllDayWindowEnd).InZoneLeniently(tz).ToInstant();
         }
-        return GetAbsoluteStart(eventSettings).Plus(Duration);
+        return ResolveAbsoluteStart(dayOffset, startTime, isAllDay, eventSettings).Plus(duration);
     }
 
     /// <summary>
@@ -131,7 +144,11 @@ internal sealed class Shift
     /// Classifies the shift into Build, Event, or Strike period based on its day offset.
     /// </summary>
     public ShiftPeriod GetShiftPeriod(IEventSettingsInfo eventSettings) =>
-        DayOffset < 0 ? ShiftPeriod.Build :
-        DayOffset <= eventSettings.EventEndOffset ? ShiftPeriod.Event :
+        ResolveShiftPeriod(DayOffset, eventSettings);
+
+    /// <summary><see cref="GetShiftPeriod"/> over a raw day offset.</summary>
+    internal static ShiftPeriod ResolveShiftPeriod(int dayOffset, IEventSettingsInfo eventSettings) =>
+        dayOffset < 0 ? ShiftPeriod.Build :
+        dayOffset <= eventSettings.EventEndOffset ? ShiftPeriod.Event :
         ShiftPeriod.Strike;
 }

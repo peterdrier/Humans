@@ -60,7 +60,7 @@ rate-limit/replay sentinels are owned by `IMagicLinkRateLimiter`
 (same section, `Services/`) which writes `magic_link_used:{sha256(token)}`,
 `magic_link_login:{userId}` and `magic_link_signup:{normalizedEmail}` into `IMemoryCache`. Both link types
 redeem through the same `magic_link_used:` sentinel — login tokens on
-`VerifyLoginTokenAsync`, signup tokens on `VerifyAndConsumeSignupTokenAsync`, which
+`VerifyLoginTokenAsync` (returns `bool`, never the `User`), signup tokens on `VerifyAndConsumeSignupTokenAsync`, which
 `ReleaseSignupToken` reverses when provisioning fails —
 and their strings come from different DataProtection purposes, so they cannot
 collide. Survey and unsubscribe tokens have their own providers and never

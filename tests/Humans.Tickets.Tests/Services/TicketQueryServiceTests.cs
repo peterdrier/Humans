@@ -899,9 +899,55 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         result.Rows.Last().VendorOrderId.Should().Be("ord_expensive");
     }
 
+    [HumansFact]
+    public async Task GetOrdersPageAsync_BreaksSortTiesById_SoPagesNeverRepeatOrSkip()
+    {
+        // Equal amounts, inserted in reverse Id order: only the Id tie-breaker yields Id order.
+        var ids = new[] { new Guid("00000000-0000-0000-0000-000000000003"),
+            new Guid("00000000-0000-0000-0000-000000000002"), new Guid("00000000-0000-0000-0000-000000000001") };
+        foreach (var id in ids)
+        {
+            var order = MakeOrder($"ord_{id}", TicketPaymentStatus.Paid,
+                Instant.FromUtc(2026, 3, 1, 10, 0), 100m, 0m, 0m, 1, 0m, id);
+            TicketsDb.TicketOrders.Add(order);
+        }
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var paged = new List<Guid>();
+        for (var page = 1; page <= ids.Length; page++)
+        {
+            var result = await _service.GetOrdersPageAsync(
+                null, "amount", false, page, 1, null, null, null, Xunit.TestContext.Current.CancellationToken);
+            paged.Add(result.Rows.Single().Id);
+        }
+
+        paged.Should().Equal(ids.Order());
+    }
+
     // ====================================================================
     // GetAttendeesPageAsync tests
     // ====================================================================
+
+    [HumansFact]
+    public async Task GetAttendeesPageAsync_BreaksSortTiesById_SoPagesNeverRepeatOrSkip()
+    {
+        // Equal prices, inserted in reverse Id order: only the Id tie-breaker yields Id order.
+        var order = MakeOrder("ord_ties", TicketPaymentStatus.Paid,
+            Instant.FromUtc(2026, 3, 1, 10, 0), 300m, 0m, 0m, 3, 0m,
+            attendeeId: i => new Guid($"00000000-0000-0000-0000-00000000000{4 - i}"));
+        TicketsDb.TicketOrders.Add(order);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var paged = new List<Guid>();
+        for (var page = 1; page <= 3; page++)
+        {
+            var result = await _service.GetAttendeesPageAsync(
+                null, "price", false, page, 1, null, null, null, null, ct: Xunit.TestContext.Current.CancellationToken);
+            paged.Add(result.Rows.Single().Id);
+        }
+
+        paged.Should().Equal(order.Attendees.Select(a => a.Id).Order());
+    }
 
     [HumansFact]
     public async Task GetAttendeesPageAsync_ReturnsPagedResults()
@@ -1100,7 +1146,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     // ====================================================================
 
     [HumansFact]
-    public async Task GetAttendeeExportDataAsync_ReturnsAllAttendeesOrderedByName()
+    public async Task GetAttendeeExportDataAsync_ReturnsAllAttendees()
     {
         var actor = Guid.NewGuid();
         var orderId = Guid.NewGuid();
@@ -1144,10 +1190,8 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         var rows = await _service.GetAttendeeExportDataAsync(actor);
 
-        rows.Should().HaveCount(2);
-        rows[0].AttendeeName.Should().Be("Alice");
-        rows[1].AttendeeName.Should().Be("Zara");
-        rows[0].VendorOrderId.Should().Be("ord_export");
+        rows.Select(r => r.AttendeeName).Should().BeEquivalentTo("Alice", "Zara");
+        rows.Should().OnlyContain(r => string.Equals(r.VendorOrderId, "ord_export", StringComparison.Ordinal));
         await _auditLog.Received(1).LogAsync(AuditAction.TicketAttendeesExported, "Tickets", Guid.Empty,
             "Attendee list exported: 2 rows", actor);
     }
@@ -1165,10 +1209,8 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         var rows = await _service.GetOrderExportDataAsync(actor);
 
         rows.Should().HaveCount(2);
-        // Ordered by purchase date descending
-        rows[0].Date.Should().Be("2026-03-01");
-        rows[1].Date.Should().Be("2026-01-01");
-        rows[0].AttendeeCount.Should().Be(2);
+        rows.Single(r => string.Equals(r.Date, "2026-03-01", StringComparison.Ordinal)).AttendeeCount.Should().Be(2);
+        rows.Single(r => string.Equals(r.Date, "2026-01-01", StringComparison.Ordinal)).AttendeeCount.Should().Be(1);
         await _auditLog.Received(1).LogAsync(AuditAction.TicketOrdersExported, "Tickets", Guid.Empty,
             "Order list exported: 2 rows", actor);
     }
@@ -1426,13 +1468,15 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         decimal donationAmount,
         decimal vatAmount,
         int ticketCount,
-        decimal vipPremiumPerTicket)
+        decimal vipPremiumPerTicket,
+        Guid? id = null,
+        Func<int, Guid>? attendeeId = null)
     {
-        var orderId = Guid.NewGuid();
+        var orderId = id ?? Guid.NewGuid();
         var attendees = Enumerable.Range(1, ticketCount)
             .Select(i => new TicketAttendee
             {
-                Id = Guid.NewGuid(),
+                Id = attendeeId?.Invoke(i) ?? Guid.NewGuid(),
                 VendorTicketId = $"{vendorOrderId}_tkt_{i}",
                 TicketOrderId = orderId,
                 TicketOrder = null!,

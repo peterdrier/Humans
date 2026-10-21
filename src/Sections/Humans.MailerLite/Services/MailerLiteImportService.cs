@@ -264,13 +264,13 @@ internal sealed class MailerLiteImportService(
                     case SubscriberOutcome.ReplaceUnverifiedEmail:
                         {
                             // Not grouped with TargetUserId's verified addresses: replacement deletes
-                            // that user's unverified row and provisions a separate contact (provUser),
+                            // that user's unverified row and provisions a separate contact (provUserId),
                             // whose Marketing pref this write targets.
-                            var (provUser, provCreated) = await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
+                            var (provUserId, provCreated) = await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
                                 d.TargetUserId!.Value, d.UnverifiedEmailIdToDelete!.Value,
                                 subscriber.Email, displayName: null, ContactSource.MailerLite, ct);
                             if (provCreated) created++;
-                            var delta = await ApplyMarketingDeltaAsync(provUser.Id, subscriber, ct);
+                            var delta = await ApplyMarketingDeltaAsync(provUserId, subscriber, ct);
                             if (delta == DeltaResult.FlippedToOptIn) flippedIn++;
                             else if (delta == DeltaResult.FlippedToOptOut) flippedOut++;
                             replacedUnverified++;
@@ -279,10 +279,10 @@ internal sealed class MailerLiteImportService(
 
                     case SubscriberOutcome.CreateNewHuman:
                         {
-                            var (provUser, provCreated) = await provisioning.FindOrCreateUserByEmailAsync(
+                            var (provUserId, provCreated) = await provisioning.FindOrCreateUserByEmailAsync(
                                 subscriber.Email, displayName: null, ContactSource.MailerLite, ct);
                             if (provCreated) created++;
-                            var delta = await ApplyMarketingDeltaAsync(provUser.Id, subscriber, ct);
+                            var delta = await ApplyMarketingDeltaAsync(provUserId, subscriber, ct);
                             if (delta == DeltaResult.FlippedToOptIn) flippedIn++;
                             else if (delta == DeltaResult.FlippedToOptOut) flippedOut++;
                             break;

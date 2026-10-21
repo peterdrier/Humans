@@ -1,5 +1,4 @@
 using Humans.Users.Services;
-using Humans.Auth.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Identity;
 using NodaTime;
@@ -19,7 +18,6 @@ internal sealed class ExternalLoginService(
     UserManager<User> userManager,
     IUserManagement userService,
     IUserEmailService userEmailService,
-    IMagicLinkService magicLinkService,
     IClock clock,
     ILogger<ExternalLoginService> logger) : IExternalLoginService
 {
@@ -131,7 +129,7 @@ internal sealed class ExternalLoginService(
             var lockedSource = await userManager.FindByLoginAsync(
                 attempt.Login.LoginProvider,
                 attempt.Login.ProviderKey);
-            var activeTarget = await magicLinkService.FindUserByVerifiedEmailAsync(attempt.Email, ct);
+            var activeTarget = await FindUserByVerifiedEmailAsync(attempt.Email, ct);
             if (lockedSource is null || activeTarget is null || lockedSource.Id == activeTarget.Id)
                 return null;
 
@@ -187,7 +185,7 @@ internal sealed class ExternalLoginService(
         ExternalLoginAttempt attempt,
         CancellationToken ct)
     {
-        var existingByEmail = await magicLinkService.FindUserByVerifiedEmailAsync(attempt.Email, ct);
+        var existingByEmail = await FindUserByVerifiedEmailAsync(attempt.Email, ct);
         if (existingByEmail is null)
             return null;
 
@@ -316,6 +314,14 @@ internal sealed class ExternalLoginService(
             await TryDeleteOrphanUserAsync(user);
             return new ExternalLoginCompletionResult(ExternalLoginOutcome.SetupFailed);
         }
+    }
+
+    // Owner of the verified UserEmail row (gmail/googlemail aliased), loaded as the Identity entity for AddLoginAsync.
+    private async Task<User?> FindUserByVerifiedEmailAsync(string email, CancellationToken ct)
+    {
+        var userEmail = (await userEmailService.FindByAddressAsync(email, aliased: true, verifiedOnly: true, ct))
+            .FirstOrDefault();
+        return userEmail is null ? null : await userManager.FindByIdAsync(userEmail.UserId.ToString());
     }
 
     // Reconcile wrapper for OAuth-success paths - sign-in never blocks on failure (swallow + log).

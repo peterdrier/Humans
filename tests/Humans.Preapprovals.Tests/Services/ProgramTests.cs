@@ -69,8 +69,10 @@ public sealed class ProgramTests : PreapprovalsTestHarness
     public async Task Edit_KindLockedOnceGrantsExist()
     {
         var program = await SeedProgramAsync();
+        (await NewService().GetProgramAsync(program.Id, Ct))!.KindLocked.Should().BeFalse();
         await SeedGrantAsync(program);
 
+        (await NewService().GetProgramAsync(program.Id, Ct))!.KindLocked.Should().BeTrue();
         var result = await NewService().UpdateProgramAsync(program.Id, Save(kind: ProgramKind.PerGrantAmount, perPerson: null), SeedUser(), Ct);
 
         result.Refusal!.Key.Should().Be(PreapprovalErrorKeys.KindLocked);

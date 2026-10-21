@@ -32,13 +32,4 @@ public class EntityDefaultsTests
         p.Status.Should().Be(PaymentStatus.Paid);
         ((int)PaymentStatus.Paid).Should().Be(0);
     }
-
-    [HumansFact]
-    public void Treasury_sync_state_singleton_id_is_one()
-    {
-        var s = new TreasurySyncState();
-
-        s.Id.Should().Be(1);
-        s.SyncStatus.Should().Be(TreasurySyncStatus.Idle);
-    }
 }

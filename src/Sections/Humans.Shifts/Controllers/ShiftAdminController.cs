@@ -4,6 +4,7 @@ using Humans.Teams.Contracts;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Helpers;
 using Humans.Shifts.Models;
+using Humans.Shifts.Services.Dtos;
 using Microsoft.Extensions.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -129,14 +130,17 @@ internal sealed class ShiftAdminController(
             return await RenderInvalidEditAsync(slug);
         }
 
-        rota.Name = model.Name;
-        rota.Description = model.Description;
-        rota.Priority = model.Priority;
-        rota.Policy = model.Policy;
-        rota.Period = model.Period;
-        rota.PracticalInfo = model.PracticalInfo;
-
-        await shiftMgmt.UpdateRotaAsync(rota, ParseTagIds(model.TagIds));
+        if (!await shiftMgmt.UpdateRotaAsync(new UpdateRotaInput(
+                rotaId,
+                model.Name,
+                model.Description,
+                model.PracticalInfo,
+                model.Priority,
+                model.Policy,
+                model.Period,
+                rota.IsVisibleToVolunteers,
+                ParseTagIds(model.TagIds))))
+            return NotFound();
 
         SetSuccess($"Rota '{model.Name}' updated.");
         return RedirectToAction(nameof(Index), new { slug });
@@ -311,10 +315,20 @@ internal sealed class ShiftAdminController(
         var rota = await GetRotaForTeamAsync(rotaId, team.Id);
         if (rota is null) return NotFound();
 
-        rota.IsVisibleToVolunteers = !rota.IsVisibleToVolunteers;
-        await shiftMgmt.UpdateRotaAsync(rota);
+        var isVisible = !rota.IsVisibleToVolunteers;
+        if (!await shiftMgmt.UpdateRotaAsync(new UpdateRotaInput(
+                rota.Id,
+                rota.Name,
+                rota.Description,
+                rota.PracticalInfo,
+                rota.Priority,
+                rota.Policy,
+                rota.Period,
+                isVisible,
+                TagIds: null)))
+            return NotFound();
 
-        var label = rota.IsVisibleToVolunteers ? "visible to" : "hidden from";
+        var label = isVisible ? "visible to" : "hidden from";
         SetSuccess($"Rota '{rota.Name}' is now {label} volunteers.");
         return RedirectToAction(nameof(Index), new { slug });
     }
@@ -828,13 +842,13 @@ internal sealed class ShiftAdminController(
             (team, user) => CanApproveDepartmentAsync(user, team, ct), ct);
     }
 
-    private async Task<Rota?> GetRotaForTeamAsync(Guid rotaId, Guid teamId, CancellationToken ct = default)
+    private async Task<RotaInfo?> GetRotaForTeamAsync(Guid rotaId, Guid teamId, CancellationToken ct = default)
     {
-        var rota = await shiftMgmt.GetRotaByIdAsync(rotaId, ct);
+        var rota = await shiftMgmt.GetRotaAsync(rotaId, ct);
         return rota is not null && rota.TeamId == teamId ? rota : null;
     }
 
-    private async Task<Shift?> GetShiftForTeamAsync(Guid shiftId, Guid teamId, CancellationToken ct = default)
+    private async Task<ShiftWithRota?> GetShiftForTeamAsync(Guid shiftId, Guid teamId, CancellationToken ct = default)
     {
         var shift = await shiftMgmt.GetShiftByIdAsync(shiftId, ct);
         return shift is not null && shift.Rota.TeamId == teamId ? shift : null;

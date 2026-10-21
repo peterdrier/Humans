@@ -80,6 +80,7 @@ public class ShiftAdminControllerTests
     public ShiftAdminControllerTests()
     {
         _shiftMgmt.DeleteRotaAsync(Arg.Any<Guid>(), Arg.Any<Guid>()).Returns(new ShiftDeletionResult());
+        _shiftMgmt.UpdateRotaAsync(Arg.Any<UpdateRotaInput>()).Returns(true);
         _shiftMgmt.DeleteShiftAsync(Arg.Any<Guid>(), Arg.Any<Guid>()).Returns(new ShiftDeletionResult());
         _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(UserId));
@@ -130,8 +131,8 @@ public class ShiftAdminControllerTests
         _shiftMgmt.IsDeptCoordinatorAsync(UserId, TeamId, Arg.Any<CancellationToken>()).Returns(true);
         var rota = MakeRota(TeamId);
         var shift = MakeShift(rota);
-        _shiftMgmt.GetRotaByIdAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
-        _shiftMgmt.GetShiftByIdAsync(shift.Id, Arg.Any<CancellationToken>()).Returns(shift);
+        _shiftMgmt.GetRotaAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(_ => ToInfo(rota));
+        _shiftMgmt.GetShiftByIdAsync(shift.Id, Arg.Any<CancellationToken>()).Returns(_ => ToInfo(shift));
         _shiftView.GetRotaAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(new ShiftRotaView(
             rota.Id, rota, [], [], [new ShiftSignup { UserId = UserId, Status = SignupStatus.Confirmed }]));
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -155,7 +156,7 @@ public class ShiftAdminControllerTests
         switch (page)
         {
             case 0:
-                await _shiftMgmt.Received(1).GetRotaByIdAsync(rota.Id, cancellation.Token);
+                await _shiftMgmt.Received(1).GetRotaAsync(rota.Id, cancellation.Token);
                 await _shiftView.Received(1).GetRotaAsync(rota.Id, cancellation.Token);
                 await _userService.Received(1).GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), cancellation.Token);
                 break;
@@ -180,7 +181,7 @@ public class ShiftAdminControllerTests
         rota.EventSettingsId = Event.Id;
         var shift = MakeShift(rota);
         _shiftMgmt.IsDeptCoordinatorAsync(UserId, TeamId, Arg.Any<CancellationToken>()).Returns(true);
-        _shiftMgmt.GetShiftByIdAsync(shift.Id, Arg.Any<CancellationToken>()).Returns(shift);
+        _shiftMgmt.GetShiftByIdAsync(shift.Id, Arg.Any<CancellationToken>()).Returns(_ => ToInfo(shift));
         _userService.SearchUsersAsync("ann", PersonSearchFields.Name, int.MaxValue, cancellation.Token)
             .Returns(async _ =>
             {
@@ -208,7 +209,7 @@ public class ShiftAdminControllerTests
     public async Task VoluntellRange_InvalidOrMissingOffset_DoesNotAssign(string? field, bool ownDepartment, bool missingOffset)
     {
         var rota = MakeRota(ownDepartment ? TeamId : OtherTeamId);
-        _shiftMgmt.GetRotaByIdAsync(rota.Id).Returns(rota);
+        _shiftMgmt.GetRotaAsync(rota.Id).Returns(_ => ToInfo(rota));
         var beneficiary = Guid.NewGuid();
         _signupService.VoluntellRangeAsync(beneficiary, rota.Id, 0, 0, UserId)
             .Returns(SignupResult.Ok(Guid.NewGuid()));
@@ -408,7 +409,7 @@ public class ShiftAdminControllerTests
     {
         const string reason = "Shift operation rejected by a guardrail";
         var rota = MakeRota(TeamId);
-        _shiftMgmt.GetRotaByIdAsync(rota.Id).Returns(rota);
+        _shiftMgmt.GetRotaAsync(rota.Id).Returns(_ => ToInfo(rota));
         _shiftMgmt.CreateBuildStrikeShiftsAsync(Arg.Any<ConfigureBuildStrikeStaffingInput>())
             .Returns(Task.FromException<ShiftGenerationResult>(new InvalidOperationException(reason)));
         _shiftMgmt.DeleteRotaAsync(rota.Id, UserId).Returns(new ShiftDeletionResult("Shifts_Delete_ConfirmedSignups", 2));
@@ -442,11 +443,36 @@ public class ShiftAdminControllerTests
         });
     }
 
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ToggleVisibility_FlipsOnlyVisibilityOfOwnTeamsRota(bool ownTeam)
+    {
+        var rota = MakeRota(ownTeam ? TeamId : OtherTeamId);
+        rota.Description = "Keep me";
+        rota.IsVisibleToVolunteers = true;
+        _shiftMgmt.GetRotaAsync(rota.Id).Returns(_ => ToInfo(rota));
+
+        var result = await BuildSut().ToggleVisibility(Slug, rota.Id);
+
+        if (!ownTeam)
+        {
+            result.Should().BeOfType<NotFoundResult>();
+            await _shiftMgmt.DidNotReceive().UpdateRotaAsync(Arg.Any<UpdateRotaInput>());
+            return;
+        }
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        await _shiftMgmt.Received(1).UpdateRotaAsync(Arg.Is<UpdateRotaInput>(i =>
+            i.RotaId == rota.Id && i.Name == rota.Name && i.Description == "Keep me"
+            && !i.IsVisibleToVolunteers && i.TagIds == null));
+    }
+
     [HumansFact]
     public async Task DeleteRota_OtherTeamsRota_IsNotFound_AndNotDeleted()
     {
         var rota = MakeRota(OtherTeamId);
-        _shiftMgmt.GetRotaByIdAsync(rota.Id).Returns(rota);
+        _shiftMgmt.GetRotaAsync(rota.Id).Returns(_ => ToInfo(rota));
 
         var result = await BuildSut().DeleteRota(Slug, rota.Id);
 
@@ -458,7 +484,7 @@ public class ShiftAdminControllerTests
     public async Task DeleteRota_OwnTeamsRota_Deletes()
     {
         var rota = MakeRota(TeamId);
-        _shiftMgmt.GetRotaByIdAsync(rota.Id).Returns(rota);
+        _shiftMgmt.GetRotaAsync(rota.Id).Returns(_ => ToInfo(rota));
 
         var result = await BuildSut().DeleteRota(Slug, rota.Id);
 
@@ -470,7 +496,7 @@ public class ShiftAdminControllerTests
     public async Task DeleteShift_OtherTeamsShift_IsNotFound_AndNotDeleted()
     {
         var shift = MakeShift(MakeRota(OtherTeamId));
-        _shiftMgmt.GetShiftByIdAsync(shift.Id).Returns(shift);
+        _shiftMgmt.GetShiftByIdAsync(shift.Id).Returns(_ => ToInfo(shift));
 
         var result = await BuildSut().DeleteShift(Slug, shift.Id);
 
@@ -482,7 +508,7 @@ public class ShiftAdminControllerTests
     public async Task DeleteShift_OwnTeamsShift_Deletes()
     {
         var shift = MakeShift(MakeRota(TeamId));
-        _shiftMgmt.GetShiftByIdAsync(shift.Id).Returns(shift);
+        _shiftMgmt.GetShiftByIdAsync(shift.Id).Returns(_ => ToInfo(shift));
 
         var result = await BuildSut().DeleteShift(Slug, shift.Id);
 
@@ -509,8 +535,8 @@ public class ShiftAdminControllerTests
         rota.Priority = ShiftPriority.Essential;
         rota.Policy = SignupPolicy.RequireApproval;
         rota.Period = RotaPeriod.Build;
-        _shiftMgmt.GetRotaByIdAsync(rota.Id).Returns(rota);
-        _shiftMgmt.GetRotasByDepartmentAsync(TeamId, Event.Id).Returns([rota]);
+        _shiftMgmt.GetRotaAsync(rota.Id).Returns(_ => ToInfo(rota));
+        _shiftMgmt.GetRotasByDepartmentAsync(TeamId, Event.Id).Returns([ToAdminRota(rota)]);
         var controller = BuildSut();
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
@@ -552,20 +578,15 @@ public class ShiftAdminControllerTests
                 else result.Should().BeOfType<RedirectToActionResult>();
                 controller.ModelState[omitted]!.Errors.Should().ContainSingle();
             }
-            rota.Name.Should().Be("Rota");
-            rota.Priority.Should().Be(ShiftPriority.Essential);
-            rota.Policy.Should().Be(SignupPolicy.RequireApproval);
-            rota.Period.Should().Be(RotaPeriod.Build);
             await _shiftMgmt.DidNotReceive().CreateRotaAsync(Arg.Any<Rota>(), Arg.Any<IReadOnlyList<Guid>?>());
-            await _shiftMgmt.DidNotReceive().UpdateRotaAsync(Arg.Any<Rota>(), Arg.Any<IReadOnlyList<Guid>?>());
+            await _shiftMgmt.DidNotReceive().UpdateRotaAsync(Arg.Any<UpdateRotaInput>());
         }
         else if (edit)
         {
             result.Should().BeOfType<RedirectToActionResult>();
-            rota.Priority.Should().Be(priority);
-            rota.Policy.Should().Be(policy);
-            rota.Period.Should().Be(period);
-            await _shiftMgmt.Received(1).UpdateRotaAsync(rota, Arg.Any<IReadOnlyList<Guid>?>());
+            await _shiftMgmt.Received(1).UpdateRotaAsync(Arg.Is<UpdateRotaInput>(i =>
+                i.RotaId == rota.Id && i.Name == "Changed rota"
+                && i.Priority == priority && i.Policy == policy && i.Period == period));
         }
         else
         {
@@ -580,8 +601,8 @@ public class ShiftAdminControllerTests
     public async Task EditRota_InvalidModel_RendersAttemptedEditWithoutChangingRota()
     {
         var rota = MakeRota(TeamId);
-        _shiftMgmt.GetRotaByIdAsync(rota.Id).Returns(rota);
-        _shiftMgmt.GetRotasByDepartmentAsync(TeamId, Event.Id).Returns([rota]);
+        _shiftMgmt.GetRotaAsync(rota.Id).Returns(_ => ToInfo(rota));
+        _shiftMgmt.GetRotasByDepartmentAsync(TeamId, Event.Id).Returns([ToAdminRota(rota)]);
         var ctrl = BuildSut();
         ctrl.ModelState.SetModelValue(nameof(EditRotaModel.Name), "", "");
         ctrl.ModelState.AddModelError(nameof(EditRotaModel.Name), "required");
@@ -595,11 +616,9 @@ public class ShiftAdminControllerTests
         posted.RotaId.Should().Be(rota.Id);
         view.ViewData.ModelState[nameof(EditRotaModel.Name)]!.Errors.Should().ContainSingle();
         var page = view.Model.Should().BeOfType<ShiftAdminViewModel>().Subject;
-        page.Rotas.Should().ContainSingle().Which.Should().BeSameAs(rota);
+        page.Rotas.Should().ContainSingle().Which.Rota.Id.Should().Be(rota.Id);
         page.CanManageShifts.Should().BeTrue();
-        rota.Name.Should().Be("Rota");
-        rota.Description.Should().BeNull();
-        await _shiftMgmt.DidNotReceive().UpdateRotaAsync(Arg.Any<Rota>(), Arg.Any<IReadOnlyList<Guid>?>());
+        await _shiftMgmt.DidNotReceive().UpdateRotaAsync(Arg.Any<UpdateRotaInput>());
     }
 
     [HumansTheory]
@@ -628,8 +647,8 @@ public class ShiftAdminControllerTests
         var shift = MakeShift(rota);
         shift.IsAllDay = allDay;
         rota.Shifts.Add(shift);
-        _shiftMgmt.GetShiftByIdAsync(shift.Id).Returns(shift);
-        _shiftMgmt.GetRotasByDepartmentAsync(TeamId, Event.Id).Returns([rota]);
+        _shiftMgmt.GetShiftByIdAsync(shift.Id).Returns(_ => ToInfo(shift));
+        _shiftMgmt.GetRotasByDepartmentAsync(TeamId, Event.Id).Returns([ToAdminRota(rota)]);
         _shiftMgmt.CreateShiftAsync(Arg.Any<CreateShiftInput>()).Returns(ShiftMutationResult.Success("Created", shift.Id));
         _shiftMgmt.UpdateShiftAsync(Arg.Any<UpdateShiftInput>()).Returns(ShiftMutationResult.Success("Updated", shift.Id));
         var controller = BuildSut();
@@ -705,8 +724,8 @@ public class ShiftAdminControllerTests
         var rota = MakeRota(TeamId);
         var shift = MakeShift(rota);
         rota.Shifts.Add(shift);
-        _shiftMgmt.GetShiftByIdAsync(shift.Id).Returns(shift);
-        _shiftMgmt.GetRotasByDepartmentAsync(TeamId, Event.Id).Returns([rota]);
+        _shiftMgmt.GetShiftByIdAsync(shift.Id).Returns(_ => ToInfo(shift));
+        _shiftMgmt.GetRotasByDepartmentAsync(TeamId, Event.Id).Returns([ToAdminRota(rota)]);
         var ctrl = BuildSut();
         ctrl.ModelState.SetModelValue(nameof(EditShiftModel.DurationHours), "not a number", "not a number");
         ctrl.ModelState.AddModelError(nameof(EditShiftModel.DurationHours), "Invalid number");
@@ -731,7 +750,7 @@ public class ShiftAdminControllerTests
     public async Task EditShift_InvalidStartTime_RendersFieldErrorWithoutSaving()
     {
         var shift = MakeShift(MakeRota(TeamId));
-        _shiftMgmt.GetShiftByIdAsync(shift.Id).Returns(shift);
+        _shiftMgmt.GetShiftByIdAsync(shift.Id).Returns(_ => ToInfo(shift));
         var ctrl = BuildSut();
         var result = await ctrl.EditShift(Slug, shift.Id, new EditShiftModel { StartTime = "bad time" });
 
@@ -745,7 +764,7 @@ public class ShiftAdminControllerTests
     public async Task EditShift_OtherTeamsShift_IsNotFoundWithoutSaving()
     {
         var shift = MakeShift(MakeRota(OtherTeamId));
-        _shiftMgmt.GetShiftByIdAsync(shift.Id).Returns(shift);
+        _shiftMgmt.GetShiftByIdAsync(shift.Id).Returns(_ => ToInfo(shift));
         var result = await BuildSut().EditShift(Slug, shift.Id, new EditShiftModel { StartTime = "08:00" });
 
         result.Should().BeOfType<NotFoundResult>();
@@ -862,8 +881,8 @@ public class ShiftAdminControllerTests
     {
         var rota = MakeRota(TeamId);
         var shift = MakeShift(rota);
-        _shiftMgmt.GetRotaByIdAsync(rota.Id).Returns(rota);
-        _shiftMgmt.GetShiftByIdAsync(shift.Id).Returns(shift);
+        _shiftMgmt.GetRotaAsync(rota.Id).Returns(_ => ToInfo(rota));
+        _shiftMgmt.GetShiftByIdAsync(shift.Id).Returns(_ => ToInfo(shift));
         var failure = new InvalidOperationException("Private cascade delete diagnostic");
         _shiftMgmt.DeleteRotaAsync(rota.Id, UserId).Returns(Task.FromException<ShiftDeletionResult>(failure));
         _shiftMgmt.DeleteShiftAsync(shift.Id, UserId).Returns(Task.FromException<ShiftDeletionResult>(failure));
@@ -899,8 +918,8 @@ public class ShiftAdminControllerTests
             Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
         var rota = MakeRota(TeamId);
         var shift = MakeShift(rota);
-        _shiftMgmt.GetRotaByIdAsync(rota.Id).Returns(rota);
-        _shiftMgmt.GetShiftByIdAsync(shift.Id).Returns(shift);
+        _shiftMgmt.GetRotaAsync(rota.Id).Returns(_ => ToInfo(rota));
+        _shiftMgmt.GetShiftByIdAsync(shift.Id).Returns(_ => ToInfo(shift));
         _shiftMgmt.DeleteRotaAsync(rota.Id, UserId).Returns(new ShiftDeletionResult("Shifts_Delete_ConfirmedSignups", 3));
         _shiftMgmt.DeleteShiftAsync(shift.Id, UserId).Returns(new ShiftDeletionResult("Shifts_Delete_ConfirmedSignups", 3));
         var controller = BuildSut(localizer);
@@ -963,6 +982,21 @@ public class ShiftAdminControllerTests
         Duration = Duration.FromHours(4),
         MaxVolunteers = 5,
     };
+
+    private static RotaInfo ToInfo(Rota rota) => new(
+        rota.Id, rota.EventSettingsId, rota.TeamId, rota.Name, rota.Description, rota.PracticalInfo,
+        rota.Priority, rota.Policy, rota.Period, rota.IsVisibleToVolunteers, []);
+
+    private static ShiftWithRota ToInfo(Shift shift) => new(ToShiftInfo(shift), ToInfo(shift.Rota));
+
+    private static ShiftInfo ToShiftInfo(Shift shift) => new(
+        shift.Id, shift.RotaId, shift.Description, shift.DayOffset, shift.StartTime,
+        shift.Duration.TotalHours, shift.MinVolunteers, shift.MaxVolunteers, shift.AdminOnly,
+        shift.IsAllDay, shift.IsEarlyEntry);
+
+    private static ShiftAdminRota ToAdminRota(Rota rota) => new(
+        ToInfo(rota),
+        [.. rota.Shifts.Select(s => new ShiftAdminShift(ToShiftInfo(s), []))]);
 
     private static TeamInfo MakeTeam(Guid id, string slug) => new(
         id, "Gate", null, slug,

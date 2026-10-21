@@ -414,6 +414,26 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result.ErrorKey.Should().Be("NotFound");
     }
 
+    [HumansFact]
+    public async Task Detail_reads_carry_the_submitted_only_withdraw_and_decide_rules()
+    {
+        var userId = Guid.NewGuid();
+        var app = await SeedSubmittedApplicationAsync(userId);
+        var ct = TestContext.Current.CancellationToken;
+
+        (await _service.GetUserApplicationDetailAsync(app.Id, userId, ct))!.CanWithdraw.Should().BeTrue();
+        (await _service.GetApplicationDetailAsync(app.Id, ct))!.CanApproveReject.Should().BeTrue();
+        (await _service.GetSubmittedApplicationForUserAsync(userId, ct)).Should().NotBeNull();
+
+        app.Withdraw(Clock);
+        await SaveAllAsync(ct);
+        ClearAllTrackers();
+
+        (await _service.GetUserApplicationDetailAsync(app.Id, userId, ct))!.CanWithdraw.Should().BeFalse();
+        (await _service.GetApplicationDetailAsync(app.Id, ct))!.CanApproveReject.Should().BeFalse();
+        (await _service.GetSubmittedApplicationForUserAsync(userId, ct)).Should().BeNull();
+    }
+
     // --- Approve flow ---
 
     [HumansFact]

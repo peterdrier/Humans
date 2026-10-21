@@ -9,7 +9,7 @@
 Folder: `src/Sections/Humans.Store/Services/` (namespace
 `Humans.Store.Services`). **DbContext:** `StoreDbContext`. Owns
 `store_products`, `store_orders`, `store_order_lines`, `store_payments`,
-`store_invoices`, `store_treasury_sync_state`.
+`store_invoices`.
 
 ### StoreAccountingRead (Scoped)
 
@@ -23,7 +23,6 @@ The section's `Service` class (`Services/Service.cs`); its only published contra
 | store_order_lines | R/W |
 | store_payments | R/W |
 | store_invoices | R/W |
-| store_treasury_sync_state | — (table ships; no code reads or writes it) |
 
 Cross-section calls via `IAuditLogService`, `ICampService`,
 `ITeamService` (team-order counterparty surface),

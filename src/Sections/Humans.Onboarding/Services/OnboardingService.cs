@@ -239,8 +239,6 @@ internal sealed class OnboardingService(
                 ? NoticeResources.GetString("Onboarding_Notification_ProfileRejectedBody", culture)!
                 : string.Format(culture,
                     NoticeResources.GetString("Onboarding_Notification_ProfileRejectedWithReason", culture)!, reason);
-            if (body.EnumerateRunes().Count() > 2000)
-                body = string.Concat(body.EnumerateRunes().Take(1999)) + "…";
             await notificationService.SendAsync(
                 NotificationSource.ProfileRejected,
                 NotificationClass.Informational,

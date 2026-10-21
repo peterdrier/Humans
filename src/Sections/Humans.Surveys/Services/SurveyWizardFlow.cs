@@ -35,6 +35,16 @@ internal sealed record AnswerState(
 /// </summary>
 internal static class SurveyWizardFlow
 {
+    /// <summary>
+    /// Resolve the invited response tier: Asociado votes are completion-tracked, anonymous-enabled
+    /// surveys keep the respondent's choice, everything else is Identified.
+    /// </summary>
+    public static ResponseAnonymity ResolveInvitedAnonymity(SurveyEditInput editable, ResponseAnonymity requested)
+    {
+        if (editable.IsAsociadoVote) return ResponseAnonymity.CompletionTracked;
+        return editable.AllowAnonymous ? requested : ResponseAnonymity.Identified;
+    }
+
     /// <summary>Resolve the public response tier, or refuse an absent/invalid respondent choice.</summary>
     public static ResponseAnonymity? ResolvePublicAnonymity(
         SurveyEditInput editable, Guid? userId, ResponseAnonymity? requested)

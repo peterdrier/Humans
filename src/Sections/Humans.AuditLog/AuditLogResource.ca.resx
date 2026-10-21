@@ -251,6 +251,8 @@
   <data name="Enum_AuditAction_CityPlanningLimitZoneDeleted" xml:space="preserve"><value>S'ha suprimit la zona límit d'urbanisme</value></data>
   <data name="Enum_AuditAction_CityPlanningOfficialZonesUpdated" xml:space="preserve"><value>Zones oficials d'urbanisme actualitzades</value></data>
   <data name="Enum_AuditAction_CityPlanningOfficialZonesDeleted" xml:space="preserve"><value>S'han suprimit les zones oficials d'urbanisme</value></data>
+  <data name="Enum_AuditAction_CityPlanningPlacementDatesUpdated" xml:space="preserve"><value>S'han actualitzat les dates de col·locació d'urbanisme</value></data>
+  <data name="Enum_AuditAction_CityPlanningRegistrationInfoUpdated" xml:space="preserve"><value>S'ha actualitzat la informació d'inscripció d'urbanisme</value></data>
   <data name="Enum_AuditAction_ExpenseCreatedOnBehalf" xml:space="preserve"><value>Despesa creada en nom d’una altra persona</value></data>
   <data name="Enum_AuditAction_ExpenseEditedOnBehalf" xml:space="preserve"><value>Despesa editada en nom d’una altra persona</value></data>
   <data name="Enum_AuditAction_ExpensePayeeIbanUpdated" xml:space="preserve"><value>IBAN del beneficiari de la despesa actualitzat</value></data>
