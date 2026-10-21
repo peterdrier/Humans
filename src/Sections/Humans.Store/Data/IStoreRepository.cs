@@ -10,10 +10,8 @@ namespace Humans.Store.Data;
 /// <c>store_treasury_sync_state</c> ships unused — nothing here touches it.
 /// </summary>
 /// <remarks>
-/// Keeps its prefix where the rest of the section's internals drop theirs
-/// (nobodies-collective/Humans#866 design §6a): it derives from
-/// <see cref="IRepository"/>, so it cannot itself be called <c>IRepository</c> —
-/// the same kind of mechanical reason the controllers and <c>StoreDbContext</c> have.
+/// Keeps the <c>Store</c> prefix because it derives from <see cref="IRepository"/> and so
+/// cannot itself be called <c>IRepository</c>.
 /// </remarks>
 internal interface IStoreRepository : IRepository
 {
@@ -54,10 +52,10 @@ internal interface IStoreRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the single open team order for <paramref name="teamId"/> in
+    /// Returns the team order for <paramref name="teamId"/> in
     /// <paramref name="year"/>, or null. The "one order per team per year"
     /// invariant is service-enforced; this method returns the first match if
-    /// more exist. <c>Lines</c> are eager-loaded.
+    /// more exist. <c>Lines</c> and <c>Payments</c> are eager-loaded.
     /// </summary>
     Task<Order?> GetOrderForTeamAsync(Guid teamId, int year, CancellationToken ct = default);
 

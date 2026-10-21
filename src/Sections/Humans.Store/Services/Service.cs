@@ -237,7 +237,7 @@ internal sealed class Service(
             $"Updated store product '{product.Name}'",
             actorUserId);
 
-        // Dedicated, queryable price-change event for the order-page audit view (#816).
+        // Dedicated, queryable price-change event for the order-page audit view (nobodies-collective/Humans#816).
         if (oldPrice != draft.UnitPriceEur)
             await audit.LogAsync(
                 AuditAction.StoreProductPriceChanged, AuditEntityTypes.Product, product.Id,
@@ -1180,8 +1180,7 @@ internal sealed class Service(
             .ToDictionary(season => season.Id);
         var products = await repo.GetAllProductsForYearAsync(year, ct);
 
-        // Departments — every top-level team on the platform (no user filter here: admin
-        // views reflect all departments). Filter to ParentTeamId is null.
+        // Departments: every top-level team, unfiltered by user (admin views show all).
         var allTeams = await teamService.GetTeamsAsync(ct);
         var departmentIds = allTeams.Values
             .Where(t => t.ParentTeamId is null)
@@ -1189,9 +1188,7 @@ internal sealed class Service(
             .ToList();
         var teamNames = allTeams.Values.ToDictionary(t => t.Id, t => t.Name);
 
-        // Reprice Open orders to the live catalog, exactly like the order page
-        // (MapOrderAsync) — summing raw snapshots here made summary totals drift
-        // from order totals whenever a catalog price changed after lines were added.
+        // Reprice Open orders to the live catalog, exactly like the order page (MapOrderAsync).
         // Priced from the requested year's products (already loaded above), not the
         // active event's catalog — historical summaries must not reprice against a
         // later year's prices.

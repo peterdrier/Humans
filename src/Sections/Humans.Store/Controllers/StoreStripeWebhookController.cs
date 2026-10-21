@@ -7,7 +7,9 @@ namespace Humans.Store.Controllers;
 
 /// <summary>
 /// Stripe Checkout webhook for Store. Anonymous; auth via signature in IStripeService.ParseStoreCheckoutEvent.
-/// Handles checkout.session.completed; idempotency enforced downstream.
+/// Returns 503 when the webhook secret is unset and 400 for an unparseable or badly signed body.
+/// Handles checkout.session.completed, async_payment_succeeded, async_payment_failed and expired;
+/// idempotency enforced downstream. Handler exceptions propagate, so Stripe retries.
 /// </summary>
 [ApiController]
 [AllowAnonymous]

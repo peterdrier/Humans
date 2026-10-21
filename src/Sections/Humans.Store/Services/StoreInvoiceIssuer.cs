@@ -25,7 +25,7 @@ internal sealed class StoreInvoiceIssuer(
     /// <summary>
     /// Issues the camp order's consolidated Holded sales document and freezes the order.
     ///
-    /// Pipeline: freeze the line snapshots at today's catalog price (#816) → resolve each
+    /// Pipeline: freeze the line snapshots at today's catalog price (nobodies-collective/Humans#816) → resolve each
     /// product's revenue account → build the lines (goods at the product's VAT rate, deposits
     /// tax-0 to the fianzas liability account) → create the document and <b>approve</b> it (a
     /// draft books nothing) → write <c>store_invoices</c> with both payloads and flip the order
@@ -62,7 +62,7 @@ internal sealed class StoreInvoiceIssuer(
             return Refuse(order, actorUserId,
                 "Holded is not configured in this environment, so no invoice can be issued.");
 
-        // Freeze seam (#816): rewrite each snapshot from the live catalog before issuing, so the
+        // Freeze seam (nobodies-collective/Humans#816): rewrite each snapshot from the live catalog before issuing, so the
         // document and the order agree forever after. BalanceCalculator already computed the
         // effective prices for an Open order — reuse them rather than re-deriving.
         var totals = BalanceCalculator.Compute(order, await orderReader.LoadCurrentPricesAsync(ct));

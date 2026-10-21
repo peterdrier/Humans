@@ -162,7 +162,7 @@ else
     <div class="alert alert-secondary">@Localizer["Store_NoLines"]</div>
 }
 
-@* Price changes on this order's products since it was created (#816). The AuditLog section
+@* Price changes on this order's products since it was created (nobodies-collective/Humans#816). The AuditLog section
    owns the read: one predicate over every product id, not one panel per product. *@
 <vc:audit-log entity-type="@AuditEntityTypes.Product"
               entity-ids="@order.Lines.Select(l => l.ProductId).Distinct().ToList()"
