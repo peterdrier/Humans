@@ -4,7 +4,6 @@ using Humans.Auth.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Threading;
 using Humans.AuditLog.Contracts;
-using Humans.EarlyEntry.Contracts;
 using Humans.Calendar.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Shifts.Contracts;
@@ -32,7 +31,6 @@ internal sealed class ShiftSignupService(
     INotificationEmitter notificationService,
     IAdminAuthorizationService adminAuthorization,
     IShiftViewInvalidator viewInvalidator,
-    IEarlyEntryInvalidator earlyEntryInvalidator,
     IServiceProvider serviceProvider,
     IClock clock,
     ILogger<ShiftSignupService> logger,
@@ -133,9 +131,6 @@ internal sealed class ShiftSignupService(
         shiftMgmt.InvalidateDashboardCaches(localEs.Id);
         viewInvalidator.InvalidateUser(userId);
         viewInvalidator.InvalidateShift(shiftId);
-        if (autoConfirm && shift.IsEarlyEntry)
-            earlyEntryInvalidator.InvalidateUser(userId);
-
         var shiftDate = FormatAuditDay(calendar, shift.DayOffset);
         var statusSuffix = autoConfirm ? "confirmed" : "pending";
         await auditLogService.LogAsync(
@@ -196,9 +191,6 @@ internal sealed class ShiftSignupService(
         shiftMgmt.InvalidateDashboardCaches(signup.Shift.Rota.EventSettingsId);
         viewInvalidator.InvalidateUser(signup.UserId);
         viewInvalidator.InvalidateShift(signup.ShiftId);
-        if (signup.Shift.IsEarlyEntry)
-            earlyEntryInvalidator.InvalidateUser(signup.UserId);
-
         await auditLogService.LogAsync(
             AuditAction.ShiftSignupConfirmed, nameof(ShiftSignup), signup.Id,
             $"shift '{signup.Shift.Rota.Name}'",
@@ -278,9 +270,6 @@ internal sealed class ShiftSignupService(
         shiftMgmt.InvalidateDashboardCaches(signup.Shift.Rota.EventSettingsId);
         viewInvalidator.InvalidateUser(signup.UserId);
         viewInvalidator.InvalidateShift(signup.ShiftId);
-        if (signup.Shift.IsEarlyEntry)
-            earlyEntryInvalidator.InvalidateUser(signup.UserId);
-
         await auditLogService.LogAsync(
             AuditAction.ShiftSignupBailed, nameof(ShiftSignup), signup.Id,
             $"shift '{signup.Shift.Rota.Name}'" + (reason is not null ? $": {reason}" : ""),
@@ -344,9 +333,6 @@ internal sealed class ShiftSignupService(
         shiftMgmt.InvalidateDashboardCaches(calendar.Id);
         viewInvalidator.InvalidateUser(userId);
         viewInvalidator.InvalidateShift(shiftId);
-        if (shift.IsEarlyEntry)
-            earlyEntryInvalidator.InvalidateUser(userId);
-
         await auditLogService.LogAsync(
             AuditAction.ShiftSignupVoluntold, nameof(ShiftSignup), signup.Id,
             $"shift '{shift.Rota.Name}' on {FormatAuditDay(calendar, shift.DayOffset)}",
@@ -464,9 +450,6 @@ internal sealed class ShiftSignupService(
         viewInvalidator.InvalidateUser(userId);
         // Range affects every shift in the rota; cascade via the rota.
         viewInvalidator.InvalidateRota(rotaId);
-        if (assignable.Any(s => s.IsEarlyEntry))
-            earlyEntryInvalidator.InvalidateUser(userId);
-
         foreach (var (auditedSignup, dayOffset) in voluntoldForAudit)
         {
             await auditLogService.LogAsync(
@@ -517,9 +500,6 @@ internal sealed class ShiftSignupService(
         shiftMgmt.InvalidateDashboardCaches(calendar.Id);
         viewInvalidator.InvalidateUser(signup.UserId);
         viewInvalidator.InvalidateShift(signup.ShiftId);
-        if (signup.Shift.IsEarlyEntry)
-            earlyEntryInvalidator.InvalidateUser(signup.UserId);
-
         await auditLogService.LogAsync(
             AuditAction.ShiftSignupNoShow, nameof(ShiftSignup), signup.Id,
             $"shift '{signup.Shift.Rota.Name}'",
@@ -546,9 +526,6 @@ internal sealed class ShiftSignupService(
         shiftMgmt.InvalidateDashboardCaches(signup.Shift.Rota.EventSettingsId);
         viewInvalidator.InvalidateUser(signup.UserId);
         viewInvalidator.InvalidateShift(signup.ShiftId);
-        if (signup.Shift.IsEarlyEntry)
-            earlyEntryInvalidator.InvalidateUser(signup.UserId);
-
         await auditLogService.LogAsync(
             AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), signup.Id,
             $"shift '{signup.Shift.Rota.Name}'" +
@@ -653,9 +630,6 @@ internal sealed class ShiftSignupService(
         shiftMgmt.InvalidateDashboardCaches(calendar.Id);
         viewInvalidator.InvalidateUser(userId);
         viewInvalidator.InvalidateRota(rotaId);
-        if (autoConfirm && availableShifts.Any(s => s.IsEarlyEntry))
-            earlyEntryInvalidator.InvalidateUser(userId);
-
         await AuditRangeSignupsAsync(userId, rota, calendar, createdSignups.SignupsForAudit, autoConfirm);
 
         if (autoConfirm)
@@ -959,16 +933,8 @@ internal sealed class ShiftSignupService(
             return SignupResult.Fail("Cannot approve: all shifts in this range are at capacity.");
         }
 
-        try
-        {
-            await repo.SaveChangesAsync();
-            enrollment.Dispose();
-        }
-        finally
-        {
-            foreach (var userId in approved.Where(s => s.Shift.IsEarlyEntry).Select(s => s.UserId).Distinct())
-                earlyEntryInvalidator.InvalidateUser(userId);
-        }
+        await repo.SaveChangesAsync();
+        enrollment.Dispose();
         shiftMgmt.InvalidateDashboardCaches(calendar.Id);
         viewInvalidator.InvalidateUser(approved[0].UserId);
         viewInvalidator.InvalidateRota(approved[0].Shift.RotaId);
@@ -1066,15 +1032,7 @@ internal sealed class ShiftSignupService(
             signup.Bail(actorUserId, clock, reason);
         }
 
-        try
-        {
-            await repo.SaveChangesAsync();
-        }
-        finally
-        {
-            foreach (var userId in signups.Where(s => s.Shift.IsEarlyEntry).Select(s => s.UserId).Distinct())
-                earlyEntryInvalidator.InvalidateUser(userId);
-        }
+        await repo.SaveChangesAsync();
         shiftMgmt.InvalidateDashboardCaches(firstSignup.Shift.Rota.EventSettingsId);
         viewInvalidator.InvalidateUser(firstSignup.UserId);
         viewInvalidator.InvalidateRota(firstSignup.Shift.RotaId);
@@ -1463,7 +1421,6 @@ internal sealed class ShiftSignupService(
         await trackingRepo.DeleteVolunteerTrackingForUserAsync(userId, ct);
         await repo.DeleteVolunteerTagPreferencesForUserAsync(userId, ct);
         viewInvalidator.InvalidateUser(userId);
-        earlyEntryInvalidator.InvalidateUser(userId);
     }
 
     // Nothing public to contribute to the community calendar yet.
@@ -1526,7 +1483,6 @@ internal sealed class ShiftSignupService(
         viewInvalidator.InvalidateUser(userId);
         foreach (var (_, shiftId) in cancelled)
             viewInvalidator.InvalidateShift(shiftId);
-        earlyEntryInvalidator.InvalidateUser(userId);
         return cancelled;
     }
 
@@ -1549,8 +1505,6 @@ internal sealed class ShiftSignupService(
             foreach (var userId in userIds)
                 viewInvalidator.InvalidateUser(userId);
         }
-        foreach (var userId in userIds)
-            earlyEntryInvalidator.InvalidateUser(userId);
         return deleted;
     }
 
@@ -1638,8 +1592,6 @@ internal sealed class ShiftSignupService(
         {
             foreach (var eventId in eventIds)
                 shiftMgmt.InvalidateDashboardCaches(eventId);
-            earlyEntryInvalidator.InvalidateUser(sourceUserId);
-            earlyEntryInvalidator.InvalidateUser(targetUserId);
 
             await auditLogService.LogAsync(
                 AuditAction.ShiftSignupReassigned, nameof(User), targetUserId,

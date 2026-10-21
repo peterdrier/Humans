@@ -43,16 +43,12 @@ Repository: `ICampRepository`.
 | CampSettings | R/W |
 | CampMembers | R/W |
 
-| Cache (via invalidators) | Invalidate |
-|-------------------------|------------|
-| `EarlyEntry.UserEarlyEntry` TrackedCache (`IEarlyEntryInvalidator`) | yes (camp-lead grant changes) |
-
 The `Camp.CampInfo` projection is evicted by the decorator after the inner
 write returns; the inner service never signals it.
 
 Cross-section calls via `IUserService`, `ITicketService` (has the member entered the event),
 `IAuditLogService`, `ISystemTeamSync`, `IFileStorage`, `INotificationEmitter`,
-`IEarlyEntryInvalidator`, `ISettingsService` (active event settings), plus
+`ISettingsService` (active event settings), plus
 `Lazy<ICampRoleService>` and `Lazy<ICityPlanningWrite>` (camp deletion removes
 the camp's polygon/history rows) to break DI cycles. Implements `ICampLeadDirectory`, `IEarlyEntryProvider` (via `ICampManagement`),
 `IUserMerge`, and the GDPR export/erasure bodies (all-year/all-status memberships and role assignments, with deletion for both slices) on `ICampManagement`; the registered `IUserDataContributor` is the decorator, which calls them. All caching lives in the decorator

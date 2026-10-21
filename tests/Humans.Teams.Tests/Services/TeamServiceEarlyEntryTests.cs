@@ -35,7 +35,6 @@ public sealed class TeamServiceEarlyEntryTests
 {
     private readonly ITeamRepository _repo = Substitute.For<ITeamRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
-    private readonly IEarlyEntryInvalidator _eeInvalidator = Substitute.For<IEarlyEntryInvalidator>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
     private readonly TeamService _service;
     private readonly ISystemTeamSync _systemTeamSync = Substitute.For<ISystemTeamSync>();
@@ -50,7 +49,6 @@ public sealed class TeamServiceEarlyEntryTests
             Substitute.For<IShiftManagement>(),
             Substitute.For<IShiftAuthorizationInvalidator>(),
             Substitute.For<IAdminAuthorizationService>(),
-            _eeInvalidator,
             new ServiceLocatorBuilder()
                 .With<IGoogleSyncOutboxService>()
                 .With<IGoogleIntegrationService>()
@@ -92,33 +90,6 @@ public sealed class TeamServiceEarlyEntryTests
         result.GroupWarning.Should().BeNull();
     }
 
-    [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
-    public async Task UpdateTeam_NameOrActiveChange_EvictsEarlyEntryCache(bool rename)
-    {
-        var team = new Team { Id = Guid.NewGuid(), Name = "Alpha", Slug = "alpha", IsActive = true };
-        _repo.FindForMutationAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
-        _repo.UpdateTeamAsync(team, Arg.Any<CancellationToken>()).Returns(TeamUpdateConflict.None);
-
-        await _service.UpdateTeamAsync(
-            team.Id, rename ? "Beta" : team.Name, null, false, rename, cancellationToken: Xunit.TestContext.Current.CancellationToken);
-
-        _eeInvalidator.Received(1).InvalidateAll();
-    }
-
-    [HumansFact]
-    public async Task DeleteTeam_EvictsEarlyEntryCache()
-    {
-        var team = new Team { Id = Guid.NewGuid(), Name = "Alpha", Slug = "alpha", IsActive = true };
-        _repo.GetByIdAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
-        _repo.DeactivateTeamAsync(team.Id, Arg.Any<Instant>(), Arg.Any<CancellationToken>()).Returns([]);
-
-        await _service.DeleteTeamAsync(team.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
-
-        _eeInvalidator.Received(1).InvalidateAll();
-    }
-
     [HumansFact]
     public async Task PageUpdateConflict_DoesNotAuditUnwrittenContent()
     {
@@ -131,30 +102,6 @@ public sealed class TeamServiceEarlyEntryTests
 
         result.Succeeded.Should().BeFalse();
         _audit.ReceivedCalls().Should().BeEmpty();
-    }
-
-    [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
-    public async Task PermanentDelete_EvictsEarlyEntryAfterDeleteCompletion(bool saveFails)
-    {
-        var team = new Team { Id = Guid.NewGuid(), Name = "Alpha", Slug = "alpha" };
-        _repo.GetByIdAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
-        var pending = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        _repo.PermanentlyDeleteTeamAsync(team.Id, Arg.Any<CancellationToken>()).Returns(pending.Task);
-        var failure = new IOException("Delete completion is uncertain");
-
-        var deletion = _service.PermanentlyDeleteTeamAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
-        _eeInvalidator.DidNotReceive().InvalidateAll();
-        if (saveFails) pending.SetException(failure);
-        else pending.SetResult(true);
-
-        Exception? error = null;
-        try { await deletion; }
-        catch (Exception ex) { error = ex; }
-        if (saveFails) error.Should().BeSameAs(failure);
-        else { error.Should().BeNull(); (await deletion).Should().BeTrue(); }
-        _eeInvalidator.Received(1).InvalidateAll();
     }
 
     private static TeamEarlyEntryGrant Grant(Guid teamId, Guid userId, string project = "P", LocalDate? date = null, string teamName = "Creativity") => new()
@@ -228,7 +175,7 @@ public sealed class TeamServiceEarlyEntryTests
     // ==========================================================================
 
     [HumansFact]
-    public async Task AddEarlyEntryGrantAsync_TeamEnabled_AddsInvalidatesAudits()
+    public async Task AddEarlyEntryGrantAsync_TeamEnabled_AddsAndAudits()
     {
         var teamId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -248,7 +195,6 @@ public sealed class TeamServiceEarlyEntryTests
                 g.CreatedByUserId == actor &&
                 g.CreatedAt == _clock.GetCurrentInstant()),
             Arg.Any<CancellationToken>());
-        _eeInvalidator.Received(1).InvalidateUser(userId);
         await _audit.Received(1).LogAsync(
             AuditAction.EarlyEntryGranted, nameof(TeamEarlyEntryGrant), Arg.Any<Guid>(),
             Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -266,7 +212,6 @@ public sealed class TeamServiceEarlyEntryTests
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not enabled*");
         await _repo.DidNotReceive().AddEarlyEntryGrantAsync(Arg.Any<TeamEarlyEntryGrant>(), Arg.Any<CancellationToken>());
-        _eeInvalidator.DidNotReceive().InvalidateUser(Arg.Any<Guid>());
     }
 
     [HumansFact]
@@ -281,7 +226,6 @@ public sealed class TeamServiceEarlyEntryTests
 
         await act.Should().ThrowAsync<ArgumentException>();
         await _repo.DidNotReceive().AddEarlyEntryGrantAsync(Arg.Any<TeamEarlyEntryGrant>(), Arg.Any<CancellationToken>());
-        _eeInvalidator.DidNotReceive().InvalidateUser(Arg.Any<Guid>());
     }
 
     [HumansFact]
@@ -300,7 +244,7 @@ public sealed class TeamServiceEarlyEntryTests
     // ==========================================================================
 
     [HumansFact]
-    public async Task EditEarlyEntryGrantAsync_UpdatesFieldsInvalidatesAudits()
+    public async Task EditEarlyEntryGrantAsync_UpdatesFieldsAndAudits()
     {
         var teamId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -314,7 +258,6 @@ public sealed class TeamServiceEarlyEntryTests
         grant.ProjectName.Should().Be("New Name");
         grant.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
         await _repo.Received(1).UpdateEarlyEntryGrantAsync(grant, Arg.Any<CancellationToken>());
-        _eeInvalidator.Received(1).InvalidateUser(userId);
         await _audit.Received(1).LogAsync(
             AuditAction.EarlyEntryUpdated, nameof(TeamEarlyEntryGrant), grant.Id,
             Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -343,7 +286,6 @@ public sealed class TeamServiceEarlyEntryTests
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
         await _repo.DidNotReceive().UpdateEarlyEntryGrantAsync(Arg.Any<TeamEarlyEntryGrant>(), Arg.Any<CancellationToken>());
-        _eeInvalidator.DidNotReceive().InvalidateUser(Arg.Any<Guid>());
         await _audit.DidNotReceive().LogAsync(
             Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -354,7 +296,7 @@ public sealed class TeamServiceEarlyEntryTests
     // ==========================================================================
 
     [HumansFact]
-    public async Task RemoveEarlyEntryGrantAsync_DeletesInvalidatesAudits()
+    public async Task RemoveEarlyEntryGrantAsync_DeletesAndAudits()
     {
         var teamId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -365,7 +307,6 @@ public sealed class TeamServiceEarlyEntryTests
         await _service.RemoveEarlyEntryGrantAsync(teamId, grant.Id, actor, Xunit.TestContext.Current.CancellationToken);
 
         await _repo.Received(1).RemoveEarlyEntryGrantAsync(grant.Id, Arg.Any<CancellationToken>());
-        _eeInvalidator.Received(1).InvalidateUser(userId);
         await _audit.Received(1).LogAsync(
             AuditAction.EarlyEntryRevoked, nameof(TeamEarlyEntryGrant), grant.Id,
             Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -380,7 +321,6 @@ public sealed class TeamServiceEarlyEntryTests
         await _service.RemoveEarlyEntryGrantAsync(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         await _repo.DidNotReceive().RemoveEarlyEntryGrantAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        _eeInvalidator.DidNotReceive().InvalidateUser(Arg.Any<Guid>());
         await _audit.DidNotReceive().LogAsync(
             Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -395,7 +335,6 @@ public sealed class TeamServiceEarlyEntryTests
         await _service.RemoveEarlyEntryGrantAsync(Guid.NewGuid(), grant.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         await _repo.DidNotReceive().RemoveEarlyEntryGrantAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        _eeInvalidator.DidNotReceive().InvalidateUser(Arg.Any<Guid>());
         await _audit.DidNotReceive().LogAsync(
             Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -406,7 +345,7 @@ public sealed class TeamServiceEarlyEntryTests
     // ==========================================================================
 
     [HumansFact]
-    public async Task EraseForUserAsync_EndsMembershipsDeletesRequestsAndGrantsInvalidates()
+    public async Task EraseForUserAsync_EndsMembershipsDeletesRequestsAndGrants()
     {
         var userId = Guid.NewGuid();
         _repo.GetEarlyEntryGrantsForUserAsync(userId, Arg.Any<CancellationToken>())
@@ -417,11 +356,10 @@ public sealed class TeamServiceEarlyEntryTests
         await _repo.Received(1).RevokeAllMembershipsAsync(userId, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).DeleteJoinRequestsForUserAsync(userId, Arg.Any<CancellationToken>());
         await _repo.Received(1).RemoveEarlyEntryGrantsForUserAsync(userId, Arg.Any<CancellationToken>());
-        _eeInvalidator.Received(1).InvalidateUser(userId);
     }
 
     [HumansFact]
-    public async Task EraseForUserAsync_NoGrants_SkipsGrantDeleteAndEviction()
+    public async Task EraseForUserAsync_NoGrants_SkipsGrantDelete()
     {
         _repo.GetEarlyEntryGrantsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new List<TeamEarlyEntryGrant>());
@@ -429,7 +367,6 @@ public sealed class TeamServiceEarlyEntryTests
         await _service.EraseForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         await _repo.DidNotReceive().RemoveEarlyEntryGrantsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        _eeInvalidator.DidNotReceive().InvalidateUser(Arg.Any<Guid>());
     }
 
     // ==========================================================================
@@ -465,8 +402,6 @@ public sealed class TeamServiceEarlyEntryTests
             _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
 
         await first.Should().ThrowAsync<InvalidOperationException>().WithMessage("sync unavailable");
-        _eeInvalidator.Received(1).InvalidateUser(sourceId);
-        _eeInvalidator.Received(1).InvalidateUser(targetId);
         await _service.ReassignAsync(sourceId, targetId, actorId,
             _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
 
@@ -478,7 +413,7 @@ public sealed class TeamServiceEarlyEntryTests
     }
 
     [HumansFact]
-    public async Task ReassignAsync_FoldsGrantsToTargetAndInvalidatesBoth()
+    public async Task ReassignAsync_FoldsGrantsToTarget()
     {
         var source = Guid.NewGuid();
         var target = Guid.NewGuid();
@@ -488,8 +423,6 @@ public sealed class TeamServiceEarlyEntryTests
         await _service.ReassignAsync(source, target, Guid.NewGuid(), _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
 
         await _repo.Received(1).ReassignEarlyEntryGrantsAsync(source, target, Arg.Any<CancellationToken>());
-        _eeInvalidator.Received(1).InvalidateUser(source);
-        _eeInvalidator.Received(1).InvalidateUser(target);
     }
 
     // ==========================================================================
@@ -497,7 +430,7 @@ public sealed class TeamServiceEarlyEntryTests
     // ==========================================================================
 
     [HumansFact]
-    public async Task UpdateTeamAsync_EnablingEarlyEntry_SetsFlagAndInvalidatesAll()
+    public async Task UpdateTeamAsync_EnablingEarlyEntry_SetsFlag()
     {
         var team = new Team { Id = Guid.NewGuid(), Name = "Toggle", Slug = "toggle", EarlyEntryEnabled = false };
         _repo.FindForMutationAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
@@ -508,53 +441,6 @@ public sealed class TeamServiceEarlyEntryTests
             earlyEntryEnabled: true, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         team.EarlyEntryEnabled.Should().BeTrue();
-        _eeInvalidator.Received(1).InvalidateAll();
-    }
-
-    [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
-    public async Task UpdateTeamAsync_EarlyEntryFlag_EvictsAfterSaveAttempt(bool saveFails)
-    {
-        var team = new Team { Id = Guid.NewGuid(), Name = "Toggle", Slug = "toggle" };
-        _repo.FindForMutationAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
-        _repo.SlugExistsAsync(Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(false);
-        var pending = new TaskCompletionSource<TeamUpdateConflict>(TaskCreationOptions.RunContinuationsAsynchronously);
-        _repo.UpdateTeamAsync(team, Arg.Any<CancellationToken>()).Returns(pending.Task);
-
-        var write = _service.UpdateTeamAsync(
-            team.Id, team.Name, team.Description, team.RequiresApproval, isActive: true,
-            earlyEntryEnabled: true, cancellationToken: Xunit.TestContext.Current.CancellationToken);
-
-        _eeInvalidator.DidNotReceive().InvalidateAll();
-        if (saveFails)
-        {
-            pending.SetException(new InvalidOperationException("Save completion is uncertain."));
-        }
-        else
-        {
-            pending.SetResult(TeamUpdateConflict.None);
-        }
-        InvalidOperationException? failure = null;
-        try { await write; }
-        catch (InvalidOperationException ex) { failure = ex; }
-        if (saveFails) failure.Should().BeOfType<InvalidOperationException>().Which.Message.Should().Be("Save completion is uncertain.");
-        else failure.Should().BeNull();
-        _eeInvalidator.Received(1).InvalidateAll();
-    }
-
-    [HumansFact]
-    public async Task UpdateTeamAsync_FlagUnchanged_DoesNotInvalidate()
-    {
-        var team = new Team { Id = Guid.NewGuid(), Name = "Stable", Slug = "stable", EarlyEntryEnabled = false };
-        _repo.FindForMutationAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
-        _repo.SlugExistsAsync(Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(false);
-
-        await _service.UpdateTeamAsync(
-            team.Id, team.Name, team.Description, team.RequiresApproval, isActive: true,
-            earlyEntryEnabled: false, cancellationToken: Xunit.TestContext.Current.CancellationToken);
-
-        _eeInvalidator.DidNotReceive().InvalidateAll();
     }
 
     // ==========================================================================

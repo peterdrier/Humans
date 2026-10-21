@@ -34,7 +34,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     private readonly Lazy<ICampRoleService> _campRoleService;
     // Lazy: CityPlanningService injects ICampService, closing the cycle.
     private readonly Lazy<ICityPlanningWrite> _cityPlanningService;
-    private readonly IEarlyEntryInvalidator _earlyEntryInvalidator;
     private readonly IUserService _userService;
     private readonly ITicketService _tickets;
     private readonly ISettingsService _settingsService;
@@ -57,7 +56,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         INotificationEmitter notificationEmitter,
         Lazy<ICampRoleService> campRoleService,
         Lazy<ICityPlanningWrite> cityPlanningService,
-        IEarlyEntryInvalidator earlyEntryInvalidator,
         IUserService userService,
         ITicketService tickets,
         ISettingsService settingsService,
@@ -71,7 +69,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         _notificationEmitter = notificationEmitter;
         _campRoleService = campRoleService;
         _cityPlanningService = cityPlanningService;
-        _earlyEntryInvalidator = earlyEntryInvalidator;
         _userService = userService;
         _tickets = tickets;
         _settingsService = settingsService;
@@ -903,38 +900,30 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         var seasonIds = camp.Seasons.Select(s => s.Id).ToList();
         IReadOnlyList<string>? deletedImagePaths;
 
-        try
+        using (var scope = new TransactionScope(
+            TransactionScopeOption.Required,
+            new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+            TransactionScopeAsyncFlowOption.Enabled))
         {
-            using (var scope = new TransactionScope(
-                TransactionScopeOption.Required,
-                new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-                TransactionScopeAsyncFlowOption.Enabled))
+            if (seasonIds.Count > 0)
             {
-                if (seasonIds.Count > 0)
+                var removed = await _cityPlanningService.Value
+                    .DeleteCampPolygonsForSeasonsAsync(seasonIds, cancellationToken);
+                if (removed > 0)
                 {
-                    var removed = await _cityPlanningService.Value
-                        .DeleteCampPolygonsForSeasonsAsync(seasonIds, cancellationToken);
-                    if (removed > 0)
-                    {
-                        _logger.LogInformation(
-                            "Deleted {Rows} city-planning polygon/history rows for {Seasons} seasons of camp {CampId}",
-                            removed, seasonIds.Count, campId);
-                    }
+                    _logger.LogInformation(
+                        "Deleted {Rows} city-planning polygon/history rows for {Seasons} seasons of camp {CampId}",
+                        removed, seasonIds.Count, campId);
                 }
-
-                deletedImagePaths = await _repo.DeleteCampAsync(campId, cancellationToken);
-                if (deletedImagePaths is null)
-                {
-                    throw new InvalidOperationException("Camp not found.");
-                }
-
-                scope.Complete();
             }
-        }
-        finally
-        {
-            // Dispose the ambient transaction before evicting, including uncertain commit failures.
-            _earlyEntryInvalidator.InvalidateAll();
+
+            deletedImagePaths = await _repo.DeleteCampAsync(campId, cancellationToken);
+            if (deletedImagePaths is null)
+            {
+                throw new InvalidOperationException("Camp not found.");
+            }
+
+            scope.Complete();
         }
 
         await _auditLog.LogAsync(
@@ -1296,7 +1285,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         member.RemovedByUserId = actorUserId;
         member.HasEarlyEntry = retainConsumedEeGrant;
         await _repo.SaveMemberAsync(member, cancellationToken);
-        _earlyEntryInvalidator.InvalidateUser(member.UserId);
 
         await _auditLog.LogAsync(
             auditAction, nameof(CampMember), member.Id,
@@ -1610,10 +1598,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         // Lead moves change Barrio Leads team membership for both users.
         await _systemTeamSync.SyncMembershipForUserAsync(sourceUserId, SystemTeamType.BarrioLeads, ct);
         await _systemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.BarrioLeads, ct);
-        // The fold can move HasEarlyEntry CampMember rows between the two users, so evict
-        // both per-user early-entry caches (mirrors the Teams membership fold).
-        _earlyEntryInvalidator.InvalidateUser(sourceUserId);
-        _earlyEntryInvalidator.InvalidateUser(targetUserId);
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
@@ -1663,7 +1647,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
         await _repo.DeleteCampFootprintForUserAsync(userId, ct);
-        _earlyEntryInvalidator.InvalidateUser(userId);
         // The cached CampInfo rosters this just emptied are dropped by CachingCampService,
         // the registered IUserDataContributor, which refreshes after this returns.
     }
@@ -1719,7 +1702,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
         member.HasEarlyEntry = granted;
         await _repo.SaveMemberAsync(member, cancellationToken);
-        _earlyEntryInvalidator.InvalidateUser(member.UserId);
 
         await _auditLog.LogAsync(
             granted ? AuditAction.CampEarlyEntryGranted : AuditAction.CampEarlyEntryRevoked,

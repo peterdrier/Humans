@@ -38,20 +38,26 @@ public sealed class Section : ISection, IIssueQueueOwner
 
         // Gate-terminal account management, provisioned from /Tickets/Admin/Gate.
         services.AddScoped<GateTerminalAccountSeeder>();
-        services.AddScoped<TicketSyncService>();
-        services.AddScoped<ITicketSyncService>(sp => sp.GetRequiredService<TicketSyncService>());
-        services.AddScoped<ITicketSync>(sp => sp.GetRequiredService<TicketSyncService>());
-        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<TicketSyncService>());
 
-        services.AddKeyedScoped<ITicketManagement, TicketQueryService>(
+        // Every service that writes the cached ticket rows is a keyed inner behind the one
+        // Singleton decorator, which evicts on its own write pass-through; the unkeyed
+        // interfaces (and the GDPR / merge fan-outs) resolve to the decorator.
+        services.AddKeyedScoped<ITicketManagement, TicketQueryService>(CachingTicketQueryService.InnerServiceKey);
+        services.AddKeyedScoped<ITicketSyncService, TicketSyncService>(CachingTicketQueryService.InnerServiceKey);
+        services.AddKeyedScoped<ITicketTransferService, TicketTransferService>(CachingTicketQueryService.InnerServiceKey);
+        services.AddKeyedScoped<IAttendeeContactImportService, AttendeeContactImportService>(
             CachingTicketQueryService.InnerServiceKey);
-        services.AddScoped<TicketQueryService>();
-        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<TicketQueryService>());
 
         services.AddSingleton<CachingTicketQueryService>();
         services.AddSingleton<ITicketManagement>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<ITicketService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
-        services.AddSingleton<ITicketCacheInvalidator>(sp => sp.GetRequiredService<CachingTicketQueryService>());
+        services.AddSingleton<ITicketSyncService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
+        services.AddSingleton<ITicketSync>(sp => sp.GetRequiredService<CachingTicketQueryService>());
+        services.AddSingleton<ITicketTransferService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
+        services.AddSingleton<ITicketTransferQueue>(sp => sp.GetRequiredService<CachingTicketQueryService>());
+        services.AddSingleton<IAttendeeContactImportService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CachingTicketQueryService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddHostedService(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTicketQueryService>().OrdersCacheStats);
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTicketQueryService>().UserHoldingsCacheStats);
@@ -61,7 +67,6 @@ public sealed class Section : ISection, IIssueQueueOwner
         // Tickets never names that section.
         services.AddSingleton<CachingTicketVendorService>();
         services.AddSingleton<ITicketVendorService>(sp => sp.GetRequiredService<CachingTicketVendorService>());
-        services.AddSingleton<ITicketVendorCacheInvalidator>(sp => sp.GetRequiredService<CachingTicketVendorService>());
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTicketVendorService>().EventSummaryCacheStats);
 
         // Tickets owns its email copy and its gallery samples; Email keeps the mechanics
@@ -70,9 +75,6 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<IEmailPreviewContributor, TicketsEmailPreviews>();
 
         services.AddSingleton<ITicketTransferRepository, TicketTransferRepository>();
-        services.AddScoped<TicketTransferService>();
-        services.AddScoped<ITicketTransferService>(sp => sp.GetRequiredService<TicketTransferService>());
-        services.AddScoped<ITicketTransferQueue>(sp => sp.GetRequiredService<TicketTransferService>());
 
         // The gateway serves the Tickets.Contracts ports by forwarding to ITicketVendorService,
         // so consumers never name the vendor port.
@@ -80,7 +82,6 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<ITicketDiscountCodes>(sp => sp.GetRequiredService<TicketVendorGateway>());
         services.AddScoped<ITicketVendorMirror>(sp => sp.GetRequiredService<TicketVendorGateway>());
 
-        services.AddScoped<IAttendeeContactImportService, AttendeeContactImportService>();
         services.AddScoped<TicketDashboardPageBuilder>();
 
         services.AddScoped<IOnsiteRosterService, OnsiteRosterService>();

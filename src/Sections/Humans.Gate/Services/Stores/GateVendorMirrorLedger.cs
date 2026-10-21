@@ -4,7 +4,7 @@ namespace Humans.Gate.Services.Stores;
 
 /// <summary>
 /// Remembers which vendor ticket ids already have a check-in mirror enqueued — by the
-/// live gate path (<c>GateController.Decision</c>) or by the backfill page — so the
+/// live gate path (<c>GateService.RecordDecisionAsync</c>) or by the backfill page — so the
 /// backfill's single-row test and bulk send can never re-post one while the vendor's
 /// check-in hasn't flowed back through the ticket sync yet (TicketTailor check-ins
 /// double-record on repeat). Single-server in-memory state, like

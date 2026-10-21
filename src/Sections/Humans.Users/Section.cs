@@ -76,14 +76,12 @@ public sealed class Section : ISection, IIssueQueueOwner
         // Guid → display-name fan-out.
         services.AddSingleton<IEntityNameContributor>(sp => sp.GetRequiredService<CachingUserService>());
 
-        // Same Singleton instance must back invalidator + merge so external "user changed" signals hit the cache owner.
-        services.AddSingleton<IUserInfoInvalidator>(sp =>
-            sp.GetRequiredService<CachingUserService>());
+        // Same Singleton instance must back merge so the cache owner sees it.
         services.AddSingleton<IUserMerge>(sp =>
             sp.GetRequiredService<CachingUserService>());
 
-        // Section-internal slice-refresh signal consumed by UserInfoSaveChangesInterceptor.
-        // Not part of the cross-section §15e contract; same Singleton instance as IUserInfoInvalidator.
+        // Section-internal refresh signal for UserInfoSaveChangesInterceptor and Users' own
+        // services that write past the decorator. Never cross-section.
         services.AddSingleton<IUserInfoSliceRefresher>(sp =>
             sp.GetRequiredService<CachingUserService>());
 

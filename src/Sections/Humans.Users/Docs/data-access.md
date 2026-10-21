@@ -57,8 +57,8 @@ Repository: `IUserRepository` (profile and contact-field methods).
 
 Cross-section reads via `IUserService`, `ITeamService`,
 `IRoleAssignmentService` (visibility / coordinator-team lookups). Implements
-`IUserMerge`. Invalidates the User+Profile read-model via
-`IUserInfoInvalidator`. No `IMemoryCache`.
+`IUserMerge`. Refreshes the User+Profile read-model via the section-internal
+`IUserInfoSliceRefresher`. No `IMemoryCache`.
 
 ### UserEmailService (Scoped)
 
@@ -201,13 +201,13 @@ Cross-section calls via `IAdminAuthorizationService` and `IAuditLogService` (adm
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
-| `TrackedCache<Guid, UserInfo>` (`User.UserInfo`, in-process, no `IMemoryCache`) | Per-User | yes | yes | yes (`IUserInfoInvalidator` — fired by UserService/ProfileService writes, by `IUserMerge` participants, and by `UserInfoSaveChangesInterceptor` for Identity-machinery writes) |
+| `TrackedCache<Guid, UserInfo>` (`User.UserInfo`, in-process, no `IMemoryCache`) | Per-User | yes | yes | yes (decorator write pass-through; the section-internal `IUserInfoSliceRefresher` for `UserInfoSaveChangesInterceptor` (Identity-machinery writes) and for Users' own services that write past the decorator. Every contributing table is Users-owned, so no other section signals it) |
 
-Implements `IUserManagement` (hence `IUserService`, `IUserWrite`, `IUserMerge`),
-`IUserInfoInvalidator`, and the section-internal
+Implements `IUserManagement` (hence `IUserService`, `IUserWrite`, `IUserMerge`)
+and the section-internal
 `IUserInfoSliceRefresher` (consumed by `UserInfoSaveChangesInterceptor` to
 catch OAuth/`UpdateAsync`/`LastLoginAt` writes that bypass the service
-surface). Surfaced on `/Debug/CacheStats`.
+surface, and by Users' own services that write past the decorator). Surfaced on `/Debug/CacheStats`.
 
 The decorator also owns the **merge index**: a `Dictionary<Guid, Guid[]>` built over
 the warmed snapshot mapping each row to every id whose `MergedToUserId` chain reaches
@@ -249,7 +249,7 @@ New import account creation wraps User, provisioned UserEmail and Profile in one
 
 Import and magic-link retry matches run the idempotent profile ensure before returning the existing account; successful repairs emit `StubProfileBackfilled` without duplicating accounts or overwriting an existing Profile.
 
-Unverified import replacements run deletion and provisioning in one serializable ambient transaction, through existing owned services/repositories. `IUserInfoInvalidator` refreshes all affected users after commit or rollback.
+Unverified import replacements run deletion and provisioning in one serializable ambient transaction, through existing owned services/repositories. `IUserInfoSliceRefresher` refreshes all affected users after commit or rollback.
 
 ### AccountDeletionService (Scoped)
 
@@ -257,8 +257,8 @@ No repository. GDPR right-to-deletion orchestrator. Fans out over
 `IUserManagement`, `IUserEmailService`, `ITeamWrite`,
 `IRoleAssignmentWrite`, `IGdprService` (runs every section's
 `IUserDataContributor` erasure), `ITicketService`, `IAuditLogService`,
-`IEmailService` (messages built by `UsersEmails`). Invalidates
-`IUserInfoInvalidator`, `IRoleAssignmentClaimsCacheInvalidator`,
+`IEmailService` (messages built by `UsersEmails`). Refreshes `UserInfo` via
+`IUserInfoSliceRefresher`; invalidates `IRoleAssignmentClaimsCacheInvalidator`,
 `IShiftAuthorizationInvalidator`, `IShiftViewInvalidator`. No cache, no
 direct DB access — all writes go through owning services.
 
@@ -278,12 +278,13 @@ sections' repositories. Both tables it touches are **owned by the Users
 section** (no cross-section table access). Implements `IAccountMergeService`,
 `IUserDataContributor`. Calls the section's own `IUserManagement`; cross-section
 calls via `IRoleAssignmentWrite`, `INotificationService`, `IAuditLogService`,
-`IUserInfoInvalidator`, `IActiveTeamsCacheInvalidator`, plus the `IUserMerge`
+`IActiveTeamsCacheInvalidator`, plus the `IUserMerge`
 aggregator. Consent's per-user cache needs no merge signal: it rebuilds an entry
 whose `UserInfo.AllUserIds` changed when the tombstone lands.
 
 Cache: per-section `IUserMerge` implementations invalidate their own
-caches; the unified read-model is evicted via `IUserInfoInvalidator`.
+caches; the unified read-model is refreshed via the section-internal
+`IUserInfoSliceRefresher`.
 
 ### DuplicateAccountService (Scoped)
 

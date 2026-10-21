@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Users.Data;
 using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
@@ -72,7 +73,7 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
             Substitute.For<IRoleAssignmentWrite>(),
             gdprService,
             _ticketQueryService,
-            Substitute.For<IUserInfoInvalidator>(),
+            Substitute.For<IUserInfoSliceRefresher>(),
             Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
             Substitute.For<IShiftAuthorizationInvalidator>(),
             Substitute.For<IShiftViewInvalidator>(),

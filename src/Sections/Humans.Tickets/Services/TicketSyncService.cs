@@ -23,12 +23,10 @@ internal sealed class TicketSyncService(
     IClock clock,
     IOptions<TicketVendorSettings> settings,
     ILogger<TicketSyncService> logger,
-    ITicketCacheInvalidator ticketCache,
-    ITicketVendorCacheInvalidator vendorCache,
     IUserService userService,
     IEventParticipationManagement participations,
     ICampaignWrite campaignService,
-    ISettingsService settingsService) : ITicketSyncService, IUserMerge
+    ISettingsService settingsService) : ITicketSyncService
 {
     private readonly TicketVendorSettings _settings = settings.Value;
 
@@ -143,8 +141,6 @@ internal sealed class TicketSyncService(
             syncState.LastError = null;
             await ticketRepository.PersistSyncStateAsync(syncState, ct);
 
-            vendorCache.InvalidateEventSummary(eventId);
-
             var result = new TicketSyncResult(ordersSynced, attendeesSynced,
                 ordersMatched, attendeesMatched, codesRedeemed);
 
@@ -197,11 +193,6 @@ internal sealed class TicketSyncService(
 
             throw;
         }
-        finally
-        {
-            // A later stage can fail after orders/attendees have committed.
-            ticketCache.InvalidateAll();
-        }
     }
 
     /// <summary>Shared transient-failure tail (nobodies-collective/Humans#946): leave sync Idle, preserve LastSyncAt, retry next run.</summary>
@@ -224,8 +215,6 @@ internal sealed class TicketSyncService(
     {
         await ticketRepository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
         await transferRepository.ReassignUserAsync(sourceUserId, targetUserId, ct);
-
-        ticketCache.InvalidateAfterUserMerge(sourceUserId, targetUserId);
     }
 
     private async Task<Dictionary<string, Guid>> BuildEmailLookupAsync(CancellationToken ct)

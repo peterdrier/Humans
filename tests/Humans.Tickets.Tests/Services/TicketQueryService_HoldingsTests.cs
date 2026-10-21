@@ -46,7 +46,6 @@ public sealed class TicketQueryService_HoldingsTests
             Substitute.For<ITeamService>(),
             Substitute.For<IGovernanceService>(),
             Substitute.For<ISettingsService>(),
-            Substitute.For<ITicketCacheInvalidator>(),
             Substitute.For<IAuditLogService>(),
             SystemClock.Instance,
             Substitute.For<IEventParticipationManagement>());

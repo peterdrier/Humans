@@ -58,8 +58,6 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
             Clock,
             settings,
             NullLogger<TicketSyncService>.Instance,
-            Substitute.For<ITicketCacheInvalidator>(),
-            Substitute.For<ITicketVendorCacheInvalidator>(),
             _userService,
             Substitute.For<IEventParticipationManagement>(),
             _campaignService,

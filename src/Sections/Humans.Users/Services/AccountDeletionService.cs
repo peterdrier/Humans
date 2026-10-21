@@ -7,6 +7,7 @@ using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
+using Humans.Users.Data;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
@@ -24,7 +25,7 @@ internal sealed class AccountDeletionService(
     IRoleAssignmentWrite roleAssignmentService,
     IGdprService gdprService,
     ITicketService ticketQueryService,
-    IUserInfoInvalidator userInfoInvalidator,
+    IUserInfoSliceRefresher userInfoRefresher,
     IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
     IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
     IShiftViewInvalidator shiftViewInvalidator,
@@ -159,7 +160,7 @@ internal sealed class AccountDeletionService(
         // Match AnonymizeExpiredAccountAsync's invalidation surface — contributors
         // run against the inner UserService, so nothing behind the caching
         // decorator has seen the collapse yet.
-        await userInfoInvalidator.InvalidateAsync(userId, ct);
+        await userInfoRefresher.RefreshAsync(userId, ct);
         roleAssignmentClaimsInvalidator.Invalidate(userId);
         shiftAuthorizationInvalidator.Invalidate(userId);
         shiftViewInvalidator.InvalidateUser(userId);
@@ -204,7 +205,7 @@ internal sealed class AccountDeletionService(
         // The UserInfo entry first: contributors are registered against the inner
         // UserService, so nothing behind the caching decorator has seen these writes
         // and admin search would keep matching the erased human by their real name.
-        await userInfoInvalidator.InvalidateAsync(userId, ct);
+        await userInfoRefresher.RefreshAsync(userId, ct);
         teamService.RemoveMemberFromAllTeamsCache(userId);
         teamService.InvalidateActiveTeamsCache();
         roleAssignmentClaimsInvalidator.Invalidate(userId);
@@ -244,7 +245,7 @@ internal sealed class AccountDeletionService(
             // inner UserService, and the callers only invalidate the survivor. A stale entry
             // would keep the merge tombstone's name searchable after it was erased.
             if (subjectId != userId)
-                await userInfoInvalidator.InvalidateAsync(subjectId, ct);
+                await userInfoRefresher.RefreshAsync(subjectId, ct);
         }
     }
 

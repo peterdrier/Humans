@@ -920,15 +920,56 @@ internal sealed class GoogleWorkspaceSyncService(
     }
 
     /// <inheritdoc />
-    public Task<bool> RequeueOutboxEventAsync(Guid id, CancellationToken cancellationToken = default)
-        => googleSyncOutboxRepository.RequeueAsync(id, cancellationToken);
+    public async Task<bool> RequeueOutboxEventAsync(Guid id, Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        var requeued = await googleSyncOutboxRepository.RequeueAsync(id, cancellationToken);
+        if (requeued)
+            await AuditOutboxRequeueAsync(auditLogService, id, actorUserId);
+        return requeued;
+    }
 
     /// <inheritdoc />
-    public Task<int> RequeueAllFailedOutboxEventsAsync(CancellationToken cancellationToken = default)
-        => googleSyncOutboxRepository.RequeueAllFailedAsync(cancellationToken);
+    public async Task<int> RequeueAllFailedOutboxEventsAsync(Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        var count = await googleSyncOutboxRepository.RequeueAllFailedAsync(cancellationToken);
+        await AuditRequeueAllAsync(auditLogService, count, actorUserId);
+        return count;
+    }
 
     /// <inheritdoc />
-    public async Task<int> EnqueueUserSyncAsync(Guid userId, CancellationToken cancellationToken = default)
+    public async Task<int> EnqueueUserSyncAsync(Guid userId, Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        var count = await EnqueueUserSyncEventsAsync(userId, cancellationToken);
+        await AuditUserSyncRerunAsync(auditLogService, userId, count, actorUserId);
+        return count;
+    }
+
+    // Admin retry audits, shared with StubGoogleSyncService so both modes leave the same trail.
+    internal static Task AuditOutboxRequeueAsync(IAuditLogService auditLog, Guid id, Guid actorUserId) =>
+        auditLog.LogAsync(
+            AuditAction.GoogleSyncRetryScheduled,
+            "GoogleSyncOutboxEvent",
+            id,
+            $"Admin manually requeued Google sync outbox event {id}",
+            actorUserId);
+
+    internal static Task AuditRequeueAllAsync(IAuditLogService auditLog, int count, Guid actorUserId) =>
+        auditLog.LogAsync(
+            AuditAction.GoogleSyncRetryScheduled,
+            "GoogleSyncOutbox",
+            Guid.Empty,
+            $"Admin requeued all {count} permanently-failed Google sync outbox event(s)",
+            actorUserId);
+
+    internal static Task AuditUserSyncRerunAsync(IAuditLogService auditLog, Guid userId, int count, Guid actorUserId) =>
+        auditLog.LogAsync(
+            AuditAction.GoogleSyncRetryScheduled,
+            "User",
+            userId,
+            $"Admin enqueued Google sync re-run for user {userId} ({count} team event(s))",
+            actorUserId);
+
+    private async Task<int> EnqueueUserSyncEventsAsync(Guid userId, CancellationToken cancellationToken)
     {
         var identity = await workspaceIdentities.GetWorkspaceIdentityAsync(userId, cancellationToken);
 

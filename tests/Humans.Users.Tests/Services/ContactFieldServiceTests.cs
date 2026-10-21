@@ -1,4 +1,5 @@
 using Xunit;
+using Humans.Users.Data;
 using Humans.Base.Extensions;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
@@ -23,6 +24,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IUserManagement _userService;
+    private readonly IUserInfoSliceRefresher _userInfoRefresher = Substitute.For<IUserInfoSliceRefresher>();
     private readonly ContactFieldService _service;
 
     public ContactFieldServiceTests()
@@ -36,7 +38,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
 
         _service = new ContactFieldService(
             repository, _userService, _teamService, _roleAssignmentService,
-            Substitute.For<IUserInfoInvalidator>(),
+            _userInfoRefresher,
             Clock, NullLogger<ContactFieldService>.Instance,
             new StringLocalizer<UsersResource>(new ResourceManagerStringLocalizerFactory(
                 Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)));
@@ -360,6 +362,22 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
+    public async Task SaveContactFields_RefreshesTheOwnersUserInfo()
+    {
+        // contact_fields sit outside the SaveChanges interceptor's reach, so the service
+        // refreshes the owner's UserInfo itself; callers (dev seeding) rely on it.
+        var ct = TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var profile = await CreateProfileAsync(userId);
+
+        await _service.SaveContactFieldsAsync(profile.Id,
+            [new(null, ContactFieldType.Signal, null, "+1234567890", ContactFieldVisibility.MyTeams, 0)], ct);
+
+        await _userInfoRefresher.Received(1).RefreshAsync(
+            userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [HumansFact]
     public async Task SaveContactFields_UpdatesExistingFields()
     {
         // Arrange
@@ -586,7 +604,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             .Returns(Task.FromException<Guid?>(new InvalidOperationException("Owner lookup failed")));
         var service = new ContactFieldService(
             repository, _userService, _teamService, _roleAssignmentService,
-            Substitute.For<IUserInfoInvalidator>(), Clock, NullLogger<ContactFieldService>.Instance,
+            Substitute.For<IUserInfoSliceRefresher>(), Clock, NullLogger<ContactFieldService>.Instance,
             new StringLocalizer<UsersResource>(new ResourceManagerStringLocalizerFactory(
                 Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)));
 

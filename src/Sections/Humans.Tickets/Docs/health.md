@@ -30,7 +30,7 @@ and a member's erasure scrubs their name and email from the sales records withou
 | Event participation | `EventParticipationService` (`tickets_event_participations`, Users decomposition commit 13): `ITicketService.GetParticipationsAsync` / `GetAllParticipationsAsync`, `ITicketWrite` (Gate admit), `/Tickets/DeclareNotAttending` + `UndoNotAttending`, `<vc:onsite-chip>` on the profile, `IUserParticipationBackfillService` via `/Tickets/Participation/Backfill`, the `tickets.event-participations` copy | One record per user and year; the frozen Users rows answer through a legacy fallback until the copy has run; the reconcile itself lives in the sync pipeline |
 | Vendor forwards | `ITicketDiscountCodes`, `ITicketVendorMirror` on `TicketVendorGateway` | Pass-throughs so no other section names the vendor port |
 | GDPR | `IUserDataContributor` on `TicketQueryService` and `EventParticipationService` | Export plus tombstone erasure that a later sync cannot undo; participation is retained |
-| Caches | `CachingTicketQueryService` (`ITicketCacheInvalidator`), `CachingTicketVendorService` (`ITicketVendorCacheInvalidator`) | Two decorators, two seams: order + user-holdings slices; per-event vendor summary |
+| Caches | `CachingTicketQueryService`, `CachingTicketVendorService` | Two decorators, each evicting on its own write pass-throughs: order + user-holdings slices; per-event vendor summary |
 | Health | `TicketVendorHealthCheck` | Vendor reachability probe |
 
 ## Structure

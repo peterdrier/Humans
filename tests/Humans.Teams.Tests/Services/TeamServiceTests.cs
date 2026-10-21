@@ -102,7 +102,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             Substitute.For<IShiftViewInvalidator>(),
             new EventCalendarResolver(NewSettingsServiceBackedByShiftsDb()),
             Clock,
-            Substitute.For<IEarlyEntryInvalidator>(), NullLogger<ShiftManagementService>.Instance);
+            NullLogger<ShiftManagementService>.Instance);
 
         // Shift-auth invalidation: production path uses IShiftAuthorizationInvalidator
         // (backed by ShiftManagementService in DI). In tests we redirect it to the
@@ -119,7 +119,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
             shiftManagementService,
             ShiftAuthInvalidator,
             AdminAuthorization,
-            EarlyEntryInvalidator,
             serviceProvider,
             Clock,
             NullLogger<TeamService>.Instance);
@@ -670,7 +669,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             repo, Substitute.For<IAuditLogService>(), Notifier,
             Substitute.For<IShiftService>(),
             ShiftAuthInvalidator,
-            AdminAuthorization, Substitute.For<IEarlyEntryInvalidator>(),
+            AdminAuthorization,
             new ServiceLocatorBuilder().Build(), Clock, NullLogger<TeamService>.Instance);
 
         var result = await service.UpdateTeamPageContentAsync(
@@ -1202,7 +1201,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var provider = new ServiceLocatorBuilder().Build();
         TeamService NewService() => new(repository, AuditLog, Notifier,
             Substitute.For<IShiftService>(),
-            ShiftAuthInvalidator, AdminAuthorization, EarlyEntryInvalidator, provider, Clock,
+            ShiftAuthInvalidator, AdminAuthorization, provider, Clock,
             NullLogger<TeamService>.Instance);
         var userId = Guid.NewGuid();
         var first = NewService().JoinTeamAsync(team.Id, userId, "Pick me", ct);

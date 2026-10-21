@@ -93,7 +93,7 @@ on every read.
   rows included); the display counts Active members only. They disagree on purpose.
 - **Account-merge fold** — two-phase save; Active beats Pending, Early Entry is OR-ed in.
 - **Camp delete crosses into City Planning** inside one ambient transaction, through its
-  service, and evicts every Early Entry answer after the transaction disposes.
+  service.
 - **Search on the inner service throws** — search is cache-only by design.
 - **Reserved slug `create`** for role definitions.
 - **Dead `PublicYear`/`EeStartDate` columns on `camp_settings`** stay mapped until

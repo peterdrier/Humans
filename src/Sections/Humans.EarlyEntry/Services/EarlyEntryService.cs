@@ -6,6 +6,8 @@ namespace Humans.EarlyEntry.Services;
 /// Fans out over the registered providers and collapses per person: earliest date wins,
 /// distinct reasons kept. Sequential is a simplicity choice, not a thread-safety
 /// requirement (design-rules §8b) — nothing here is slow enough to want otherwise.
+/// Scoped, so one request gathers once however many components ask (the home page
+/// asks twice).
 /// </summary>
 internal sealed class EarlyEntryService(IEnumerable<IEarlyEntryProvider> providers) : IEarlyEntryService
 {
@@ -32,11 +34,14 @@ internal sealed class EarlyEntryService(IEnumerable<IEarlyEntryProvider> provide
         return new(userId, rows.Min(g => g.EntryDate), sources, sources.Count > 1);
     }
 
+    private List<EarlyEntryGrant>? _gathered;
+
     private async Task<List<EarlyEntryGrant>> GatherAsync(CancellationToken ct)
     {
+        if (_gathered is not null) return _gathered;
         var all = new List<EarlyEntryGrant>();
         foreach (var provider in providers)
             all.AddRange(await provider.GetEarlyEntriesAsync(ct));
-        return all;
+        return _gathered = all;
     }
 }

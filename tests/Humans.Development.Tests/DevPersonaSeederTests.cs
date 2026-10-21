@@ -34,7 +34,6 @@ public class DevPersonaSeederTests
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IContactFieldService _contactFields = Substitute.For<IContactFieldService>();
     private readonly IRoleAssignmentWrite _roleAssignments = Substitute.For<IRoleAssignmentWrite>();
-    private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly ITeamWrite _teamsWrite = Substitute.For<ITeamWrite>();
     private readonly ITeamSeeding _teamSeeding = Substitute.For<ITeamSeeding>();
@@ -63,7 +62,6 @@ public class DevPersonaSeederTests
         _userEmails,
         _contactFields,
         _roleAssignments,
-        _userInfoInvalidator,
         _teams,
         _teamsWrite,
         _teamSeeding,

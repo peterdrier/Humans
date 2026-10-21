@@ -110,7 +110,7 @@ Per-user per-event build-period coordination state. Drives the Volunteer Trackin
 
 Self-service `/Shifts/Mine/Availability` saves require a known calendar and every selected offset in `[BuildStartOffset, StrikeEndOffset]`. Invalid selections return a localized 400 without replacing saved days, auditing or invalidating views. Valid saves audit the volunteer as actor after persistence, using `VolunteerAvailabilitySet` for a non-empty selection and `VolunteerAvailabilityCleared` for an empty one. The entry links the event and records the day count; existing timestamp-refresh and replacement behavior stays the same.
 
-All mutations route through `IVolunteerTrackingRepository` and emit `AuditAction.VolunteerCampSetupSet` / `VolunteerCampSetupCleared` / `VolunteerDayOffMarked` / `VolunteerDayOffCleared` audit entries with `EntityType = nameof(VolunteerBuildStatus)`, and `VolunteerAvailabilitySet` / `VolunteerAvailabilityCleared` with `EntityType = nameof(GeneralAvailability)`.
+All mutations route through `IVolunteerTrackingRepository`, and `VolunteerTrackingService` itself emits `AuditAction.VolunteerCampSetupSet` / `VolunteerCampSetupCleared` / `VolunteerDayOffMarked` / `VolunteerDayOffCleared` audit entries with `EntityType = nameof(VolunteerBuildStatus)`, and `VolunteerAvailabilitySet` / `VolunteerAvailabilityCleared` with `EntityType = nameof(GeneralAvailability)`.
 
 ### VolunteerEventProfile
 
@@ -408,7 +408,7 @@ section and is not on the leaf.
 - **Cantina:** `ICantinaService` (project reference; acyclic — Cantina reaches only `Shifts.Contracts`) — the `ToggleDay` dietary gate, `DietaryMissingBannerViewComponent`, and the dietary badges in volunteer search and the shift-admin page. The gate redirects to Cantina's `/Cantina/Dietary`, which replays the signup through `IShiftSignups`.
 - **Users (account merge):** `ShiftManagementService`, `ShiftSignupService` and `VolunteerTrackingService` each register as `IUserMerge`; `AccountMergeService.AcceptAsync` fans out to them to re-FK Shifts-owned user-scoped rows from source to target (see Triggers).
 - **Settings:** `ISettingsService` (`Humans.Settings.Contracts`) — the calendar authority as of nobodies-collective/Humans#1630, and "active event" authority as of nobodies-collective/Humans#1631. Internal `EventCalendarResolver` wraps it (memoized per request) and resolves the calendar by `Rota.EventSettingsId` via `GetEventSettingsByIdAsync`, or `GetActiveEventSettingsAsync` for active-event paths. No fallback to this section's own `EventSettings` columns when the calendar can't be resolved — those columns are dead.
-- **Early Entry contributor:** `VolunteerTrackingExportService` implements `IEarlyEntryProvider` — derives EE grants (earliest confirmed build-shift day − 1, source = that shift's team) for the cross-source EE roster. `ShiftSignupService` evicts the per-user EE cache via `IEarlyEntryInvalidator` on every build-shift confirm/bail/remove/no-show/reassign path. Shift edits and rota-team moves evict all EE answers so dates and source labels reload. Range approval and bail evict affected users after the save attempt, including uncertain completion, so reads during the save cannot retain the old grant.
+- **Early Entry contributor:** `VolunteerTrackingExportService` implements `IEarlyEntryProvider` — derives EE grants (earliest confirmed build-shift day − 1, source = that shift's team) for the cross-source EE roster. EarlyEntry reads this live on every call, so no signup, shift edit or rota move signals it.
 - **Onboarding:** `SectionOnboarding` implements `IOnboardingShiftsStep` (`Humans.Onboarding.Contracts`), contributing `OnboardingShiftsListViewComponent` by Type — the shifts step's rota tables are Shifts' presentation, rendered on Onboarding's page (nobodies-collective/Humans#1815).
 
 ## Architecture
@@ -452,9 +452,9 @@ issues filed against it — `NoInfoAdmin`, plus `Admin`, which handles every que
 discovers the declaration through DI and holds no list of sections; dropping the seam
 sends this section's stored issues to the Admin-only queue.
 
-Range bail returns untranslated refusal keys for missing event calendar, unauthorized actors and closed Early Entry. Member and department-admin callers translate these keys and log expected refusals without exception objects. Dependency faults propagate and are never displayed as refusal feedback; empty blocks remain idempotent successes. Successful mutation, audit, notifications and early-entry cache invalidation are unchanged.
+Range bail returns untranslated refusal keys for missing event calendar, unauthorized actors and closed Early Entry. Member and department-admin callers translate these keys and log expected refusals without exception objects. Dependency faults propagate and are never displayed as refusal feedback; empty blocks remain idempotent successes. Successful mutation, audit and notifications are unchanged.
 
-Event deletion evicts Early Entry answers and event dashboard/shift caches after the repository cascade attempt, including uncertain completion. Admin authorization remains before the mutation.
+Event deletion evicts event dashboard/shift caches after the repository cascade attempt, including uncertain completion. Admin authorization remains before the mutation.
 
 Account-deletion signup cancellation, signup reassignment on account merge, and bulk signup deletion capture the source signups' event IDs before writing and evict those events' dashboard aggregates after a change. Existing row-view and Early Entry invalidation remains in place; bulk deletion authorizes the admin before reading or writing signups.
 

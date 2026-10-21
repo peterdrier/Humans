@@ -54,7 +54,6 @@ public class VolunteerTrackingControllerTests
         Substitute.For<IVolunteerTrackingExportService>();
     private readonly VolunteerTrackingXlsxBuilder _xlsxBuilder = new();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly IStringLocalizer<ShiftsResource> _localizer =
         Substitute.For<IStringLocalizer<ShiftsResource>>();
 
@@ -89,7 +88,7 @@ public class VolunteerTrackingControllerTests
 
         var ctrl = new VolunteerTrackingController(
             _service, _shiftMgmt, _burnSettings, _exportService, _xlsxBuilder,
-            _userService, _auditLog, _localizer, NullLogger<VolunteerTrackingController>.Instance);
+            _userService, _localizer, NullLogger<VolunteerTrackingController>.Instance);
 
         var http = new DefaultHttpContext();
         if (currentUser is not null)
@@ -312,7 +311,7 @@ public class VolunteerTrackingControllerTests
     // ---------------------------------------------------------------------
 
     [HumansFact]
-    public async Task SetCampSetup_ValidForm_RedirectsAndAuditsAndSetsSuccessTempData()
+    public async Task SetCampSetup_ValidForm_RedirectsAndSetsSuccessTempData()
     {
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
@@ -327,19 +326,11 @@ public class VolunteerTrackingControllerTests
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
-        await _auditLog.Received(1).LogAsync(
-            AuditAction.VolunteerCampSetupSet,
-            nameof(VolunteerBuildStatus),
-            target,
-            Arg.Any<string>(),
-            current.Id,
-            Arg.Any<Guid?>(),
-            Arg.Any<string?>());
         ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("VolTrack_Msg_CampSetupSaved");
     }
 
     [HumansFact]
-    public async Task SetCampSetup_ModelStateInvalid_RegexFail_RedirectsWithBadRequestError_AndDoesNotAudit()
+    public async Task SetCampSetup_ModelStateInvalid_RegexFail_RedirectsWithBadRequestError()
     {
         var current = new User { Id = Guid.NewGuid() };
         var ctrl = BuildSut(current);
@@ -360,10 +351,6 @@ public class VolunteerTrackingControllerTests
         await _service.DidNotReceive().SetCampSetupAsync(
             Arg.Any<Guid>(), Arg.Any<LocalDate>(), Arg.Any<string?>(),
             Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        await _auditLog.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -406,10 +393,6 @@ public class VolunteerTrackingControllerTests
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
         ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("VolTrack_Err_DateOutsideWindow");
-        await _auditLog.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -431,7 +414,7 @@ public class VolunteerTrackingControllerTests
     // ---------------------------------------------------------------------
 
     [HumansFact]
-    public async Task ClearCampSetup_HappyPath_RedirectsAndAudits()
+    public async Task ClearCampSetup_HappyPath_CallsServiceAndRedirects()
     {
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
@@ -443,19 +426,11 @@ public class VolunteerTrackingControllerTests
         redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
         await _service.Received(1).ClearCampSetupAsync(
             target, current.Id, Arg.Any<CancellationToken>());
-        await _auditLog.Received(1).LogAsync(
-            AuditAction.VolunteerCampSetupCleared,
-            nameof(VolunteerBuildStatus),
-            target,
-            Arg.Any<string>(),
-            current.Id,
-            Arg.Any<Guid?>(),
-            Arg.Any<string?>());
         ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("VolTrack_Msg_CampSetupCleared");
     }
 
     [HumansFact]
-    public async Task ClearCampSetup_EmptyUserId_DoesNotCallServiceOrAudit()
+    public async Task ClearCampSetup_EmptyUserId_DoesNotCallService()
     {
         var current = new User { Id = Guid.NewGuid() };
         var ctrl = BuildSut(current);
@@ -465,10 +440,6 @@ public class VolunteerTrackingControllerTests
         Assert.IsType<RedirectToActionResult>(result);
         await _service.DidNotReceive().ClearCampSetupAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        await _auditLog.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<Guid?>(), Arg.Any<string?>());
         ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("VolTrack_Err_BadRequest");
     }
 
@@ -477,7 +448,7 @@ public class VolunteerTrackingControllerTests
     // ---------------------------------------------------------------------
 
     [HumansFact]
-    public async Task SetDayOff_HappyPath_RedirectsAndAuditsMarkedAction()
+    public async Task SetDayOff_HappyPath_RedirectsWithSuccess()
     {
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
@@ -491,19 +462,11 @@ public class VolunteerTrackingControllerTests
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
-        await _auditLog.Received(1).LogAsync(
-            AuditAction.VolunteerDayOffMarked,
-            nameof(VolunteerBuildStatus),
-            target,
-            Arg.Any<string>(),
-            current.Id,
-            Arg.Any<Guid?>(),
-            Arg.Any<string?>());
         ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("VolTrack_Msg_DayOffMarked");
     }
 
     [HumansFact]
-    public async Task SetDayOff_ServiceRejects_RedirectsWithErrorTempData_NoAudit()
+    public async Task SetDayOff_ServiceRejects_RedirectsWithErrorTempData()
     {
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
@@ -517,14 +480,10 @@ public class VolunteerTrackingControllerTests
 
         Assert.IsType<RedirectToActionResult>(result);
         ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("VolTrack_Err_DayOffWithSignups");
-        await _auditLog.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
-    public async Task ClearDayOff_HappyPath_RedirectsAndAuditsClearedAction()
+    public async Task ClearDayOff_HappyPath_RedirectsWithSuccess()
     {
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
@@ -537,19 +496,11 @@ public class VolunteerTrackingControllerTests
         var result = await ctrl.ClearDayOff(form, null, TestContext.Current.CancellationToken);
 
         Assert.IsType<RedirectToActionResult>(result);
-        await _auditLog.Received(1).LogAsync(
-            AuditAction.VolunteerDayOffCleared,
-            nameof(VolunteerBuildStatus),
-            target,
-            Arg.Any<string>(),
-            current.Id,
-            Arg.Any<Guid?>(),
-            Arg.Any<string?>());
         ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("VolTrack_Msg_DayOffCleared");
     }
 
     [HumansFact]
-    public async Task ClearDayOff_NoEntryToRemove_RedirectsWithoutAudit()
+    public async Task ClearDayOff_NoEntryToRemove_RedirectsWithoutSuccess()
     {
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
@@ -562,32 +513,6 @@ public class VolunteerTrackingControllerTests
         var result = await ctrl.ClearDayOff(form, null, TestContext.Current.CancellationToken);
 
         Assert.IsType<RedirectToActionResult>(result);
-        await _auditLog.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<Guid?>(), Arg.Any<string?>());
-    }
-
-    [HumansFact]
-    public async Task SetCampSetup_FansOutOneAuditPerAutoClearedDayOff()
-    {
-        var current = new User { Id = Guid.NewGuid() };
-        var target = Guid.NewGuid();
-        _service.SetCampSetupAsync(target, Arg.Any<LocalDate>(), Arg.Any<string?>(), current.Id, Arg.Any<CancellationToken>())
-            .Returns(new SetCampSetupResult(
-                Ok: true, ErrorMessageKey: null,
-                AutoClearedDayOffs: [-6, -4]));
-        var ctrl = BuildSut(current);
-        var form = new SetCampSetupForm { UserId = target, Date = "2026-06-30", Notes = null };
-
-        await ctrl.SetCampSetup(form, null, TestContext.Current.CancellationToken);
-
-        await _auditLog.Received(1).LogAsync(
-            AuditAction.VolunteerCampSetupSet, Arg.Any<string>(), target,
-            Arg.Any<string>(), current.Id, Arg.Any<Guid?>(), Arg.Any<string?>());
-        await _auditLog.Received(2).LogAsync(
-            AuditAction.VolunteerDayOffCleared, Arg.Any<string>(), target,
-            Arg.Any<string>(), current.Id, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     // ---------------------------------------------------------------------
@@ -627,8 +552,8 @@ public class VolunteerTrackingControllerTests
         int? dayOffset = string.Equals(missing, "day", StringComparison.Ordinal) ? null : -2;
         var esId = Guid.NewGuid();
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(MakeBurn(esId));
-        _service.SetDayAvailabilityAsync(target.GetValueOrDefault(), esId, dayOffset.GetValueOrDefault(), adding,
-                Arg.Any<CancellationToken>()).Returns(true);
+        _service.SetDayAvailabilityAsync(Arg.Is(target.GetValueOrDefault()), Arg.Is(esId), dayOffset.GetValueOrDefault(), adding,
+                Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
         var ctrl = BuildSut(new User { Id = Guid.NewGuid() });
 
         var result = adding
@@ -637,8 +562,7 @@ public class VolunteerTrackingControllerTests
 
         result.Should().BeOfType<BadRequestResult>();
         await _service.DidNotReceive().SetDayAvailabilityAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
-        _auditLog.ReceivedCalls().Should().BeEmpty();
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
@@ -662,7 +586,6 @@ public class VolunteerTrackingControllerTests
             Arg.Any<Guid>(), Arg.Any<LocalDate>(), Arg.Any<string?>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _service.DidNotReceive().SetDayOffAsync(
             Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        _auditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansTheory]
@@ -676,7 +599,7 @@ public class VolunteerTrackingControllerTests
         var dayOffset = adding ? -2 : 0;
         var esId = Guid.NewGuid();
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(MakeBurn(esId));
-        _service.SetDayAvailabilityAsync(target, esId, dayOffset, adding, Arg.Any<CancellationToken>())
+        _service.SetDayAvailabilityAsync(Arg.Is(target), Arg.Is(esId), dayOffset, adding, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(true);
         var ctrl = BuildSut(hasActor ? new User { Id = Guid.NewGuid() } : null);
         ctrl.ModelState.AddModelError(adding ? "userId" : "dayOffset", "Malformed value");
@@ -688,12 +611,11 @@ public class VolunteerTrackingControllerTests
         if (hasActor) result.Should().BeOfType<BadRequestResult>();
         else result.Should().BeOfType<ForbidResult>();
         await _service.DidNotReceive().SetDayAvailabilityAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
-        _auditLog.ReceivedCalls().Should().BeEmpty();
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task SetAvailabilityDay_HappyPath_CallsServiceAndAuditsAndRedirects()
+    public async Task SetAvailabilityDay_HappyPath_CallsServiceAndRedirects()
     {
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
@@ -701,48 +623,38 @@ public class VolunteerTrackingControllerTests
         var es = MakeBurn(esId);
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
         _service
-            .SetDayAvailabilityAsync(target, esId, -2, true, Arg.Any<CancellationToken>())
+            .SetDayAvailabilityAsync(target, esId, -2, true, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(true);
         var ctrl = BuildSut(current);
 
         var result = await ctrl.SetAvailabilityDay(target, -2, returnUrl: null, TestContext.Current.CancellationToken);
 
         await _service.Received(1)
-            .SetDayAvailabilityAsync(target, esId, -2, true, Arg.Any<CancellationToken>());
-        await _auditLog.Received(1).LogAsync(
-            AuditAction.VolunteerAvailabilitySet,
-            Arg.Any<string>(), target,
-            Arg.Any<string>(), current.Id,
-            Arg.Any<Guid?>(), Arg.Any<string?>());
+            .SetDayAvailabilityAsync(target, esId, -2, true, current.Id, Arg.Any<CancellationToken>());
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
         ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("VolTrack_Msg_AvailabilitySet");
     }
 
     [HumansFact]
-    public async Task SetAvailabilityDay_NoChange_DoesNotAudit()
+    public async Task SetAvailabilityDay_NoChange_SetsNoSuccess()
     {
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
         var es = MakeBurn(Guid.NewGuid());
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
-        // Default: SetDayAvailabilityAsync returns false → no audit row (service short-circuited).
+        // Default: SetDayAvailabilityAsync returns false → no success message (service short-circuited).
         var ctrl = BuildSut(current);
 
         await ctrl.SetAvailabilityDay(target, -2, returnUrl: null, TestContext.Current.CancellationToken);
 
-        await _auditLog.DidNotReceive().LogAsync(
-            AuditAction.VolunteerAvailabilitySet,
-            Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<Guid?>(), Arg.Any<string?>());
         ctrl.TempData[TempDataKeys.SuccessMessage].Should().BeNull();
     }
 
     [HumansTheory]
     [InlineData(-3)]
     [InlineData(0)]
-    public async Task ClearAvailabilityDay_HappyPath_CallsServiceAndAuditsAndRedirects(int dayOffset)
+    public async Task ClearAvailabilityDay_HappyPath_CallsServiceAndRedirects(int dayOffset)
     {
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
@@ -750,41 +662,31 @@ public class VolunteerTrackingControllerTests
         var es = MakeBurn(esId);
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
         _service
-            .SetDayAvailabilityAsync(target, esId, dayOffset, false, Arg.Any<CancellationToken>())
+            .SetDayAvailabilityAsync(target, esId, dayOffset, false, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(true);
         var ctrl = BuildSut(current);
 
         var result = await ctrl.ClearAvailabilityDay(target, dayOffset, returnUrl: null, TestContext.Current.CancellationToken);
 
         await _service.Received(1)
-            .SetDayAvailabilityAsync(target, esId, dayOffset, false, Arg.Any<CancellationToken>());
-        await _auditLog.Received(1).LogAsync(
-            AuditAction.VolunteerAvailabilityCleared,
-            Arg.Any<string>(), target,
-            Arg.Any<string>(), current.Id,
-            Arg.Any<Guid?>(), Arg.Any<string?>());
+            .SetDayAvailabilityAsync(target, esId, dayOffset, false, current.Id, Arg.Any<CancellationToken>());
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
         ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("VolTrack_Msg_AvailabilityCleared");
     }
 
     [HumansFact]
-    public async Task ClearAvailabilityDay_NoChange_DoesNotAudit()
+    public async Task ClearAvailabilityDay_NoChange_SetsNoSuccess()
     {
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
         var es = MakeBurn(Guid.NewGuid());
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
-        // Default: SetDayAvailabilityAsync returns false → no audit row.
+        // Default: SetDayAvailabilityAsync returns false → no success message.
         var ctrl = BuildSut(current);
 
         await ctrl.ClearAvailabilityDay(target, -3, returnUrl: null, TestContext.Current.CancellationToken);
 
-        await _auditLog.DidNotReceive().LogAsync(
-            AuditAction.VolunteerAvailabilityCleared,
-            Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<Guid?>(), Arg.Any<string?>());
         ctrl.TempData[TempDataKeys.SuccessMessage].Should().BeNull();
     }
 
@@ -835,7 +737,7 @@ public class VolunteerTrackingControllerTests
                 Arg.Any<Guid>(),
                 Arg.Any<int>(),
                 Arg.Any<bool>(),
-                Arg.Any<CancellationToken>());
+                Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("VolTrack_Err_BadRequest");
     }
 

@@ -169,7 +169,7 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
 
     private GateTerminalAccountSeeder NewService() => new(
         _users, _credentialServices.GetRequiredService<IServiceScopeFactory>(),
-        _profiles, _consent, Substitute.For<IUserInfoInvalidator>(), _audit,
+        _profiles, _consent, _audit,
         Clock, _cache, NullLogger<GateTerminalAccountSeeder>.Instance);
 
     protected override void Dispose(bool disposing)

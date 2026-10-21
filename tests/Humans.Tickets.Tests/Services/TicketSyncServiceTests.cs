@@ -25,8 +25,6 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     private readonly IEventParticipationManagement _participations;
     private readonly ISettingsService _shiftManagementService;
     private readonly ITicketRepository _ticketRepository;
-    private readonly ITicketCacheInvalidator _ticketCache;
-    private readonly ITicketVendorCacheInvalidator _vendorCache;
     private readonly TicketSyncService _service;
 
     public TicketSyncServiceTests()
@@ -51,8 +49,6 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         _shiftManagementService = Substitute.For<ISettingsService>();
 
         _ticketRepository = new TicketRepository(TicketsDbFactory, Clock);
-        _vendorCache = Substitute.For<ITicketVendorCacheInvalidator>();
-        _ticketCache = Substitute.For<ITicketCacheInvalidator>();
 
         _service = new TicketSyncService(
             _ticketRepository,
@@ -62,8 +58,6 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             Clock,
             settings,
             NullLogger<TicketSyncService>.Instance,
-            _ticketCache,
-            _vendorCache,
             _userService,
             _participations,
             _campaignService,
@@ -134,28 +128,12 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         await _stripeService.Received(1).GetPaymentDetailsAsync("pi_fees", Arg.Any<CancellationToken>());
     }
 
-    // ==========================================================================
-    // SyncOrdersAndAttendeesAsync_InvalidatesVendorEventSummary
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task SyncOrdersAndAttendeesAsync_InvalidatesVendorEventSummary()
-    {
-        _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns([]);
-        _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns([]);
-
-        await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
-
-        _vendorCache.Received(1).InvalidateEventSummary("ev_test_123");
-        _ticketCache.Received(1).InvalidateAll();
-    }
-
+    // Cache eviction around a failed sync is the caching decorator's job
+    // (CachingTicketQueryServiceTests); this pins the rows it must reload.
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task SyncOrdersAndAttendeesAsync_ClearsTicketSnapshotsWhenRedemptionFailsAfterWrites(bool oversizedError)
+    public async Task SyncOrdersAndAttendeesAsync_KeepsCommittedRowsWhenRedemptionFailsAfterWrites(bool oversizedError)
     {
         var error = oversizedError
             ? new string('e', 1999) + "😀" + new string('e', 100)
@@ -179,7 +157,6 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         var state = await TicketsDb.TicketSyncStates.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         state.SyncStatus.Should().Be(TicketSyncStatus.Error);
         state.LastError.Should().Be(oversizedError ? new string('e', 1999) : error);
-        _ticketCache.Received(1).InvalidateAll();
     }
 
     // ==========================================================================
@@ -400,8 +377,6 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             Clock,
             settings,
             NullLogger<TicketSyncService>.Instance,
-            Substitute.For<ITicketCacheInvalidator>(),
-            Substitute.For<ITicketVendorCacheInvalidator>(),
             _userService,
             Substitute.For<IEventParticipationManagement>(),
             Substitute.For<ICampaignWrite>(),
