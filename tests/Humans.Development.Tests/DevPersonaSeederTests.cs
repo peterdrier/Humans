@@ -53,7 +53,7 @@ public class DevPersonaSeederTests
 
     public DevPersonaSeederTests()
     {
-        _profileEditor.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
+        _profileEditor.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
             .Returns(new ProfileEditResult(true, Guid.NewGuid()));
     }
 
@@ -248,7 +248,7 @@ public class DevPersonaSeederTests
         first.Should().NotBe(second);
         created.Select(u => u.Id).Should().Equal(first, second);
         await _profileEditor.DidNotReceive().SaveProfileAsync(
-            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -263,7 +263,6 @@ public class DevPersonaSeederTests
 
         await _profileEditor.Received(1).SaveProfileAsync(
             userId,
-            "Dev Board",
             Arg.Is<ProfileSaveRequest>(r =>
                 r.BurnerName == "Dev Board" && r.FirstName.Length == 0 && r.LastName.Length == 0),
             Arg.Any<CancellationToken>());

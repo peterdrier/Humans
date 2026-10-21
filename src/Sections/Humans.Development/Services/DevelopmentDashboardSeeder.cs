@@ -265,7 +265,6 @@ internal sealed class DevelopmentDashboardSeeder(
             var user = new User
             {
                 Id = userId,
-                DisplayName = display,
                 BurnerName = display,
                 CreatedAt = createdAt,
                 LastLoginAt = now.Minus(Duration.FromDays(lastLoginDaysAgo)).Minus(Duration.FromHours(_rng.Next(0, 23))),
@@ -323,7 +322,7 @@ internal sealed class DevelopmentDashboardSeeder(
         foreach (var user in users)
         {
             var burnerName = user.BurnerName!; // Assigned for every fixture above.
-            var save = await profileEditor.SaveProfileAsync(user.Id, burnerName, new ProfileSaveRequest(
+            var save = await profileEditor.SaveProfileAsync(user.Id, new ProfileSaveRequest(
                 BurnerName: burnerName, FirstName: "Dev", LastName: "Human",
                 City: null, CountryCode: null, Latitude: null, Longitude: null, PlaceId: null,
                 Bio: null, Pronouns: null, ContributionInterests: null, BoardNotes: null,

@@ -253,16 +253,21 @@ internal sealed class GoogleDriveAccessSyncService(
         var extraEmails = members.Where(m => m.State == MemberSyncState.Extra)
             .Select(m => m.Email).Distinct(GmailAliasEmailComparer.Instance).ToList();
         if (extraEmails.Count == 0) return;
-        var owners = UserEmailMatchOwner.ByEmail(await userEmailService.MatchByEmailsAsync(extraEmails, ct));
-        var users = await userService.GetUserInfosAsync(owners.Values.Select(m => m.UserId).Distinct().ToList(), ct);
+        var owners = UserEmailMatchOwner.ByEmail(await userEmailService.MatchByEmailsAsync(extraEmails, ct))
+            .ToDictionary(kv => kv.Key, kv => kv.Value.UserId, GmailAliasEmailComparer.Instance);
+        // A plus-address fallback grant is held under a base address no user_emails row claims;
+        // its recorded Drive address still attributes it (peterdrier/Humans#2037).
+        foreach (var (userId, drive) in await workspaceIdentities.GetDriveEmailsAsync(ct))
+            owners.TryAdd(drive.DriveEmail, userId);
+        var users = await userService.GetUserInfosAsync(owners.Values.Distinct().ToList(), ct);
         for (var i = 0; i < members.Count; i++)
         {
             var member = members[i];
-            if (member.State != MemberSyncState.Extra || !owners.TryGetValue(member.Email, out var owner))
+            if (member.State != MemberSyncState.Extra || !owners.TryGetValue(member.Email, out var ownerId))
                 continue;
-            members[i] = users.TryGetValue(owner.UserId, out var user)
-                ? member with { UserId = owner.UserId, DisplayName = user.BurnerName, ProfilePictureUrl = user.ProfilePictureUrl }
-                : member with { UserId = owner.UserId };
+            members[i] = users.TryGetValue(ownerId, out var user)
+                ? member with { UserId = ownerId, DisplayName = user.BurnerName, ProfilePictureUrl = user.ProfilePictureUrl }
+                : member with { UserId = ownerId };
         }
     }
 
@@ -338,12 +343,15 @@ internal sealed class GoogleDriveAccessSyncService(
     {
         var eligibleMembers = await GoogleSyncMemberHydration.LoadAsync(
             access.Keys.ToList(), userService, workspaceIdentities, ct);
+        var driveEmails = await workspaceIdentities.GetDriveEmailsAsync(ct);
         var result = new Dictionary<Guid, DriveExpectedMember>();
         foreach (var (userId, level) in access)
         {
             if (level != DrivePermissionLevel.None && eligibleMembers.TryGetValue(userId, out var member))
                 result[userId] = new DriveExpectedMember(
-                    member.UserId, member.Email, member.DisplayName, member.ProfilePictureUrl, level, member.IdentityEmail);
+                    member.UserId,
+                    DrivePlusAddressFallback.Apply(driveEmails, member.UserId, member.IdentityEmail, member.Email),
+                    member.DisplayName, member.ProfilePictureUrl, level, member.IdentityEmail);
         }
 
         return result;
@@ -459,19 +467,36 @@ internal sealed class GoogleDriveAccessSyncService(
             }
 
             var role = member.ExpectedRole!;
-            var result = await drivePermissions.CreatePermissionAsync(claim.FolderId, member.Email, role, ct);
+            var retried = false;
+            async Task<DrivePermissionMutationResult> CreateAsync(string email)
+            {
+                (var created, retried) = await WithTransientRetryAsync(
+                    () => drivePermissions.CreatePermissionAsync(claim.FolderId, email, role, ct), r => r.Error, ct);
+                return created;
+            }
+            var (result, grantedEmail) = member.UserId is { } memberUserId
+                ? await DrivePlusAddressFallback.CreateAsync(
+                    CreateAsync, member.Email, memberUserId, plan.IdentityEmailsByEmail[member.Email], workspaceIdentities, ct)
+                : (await CreateAsync(member.Email), member.Email);
+            var insteadOf = string.Equals(grantedEmail, member.Email, StringComparison.Ordinal)
+                ? ""
+                : $" in place of {member.Email}, which Drive refused";
             switch (result.Outcome)
             {
+                // After a transient retry, AlreadyExists means the failed attempt was applied
+                // by Google anyway; the grant is still ours to record. So is a fallback onto a
+                // base address that already had access: the member's Drive address changed.
                 case DrivePermissionCreateOutcome.Created:
+                case DrivePermissionCreateOutcome.AlreadyExists when retried || insteadOf.Length > 0:
                     await googleSyncLog.LogAsync(
                         GoogleSyncLogAction.AccessGranted, claim.ResourceId,
-                        $"Granted Drive access ({role}) to {member.Email} ({claim.DisplayName})",
+                        $"Granted Drive access ({role}) to {grantedEmail}{insteadOf} ({claim.DisplayName})",
                         nameof(GoogleDriveAccessSyncService),
-                        member.Email, role, syncSource, success: true,
+                        grantedEmail, role, syncSource, success: true,
                         userId: member.UserId, ct: ct);
                     break;
                 case DrivePermissionCreateOutcome.AlreadyExists:
-                    logger.LogDebug("Permission already exists for {Email} on {FolderId}", member.Email, claim.FolderId);
+                    logger.LogDebug("Permission already exists for {Email} on {FolderId}", grantedEmail, claim.FolderId);
                     break;
                 case DrivePermissionCreateOutcome.Failed:
                     var error = $"Google Drive add failed for {MaskEmail(member.Email)} (HTTP {result.Error?.StatusCode}): {result.Error?.RawMessage}";
@@ -489,6 +514,34 @@ internal sealed class GoogleDriveAccessSyncService(
             }
         }
         return errors;
+    }
+
+    /// <summary>Waits between transient-failure attempts; tests replace it to skip the backoff.</summary>
+    internal Func<TimeSpan, CancellationToken, Task> Delay { get; init; } = Task.Delay;
+
+    private static readonly TimeSpan[] TransientRetryBackoff = [TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3)];
+
+    /// <summary>
+    /// Re-issues a Drive mutation while Google reports a transient error, so a one-off Google hiccup
+    /// does not leave a member without access until the next pass (peterdrier/Humans#2037).
+    /// Permanent failures, including target rejections, return on the first attempt.
+    /// <c>Retried</c> is true when the returned result came from a repeat attempt.
+    /// </summary>
+    private async Task<(T Result, bool Retried)> WithTransientRetryAsync<T>(Func<Task<T>> call, Func<T, GoogleClientError?> errorOf, CancellationToken ct)
+    {
+        var result = await call();
+        var retried = false;
+        foreach (var backoff in TransientRetryBackoff)
+        {
+            if (errorOf(result) is not { IsTransient: true } error)
+                break;
+            logger.LogInformation("Transient Google Drive error (HTTP {StatusCode}), retrying in {Backoff}: {Error}",
+                error.StatusCode, backoff, error.RawMessage);
+            await Delay(backoff, ct);
+            result = await call();
+            retried = true;
+        }
+        return (result, retried);
     }
 
     /// <summary>Keeps two characters of the local part, like the log pipeline's email redaction.</summary>
@@ -526,7 +579,8 @@ internal sealed class GoogleDriveAccessSyncService(
     private async Task<string?> UpdateAndLogAsync(FolderClaim claim, MemberSyncStatus member, string permissionId, GoogleSyncSource syncSource, CancellationToken ct)
     {
         var role = member.ExpectedRole!;
-        var error = await drivePermissions.UpdatePermissionAsync(claim.FolderId, permissionId, role, ct);
+        var (error, _) = await WithTransientRetryAsync(
+            () => drivePermissions.UpdatePermissionAsync(claim.FolderId, permissionId, role, ct), e => e, ct);
         var action = DrivePermissionRoleMapper.Parse(member.CurrentRole) > DrivePermissionRoleMapper.Parse(role)
             ? GoogleSyncLogAction.AccessRevoked
             : GoogleSyncLogAction.AccessGranted;

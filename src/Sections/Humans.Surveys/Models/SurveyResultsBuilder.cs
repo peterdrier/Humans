@@ -2,7 +2,6 @@ using Humans.Surveys.Contracts;
 using System.Globalization;
 using Humans.Base.Extensions;
 using Humans.Surveys.Services;
-using Humans.Surveys.Domain;
 using NodaTime;
 
 namespace Humans.Surveys.Models;

@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
-using Humans.Camps.Authorization;
 using Humans.Shifts.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using NSubstitute;

@@ -6,7 +6,6 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Octokit;
 using Xunit;
-using Humans.Agent.Contracts;
 
 namespace Humans.Agent.Tests;
 

@@ -41,9 +41,9 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         var msg = BuildMessage();
         // Imported member names may fill the Users display-name column.
         msg.RecipientName = new string('n', 256);
-        await _repo.AddAsync(msg, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(msg, TestContext.Current.CancellationToken);
 
-        var persisted = await _dbContext.EmailOutboxMessages.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var persisted = await _dbContext.EmailOutboxMessages.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         persisted.Id.Should().Be(msg.Id);
         persisted.RecipientEmail.Should().Be(msg.RecipientEmail);
         persisted.RecipientName.Should().Be(msg.RecipientName);
@@ -60,23 +60,23 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetTotalCountAsync_CountsAllRows()
     {
-        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Queued), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Sent, sentAt: _clock.GetCurrentInstant()), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Failed), Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Queued), TestContext.Current.CancellationToken);
+        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Sent, sentAt: _clock.GetCurrentInstant()), TestContext.Current.CancellationToken);
+        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Failed), TestContext.Current.CancellationToken);
 
-        var total = await _repo.GetTotalCountAsync(Xunit.TestContext.Current.CancellationToken);
+        var total = await _repo.GetTotalCountAsync(TestContext.Current.CancellationToken);
         total.Should().Be(3);
     }
 
     [HumansFact]
     public async Task GetCountByStatusAsync_CountsOnlyMatchingStatus()
     {
-        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Queued), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Queued), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Sent, sentAt: _clock.GetCurrentInstant()), Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Queued), TestContext.Current.CancellationToken);
+        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Queued), TestContext.Current.CancellationToken);
+        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Sent, sentAt: _clock.GetCurrentInstant()), TestContext.Current.CancellationToken);
 
-        var queued = await _repo.GetCountByStatusAsync(EmailOutboxStatus.Queued, Xunit.TestContext.Current.CancellationToken);
-        var sent = await _repo.GetCountByStatusAsync(EmailOutboxStatus.Sent, Xunit.TestContext.Current.CancellationToken);
+        var queued = await _repo.GetCountByStatusAsync(EmailOutboxStatus.Queued, TestContext.Current.CancellationToken);
+        var sent = await _repo.GetCountByStatusAsync(EmailOutboxStatus.Sent, TestContext.Current.CancellationToken);
 
         queued.Should().Be(2);
         sent.Should().Be(1);
@@ -88,12 +88,12 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         var now = _clock.GetCurrentInstant();
         var cutoff = now - Duration.FromHours(24);
 
-        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Sent, sentAt: now - Duration.FromHours(48)), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Sent, sentAt: now - Duration.FromHours(6)), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Sent, sentAt: now - Duration.FromMinutes(5)), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Queued), Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Sent, sentAt: now - Duration.FromHours(48)), TestContext.Current.CancellationToken);
+        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Sent, sentAt: now - Duration.FromHours(6)), TestContext.Current.CancellationToken);
+        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Sent, sentAt: now - Duration.FromMinutes(5)), TestContext.Current.CancellationToken);
+        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Queued), TestContext.Current.CancellationToken);
 
-        var recent = await _repo.GetSentCountSinceAsync(cutoff, Xunit.TestContext.Current.CancellationToken);
+        var recent = await _repo.GetSentCountSinceAsync(cutoff, TestContext.Current.CancellationToken);
         recent.Should().Be(2);
     }
 
@@ -105,11 +105,11 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         var msg2 = BuildMessage(createdAt: _clock.GetCurrentInstant() - Duration.FromMinutes(20));
         var msg3 = BuildMessage(createdAt: _clock.GetCurrentInstant() - Duration.FromMinutes(10));
 
-        await _repo.AddAsync(msg1, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(msg2, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(msg3, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(msg1, TestContext.Current.CancellationToken);
+        await _repo.AddAsync(msg2, TestContext.Current.CancellationToken);
+        await _repo.AddAsync(msg3, TestContext.Current.CancellationToken);
 
-        var recent = await _repo.GetRecentAsync(2, Xunit.TestContext.Current.CancellationToken);
+        var recent = await _repo.GetRecentAsync(2, TestContext.Current.CancellationToken);
         recent.Select(m => m.Id).Should().Equal(msg3.Id, msg2.Id);
     }
 
@@ -123,11 +123,11 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         var newer = BuildMessage(userId: userId, createdAt: _clock.GetCurrentInstant() - Duration.FromHours(1));
         var other = BuildMessage(userId: otherId);
 
-        await _repo.AddAsync(older, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(newer, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(other, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(older, TestContext.Current.CancellationToken);
+        await _repo.AddAsync(newer, TestContext.Current.CancellationToken);
+        await _repo.AddAsync(other, TestContext.Current.CancellationToken);
 
-        var forUser = await _repo.GetForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var forUser = await _repo.GetForUserAsync(userId, TestContext.Current.CancellationToken);
         forUser.Select(m => m.Id).Should().BeEquivalentTo([newer.Id, older.Id]);
     }
 
@@ -135,22 +135,22 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     public async Task GetCountForUserAsync_OnlyCountsUsersRows()
     {
         var userId = Guid.NewGuid();
-        await _repo.AddAsync(BuildMessage(userId: userId), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildMessage(userId: userId), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildMessage(userId: Guid.NewGuid()), Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(BuildMessage(userId: userId), TestContext.Current.CancellationToken);
+        await _repo.AddAsync(BuildMessage(userId: userId), TestContext.Current.CancellationToken);
+        await _repo.AddAsync(BuildMessage(userId: Guid.NewGuid()), TestContext.Current.CancellationToken);
 
-        (await _repo.GetCountForUserAsync(userId, Xunit.TestContext.Current.CancellationToken)).Should().Be(2);
+        (await _repo.GetCountForUserAsync(userId, TestContext.Current.CancellationToken)).Should().Be(2);
     }
 
     [HumansFact]
     public async Task GetPendingCountAsync_OnlyCountsUnsentBelowRetryCap()
     {
-        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Queued), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Failed, retryCount: 3), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Failed, retryCount: 10), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Sent, sentAt: _clock.GetCurrentInstant()), Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Queued), TestContext.Current.CancellationToken);
+        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Failed, retryCount: 3), TestContext.Current.CancellationToken);
+        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Failed, retryCount: 10), TestContext.Current.CancellationToken);
+        await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Sent, sentAt: _clock.GetCurrentInstant()), TestContext.Current.CancellationToken);
 
-        var pending = await _repo.GetPendingCountAsync(maxRetries: 10, ct: Xunit.TestContext.Current.CancellationToken);
+        var pending = await _repo.GetPendingCountAsync(maxRetries: 10, ct: TestContext.Current.CancellationToken);
         // Queued (0) + Failed with 3 retries (below 10) = 2; Failed with 10 retries is at cap; Sent excluded.
         pending.Should().Be(2);
     }
@@ -166,12 +166,12 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         msg.LastError = "boom";
         msg.NextRetryAt = _clock.GetCurrentInstant() + Duration.FromMinutes(10);
         msg.PickedUpAt = _clock.GetCurrentInstant();
-        await _repo.AddAsync(msg, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(msg, TestContext.Current.CancellationToken);
 
-        var recipient = await _repo.RetryAsync(msg.Id, Xunit.TestContext.Current.CancellationToken);
+        var recipient = await _repo.RetryAsync(msg.Id, TestContext.Current.CancellationToken);
         recipient.Should().Be(msg.RecipientEmail);
 
-        var reloaded = await _dbContext.EmailOutboxMessages.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await _dbContext.EmailOutboxMessages.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         reloaded.Status.Should().Be(EmailOutboxStatus.Queued);
         reloaded.RetryCount.Should().Be(0);
         reloaded.LastError.Should().BeNull();
@@ -182,7 +182,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     [HumansFact]
     public async Task RetryAsync_ReturnsNullWhenMessageMissing()
     {
-        var result = await _repo.RetryAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var result = await _repo.RetryAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
         result.Should().BeNull();
     }
 
@@ -190,18 +190,18 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     public async Task DiscardAsync_DeletesAndReturnsRecipient()
     {
         var msg = BuildMessage();
-        await _repo.AddAsync(msg, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(msg, TestContext.Current.CancellationToken);
 
-        var recipient = await _repo.DiscardAsync(msg.Id, Xunit.TestContext.Current.CancellationToken);
+        var recipient = await _repo.DiscardAsync(msg.Id, TestContext.Current.CancellationToken);
         recipient.Should().Be(msg.RecipientEmail);
 
-        (await _dbContext.EmailOutboxMessages.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await _dbContext.EmailOutboxMessages.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansFact]
     public async Task DiscardAsync_ReturnsNullWhenMessageMissing()
     {
-        var result = await _repo.DiscardAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var result = await _repo.DiscardAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
         result.Should().BeNull();
     }
 
@@ -225,14 +225,14 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         var stalePickedUp = BuildMessage(status: EmailOutboxStatus.Queued);
         stalePickedUp.PickedUpAt = now - Duration.FromMinutes(10);
 
-        await _repo.AddAsync(eligible, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(sentAlready, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(atRetryCap, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(futureRetry, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(recentlyPickedUp, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(stalePickedUp, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(eligible, TestContext.Current.CancellationToken);
+        await _repo.AddAsync(sentAlready, TestContext.Current.CancellationToken);
+        await _repo.AddAsync(atRetryCap, TestContext.Current.CancellationToken);
+        await _repo.AddAsync(futureRetry, TestContext.Current.CancellationToken);
+        await _repo.AddAsync(recentlyPickedUp, TestContext.Current.CancellationToken);
+        await _repo.AddAsync(stalePickedUp, TestContext.Current.CancellationToken);
 
-        var batch = await _repo.GetProcessingBatchAsync(now, stale, maxRetries: 10, batchSize: 100, ct: Xunit.TestContext.Current.CancellationToken);
+        var batch = await _repo.GetProcessingBatchAsync(now, stale, maxRetries: 10, batchSize: 100, ct: TestContext.Current.CancellationToken);
         batch.Select(m => m.Id).Should().BeEquivalentTo([eligible.Id, stalePickedUp.Id]);
     }
 
@@ -248,12 +248,12 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         {
             await _repo.AddAsync(
                 BuildMessage(createdAt: now - Duration.FromMinutes(20 - i), templateName: "survey_invitation"),
-                Xunit.TestContext.Current.CancellationToken);
+                TestContext.Current.CancellationToken);
         }
         var magicLink = BuildMessage(createdAt: now, templateName: "magic_link_login");
-        await _repo.AddAsync(magicLink, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(magicLink, TestContext.Current.CancellationToken);
 
-        var batch = await _repo.GetProcessingBatchAsync(now, stale, maxRetries: 10, batchSize: 5, ct: Xunit.TestContext.Current.CancellationToken);
+        var batch = await _repo.GetProcessingBatchAsync(now, stale, maxRetries: 10, batchSize: 5, ct: TestContext.Current.CancellationToken);
 
         batch[0].Id.Should().Be(magicLink.Id);
     }
@@ -270,10 +270,10 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
 
         var bulk = BuildMessage(createdAt: now - Duration.FromMinutes(10), templateName: "survey_invitation");
         var timeSensitive = BuildMessage(createdAt: now, templateName: templateName);
-        await _repo.AddAsync(bulk, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(timeSensitive, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(bulk, TestContext.Current.CancellationToken);
+        await _repo.AddAsync(timeSensitive, TestContext.Current.CancellationToken);
 
-        var batch = await _repo.GetProcessingBatchAsync(now, stale, maxRetries: 10, batchSize: 100, ct: Xunit.TestContext.Current.CancellationToken);
+        var batch = await _repo.GetProcessingBatchAsync(now, stale, maxRetries: 10, batchSize: 100, ct: TestContext.Current.CancellationToken);
 
         batch.Select(m => m.Id).Should().ContainInOrder(timeSensitive.Id, bulk.Id);
     }
@@ -291,10 +291,10 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
 
         foreach (var m in new[] { newerBulk, newerLink, olderBulk, olderLink })
         {
-            await _repo.AddAsync(m, Xunit.TestContext.Current.CancellationToken);
+            await _repo.AddAsync(m, TestContext.Current.CancellationToken);
         }
 
-        var batch = await _repo.GetProcessingBatchAsync(now, stale, maxRetries: 10, batchSize: 100, ct: Xunit.TestContext.Current.CancellationToken);
+        var batch = await _repo.GetProcessingBatchAsync(now, stale, maxRetries: 10, batchSize: 100, ct: TestContext.Current.CancellationToken);
 
         batch.Select(m => m.Id).Should()
             .Equal(olderLink.Id, newerLink.Id, olderBulk.Id, newerBulk.Id);
@@ -306,14 +306,14 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         var m1 = BuildMessage();
         var m2 = BuildMessage();
         var untouched = BuildMessage();
-        await _repo.AddAsync(m1, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(m2, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(untouched, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(m1, TestContext.Current.CancellationToken);
+        await _repo.AddAsync(m2, TestContext.Current.CancellationToken);
+        await _repo.AddAsync(untouched, TestContext.Current.CancellationToken);
 
         var pickedUpAt = Instant.FromUtc(2026, 4, 1, 15, 0);
-        await _repo.MarkPickedUpAsync([m1.Id, m2.Id], pickedUpAt, Xunit.TestContext.Current.CancellationToken);
+        await _repo.MarkPickedUpAsync([m1.Id, m2.Id], pickedUpAt, TestContext.Current.CancellationToken);
 
-        var all = await _dbContext.EmailOutboxMessages.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var all = await _dbContext.EmailOutboxMessages.AsNoTracking().ToListAsync(TestContext.Current.CancellationToken);
         all.Single(x => x.Id == m1.Id).PickedUpAt.Should().Be(pickedUpAt);
         all.Single(x => x.Id == m2.Id).PickedUpAt.Should().Be(pickedUpAt);
         all.Single(x => x.Id == untouched.Id).PickedUpAt.Should().BeNull();
@@ -324,13 +324,13 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     {
         var msg = BuildMessage(status: EmailOutboxStatus.Queued);
         msg.PickedUpAt = _clock.GetCurrentInstant();
-        await _repo.AddAsync(msg, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(msg, TestContext.Current.CancellationToken);
 
         var sentAt = Instant.FromUtc(2026, 4, 1, 15, 30);
-        var result = await _repo.MarkSentAsync(msg.Id, sentAt, Xunit.TestContext.Current.CancellationToken);
+        var result = await _repo.MarkSentAsync(msg.Id, sentAt, TestContext.Current.CancellationToken);
         result.Should().BeTrue();
 
-        var reloaded = await _dbContext.EmailOutboxMessages.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await _dbContext.EmailOutboxMessages.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         reloaded.Status.Should().Be(EmailOutboxStatus.Sent);
         reloaded.SentAt.Should().Be(sentAt);
         reloaded.PickedUpAt.Should().BeNull();
@@ -339,7 +339,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     [HumansFact]
     public async Task MarkSentAsync_ReturnsFalseWhenMessageMissing()
     {
-        var result = await _repo.MarkSentAsync(Guid.NewGuid(), Instant.FromUtc(2026, 4, 1, 0, 0), Xunit.TestContext.Current.CancellationToken);
+        var result = await _repo.MarkSentAsync(Guid.NewGuid(), Instant.FromUtc(2026, 4, 1, 0, 0), TestContext.Current.CancellationToken);
         result.Should().BeFalse();
     }
 
@@ -348,14 +348,14 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     {
         var msg = BuildMessage(status: EmailOutboxStatus.Queued, retryCount: 1);
         msg.PickedUpAt = _clock.GetCurrentInstant();
-        await _repo.AddAsync(msg, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(msg, TestContext.Current.CancellationToken);
 
         var failedAt = _clock.GetCurrentInstant();
         var nextRetryAt = failedAt + Duration.FromMinutes(5);
-        var result = await _repo.MarkFailedAsync(msg.Id, failedAt, "SMTP error", nextRetryAt, Xunit.TestContext.Current.CancellationToken);
+        var result = await _repo.MarkFailedAsync(msg.Id, failedAt, "SMTP error", nextRetryAt, TestContext.Current.CancellationToken);
         result.Should().BeTrue();
 
-        var reloaded = await _dbContext.EmailOutboxMessages.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await _dbContext.EmailOutboxMessages.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         reloaded.Status.Should().Be(EmailOutboxStatus.Failed);
         reloaded.RetryCount.Should().Be(2);
         reloaded.LastError.Should().Be("SMTP error");
@@ -364,20 +364,20 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     }
 
     [HumansTheory]
-    [Xunit.InlineData(3999, "x", "x")]
-    [Xunit.InlineData(3999, "😀", "")]
-    [Xunit.InlineData(3998, "😀", "😀")]
+    [InlineData(3999, "x", "x")]
+    [InlineData(3999, "😀", "")]
+    [InlineData(3998, "😀", "😀")]
     public async Task MarkFailedAsync_TruncatesLongErrors(int prefixLength, string tail, string expectedTail)
     {
         var msg = BuildMessage();
-        await _repo.AddAsync(msg, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(msg, TestContext.Current.CancellationToken);
 
         var prefix = new string('x', prefixLength);
         var longMsg = prefix + tail + new string('y', 1000);
         await _repo.MarkFailedAsync(msg.Id, _clock.GetCurrentInstant(), longMsg,
-            _clock.GetCurrentInstant() + Duration.FromMinutes(1), Xunit.TestContext.Current.CancellationToken);
+            _clock.GetCurrentInstant() + Duration.FromMinutes(1), TestContext.Current.CancellationToken);
 
-        var reloaded = await _dbContext.EmailOutboxMessages.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await _dbContext.EmailOutboxMessages.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         reloaded.LastError.Should().Be(prefix + expectedTail);
     }
 
@@ -396,15 +396,15 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         var oldFailed = BuildMessage(status: EmailOutboxStatus.Failed, retryCount: 3);
         var oldQueued = BuildMessage(status: EmailOutboxStatus.Queued);
 
-        await _repo.AddAsync(oldSent, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(recentSent, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(oldFailed, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(oldQueued, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(oldSent, TestContext.Current.CancellationToken);
+        await _repo.AddAsync(recentSent, TestContext.Current.CancellationToken);
+        await _repo.AddAsync(oldFailed, TestContext.Current.CancellationToken);
+        await _repo.AddAsync(oldQueued, TestContext.Current.CancellationToken);
 
-        var deleted = await _repo.DeleteSentOlderThanAsync(cutoff, Xunit.TestContext.Current.CancellationToken);
+        var deleted = await _repo.DeleteSentOlderThanAsync(cutoff, TestContext.Current.CancellationToken);
         deleted.Should().Be(1);
 
-        var remaining = await _dbContext.EmailOutboxMessages.AsNoTracking().Select(m => m.Id).ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var remaining = await _dbContext.EmailOutboxMessages.AsNoTracking().Select(m => m.Id).ToListAsync(TestContext.Current.CancellationToken);
         remaining.Should().BeEquivalentTo([recentSent.Id, oldFailed.Id, oldQueued.Id]);
     }
 
@@ -423,18 +423,18 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         failed.NextRetryAt = now + Duration.FromMinutes(5);
         var targetRow = BuildMessage(userId: targetId, status: EmailOutboxStatus.Failed, retryCount: 1);
         var otherRow = BuildMessage(userId: otherId);
-        await _repo.AddAsync(queued, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(sent, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(failed, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(targetRow, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(otherRow, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(queued, TestContext.Current.CancellationToken);
+        await _repo.AddAsync(sent, TestContext.Current.CancellationToken);
+        await _repo.AddAsync(failed, TestContext.Current.CancellationToken);
+        await _repo.AddAsync(targetRow, TestContext.Current.CancellationToken);
+        await _repo.AddAsync(otherRow, TestContext.Current.CancellationToken);
 
-        await _repo.ReassignToUserAsync(sourceId, targetId, Xunit.TestContext.Current.CancellationToken);
-        await _repo.ReassignToUserAsync(sourceId, targetId, Xunit.TestContext.Current.CancellationToken);
-        await _repo.ReassignToUserAsync(targetId, targetId, Xunit.TestContext.Current.CancellationToken);
+        await _repo.ReassignToUserAsync(sourceId, targetId, TestContext.Current.CancellationToken);
+        await _repo.ReassignToUserAsync(sourceId, targetId, TestContext.Current.CancellationToken);
+        await _repo.ReassignToUserAsync(targetId, targetId, TestContext.Current.CancellationToken);
 
         var rows = await _dbContext.EmailOutboxMessages.AsNoTracking().ToDictionaryAsync(m => m.Id,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
         foreach (var original in new[] { queued, sent, failed })
         {
             var persisted = rows[original.Id];
@@ -466,9 +466,9 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     {
         var date = new LocalDate(2026, 8, 15);
 
-        await _repo.IncrementDailySendCountAsync(date, "welcome", succeeded: true, Xunit.TestContext.Current.CancellationToken);
+        await _repo.IncrementDailySendCountAsync(date, "welcome", succeeded: true, TestContext.Current.CancellationToken);
 
-        var row = await _dbContext.EmailDailySendCounts.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var row = await _dbContext.EmailDailySendCounts.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         row.Date.Should().Be(date);
         row.TemplateName.Should().Be("welcome");
         row.SentCount.Should().Be(1);
@@ -480,11 +480,11 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     {
         var date = new LocalDate(2026, 8, 15);
 
-        await _repo.IncrementDailySendCountAsync(date, "welcome", succeeded: true, Xunit.TestContext.Current.CancellationToken);
-        await _repo.IncrementDailySendCountAsync(date, "welcome", succeeded: true, Xunit.TestContext.Current.CancellationToken);
-        await _repo.IncrementDailySendCountAsync(date, "welcome", succeeded: false, Xunit.TestContext.Current.CancellationToken);
+        await _repo.IncrementDailySendCountAsync(date, "welcome", succeeded: true, TestContext.Current.CancellationToken);
+        await _repo.IncrementDailySendCountAsync(date, "welcome", succeeded: true, TestContext.Current.CancellationToken);
+        await _repo.IncrementDailySendCountAsync(date, "welcome", succeeded: false, TestContext.Current.CancellationToken);
 
-        var row = await _dbContext.EmailDailySendCounts.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var row = await _dbContext.EmailDailySendCounts.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         row.SentCount.Should().Be(2);
         row.FailedCount.Should().Be(1);
     }
@@ -495,21 +495,21 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         var day1 = new LocalDate(2026, 8, 15);
         var day2 = new LocalDate(2026, 8, 16);
 
-        await _repo.IncrementDailySendCountAsync(day1, "welcome", succeeded: true, Xunit.TestContext.Current.CancellationToken);
-        await _repo.IncrementDailySendCountAsync(day1, "reminder", succeeded: true, Xunit.TestContext.Current.CancellationToken);
-        await _repo.IncrementDailySendCountAsync(day2, "welcome", succeeded: true, Xunit.TestContext.Current.CancellationToken);
+        await _repo.IncrementDailySendCountAsync(day1, "welcome", succeeded: true, TestContext.Current.CancellationToken);
+        await _repo.IncrementDailySendCountAsync(day1, "reminder", succeeded: true, TestContext.Current.CancellationToken);
+        await _repo.IncrementDailySendCountAsync(day2, "welcome", succeeded: true, TestContext.Current.CancellationToken);
 
-        var rows = await _dbContext.EmailDailySendCounts.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var rows = await _dbContext.EmailDailySendCounts.AsNoTracking().ToListAsync(TestContext.Current.CancellationToken);
         rows.Should().HaveCount(3);
     }
 
     [HumansFact]
     public async Task GetDailySendCountsSinceAsync_ExcludesRowsBeforeCutoff()
     {
-        await _repo.IncrementDailySendCountAsync(new LocalDate(2026, 5, 1), "welcome", true, Xunit.TestContext.Current.CancellationToken);
-        await _repo.IncrementDailySendCountAsync(new LocalDate(2026, 8, 1), "welcome", true, Xunit.TestContext.Current.CancellationToken);
+        await _repo.IncrementDailySendCountAsync(new LocalDate(2026, 5, 1), "welcome", true, TestContext.Current.CancellationToken);
+        await _repo.IncrementDailySendCountAsync(new LocalDate(2026, 8, 1), "welcome", true, TestContext.Current.CancellationToken);
 
-        var rows = await _repo.GetDailySendCountsSinceAsync(new LocalDate(2026, 6, 1), Xunit.TestContext.Current.CancellationToken);
+        var rows = await _repo.GetDailySendCountsSinceAsync(new LocalDate(2026, 6, 1), TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle(r => r.Date == new LocalDate(2026, 8, 1));
     }
@@ -517,9 +517,9 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetDailySendCountKeysAsync_ReturnsExistingCombinations()
     {
-        await _repo.IncrementDailySendCountAsync(new LocalDate(2026, 8, 1), "welcome", true, Xunit.TestContext.Current.CancellationToken);
+        await _repo.IncrementDailySendCountAsync(new LocalDate(2026, 8, 1), "welcome", true, TestContext.Current.CancellationToken);
 
-        var keys = await _repo.GetDailySendCountKeysAsync(Xunit.TestContext.Current.CancellationToken);
+        var keys = await _repo.GetDailySendCountKeysAsync(TestContext.Current.CancellationToken);
 
         keys.Should().Contain((new LocalDate(2026, 8, 1), "welcome"));
     }
@@ -529,9 +529,9 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     {
         await _repo.AddDailySendCountsAsync(
             [new EmailDailySendCount { Date = new LocalDate(2026, 8, 1), TemplateName = "welcome", SentCount = 5, FailedCount = 1 }],
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
-        var row = await _dbContext.EmailDailySendCounts.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var row = await _dbContext.EmailDailySendCounts.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         row.SentCount.Should().Be(5);
         row.FailedCount.Should().Be(1);
     }
@@ -545,12 +545,12 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         var queued = BuildMessage(status: EmailOutboxStatus.Queued, createdAt: now);
         var tooOld = BuildMessage(status: EmailOutboxStatus.Sent, sentAt: now - Duration.FromDays(200), createdAt: now - Duration.FromDays(200));
 
-        await _repo.AddAsync(sent, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(failed, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(queued, Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(tooOld, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(sent, TestContext.Current.CancellationToken);
+        await _repo.AddAsync(failed, TestContext.Current.CancellationToken);
+        await _repo.AddAsync(queued, TestContext.Current.CancellationToken);
+        await _repo.AddAsync(tooOld, TestContext.Current.CancellationToken);
 
-        var result = await _repo.GetSentSinceAsync(now - Duration.FromDays(1), Xunit.TestContext.Current.CancellationToken);
+        var result = await _repo.GetSentSinceAsync(now - Duration.FromDays(1), TestContext.Current.CancellationToken);
 
         result.Select(m => m.Id).Should().BeEquivalentTo([sent.Id]);
     }
@@ -573,7 +573,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .AddInterceptors(new FailedInsert(failure)).Options;
         var repo = new EmailOutboxRepository(new TestDbContextFactory<EmailDbContext>(options));
-        Func<Task<bool>> insert = () => repo.AddAsync(BuildMessage(), Xunit.TestContext.Current.CancellationToken, idempotent);
+        Func<Task<bool>> insert = () => repo.AddAsync(BuildMessage(), TestContext.Current.CancellationToken, idempotent);
         if (duplicate)
             (await insert()).Should().BeFalse();
         else

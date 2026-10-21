@@ -134,8 +134,10 @@ public sealed class ProgramTests : PreapprovalsTestHarness
         after.MaxAmount.Should().Be(300m);
     }
 
-    [HumansFact]
-    public async Task Edit_ClaimByMoved_ResolvesOldPrompt_NotifiesAndEmailsEveryOpenHolder()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Edit_ClaimByMoved_ResolvesOldPrompt_NotifiesAndEmailsEveryOpenHolder(bool cancelAfterSave)
     {
         var program = await SeedProgramAsync();
         var open = await SeedGrantAsync(program, beneficiary: SeedUser("Open", language: "es"));
@@ -143,15 +145,24 @@ public sealed class ProgramTests : PreapprovalsTestHarness
         var newDate = Today.PlusMonths(5);
         var actor = SeedUser("Board");
 
-        await NewService().UpdateProgramAsync(program.Id, Save(claimBy: newDate), actor, Ct);
+        using var request = new CancellationTokenSource();
+        if (cancelAfterSave)
+            AuditLog.LogAsync(AuditAction.PreapprovalProgramEdited,
+                    AuditEntityTypes.Program, program.Id, Arg.Any<string>(), actor, null, null)
+                .Returns(async _ => await request.CancelAsync());
+        Email.SendAsync(Arg.Any<Humans.Email.Contracts.EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(call => { call.Arg<CancellationToken>().ThrowIfCancellationRequested(); return Task.CompletedTask; });
 
-        await NotificationResolve.Received(1).ResolveBySourceKeyAsync(NotificationSource.PreapprovalFileBy, PreapprovalService.FileBySourceKey(open.Id), actor, Ct);
+        await NewService().UpdateProgramAsync(program.Id, Save(claimBy: newDate), actor, request.Token);
+
+        request.IsCancellationRequested.Should().Be(cancelAfterSave);
+        await NotificationResolve.Received(1).ResolveBySourceKeyAsync(NotificationSource.PreapprovalFileBy, PreapprovalService.FileBySourceKey(open.Id), actor, CancellationToken.None);
         await NotificationResolve.DidNotReceive().ResolveBySourceKeyAsync(NotificationSource.PreapprovalFileBy, PreapprovalService.FileBySourceKey(claimed.Id), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
         await Notifications.Received(1).SendAsync(NotificationSource.PreapprovalFileBy, NotificationClass.Actionable, NotificationPriority.High,
             Arg.Is<string>(t => t.Contains("2026 Creativity")), Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == open.BeneficiaryUserId),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), PreapprovalService.FileBySourceKey(open.Id), Arg.Any<CancellationToken>());
         await Email.Received(1).SendAsync(Arg.Is<Humans.Email.Contracts.EmailMessage>(m =>
-            m.TemplateName == "preapproval_deadline_changed" && m.Culture == "es"), Arg.Any<CancellationToken>());
+            m.TemplateName == "preapproval_deadline_changed" && m.Culture == "es"), CancellationToken.None);
         (await OpenContext().Programs.SingleAsync(Ct)).ClaimBy.Should().Be(newDate);
     }
 

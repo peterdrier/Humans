@@ -1,5 +1,6 @@
 using Humans.Auth.Contracts;
 using Humans.Auth.Models;
+using Humans.Auth.Services;
 using Humans.Base;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
@@ -20,13 +21,13 @@ namespace Humans.Auth.Controllers;
 /// <remarks>
 /// The class gate is <see cref="PolicyNames.HumanAdminBoardOrAdmin"/>; <c>AddRole</c> and
 /// <c>EndRole</c> add the resource-based <see cref="PolicyNames.RoleAssignmentManage"/> check per
-/// role name. The audit entries are written by <see cref="IRoleAssignmentWrite"/>.
+/// role name. The audit entries are written by <see cref="IRoleAssignmentManagement"/>.
 /// </remarks>
 [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
 internal sealed class RoleAssignmentsController(
     IUserService userService,
     IRoleAssignmentService roleAssignmentService,
-    IRoleAssignmentWrite roleAssignmentWrite,
+    IRoleAssignmentManagement roleAssignmentManagement,
     IClock clock,
     IAuthorizationService authorizationService,
     ILogger<RoleAssignmentsController> logger,
@@ -112,7 +113,7 @@ internal sealed class RoleAssignmentsController(
             return Forbid();
         }
 
-        var result = await roleAssignmentWrite.AssignRoleAsync(
+        var result = await roleAssignmentManagement.AssignRoleAsync(
             id, model.RoleName, currentUser.Id, model.Notes);
 
         if (result.Success)
@@ -150,7 +151,7 @@ internal sealed class RoleAssignmentsController(
             return NotFound();
         }
 
-        var result = await roleAssignmentWrite.EndRoleAsync(
+        var result = await roleAssignmentManagement.EndRoleAsync(
             roleId, currentUser.Id, notes);
 
         if (result.Success)

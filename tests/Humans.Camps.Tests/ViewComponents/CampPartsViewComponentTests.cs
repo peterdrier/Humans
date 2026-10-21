@@ -1,6 +1,4 @@
 using AwesomeAssertions;
-using Humans.Camps.Contracts;
-using Humans.Camps.Models;
 using Humans.Camps.ViewComponents;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -25,7 +23,7 @@ public class CampPartsViewComponentTests
     {
         var model = ModelFrom(
             Contributor(new CampPart(typeof(LatePart), 10), new CampPart(typeof(MiddlePart), 5)),
-            Contributor(new CampPart(typeof(EarlyPart), 0)));
+            Contributor(new CampPart(typeof(EarlyPart))));
 
         model.Parts.Select(p => p.Component).Should().Equal(typeof(EarlyPart), typeof(MiddlePart), typeof(LatePart));
     }

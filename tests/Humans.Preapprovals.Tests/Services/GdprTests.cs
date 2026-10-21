@@ -63,7 +63,7 @@ public sealed class GdprTests : PreapprovalsTestHarness
         await using (var db = OpenContext()) applicationId = (await db.Grants.SingleAsync(Ct)).Id;
         (await service.ApproveAsync(applicationId, null, manager, Ct)).Refusal.Should().BeNull();
 
-        var slices = await ((IUserDataContributor)service).ContributeForUserAsync(manager, Ct);
+        var slices = await (service).ContributeForUserAsync(manager, Ct);
 
         var decisions = slices[1].Data.Should().NotBeNull().And.Subject;
         var text = System.Text.Json.JsonSerializer.Serialize(decisions);
@@ -81,7 +81,7 @@ public sealed class GdprTests : PreapprovalsTestHarness
         var declined = await SeedGrantAsync(program, person, status: GrantStatus.Declined);
         var someoneElse = await SeedGrantAsync(program, status: GrantStatus.Applied);
 
-        await ((IUserDataContributor)NewService()).EraseForUserAsync(person, Ct);
+        await (NewService()).EraseForUserAsync(person, Ct);
 
         await using var db = OpenContext();
         (await db.Grants.Select(g => g.Id).ToListAsync(Ct)).Should().BeEquivalentTo([open.Id, consumed.Id, declined.Id, someoneElse.Id]);
@@ -110,7 +110,7 @@ public sealed class GdprTests : PreapprovalsTestHarness
         var soleApplication = await SeedGrantAsync(programB, from, status: GrantStatus.Applied);
         var actor = SeedUser("Admin");
 
-        await ((IUserMerge)NewService()).ReassignAsync(from, to, actor, Clock.GetCurrentInstant(), Ct);
+        await (NewService()).ReassignAsync(from, to, actor, Clock.GetCurrentInstant(), Ct);
 
         await using var check = OpenContext();
         (await check.Grants.AnyAsync(g => g.BeneficiaryUserId == from || g.DecidedByUserId == from, Ct)).Should().BeFalse();

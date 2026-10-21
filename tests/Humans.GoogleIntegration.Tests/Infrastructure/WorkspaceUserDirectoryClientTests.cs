@@ -27,7 +27,7 @@ public sealed class WorkspaceUserDirectoryClientTests
         using var service = CreateDirectory(handler);
         var client = CreateClient(service);
 
-        var accounts = await client.ListAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+        var accounts = await client.ListAccountsAsync(TestContext.Current.CancellationToken);
 
         var account = accounts.Should().ContainSingle().Subject;
         account.CreationTime.Should().Be(new DateTime(2026, 9, 29, 0, 10, 0, DateTimeKind.Utc));
@@ -43,7 +43,7 @@ public sealed class WorkspaceUserDirectoryClientTests
         using var service = CreateDirectory(handler);
         var client = CreateClient(service);
 
-        var accounts = await client.ListAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+        var accounts = await client.ListAccountsAsync(TestContext.Current.CancellationToken);
 
         var account = accounts.Should().ContainSingle().Subject;
         account.CreationTime.Should().Be(DateTime.MinValue);

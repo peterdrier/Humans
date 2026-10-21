@@ -504,6 +504,53 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         return submissions.Count;
     }
 
+    // ── Account merge ─────────────────────────────────────────────────────
+
+    public async Task ReassignToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+
+        var submissions = await ctx.Events.Where(e => e.SubmitterUserId == sourceUserId).ToListAsync(ct);
+        foreach (var submission in submissions)
+        {
+            submission.SubmitterUserId = targetUserId;
+            submission.LastUpdatedAt = updatedAt;
+        }
+
+        // Replays the source's favourites through the add-if-absent rule (MatchingFavourites):
+        // one the target already covers — same day, or either side whole-event — is a
+        // duplicate and goes; the target's own rows are never changed.
+        var favourites = await ctx.EventFavourites
+            .Where(f => f.UserId == sourceUserId || f.UserId == targetUserId)
+            .ToListAsync(ct);
+        var held = favourites.Where(f => f.UserId == targetUserId).ToList();
+        foreach (var favourite in favourites.Where(f => f.UserId == sourceUserId))
+        {
+            var covered = held.Any(t => t.GuideEventId == favourite.GuideEventId
+                && (t.DayOffset == null || favourite.DayOffset == null || t.DayOffset == favourite.DayOffset));
+            if (covered)
+            {
+                ctx.EventFavourites.Remove(favourite);
+                continue;
+            }
+            favourite.UserId = targetUserId;
+            held.Add(favourite);
+        }
+
+        // One preference row per user: the survivor's wins; the source's moves only when the
+        // target has none, otherwise it stays on the archived account as history.
+        var sourcePreference = await ctx.EventPreferences.FirstOrDefaultAsync(p => p.UserId == sourceUserId, ct);
+        if (sourcePreference is not null
+            && !await ctx.EventPreferences.AnyAsync(p => p.UserId == targetUserId, ct))
+        {
+            sourcePreference.UserId = targetUserId;
+            sourcePreference.UpdatedAt = updatedAt;
+        }
+
+        await ctx.SaveChangesAsync(ct);
+    }
+
     private static string EscapeLikePattern(string value) =>
         value
             .Replace("\\", "\\\\")

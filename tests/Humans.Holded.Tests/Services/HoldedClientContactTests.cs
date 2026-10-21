@@ -277,7 +277,7 @@ public class HoldedClientContactTests
         string? capturedBody = null;
         var client = Make(new StubHandler(req =>
         {
-            capturedBody = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            capturedBody = new StreamReader(req.Content!.ReadAsStream()).ReadToEnd();
             return Respond(HttpStatusCode.OK, """{"id":"new-c"}""");
         }));
 
@@ -295,7 +295,7 @@ public class HoldedClientContactTests
         string? capturedBody = null;
         var client = Make(new StubHandler(req =>
         {
-            capturedBody = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            capturedBody = new StreamReader(req.Content!.ReadAsStream()).ReadToEnd();
             return Respond(HttpStatusCode.OK, """{"id":"new-c"}""");
         }));
 
@@ -330,7 +330,7 @@ public class HoldedClientContactTests
         string? capturedBody = null;
         var client = Make(new StubHandler(req =>
         {
-            capturedBody = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            capturedBody = new StreamReader(req.Content!.ReadAsStream()).ReadToEnd();
             return Respond(HttpStatusCode.OK, """{"id":"c-exist"}""");
         }));
 
@@ -347,7 +347,7 @@ public class HoldedClientContactTests
         string? body = null;
         var handler = new StubHandler(req =>
         {
-            body = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            body = new StreamReader(req.Content!.ReadAsStream()).ReadToEnd();
             return Respond(HttpStatusCode.Created, """{"id":"contact-1"}""");
         });
 
@@ -376,7 +376,7 @@ public class HoldedClientContactTests
         string? body = null;
         var handler = new StubHandler(req =>
         {
-            body = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            body = new StreamReader(req.Content!.ReadAsStream()).ReadToEnd();
             return Respond(HttpStatusCode.OK, """{"id":"contact-1"}""");
         });
 
@@ -410,7 +410,7 @@ public class HoldedClientContactTests
         string? body = null;
         var handler = new StubHandler(req =>
         {
-            body = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            body = new StreamReader(req.Content!.ReadAsStream()).ReadToEnd();
             return Respond(HttpStatusCode.Created, """{"id":"contact-1"}""");
         });
 

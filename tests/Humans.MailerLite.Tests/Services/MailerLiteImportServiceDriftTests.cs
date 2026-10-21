@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.MailerLite.Services.Dtos;
-using Humans.Users.Contracts;
 using NodaTime;
 
 namespace Humans.MailerLite.Tests.Services;

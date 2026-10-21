@@ -1,4 +1,3 @@
-using Humans.Base.Interfaces;
 using Humans.Base.Models;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;

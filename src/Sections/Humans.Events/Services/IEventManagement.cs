@@ -138,6 +138,11 @@ internal interface IEventManagement : IApplicationService, IEventService
     Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct);
     Task EraseForUserAsync(Guid userId, CancellationToken ct);
 
+    // ── Account merge ─────────────────────────────────────────────────────
+    // IUserMerge is carried by CachingEventService (the fold re-points cached
+    // submitter ids); this is how it reaches the inner service.
+    Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct);
+
     // ── Dashboard / Export ────────────────────────────────────────────────
     Task<IReadOnlyList<EventInfo>> GetAllEventsForDashboardAsync(CancellationToken ct = default);
     /// <summary>Builds the approved-event CSV and audits its expanded row count and recipient.</summary>

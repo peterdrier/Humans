@@ -3,7 +3,6 @@ using Humans.Web.Localization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.Primitives;
-using Xunit;
 
 namespace Humans.Web.Tests.Infrastructure;
 
@@ -25,7 +24,7 @@ public class UiCultureOnlyRequestCultureProviderTests
         var result = await provider.DetermineProviderCultureResult(new DefaultHttpContext());
 
         result.Should().NotBeNull();
-        result!.Cultures[0].Value.Should().Be("en");
+        result.Cultures[0].Value.Should().Be("en");
         result.UICultures[0].Value.Should().Be("es");
     }
 
@@ -44,7 +43,7 @@ public class UiCultureOnlyRequestCultureProviderTests
         var result = await provider.DetermineProviderCultureResult(new DefaultHttpContext());
 
         result.Should().NotBeNull();
-        result!.Cultures[0].Value.Should().Be("en");
+        result.Cultures[0].Value.Should().Be("en");
         result.UICultures.Select(c => c.Value).Should().Equal("pt-BR", "es");
     }
 

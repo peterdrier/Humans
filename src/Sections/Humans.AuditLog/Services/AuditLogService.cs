@@ -3,7 +3,6 @@ using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.AuditLog.Data;
 using Humans.AuditLog.Domain;
-using Humans.Base.Enums;
 using Humans.Gdpr.Contracts;
 using NodaTime;
 using Humans.Users.Contracts;

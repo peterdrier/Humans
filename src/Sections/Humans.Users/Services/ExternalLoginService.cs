@@ -1,5 +1,4 @@
 using Humans.Users.Services;
-using Humans.Users.Domain;
 using Humans.Auth.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Identity;
@@ -244,7 +243,6 @@ internal sealed class ExternalLoginService(
         var user = new User
         {
             Id = Guid.NewGuid(),
-            DisplayName = attempt.DisplayName ?? attempt.Email,
             BurnerName = attempt.DisplayName ?? attempt.Email,
             CreatedAt = now,
             LastLoginAt = now

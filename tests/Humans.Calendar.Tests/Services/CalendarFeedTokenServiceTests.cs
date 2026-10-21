@@ -74,7 +74,7 @@ public sealed class CalendarFeedTokenServiceTests : IDisposable
         var got = await _sut.EnsureAsync(_user, Ct);
 
         got.Should().Be(winner, "adopting the existing token beats revoking a live feed");
-        _db.CalendarFeedTokens.Count(t => t.UserId == _user).Should().Be(1);
+        (await _db.CalendarFeedTokens.CountAsync(t => t.UserId == _user, Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
         _audit.ReceivedCalls().Should().BeEmpty();
     }
 
@@ -95,7 +95,7 @@ public sealed class CalendarFeedTokenServiceTests : IDisposable
         audit[4].Should().Be(_user);
         audit[3]!.ToString().Should().NotContain(original.ToString()).And.NotContain(rotated.ToString());
         (await _sut.GetAsync(_user, Ct)).Should().Be(rotated);
-        _db.CalendarFeedTokens.Count(t => t.UserId == _user).Should().Be(1);
+        (await _db.CalendarFeedTokens.CountAsync(t => t.UserId == _user, Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
     [HumansFact]

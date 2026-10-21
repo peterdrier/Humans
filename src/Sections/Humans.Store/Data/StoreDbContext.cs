@@ -10,11 +10,11 @@ namespace Humans.Store.Data;
 /// <c>store_orders</c>, <c>store_order_lines</c>, <c>store_payments</c>,
 /// <c>store_invoices</c> and <c>store_treasury_sync_state</c>, with its own
 /// <c>__EFMigrationsHistory_Store</c> table and migrations under
-/// <c>Migrations/Store/</c>. Same database, same connection — the split
+/// <c>Data/Migrations/</c>. Same database, same connection — the split
 /// is a code-side partition of the EF model.
 /// </summary>
 /// <remarks>
-/// Internal-sealed like every section context (issue #750): repositories
+/// Internal-sealed like every section context (issue nobodies-collective/Humans#750): repositories
 /// are the only consumers. Configurations are applied explicitly (not by
 /// assembly scanning) so this model can never accrete another section's tables.
 /// </remarks>

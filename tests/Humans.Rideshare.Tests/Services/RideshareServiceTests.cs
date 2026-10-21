@@ -38,8 +38,8 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var direction = inbound ? RideshareDirection.Inbound : RideshareDirection.Outbound;
         var settings = await SeedSettingsAsync();
         var driver = SeedUser("Ada");
-        RouteProvider.GeocodeAsync("Lyon", Arg.Any<CancellationToken>()).Returns((GeoPoint?)Lyon);
-        RouteProvider.GeocodeAsync("Bordeaux", Arg.Any<CancellationToken>()).Returns((GeoPoint?)Bordeaux);
+        RouteProvider.GeocodeAsync("Lyon", Arg.Any<CancellationToken>()).Returns(Lyon);
+        RouteProvider.GeocodeAsync("Bordeaux", Arg.Any<CancellationToken>()).Returns(Bordeaux);
         var departure = new LocalDate(Year, 7, 3);
 
         var id = (await NewService().CreateOfferAsync(
@@ -100,7 +100,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     {
         await SeedSettingsAsync();
         RouteProvider.GeocodeAsync("Berlin", Arg.Any<CancellationToken>())
-            .Returns((GeoPoint?)new GeoPoint(52.52, 13.405));
+            .Returns(new GeoPoint(52.52, 13.405));
 
         var id = (await NewService().CreateOfferAsync(
             SeedUser(), Year, NewTripSave(place: "Berlin", latitude: null, longitude: null), Ct)).Id!.Value;
@@ -212,7 +212,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var settings = await SeedSettingsAsync();
         var driver = SeedUser();
         var trip = await SeedTripAsync(driver);
-        RouteProvider.GeocodeAsync("Lyon", Arg.Any<CancellationToken>()).Returns((GeoPoint?)Lyon);
+        RouteProvider.GeocodeAsync("Lyon", Arg.Any<CancellationToken>()).Returns(Lyon);
         var destination = new GeoPoint(settings.DestinationLatitude, settings.DestinationLongitude);
         var service = NewService();
 

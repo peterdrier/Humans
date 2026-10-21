@@ -11,11 +11,8 @@ namespace Humans.Store.Services;
 /// current CLR type names.
 /// </para>
 /// <para>
-/// They were written as <c>nameof(StoreProduct)</c> and friends until the G5 prefix drop
-/// (nobodies-collective/Humans#866) renamed those types, which silently changed what the
-/// code wrote and queried and orphaned every pre-deploy row. Declaring them as literals
-/// is what makes a future rename schema-inert the way the EF <c>ToTable</c> calls already
-/// are. Never regenerate these from <c>nameof</c>.
+/// Declaring them as literals keeps a type rename from silently changing what the code
+/// writes and queries and orphaning existing rows. Never regenerate these from <c>nameof</c>.
 /// </para>
 /// </remarks>
 internal static class AuditEntityTypes

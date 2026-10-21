@@ -1,8 +1,6 @@
 using System.Text.Encodings.Web;
 using AwesomeAssertions;
 using Humans.Base.ViewComponents;
-using Humans.Base.Extensions;
-using Humans.Camps.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -13,7 +11,6 @@ using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using NodaTime;
 using NSubstitute;
 
 namespace Humans.Camps.Tests;

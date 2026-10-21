@@ -63,19 +63,31 @@ internal sealed class GoogleWorkspaceSyncService(
         // opaque HTTP 400. Plus-addressing is only guaranteed equivalent on
         // Gmail (CanonicalizeGmail leaves non-Gmail domains untouched, since
         // granting the base address there could resolve to a different
-        // Google identity than the one recorded on the user).
-        var driveTargetEmail = EmailNormalization.CanonicalizeGmail(userEmail);
+        // Google identity than the one recorded on the user). Only when Drive
+        // refuses the plus address is the base address tried, and kept on the
+        // identity once Drive accepts it (peterdrier/Humans#2037).
+        var driveTargetEmail = DrivePlusAddressFallback.Apply(
+            await workspaceIdentities.GetDriveEmailsAsync(cancellationToken),
+            userId, identityEmail, EmailNormalization.CanonicalizeGmail(userEmail));
 
-        var result = await drivePermissions.CreatePermissionAsync(resource.GoogleId, driveTargetEmail, apiRole, cancellationToken);
+        var (result, grantedEmail) = await DrivePlusAddressFallback.CreateAsync(
+            email => drivePermissions.CreatePermissionAsync(resource.GoogleId, email, apiRole, cancellationToken),
+            driveTargetEmail, userId, identityEmail, workspaceIdentities, cancellationToken);
 
+        var insteadOf = string.Equals(grantedEmail, driveTargetEmail, StringComparison.Ordinal)
+            ? ""
+            : $" in place of {driveTargetEmail}, which Drive refused";
         switch (result.Outcome)
         {
+            // A fallback onto a base address that already had access still changes the
+            // member's Drive address, so it is logged like a grant.
             case DrivePermissionCreateOutcome.Created:
+            case DrivePermissionCreateOutcome.AlreadyExists when insteadOf.Length > 0:
                 await googleSyncLog.LogAsync(
                     GoogleSyncLogAction.AccessGranted, resource.Id,
-                    $"Granted Drive access ({effectiveLevel}) to {userEmail} ({resource.Name})",
+                    $"Granted Drive access ({effectiveLevel}) to {grantedEmail}{insteadOf} ({resource.Name})",
                     nameof(GoogleWorkspaceSyncService),
-                    userEmail, apiRole, syncSource, success: true,
+                    grantedEmail, apiRole, syncSource, success: true,
                     userId: userId, ct: cancellationToken);
                 return new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Accepted, userId, identityEmail);
 

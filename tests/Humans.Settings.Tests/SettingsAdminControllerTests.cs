@@ -201,7 +201,7 @@ public sealed class SettingsAdminControllerTests
 
         result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#event");
         sut.TempData[TempDataKeys.ErrorMessage].Should().Be("Timezone is required.");
-        await _settings.DidNotReceiveWithAnyArgs().SaveEventSettingsAsync(default!, default, default);
+        await _settings.DidNotReceiveWithAnyArgs().SaveEventSettingsAsync(default!, default);
     }
 
     [HumansFact]
@@ -220,7 +220,7 @@ public sealed class SettingsAdminControllerTests
             MakeForm(Guid.NewGuid(), isActive: false), TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<ChallengeResult>();
-        await _settings.DidNotReceiveWithAnyArgs().SaveEventSettingsAsync(default!, default, default);
+        await _settings.DidNotReceiveWithAnyArgs().SaveEventSettingsAsync(default!, default);
     }
 
     [HumansFact]

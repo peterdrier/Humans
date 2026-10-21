@@ -5,7 +5,6 @@ using Humans.Base.Extensions;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Teams.Contracts;

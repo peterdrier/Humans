@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Text;
 using System.Net;
 using AwesomeAssertions;
 using Humans.Campaigns.Services;

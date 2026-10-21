@@ -7,7 +7,6 @@ using Humans.Base;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using NSubstitute;
 using ConsentService = Humans.Consent.Services.ConsentService;

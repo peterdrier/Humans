@@ -3,7 +3,6 @@ using Humans.Calendar.Services.Dtos;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Calendar.Data;
-using Humans.Teams.Contracts;
 using Humans.Calendar.Domain;
 using Ical.Net.DataTypes;
 using Ical.Net.Evaluation;

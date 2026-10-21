@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Resources;
-using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;

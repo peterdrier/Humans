@@ -398,7 +398,7 @@ public sealed class HoldedAdminOverviewTests
 
         var counterparty = statement!.Lines.Should().ContainSingle().Subject.Counterparty;
         counterparty.Should().NotBeNull();
-        counterparty!.AccountNum.Should().Be(40000010);
+        counterparty.AccountNum.Should().Be(40000010);
         counterparty.AccountName.Should().Be("acct 40000010");
         counterparty.TotalOpposingLines.Should().Be(1);
     }
@@ -423,7 +423,7 @@ public sealed class HoldedAdminOverviewTests
 
         var counterparty = statement!.Lines.Should().ContainSingle().Subject.Counterparty;
         counterparty.Should().NotBeNull();
-        counterparty!.AccountNum.Should().Be(62900300);
+        counterparty.AccountNum.Should().Be(62900300);
         counterparty.TotalOpposingLines.Should().Be(2);
     }
 
@@ -456,7 +456,7 @@ public sealed class HoldedAdminOverviewTests
         var entry = await _service.GetEntryAsync(1852, ct);
 
         entry.Should().NotBeNull();
-        entry!.EntryNumber.Should().Be(1852);
+        entry.EntryNumber.Should().Be(1852);
         entry.Lines.Should().HaveCount(2);
         entry.Lines[0].AccountNum.Should().Be(57200001);
         entry.Lines[0].AccountName.Should().Be("acct 57200001");

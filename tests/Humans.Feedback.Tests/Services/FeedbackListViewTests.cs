@@ -1,10 +1,8 @@
 using System.Text.Encodings.Web;
 using AwesomeAssertions;
 using Humans.Base.ViewComponents;
-using Humans.Base.Extensions;
 using Humans.Feedback.Contracts;
 using Humans.Feedback.Models;
-using Humans.Feedback.Domain;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

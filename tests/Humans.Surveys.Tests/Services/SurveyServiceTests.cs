@@ -3298,6 +3298,67 @@ public class SurveyServiceTests
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(SurveyQuestionType.ShortText, false, 4000)]
+    [InlineData(SurveyQuestionType.ShortText, false, 4001)]
+    [InlineData(SurveyQuestionType.ShortText, true, 4000)]
+    [InlineData(SurveyQuestionType.ShortText, true, 4001)]
+    [InlineData(SurveyQuestionType.LongText, false, 4000)]
+    [InlineData(SurveyQuestionType.LongText, false, 4001)]
+    [InlineData(SurveyQuestionType.LongText, true, 4000)]
+    [InlineData(SurveyQuestionType.LongText, true, 4001)]
+    public async Task AdvanceWizardAsync_bounds_text_before_autosave_and_preserves_input(
+        SurveyQuestionType type, bool supplementaryCharacters, int characterCount)
+    {
+        var survey = SurveyForWizard(out var questionId, out _);
+        survey.Questions.Single(q => q.Id == questionId).Type = type;
+        var state = WizardState(survey.Id);
+        state.Anonymity = ResponseAnonymity.Identified;
+        state.DraftResponseId = Guid.NewGuid();
+        var text = string.Concat(Enumerable.Repeat(supplementaryCharacters ? "😀" : "x", characterCount));
+
+        var result = await CreateService().AdvanceWizardAsync(
+            state, 1, back: false, [TextAns(questionId, text)], ct: TestContext.Current.CancellationToken);
+
+        state.Answers[questionId.ToString()].TextValue.Should().Be(text);
+        if (characterCount > 4000)
+        {
+            result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
+            result.InvalidAnswers.Should().ContainSingle().Which.Should().Be(questionId);
+            state.CurrentPage.Should().Be(1);
+            await _repo.DidNotReceive().SaveDraftAnswersAsync(
+                Arg.Any<Guid>(), Arg.Any<IReadOnlyList<SurveyAnswer>>(),
+                Arg.Any<SurveyInputMethod>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            result.Outcome.Should().Be(SurveyWizardOutcome.Navigated);
+            await _repo.Received(1).SaveDraftAnswersAsync(
+                state.DraftResponseId.Value,
+                Arg.Is<IReadOnlyList<SurveyAnswer>>(answers => answers.Single().TextValue == text),
+                state.InputMethod, state.Culture, Arg.Any<CancellationToken>());
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(SurveyQuestionType.ShortText)]
+    [InlineData(SurveyQuestionType.LongText)]
+    public async Task SubmitResponseAsync_rejects_overlong_text_before_persistence(SurveyQuestionType type)
+    {
+        var survey = SurveyForWizard(out var questionId, out _);
+        survey.Questions.Single(q => q.Id == questionId).Type = type;
+        var submission = new SurveySubmission(
+            survey.Id, null, null, null,
+            ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, "en",
+            [TextAns(questionId, new string('x', 4001))]);
+
+        var act = async () => await CreateService().SubmitResponseAsync(submission, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Survey answers are invalid.");
+        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
+            Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task AdvanceWizardAsync_reports_invalid_ranked_answer_and_preserves_it()
     {

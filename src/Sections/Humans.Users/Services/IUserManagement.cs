@@ -13,6 +13,15 @@ namespace Humans.Users.Services;
 internal interface IUserManagement : IUserService, IUserWrite, IUserMerge
 {
     /// <summary>
+    /// Suspends or unsuspends: writes <c>users.State</c> only (unsuspending re-classifies from the
+    /// remaining signals). <paramref name="adminSuspension"/> picks <see cref="UserState.AdminSuspended"/>
+    /// over the consent <see cref="UserState.Suspended"/>. <c>NotFound</c> without a profile. Audit,
+    /// notification and the reason belong to the caller.
+    /// </summary>
+    Task<OnboardingResult> SetSuspensionAsync(
+        Guid userId, bool suspended, bool adminSuspension = false, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the user ids of every account with <c>DeletionScheduledFor</c>
     /// in the past (or equal to <paramref name="now"/>) and with
     /// <c>DeletionEligibleAfter</c> either null or already elapsed. Used by

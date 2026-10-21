@@ -17,7 +17,7 @@ namespace Humans.Integration.Tests.Controllers;
 
 public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
-    [HumansFact(Timeout = 30000)]
+    [HumansFact]
     public async Task Webhook_with_invalid_signature_returns_400()
     {
         var payload = BuildCheckoutSessionCompletedJson(
@@ -31,7 +31,7 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
         resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
-    [HumansFact(Timeout = 30000)]
+    [HumansFact]
     public async Task Webhook_with_unknown_event_type_is_a_200_no_op()
     {
         var payload = BuildEventJson(eventType: "customer.subscription.created", dataObjectJson: "{}");

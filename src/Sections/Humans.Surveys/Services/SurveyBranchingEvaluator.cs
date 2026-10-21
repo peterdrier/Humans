@@ -1,4 +1,3 @@
-using Humans.Surveys.Contracts;
 using Humans.Surveys.Domain;
 
 namespace Humans.Surveys.Services;

@@ -48,7 +48,7 @@ public sealed class EmailOutboxServiceTests
                 return "recipient@example.org";
             });
         var action = discard ? AuditAction.EmailOutboxDiscarded : AuditAction.EmailOutboxRetried;
-        _audit.LogAsync(action, nameof(EmailOutboxMessage), id, Arg.Any<string>(), _actorId, null, null)
+        _audit.LogAsync(action, nameof(EmailOutboxMessage), id, Arg.Any<string>(), _actorId)
             .Returns(_ => { committed.Should().BeTrue(); return Task.CompletedTask; });
 
         if (discard)
@@ -58,7 +58,7 @@ public sealed class EmailOutboxServiceTests
 
         await _audit.Received(1).LogAsync(action, nameof(EmailOutboxMessage), id,
             Arg.Is<string>(description => !description.Contains("recipient@example.org", StringComparison.Ordinal)),
-            _actorId, null, null);
+            _actorId);
     }
 
     [HumansTheory]
@@ -70,13 +70,13 @@ public sealed class EmailOutboxServiceTests
         _settingsStore.SetValueAsync(SettingKeys.IsEmailSendingPaused, paused ? "true" : "false",
             Arg.Any<CancellationToken>()).Returns(_ => { committed = true; return Task.CompletedTask; });
         var action = paused ? AuditAction.EmailSendingPaused : AuditAction.EmailSendingResumed;
-        _audit.LogAsync(action, "EmailSending", Guid.Empty, Arg.Any<string>(), _actorId, null, null)
+        _audit.LogAsync(action, "EmailSending", Guid.Empty, Arg.Any<string>(), _actorId)
             .Returns(_ => { committed.Should().BeTrue(); return Task.CompletedTask; });
 
         await _service.SetEmailPausedAsync(paused, _actorId, Xunit.TestContext.Current.CancellationToken);
 
         await _audit.Received(1).LogAsync(action, "EmailSending", Guid.Empty,
-            Arg.Any<string>(), _actorId, null, null);
+            Arg.Any<string>(), _actorId);
     }
 
     [HumansTheory]

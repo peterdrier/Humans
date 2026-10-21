@@ -9,6 +9,11 @@ namespace Humans.Auth.Services;
 /// </summary>
 internal interface IRoleAssignmentManagement : IRoleAssignmentService, IRoleAssignmentWrite
 {
+    Task<RoleAssignmentResult> EndRoleAsync(
+        Guid assignmentId, Guid enderId,
+        string? notes,
+        CancellationToken ct = default);
+
     /// <summary>
     /// Returns the count of currently active role assignments grouped by role
     /// name. Used by the metrics snapshot refresh so the metrics service does

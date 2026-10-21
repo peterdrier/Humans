@@ -80,7 +80,7 @@ administrative recognition, and every decision is a human's.
 | Status | WorkgroupStatus | See Lifecycle |
 | DormantReason | WorkgroupDormantReason? | Null unless Dormant |
 | DriveFolderId | string(100)? | Null until Active |
-| DiscordChannelUrl | string(500)? | |
+| DiscordChannelUrl | string(500)? | Optional absolute HTTP/HTTPS link. Applications, registration on behalf and edits reject other schemes before writes; projections omit unsafe legacy values without changing stored data. |
 | IsSensitive | bool? | Roster, documents, meetings and history for members and Board/Admin only; null reads as false (nullable so the column carries no physical default) |
 | Reasons | string(4000)? | Refusal, withdrawal, or Quiet-close reasons |
 | AppliedByUserId | Guid? | Bare cross-section reference; nulled on erasure |

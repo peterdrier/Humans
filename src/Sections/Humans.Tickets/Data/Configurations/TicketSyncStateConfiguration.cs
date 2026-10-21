@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Tickets.Domain;
 
-namespace Humans.Tickets.Data;
+namespace Humans.Tickets.Data.Configurations;
 
 internal sealed class TicketSyncStateConfiguration : IEntityTypeConfiguration<TicketSyncState>
 {

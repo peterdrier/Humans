@@ -83,7 +83,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
             vote.Id, adminId, Xunit.TestContext.Current.CancellationToken);
 
         tally.Should().NotBeNull();
-        tally!.Official.YesNo.Should().Be(new YesNoTally(1, 1, 0));
+        tally.Official.YesNo.Should().Be(new YesNoTally(1, 1, 0));
         recorded.Should().BeTrue();
 
         var peeks = await _fx.Db.AssemblyVotePeeks
@@ -154,7 +154,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
             vote.Id, Guid.NewGuid(), viewerIsBoardOrAdmin: false, Xunit.TestContext.Current.CancellationToken);
 
         results.Should().NotBeNull();
-        results!.Result.Official.Verdict.Should().Be(AssemblyVoteVerdict.Passed);
+        results.Result.Official.Verdict.Should().Be(AssemblyVoteVerdict.Passed);
         results.Result.Official.YesNo.Should().Be(new YesNoTally(2, 0, 0));
         results.Result.Indicative.Should().NotBeNull();
         results.Result.Indicative!.Verdict.Should().Be(AssemblyVoteVerdict.Failed);
@@ -188,7 +188,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
             vote.Id, actorId, Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle();
-        rows![0].Choice.Should().Be(AssemblyBallotChoice.Yes);
+        rows[0].Choice.Should().Be(AssemblyBallotChoice.Yes);
         await _fx.Audit.Received(1).LogAsync(
             AuditAction.AssemblyBallotsViewed, Arg.Any<string>(), vote.Id, Arg.Any<string>(), actorId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -198,7 +198,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
     public async Task GetVotesForMemberAsync_NeverListsADraft()
     {
         await _fx.AddVoteAsync(AssemblyVoteStatus.Draft);
-        await _fx.AddVoteAsync(AssemblyVoteStatus.Open);
+        await _fx.AddVoteAsync();
 
         var list = await _fx.Service.GetVotesForMemberAsync(
             Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
@@ -273,7 +273,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
             .ResolveBySourceKeyAsync(
                 Arg.Any<NotificationSource>(), Arg.Any<string>(), Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>())
-            .Returns<Task>(_ => throw new InvalidOperationException("notifications are down"));
+            .Returns(_ => throw new InvalidOperationException("notifications are down"));
         var adminId = Guid.NewGuid();
 
         await _fx.Service.StopAsync(vote.Id, adminId, Xunit.TestContext.Current.CancellationToken);
@@ -291,7 +291,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
             .ResolveBySourceKeyAsync(
                 Arg.Any<NotificationSource>(), Arg.Any<string>(), Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>())
-            .Returns<Task>(_ => throw new InvalidOperationException("notifications are down"));
+            .Returns(_ => throw new InvalidOperationException("notifications are down"));
         var adminId = Guid.NewGuid();
 
         var result = await _fx.Service.CancelAsync(

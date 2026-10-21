@@ -106,10 +106,10 @@ internal sealed class BackdoorApiKeyRepository(IDbContextFactory<BackdoorDbConte
 
         await ctx.ApiKeys
             .Where(k => k.CreatedByUserId == fromUserId)
-            .ExecuteUpdateAsync(s => s.SetProperty(k => k.CreatedByUserId, (Guid?)toUserId), ct);
+            .ExecuteUpdateAsync(s => s.SetProperty(k => k.CreatedByUserId, toUserId), ct);
 
         await ctx.ApiKeys
             .Where(k => k.RevokedByUserId == fromUserId)
-            .ExecuteUpdateAsync(s => s.SetProperty(k => k.RevokedByUserId, (Guid?)toUserId), ct);
+            .ExecuteUpdateAsync(s => s.SetProperty(k => k.RevokedByUserId, toUserId), ct);
     }
 }
