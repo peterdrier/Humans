@@ -50,7 +50,6 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
             Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
             new Lazy<ICityPlanningWrite>(() => Substitute.For<ICityPlanningWrite>()),
-            Substitute.For<IEarlyEntryInvalidator>(),
             Substitute.For<ICampInfoInvalidator>(),
             _userService,
             _tickets,

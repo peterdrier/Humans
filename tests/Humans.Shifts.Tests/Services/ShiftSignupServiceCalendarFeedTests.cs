@@ -47,7 +47,7 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
             Clock,
-            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         _service = new ShiftSignupService(
             repo,
@@ -58,7 +58,6 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
             Substitute.For<INotificationEmitter>(),
             AdminAuthorization,
             Substitute.For<IShiftViewInvalidator>(),
-            Substitute.For<IEarlyEntryInvalidator>(),
             serviceProvider,
             Clock,
             NullLogger<ShiftSignupService>.Instance,

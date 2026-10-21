@@ -37,7 +37,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
     private readonly Lazy<ICampRoleService> _campRoleService;
     // Lazy: CityPlanningService injects ICampService, closing the cycle.
     private readonly Lazy<ICityPlanningWrite> _cityPlanningService;
-    private readonly IEarlyEntryInvalidator _earlyEntryInvalidator;
     private readonly ICampInfoInvalidator _campInfoInvalidator;
     private readonly IUserService _userService;
     private readonly ITicketService _tickets;
@@ -62,7 +61,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
         ICampLeadJoinRequestsBadgeCacheInvalidator leadBadgeInvalidator,
         Lazy<ICampRoleService> campRoleService,
         Lazy<ICityPlanningWrite> cityPlanningService,
-        IEarlyEntryInvalidator earlyEntryInvalidator,
         ICampInfoInvalidator campInfoInvalidator,
         IUserService userService,
         ITicketService tickets,
@@ -78,7 +76,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
         _leadBadgeInvalidator = leadBadgeInvalidator;
         _campRoleService = campRoleService;
         _cityPlanningService = cityPlanningService;
-        _earlyEntryInvalidator = earlyEntryInvalidator;
         _campInfoInvalidator = campInfoInvalidator;
         _userService = userService;
         _tickets = tickets;
@@ -912,38 +909,30 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
         var seasonIds = camp.Seasons.Select(s => s.Id).ToList();
         IReadOnlyList<string>? deletedImagePaths;
 
-        try
+        using (var scope = new TransactionScope(
+            TransactionScopeOption.Required,
+            new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+            TransactionScopeAsyncFlowOption.Enabled))
         {
-            using (var scope = new TransactionScope(
-                TransactionScopeOption.Required,
-                new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-                TransactionScopeAsyncFlowOption.Enabled))
+            if (seasonIds.Count > 0)
             {
-                if (seasonIds.Count > 0)
+                var removed = await _cityPlanningService.Value
+                    .DeleteCampPolygonsForSeasonsAsync(seasonIds, cancellationToken);
+                if (removed > 0)
                 {
-                    var removed = await _cityPlanningService.Value
-                        .DeleteCampPolygonsForSeasonsAsync(seasonIds, cancellationToken);
-                    if (removed > 0)
-                    {
-                        _logger.LogInformation(
-                            "Deleted {Rows} city-planning polygon/history rows for {Seasons} seasons of camp {CampId}",
-                            removed, seasonIds.Count, campId);
-                    }
+                    _logger.LogInformation(
+                        "Deleted {Rows} city-planning polygon/history rows for {Seasons} seasons of camp {CampId}",
+                        removed, seasonIds.Count, campId);
                 }
-
-                deletedImagePaths = await _repo.DeleteCampAsync(campId, cancellationToken);
-                if (deletedImagePaths is null)
-                {
-                    throw new InvalidOperationException("Camp not found.");
-                }
-
-                scope.Complete();
             }
-        }
-        finally
-        {
-            // Dispose the ambient transaction before evicting, including uncertain commit failures.
-            _earlyEntryInvalidator.InvalidateAll();
+
+            deletedImagePaths = await _repo.DeleteCampAsync(campId, cancellationToken);
+            if (deletedImagePaths is null)
+            {
+                throw new InvalidOperationException("Camp not found.");
+            }
+
+            scope.Complete();
         }
 
         await _auditLog.LogAsync(
@@ -1328,7 +1317,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
         member.RemovedByUserId = actorUserId;
         member.HasEarlyEntry = retainConsumedEeGrant;
         await _repo.SaveMemberAsync(member, cancellationToken);
-        _earlyEntryInvalidator.InvalidateUser(member.UserId);
 
         await _auditLog.LogAsync(
             auditAction, nameof(CampMember), member.Id,
@@ -1648,10 +1636,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
         // Lead moves change Barrio Leads team membership for both users.
         await _systemTeamSync.SyncMembershipForUserAsync(sourceUserId, SystemTeamType.BarrioLeads, ct);
         await _systemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.BarrioLeads, ct);
-        // The fold can move HasEarlyEntry CampMember rows between the two users, so evict
-        // both per-user early-entry caches (mirrors the Teams membership fold).
-        _earlyEntryInvalidator.InvalidateUser(sourceUserId);
-        _earlyEntryInvalidator.InvalidateUser(targetUserId);
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
@@ -1707,7 +1691,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
         // Capture before deletion, which can remove this user's own lead assignment.
         foreach (var leadUserId in leadUserIds.Append(userId).Distinct())
             _leadBadgeInvalidator.Invalidate(leadUserId);
-        _earlyEntryInvalidator.InvalidateUser(userId);
 
         // The cached CampInfo projection carries the rosters this just emptied, and the
         // contributor is the inner service, so nothing else drops them. InvalidateAll
@@ -1767,7 +1750,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
 
         member.HasEarlyEntry = granted;
         await _repo.SaveMemberAsync(member, cancellationToken);
-        _earlyEntryInvalidator.InvalidateUser(member.UserId);
 
         await _auditLog.LogAsync(
             granted ? AuditAction.CampEarlyEntryGranted : AuditAction.CampEarlyEntryRevoked,

@@ -301,7 +301,6 @@ graph LR
     Team --> NotifEmitter
     Team --> ShiftMgmt
     Team --> AdminAuth
-    Team --> EarlyEntry
     Team --> GIdentity
     TPage --> TRes
     TPage --> ShiftMgmt
@@ -311,7 +310,6 @@ graph LR
     %% Camps
     Camp --> Audit
     Camp --> NotifEmitter
-    Camp --> EarlyEntry
     Camp --> User
     Camp --> SettingsSvc
     Camp --> TicketQ
@@ -348,11 +346,9 @@ graph LR
     %% Shifts
     ShiftMgmt --> Audit
     ShiftMgmt --> AdminAuth
-    ShiftMgmt --> EarlyEntry
     ShiftSign --> Audit
     ShiftSign --> NotifEmitter
     ShiftSign --> AdminAuth
-    ShiftSign --> EarlyEntry
     ShiftSign --> User
     VolTrack --> User
     VolTrack --> TicketQ

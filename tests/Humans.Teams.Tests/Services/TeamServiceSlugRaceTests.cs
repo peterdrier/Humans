@@ -112,7 +112,6 @@ public class TeamServiceSlugRaceTests
             Substitute.For<INotificationMeterCacheInvalidator>(),
             Substitute.For<IShiftAuthorizationInvalidator>(),
             Substitute.For<IAdminAuthorizationService>(),
-            Substitute.For<IEarlyEntryInvalidator>(),
             new ServiceLocatorBuilder()
                 .With<IGoogleSyncOutboxService>()
                 .With<IGoogleIntegrationService>()
