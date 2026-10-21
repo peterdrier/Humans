@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 13
-inbox:
-  - added: 2026-10-21
-    id: USERS-12
-    what: "CommunicationPreferenceRepository.ReassignToUserAsync discards the source's known SubscribedAt when both accounts have a preference for the same category and the survivor's timestamp is null. The conflict merge copies opt state but not subscription provenance before deleting the source row; GDPR export then loses the known first-subscription date, and MailerLite's prior-consent cutoff can no longer recognize it. Fill only a missing target SubscribedAt from the source, preserving any existing target timestamp and the current opt-state precedence. Found while tracing account-merge preference ownership."
-    review: light
+inbox: []

@@ -517,6 +517,8 @@ Per-user, per-category email opt-in/opt-out preferences. One row per user per ca
 | UpdateSource | string (100) | "Profile" (signed-in profile UI), "Guest" (signed-in Guest dashboard, profileless), "MagicLink" (anonymous unsubscribe-token endpoints), "OneClick" (RFC 8058 List-Unsubscribe), "Default" (historical lazy seed), "DataMigration" |
 | SubscribedAt | Instant? | Stamped by `CommunicationPreferenceService` on the first opt-in transition or first sync-driven write; never overwritten while non-null |
 
+Account-merge collisions retain a known survivor `SubscribedAt`; when it is null, the source's known timestamp is preserved before its row is removed. This provenance is independent of the most-recent-write rule for email/inbox preferences, and replaying the merge is a no-op.
+
 **Unique constraint:** `(UserId, Category)`. **Indexes:** `UserId`.
 
 Reads do not create preference rows. Missing categories use their natural defaults: opted-in (`OptedOut = false`) except Marketing, which defaults to opted-out. Explicit updates create rows as needed; historical `Default` rows remain readable. System and CampaignCodes are always on (cannot be opted out).

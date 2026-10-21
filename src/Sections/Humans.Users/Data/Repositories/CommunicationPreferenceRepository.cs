@@ -152,6 +152,7 @@ internal sealed class CommunicationPreferenceRepository(IDbContextFactory<UsersD
                     tgt.InboxEnabled = src.InboxEnabled;
                     tgt.UpdateSource = src.UpdateSource;
                 }
+                tgt.SubscribedAt ??= src.SubscribedAt;
                 tgt.UpdatedAt = updatedAt;
                 ctx.CommunicationPreferences.Remove(src);
             }

@@ -50,6 +50,48 @@ public sealed class CommunicationPreferenceSubscribedAtTests : ServiceTestHarnes
         marketing.SubscribedAt.Should().NotBeNull();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task ReassignAsync_PreservesKnownSubscriptionWithoutChangingPreferencePrecedence(
+        bool targetHasTimestamp, bool sourceIsNewer)
+    {
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        var now = Clock.GetCurrentInstant();
+        var sourceSubscribedAt = now - Duration.FromDays(30);
+        Instant? targetSubscribedAt = targetHasTimestamp ? now - Duration.FromDays(15) : null;
+        var targetRowId = Guid.NewGuid();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await _repository.AddAsync(new CommunicationPreference
+        {
+            Id = Guid.NewGuid(), UserId = source, Category = MessageCategory.Marketing,
+            OptedOut = true, InboxEnabled = false, UpdateSource = "Guest",
+            UpdatedAt = now - Duration.FromDays(sourceIsNewer ? 1 : 3),
+            SubscribedAt = sourceSubscribedAt,
+        }, ct);
+        await _repository.AddAsync(new CommunicationPreference
+        {
+            Id = targetRowId, UserId = target, Category = MessageCategory.Marketing,
+            OptedOut = false, InboxEnabled = true, UpdateSource = "Profile",
+            UpdatedAt = now - Duration.FromDays(2), SubscribedAt = targetSubscribedAt,
+        }, ct);
+
+        await _service.ReassignAsync(source, target, Guid.NewGuid(), now, ct);
+        await _service.ReassignAsync(source, target, Guid.NewGuid(), now, ct);
+
+        var preference = (await _repository.GetByUserIdReadOnlyAsync(target, ct)).Should().ContainSingle().Subject;
+        preference.Id.Should().Be(targetRowId);
+        preference.SubscribedAt.Should().Be(targetSubscribedAt ?? sourceSubscribedAt);
+        preference.OptedOut.Should().Be(sourceIsNewer);
+        preference.InboxEnabled.Should().Be(!sourceIsNewer);
+        preference.UpdateSource.Should().Be(sourceIsNewer ? "Guest" : "Profile");
+        preference.UpdatedAt.Should().Be(now);
+        (await _repository.GetByUserIdReadOnlyAsync(source, ct)).Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task UpdatePreferenceAsync_DoesNotOverwriteSubscribedAt_OnReOptIn()
     {
