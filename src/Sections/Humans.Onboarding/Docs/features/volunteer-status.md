@@ -249,7 +249,7 @@ System sync removes user from team
 
 ### Restoration Flow
 When a user signs the missing documents:
-1. `ConsentController.Submit` writes the `ConsentRecord` (it no longer triggers a per-user team sync)
+1. `ConsentController.Submit` writes the `ConsentRecord` (it triggers no per-user team sync)
 2. `SystemTeamSyncJob` re-adds the user to the Volunteers team on its next run (name + consents)
 3. Google Drive permissions and Group memberships are restored
 4. App access is unaffected throughout — it follows `UserState == Active`, not Volunteers membership

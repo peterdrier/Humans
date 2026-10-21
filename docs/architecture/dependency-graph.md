@@ -276,7 +276,6 @@ graph LR
     Merge --> Audit
     Merge --> Team
     Merge --> Notif
-    Merge --> Consent
     DupAcct --> Team
     DupAcct --> Role
     DupAcct --> Audit
@@ -492,6 +491,7 @@ graph LR
     Onboard --> ConsentReview
     Onboard --> HumanLifecycle
     Onboard --> Audit
+    Onboard --> AcctDel
     OnboardWidget --> User
     OnboardWidget --> ShiftView
     OnboardWidget --> MembershipCalc

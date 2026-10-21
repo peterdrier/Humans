@@ -42,8 +42,7 @@
   lifecycle** — grace period, ticket hold, audit entries, confirmation email,
   merge-chain walk and cache invalidation — stays under Users
   (`AccountDeletionService`, driven by `ProcessAccountDeletionsJob`); its own
-  doc owns the detail. The loop moved to Gdpr, its Users-only dependencies did
-  not.
+  doc owns the detail.
 
 ## Routing
 
@@ -56,7 +55,7 @@ email links `/Gdpr/Deletion`.
 | `GET /Gdpr/DownloadData` | `MemberDataController.DownloadData` | For a human who has completed onboarding; own data only |
 | `POST /Gdpr/RequestDeletion` | `MemberDataController.RequestDeletion` | Starts the deletion countdown via `IAccountDeletionService.RequestDeletionAsync`; redirects back to `/Consent/MyData` |
 | `GET /Gdpr/Guest/DownloadData` | `GuestDataController` | For an authenticated account with no profile yet |
-| `POST /Gdpr/Guest/RequestDeletion` | `GuestDataController.RequestDeletion` | Profileless deletion request via `IAccountDeletionService.RequestDeletionAsync` (ticket hold shown in the flash); redirects to `/Guest`. Moved from Users' `GuestAccountController` in Users decomposition commit 14 (was `/Guest/RequestDeletion`) |
+| `POST /Gdpr/Guest/RequestDeletion` | `GuestDataController.RequestDeletion` | Profileless deletion request via `IAccountDeletionService.RequestDeletionAsync` (ticket hold shown in the flash); redirects to `/Guest` |
 | `POST /Gdpr/Guest/CancelDeletion` | `GuestDataController.CancelDeletion` | `IAccountDeletionService.CancelDeletionAsync`; redirects to `/Guest` |
 | `GET /Gdpr/Status` | `UserController.Status` | Account-status wall for Suspended/AdminSuspended/Rejected/Deleted/Merged |
 | `GET /Gdpr/Deletion` | `UserController.Deletion` | Pending-deletion landing; redirects home when nothing is pending |

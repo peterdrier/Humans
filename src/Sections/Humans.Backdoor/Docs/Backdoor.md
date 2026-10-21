@@ -5,7 +5,7 @@
   src/Sections/Humans.Agent/Contracts/IAgentTranscriptRead.cs
   src/Sections/Humans.Feedback/Contracts/IFeedbackTriage.cs
   src/Sections/Humans.Issues/Contracts/IIssueTriage.cs
-  src/Sections/Humans.Notifications/Contracts/INotificationInboxRead.cs
+  src/Sections/Humans.Notifications.Contracts/INotificationInboxRead.cs
   src/Sections/Humans.Surveys/Contracts/ISurveyAnalysisRead.cs
   src/Sections/Humans.Store/Contracts/IStoreAccountingRead.cs
   src/Sections/Humans.Expenses/Contracts/IExpenseReportService.cs
@@ -130,7 +130,7 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - **Expenses**: reads reports, lines, attachments and the review queue via `IExpenseReportService` (`Humans.Expenses/Contracts`, not the contracts leaf: a section reference, since `IExpenseReportService` itself lives there, not in a separate `.Contracts` project). Gated per route (see Invariants) — peterdrier/Humans#1838.
 - **Finance**: reads creditor accounts, ledgers, the category map and SEPA transfers via `IHoldedFinanceService` (`Humans.Finance.Contracts`). `FinanceAdminOrAdmin`-gated — peterdrier/Humans#1838.
 - **Budget**: `IBudgetService.GetYearByIdAsync` for the budget-year label (e.g. "2026") an expense report is booked to, for the year filter/field — peterdrier/Humans#1838.
-- **Notifications**: reads the key owner's unread inbox and meters via `INotificationInboxRead` (`Humans.Notifications/Contracts`, not the contracts leaf: Backdoor is its only consumer). Rows are the owner's own; meters follow the owner's roles.
+- **Notifications**: reads the key owner's unread inbox and meters via `INotificationInboxRead` (the `Humans.Notifications.Contracts` leaf, so Backdoor never references the Notifications section project). Rows are the owner's own; meters follow the owner's roles.
 - **Auth**: `IRoleAssignmentService.GetActiveForUserAsync` supplies one snapshot for both Admin/Board key eligibility and the role claims installed by `BackdoorApiKeyAuthFilter`; the filter performs no second role lookup. `GetActiveUserIdsInRoleAsync` supplies the admin page's recipient list, narrowed to active accounts so the dropdown never offers someone the service would refuse. Each listed key's usable/refused badge reads `BackdoorKeyRow.IsOwnerEligible`, which `ListAsync` computes with the same eligibility test as authentication.
 - **AuditLog**: `IAuditLogService.LogAsync` for the key lifecycle.
 - **Gdpr**: `IUserDataContributor` — `backdoor_api_keys` is user-keyed, so the section owes an Article 15 slice (`BackdoorApiKeyService.BackdoorApiKeys`, hash excluded) and an Article 17 erasure.

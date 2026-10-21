@@ -1,7 +1,7 @@
 namespace Humans.Onboarding.Contracts;
 
 /// <summary>
-/// The two onboarding-funnel writes called from outside the section. Carved from the
+/// The onboarding-funnel entry points called from outside the section. Carved from the
 /// call sites rather than from <c>IOnboardingService</c>, which has eight members: the
 /// review queue, its detail view, the clear/flag pair and the widget's next-document
 /// resolver have no consumer outside Onboarding and stayed internal along with their DTOs.
@@ -9,22 +9,26 @@ namespace Humans.Onboarding.Contracts;
 public interface IOnboardingIntake
 {
     /// <summary>
-    /// Threshold check fired by callers as a peer call after a profile-save or
-    /// consent-grant. If the user has a profile, is not approved or rejected, has no
-    /// existing consent-check status, and has all required consents for the Volunteers
-    /// team, sets the Consent review's status to <c>Pending</c>. Returns true if the
-    /// status was set. Raises no notification — the coordinator finds the queue through the
-    /// admin sidebar's Review pill.
+    /// The member's own profile was saved (profile page or the widget's names step).
+    /// Onboarding applies every consequence: the consent-check threshold (the Consent
+    /// review goes <c>Pending</c> once a not-yet-reviewed member holds every required
+    /// Volunteers consent), and, while the member is not yet approved, cancelling a
+    /// pending account-deletion request (finishing setup is a change of mind).
     ///
     /// <para>
-    /// Leaf services (<c>ProfileService</c>, <c>ConsentService</c>) deliberately do not
-    /// call this — the controller orchestrates the peer call so the director-to-leaf
-    /// arrow stays one-way. Callers: <c>ProfileController.Edit</c>,
-    /// <c>ConsentController.Submit</c> and the section's own widget controller.
+    /// Leaf services (<c>ProfileEditorService</c>, <c>ConsentService</c>) deliberately do
+    /// not call this, so the director-to-leaf arrow stays one-way: the controller that
+    /// made the write reports it, and Onboarding decides what follows.
     /// </para>
     /// </summary>
-    Task<bool> SetConsentCheckPendingIfEligibleAsync(
-        Guid userId, CancellationToken ct = default);
+    Task ProfileSavedAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// The member signed a legal document (Consent page or the widget's consents step).
+    /// Onboarding applies the consent-check threshold described on
+    /// <see cref="ProfileSavedAsync"/>.
+    /// </summary>
+    Task ConsentSignedAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Records the rejection on the profile, de-provisions the approval-gated system

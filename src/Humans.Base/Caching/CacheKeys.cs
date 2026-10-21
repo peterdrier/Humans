@@ -3,14 +3,11 @@ namespace Humans.Base.Caching;
 public static class CacheKeys
 {
     public static string NotificationBadgeCounts(Guid userId) => $"NotificationBadge:{userId:N}";
-    public const string NotificationMeters = "NotificationMeters";
     public const string HoldedContacts = "HoldedContacts";
     public const string SepaStuckBankLines = "SepaStuckBankLines";
 
     public static string CampContactRateLimit(Guid userId, Guid campId) =>
         $"CampContactRateLimit:{userId:N}:{campId:N}";
-
-    public static string CampLeadJoinRequestsBadge(Guid userId) => $"NavBadge:CampLeadJoinRequests:{userId:N}";
 
     public static string LegalDocument(string slug) => $"Legal:{slug}";
 

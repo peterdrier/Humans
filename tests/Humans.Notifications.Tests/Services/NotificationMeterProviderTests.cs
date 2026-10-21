@@ -201,7 +201,7 @@ public class NotificationMeterProviderTests : IDisposable
         var expected = keys.Select(key => localizer["Notifications_Meter_" + key]).ToList();
         expected.Should().OnlyContain(value => !value.ResourceNotFound);
         meters.Select(m => m.Title).Should().Equal(expected.Select(value => value.Value));
-        _cache.Remove(CacheKeys.CampLeadJoinRequestsBadge(userId));
+        // No per-user cache over the camp reads: a changed roster shows on the next call.
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns([MakeCampInfoWithPendingRequest(userId), MakeCampInfoWithPendingRequest(userId)]);
         meters = await _provider.GetMetersForUserAsync(principal, TestContext.Current.CancellationToken);
@@ -311,6 +311,39 @@ public class NotificationMeterProviderTests : IDisposable
     }
 
     [HumansFact]
+    public async Task GetMetersForUserAsync_Admin_TeamJoinRequestCountIsReadLiveNotFromCachedCounts()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([]));
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(TeamsWithPendingAsync(3), TeamsWithPendingAsync(1));
+
+        var first = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.Admin), ct);
+        _cache.TryGetValue(NotificationMeterProvider.CountsCacheKey, out _).Should().BeTrue();
+        var second = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.Admin), ct);
+
+        // Teams evicts its own in-RAM team read model on join-request writes; the
+        // meter must follow that immediately, not wait out the counts cache.
+        first.Should().Contain(m => m.Title == "Team join requests pending" && m.Count == 3);
+        second.Should().Contain(m => m.Title == "Team join requests pending" && m.Count == 1);
+    }
+
+    private static Task<IReadOnlyDictionary<Guid, TeamInfo>> TeamsWithPendingAsync(int pending)
+    {
+        var teamId = Guid.NewGuid();
+        return Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>
+        {
+            [teamId] = new TeamInfo(
+                Id: teamId, Name: "T", Description: null, Slug: "t",
+                IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+                RequiresApproval: true, IsPublicPage: false, IsHidden: false,
+                IsPromotedToDirectory: false, CreatedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
+                Members: [], PendingRequestCount: pending),
+        });
+    }
+
+    [HumansFact]
     public async Task GetMetersForUserAsync_Board_PendingVoteMeter_UsesPerUserCount()
     {
         var boardUserId = Guid.NewGuid();
@@ -390,11 +423,11 @@ public class NotificationMeterProviderTests : IDisposable
         var act = () => _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.Admin), cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
-        _cache.TryGetValue(CacheKeys.NotificationMeters, out _).Should().BeFalse();
+        _cache.TryGetValue(NotificationMeterProvider.CountsCacheKey, out _).Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task GetMetersForUserAsync_CancelledDuringCampLeadCount_ThrowsAndCachesNothing()
+    public async Task GetMetersForUserAsync_CancelledDuringCampLeadCount_Throws()
     {
         var leadUserId = Guid.NewGuid();
         using var cts = new CancellationTokenSource();
@@ -410,7 +443,6 @@ public class NotificationMeterProviderTests : IDisposable
         var act = () => _provider.GetMetersForUserAsync(CreatePrincipalWithId(leadUserId), cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
-        _cache.TryGetValue(CacheKeys.CampLeadJoinRequestsBadge(leadUserId), out _).Should().BeFalse();
     }
 
     private static ClaimsPrincipal CreatePrincipal(params string[] roles)

@@ -26,7 +26,6 @@
     <ProjectReference Include="..\Humans.Events\Humans.Events.csproj" />
     <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
-    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
       Tickets: the leaf for TicketStubInfo, and the section project for the <vc:ticket-stub>
       tag helper — it is generated from the component type, which lives in Humans.Tickets;

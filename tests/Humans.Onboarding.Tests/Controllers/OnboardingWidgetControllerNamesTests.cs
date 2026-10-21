@@ -148,14 +148,14 @@ public class OnboardingWidgetControllerNamesTests
         var view = Assert.IsType<ViewResult>(result);
         Assert.Equal("Burner", Assert.IsType<NamesViewModel>(view.Model).BurnerName);
         Assert.Equal("Onboarding_ProfileSaveFailed", Assert.Single(ctrl.ModelState[string.Empty]!.Errors).ErrorMessage);
-        await _onboardingService.DidNotReceiveWithAnyArgs().SetConsentCheckPendingIfEligibleAsync(default);
+        await _onboardingService.DidNotReceiveWithAnyArgs().ProfileSavedAsync(default);
     }
 
     [HumansFact]
-    public async Task Names_Post_TriggersOnboardingConsentCheck_AfterSave()
+    public async Task Names_Post_ReportsTheSaveToOnboarding()
     {
-        // The consent-check trigger is a controller peer-call after SaveProfileAsync,
-        // per no-leaf-to-director-callbacks — not inside the service.
+        // The controller reports the save after SaveProfileAsync, per
+        // no-leaf-to-director-callbacks — not inside the profile service.
         var userId = Guid.NewGuid();
         _profileEditor.SaveProfileAsync(
                 userId, Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
@@ -167,7 +167,7 @@ public class OnboardingWidgetControllerNamesTests
         await ctrl.Names(vm, TestContext.Current.CancellationToken);
 
         await _onboardingService.Received(1)
-            .SetConsentCheckPendingIfEligibleAsync(userId, Arg.Any<CancellationToken>());
+            .ProfileSavedAsync(userId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

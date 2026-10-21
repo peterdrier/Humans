@@ -46,20 +46,6 @@ internal sealed partial class CampRepository
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Guid>> GetSpecialRoleHolderUserIdsForSeasonAsync(
-        Guid campSeasonId, CampSpecialRole specialRole, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampRoleAssignments
-            .AsNoTracking()
-            .Where(a => a.CampSeasonId == campSeasonId
-                && a.Definition.SpecialRole == specialRole
-                && a.Definition.DeactivatedAt == null)
-            .Select(a => a.CampMember.UserId)
-            .Distinct()
-            .ToListAsync(ct);
-    }
-
     public async Task<bool> DefinitionSlugExistsAsync(string slug, Guid? excludingId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

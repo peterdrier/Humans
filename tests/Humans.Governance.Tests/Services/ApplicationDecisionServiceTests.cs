@@ -81,7 +81,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     private readonly INotificationEmitter _notificationService = Substitute.For<INotificationEmitter>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
-    private readonly INotificationMeterCacheInvalidator _notificationMeter = Substitute.For<INotificationMeterCacheInvalidator>();
     private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
@@ -120,7 +119,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _notificationService,
         _syncJob,
         _metrics,
-        _notificationMeter,
         _cache,
         Clock,
         NullLogger<ApplicationDecisionService>.Instance);
@@ -226,7 +224,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         stored.Status.Should().Be(ApplicationStatus.Submitted);
         results.Should().ContainSingle(result => result.Success);
         results.Should().ContainSingle(result => string.Equals(result.ErrorKey, "AlreadyPending", StringComparison.Ordinal));
-        _notificationMeter.Received(1).Invalidate();
     }
 
     private sealed class PauseFirstApplicationSave : SaveChangesInterceptor
@@ -275,7 +272,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SubmitAsync_InvalidatesNavBadgeAndNotificationMeter()
+    public async Task SubmitAsync_InvalidatesBoardVotingBadges()
     {
         var userId = Guid.NewGuid();
         var boardMemberId = Guid.NewGuid();
@@ -288,7 +285,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             null, null, null, "en", TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
-        _notificationMeter.Received().Invalidate();
         VotingBadgeCached(boardMemberId).Should().BeFalse();
     }
 
@@ -318,10 +314,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         submitted.Success.Should().Be(expectedSuccess);
         submitted.ErrorKey.Should().Be(errorKey);
         (await GovernanceDb.Applications.CountAsync(TestContext.Current.CancellationToken)).Should().Be(expectedSuccess ? 1 : 0);
-        if (!expectedSuccess)
-        {
-            _notificationMeter.ReceivedCalls().Should().BeEmpty();
-        }
     }
 
     [HumansTheory]
@@ -579,17 +571,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             userId, SystemTeamType.Asociados, Arg.Any<CancellationToken>());
         await _syncJob.DidNotReceive().SyncMembershipForUserAsync(
             Arg.Any<Guid>(), SystemTeamType.Colaboradors, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task ApproveAsync_InvalidatesNavBadgeAndNotificationMeter()
-    {
-        var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
-        await SeedBoardVoteAsync(app.Id);
-
-        await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, TestContext.Current.CancellationToken);
-
-        _notificationMeter.Received().Invalidate();
     }
 
     [HumansFact]

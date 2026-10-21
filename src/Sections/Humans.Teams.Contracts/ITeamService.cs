@@ -43,6 +43,12 @@ public record TeamInfo(
         GoogleGroupPrefix is null
             ? null
             : $"{GoogleGroupPrefix}@{DomainConstants.GoogleGroupDomain}";
+
+    /// <summary>
+    /// Whether the team may have a public page: only departments (non-system,
+    /// top-level teams). Mirrors the rule the team-page save enforces.
+    /// </summary>
+    public bool CanBePublic => !IsSystemTeam && ParentTeamId is null;
 }
 
 public record TeamMemberInfo(

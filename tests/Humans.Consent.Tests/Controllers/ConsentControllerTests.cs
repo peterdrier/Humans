@@ -95,7 +95,7 @@ public sealed class ConsentControllerTests
             ExplicitConsent = true
         }));
         Assert.Equal("Consent_SubmitError", controller.TempData[Humans.Base.Constants.TempDataKeys.ErrorMessage]);
-        await _onboardingService.DidNotReceiveWithAnyArgs().SetConsentCheckPendingIfEligibleAsync(default);
+        await _onboardingService.DidNotReceiveWithAnyArgs().ConsentSignedAsync(default);
     }
 
     private static ProfileInfo StubProfile() => UserFixtures.Profile();
@@ -271,7 +271,7 @@ public sealed class ConsentControllerTests
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal("Edit", redirect.ActionName);
         Assert.Equal("Profile", redirect.ControllerName);
-        await _onboardingService.DidNotReceive().SetConsentCheckPendingIfEligibleAsync(
+        await _onboardingService.DidNotReceive().ConsentSignedAsync(
             Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 

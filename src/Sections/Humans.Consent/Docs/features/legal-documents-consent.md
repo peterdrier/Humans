@@ -176,7 +176,7 @@ Create ConsentRecord
   - ExplicitConsent = true
     |
 ConsentRecord written (append-only) — that's it
-  - SubmitConsentAsync no longer triggers a per-user team sync (name-only access switch)
+  - SubmitConsentAsync triggers no per-user team sync
   - Volunteers team is reconciled by SystemTeamSyncJob on name + consents (eventually consistent)
   - App access is independent: granted when UserState == Active (legal name entered)
 ```

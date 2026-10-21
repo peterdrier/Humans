@@ -17,7 +17,7 @@ namespace Humans.Consent.Services;
 // consent_records is append-only (design-rules §12).
 internal sealed class ConsentService(
     IConsentRepository repo,
-    IConsentCacheInvalidator consentCacheInvalidator,
+    CachingConsentService consentCache,
     ILegalDocumentSyncManagement legalDocumentSyncService,
     INotificationAutoResolve notificationAutoResolve,
     IHumanLifecycleService humanLifecycleService,
@@ -178,17 +178,18 @@ internal sealed class ConsentService(
         };
 
         await repo.AddAsync(consentRecord, ct);
+        // Evict this section's own cache before the membership check below reads it back
+        // through IConsentService; the decorator's ReplaceAsync runs only after this returns.
         foreach (var id in info.AllUserIds)
-            consentCacheInvalidator.InvalidateUser(id);
+            consentCache.Invalidate(id);
         metrics.RecordConsentGiven();
 
         logger.LogInformation(
             "User {UserId} consented to document {DocumentName} version {Version}",
             userId, version.LegalDocumentName, version.VersionNumber);
 
-        // Name-only access switch: signing a consent no longer provisions system-team membership.
-        // SystemTeamSyncJob reconciles Volunteers/Coordinators on name + consents, decoupled from
-        // the consent write (access never depended on it).
+        // No team sync here: SystemTeamSyncJob admits Volunteers/Coordinators on name + consents,
+        // decoupled from the consent write.
 
         // Consent is committed; finish suspension cleanup even if the signing request ends.
         // Auto-resolve AccessSuspended notifications only after ALL required consents complete.

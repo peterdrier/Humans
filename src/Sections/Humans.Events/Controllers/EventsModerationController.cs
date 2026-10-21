@@ -94,14 +94,7 @@ internal sealed class EventsModerationController(
     [HttpPost("Reject")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Reject(ModerationActionFormModel model)
-    {
-        if (string.IsNullOrWhiteSpace(model.Reason))
-        {
-            SetError("A reason is required when rejecting an event.");
-            return RedirectToAction(nameof(Index));
-        }
-        return await ProcessActionAsync(model.EventId, EventModerationActionType.Rejected, model.Reason);
-    }
+        => await ProcessActionAsync(model.EventId, EventModerationActionType.Rejected, model.Reason);
 
     [HttpPost("Withdraw")]
     [ValidateAntiForgeryToken]
@@ -133,14 +126,7 @@ internal sealed class EventsModerationController(
     [HttpPost("RequestEdit")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RequestEdit(ModerationActionFormModel model)
-    {
-        if (string.IsNullOrWhiteSpace(model.Reason))
-        {
-            SetError("A reason is required when requesting edits.");
-            return RedirectToAction(nameof(Index));
-        }
-        return await ProcessActionAsync(model.EventId, EventModerationActionType.ResubmitRequested, model.Reason);
-    }
+        => await ProcessActionAsync(model.EventId, EventModerationActionType.ResubmitRequested, model.Reason);
 
     // ─── Admin in-place edit (any event, any state, status preserved) ─────
 
@@ -319,12 +305,6 @@ internal sealed class EventsModerationController(
             return RedirectToAction(nameof(Index));
         }
 
-        if (guideEvent.Status != EventStatus.Pending)
-        {
-            SetError("This event is not in a pending state.");
-            return RedirectToAction(nameof(Index));
-        }
-
         // The submitter-edit URL is Web routing turf; the decision notification
         // itself is part of ApplyModerationAsync's workflow.
         string? campSlug = null;
@@ -339,7 +319,20 @@ internal sealed class EventsModerationController(
             ? Url.Action("BarrioEdit", "Events", new { slug = campSlug, eventId }, Request.Scheme)!
             : Url.Action("Edit", "Events", new { eventId }, Request.Scheme)!;
 
-        await guide.ApplyModerationAsync(eventId, moderator.Id, actionType, reason, editUrl);
+        // ApplyModerationAsync owns the reason-required and pending-only rules.
+        var outcome = await guide.ApplyModerationAsync(eventId, moderator.Id, actionType, reason, editUrl);
+        if (outcome is ModerationOutcome.ReasonRequired)
+        {
+            SetError(actionType == EventModerationActionType.Rejected
+                ? "A reason is required when rejecting an event."
+                : "A reason is required when requesting edits.");
+            return RedirectToAction(nameof(Index));
+        }
+        if (outcome is ModerationOutcome.NotPending)
+        {
+            SetError("This event is not in a pending state.");
+            return RedirectToAction(nameof(Index));
+        }
 
         var actionLabel = actionType switch
         {
