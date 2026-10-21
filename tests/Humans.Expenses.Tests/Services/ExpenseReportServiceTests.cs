@@ -1662,6 +1662,43 @@ public sealed partial class ExpenseReportServiceTests
     // ─────────────────────────────── 4.4 ─────────────────────────────────────
 
     [HumansTheory]
+    [InlineData("", "Tester", false)]
+    [InlineData("Alice", " ", false)]
+    [InlineData(" ", "Tester", true)]
+    [InlineData("Alice", "", true)]
+    public async Task SubmitAsync_RequiresBothSubmitterLegalNames(
+        string firstName, string lastName, bool financeAdmin)
+    {
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var actor = financeAdmin ? Guid.NewGuid() : submitter;
+        var id = (await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber,
+            "Project X", ct: Xunit.TestContext.Current.CancellationToken)).ReportId!.Value;
+        var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Item", 100m,
+            ct: Xunit.TestContext.Current.CancellationToken)).LineId!.Value;
+        await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter),
+            Xunit.TestContext.Current.CancellationToken);
+        _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(submitter, UserFixtures.Profile(
+                firstName: firstName, lastName: lastName, iban: "ES9121000418450200051332")));
+        if (financeAdmin)
+            SetupUserAndProfile(actor, "Finance Admin", "ES9121000418450200051332");
+
+        var result = await _sut.SubmitWithResultAsync(id, actor, financeAdmin,
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Error!.ResourceKey.Should().Be("Expenses_Validation_SubmitterNeedsFirstAndLastName");
+        var loaded = (await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken))!;
+        loaded.Status.Should().Be(ExpenseReportStatus.Draft);
+        loaded.PayeeName.Should().BeEmpty();
+        loaded.PayeeIban.Should().BeEmpty();
+        loaded.SubmittedAt.Should().BeNull();
+        AuditLog.ReceivedCalls().Should().NotContain(call =>
+            Equals(call.GetArguments()[0], AuditAction.ExpenseSubmit));
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(0)]
     [Xunit.InlineData(100)]
     [Xunit.InlineData(256)]

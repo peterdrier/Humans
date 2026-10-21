@@ -906,11 +906,11 @@ internal sealed class ExpenseReportService(
                 return ExpenseMutationResult.Failure("Expenses_Validation_SubmitterNeedsIban");
 
             // Financial records use legal name (not BurnerName). See memory/architecture/burnername-is-the-display-name.md.
-            var legalName = $"{profile.FirstName} {profile.LastName}".Trim();
-            if (string.IsNullOrWhiteSpace(legalName))
+            if (string.IsNullOrWhiteSpace(profile.FirstName) || string.IsNullOrWhiteSpace(profile.LastName))
             {
                 return ExpenseMutationResult.Failure("Expenses_Validation_SubmitterNeedsFirstAndLastName");
             }
+            var legalName = $"{profile.FirstName} {profile.LastName}".Trim();
             var payeeIban = profile.Iban;
 
             var now = clock.GetCurrentInstant();
