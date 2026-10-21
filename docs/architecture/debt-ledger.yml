@@ -200,27 +200,17 @@ themes:
     title: Application services returning entities from reads
     detect: "grep -cv '^#\\|^$' tests/Humans.Web.Tests/Architecture/Baselines/ApplicationServiceEntityReadReturns.baseline.txt"
     review: panel
-    last_swept: never
-    remaining: 13
-    parked: "Peter 2026-09-20 — one refactor, outside the nightly process. Every entry changes a public return type, so a sweep worker asks on all of them and ships nothing; rotation skips it until that refactor is scheduled."
+    last_swept: 2026-10-21
+    remaining: 3
     notes: >-
-      PARKED 2026-09-20 (see `parked:`). `remaining` counts real violations
+      Baseline file drained 2026-10-21 (all 13 locator lines fixed: Teams,
+      Events, Shifts, IMagicLinkService). `remaining` counts real violations
       the scan can no longer see (IAccountProvisioningService.FindOrCreateUserByEmailAsync
       returning User / UserEmail / EventParticipation, coverage lost when G5
       lane 3b dropped the IApplicationService marker from that interface, as
-      the baseline header records) beyond what the baseline file's locator
-      lines hold — `detect` counts the file, not the debt.
+      the baseline header records) — `detect` counts the file, not the debt.
       Convert to DTO/Info returns (read-model pattern, design-rules §15).
       Remove each fixed locator line from the baseline file — never add lines.
-      PASSED OVER as #2 rotation candidate (sweep 2026-06-14): all entries are
-      public-interface read methods whose fix CHANGES the return type
-      entity→DTO — a surface-changing refactor that ripples to every caller
-      (e.g. IUserService.GetByIdsAsync:User and ITeamService.GetTeamByIdAsync:Team
-      are called pervasively). Per the work-loop's skip-and-ask rule
-      (public-surface changes), each item is skip-and-ask, so a sweep can't burn
-      these down mechanically — they need Peter's go on doing entity→DTO return
-      migrations as sweep work vs. dedicated per-method PRs. last_swept stays
-      `never` (not per-item audited; only pattern-classified this run).
   - id: baseline-display-sort
     title: Display sorting below the presentation layer
     detect: "grep -cv '^#\\|^$' tests/Humans.Web.Tests/Architecture/Baselines/DisplaySortInControllers.baseline.txt"
