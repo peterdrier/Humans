@@ -79,15 +79,12 @@ internal sealed partial class GrantService
     // ── IGrantWrite: a source section ─────────────────────────────────────
 
     public async Task<Guid> IssueAsync(
-        Guid programId, string sourceKey, Guid userId, string sourceRef, Guid actorUserId,
-        CancellationToken ct = default)
+        string sourceKey, Guid userId, string? sourceRef, Guid actorUserId, CancellationToken ct = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(sourceRef);
-        if (sourceRef.Length > SourceRefMax)
+        sourceRef = Trimmed(sourceRef);
+        if (sourceRef?.Length > SourceRefMax)
             throw new ArgumentException($"Source reference longer than {SourceRefMax} characters.", nameof(sourceRef));
-        var program = await SourceProgramAsync(programId, sourceKey, ct);
-        if (program.Status == GrantProgramStatus.Closed)
-            throw new InvalidOperationException($"Grant program {programId} is closed.");
+        var program = await SourceProgramAsync(sourceKey, ct);
 
         var live = program.Grants.FirstOrDefault(g => g.UserId == userId && g.RevokedAt is null);
         if (live is not null) return live.Id;
@@ -96,35 +93,37 @@ internal sealed partial class GrantService
         await repository.AddGrantsAsync([grant], ct);
         ct = CancellationToken.None;
         await AuditGrantAsync(AuditAction.GrantIssued, grant,
-            $"Issued under \"{program.Name}\" ({program.Year}) by source {program.SourceKey}, ref {sourceRef}{ExpirySuffix(grant, program)}.",
+            $"Issued under \"{program.Name}\" ({program.Year}) by source {program.SourceKey}" +
+            $"{(sourceRef is null ? "" : $", ref {sourceRef}")}{ExpirySuffix(grant, program)}.",
             actorUserId);
         await AnnounceIssuedAsync(grant, program, ct);
         return grant.Id;
     }
 
-    public async Task RevokeAsync(
-        Guid programId, string sourceKey, Guid userId, string? reason, Guid actorUserId,
-        CancellationToken ct = default)
+    public async Task<bool> RevokeAsync(
+        string sourceKey, Guid userId, string? reason, Guid actorUserId, CancellationToken ct = default)
     {
         if ((reason?.Length ?? 0) > ReasonMax)
             throw new ArgumentException($"Reason longer than {ReasonMax} characters.", nameof(reason));
-        var program = await SourceProgramAsync(programId, sourceKey, ct);
+        var program = await SourceProgramAsync(sourceKey, ct);
         var live = program.Grants.FirstOrDefault(g => g.UserId == userId && g.RevokedAt is null);
-        if (live is null) return;
+        if (live is null) return false;
         live.Program = program;
         await RevokeCoreAsync(live, Trimmed(reason), actorUserId, ct);
+        return true;
     }
 
-    /// <summary>The program, refused unless it is a source program filled by <paramref name="sourceKey"/>.</summary>
-    private async Task<GrantProgram> SourceProgramAsync(Guid programId, string sourceKey, CancellationToken ct)
+    /// <summary>The one open program filled by <paramref name="sourceKey"/>, or a refusal.</summary>
+    private async Task<GrantProgram> SourceProgramAsync(string sourceKey, CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceKey);
-        var program = await repository.GetProgramAsync(programId, ct)
-            ?? throw new InvalidOperationException($"Grant program {programId} does not exist.");
-        if (program.IssuedBy != GrantIssuer.Source || !string.Equals(program.SourceKey, sourceKey, StringComparison.Ordinal))
-            throw new InvalidOperationException($"Grant program {programId} is not filled by source {sourceKey}.");
-        return program;
+        return (await repository.GetProgramsAsync(ct)).SingleOrDefault(p => IsOpenSource(p, sourceKey))
+            ?? throw new InvalidOperationException($"No open grant program is filled by source {sourceKey}.");
     }
+
+    private static bool IsOpenSource(GrantProgram program, string sourceKey) =>
+        program.IssuedBy == GrantIssuer.Source && program.Status == GrantProgramStatus.Open
+        && string.Equals(program.SourceKey, sourceKey, StringComparison.Ordinal);
 
     // ── Helpers ───────────────────────────────────────────────────────────
 

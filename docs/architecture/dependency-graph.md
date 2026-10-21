@@ -239,6 +239,8 @@ graph LR
 
     Grant[GrantService]:::grants
 
+    LowIncome[LowIncomeAdminController]:::grants
+
     %% ═══════════════════════════════════
     %% Ctor-injected dependencies (solid)
     %% ═══════════════════════════════════
@@ -713,6 +715,7 @@ graph LR
     Grant --> NotifEmitter
     Grant --> Email
     Grant --> Audit
+    LowIncome --> Grant
 
     %% ═══════════════════════════════════
     %% Lazy-resolved (IServiceProvider/Lazy<T>) — break DI cycles

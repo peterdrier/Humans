@@ -146,52 +146,62 @@ public sealed class GrantTests : GrantsTestHarness
     // ── The source write ──────────────────────────────────────────────────
 
     [HumansFact]
-    public async Task SourceIssue_IsIdempotentPerPerson_StoresSourceRef()
+    public async Task SourceIssue_FindsTheOpenProgramByKey_IsIdempotentPerPerson()
     {
         var person = SeedUser();
-        var actor = SeedUser("Low Income lead");
+        var actor = SeedUser("Admin");
+        await SeedProgramAsync(GrantIssuer.Source, "low-income", status: GrantProgramStatus.Closed, name: "Last year");
         var program = await SeedProgramAsync(GrantIssuer.Source, "low-income");
         var service = NewService();
 
-        var first = await service.IssueAsync(program.Id, "low-income", person, "app-42", actor, Ct);
-        var second = await service.IssueAsync(program.Id, "low-income", person, "app-43", actor, Ct);
+        var first = await service.IssueAsync("low-income", person, "app-42", actor, Ct);
+        var second = await service.IssueAsync("low-income", person, "app-43", actor, Ct);
 
         second.Should().Be(first);
         var grant = (await ReadGrantsAsync()).Should().ContainSingle().Subject;
+        grant.ProgramId.Should().Be(program.Id);
         grant.SourceRef.Should().Be("app-42");
         grant.IssuedByUserId.Should().Be(actor);
         await Email.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task SourceWrite_RefusesWrongKey_ManagersProgram_AndClosedProgram()
+    public async Task SourceIssue_WithoutSourceRef_StoresNone()
     {
-        var sourced = await SeedProgramAsync(GrantIssuer.Source, "low-income");
-        var byHand = await SeedProgramAsync();
-        var closed = await SeedProgramAsync(GrantIssuer.Source, "low-income", status: GrantProgramStatus.Closed);
+        await SeedProgramAsync(GrantIssuer.Source, "low-income");
+
+        await NewService().IssueAsync("low-income", SeedUser(), null, SeedUser(), Ct);
+
+        (await ReadGrantsAsync()).Should().ContainSingle().Which.SourceRef.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task SourceWrite_RefusesAKeyWithNoOpenProgram()
+    {
+        await SeedProgramAsync(GrantIssuer.Source, "low-income");
+        await SeedProgramAsync(GrantIssuer.Source, "workers", status: GrantProgramStatus.Closed);
+        await SeedProgramAsync();
         var service = NewService();
 
-        await FluentActions.Awaiting(() => service.IssueAsync(sourced.Id, "workers", SeedUser(), "r", SeedUser(), Ct))
+        await FluentActions.Awaiting(() => service.IssueAsync("workers", SeedUser(), null, SeedUser(), Ct))
             .Should().ThrowAsync<InvalidOperationException>();
-        await FluentActions.Awaiting(() => service.IssueAsync(byHand.Id, "low-income", SeedUser(), "r", SeedUser(), Ct))
+        await FluentActions.Awaiting(() => service.IssueAsync("nobody", SeedUser(), null, SeedUser(), Ct))
             .Should().ThrowAsync<InvalidOperationException>();
-        await FluentActions.Awaiting(() => service.IssueAsync(closed.Id, "low-income", SeedUser(), "r", SeedUser(), Ct))
-            .Should().ThrowAsync<InvalidOperationException>();
-        await FluentActions.Awaiting(() => service.RevokeAsync(byHand.Id, "low-income", SeedUser(), null, SeedUser(), Ct))
+        await FluentActions.Awaiting(() => service.RevokeAsync("workers", SeedUser(), null, SeedUser(), Ct))
             .Should().ThrowAsync<InvalidOperationException>();
         (await ReadGrantsAsync()).Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task SourceRevoke_RevokesTheLiveGrant_NoOpWithout()
+    public async Task SourceRevoke_RevokesTheLiveGrant_FalseWithout()
     {
         var person = SeedUser();
         var program = await SeedProgramAsync(GrantIssuer.Source, "low-income");
         var grant = await SeedGrantAsync(program, person);
         var service = NewService();
 
-        await service.RevokeAsync(program.Id, "low-income", SeedUser(), null, SeedUser(), Ct);
-        await service.RevokeAsync(program.Id, "low-income", person, "Withdrew", SeedUser(), Ct);
+        (await service.RevokeAsync("low-income", SeedUser(), null, SeedUser(), Ct)).Should().BeFalse();
+        (await service.RevokeAsync("low-income", person, "Withdrew", SeedUser(), Ct)).Should().BeTrue();
 
         (await ReadGrantAsync(grant.Id)).RevokeReason.Should().Be("Withdrew");
         await ReceivedNoticeAsync(NotificationSource.GrantRevoked, person);

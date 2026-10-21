@@ -16,7 +16,7 @@ internal sealed partial class GrantService
         ProgramSave save, Guid actorUserId, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(save);
-        if (Validate(save) is { } refusal) return new(Refusal: refusal);
+        if ((Validate(save) ?? await SourceTakenAsync(save, programId: null, ct)) is { } refusal) return new(Refusal: refusal);
 
         var now = clock.GetCurrentInstant();
         var program = new GrantProgram
@@ -57,7 +57,7 @@ internal sealed partial class GrantService
         ArgumentNullException.ThrowIfNull(save);
         var program = await repository.GetProgramAsync(programId, ct);
         if (program is null) return new("Program not found.");
-        if (Validate(save) is { } refusal) return new(refusal);
+        if ((Validate(save) ?? await SourceTakenAsync(save, programId, ct)) is { } refusal) return new(refusal);
 
         var changes = new List<string>();
         Change(changes, "name", program.Name, save.Name.Trim(), v => program.Name = v);
@@ -116,6 +116,16 @@ internal sealed partial class GrantService
             if (save.SourceKey.Trim().Length > SourceKeyMax) return "The source key is too long.";
         }
         return null;
+    }
+
+    /// <summary>At most one open program per source key, so a source write always knows its program.</summary>
+    private async Task<string?> SourceTakenAsync(ProgramSave save, Guid? programId, CancellationToken ct)
+    {
+        if (save.IssuedBy != GrantIssuer.Source || save.Status != GrantProgramStatus.Open) return null;
+        var key = SourceKeyOf(save)!;
+        var other = (await repository.GetProgramsAsync(ct))
+            .FirstOrDefault(p => p.Id != programId && IsOpenSource(p, key));
+        return other is null ? null : $"\"{other.Name}\" is already the open program for {key}. Close it first.";
     }
 
     private static string? SourceKeyOf(ProgramSave save) =>

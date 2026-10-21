@@ -41,6 +41,7 @@
     <Project Path="src/Sections/Humans.Guide/Humans.Guide.csproj" />
     <Project Path="src/Sections/Humans.Holded/Humans.Holded.csproj" />
     <Project Path="src/Sections/Humans.Issues/Humans.Issues.csproj" />
+    <Project Path="src/Sections/Humans.LowIncome/Humans.LowIncome.csproj" />
     <Project Path="src/Sections/Humans.MailerLite/Humans.MailerLite.csproj" />
     <Project Path="src/Sections/Humans.Monitor/Humans.Monitor.csproj" />
     <Project Path="src/Sections/Humans.Notifications/Humans.Notifications.csproj" />
@@ -101,6 +102,7 @@
     <Project Path="tests/Humans.Grants.Tests/Humans.Grants.Tests.csproj" />
     <Project Path="tests/Humans.Issues.Tests/Humans.Issues.Tests.csproj" />
     <Project Path="tests/Humans.GoogleIntegration.Tests/Humans.GoogleIntegration.Tests.csproj" />
+    <Project Path="tests/Humans.LowIncome.Tests/Humans.LowIncome.Tests.csproj" />
     <Project Path="tests/Humans.MailerLite.Tests/Humans.MailerLite.Tests.csproj" />
     <Project Path="tests/Humans.Monitor.Tests/Humans.Monitor.Tests.csproj" />
     <Project Path="tests/Humans.Notifications.Tests/Humans.Notifications.Tests.csproj" />

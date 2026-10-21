@@ -99,4 +99,20 @@ public sealed class ProgramTests : GrantsTestHarness
         await AuditLog.Received(1).LogAsync(AuditAction.GrantProgramManagerRemoved, AuditEntityTypes.Program, program.Id,
             Arg.Any<string>(), actor, oldManager, AuditEntityTypes.User);
     }
+
+    [HumansFact]
+    public async Task OneOpenProgramPerSourceKey_OnCreateAndOnReopen()
+    {
+        var actor = SeedUser("Admin");
+        await SeedProgramAsync(GrantIssuer.Source, "low-income");
+        var closed = await SeedProgramAsync(GrantIssuer.Source, "low-income", status: GrantProgramStatus.Closed, name: "Old");
+        var service = NewService();
+
+        (await service.CreateProgramAsync(Save("Second", GrantIssuer.Source, "low-income"), actor, Ct)).Refusal
+            .Should().Contain("already the open program");
+        (await service.UpdateProgramAsync(closed.Id, Save("Old", GrantIssuer.Source, "low-income"), actor, Ct)).Refusal
+            .Should().Contain("already the open program");
+        (await service.CreateProgramAsync(Save("Other key", GrantIssuer.Source, "workers"), actor, Ct)).Refusal
+            .Should().BeNull();
+    }
 }

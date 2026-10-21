@@ -1,0 +1,46 @@
+@{
+    ViewData["Title"] = "Low income grants";
+}
+
+<h1><i class="fa-solid fa-hand-holding-heart me-2"></i>Low income grants</h1>
+<p class="text-muted" style="max-width: 760px;">
+    Gives or removes a person's Low Income grant. The grant lives in the open
+    <a asp-controller="GrantsAdmin" asp-action="Index">Grants program</a> with source key <code>@Section.SourceKey</code>;
+    the person is told by email and in-app, and the change is audited there.
+</p>
+
+<div class="card" style="max-width: 760px;">
+    <div class="card-body">
+        <div class="mb-3">
+            <label class="form-label" for="human-search-person">Person</label>
+            <vc:human-search field-name="userId" scope="Name" placeholder="Search for a person" instance-key="person" />
+        </div>
+        <div class="d-flex flex-wrap gap-3 align-items-end">
+            <form method="post" asp-action="Grant" class="lowincome-form">
+                <input type="hidden" name="userId" />
+                <button type="submit" class="btn btn-primary">Give grant</button>
+            </form>
+            <form method="post" asp-action="Remove" class="lowincome-form d-flex gap-2 align-items-end"
+                  data-confirm="Remove this person's Low Income grant? They are told.">
+                <input type="hidden" name="userId" />
+                <div>
+                    <label class="form-label small" for="lowincome-reason">Reason (optional, they see it)</label>
+                    <input type="text" name="reason" id="lowincome-reason" class="form-control" maxlength="500" />
+                </div>
+                <button type="submit" class="btn btn-outline-danger">Remove grant</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    // Both forms post the person the picker chose.
+    var picked = document.getElementById('human-search-hidden-person');
+    document.querySelectorAll('.lowincome-form').forEach(function (form) {
+        form.addEventListener('submit', function () {
+            form.querySelector('input[name="userId"]').value = picked.value;
+        });
+    });
+})();
+</script>

@@ -69,12 +69,13 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 | Program manager | Sees the programs they manage; issues (managers' programs only), revokes, resends notices on them |
 | Board, Admin | All manager capabilities on every program. Additionally creates and edits programs and names their managers |
 | HumanAdmin, Board, Admin | See a person's grants on the admin human-detail card (a program name links to its admin page only when the viewer may open it) |
-| A source section (Low Income) | Issues and revokes under programs whose source key it passes, through `IGrantWrite` |
+| A source section (LowIncome) | Issues and revokes under the open program whose source key it passes, through `IGrantWrite` |
 
 ## Invariants
 
 - A person holds at most one live grant per program (filtered unique index); issuing to a holder is skipped (manual) or returns the existing id (source write).
 - A managers' program is filled only by hand; a source program only through `IGrantWrite` with the matching source key. A closed program takes no new grants either way.
+- At most one program per source key is open at a time (refused on create and edit), so `IGrantWrite` callers pass only their key and Grants resolves the program. No open program for the key is an `InvalidOperationException`.
 - A program's issuer and status must be defined enum values; anything else is refused on create and edit.
 - Expiry is computed at read time from `ExpiresOn ?? program.GrantsExpireOn` against today in Europe/Madrid; no job flips state.
 - Revoking keeps the row (who, when, why); a revoked grant cannot be resent or revoked again.
@@ -103,6 +104,7 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 - **Notifications**: `INotificationEmitter.SendAsync` (`GrantReceived`, `GrantRevoked`).
 - **Email**: `IEmailService.SendAsync`; contributes `IEmailPreviewContributor` samples.
 - **AuditLog**: `IAuditLogService.LogAsync`.
+- **LowIncome** (caller): issues and revokes through `IGrantWrite` with source key `low-income`.
 - **Gdpr**: implements `IUserDataContributor` (slices `Grants`, `GrantDecisions`).
 - Email and Tickets do not know Grants exists; delivery of the thing (e.g. a vendor code) is a later, separate concern.
 
@@ -117,7 +119,7 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 | Public interface | Methods | Notes |
 |---|---:|---|
 | `IGrantService` | — | No cross-section reader yet |
-| `IGrantWrite` | 2 | `IssueAsync` / `RevokeAsync` for source sections (Low Income); a cross-section write is unavoidable because the source decides who qualifies |
+| `IGrantWrite` | 2 | `IssueAsync(sourceKey, userId, sourceRef?, actor)` / `RevokeAsync(sourceKey, userId, reason?, actor)` for source sections (LowIncome today); a cross-section write is unavoidable because the source decides who qualifies |
 
 - `GrantService` lives in `Services/` and never imports `Microsoft.EntityFrameworkCore`; `GrantRepository` (Singleton over `IDbContextFactory<GrantsDbContext>`) is the only path to the tables.
 - No caching decorator: a handful of programs, read on a few admin pages and one profile card.

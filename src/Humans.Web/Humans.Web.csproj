@@ -52,6 +52,7 @@
     <ProjectReference Include="..\Sections\Humans.Grants\Humans.Grants.csproj" />
     <ProjectReference Include="..\Sections\Humans.Guide\Humans.Guide.csproj" />
     <ProjectReference Include="..\Sections\Humans.Issues\Humans.Issues.csproj" />
+    <ProjectReference Include="..\Sections\Humans.LowIncome\Humans.LowIncome.csproj" />
     <ProjectReference Include="..\Sections\Humans.MailerLite\Humans.MailerLite.csproj" />
     <ProjectReference Include="..\Sections\Humans.Notifications\Humans.Notifications.csproj" />
     <ProjectReference Include="..\Sections\Humans.Rideshare\Humans.Rideshare.csproj" />
