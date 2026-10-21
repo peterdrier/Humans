@@ -30,7 +30,6 @@ internal sealed class TeamService(
     INotificationEmitter notificationService,
     IShiftManagementService shiftManagementService,
     INotificationMeterCacheInvalidator notificationMeterInvalidator,
-    IShiftAuthorizationInvalidator shiftAuthInvalidator,
     IAdminAuthorizationService adminAuthorization,
     IEarlyEntryInvalidator earlyEntryInvalidator,
     IServiceProvider serviceProvider,
@@ -292,8 +291,7 @@ internal sealed class TeamService(
         }
 
         var becomingChild = parentTeamId.HasValue && !team.ParentTeamId.HasValue;
-        var parentChanging = parentTeamId != team.ParentTeamId;
-        var usersNeedingShiftAuthorizationInvalidation = parentChanging
+        var managementUserIds = becomingChild
             ? await repo.GetUserIdsWithManagementOnTeamAsync(teamId, cancellationToken)
             : (IReadOnlyList<Guid>)[];
 
@@ -354,11 +352,9 @@ internal sealed class TeamService(
             if (earlyEntryChanged) earlyEntryInvalidator.InvalidateAll();
         }
 
-        InvalidateShiftAuthorization(usersNeedingShiftAuthorizationInvalidation);
-
-        if (becomingChild && usersNeedingShiftAuthorizationInvalidation.Count > 0)
+        if (managementUserIds.Count > 0)
         {
-            foreach (var userId in usersNeedingShiftAuthorizationInvalidation)
+            foreach (var userId in managementUserIds)
                 await SystemTeamSync.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, cancellationToken);
         }
 
@@ -906,15 +902,13 @@ internal sealed class TeamService(
 
         var wasCoordinator = member.Role == TeamMemberRole.Coordinator;
 
-        var removedAssignments = await MarkMemberLeftWithOutboxAsync(member, cancellationToken);
+        await MarkMemberLeftWithOutboxAsync(member, cancellationToken);
 
         await auditLogService.LogAsync(
             AuditAction.TeamLeft, nameof(Team), teamId,
             $"Left {team.Name}",
             userId,
             relatedEntityId: userId, relatedEntityType: nameof(User));
-
-        InvalidateShiftAuthorizationIfNeeded(userId, removedAssignments);
 
         if (wasCoordinator)
         {
@@ -1168,15 +1162,13 @@ internal sealed class TeamService(
 
         var wasCoordinator = member.Role == TeamMemberRole.Coordinator;
 
-        var removedAssignments = await MarkMemberLeftWithOutboxAsync(member, cancellationToken);
+        await MarkMemberLeftWithOutboxAsync(member, cancellationToken);
 
         await auditLogService.LogAsync(
             AuditAction.TeamMemberRemoved, nameof(Team), teamId,
             $"Member removed from {team.Name}",
             actorUserId,
             relatedEntityId: userId, relatedEntityType: nameof(User));
-
-        InvalidateShiftAuthorizationIfNeeded(userId, removedAssignments);
 
         try
         {
@@ -1398,18 +1390,6 @@ internal sealed class TeamService(
         definition.Priorities = priorities;
         definition.SortOrder = sortOrder;
 
-        var usersNeedingShiftAuthorizationInvalidation =
-            team.SystemTeamType == SystemTeamType.None &&
-            definition.IsManagement != isManagement &&
-            definition.Assignments.Count > 0
-                ? definition.Assignments
-                    .Select(a => a.TeamMember?.UserId)
-                    .Where(uid => uid.HasValue)
-                    .Select(uid => uid!.Value)
-                    .Distinct()
-                    .ToList()
-                : [];
-
         if (isManagement && !definition.IsManagement)
         {
             var existingManagement = await repo.OtherRoleHasIsManagementAsync(
@@ -1433,8 +1413,6 @@ internal sealed class TeamService(
             $"Role definition '{name}' updated for team {team.Name}",
             actorUserId,
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
-
-        InvalidateShiftAuthorization(usersNeedingShiftAuthorizationInvalidation);
 
         return definition;
     }
@@ -1476,18 +1454,6 @@ internal sealed class TeamService(
             throw new InvalidOperationException("User does not have permission to manage role definitions for this team");
 
         var isManagement = !definition.IsManagement;
-        var usersNeedingShiftAuthorizationInvalidation =
-            IsShiftAuthorizationDefinition(definition) &&
-            definition.IsManagement != isManagement &&
-            definition.Assignments.Count > 0
-                ? definition.Assignments
-                    .Select(a => a.TeamMember?.UserId)
-                    .Where(uid => uid.HasValue)
-                    .Select(uid => uid!.Value)
-                    .Distinct()
-                    .ToList()
-                : [];
-
         if (isManagement)
         {
             if (definition.Assignments.Count > 0)
@@ -1512,8 +1478,6 @@ internal sealed class TeamService(
             $"IsManagement set to {isManagement} on role '{definition.Name}' in {team.Name}",
             actorUserId,
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
-
-        InvalidateShiftAuthorization(usersNeedingShiftAuthorizationInvalidation);
 
         return new TeamRoleManagementToggleResult(definition.Name, definition.IsManagement);
     }
@@ -1612,8 +1576,6 @@ internal sealed class TeamService(
             actorUserId,
             relatedEntityId: targetUserId, relatedEntityType: nameof(User));
 
-        InvalidateShiftAuthorizationIfNeeded(definition, targetUserId);
-
         // Role assignment can change Coordinators system-team eligibility (management
         // roles promote) — reconcile as part of the mutation.
         await SystemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.Coordinators, cancellationToken);
@@ -1641,8 +1603,6 @@ internal sealed class TeamService(
             $"Unassigned from role '{definition.Name}' in {team.Name}",
             actorUserId,
             relatedEntityId: targetUserId, relatedEntityType: nameof(User));
-
-        InvalidateShiftAuthorizationIfNeeded(definition, targetUserId);
 
         // Losing a (possibly management) role can change Coordinators system-team
         // eligibility — reconcile as part of the mutation.
@@ -2138,24 +2098,6 @@ internal sealed class TeamService(
         PendingRequestCount: pendingCounts.TryGetValue(team.Id, out var pending) ? pending : 0,
         EarlyEntryEnabled: team.EarlyEntryEnabled);
 
-    private void InvalidateShiftAuthorizationIfNeeded(Guid userId, IEnumerable<TeamRoleAssignment> roleAssignments)
-    {
-        if (roleAssignments.Any(assignment => IsShiftAuthorizationDefinition(assignment.TeamRoleDefinition)))
-            shiftAuthInvalidator.Invalidate(userId);
-    }
-
-    private void InvalidateShiftAuthorizationIfNeeded(TeamRoleDefinition definition, Guid userId)
-    {
-        if (IsShiftAuthorizationDefinition(definition))
-            shiftAuthInvalidator.Invalidate(userId);
-    }
-
-    private void InvalidateShiftAuthorization(IEnumerable<Guid> userIds)
-    {
-        foreach (var userId in userIds.Distinct())
-            shiftAuthInvalidator.Invalidate(userId);
-    }
-
     private async Task<Team> GetRoleDefinitionTeamAsync(TeamRoleDefinition definition, CancellationToken ct)
     {
         var teamsById = await repo.GetByIdsWithParentsAsync([definition.TeamId], ct);
@@ -2163,12 +2105,6 @@ internal sealed class TeamService(
             ? team
             : throw new InvalidOperationException($"Team {definition.TeamId} not found");
     }
-
-#pragma warning disable CS0618 // TeamRoleDefinition.Team — in-section nav read.
-    private static bool IsShiftAuthorizationDefinition(TeamRoleDefinition definition) =>
-        definition.IsManagement &&
-        definition.Team.SystemTeamType == SystemTeamType.None;
-#pragma warning restore CS0618
 
     private async Task<Guid> ResolveMembershipTargetAsync(Guid userId, CancellationToken ct)
     {

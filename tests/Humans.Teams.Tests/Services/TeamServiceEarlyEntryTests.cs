@@ -47,7 +47,6 @@ public sealed class TeamServiceEarlyEntryTests
             Substitute.For<INotificationEmitter>(),
             Substitute.For<IShiftManagement>(),
             _meterInvalidator,
-            Substitute.For<IShiftAuthorizationInvalidator>(),
             Substitute.For<IAdminAuthorizationService>(),
             _eeInvalidator,
             new ServiceLocatorBuilder()

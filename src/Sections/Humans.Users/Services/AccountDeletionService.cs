@@ -7,7 +7,6 @@ using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
-using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Interfaces;
@@ -25,8 +24,6 @@ internal sealed class AccountDeletionService(
     ITicketService ticketQueryService,
     IUserInfoInvalidator userInfoInvalidator,
     IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
-    IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
-    IShiftViewInvalidator shiftViewInvalidator,
     IAuditLogService auditLogService,
     IEmailService emailService,
     UsersEmails emailMessages,
@@ -58,49 +55,40 @@ internal sealed class AccountDeletionService(
         var effectiveDeletionDate = eligibleAfter is { } holdDate && holdDate > deletionDate
             ? holdDate : deletionDate;
 
-        try
+        await userService.SetDeletionPendingAsync(userId, now, deletionDate, eligibleAfter, ct);
+
+        // User loses access during grace period.
+        var endedMemberships = await teamService.RevokeAllMembershipsAsync(userId, ct);
+
+        var endedRoles = await roleAssignmentService.RevokeAllActiveAsync(userId, ct);
+
+        await auditLogService.LogAsync(
+            AuditAction.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
+            $"Revoked {endedMemberships} team membership(s) and {endedRoles} role assignment(s) on deletion request",
+            userId);
+
+        logger.LogWarning(
+            "User {UserId} requested account deletion. Scheduled for {DeletionDate} (eligibleAfter {EligibleAfter}). " +
+            "Revoked {MembershipCount} memberships and {RoleCount} roles immediately",
+            userId, deletionDate, eligibleAfter, endedMemberships, endedRoles);
+
+        var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync([userId], ct);
+        var notificationEmail = notificationEmails.GetValueOrDefault(userId) ?? user.Email;
+        if (notificationEmail is not null)
         {
-            await userService.SetDeletionPendingAsync(userId, now, deletionDate, eligibleAfter, ct);
-
-            // User loses access during grace period.
-            var endedMemberships = await teamService.RevokeAllMembershipsAsync(userId, ct);
-
-            var endedRoles = await roleAssignmentService.RevokeAllActiveAsync(userId, ct);
-
-            await auditLogService.LogAsync(
-                AuditAction.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
-                $"Revoked {endedMemberships} team membership(s) and {endedRoles} role assignment(s) on deletion request",
-                userId);
-
-            logger.LogWarning(
-                "User {UserId} requested account deletion. Scheduled for {DeletionDate} (eligibleAfter {EligibleAfter}). " +
-                "Revoked {MembershipCount} memberships and {RoleCount} roles immediately",
-                userId, deletionDate, eligibleAfter, endedMemberships, endedRoles);
-
-            var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync([userId], ct);
-            var notificationEmail = notificationEmails.GetValueOrDefault(userId) ?? user.Email;
-            if (notificationEmail is not null)
-            {
-                await emailService.SendAsync(emailMessages.AccountDeletionRequested(
-                    notificationEmail,
-                    user.BurnerName,
-                    effectiveDeletionDate,
-                    user.PreferredLanguage.IsSupportedCultureCode()
-                        ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode),
-                    ct);
-            }
-
-            return new DeletionRequestResult(
-                Success: true,
-                EffectiveDeletionDate: effectiveDeletionDate,
-                IsHeldForTicket: eligibleAfter is not null);
+            await emailService.SendAsync(emailMessages.AccountDeletionRequested(
+                notificationEmail,
+                user.BurnerName,
+                effectiveDeletionDate,
+                user.PreferredLanguage.IsSupportedCultureCode()
+                    ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode),
+                ct);
         }
-        finally
-        {
-            // Deletion/revocation may commit before a later step fails; stale shift access must still clear.
-            shiftAuthorizationInvalidator.Invalidate(userId);
-            shiftViewInvalidator.InvalidateUser(userId);
-        }
+
+        return new DeletionRequestResult(
+            Success: true,
+            EffectiveDeletionDate: effectiveDeletionDate,
+            IsHeldForTicket: eligibleAfter is not null);
     }
 
     public async Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default)
@@ -141,8 +129,6 @@ internal sealed class AccountDeletionService(
         // decorator has seen the collapse yet.
         await userInfoInvalidator.InvalidateAsync(userId, ct);
         roleAssignmentClaimsInvalidator.Invalidate(userId);
-        shiftAuthorizationInvalidator.Invalidate(userId);
-        shiftViewInvalidator.InvalidateUser(userId);
 
         // GDPR audit — right-of-access reads from the audit log. Like the scheduled
         // path, the description must not name the human: the audit log survives
@@ -188,8 +174,6 @@ internal sealed class AccountDeletionService(
         teamService.RemoveMemberFromAllTeamsCache(userId);
         teamService.InvalidateActiveTeamsCache();
         roleAssignmentClaimsInvalidator.Invalidate(userId);
-        shiftAuthorizationInvalidator.Invalidate(userId);
-        shiftViewInvalidator.InvalidateUser(userId);
 
         return summary;
     }

@@ -35,10 +35,6 @@ public class AccountDeletionServiceTests
     private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator =
         Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
-    private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator =
-        Substitute.For<IShiftAuthorizationInvalidator>();
-    private readonly IShiftViewInvalidator _shiftViewInvalidator =
-        Substitute.For<IShiftViewInvalidator>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly UsersEmails _emailMessages = TestUsersEmails.Create();
@@ -60,8 +56,6 @@ public class AccountDeletionServiceTests
             _ticketQueryService,
             _userInfoInvalidator,
             _roleAssignmentClaimsInvalidator,
-            _shiftAuthorizationInvalidator,
-            _shiftViewInvalidator,
             _auditLogService,
             _emailService,
             _emailMessages,
@@ -146,39 +140,6 @@ public class AccountDeletionServiceTests
                 && m.RecipientEmail == user.Email! && m.RecipientName == user.BurnerName
                 && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
-
-        // Shift-authorization cache must drop in-orchestrator (parity with
-        // PurgeAsync / AnonymizeExpiredAccountAsync) so direct callers don't
-        // depend on the Profile caching decorator for correctness.
-        _shiftAuthorizationInvalidator.Received(1).Invalidate(userId);
-    }
-
-    [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
-    public async Task RequestDeletionAsync_InvalidatesShiftAccessWhenCommittedCleanupFails(bool emailFailure)
-    {
-        var userId = Guid.NewGuid();
-        var failure = new InvalidOperationException("Deletion cleanup unavailable");
-        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
-        _userEmailService.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string>());
-        if (emailFailure)
-            _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
-                .Returns<Task>(_ => throw failure);
-        else
-            _roleAssignmentService.RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>())
-                .Returns<Task<int>>(_ => throw failure);
-
-        var action = () => _service.RequestDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
-        var thrown = await action.Should().ThrowAsync<InvalidOperationException>();
-
-        thrown.Which.Should().BeSameAs(failure);
-        await _userService.Received(1).SetDeletionPendingAsync(userId, Arg.Any<Instant>(), Arg.Any<Instant>(),
-            Arg.Any<Instant?>(), Arg.Any<CancellationToken>());
-        await _teamService.Received(1).RevokeAllMembershipsAsync(userId, Arg.Any<CancellationToken>());
-        _shiftAuthorizationInvalidator.Received(1).Invalidate(userId);
-        _shiftViewInvalidator.Received(1).InvalidateUser(userId);
     }
 
     [HumansFact]
@@ -386,7 +347,6 @@ public class AccountDeletionServiceTests
         await _userInfoInvalidator.Received(1).InvalidateAsync(
             userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
         _roleAssignmentClaimsInvalidator.Received(1).Invalidate(userId);
-        _shiftAuthorizationInvalidator.Received(1).Invalidate(userId);
     }
 
     [HumansFact]
@@ -444,7 +404,6 @@ public class AccountDeletionServiceTests
 
         _teamService.Received(1).RemoveMemberFromAllTeamsCache(userId);
         _roleAssignmentClaimsInvalidator.Received(1).Invalidate(userId);
-        _shiftAuthorizationInvalidator.Received(1).Invalidate(userId);
     }
 
     [HumansFact]
@@ -463,7 +422,6 @@ public class AccountDeletionServiceTests
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         _teamService.DidNotReceive().RemoveMemberFromAllTeamsCache(userId);
-        _shiftAuthorizationInvalidator.DidNotReceive().Invalidate(userId);
     }
 
     [HumansFact]

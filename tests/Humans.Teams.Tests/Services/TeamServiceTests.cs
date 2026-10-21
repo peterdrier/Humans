@@ -100,18 +100,11 @@ public sealed class TeamServiceTests : TeamsTestHarness
             AdminAuthorization,
             serviceProvider,
             Cache,
-            Substitute.For<IShiftViewInvalidator>(),
+            new CachingShiftViewService(Substitute.For<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<CachingShiftViewService>.Instance),
             new EventCalendarResolver(NewSettingsServiceBackedByShiftsDb()),
             Clock,
             NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
-        // Shift-auth invalidation: production path uses IShiftAuthorizationInvalidator
-        // (backed by ShiftManagementService in DI). In tests we redirect it to the
-        // same IMemoryCache entry so legacy assertions on the ShiftAuthorization
-        // cache key keep working.
-        ShiftAuthInvalidator
-            .When(s => s.Invalidate(Arg.Any<Guid>()))
-            .Do(ci => Cache.Remove(CacheKeys.ShiftAuthorization(ci.Arg<Guid>())));
 
         _service = new TeamService(
             new TeamRepository(TeamsDbFactory),
@@ -119,7 +112,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
             Notifier,
             shiftManagementService,
             Substitute.For<INotificationMeterCacheInvalidator>(),
-            ShiftAuthInvalidator,
             AdminAuthorization,
             EarlyEntryInvalidator,
             serviceProvider,
@@ -643,7 +635,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var service = new TeamService(
             repo, Substitute.For<IAuditLogService>(), Notifier,
             Substitute.For<IShiftManagementService>(),
-            Substitute.For<INotificationMeterCacheInvalidator>(), ShiftAuthInvalidator,
+            Substitute.For<INotificationMeterCacheInvalidator>(),
             AdminAuthorization, Substitute.For<IEarlyEntryInvalidator>(),
             new ServiceLocatorBuilder().Build(), Clock, NullLogger<TeamService>.Instance);
 
@@ -994,26 +986,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         stored.ParentTeamId.Should().Be(parent.Id);
     }
 
-    [HumansFact]
-    public async Task UpdateTeamAsync_ParentChange_InvalidatesShiftAuthForManagementUsers()
-    {
-        var parentOld = SeedTeam("Old Parent");
-        var parentNew = SeedTeam("New Parent");
-        var team = SeedTeam("Alpha");
-        team.ParentTeamId = parentOld.Id;
-        var manager = SeedUser(displayName: "Manager");
-        var member = SeedTeamMember(team.Id, manager.Id, TeamMemberRole.Coordinator);
-        var roleDef = SeedTeamRoleDefinition(team.Id, isManagement: true);
-        SeedTeamRoleAssignment(roleDef.Id, member.Id);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-        Cache.Set(CacheKeys.ShiftAuthorization(manager.Id), new[] { team.Id });
-
-        await _service.UpdateTeamAsync(
-            team.Id, "Alpha", null, false, true, parentTeamId: parentNew.Id, cancellationToken: Xunit.TestContext.Current.CancellationToken);
-
-        Cache.TryGetValue(CacheKeys.ShiftAuthorization(manager.Id), out _).Should().BeFalse();
-    }
-
     // health.md §4: IsSensitive is written only by a global Admin. The gate is the service's,
     // not the edit controller's, so a second caller cannot set the flag around it.
 
@@ -1176,7 +1148,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var provider = new ServiceLocatorBuilder().Build();
         TeamService NewService() => new(repository, AuditLog, Notifier,
             Substitute.For<IShiftManagementService>(), Substitute.For<INotificationMeterCacheInvalidator>(),
-            ShiftAuthInvalidator, AdminAuthorization, EarlyEntryInvalidator, provider, Clock,
+            AdminAuthorization, EarlyEntryInvalidator, provider, Clock,
             NullLogger<TeamService>.Instance);
         var userId = Guid.NewGuid();
         var first = NewService().JoinTeamAsync(team.Id, userId, "Pick me", ct);
@@ -3031,7 +3003,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
-    public async Task LeaveTeamAsync_RemovesManagementAssignments_InvalidatesShiftAuthorizationCache()
+    public async Task LeaveTeamAsync_RemovesManagementAssignments_EndsCoordinatorStatus()
     {
         var user = SeedUser();
         var team = SeedTeam("Operations");
@@ -3039,13 +3011,13 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var member = SeedTeamMember(team.Id, user.Id, TeamMemberRole.Coordinator);
         SeedTeamRoleAssignment(roleDefinition.Id, member.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-        Cache.Set(CacheKeys.ShiftAuthorization(user.Id), new[] { team.Id });
 
         var result = await _service.LeaveTeamAsync(team.Id, user.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.WasCoordinator.Should().BeTrue();
-        Cache.TryGetValue(CacheKeys.ShiftAuthorization(user.Id), out _).Should().BeFalse();
+        (await _service.GetUserCoordinatedTeamIdsAsync(user.Id, Xunit.TestContext.Current.CancellationToken))
+            .Should().NotContain(team.Id);
     }
 
     [HumansFact]

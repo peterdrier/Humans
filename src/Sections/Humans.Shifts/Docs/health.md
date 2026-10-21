@@ -32,7 +32,7 @@ audited and the affected coordinators are notified.
 | **Coordinator analytics** — overview, activity, trends, heatmap, daily staffing, duration breakdown, coverage pies, post-event stats, workload | `ShiftDashboardController`, `ShiftWorkloadAdminController`, `IShiftManagement` analytics methods, `IWorkloadService` | none |
 | **Build-week tracking** — availability grid, day-off, camp-set-up marker, xlsx export, profile build strip, EE derivation | `VolunteerTrackingController`, `IVolunteerTrackingManagement`, `IVolunteerTrackingExportService`, `IVolunteerTrackingService`, `IEarlyEntryProvider` | Users (build strip), EarlyEntry (provider) |
 | **Tell people** — rota / team-rota coordinator email | `ShiftAdminController` `Email` routes, `IRotaCoordinatorMessageService` | none |
-| **Housekeeping** — GDPR export/delete, account merge re-FK, iCal feed, cache eviction, orphan scan | `IUserDataContributor`, `IUserMerge`, `ICalendarFeedContributor`, `IShiftViewInvalidator`, `IShiftAuthorizationInvalidator`, `GET /Shifts/OrphanSignups` | Gdpr, Users (merge, deletion), Calendar, Teams/Users (auth eviction) |
+| **Housekeeping** — GDPR export/delete, account merge re-FK, iCal feed, cache eviction, orphan scan | `IUserDataContributor`, `IUserMerge`, `ICalendarFeedContributor`, `GET /Shifts/OrphanSignups` | Gdpr, Users (merge, deletion), Calendar |
 
 ## 3. Structure
 

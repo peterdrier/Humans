@@ -53,7 +53,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
             AdminAuthorization,
             serviceProvider,
             Cache,
-            Substitute.For<IShiftViewInvalidator>(),
+            new ShiftViewProbe().Cache,
             NewCalendarResolver(),
             Clock,
             NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);

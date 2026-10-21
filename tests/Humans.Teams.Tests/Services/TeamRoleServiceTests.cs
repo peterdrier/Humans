@@ -69,7 +69,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             AdminAuthorization,
             serviceProvider,
             Cache,
-            Substitute.For<IShiftViewInvalidator>(),
+            new CachingShiftViewService(Substitute.For<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<CachingShiftViewService>.Instance),
             new EventCalendarResolver(Substitute.For<ISettingsService>()),
             Clock,
             NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
@@ -79,7 +79,6 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             Notifier,
             shiftManagementService,
             Substitute.For<INotificationMeterCacheInvalidator>(),
-            ShiftAuthInvalidator,
             AdminAuthorization,
             EarlyEntryInvalidator,
             serviceProvider,
@@ -304,7 +303,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
     /// <c>Assignments.TeamMember</c>.
     /// </summary>
     [HumansFact]
-    public async Task UpdateRoleDefinitionAsync_FlipIsManagementWithAssignees_InvalidatesShiftAuthPerAssignee()
+    public async Task UpdateRoleDefinitionAsync_FlipIsManagementWithAssignees_MakesEachAssigneeACoordinator()
     {
         var admin = SeedUser("Admin");
         SeedAdminRole(admin);
@@ -324,8 +323,10 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             [SlotPriority.Critical, SlotPriority.Critical], 0,
             isManagement: true, RolePeriod.YearRound, admin.Id, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        ShiftAuthInvalidator.Received(1).Invalidate(user1.Id);
-        ShiftAuthInvalidator.Received(1).Invalidate(user2.Id);
+        (await _service.GetUserCoordinatedTeamIdsAsync(user1.Id, Xunit.TestContext.Current.CancellationToken))
+            .Should().Contain(team.Id);
+        (await _service.GetUserCoordinatedTeamIdsAsync(user2.Id, Xunit.TestContext.Current.CancellationToken))
+            .Should().Contain(team.Id);
     }
 
     // ==========================================================================

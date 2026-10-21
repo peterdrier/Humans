@@ -73,8 +73,6 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
             _ticketQueryService,
             Substitute.For<IUserInfoInvalidator>(),
             Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
-            Substitute.For<IShiftAuthorizationInvalidator>(),
-            Substitute.For<IShiftViewInvalidator>(),
             Substitute.For<IAuditLogService>(),
             Substitute.For<IEmailService>(),
             TestUsersEmails.Create(),

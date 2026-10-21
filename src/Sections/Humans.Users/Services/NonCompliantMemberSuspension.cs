@@ -8,7 +8,6 @@ using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 
@@ -24,8 +23,7 @@ namespace Humans.Users.Services;
 /// (<see cref="IUserManagement"/>) so this never touches another section's
 /// DbContext directly (design-rules §2c). Cross-cutting cache invalidation routes
 /// through invalidator interfaces
-/// (<see cref="IRoleAssignmentClaimsCacheInvalidator"/>,
-/// <see cref="IShiftAuthorizationInvalidator"/>) rather than IMemoryCache.
+/// (<see cref="IRoleAssignmentClaimsCacheInvalidator"/>) rather than IMemoryCache.
 /// </remarks>
 internal sealed class NonCompliantMemberSuspension(
     IUserManagement userService,
@@ -36,7 +34,6 @@ internal sealed class NonCompliantMemberSuspension(
     INotificationEmitter notificationService,
     IAuditLogService auditLogService,
     IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
-    IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
     IHumansMetrics metrics,
     ILogger<NonCompliantMemberSuspension> logger) : INonCompliantMemberSuspension
 {
@@ -143,7 +140,6 @@ internal sealed class NonCompliantMemberSuspension(
                 AuditActor);
 
             roleAssignmentClaimsInvalidator.Invalidate(user.Id);
-            shiftAuthorizationInvalidator.Invalidate(user.Id);
             activeTeamsCacheInvalidator.Invalidate();
         }
 

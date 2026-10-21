@@ -65,7 +65,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
             AdminAuthorization,
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
-            Substitute.For<IShiftViewInvalidator>(),
+            new ShiftViewProbe().Cache,
             NewCalendarResolver(),
             Clock,
             NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
@@ -85,7 +85,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
             AuditLog,
             Substitute.For<INotificationEmitter>(),
             AdminAuthorization,
-            Substitute.For<IShiftViewInvalidator>(),
+            new ShiftViewProbe().Cache,
             Substitute.For<IEarlyEntryInvalidator>(),
             serviceProvider,
             Clock,
