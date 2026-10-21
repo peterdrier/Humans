@@ -76,20 +76,6 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         // rule scans Humans.Application plus the section assemblies and Guide's code used
         // to sit in Humans.Infrastructure, which neither covers.
         SectionType("Humans.Guide.Services.GuideContentService"),
-        // Not a cache at all: DevPersonaSeeder *evicts* one. Three calls to
-        // MemoryCacheExtensions.InvalidateUserAccess(userId) after it changes a dev persona's
-        // roles or team memberships — the same call Shell's GateTerminalAccountSeeder makes,
-        // and the eviction helper is an IMemoryCache extension, so there is no invalidator
-        // interface to inject instead. It entered this sweep at Development's G5 move for
-        // Guide's reason, one step further: the code is unchanged and used to sit in
-        // Humans.Web/Infrastructure, which the sweep covers neither before nor after. A move
-        // can put code into a sweep as easily as out of one.
-        SectionType("Humans.Development.Services.DevPersonaSeeder"),
-        // DevPersonaSeeder's reason again: one InvalidateUserAccess(userId) eviction after
-        // provisioning the shared gate-terminal account. Entered this sweep when the seeder
-        // moved from Humans.Web to Humans.Tickets with /Tickets/Admin/Gate
-        // (nobodies-collective/Humans#1091).
-        SectionType("Humans.Tickets.Services.GateTerminalAccountSeeder"),
         // CacheKeys.MagicLinkUsed(token) and CacheKeys.MagicLinkSignupRateLimit(email) — not a
         // read cache at all, but the two pieces of short-TTL sign-in state that have to survive
         // between HTTP requests: single-use consumption of a login token (15 min) and the 60-second

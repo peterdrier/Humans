@@ -235,7 +235,7 @@ public sealed class CalendarRepositoryTests : IDisposable
         (await _repo.GetAllAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeEmpty();
     }
 
-    private CalendarService CreateService() => new(_repo,
+    private CalendarService CreateService() => new(_repo, Humans.Calendar.Tests.Services.CalendarServiceValidationTests.ActiveTeams(),
         new FakeClock(Instant.FromUtc(2026, 3, 1, 0, 0)),
         Substitute.For<IAuditLogService>(),
         NullLogger<CalendarService>.Instance);

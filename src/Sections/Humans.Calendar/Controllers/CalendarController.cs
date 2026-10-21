@@ -58,19 +58,25 @@ internal sealed class CalendarController : HumansControllerBase
 
         // The personal iCal feed card renders below the grid, on this page only.
         // A viewer with no UserInfo row (merged away) simply gets no card rather
-        // than a broken calendar.
+        // than a broken calendar. GET never mints: a viewer without a token gets
+        // the card's create button, which POSTs to CreateIcal.
         var user = await GetCurrentUserInfoAsync(ct);
-        return View(user is null ? model : model with { ICalUrl = await FeedUrlAsync(user, ct) });
+        if (user is null) return View(model);
+        var token = await _feedTokens.GetAsync(user.Id, ct);
+        return View(token is { } t
+            ? model with { ICalUrl = $"{Request.Scheme}://{Request.Host}/api/ical/{user.Id}/{t}.ics" }
+            : model with { CanCreateICal = true });
     }
 
-    /// <summary>
-    /// The viewer's personal feed URL. Index is the only page that renders the card,
-    /// so it is the only caller that may mint.
-    /// </summary>
-    private async Task<string> FeedUrlAsync(UserInfo user, CancellationToken ct)
+    [HttpPost("Ical/Create")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateIcal(CancellationToken ct)
     {
-        var token = await _feedTokens.EnsureAsync(user.Id, ct);
-        return $"{Request.Scheme}://{Request.Host}/api/ical/{user.Id}/{token}.ics";
+        var (errorResult, user) = await ResolveCurrentUserOrChallengeAsync(ct);
+        if (errorResult is not null) return errorResult;
+
+        await _feedTokens.EnsureAsync(user.Id, ct);
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpPost("Ical/Regenerate")]
@@ -493,7 +499,7 @@ internal sealed class CalendarController : HumansControllerBase
     {
         return (await _teams.GetTeamsAsync(ct))
             .Values
-            .Where(t => t.IsActive && !t.IsHidden)
+            .Where(CalendarService.CanOwnEvents)
             .Select(t => new TeamOption(t.Id, t.Name))
             .OrderBy(t => t.Name, StringComparer.CurrentCulture)
             .ToList();

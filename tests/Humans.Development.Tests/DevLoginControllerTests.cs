@@ -14,7 +14,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -236,7 +235,6 @@ public class DevLoginControllerTests
         _userEmails,
         Substitute.For<IContactFieldService>(),
         Substitute.For<IRoleAssignmentWrite>(),
-        Substitute.For<IUserInfoInvalidator>(),
         Substitute.For<ITeamService>(),
         Substitute.For<ITeamWrite>(),
         Substitute.For<ITeamSeeding>(),
@@ -251,7 +249,6 @@ public class DevLoginControllerTests
         Substitute.For<IMembershipCalculator>(),
         Substitute.For<IHumanLifecycleService>(),
         new FakeClock(Instant.FromUtc(2026, 8, 16, 12, 0)),
-        new MemoryCache(new MemoryCacheOptions()),
         Options.Create(new CityPlanningOptions()),
         NullLogger<DevPersonaSeeder>.Instance);
 }

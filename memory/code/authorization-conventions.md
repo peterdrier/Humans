@@ -18,7 +18,7 @@ Authorization in Humans is **policy-based, end to end** — controllers, views, 
 - `src/Humans.Web/Authorization/PolicyNames.cs` — string constants
 - `src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs` — registration (`options.AddPolicy(PolicyNames.X, p => p.RequireRole(...))` or `.AddRequirements(...)`)
 
-**Claims-first for global roles:** `RoleAssignmentClaimsTransformation` converts active `RoleAssignment` records into claims on every request (cached 60s). Don't query the DB for roles already available as claims.
+**Claims-first for global roles:** `RoleAssignmentClaimsTransformation` converts active `RoleAssignment` records into claims on every request (from in-memory caches, no DB hit). Don't query the DB for roles already available as claims.
 
 **No `isPrivileged` booleans on service signatures.** Don't pass auth decisions as parameters to services. Services are auth-free — authorization happens before the service is called.
 

@@ -1,3 +1,4 @@
+using NodaTime;
 using Humans.Base.Interfaces;
 using Humans.Tickets.Contracts;
 
@@ -18,4 +19,11 @@ internal interface ITicketSyncService : ITicketSync, IApplicationService
     /// Clears LastSyncAt so all orders are re-fetched.
     /// </summary>
     Task ResetSyncStateForFullResyncAsync();
+
+    /// <summary>
+    /// Account-merge fold: re-FKs ticket orders, attendees and transfer requests from
+    /// <paramref name="mergedFromUserId"/> onto <paramref name="mergedToUserId"/>. The caching
+    /// decorator fronts this as the section's <c>IUserMerge</c> and evicts both users' holdings.
+    /// </summary>
+    Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct);
 }

@@ -42,8 +42,8 @@ public sealed record CampSettingsInfo(
 /// <c>ICampManagement.SetEarlyEntryAsync</c>,
 /// <c>ICampManagement.RemoveCampMemberAsync</c>,
 /// <c>ICampManagement.LeaveCampAsync</c>, and the membership
-/// confirm/withdraw paths — invalidate the affected camp via
-/// <c>ICampInfoInvalidator</c> inside the decorator, so the cached
+/// confirm/withdraw paths — invalidate the affected camp inside the
+/// decorator, so the cached
 /// projection rebuilds with the current count on the next read. No bypass
 /// is possible because only the inner <c>CampService</c> /
 /// <c>CampRoleService</c> may touch <c>ICampRepository</c>.
@@ -86,7 +86,7 @@ public sealed record CampInfo(
     public CampMembershipState GetMembershipState(Guid userId)
     {
         var season = Seasons
-            .Where(s => s.Status is CampSeasonStatus.Active or CampSeasonStatus.Full)
+            .Where(s => s.IsPublic)
             .OrderByDescending(s => s.Year)
             .FirstOrDefault();
         if (season is null)
@@ -146,6 +146,12 @@ public sealed record CampSeasonInfo(
     public IReadOnlyList<Guid> LeadUserIds { get; init; } = [];
 
     public IReadOnlyList<Guid> WorkshopLeadUserIds { get; init; } = [];
+
+    /// <summary>
+    /// A season is public (listed in the directory and open for camp management) while it is
+    /// Active or Full; Full is informational only.
+    /// </summary>
+    public bool IsPublic => Status is CampSeasonStatus.Active or CampSeasonStatus.Full;
 
     public IReadOnlyList<CampSeasonMemberInfo> ActiveMembers =>
         Members.Where(member => member.Status == CampMemberStatus.Active).ToList();

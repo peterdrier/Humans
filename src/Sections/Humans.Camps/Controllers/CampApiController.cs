@@ -20,7 +20,7 @@ internal sealed class CampApiController(ICampService campService) : ControllerBa
                 Camp = camp,
                 Season = camp.Seasons.FirstOrDefault(season =>
                     season.Year == year &&
-                    season.Status is CampSeasonStatus.Active or CampSeasonStatus.Full)
+                    season.IsPublic)
             })
             .Where(row => row.Season is not null)
             .Select(row => new CampPublicSummary(
@@ -54,7 +54,7 @@ internal sealed class CampApiController(ICampService campService) : ControllerBa
                 Camp = camp,
                 Season = camp.Seasons.FirstOrDefault(season =>
                     season.Year == year &&
-                    season.Status is CampSeasonStatus.Active or CampSeasonStatus.Full)
+                    season.IsPublic)
             })
             .Where(row => row.Season is not null)
             .Select(row => new CampPlacementSummary(

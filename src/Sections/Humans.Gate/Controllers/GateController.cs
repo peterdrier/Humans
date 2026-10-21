@@ -4,9 +4,7 @@ using Humans.Gate.Services.Stores;
 using Humans.Base.Controllers;
 using System.Security.Cryptography;
 using System.Text;
-using Hangfire;
 using Humans.Users.Contracts;
-using Humans.Gate.Jobs;
 using Humans.Base.Authorization;
 using Humans.Base.Extensions;
 using Humans.Base.Models;
@@ -38,14 +36,11 @@ internal sealed class GateController(
     IUserService users,
     IConfiguration configuration,
     GatePinThrottle pinThrottle,
-    GateVendorMirrorLedger mirrorLedger,
-    IBackgroundJobClient backgroundJobs,
     IClock clock,
     ILogger<GateController> logger) : HumansControllerBase(users)
 {
     private const string ScannerSessionKey = "GateScannerId";
     private const string SupervisorPinConfigKey = "Gate:SupervisorPin";
-    private const string VendorMirrorEnabledKey = "Gate:VendorMirrorEnabled";
 
     // Throttle bucket for the shared override PIN — one bucket for the terminal, distinct
     // from the per-user claim buckets so a fumbled override can never lock a claim (or vice versa).
@@ -99,18 +94,6 @@ internal sealed class GateController(
             new GateDecisionInput(barcode, confirmed, childWithAdult, laneId,
                 ClientScanAt: null, Note: null, OverrideByUserId: overrideBy),
             scanner, ct);
-
-        // Best-effort vendor check-in mirror on admit — fire-and-forget so the gate never waits.
-        // Marked in the mirror ledger so the vendor check-in backfill page never re-sends a live
-        // admit that hasn't flowed back through the ticket sync yet (TT check-ins double-record).
-        // Marked ONLY when the mirror flag is on: with it off the job no-ops, and a ledger mark
-        // would hide exactly the rows the backfill page exists to recover.
-        if (decision.VendorTicketId is { Length: > 0 } vendorTicketId)
-        {
-            backgroundJobs.Enqueue<GateVendorCheckInJob>(j => j.ExecuteAsync(vendorTicketId, CancellationToken.None));
-            if (configuration.GetValue<bool>(VendorMirrorEnabledKey))
-                mirrorLedger.TryMarkSent(vendorTicketId);
-        }
 
         return PartialView("_VerdictCard", GateScanCardViewModel.FromDecision(decision, barcode));
     }

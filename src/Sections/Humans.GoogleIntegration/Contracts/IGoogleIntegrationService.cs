@@ -26,4 +26,11 @@ public interface IGoogleIntegrationService : IApplicationService
 /// <param name="UserId">The (surviving) member.</param>
 /// <param name="Email">The address Google Workspace knows the member by.</param>
 /// <param name="Status">Google's verdict on <paramref name="Email"/>.</param>
-public sealed record WorkspaceIdentity(Guid UserId, string Email, GoogleEmailStatus Status);
+public sealed record WorkspaceIdentity(Guid UserId, string Email, GoogleEmailStatus Status)
+{
+    /// <summary>
+    /// The identity is a verified <c>@nobodies.team</c> address. Such an address always wins
+    /// resolution, so while it stands no other address of the member can become the identity.
+    /// </summary>
+    public bool IsNobodiesTeamAccount => Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase);
+}

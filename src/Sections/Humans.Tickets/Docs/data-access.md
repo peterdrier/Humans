@@ -45,8 +45,12 @@ registered keyed under `CachingTicketQueryService.InnerServiceKey`
 (`"ticket-query-inner"`), and is wrapped by the Singleton
 `CachingTicketQueryService` decorator (`Services/Stores/`).
 The decorator is the registered
-`ITicketManagement`, the budgeted cross-section `ITicketService`, and the
-`ITicketCacheInvalidator`. External sections inject `ITicketService`
+`ITicketManagement`, the budgeted cross-section `ITicketService`, and every
+interface whose writes touch cached rows: `ITicketSync` / `ITicketSyncService`,
+`ITicketTransferService` / `ITicketTransferQueue`, `IAttendeeContactImportService`,
+and the section's `IUserDataContributor` and `IUserMerge`. Each write delegates to
+its keyed inner (all keyed under the same `InnerServiceKey`) and evicts in a
+`finally`; nothing outside the decorator evicts. External sections inject `ITicketService`
 (`GetTicketOrdersAsync`, `GetUserTicketHoldingsAsync` and shared current-event barcode lookup)
 rather than the full `ITicketManagement`. Tickets caching is entirely
 `TrackedCache`-based: an orders slice (`Tickets.Orders`, warmed on startup)
@@ -68,13 +72,15 @@ The inner service holds no cache — invalidation methods are no-ops on the
 inner; `CachingTicketQueryService` intercepts. Cross-section calls via
 `IBudgetService`, `ICampaignService`, `ICampaignWrite`, `IUserService`,
 `IUserEmailService`, `ITeamService` (read-split surface),
-`ISettingsService`, plus `IClock`. Implements
-`IUserDataContributor` (the GDPR contributor is the inner, one per section):
-`EraseForUserAsync` erases via `ITicketRepository.EraseUserPiiAsync` +
+`ISettingsService`, plus `IClock`. Carries the GDPR export/erasure bodies
+(`ContributeForUserAsync`, `EraseForUserAsync` on `ITicketManagement`) and the
+static `Erasure` table; the decorator fronts them as the section's one
+`IUserDataContributor`. `EraseForUserAsync` erases via
+`ITicketRepository.EraseUserPiiAsync` +
 `ITicketTransferRepository.ErasePiiForUserAsync` (order/attendee/transfer rows
 stay as sales/chain-of-custody records — Código de Comercio Art. 30, Ley
-58/2003 Art. 66, GDPR Art. 17(3)(b) — only identifiers are tombstoned), then
-calls `ITicketCacheInvalidator.InvalidateAll()` since the warmed `Tickets.Orders`
+58/2003 Art. 66, GDPR Art. 17(3)(b) — only identifiers are tombstoned); the
+decorator then clears both slices, since the warmed `Tickets.Orders`
 projection carries the now-stale names/emails.
 
 `ComputeUserTicketCountAsync` matches a user's tickets by fetching the
@@ -110,12 +116,13 @@ has an automated TicketTailor void(-to-hold)+reissue path
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
-| `TrackedCache<Guid, TicketOrderInfo>` (`Tickets.Orders`, warmed on startup) | Per-Entity | yes | yes (warm + lazy) | `ITicketCacheInvalidator` (clear-all on transfer / contact-import / merge / sync) |
-| `TrackedCache<Guid, CachedUserTicketHoldings>` (`Tickets.UserHoldings`, lazy, 5-min freshness inside value) | Per-User | yes | yes (lazy load) | `ITicketCacheInvalidator` (per-user evict on transfer/merge; clear-all on contact import) |
+| `TrackedCache<Guid, TicketOrderInfo>` (`Tickets.Orders`, warmed on startup) | Per-Entity | yes | yes (warm + lazy) | own write pass-throughs: clear-all on sync, transfer mutation, contact-import apply, GDPR erasure, merge fold |
+| `TrackedCache<Guid, CachedUserTicketHoldings>` (`Tickets.UserHoldings`, lazy, 5-min freshness inside value) | Per-User | yes | yes (lazy load) | own write pass-throughs: both users on merge fold; clear-all on the rest |
 
-Implements `ITicketManagement`, `ITicketService`, `ITicketCacheInvalidator`,
-`IHostedService` (its `StartAsync` warms the orders slice). Resolves the keyed
-Scoped inner per-call via `IServiceScopeFactory`. Both `TrackedCache`
+Implements `ITicketManagement`, `ITicketService`, `ITicketSyncService`,
+`ITicketTransferService`, `IAttendeeContactImportService`, `IUserDataContributor`,
+`IUserMerge`, `IHostedService` (its `StartAsync` warms the orders slice). Resolves
+each keyed Scoped inner per-call via `IServiceScopeFactory`. Both `TrackedCache`
 instances are surfaced on `/Debug/CacheStats`.
 `GetDashboardStatsAsync` is a straight pass-through to the inner (compute-only,
 no read-through cache).
@@ -124,14 +131,14 @@ no read-through cache).
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
-| `TrackedCache<string, CachedVendorEventSummary>` (`Tickets.VendorEventSummary`, lazy, 15-min freshness inside value) | Per-Entity | yes | yes (lazy load) | `ITicketVendorCacheInvalidator.InvalidateEventSummary` |
+| `TrackedCache<string, CachedVendorEventSummary>` (`Tickets.VendorEventSummary`, lazy, 15-min freshness inside value) | Per-Entity | yes | yes (lazy load) | own `GetOrdersAsync` pass-through (per event, after a successful pull) |
 
-Implements `ITicketVendorService`, `ITicketVendorCacheInvalidator`. Wraps the
-keyed vendor-port inner, resolved via `IServiceScopeFactory`; every other port
-member forwards through uncached. `TicketSyncService` is the sole caller of
-`InvalidateEventSummary`.
+Implements `ITicketVendorService`. Wraps the keyed vendor-port inner, resolved via
+`IServiceScopeFactory`; every other port member forwards through uncached. A
+successful order pull for an event (the ticket sync's first vendor read, its only
+caller) evicts that event's summary, so it is never older than the synced orders.
 
-### TicketSyncService (Scoped)
+### TicketSyncService (Scoped, keyed — inner of CachingTicketQueryService)
 
 Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 
@@ -142,19 +149,16 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 | TicketSyncStates | R/W |
 | TicketTransferRequests | R |
 
-| Cache Key | TTL | Read | Write | Invalidate |
-|-----------|-----|------|-------|------------|
-| `Tickets.VendorEventSummary` tracked slice (via `ITicketVendorCacheInvalidator.InvalidateEventSummary`) | 15 min | | | yes (per event) |
-| `Tickets.Orders` / `Tickets.UserHoldings` tracked slices (via `ITicketCacheInvalidator`) | per-process | | | yes |
-
+Cache-free; the decorators evict around it (see above).
 Cross-section calls via `ITicketVendorService`, `IStripeService`,
 `IUserService`, `ICampaignWrite`,
-`ISettingsService`, `ITicketCacheInvalidator`, and the section's own
+`ISettingsService`, and the section's own
 `IEventParticipationManagement` for participation derivation. Implements
-`ITicketSyncService`, `IUserMerge`. `BuildEmailLookupAsync` builds the
+`ITicketSyncService`, whose `ReassignAsync` the decorator fronts as the
+section's `IUserMerge`. `BuildEmailLookupAsync` builds the
 verified-email → user-id map by fanning out over `IUserService.GetAllUserInfosAsync`.
 
-### TicketTransferService (Scoped)
+### TicketTransferService (Scoped, keyed — inner of CachingTicketQueryService)
 
 Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 
@@ -169,13 +173,10 @@ Cross-section calls via `IUserService`, `IUserEmailService`,
 `IAuditLogService`, plus
 `ITicketVendorService` (`ProcessTransferAsync` / `RetryReissueAsync` run the
 automated TicketTailor void(-to-hold)+reissue; the next ticket sync
-reconciles local attendee rows). Invalidates ticket caches via
-`ITicketCacheInvalidator` (`InvalidateAfterTransfer`, called wherever cached
-data changed — request, cancel, approve, reject, a process/retry success, and
-the partial case where the void committed and the attendee was voided locally
-(sender only). A void failure changes nothing locally and does not invalidate.
-Pending state is baked into the holdings slice and approval mutates the cached
-order projection's transfer detail).
+reconciles local attendee rows). Cache-free: the decorator clears both ticket
+slices after every mutation (request, cancel, approve, process, retry, reject),
+since pending state is baked into the holdings slice and approval mutates the
+cached order projection's transfer detail.
 Transfers of gate-checked-in tickets are refused — `CheckedInAt` respected.
 No `IMemoryCache` directly.
 
@@ -197,7 +198,7 @@ No repository. Read-only gallery contributor (`IEmailPreviewContributor`,
 `Section.cs:70`) — builds one sample per template via `TicketsEmails` for
 `/Email/EmailPreview`. No DB access, no cache.
 
-### AttendeeContactImportService (Scoped)
+### AttendeeContactImportService (Scoped, keyed — inner of CachingTicketQueryService)
 
 Repository: `ITicketRepository`.
 
@@ -206,9 +207,9 @@ Repository: `ITicketRepository`.
 | TicketAttendees | R |
 
 Cross-section calls via `IUserEmailService`, `IAccountProvisioningService`,
-`IUserService`, `ISettingsService`, `ITicketCacheInvalidator`,
-`IAuditLogService`. Imports attendee contact data into the system; clears
-ticket caches via `InvalidateAfterContactImport`. No `IMemoryCache` directly.
+`IUserService`, `ISettingsService`,
+`IAuditLogService`. Imports attendee contact data into the system; the decorator
+clears both ticket slices after `ApplyAsync`. No `IMemoryCache` directly.
 
 ### EventParticipationService (Scoped)
 
@@ -253,8 +254,9 @@ a person) the first time a ticket admin sets its password from
 `/Tickets/Admin/Gate`. Creates the Identity
 user via `UserManager<User>`, saves its profile through Users' canonical
 `IProfileEditorService.SaveProfileAsync`, clears its consent check via
-Consent's `IConsentWrite.RecordConsentCheckAsync`, invalidates user-access
-cache and `IUserInfoInvalidator`, and logs via `IAuditLogService`. No direct
+Consent's `IConsentWrite.RecordConsentCheckAsync`, invalidates the user-access
+cache, and logs via `IAuditLogService`. Users refreshes its own `UserInfo`
+entry on the create and the profile save. No direct
 DB or cache access of its own — every mutation goes through another
 section's public service surface.
 

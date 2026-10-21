@@ -600,9 +600,17 @@ internal sealed class IssuesService(
                 ? (users1!.TryGetValue(newAssigneeUserId.Value, out var nu) ? nu.BurnerName : newAssigneeUserId.Value.ToString())
                 : "Unassigned";
 
+            // Only an active member may be assigned — the same set the assignee picker offers.
             // Store the resolved id: a merged-away assignee id would point the issue at a tombstone.
-            if (newAssigneeUserId is { } requested && users1!.TryGetValue(requested, out var resolved))
+            if (newAssigneeUserId is { } requested)
+            {
+                if (!users1!.TryGetValue(requested, out var resolved) || !resolved.IsActive)
+                {
+                    logger.LogWarning("Issue {IssueId} assignee update rejected: {UserId} is not an active member", issueId, requested);
+                    return IssueMutationResult.Refused("Only an active member can be assigned.");
+                }
                 newAssigneeUserId = resolved.Id;
+            }
             if (issue.AssigneeUserId == newAssigneeUserId) return IssueMutationResult.Success();
 
             issue.AssigneeUserId = newAssigneeUserId;

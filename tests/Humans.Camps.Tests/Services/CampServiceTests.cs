@@ -29,11 +29,8 @@ public sealed class CampServiceTests : CampsTestHarness
     private static readonly Guid TestActorId = Guid.NewGuid();
     private readonly CampService _service;
     private readonly InMemoryFileStorage _fileStorage;
-    private readonly ICampLeadJoinRequestsBadgeCacheInvalidator _leadBadgeInvalidator = Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>();
     private readonly ICampRoleService _campRoleService;
     private readonly ICityPlanningWrite _cityPlanningService;
-    private readonly IEarlyEntryInvalidator _earlyEntryInvalidator;
-    private readonly ICampInfoInvalidator _campInfoInvalidator = Substitute.For<ICampInfoInvalidator>();
     private readonly ISettingsService _settingsService;
     private readonly IUserService _userService = Substitute.For<IUserService>();
 
@@ -47,8 +44,6 @@ public sealed class CampServiceTests : CampsTestHarness
         _campRoleService = Substitute.For<ICampRoleService>();
         _campRoleService.RemoveAllForMemberAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(0));
-
-        _earlyEntryInvalidator = Substitute.For<IEarlyEntryInvalidator>();
 
         // City Planning is its own assembly: its tests own "the rows actually go"; what
         // Camps must prove is that DeleteCampAsync asks for the deletion, with the right
@@ -65,11 +60,8 @@ public sealed class CampServiceTests : CampsTestHarness
             Substitute.For<ISystemTeamSync>(),
             _fileStorage,
             Notifier,
-            _leadBadgeInvalidator,
             new Lazy<ICampRoleService>(() => _campRoleService),
             new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
-            _earlyEntryInvalidator,
-            _campInfoInvalidator,
             _userService,
             Substitute.For<Humans.Tickets.Contracts.ITicketService>(),
             _settingsService,
@@ -201,26 +193,10 @@ public sealed class CampServiceTests : CampsTestHarness
     // ReassignAsync (account-merge fold) — cache invalidation
     // ==========================================================================
 
-    [HumansFact]
-    public async Task ReassignAsync_InvalidatesEarlyEntryCache_ForBothUsers()
-    {
-        // The fold can move HasEarlyEntry CampMember rows between users, so both
-        // users' per-user early-entry caches must be evicted.
-        var source = Guid.NewGuid();
-        var target = Guid.NewGuid();
-
-        await _service.ReassignAsync(
-            source, target, Guid.NewGuid(), Clock.GetCurrentInstant(),
-            TestContext.Current.CancellationToken);
-
-        _earlyEntryInvalidator.Received(1).InvalidateUser(source);
-        _earlyEntryInvalidator.Received(1).InvalidateUser(target);
-    }
-
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task MembershipFoldOrErasure_EvictsOtherLeadsPendingRequestBadge(bool merge)
+    public async Task MembershipFoldOrErasure_LeavesOnePendingRequest(bool merge)
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
@@ -232,14 +208,6 @@ public sealed class CampServiceTests : CampsTestHarness
         await SeedUserAsync(target, "Target");
         await _service.RequestCampMembershipAsync(camp.Id, source, ct);
         await _service.RequestCampMembershipAsync(camp.Id, target, ct);
-        var lead = camp.CreatedByUserId;
-        using var cache = new MemoryCache(new MemoryCacheOptions());
-        var invalidator = new CampLeadJoinRequestsBadgeCacheInvalidator(cache);
-        _leadBadgeInvalidator.When(x => x.Invalidate(Arg.Any<Guid>()))
-            .Do(call => invalidator.Invalidate(call.Arg<Guid>()));
-        var badgeKey = CacheKeys.CampLeadJoinRequestsBadge(lead);
-        cache.Set(badgeKey, 2);
-
         if (merge)
             await _service.ReassignAsync(source, target, Guid.NewGuid(), Clock.GetCurrentInstant(), ct);
         else
@@ -247,7 +215,6 @@ public sealed class CampServiceTests : CampsTestHarness
 
         (await CampsDb.CampMembers.AsNoTracking().CountAsync(m => m.Status == CampMemberStatus.Pending, ct))
             .Should().Be(1);
-        cache.TryGetValue<int>(badgeKey, out _).Should().BeFalse();
     }
 
     // ==========================================================================
@@ -836,6 +803,22 @@ public sealed class CampServiceTests : CampsTestHarness
         seasonInfo.IsNameLocked(new LocalDate(2026, 3, 2)).Should().BeTrue();
         seasonInfo.KidsVisiting.Should().Be(KidsVisitingPolicy.DaytimeOnly);
         seasonInfo.HasPerformanceSpace.Should().Be(PerformanceSpaceStatus.Yes);
+    }
+
+    [HumansTheory]
+    [InlineData(CampSeasonStatus.Pending, false)]
+    [InlineData(CampSeasonStatus.Active, true)]
+    [InlineData(CampSeasonStatus.Full, true)]
+    [InlineData(CampSeasonStatus.Rejected, false)]
+    [InlineData(CampSeasonStatus.Withdrawn, false)]
+    public void CampSeasonInfo_IsPublic_OnlyForActiveOrFullSeasons(CampSeasonStatus status, bool expected)
+    {
+        var season = new CampSeasonInfo(
+            Guid.NewGuid(), Guid.NewGuid(), "camp", 2026, null, "Camp", string.Empty, string.Empty,
+            [], status, YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
+            0, null, null, null, 0, null, null);
+
+        season.IsPublic.Should().Be(expected);
     }
 
     [HumansFact]
@@ -2194,10 +2177,9 @@ public sealed class CampServiceTests : CampsTestHarness
         });
         var service = new CampService(
             new CampRepository(CampsDbFactory), AuditLog, Substitute.For<ISystemTeamSync>(), storage, Notifier,
-            Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
             new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
-            _earlyEntryInvalidator, _campInfoInvalidator, _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
+            _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
             Clock, NullLogger<CampService>.Instance);
 
         if (deleteCamp)
@@ -2267,10 +2249,9 @@ public sealed class CampServiceTests : CampsTestHarness
                 : Task.FromResult(committed));
         var service = new CampService(
             repo, AuditLog, Substitute.For<ISystemTeamSync>(), _fileStorage, Notifier,
-            Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
             new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
-            _earlyEntryInvalidator, _campInfoInvalidator, _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
+            _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
             Clock, NullLogger<CampService>.Instance);
         await using var image = new MemoryStream([1, 2, 3]);
 
@@ -2691,7 +2672,7 @@ public sealed class CampServiceTests : CampsTestHarness
         removed.GetProperty("RemovedByUserId").GetGuid().Should().Be(actorId);
         removed.GetProperty("ConfirmedAt").GetString().Should().Be("2026-03-13T12:00:00Z");
         removed.GetProperty("RemovedAt").GetString().Should().Be("2026-03-13T12:00:00Z");
-        _service.ErasureDeclaration.Should().ContainKey(CampService.CampMemberships).WhoseValue.Should().BeNull();
+        CampService.Erasure.Should().ContainKey(CampService.CampMemberships).WhoseValue.Should().BeNull();
 
         await _service.EraseForUserAsync(userId, ct);
 
@@ -2769,40 +2750,6 @@ public sealed class CampServiceTests : CampsTestHarness
     // ==========================================================================
     // DeleteCampAsync — City Planning cleanup (nobodies-collective/Humans#992)
     // ==========================================================================
-
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task DeleteCamp_EvictsEarlyEntryAfterTransactionDisposal(bool saveFails)
-    {
-        var camp = new Camp { Id = Guid.NewGuid(), Slug = "alpha" };
-        var repo = Substitute.For<ICampRepository>();
-        repo.GetByIdAsync(camp.Id, Arg.Any<CancellationToken>()).Returns(camp);
-        var pending = new TaskCompletionSource<IReadOnlyList<string>?>(TaskCreationOptions.RunContinuationsAsynchronously);
-        repo.DeleteCampAsync(camp.Id, Arg.Any<CancellationToken>()).Returns(pending.Task);
-        var failure = new IOException("Delete completion is uncertain");
-        _earlyEntryInvalidator.When(x => x.InvalidateAll()).Do(_ =>
-            System.Transactions.Transaction.Current.Should().BeNull("the delete transaction must finish before reads can refill"));
-        var service = new CampService(
-            repo, AuditLog, Substitute.For<ISystemTeamSync>(), _fileStorage, Notifier,
-            Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
-            new Lazy<ICampRoleService>(() => _campRoleService),
-            new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
-            _earlyEntryInvalidator, _campInfoInvalidator, _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
-            Clock, NullLogger<CampService>.Instance);
-
-        var deletion = service.DeleteCampAsync(camp.Id, actorUserId: TestActorId, TestContext.Current.CancellationToken);
-        _earlyEntryInvalidator.DidNotReceive().InvalidateAll();
-        if (saveFails) pending.SetException(failure);
-        else pending.SetResult([]);
-
-        Exception? error = null;
-        try { await deletion; }
-        catch (Exception ex) { error = ex; }
-        if (saveFails) error.Should().BeSameAs(failure);
-        else error.Should().BeNull();
-        _earlyEntryInvalidator.Received(1).InvalidateAll();
-    }
 
     [HumansFact]
     public async Task DeleteCampAsync_ClearsCityPlanningPolygonsForItsSeasons()

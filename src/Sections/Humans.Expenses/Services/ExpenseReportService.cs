@@ -1483,8 +1483,8 @@ internal sealed class ExpenseReportService(
 
         }, "Error finance-rejecting expense report {ReportId}", reportId);
 
-    public Task<IReadOnlyList<Guid>> GetFailedHoldedPushReportIdsAsync(CancellationToken ct = default)
-        => repo.GetFailedOutboxReportIdsAsync(ct);
+    public async Task<IReadOnlyList<Guid>> GetFailedHoldedPushReportIdsAsync(bool actorIsFinanceAdmin, CancellationToken ct = default)
+        => actorIsFinanceAdmin ? await repo.GetFailedOutboxReportIdsAsync(ct) : [];
 
     public Task<ExpenseMutationResult> RequeueHoldedPushWithResultAsync(
         Guid reportId, Guid actorUserId, CancellationToken ct = default) =>

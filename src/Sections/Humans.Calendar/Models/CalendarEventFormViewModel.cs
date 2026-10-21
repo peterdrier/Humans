@@ -68,6 +68,7 @@ internal sealed class CalendarEventFormViewModel
     {
         nameof(CreateCalendarEventDto.RecurrenceTimezone) => nameof(RecurrenceTimezone),
         nameof(CreateCalendarEventDto.RecurrenceRule) => nameof(RecurrenceRule),
+        nameof(CreateCalendarEventDto.OwningTeamId) => nameof(OwningTeamId),
         _ => string.Empty,
     };
 }

@@ -81,7 +81,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     private readonly INotificationEmitter _notificationService = Substitute.For<INotificationEmitter>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
-    private readonly INotificationMeterCacheInvalidator _notificationMeter = Substitute.For<INotificationMeterCacheInvalidator>();
     private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
@@ -120,7 +119,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _notificationService,
         _syncJob,
         _metrics,
-        _notificationMeter,
         _cache,
         Clock,
         NullLogger<ApplicationDecisionService>.Instance);
@@ -226,7 +224,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         stored.Status.Should().Be(ApplicationStatus.Submitted);
         results.Should().ContainSingle(result => result.Success);
         results.Should().ContainSingle(result => string.Equals(result.ErrorKey, "AlreadyPending", StringComparison.Ordinal));
-        _notificationMeter.Received(1).Invalidate();
     }
 
     private sealed class PauseFirstApplicationSave : SaveChangesInterceptor
@@ -275,7 +272,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SubmitAsync_InvalidatesNavBadgeAndNotificationMeter()
+    public async Task SubmitAsync_InvalidatesBoardVotingBadges()
     {
         var userId = Guid.NewGuid();
         var boardMemberId = Guid.NewGuid();
@@ -288,7 +285,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             null, null, null, "en", TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
-        _notificationMeter.Received().Invalidate();
         VotingBadgeCached(boardMemberId).Should().BeFalse();
     }
 
@@ -318,10 +314,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         submitted.Success.Should().Be(expectedSuccess);
         submitted.ErrorKey.Should().Be(errorKey);
         (await GovernanceDb.Applications.CountAsync(TestContext.Current.CancellationToken)).Should().Be(expectedSuccess ? 1 : 0);
-        if (!expectedSuccess)
-        {
-            _notificationMeter.ReceivedCalls().Should().BeEmpty();
-        }
     }
 
     [HumansTheory]
@@ -458,6 +450,27 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         updated.Status.Should().Be(ApplicationStatus.Approved);
     }
 
+    [HumansTheory]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    public async Task Finalize_StoresTheBoardMeetingDate_DefaultingAMissingOneToToday(bool approve, bool supplied)
+    {
+        var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+        await SeedBoardVoteAsync(app.Id);
+        LocalDate? meetingDate = supplied ? new LocalDate(2026, 2, 20) : null;
+
+        var result = approve
+            ? await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, meetingDate, TestContext.Current.CancellationToken)
+            : await _service.RejectAsync(app.Id, Guid.NewGuid(), "reason", meetingDate, TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        ClearAllTrackers();
+        var updated = await GovernanceDb.Applications.FirstAsync(a => a.Id == app.Id, TestContext.Current.CancellationToken);
+        updated.BoardMeetingDate.Should().Be(meetingDate ?? Clock.GetCurrentInstant().InUtc().Date);
+    }
+
     [HumansFact]
     public async Task ApproveAsync_SetsTermExpiry()
     {
@@ -558,17 +571,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             userId, SystemTeamType.Asociados, Arg.Any<CancellationToken>());
         await _syncJob.DidNotReceive().SyncMembershipForUserAsync(
             Arg.Any<Guid>(), SystemTeamType.Colaboradors, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task ApproveAsync_InvalidatesNavBadgeAndNotificationMeter()
-    {
-        var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
-        await SeedBoardVoteAsync(app.Id);
-
-        await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, TestContext.Current.CancellationToken);
-
-        _notificationMeter.Received().Invalidate();
     }
 
     [HumansFact]
@@ -1301,6 +1303,37 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var result = (await controller.Index()).Should().BeOfType<ViewResult>().Subject;
         result.Model.Should().BeOfType<ApplicationIndexViewModel>().Subject
             .IsApprovedColaborador.Should().Be(expectedPrompt);
+    }
+
+    [HumansTheory]
+    [InlineData(-1, MembershipTier.Colaborador)]
+    [InlineData(0, MembershipTier.Asociado)]
+    public async Task ApplicationCreate_AsociadoDefaultRequiresAnActiveColaboradorTerm(int expiryOffset, MembershipTier expectedDefault)
+    {
+        var userId = Guid.NewGuid();
+        var app = await SeedSubmittedApplicationAsync(userId);
+        app.MembershipTier = MembershipTier.Colaborador;
+        app.Approve(Guid.NewGuid(), null, Clock);
+        app.TermExpiresAt = Clock.GetCurrentInstant().InUtc().Date.PlusDays(expiryOffset);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(new User { Id = userId }.ToUserInfo()));
+        var controller = new GovernanceApplicationsController(_service, _userService,
+            Substitute.For<IStringLocalizer<SharedResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([
+                        new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "Test"))
+                }
+            }
+        };
+
+        var result = (await controller.Create()).Should().BeOfType<ViewResult>().Subject;
+        result.Model.Should().BeOfType<ApplicationCreateViewModel>().Subject
+            .MembershipTier.Should().Be(expectedDefault);
     }
 
     [HumansTheory]

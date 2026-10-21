@@ -3,7 +3,7 @@ using Humans.Base.Interfaces;
 namespace Humans.Calendar.Services;
 
 /// <summary>
-/// Owns the credential behind the personal iCal feed URL: mint-on-first-view,
+/// Owns the credential behind the personal iCal feed URL: mint on the member's explicit request,
 /// rotation from the feed card, and the GDPR/merge lifecycles. The whole lifecycle
 /// sits in Calendar because the table does, so no page and no other section writes
 /// it and there is no cross-section write to declare.
@@ -18,8 +18,8 @@ internal interface ICalendarFeedTokenService : IApplicationService
     Task<Guid?> GetAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// The member's token, minting one on first call. Only the page that renders the
-    /// member their own URL calls this.
+    /// The member's token, minting one on first call. Only the calendar page's explicit
+    /// create-feed POST calls this; no GET mints.
     /// </summary>
     Task<Guid> EnsureAsync(Guid userId, CancellationToken ct = default);
 

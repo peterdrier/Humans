@@ -67,7 +67,7 @@ Humans.Holded/
                                 so: one class, its private helpers, and nothing else
   Services/Service              shapes 1–4: sweep, reconcile, and the read models
   Services/HoldedCallLog        the in-process meter the client fills and Service drains
-  Services/HoldedNightlySync    shape 2's body: Finance's doc sync, then this section's sweep
+  Services/HoldedNightlySync    shape 2's body: this section's sweep (Finance runs its own doc sync)
   Jobs/HoldedSyncJob            the Hangfire shim over it — public only because Hangfire needs
                                 the concrete type; SectionJobs names it and the cron
   Data/Repository               the only code that touches HoldedDbContext

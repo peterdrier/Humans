@@ -194,6 +194,31 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         _containers.ReceivedCalls().Should().ContainSingle();
     }
 
+    [HumansFact]
+    public async Task GetContainers_CanEditIsThePlaceRequirementPerContainerForTheRouteYear()
+    {
+        const int year = 2025;
+        var editableCampId = Guid.NewGuid();
+        var editable = new ContainerDto(Guid.NewGuid(), editableCampId, "Mine", null, [], Instant.MinValue, Instant.MinValue);
+        var other = new ContainerDto(Guid.NewGuid(), Guid.NewGuid(), "Theirs", null, [], Instant.MinValue, Instant.MinValue);
+        _containers.GetAllAsync(Arg.Any<CancellationToken>()).Returns([editable, other]);
+        _containers.GetPlacementsByYearAsync(year, Arg.Any<CancellationToken>()).Returns([]);
+        _campService.GetCampsForYearAsync(year, Arg.Any<CancellationToken>()).Returns([]);
+        _authorization = Substitute.For<IAuthorizationService>();
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(call => call.ArgAt<object>(1) is ContainerAuthorizationTarget { Year: year } target
+                && target.CampId == editableCampId
+                && call.ArgAt<IEnumerable<IAuthorizationRequirement>>(2).Single() == ContainerOperationRequirement.Place
+                    ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+
+        var result = await CreateController().GetContainers(year, TestContext.Current.CancellationToken);
+
+        var rows = result.Should().BeOfType<OkObjectResult>().Which.Value
+            .Should().BeAssignableTo<IEnumerable<ContainerWithPlacementApiDto>>().Subject.ToList();
+        rows.Single(r => r.Id == editable.Id).CanEdit.Should().BeTrue();
+        rows.Single(r => r.Id == other.Id).CanEdit.Should().BeFalse();
+    }
+
     private const string Square = """{"type":"Polygon","coordinates":[[[0,0],[0,1],[1,1],[0,0]]]}""";
 
     [HumansFact]

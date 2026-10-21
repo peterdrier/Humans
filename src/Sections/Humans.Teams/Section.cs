@@ -39,7 +39,6 @@ public sealed class Section : ISection, IIssueQueueOwner
             (TeamService)sp.GetRequiredKeyedService<ITeamManagementService>(CachingTeamService.InnerServiceKey));
         services.AddScoped<IGoogleGroupMembershipSource>(sp => sp.GetRequiredService<TeamService>());
         services.AddScoped<IGoogleDriveAccessSource, TeamDriveAccessSource>();
-        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<TeamService>());
         services.AddScoped<IEarlyEntryProvider>(sp => sp.GetRequiredService<TeamService>());
 
         services.AddSingleton<CachingTeamService>();
@@ -49,6 +48,7 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddSingleton<ITeamWrite>(sp => sp.GetRequiredService<CachingTeamService>());
         services.AddSingleton<ITeamSeeding>(sp => sp.GetRequiredService<CachingTeamService>());
         services.AddSingleton<IUserMerge>(sp => sp.GetRequiredService<CachingTeamService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CachingTeamService>());
         // Guid → display-name fan-out (nobodies-collective/Humans#1059).
         services.AddSingleton<IEntityNameContributor>(sp => sp.GetRequiredService<CachingTeamService>());
 
@@ -57,8 +57,6 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddHostedService(sp => sp.GetRequiredService<CachingTeamService>());
 
         services.AddScoped<ITeamPageService, TeamPageService>();
-
-        services.AddScoped<IActiveTeamsCacheInvalidator, ActiveTeamsCacheInvalidator>();
 
         // Teams owns its email copy and its gallery samples; Email keeps the mechanics
         // (memory/architecture/email-templates-live-in-sender.md).

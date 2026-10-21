@@ -301,7 +301,6 @@ graph LR
     Team --> NotifEmitter
     Team --> ShiftMgmt
     Team --> AdminAuth
-    Team --> EarlyEntry
     Team --> GIdentity
     TPage --> TRes
     TPage --> ShiftMgmt
@@ -311,7 +310,6 @@ graph LR
     %% Camps
     Camp --> Audit
     Camp --> NotifEmitter
-    Camp --> EarlyEntry
     Camp --> User
     Camp --> SettingsSvc
     Camp --> TicketQ
@@ -348,11 +346,9 @@ graph LR
     %% Shifts
     ShiftMgmt --> Audit
     ShiftMgmt --> AdminAuth
-    ShiftMgmt --> EarlyEntry
     ShiftSign --> Audit
     ShiftSign --> NotifEmitter
     ShiftSign --> AdminAuth
-    ShiftSign --> EarlyEntry
     ShiftSign --> User
     VolTrack --> User
     VolTrack --> TicketQ
@@ -739,7 +735,7 @@ interfaces / infra connectors, which this graph doesn't chart):
 
 Each pair below would fail constructor injection if both sides eager-injected the other.
 
-1. **ShiftManagement ↔ Team** — ShiftManagementService lazy-resolves `ITeamService`; TeamService eagerly injects `IShiftAuthorizationInvalidator` (implemented by ShiftManagementService). (ShiftSignupService also lazy-resolves `ITeamService`.)
+1. **ShiftManagement ↔ Team** — ShiftManagementService lazy-resolves `ITeamService`; TeamService eagerly injects `IShiftManagementService` (implemented by ShiftManagementService). (ShiftSignupService also lazy-resolves `ITeamService`.)
 2. **Consent ↔ MembershipCalculator** — ConsentService lazy-resolves `IMembershipCalculator` for status recomputes; MembershipCalculator lazy-resolves `IConsentService` for required-docs-given checks. Both lazy because the cycle is two-way hot.
 3. **Team ↔ TeamResource** — TeamService lazy-resolves `ITeamResourceService`; TeamResourceService eagerly injects `ITeamService`.
 4. **Team ↔ GoogleWorkspaceSync** — TeamService lazy-resolves `IGoogleSyncWrite` for ad-hoc Drive/Group reconciliation; GoogleWorkspaceSyncService eagerly injects `ITeamService`.

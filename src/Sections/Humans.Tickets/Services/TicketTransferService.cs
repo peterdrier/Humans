@@ -29,7 +29,6 @@ internal sealed class TicketTransferService(
     IEmailService emailService,
     TicketsEmails emailMessages,
     IAuditLogService auditLog,
-    ITicketCacheInvalidator cacheInvalidator,
     IClock clock,
     ILogger<TicketTransferService> logger) : ITicketTransferService
 {
@@ -151,10 +150,6 @@ internal sealed class TicketTransferService(
         // sender/team notification from reaching the outbox.
         ct = CancellationToken.None;
 
-        // Pendency is baked into the cached holdings rows ("transfer pending" stamp),
-        // so every pendency change must evict the sender's holdings.
-        cacheInvalidator.InvalidateAfterTransfer(senderUserId, dto.ReceiverUserId);
-
         await auditLog.LogAsync(
             AuditAction.TicketTransferRequested,
             nameof(TicketTransferRequest),
@@ -186,8 +181,6 @@ internal sealed class TicketTransferService(
         request.Status = TicketTransferStatus.Cancelled;
         request.DecidedAt = now;
         await transferRepo.UpdateAsync(request, ct);
-
-        cacheInvalidator.InvalidateAfterTransfer(request.SenderUserId, request.ReceiverUserId);
 
         await auditLog.LogAsync(
             AuditAction.TicketTransferCancelled,
@@ -345,7 +338,6 @@ internal sealed class TicketTransferService(
         request.NewVendorTicketId = issued.VendorTicketId;
         request.VendorMessage = $"hold {request.VendorHoldId} (retried)";
         request.VendorHoldId = null; // consumed
-        cacheInvalidator.InvalidateAfterTransfer(request.SenderUserId, request.ReceiverUserId);
 
         await MarkApprovedAsync(
             request, adminUserId, adminNotes,
@@ -390,10 +382,6 @@ internal sealed class TicketTransferService(
         await transferRepo.UpdateAsync(request, ct);
         // Finish notification follow-up once the decision has persisted.
         ct = CancellationToken.None;
-
-        // Approving changes the cached order projection (it now carries the
-        // recipient/decided-at for void attendees), so evict it here.
-        cacheInvalidator.InvalidateAfterTransfer(request.SenderUserId, request.ReceiverUserId);
 
         await auditLog.LogAsync(
             AuditAction.TicketTransferApproved,
@@ -476,7 +464,6 @@ internal sealed class TicketTransferService(
                 : $"Issue failed ({VendorFailureDetail(ex)}) — retry reissue from hold {voidResult.HoldId}";
             attendee.Status = TicketAttendeeStatus.Void;
             await ticketRepo.UpsertAttendeesAsync([attendee], commitCt);
-            cacheInvalidator.InvalidateAfterTransfer(request.SenderUserId, receiverUserId: null);
             logger.LogError(ex,
                 "TT issue failed for transfer {TransferId} after successful void; hold {HoldId} retained for manual reissue",
                 request.Id, voidResult.HoldId);
@@ -495,8 +482,6 @@ internal sealed class TicketTransferService(
         request.NewVendorTicketId = issued.VendorTicketId;
         request.VendorHoldId = null; // consumed
         request.VendorMessage = voidResult.HoldId is null ? null : $"hold {voidResult.HoldId}";
-
-        cacheInvalidator.InvalidateAfterTransfer(request.SenderUserId, request.ReceiverUserId);
     }
 
     public async Task<TicketTransferMutationResult> RejectAsync(
@@ -521,8 +506,6 @@ internal sealed class TicketTransferService(
         await transferRepo.UpdateAsync(request, ct);
         // Finish notification follow-up once the decision has persisted.
         ct = CancellationToken.None;
-
-        cacheInvalidator.InvalidateAfterTransfer(request.SenderUserId, request.ReceiverUserId);
 
         await auditLog.LogAsync(
             AuditAction.TicketTransferRejected,

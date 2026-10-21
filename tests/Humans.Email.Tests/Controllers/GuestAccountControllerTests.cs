@@ -33,6 +33,8 @@ public class GuestAccountControllerTests
     private GuestAccountController BuildSut(User user)
     {
         _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.ArgAt<string>(0), call.ArgAt<string>(0)));
+        _commPrefService.UpdatePreferenceAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<bool>(),
+            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(true);
 
         _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(user, [], [], [], profile: null, [])));

@@ -86,23 +86,26 @@ internal interface IGoogleSyncManagement : IGoogleSyncService, IGoogleSyncWrite,
 
     /// <summary>
     /// Requeues a single permanently-failed outbox event for retry.
-    /// Returns <c>true</c> if the event was found and reset.
+    /// Returns <c>true</c> if the event was found and reset; only then is the requeue audited
+    /// against <paramref name="actorUserId"/>.
     /// </summary>
-    Task<bool> RequeueOutboxEventAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<bool> RequeueOutboxEventAsync(Guid id, Guid actorUserId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Requeues all permanently-failed outbox events.
-    /// Returns the number of events reset.
+    /// Returns the number of events reset. Audited against <paramref name="actorUserId"/>,
+    /// including when nothing was reset.
     /// </summary>
-    Task<int> RequeueAllFailedOutboxEventsAsync(CancellationToken cancellationToken = default);
+    Task<int> RequeueAllFailedOutboxEventsAsync(Guid actorUserId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Enqueues <see cref="GoogleSyncOutboxEventTypes.AddUserToTeamResources"/> events
     /// for all teams the given user currently belongs to, bypassing the
     /// Google identity <c>GoogleEmailStatus.Rejected</c> guard so an admin can force a
     /// re-attempt after fixing the user's email. Returns the number of events enqueued.
+    /// Audited against <paramref name="actorUserId"/>, including when nothing was enqueued.
     /// </summary>
-    Task<int> EnqueueUserSyncAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<int> EnqueueUserSyncAsync(Guid userId, Guid actorUserId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Returns the count of outbox events that have not yet been processed

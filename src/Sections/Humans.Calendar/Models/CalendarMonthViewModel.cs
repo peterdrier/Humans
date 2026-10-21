@@ -15,6 +15,12 @@ internal sealed record CalendarMonthViewModel(
     /// for a viewer with no <c>UserInfo</c> row.
     /// </summary>
     public string? ICalUrl { get; init; }
+
+    /// <summary>
+    /// The viewer has no feed token yet: the card offers a button that POSTs to create
+    /// one, since rendering the page must not mint a credential.
+    /// </summary>
+    public bool CanCreateICal { get; init; }
 }
 
 internal sealed record TeamOption(Guid Id, string Name);

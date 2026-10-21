@@ -7,6 +7,8 @@ using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
 using Humans.Tickets.Services.Stores;
 using Humans.Tickets.Data;
+using Humans.Gdpr.Contracts;
+using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Tests.Architecture;
 
@@ -18,9 +20,8 @@ namespace Humans.Tickets.Tests.Architecture;
 /// The inner <see cref="TicketQueryService"/> goes through
 /// <see cref="ITicketRepository"/> and never takes <c>IMemoryCache</c>. The Singleton
 /// <see cref="CachingTicketQueryService"/>
-/// decorator (Services/Stores/) owns the tracked ticket slices and invalidation
-/// seam; it is the only impl that touches <c>IMemoryCache</c> in this section
-/// for the per-event vendor summary.
+/// decorator (Services/Stores/) owns the tracked ticket slices and evicts them on
+/// its own write pass-throughs.
 /// </para>
 /// </summary>
 public class TicketQueryArchitectureTests
@@ -34,49 +35,46 @@ public class TicketQueryArchitectureTests
             .Should().BeTrue();
     }
 
+    /// <summary>
+    /// The services that write cached ticket rows (sync + merge fold, transfers, contact
+    /// import, GDPR erasure) must resolve to the decorator, which evicts on its own write
+    /// pass-through. A registration that bound one of them straight to its inner would
+    /// write behind the cache with nothing left to evict it.
+    /// </summary>
     [HumansFact]
-    public void CachingTicketQueryService_ImplementsITicketCacheInvalidator()
+    public void WritePaths_ResolveToTheCachingDecorator()
     {
-        typeof(ITicketCacheInvalidator).IsAssignableFrom(typeof(CachingTicketQueryService))
-            .Should().BeTrue(
-                because: "the decorator owns the cache layout, so it owns the invalidation seam that external write-side callers (sync, merge fold) poke");
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(Substitute.For<IClock>());
+        new Section().Register(services, new ConfigurationBuilder().Build());
+
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+        var decorator = scope.ServiceProvider.GetRequiredService<CachingTicketQueryService>();
+
+        scope.ServiceProvider.GetRequiredService<ITicketSync>().Should().BeSameAs(decorator);
+        scope.ServiceProvider.GetRequiredService<ITicketSyncService>().Should().BeSameAs(decorator);
+        scope.ServiceProvider.GetRequiredService<ITicketTransferService>().Should().BeSameAs(decorator);
+        scope.ServiceProvider.GetRequiredService<ITicketTransferQueue>().Should().BeSameAs(decorator);
+        scope.ServiceProvider.GetRequiredService<IAttendeeContactImportService>().Should().BeSameAs(decorator);
+
+        // The GDPR and merge fan-outs hold other sections' contributors too; invoke only
+        // this section's forwarding factories.
+        FanoutTargets<IUserDataContributor>(services, scope.ServiceProvider).Should().Contain(decorator);
+        FanoutTargets<IUserMerge>(services, scope.ServiceProvider).Should().Contain(decorator);
     }
 
-    [HumansFact]
-    public void CachingTicketQueryService_IsTheOnlyImplementationOfITicketCacheInvalidator()
-    {
-        // Only the Singleton decorator may implement the invalidator seam. If
-        // a second impl ever appears in src/, the decorator stops being the
-        // single cache-truth — write-side callers can no longer rely on a
-        // poke reaching every key. Catches accidental "helper" classes that
-        // claim the interface and silently do partial eviction.
-        var assemblies = new[] { typeof(CachingTicketQueryService).Assembly };
-
-        var impls = assemblies
-            .SelectMany(a => a.GetTypes())
-            .Where(t => !t.IsInterface
-                        && !t.IsAbstract
-                        && typeof(ITicketCacheInvalidator).IsAssignableFrom(t))
+    private static IEnumerable<object> FanoutTargets<T>(IServiceCollection services, IServiceProvider sp) =>
+        services
+            .Where(d => d.ServiceType == typeof(T) && !d.IsKeyedService && d.ImplementationFactory is not null)
+            .Select(d =>
+            {
+                try { return d.ImplementationFactory!(sp); }
+                catch (InvalidOperationException) { return null; } // another fan-out member's unregistered deps
+            })
+            .OfType<object>()
             .ToList();
-
-        impls.Should().ContainSingle(
-            because: "ITicketCacheInvalidator is the one-way seam owned by the Singleton decorator; a second impl would split cache truth")
-            .Which.Should().Be(typeof(CachingTicketQueryService));
-    }
-
-    [HumansFact]
-    public void TicketSyncService_TakesITicketCacheInvalidator()
-    {
-        // The Tickets-section write site (sync job + IUserMerge fold) must
-        // hold a reference to the invalidator so every commit poke reaches
-        // the decorator's projection. Mirrors the Shifts fan-in invariant
-        // pinned in ShiftViewArchitectureTests.
-        var ctor = typeof(TicketSyncService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(ITicketCacheInvalidator),
-            because: "TicketSyncService drives InvalidateAll (post-sync) and InvalidateAfterUserMerge (ReassignAsync) — it must take the seam through DI so the decorator owns cache eviction");
-    }
 
     /// <summary>
     /// Asserts that <see cref="ITicketManagement"/> and <see cref="ITicketService"/> resolve to the same

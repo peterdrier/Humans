@@ -210,7 +210,7 @@ internal interface ITeamRepository : IRepository
     /// <summary>
     /// Leave/remove flow: remove a member's role assignments and set
     /// <c>LeftAt</c> on the membership. Returns the role assignments that
-    /// were affected (for shift-auth invalidation decisions in the service layer).
+    /// were removed.
     /// Account merges can supply a same-team active survivor membership: assignments
     /// move there with their slot and provenance intact, duplicate role definitions
     /// keep the survivor's assignment, and Coordinator status is preserved. This fold
@@ -266,7 +266,7 @@ internal interface ITeamRepository : IRepository
     /// has no other management assignments, demote them from
     /// <see cref="TeamMemberRole.Coordinator"/> to
     /// <see cref="TeamMemberRole.Member"/>. Returns the removed-assignment's
-    /// owning user id (for shift-auth invalidation).
+    /// owning user id.
     /// </summary>
     Task<(bool Demoted, Guid TargetUserId)> UnassignFromRoleAsync(
         Guid roleDefinitionId, Guid teamMemberId, CancellationToken ct = default);
@@ -359,10 +359,7 @@ internal interface ITeamRepository : IRepository
     /// <summary>
     /// Load a role definition (tracked) with Team + Assignments +
     /// Assignments.TeamMember loaded, for mutations like
-    /// <c>UpdateRoleDefinitionAsync</c>. The nested <c>TeamMember</c> is
-    /// required because the service reads <c>TeamMember.UserId</c> off the
-    /// assignments to build the shift-authorization invalidation set when
-    /// <c>IsManagement</c> flips.
+    /// <c>UpdateRoleDefinitionAsync</c>.
     /// </summary>
     Task<TeamRoleDefinition?> FindRoleDefinitionForMutationAsync(
         Guid roleDefinitionId, CancellationToken ct = default);

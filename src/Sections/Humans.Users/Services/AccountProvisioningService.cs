@@ -2,6 +2,7 @@ using System.Transactions;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
+using Humans.Users.Data;
 using Microsoft.AspNetCore.Identity;
 using NodaTime;
 
@@ -12,7 +13,7 @@ internal sealed class AccountProvisioningService(
     IUserRepository userRepository,
     IUserEmailService userEmailService,
     IUserManagement userService,
-    IUserInfoInvalidator userInfoInvalidator,
+    IUserInfoSliceRefresher userInfoRefresher,
     UserManager<User> userManager,
     IAuditLogService auditLogService,
     IClock clock,
@@ -50,7 +51,7 @@ internal sealed class AccountProvisioningService(
             // SaveChanges/decorators refresh during writes. Rebuild after transaction disposal,
             // including on rollback, so no cached entry retains uncommitted row state.
             foreach (var affectedUser in affectedUsers)
-                await userInfoInvalidator.InvalidateAsync(affectedUser, CancellationToken.None);
+                await userInfoRefresher.RefreshAsync(affectedUser, CancellationToken.None);
         }
     }
 
@@ -150,7 +151,7 @@ internal sealed class AccountProvisioningService(
             // The replacement path's outer transaction refreshes after its disposal.
             // Ordinary imports finish their own commit/rollback before rebuilding UserInfo.
             if (affectedUsers is null)
-                await userInfoInvalidator.InvalidateAsync(newUserId, CancellationToken.None);
+                await userInfoRefresher.RefreshAsync(newUserId, CancellationToken.None);
         }
     }
 

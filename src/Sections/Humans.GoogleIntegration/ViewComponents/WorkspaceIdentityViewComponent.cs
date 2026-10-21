@@ -1,5 +1,4 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.GoogleIntegration.Services;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
@@ -35,8 +34,7 @@ public sealed class WorkspaceIdentityViewComponent(
         var isIdentity = identity is not null
             && string.Equals(identity.Email, row.Email, StringComparison.OrdinalIgnoreCase);
         // A verified @nobodies.team address is always the identity, so no other row can take it.
-        var locked = !isIdentity && info.UserEmails.Any(e => e.IsVerified
-            && e.Email.EndsWith(WorkspaceIdentityService.NobodiesTeamSuffix, StringComparison.OrdinalIgnoreCase));
+        var locked = !isIdentity && identity?.IsNobodiesTeamAccount == true;
 
         return View(new WorkspaceIdentityCellViewModel(
             info.Id, row.Id, row.IsVerified, isIdentity, locked,

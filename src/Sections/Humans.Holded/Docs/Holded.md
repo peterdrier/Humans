@@ -55,7 +55,7 @@ mirror tables runs before this baseline recreates them.
 
 - `/Holded` — admin screen: usage meter (API's number displayed; budget = config
   `Holded:MonthlyCallBudget`, default 2000), calls-by-month, per-kind sync states plus
-  Finance's doc-sync row, Sync now / Full sync buttons, and the chart of accounts with
+  Finance's doc-sync row (read-only; its trigger is Finance's), Sync now / Full sync buttons, and the chart of accounts with
   reconciliation flags — split by PGC group (named in English from the account number's leading
   digit, not Holded's Spanish `group` string), accounts with no cached lines hidden by default.
   Account balances read in the association's POV (below).
@@ -140,12 +140,12 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
 
 ## Triggers
 
-- `HoldedSyncJob` (nightly at 03:00, this section's `Jobs/`; scheduled by this section's `SectionJobs`, job id `holded-sync`): Finance's doc sync, then `SyncLedgerAsync(full: false)`.
-- `/Holded` buttons: `SyncNow` (incremental + reconcile), `FullSync`.
+- `HoldedSyncJob` (nightly at 03:00, this section's `Jobs/`; scheduled by this section's `SectionJobs`, job id `holded-sync`): `SyncLedgerAsync(full: false)` only. Finance's purchase-doc sync is Finance's own job (`HoldedDocSyncJob`, 02:45); the sweep reads none of its output. Both jobs take the shared `holded-api` Hangfire job lock, so they never run on the rate-limited API at once.
+- `/Holded` buttons: `SyncNow` (incremental + reconcile, ledger only), `FullSync`.
 
 ## Cross-Section Dependencies
 
-- Outbound: `IHoldedClient` (this section's own connector); Finance's `IHoldedFinanceWrite.SyncAsync` (the nightly job's first step) and `IHoldedFinanceService.GetDocSyncInfoAsync` (the doc-sync row on `/Holded`).
+- Outbound: `IHoldedClient` (this section's own connector); Finance's `IHoldedFinanceService.GetDocSyncInfoAsync` (the doc-sync row on `/Holded`).
 - Inbound: Finance (creditor statuses/statements/actuals via `IHoldedService`), the nightly job.
 
 ## Architecture

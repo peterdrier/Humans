@@ -162,6 +162,28 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         result.Should().BeFalse();
     }
 
+    // ─── ViewHoldedTimeline: submitter or finance admin only ─────────────────
+
+    [HumansTheory]
+    [Xunit.InlineData("submitter", true)]
+    [Xunit.InlineData(RoleNames.FinanceAdmin, true)]
+    [Xunit.InlineData(RoleNames.Admin, true)]
+    [Xunit.InlineData("coordinator", false)]
+    [Xunit.InlineData("random", false)]
+    public async Task ViewHoldedTimeline_IsSubmitterOrFinanceAdminOnly(string actor, bool expected)
+    {
+        var report = MakeReport(SubmitterId, ExpenseReportStatus.Approved);
+        var user = actor switch
+        {
+            "submitter" => CreateUser(SubmitterId),
+            "coordinator" => CreateUser(CoordinatorId),
+            "random" => CreateUser(RandomUserId),
+            _ => CreateUserWithRole(actor),
+        };
+
+        (await EvaluateAsync(user, report, ExpenseReportOperation.ViewHoldedTimeline)).Should().Be(expected);
+    }
+
     // ─── Coordinator (this category) × View / Endorse / CoordinatorReject ───
 
     [HumansFact]

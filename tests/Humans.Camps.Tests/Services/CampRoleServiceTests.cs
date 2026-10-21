@@ -17,7 +17,6 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     private readonly IGoogleIntegrationService _googleIdentities;
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICampRoleCampAccess _campAccess;
-    private readonly ICampInfoInvalidator _campInfoInvalidator;
     private readonly Guid _actorUserId = Guid.NewGuid();
 
     public CampRoleServiceTests()
@@ -25,14 +24,12 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     {
         _googleIdentities = Substitute.For<IGoogleIntegrationService>();
         _campAccess = Substitute.For<ICampRoleCampAccess>();
-        _campInfoInvalidator = Substitute.For<ICampInfoInvalidator>();
 
         var repo = new CampRepository(CampsDbFactory);
 
         _service = new CampRoleService(
             repo,
             _campAccess,
-            _campInfoInvalidator,
             _googleIdentities,
             _userService,
             AuditLog,
@@ -156,9 +153,6 @@ public sealed class CampRoleServiceTests : CampsTestHarness
             def.Id,
             Arg.Any<string>(),
             _actorUserId);
-
-        // Name/SortOrder are cached in the CampInfo role projection across all camps.
-        await _campInfoInvalidator.Received(1).InvalidateAllAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -203,8 +197,6 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         await AuditLog.Received(1).LogAsync(
             AuditAction.CampRoleDefinitionDeactivated,
             nameof(CampRoleDefinition), def.Id, Arg.Any<string>(), _actorUserId);
-
-        await _campInfoInvalidator.Received(1).InvalidateAllAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -228,8 +220,6 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         await AuditLog.Received(1).LogAsync(
             AuditAction.CampRoleDefinitionReactivated,
             nameof(CampRoleDefinition), def.Id, Arg.Any<string>(), _actorUserId);
-
-        await _campInfoInvalidator.Received(1).InvalidateAllAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
