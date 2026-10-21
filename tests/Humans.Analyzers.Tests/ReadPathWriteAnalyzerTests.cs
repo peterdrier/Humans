@@ -18,6 +18,12 @@ public class ReadPathWriteAnalyzerTests
             public sealed class HttpHeadAttribute : System.Attribute { }
             public sealed class HttpPostAttribute : System.Attribute { }
             public sealed class NonActionAttribute : System.Attribute { }
+
+            public sealed class AcceptVerbsAttribute : System.Attribute
+            {
+                public AcceptVerbsAttribute(string method) { }
+                public AcceptVerbsAttribute(params string[] methods) { }
+            }
         }
 
         namespace Humans.Base.Attributes
@@ -68,6 +74,10 @@ public class ReadPathWriteAnalyzerTests
     [InlineData("[Microsoft.AspNetCore.Mvc.HttpGet]")]
     [InlineData("[Microsoft.AspNetCore.Mvc.HttpHead]")]
     [InlineData("[Microsoft.AspNetCore.Mvc.HttpGet, Microsoft.AspNetCore.Mvc.HttpPost]")]
+    [InlineData("[Microsoft.AspNetCore.Mvc.AcceptVerbs(\"GET\")]")]
+    [InlineData("[Microsoft.AspNetCore.Mvc.AcceptVerbs(\"get\")]")]
+    [InlineData("[Microsoft.AspNetCore.Mvc.AcceptVerbs(\"GET\", \"POST\")]")]
+    [InlineData("[Microsoft.AspNetCore.Mvc.AcceptVerbs(\"POST\", \"head\")]")]
     [InlineData("")]
     public async Task Fires_when_an_action_answering_GET_calls_an_IWrite_member(string verbs)
     {
@@ -151,11 +161,14 @@ public class ReadPathWriteAnalyzerTests
         diagnostics.Should().ContainSingle(d => IsHum0038(d));
     }
 
-    [HumansFact]
-    public async Task Does_not_fire_for_a_POST_action()
+    [HumansTheory]
+    [InlineData("[Microsoft.AspNetCore.Mvc.HttpPost]")]
+    [InlineData("[Microsoft.AspNetCore.Mvc.AcceptVerbs(\"POST\")]")]
+    [InlineData("[Microsoft.AspNetCore.Mvc.AcceptVerbs(\"POST\", \"PUT\")]")]
+    public async Task Does_not_fire_for_a_POST_action(string verbs)
     {
-        var diagnostics = await RunAsync(Controller("""
-                    [Microsoft.AspNetCore.Mvc.HttpPost]
+        var diagnostics = await RunAsync(Controller($$"""
+                    {{verbs}}
                     public System.Threading.Tasks.Task Save() => _things.SaveAsync();
             """));
 

@@ -29,8 +29,8 @@ namespace Humans.Analyzers;
 /// rather than guessed at from method names.
 /// </para>
 /// <para>
-/// An action answers GET when it carries <c>[HttpGet]</c> or <c>[HttpHead]</c>,
-/// or carries no verb attribute at all (MVC then routes every verb to it).
+/// An action answers GET when it carries <c>[HttpGet]</c>, <c>[HttpHead]</c>, or an
+/// <c>[AcceptVerbs]</c> listing GET or HEAD, or carries no verb attribute at all (MVC then routes every verb to it).
 /// Only direct calls in the action body count, lambdas and local functions
 /// included; a write laundered through a private controller helper is missed.
 /// No <c>[Grandfathered]</c> downgrade: the rule shipped with zero violations.
@@ -150,14 +150,47 @@ public sealed class ReadPathWriteAnalyzer : DiagnosticAnalyzer
             if (string.Equals(attributeClass.Name, "NonActionAttribute", StringComparison.Ordinal))
                 return false;
 
-            if (ReadVerbAttributes.Contains(attributeClass.Name))
+            if (ReadVerbAttributes.Contains(attributeClass.Name) ||
+                (string.Equals(attributeClass.Name, "AcceptVerbsAttribute", StringComparison.Ordinal) &&
+                 AcceptsReadVerb(attr)))
+            {
                 return true;
+            }
 
             hasVerb |= VerbAttributes.Contains(attributeClass.Name);
         }
 
         return !hasVerb;
     }
+
+    /// <summary>
+    /// True when an <c>[AcceptVerbs]</c> lists GET or HEAD, whether passed as one
+    /// string or through its <c>params string[]</c> constructor.
+    /// </summary>
+    private static bool AcceptsReadVerb(AttributeData attr)
+    {
+        foreach (var arg in attr.ConstructorArguments)
+        {
+            if (arg.Kind == TypedConstantKind.Array)
+            {
+                foreach (var item in arg.Values)
+                {
+                    if (IsReadVerb(item.Value as string))
+                        return true;
+                }
+            }
+            else if (IsReadVerb(arg.Value as string))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsReadVerb(string? verb) =>
+        string.Equals(verb, "GET", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(verb, "HEAD", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// True when the target is declared on — or, for a call through a concrete
