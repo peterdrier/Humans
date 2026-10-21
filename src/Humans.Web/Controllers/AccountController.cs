@@ -250,9 +250,22 @@ public class AccountController(
             return View("MagicLinkError");
         }
 
+        foreach (var (value, field, label) in new[]
+        {
+            (burnerName, nameof(burnerName), "CompleteSignup_BurnerNameLabel"),
+            (firstName, nameof(firstName), "CompleteSignup_FirstNameLabel"),
+            (lastName, nameof(lastName), "CompleteSignup_LastNameLabel")
+        })
+        {
+            if (value?.Trim().Length > 256)
+                ModelState.AddModelError(field, localizer["Validation_MaxLength", localizer[label].Value, 256]);
+        }
         if (string.IsNullOrWhiteSpace(burnerName) ||
             string.IsNullOrWhiteSpace(firstName) ||
             string.IsNullOrWhiteSpace(lastName))
+            ModelState.AddModelError(string.Empty, localizer["CompleteSignup_AllFieldsRequired"]);
+
+        if (!ModelState.IsValid)
         {
             ViewData["ReturnUrl"] = returnUrl;
             ViewData["Email"] = verifiedEmail;
@@ -260,7 +273,6 @@ public class AccountController(
             ViewData["BurnerName"] = burnerName;
             ViewData["FirstName"] = firstName;
             ViewData["LastName"] = lastName;
-            ModelState.AddModelError(string.Empty, localizer["CompleteSignup_AllFieldsRequired"]);
             return View("CompleteSignup");
         }
 

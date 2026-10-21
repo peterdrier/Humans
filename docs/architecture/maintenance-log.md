@@ -9,7 +9,7 @@ what's overdue.
 
 | Process | Last Run | Next Due | Cadence | Est. Cost | Notes |
 |---------|----------|----------|---------|-----------|-------|
-| NuGet vulnerability check | 2026-07-30 | 2026-08-06 | Weekly | — | `dotnet list package --vulnerable`. 2026-07-30: 8 advisories fixed after a 4-week gap that turned CI red repo-wide. |
+| NuGet vulnerability check | 2026-10-21 | 2026-10-28 | Weekly | — | `dotnet list package --vulnerable`. 2026-10-21: 0 vulnerable (incl. transitive). |
 | Freshness sweep (diff) | 2026-10-18 | 2026-10-19 | Daily | — | `/freshness-sweep` — report at `docs/freshness/last-report.md`; narrative lives in each sweep's PR body. 2026-10-18: 26-day window (176 commits); fixed `lib-service-classes.sh`, which truncated a constructor at a `;` inside a `//` comment and silently skipped the service. |
 | Section doctor | 2026-08-17 | — | 1–2×/day | — | `/section-doctor` — frozen row (nobodies-collective/Humans#1069); each run writes `docs/health/runs/<date>-<Section>.md`. |
 | Debt sweep | 2026-10-04 | 2026-10-05 | Daily | — | Nightly [debt workflow](../../.codex/prompts/daily-debt.md); central and section debt ledgers. 2026-10-06 ledger review with Peter — central 40→18 and section 94→49 rows, 10 issues filed (#1919–#1928), 53 rows unblocked under standing policy. |
@@ -23,8 +23,8 @@ what's overdue.
 | GDPR audit | — | — | Quarterly | — | Exports, consent, PII logging |
 | Migration squash check | 2026-02-24 | 2026-03-24 | Monthly | — | Check `/Debug/DbVersion` on prod, QA (humans.n.burn.camp), and local dev. Oldest `lastApplied` across all three is the safe squash boundary. |
 | Architecture ratchet sweep (`arch-sweep`) | 2026-06-24 | 2026-07-08 | Bi-weekly | — | `dotnet test --filter "FullyQualifiedName~Architecture.Rules"`; baselines at `tests/Humans.Application.Tests/Architecture/`. 2026-06-24: all green, 0 regressions. |
-| NuGet full update | 2026-06-24 | 2026-07-24 | Monthly | — | Non-security package updates. Last: 21-package LOW-risk batch (`chore/maintenance-2026-06-24`). |
-| About page package sync | 2026-06-27 | 2026-07-27 | Monthly | — | Sync `Views/About/Index.cshtml` versions to `Directory.Packages.props` after NuGet updates. Last: #1049. |
+| NuGet full update | 2026-10-21 | 2026-11-21 | Monthly | — | Non-security package updates. Last: 2026-10-21 patch/minor batch; majors in their own PRs. |
+| About page package sync | 2026-10-21 | 2026-11-21 | Monthly | — | Sync `Views/About/Index.cshtml` versions to `Directory.Packages.props` after NuGet updates. Last: 2026-10-21 NuGet batch. |
 | Repo stats + README milestones refresh | 2026-06-12 | 2026-07-12 | Monthly | — | `generate-stats.sh` rows + hand-maintained headers in `docs/development-stats.md`, `docs/reforge-history.csv`, README milestones. |
 | GitHub issue triage | 2026-06-10 | 2026-06-17 | Weekly | — | Last: 36 unscheduled → q2/q3; plan `local/sprint-2026-06-10.md`. |
 | App triage (`/triage`) | 2026-07-13 | 2026-07-20 | Weekly | — | Logs + agent + in-app issues (prod). Last findings → #926–#931; in-app execution deferred by Peter. |

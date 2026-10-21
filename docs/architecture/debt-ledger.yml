@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 96
+next_id: 97
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0031-controller-logic
@@ -75,7 +75,7 @@ themes:
     detect: "build:HUM0028"
     review: panel
     last_swept: 2026-10-20
-    remaining: 13
+    remaining: 12
     parked: "Peter 2026-09-20 — 'I don't think fixing all 17 in one go is possible.. it's reworking a lot of things to not need the invalidators anymore, that won't be a short fix.' Rotation skips it; re-check on the interval below, not every rotation."
     recheck_every: 6 months
     recheck_due: 2027-03-20
@@ -87,6 +87,10 @@ themes:
       count, so the Auth, Governance and Issues calls (and
       IRoleAssignmentWrite.InvalidateNavBadgeCache) were dead; FeedbackService
       now evicts its own key.
+      IVotingBadgeCacheInvalidator is gone: ApplicationDecisionService owned
+      the cache and was the only caller. CampLeadJoinRequestsBadge is NOT
+      self-only (Notifications reads the key, Camps evicts it), so it moves to
+      the cross-section group.
       PARKED 2026-09-20 (see `parked:`) — this supersedes the 2026-06-13
       'LEAVE in rotation, re-check periodically' instruction: the re-check now
       runs on `recheck_due`, so rotation stops spending a slot on it.
@@ -110,7 +114,7 @@ themes:
       (RoleAssignment — stays); 15 cross-section merge/lifecycle or
       intra-section sibling signals that must stay (Consent, ActiveTeams,
       UserInfo, RoleAssignmentClaims, ShiftAuthorization, NavBadge [removed 2026-10-20],
-      NotificationMeter, VotingBadge, EarlyEntry, ShiftView, LegalDocument [direct
+      NotificationMeter, VotingBadge [absorbed 2026-10-20], EarlyEntry, ShiftView, LegalDocument [direct
       service-side InvalidateAll()], Ticket, CampInfo [CampRoleService sibling], IssuesBadge [absorbed 2026-10-20],
       CampLeadJoinRequestsBadge). None are sweep-mechanical. The HUM0028 ratchet correctly
       blocks NEW invalidators; existing ones are deliberate ordering-sensitive
@@ -222,7 +226,7 @@ themes:
     detect: "cat docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml 2>/dev/null | grep -c '^  - added:'"
     review: per-item
     last_swept: 2026-06-14
-    remaining: 5
+    remaining: 22
     notes: >-
       Each inbox entry carries its own review tier and a stable `id`; an item is
       closed by deleting its row and citing the id in the PR — ids are never
@@ -231,14 +235,6 @@ themes:
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
-  - added: 2026-10-18
-    id: CENTRAL-87
-    what: "StripeService.GetPaymentDetailsAsync sums only stripe_fee/application_fee although Stripe supports payment_method_passthrough_fee, tax and withheld_tax. Tickets reports therefore omit legitimate settlement costs and overstate net revenue; Budget imports only those two fee buckets, both at a fixed 21% VAT rate. Preserve additional components through StripePaymentDetails and TicketOrderInfo, Tickets persistence/reports/exports, and Budget actuals after defining their expense/VAT classification rather than silently treating tax or withholding as processing fees. Found by comparing Stripe.net FeeDetail.Type with the enrichment loop and TicketingBudgetService/BudgetRepository actuals mapping."
-    review: panel
-  - added: 2026-10-19
-    id: CENTRAL-88
-    what: "CacheKeys.MagicLinkUsed in Humans.Base names its parameter tokenPrefix, but its only caller (Auth's MagicLinkRateLimiter) passes a SHA-256 digest of the whole token. Rename the parameter. Found by section-doctor on Auth."
-    review: light
   - added: 2026-10-21
     id: CENTRAL-89
     what: "Retirement PR for data migration finance.iban-to-payment-details (Users decomposition, Finance): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: PaymentDetailsService's legacy fallback (LegacyIban) and ProfileInfo.Iban with its HUM_PROFILE_IBAN obsolete; Users' erase line that nulls Profile.Iban stays until the USERS drop row. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
@@ -267,3 +263,7 @@ inbox:
     id: CENTRAL-95
     what: "Retirement PR for data migration google.workspace-identities (Users decomposition, GoogleIntegration): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: WorkspaceIdentityService's legacy fallback, UserEmailInfo.IsGoogle/GoogleEmailStatus (HUM_USER_GOOGLE_IDENTITY), LegacyGoogleEmailStatus, the merge re-FK's IsGoogle = false, and the Users export keys IsGoogle/GoogleEmailStatus. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
     review: panel
+  - added: 2026-10-21
+    id: CENTRAL-96
+    what: "Remaining MA0011 suppressions on column-side .ToLower() in EF queries: TicketRepository (GetOrdersPageAsync/GetAttendeesPageAsync search + duplicate-email grouping), UserRepository.UserEmails (batch lowered-IN lookup; UserEmail.Email is not stored normalized, OAuth claim emails keep their case), GoogleSyncLogRepository.GetRecentAsync (text filter applied before Take(limit) on an unbounded log). Npgsql 10 translates only parameterless ToLower() (ToLowerInvariant/ToLower(culture) throw); EF.Functions.ILike breaks the InMemory repo tests. Fix needs a cheap in-memory shape or an accepted test strategy. Found in the debt/ma0011 burndown."
+    review: light

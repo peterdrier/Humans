@@ -169,6 +169,15 @@ internal sealed class AccountProvisioningService(
         ArgumentException.ThrowIfNullOrWhiteSpace(firstName);
         ArgumentException.ThrowIfNullOrWhiteSpace(lastName);
 
+        burnerName = burnerName.Trim();
+        firstName = firstName.Trim();
+        lastName = lastName.Trim();
+        if (burnerName.Length > 256 || firstName.Length > 256 || lastName.Length > 256)
+        {
+            logger.LogWarning("Magic-link signup refused: a name exceeds the 256-character limit");
+            return new MagicLinkSignupCompletionResult(MagicLinkSignupCompletionOutcome.Failed, User: null);
+        }
+
         var existingEmail = (await userEmailService.FindByAddressAsync(email, aliased: true, verifiedOnly: true, ct))
             .FirstOrDefault();
         if (existingEmail is not null)
@@ -185,7 +194,7 @@ internal sealed class AccountProvisioningService(
             }
 
             if (await userService.EnsureStubProfileAsync(
-                existingUser.Id, burnerName.Trim(), firstName.Trim(), lastName.Trim(), ct))
+                existingUser.Id, burnerName, firstName, lastName, ct))
                 await auditLogService.LogAsync(AuditAction.StubProfileBackfilled, nameof(User), existingUser.Id,
                     "Completed missing profile after interrupted magic-link signup.", existingUser.Id);
             await userService.RecordLoginAsync(existingUser.Id, ct);
@@ -198,7 +207,7 @@ internal sealed class AccountProvisioningService(
         var user = new User
         {
             Id = Guid.NewGuid(),
-            BurnerName = burnerName.Trim(),
+            BurnerName = burnerName,
             CreatedAt = now,
             LastLoginAt = now
         };
@@ -240,7 +249,7 @@ internal sealed class AccountProvisioningService(
         }
 
         await userService.EnsureStubProfileAsync(
-            user.Id, burnerName.Trim(), firstName.Trim(), lastName.Trim(), ct);
+            user.Id, burnerName, firstName, lastName, ct);
 
         logger.LogInformation(
             "Magic link signup: user {UserId} created account for {Email}",

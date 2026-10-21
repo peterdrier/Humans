@@ -82,7 +82,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
     private readonly INotificationMeterCacheInvalidator _notificationMeter = Substitute.For<INotificationMeterCacheInvalidator>();
-    private readonly IVotingBadgeCacheInvalidator _votingBadge = Substitute.For<IVotingBadgeCacheInvalidator>();
     private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
@@ -122,10 +121,17 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _syncJob,
         _metrics,
         _notificationMeter,
-        _votingBadge,
         _cache,
         Clock,
         NullLogger<ApplicationDecisionService>.Instance);
+
+    private void PrimeVotingBadges(params Guid[] boardMemberIds)
+    {
+        foreach (var id in boardMemberIds) _cache.Set(ApplicationDecisionService.VotingBadgeCacheKey(id), -1);
+    }
+
+    private bool VotingBadgeCached(Guid boardMemberId) =>
+        _cache.TryGetValue(ApplicationDecisionService.VotingBadgeCacheKey(boardMemberId), out _);
 
     // --- Submit flow ---
 
@@ -275,6 +281,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var boardMemberId = Guid.NewGuid();
         _roleAssignmentService.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([boardMemberId]));
+        PrimeVotingBadges(boardMemberId);
 
         var result = await _service.SubmitAsync(
             userId, MembershipTier.Colaborador, ValidMotivation,
@@ -282,7 +289,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         result.Success.Should().BeTrue();
         _notificationMeter.Received().Invalidate();
-        _votingBadge.Received().Invalidate(boardMemberId);
+        VotingBadgeCached(boardMemberId).Should().BeFalse();
     }
 
     [HumansTheory]
@@ -377,6 +384,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _roleAssignmentService.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([boardMemberId]));
         var app = await SeedSubmittedApplicationAsync(userId);
+        PrimeVotingBadges(boardMemberId);
 
         var result = await _service.WithdrawAsync(app.Id, userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -385,7 +393,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var updated = await GovernanceDb.Applications.FirstAsync(a => a.Id == app.Id, Xunit.TestContext.Current.CancellationToken);
         updated.Status.Should().Be(ApplicationStatus.Withdrawn);
         _metrics.Received().RecordApplicationProcessed("withdrawn");
-        _votingBadge.Received().Invalidate(boardMemberId);
+        VotingBadgeCached(boardMemberId).Should().BeFalse();
     }
 
     [HumansFact]
@@ -570,12 +578,13 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
                 VotedAt = Clock.GetCurrentInstant()
             });
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        PrimeVotingBadges(voter1, voter2, nonVoter);
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken);
 
-        _votingBadge.Received().Invalidate(voter1);
-        _votingBadge.Received().Invalidate(voter2);
-        _votingBadge.Received().Invalidate(nonVoter);
+        VotingBadgeCached(voter1).Should().BeFalse();
+        VotingBadgeCached(voter2).Should().BeFalse();
+        VotingBadgeCached(nonVoter).Should().BeFalse();
     }
 
     [HumansFact]
@@ -911,6 +920,21 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotSubmitted");
+    }
+
+    [HumansFact]
+    public async Task CastBoardVoteAsync_evicts_only_the_voters_badge_count()
+    {
+        var application = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+        var voterId = Guid.NewGuid();
+        var otherBoardMemberId = Guid.NewGuid();
+        PrimeVotingBadges(voterId, otherBoardMemberId);
+
+        (await _service.CastBoardVoteAsync(application.Id, voterId, VoteChoice.Yay, null,
+            Xunit.TestContext.Current.CancellationToken)).Success.Should().BeTrue();
+
+        VotingBadgeCached(voterId).Should().BeFalse();
+        VotingBadgeCached(otherBoardMemberId).Should().BeTrue();
     }
 
     [HumansFact]

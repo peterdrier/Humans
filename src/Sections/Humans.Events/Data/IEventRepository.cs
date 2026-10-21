@@ -108,4 +108,12 @@ internal interface IEventRepository : IRepository
     /// is retained — see the retention reason on the section's erasure declaration.
     /// </summary>
     Task<int> ClearSubmitterHostForUserAsync(Guid userId, CancellationToken ct = default);
+
+    // ── Account merge ─────────────────────────────────────────────────────
+    /// <summary>
+    /// Re-points the source's submissions, favourites and preference at the target in one save.
+    /// A source favourite the target already covers is deleted; when both have a preference the
+    /// target's wins and the source row stays as archived history. Idempotent.
+    /// </summary>
+    Task ReassignToUserAsync(Guid sourceUserId, Guid targetUserId, NodaTime.Instant updatedAt, CancellationToken ct = default);
 }

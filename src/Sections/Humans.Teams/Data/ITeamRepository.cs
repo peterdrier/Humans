@@ -46,12 +46,6 @@ internal interface ITeamRepository : IRepository
     Task<Team?> FindForMutationAsync(Guid teamId, CancellationToken ct = default);
 
     /// <summary>
-    /// Load a team by its slug or custom slug with active members, parent,
-    /// and children. Detached. Used by the public team detail page.
-    /// </summary>
-    Task<Team?> GetBySlugWithRelationsAsync(string normalizedSlug, CancellationToken ct = default);
-
-    /// <summary>
     /// Load every team id whose <c>Slug</c> OR <c>CustomSlug</c> matches one
     /// of the given candidates, optionally excluding a specific team id.
     /// Used by create/update to detect slug collisions.
@@ -216,11 +210,14 @@ internal interface ITeamRepository : IRepository
     /// <summary>
     /// Leave/remove flow: remove a member's role assignments and set
     /// <c>LeftAt</c> on the membership. Returns the role assignments that
-    /// were removed (for shift-auth invalidation decisions in the service
-    /// layer).
+    /// were affected (for shift-auth invalidation decisions in the service layer).
+    /// Account merges can supply a same-team active survivor membership: assignments
+    /// move there with their slot and provenance intact, duplicate role definitions
+    /// keep the survivor's assignment, and Coordinator status is preserved. This fold
+    /// and the source's LeftAt commit together.
     /// </summary>
     Task<IReadOnlyList<TeamRoleAssignment>> MarkMemberLeftAsync(
-        Guid teamMemberId, Instant leftAt, CancellationToken ct = default);
+        Guid teamMemberId, Instant leftAt, Guid? mergeIntoMemberId = null, CancellationToken ct = default);
 
     /// <summary>
     /// Sets <see cref="TeamMember.Role"/> for the given membership (looked up
