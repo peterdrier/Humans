@@ -40,7 +40,7 @@ internal sealed class AccountProvisioningService(
                 throw new InvalidOperationException("The planned unverified email could not be removed.");
             var result = await FindOrCreateCoreAsync(email, displayName, source, ct, affectedUsers);
             await auditLogService.LogAsync(AuditAction.UserEmailDeleted, nameof(UserEmail), emailId,
-                $"Replaced unverified email {email} with verified import account {result.User.Id} from {source}",
+                $"Replaced unverified email {email} with verified import account {result.UserId} from {source}",
                 nameof(AccountProvisioningService), relatedEntityId: userId, relatedEntityType: nameof(User));
             transaction.Complete();
             return result;
@@ -83,10 +83,7 @@ internal sealed class AccountProvisioningService(
 
                 // Layer ContactSource onto self-registered users.
                 if (existingUser.ContactSource is null)
-                {
                     await userRepository.SetContactSourceIfNullAsync(existingUser.Id, source, ct);
-                    existingUser.ContactSource = source;
-                }
 
                 // User/email may have committed before profile creation failed. Retry the
                 // idempotent final step before reporting a successfully provisioned account.
@@ -94,7 +91,7 @@ internal sealed class AccountProvisioningService(
                     await auditLogService.LogAsync(AuditAction.StubProfileBackfilled, nameof(User), existingUser.Id,
                         $"Completed missing profile provisioning from {source}.", nameof(AccountProvisioningService));
 
-                return new AccountProvisioningResult(existingUser, Created: false);
+                return new AccountProvisioningResult(existingUser.Id, Created: false);
             }
         }
 
@@ -147,7 +144,7 @@ internal sealed class AccountProvisioningService(
                 "Created new account {UserId} for {Email} (source: {Source}, displayName: {DisplayName})",
                 newUser.Id, email, source, resolvedDisplayName);
 
-            return new AccountProvisioningResult(newUser, Created: true);
+            return new AccountProvisioningResult(newUser.Id, Created: true);
         }
         finally
         {
@@ -176,7 +173,7 @@ internal sealed class AccountProvisioningService(
         if (burnerName.Length > 256 || firstName.Length > 256 || lastName.Length > 256)
         {
             logger.LogWarning("Magic-link signup refused: a name exceeds the 256-character limit");
-            return new MagicLinkSignupCompletionResult(MagicLinkSignupCompletionOutcome.Failed, User: null);
+            return new MagicLinkSignupCompletionResult(MagicLinkSignupCompletionOutcome.Failed, UserId: null);
         }
 
         var existingEmail = (await userEmailService.FindByAddressAsync(email, aliased: true, verifiedOnly: true, ct))
@@ -191,7 +188,7 @@ internal sealed class AccountProvisioningService(
                     existingEmail.UserId, email);
                 return new MagicLinkSignupCompletionResult(
                     MagicLinkSignupCompletionOutcome.Failed,
-                    User: null);
+                    UserId: null);
             }
 
             if (await userService.EnsureStubProfileAsync(
@@ -201,7 +198,7 @@ internal sealed class AccountProvisioningService(
             await userService.RecordLoginAsync(existingUser.Id, ct);
             return new MagicLinkSignupCompletionResult(
                 MagicLinkSignupCompletionOutcome.ExistingUser,
-                existingUser);
+                existingUser.Id);
         }
 
         var now = clock.GetCurrentInstant();
@@ -223,7 +220,7 @@ internal sealed class AccountProvisioningService(
                 string.Join(", ", createResult.Errors.Select(e => e.Description)));
             return new MagicLinkSignupCompletionResult(
                 MagicLinkSignupCompletionOutcome.Failed,
-                User: null);
+                UserId: null);
         }
 
         try
@@ -247,7 +244,7 @@ internal sealed class AccountProvisioningService(
             }
             return new MagicLinkSignupCompletionResult(
                 MagicLinkSignupCompletionOutcome.Failed,
-                User: null);
+                UserId: null);
         }
 
         await userService.EnsureStubProfileAsync(
@@ -259,6 +256,6 @@ internal sealed class AccountProvisioningService(
 
         return new MagicLinkSignupCompletionResult(
             MagicLinkSignupCompletionOutcome.Created,
-            user);
+            user.Id);
     }
 }

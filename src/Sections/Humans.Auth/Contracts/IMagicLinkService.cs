@@ -16,11 +16,12 @@ public interface IMagicLinkService : IApplicationService
     Task SendMagicLinkAsync(string email, string? returnUrl, CancellationToken ct = default);
 
     /// <summary>
-    /// Verifies a login magic link token and returns the user if valid.
-    /// Tokens are single-use (consumed on verification).
+    /// Verifies a login magic link token for <paramref name="userId"/>.
+    /// Tokens are single-use (consumed on verification). The caller signs in the
+    /// Identity user it loads by that id.
     /// </summary>
-    /// <returns>The user if the token is valid; null if expired, invalid, or already used.</returns>
-    Task<User?> VerifyLoginTokenAsync(Guid userId, string token, CancellationToken ct = default);
+    /// <returns>True if the user exists and the token is valid; false if expired, invalid, or already used.</returns>
+    Task<bool> VerifyLoginTokenAsync(Guid userId, string token, CancellationToken ct = default);
 
     /// <summary>
     /// Decodes a signup magic link token and returns the email if valid.

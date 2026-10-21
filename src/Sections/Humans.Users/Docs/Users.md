@@ -177,7 +177,7 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 | Actor | Capabilities |
 |-------|--------------|
 | Anyone with a valid email | Sign up via OAuth (`/Account/ExternalLogin`) or magic link (`/Account/MagicLinkRequest`). Use `/Email/Unsubscribe/{token}` (no login required). |
-| Import jobs (Tickets, MailerLite) | Call `IAccountProvisioningService.FindOrCreateUserByEmailAsync` to materialize contact-only User rows (no `LastLoginAt`). |
+| Import jobs (Tickets, MailerLite) | Call `IAccountProvisioningService.FindOrCreateUserByEmailAsync` to materialize contact-only User rows (no `LastLoginAt`); they get back the user id and whether it was created, never the `User` entity. |
 | Authenticated human | Read own User row. Request account deletion. (Self-declaring `NotAttending` is Tickets' `TicketParticipationController`.) |
 | HumanAdmin, Board, Admin | Read any User's deletion / login state. Suspension itself is a Profile concern (see [Part 2 — Profiles](#part-2--profiles). |
 | Admin | Trigger account merge flows on the unified **Account Merges** page (`/Users/Admin/AccountMerges`, `UsersAdminAccountMergesController`); `AccountMergeService` + `DuplicateAccountService` are Users-section services. Outside Production only: purge a human via `UsersAdminController.PurgeHuman` (`POST /Users/Admin/{id}/Purge`). |

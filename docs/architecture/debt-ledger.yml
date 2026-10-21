@@ -201,14 +201,15 @@ themes:
     detect: "grep -cv '^#\\|^$' tests/Humans.Web.Tests/Architecture/Baselines/ApplicationServiceEntityReadReturns.baseline.txt"
     review: panel
     last_swept: 2026-10-21
-    remaining: 3
+    remaining: 0
     notes: >-
-      Baseline file drained 2026-10-21 (all 13 locator lines fixed: Teams,
-      Events, Shifts, IMagicLinkService). `remaining` counts real violations
-      the scan can no longer see (IAccountProvisioningService.FindOrCreateUserByEmailAsync
-      returning User / UserEmail / EventParticipation, coverage lost when G5
-      lane 3b dropped the IApplicationService marker from that interface, as
-      the baseline header records) — `detect` counts the file, not the debt.
+      Drained 2026-10-21: all 13 baseline locator lines fixed (Teams, Events,
+      Shifts, IMagicLinkService), plus the three hidden
+      IAccountProvisioningService rows (unscanned since G5 lane 3b dropped its
+      IApplicationService marker; its results now carry the user id, not User)
+      and IMagicLinkService.VerifyLoginTokenAsync (returns `bool` now). The
+      marker cannot return (Base -> Users.Contracts cycle), so that interface
+      stays review-guarded.
       Convert to DTO/Info returns (read-model pattern, design-rules §15).
       Remove each fixed locator line from the baseline file — never add lines.
   - id: baseline-display-sort

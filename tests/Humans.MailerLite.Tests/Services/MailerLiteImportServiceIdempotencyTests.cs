@@ -97,12 +97,11 @@ internal sealed class IdempotencyHarness
             .Returns(Task.FromResult<IReadOnlyList<UserEmailRowSnapshot>>([]));
 
         // Provisioning creates the user on first call.
-        var createdUser = new User { Id = _userId, MergedToUserId = null };
         _provisioning
             .FindOrCreateUserByEmailAsync(
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<ContactSource>(),
                 Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new AccountProvisioningResult(createdUser, Created: true)));
+            .Returns(Task.FromResult(new AccountProvisioningResult(_userId, Created: true)));
 
         // Pass 1 prefs: pref exists but already OptedOut=false (matching "active" ML status).
         // ApplyMarketingDeltaAsync will see marketing.OptedOut == mlOptedOut → NoChange on pass 1 too.

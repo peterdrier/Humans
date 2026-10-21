@@ -92,8 +92,7 @@ public class AttendeeContactImportServiceApplyTests
         harness.WithActiveYear(2026);
         harness.Provisioning.FindOrCreateUserByEmailAsync(
                 "fresh@x.com", "Fresh Face", ContactSource.TicketTailor, Arg.Any<CancellationToken>())
-            .Returns(new AccountProvisioningResult(
-                new User { Id = newUserId }, Created: true));
+            .Returns(new AccountProvisioningResult(newUserId, Created: true));
 
         var plan = new AttendeeImportPlan([
                 new AttendeeImportDecision(
@@ -136,7 +135,7 @@ public class AttendeeContactImportServiceApplyTests
         harness.WithActiveYear(2026);
         harness.Provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
                 squatterId, squatterEmailId, "victim@x.com", "Victim", ContactSource.TicketTailor, Arg.Any<CancellationToken>())
-            .Returns(new AccountProvisioningResult(new User { Id = newUserId }, true));
+            .Returns(new AccountProvisioningResult(newUserId, true));
 
         var plan = new AttendeeImportPlan([
                 new AttendeeImportDecision(
@@ -187,7 +186,7 @@ public class AttendeeContactImportServiceApplyTests
         harness.WithActiveYear(2026);
         harness.Provisioning.FindOrCreateUserByEmailAsync(
                 Arg.Any<string>(), Arg.Any<string?>(), ContactSource.TicketTailor, Arg.Any<CancellationToken>())
-            .Returns(_ => new AccountProvisioningResult(new User { Id = Guid.NewGuid() }, true));
+            .Returns(_ => new AccountProvisioningResult(Guid.NewGuid(), true));
 
         var plan = new AttendeeImportPlan([
             new AttendeeImportDecision(pickedId, "p@x.com", "P", "tkt_p",
@@ -232,7 +231,7 @@ public class AttendeeContactImportServiceApplyTests
         harness.WithActiveYear(2026);
         harness.Provisioning.FindOrCreateUserByEmailAsync(
                 "buyer@x.com", "Sara Smith", ContactSource.TicketTailor, Arg.Any<CancellationToken>())
-            .Returns(new AccountProvisioningResult(new User { Id = newUserId }, true));
+            .Returns(new AccountProvisioningResult(newUserId, true));
 
         var plan = new AttendeeImportPlan([
             new AttendeeImportDecision(
@@ -349,7 +348,7 @@ public class AttendeeContactImportServiceApplyTests
         harness.WithActiveYear(2026);
         harness.Provisioning.FindOrCreateUserByEmailAsync(
                 "buyer@x.com", Arg.Any<string?>(), ContactSource.TicketTailor, Arg.Any<CancellationToken>())
-            .Returns(new AccountProvisioningResult(new User { Id = newUserId }, true));
+            .Returns(new AccountProvisioningResult(newUserId, true));
 
         var plan = new AttendeeImportPlan([
             new AttendeeImportDecision(
@@ -421,7 +420,7 @@ public class AttendeeContactImportServiceApplyTests
             .ThrowsAsync(new InvalidOperationException("boom"));
         harness.Provisioning.FindOrCreateUserByEmailAsync(
                 "o@x.com", Arg.Any<string?>(), ContactSource.TicketTailor, Arg.Any<CancellationToken>())
-            .Returns(new AccountProvisioningResult(new User { Id = Guid.NewGuid() }, true));
+            .Returns(new AccountProvisioningResult(Guid.NewGuid(), true));
 
         var plan = new AttendeeImportPlan([
             new AttendeeImportDecision(failId, "f@x.com", "F", "tkt_f",

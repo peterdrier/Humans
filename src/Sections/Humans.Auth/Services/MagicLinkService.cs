@@ -45,35 +45,35 @@ internal sealed class MagicLinkService(
         await SendSignupLinkAsync(email, returnUrl, ct);
     }
 
-    public async Task<User?> VerifyLoginTokenAsync(Guid userId, string token, CancellationToken ct = default)
+    public async Task<bool> VerifyLoginTokenAsync(Guid userId, string token, CancellationToken ct = default)
     {
         var user = await userManager.FindByIdAsync(userId.ToString());
         if (user is null)
         {
             logger.LogWarning("Magic link login: user {UserId} not found", userId);
-            return null;
+            return false;
         }
 
         var payload = urlBuilder.UnprotectLoginToken(token);
         if (payload is null)
         {
             logger.LogInformation("Magic link login: invalid or expired token for user {UserId}", userId);
-            return null;
+            return false;
         }
 
         if (!string.Equals(payload, userId.ToString(), StringComparison.Ordinal))
         {
             logger.LogWarning("Magic link login: token userId mismatch for {UserId}", userId);
-            return null;
+            return false;
         }
 
         if (!await rateLimiter.TryConsumeTokenAsync(token, TokenLifetime))
         {
             logger.LogInformation("Magic link login: token already used for user {UserId}", userId);
-            return null;
+            return false;
         }
 
-        return user;
+        return true;
     }
 
     public string? VerifySignupToken(string token, string? expectedEmail = null)

@@ -242,6 +242,8 @@ Repository: `IUserRepository`.
 Idempotent provisioning for import jobs. Uses ASP.NET `UserManager<User>`
 for password / identity primitives. Cross-section calls via
 `IUserEmailService`, `IUserService`, `IAuditLogService`. No cache.
+Results carry the user id, never the `User` entity: `AccountProvisioningResult(Guid UserId, bool Created)`
+and `MagicLinkSignupCompletionResult(Outcome, Guid? UserId)`.
 
 New import account creation wraps User, provisioned UserEmail and Profile in one transaction, audits after local commit, then refreshes UserInfo after commit/rollback. Unverified replacements retain their existing outer transaction and refresh.
 
