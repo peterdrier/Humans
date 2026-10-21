@@ -29,7 +29,7 @@ internal sealed class ExpenseReportAuthorizationHandler(IBudgetService budgetSer
         var isFinanceAdmin = RoleChecks.IsFinanceAdmin(context.User); // includes Admin
 
         if (isFinanceAdmin
-            && (op is ExpenseReportOperation.View
+            && (op is ExpenseReportOperation.View or ExpenseReportOperation.ViewHoldedTimeline
                 // A finance decision is open only while the report awaits one (the repository's gate).
                 || (op is ExpenseReportOperation.Approve or ExpenseReportOperation.FinanceReject
                     && resource.Status is ExpenseReportStatus.Submitted
@@ -60,7 +60,7 @@ internal sealed class ExpenseReportAuthorizationHandler(IBudgetService budgetSer
             || (await userService.GetUserInfoAsync(userId))?.AllUserIds.Contains(resource.SubmitterUserId) == true;
         if (isSubmitter)
         {
-            if (op == ExpenseReportOperation.View)
+            if (op is ExpenseReportOperation.View or ExpenseReportOperation.ViewHoldedTimeline)
             {
                 context.Succeed(requirement);
                 return;
