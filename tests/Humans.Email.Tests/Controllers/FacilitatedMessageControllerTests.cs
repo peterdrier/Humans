@@ -21,7 +21,7 @@ namespace Humans.Email.Tests.Controllers;
 
 /// <summary>
 /// Facilitated messaging served by Email (Users decomposition commit 7) at
-/// <c>/Profile/{id}/SendMessage</c>: the opt-out and self guards, which team a sender may use,
+/// <c>/Email/SendMessage/{id}</c>: the opt-out and self guards, which team a sender may use,
 /// the Reply-To rules and the audit entry.
 /// </summary>
 public sealed class FacilitatedMessageControllerTests
@@ -235,14 +235,14 @@ public sealed class FacilitatedMessageControllerTests
     }
 
     [HumansFact]
-    public void Controller_IsAuthorizedAndKeepsTheProfileRoute()
+    public void Controller_IsAuthorizedAndUsesTheEmailRoute()
     {
         typeof(FacilitatedMessageController).GetCustomAttribute<AuthorizeAttribute>().Should().NotBeNull();
         foreach (var method in typeof(FacilitatedMessageController).GetMethods()
                      .Where(m => string.Equals(m.Name, nameof(FacilitatedMessageController.SendMessage), StringComparison.Ordinal)))
         {
             method.GetCustomAttributes<HttpMethodAttribute>().Single().Template
-                .Should().Be("Profile/{id:guid}/SendMessage");
+                .Should().Be("Email/SendMessage/{id:guid}");
         }
         typeof(FacilitatedMessageController).GetMethods()
             .Single(m => string.Equals(m.Name, nameof(FacilitatedMessageController.SendMessage), StringComparison.Ordinal)

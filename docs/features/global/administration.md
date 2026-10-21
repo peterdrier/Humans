@@ -101,13 +101,13 @@ Human management is now on `UsersAdminController` under `/Users/Admin`, accessib
 |-------|--------|-------|
 | `/Users/Admin` | AdminList | HumanAdmin, Board, Admin — member list |
 | `/Users/Admin/{id}` | AdminDetail | HumanAdmin, Board, Admin — member detail |
-| `/Users/Admin/{id}/Outbox` | MemberOutbox.AdminOutbox (Email) | HumanAdmin, Board, Admin — view email outbox |
+| `/Email/Admin/{id}/Outbox` | MemberOutbox.AdminOutbox (Email) | HumanAdmin, Board, Admin — view email outbox |
 | `/Users/Admin/{id}/Suspend` | SuspendHuman | POST: HumanAdmin, Board, Admin |
 | `/Users/Admin/{id}/Unsuspend` | UnsuspendHuman | POST: HumanAdmin, Board, Admin |
 | `/Users/Admin/{id}/Reject` | RejectSignup | POST: HumanAdmin, Board, Admin |
-| `/Users/Admin/{id}/Roles/Add` | AddRole (Auth's `RoleAssignmentsController`) | GET/POST: HumanAdmin, Board, Admin |
-| `/Users/Admin/{id}/Roles/{roleId}/End` | EndRole (Auth's `RoleAssignmentsController`) | POST: HumanAdmin, Board, Admin |
-| `/Users/Admin/Roles` | Roles (Auth's `RoleAssignmentsController`) | HumanAdmin, Board, Admin — role assignments across members |
+| `/Auth/Admin/{id}/Roles/Add` | AddRole (Auth's `RoleAssignmentsController`) | GET/POST: HumanAdmin, Board, Admin |
+| `/Auth/Admin/{id}/Roles/{roleId}/End` | EndRole (Auth's `RoleAssignmentsController`) | POST: HumanAdmin, Board, Admin |
+| `/Auth/Admin/Roles` | Roles (Auth's `RoleAssignmentsController`) | HumanAdmin, Board, Admin — role assignments across members |
 | `/Users/Admin/Audience` | Audience | Admin only — audience segmentation (accounts with a ticket / a profile / both / neither) for a year |
 
 ### GoogleController (`/Google/`) — Admin (mostly)

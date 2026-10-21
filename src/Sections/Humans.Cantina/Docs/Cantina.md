@@ -48,8 +48,7 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). Mig
 | `/Cantina/Roster/Csv?weekStartOffset=<int>` | GET | same as above | CSV download of the same aggregate |
 | `/Cantina/Roster/Day?dayOffset=<int>` | GET | same as above | Per-day drill-down matrix |
 | `/Cantina/Roster/Day/Csv?dayOffset=<int>` | GET | same as above | CSV of the per-day matrix |
-| `/Profile/Me/Dietary` | GET/POST | `[Authorize]`, own answers only | The member's dietary form; POST replays an interrupted shift signup (`returnAction`, `shiftId`, `rotaId`, `startDayOffset`, `endDayOffset`) |
-| `/Profile/Me/DietaryMedical` | GET | `[Authorize]` | Permanent redirect to `/Profile/Me/Dietary`, keeping the replay query (old URL, bookmarks and old emails) |
+| `/Cantina/Dietary` | GET/POST | `[Authorize]`, own answers only | The member's dietary form; POST replays an interrupted shift signup (`returnAction`, `shiftId`, `rotaId`, `startDayOffset`, `endDayOffset`) |
 
 `weekStartOffset` is the day-offset of the week's Monday relative to `EventSettingsInfo.GateOpeningDate`. When omitted, the service resolves the week containing today in the event's timezone, off the active event it has already loaded. With no active event the offset is `0` and the page renders its empty state. `/Cantina/Roster/Day` resolves `dayOffset` the same way.
 

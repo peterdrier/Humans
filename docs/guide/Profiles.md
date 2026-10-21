@@ -33,9 +33,9 @@ Each contact field has its own visibility setting, so you can share your Signal 
 - **Edit profile** (`/Profile/Me/Edit`) — update personal info, contact fields, picture, birthday
 - **Emails** (`/Profile/Me/Emails`) — add, verify, and manage your email addresses
 - **Shift info** (`/Profile/Me/ShiftInfo`) — preferences and availability info used for shift planning (a Shifts page under the profile URL)
-- **Communication preferences** (`/Profile/Me/CommunicationPreferences`) — per-category email preferences (the older `/Profile/Me/Notifications` URL still works as a permanent redirect)
-- **Privacy** (`/Profile/Me/Privacy`) — data export and account deletion
-- **Outbox** (`/Profile/Me/Outbox`) — the emails the system has sent to you
+- **Communication preferences** (`/Email/CommunicationPreferences`) — per-category email preferences
+- **Privacy** (`/Consent/MyData`) — data export and account deletion
+- **Outbox** (`/Email/Outbox`) — the emails the system has sent to you
 - **View another human** (`/Profile/{id}`) — another human's profile, filtered by visibility
 - **Search** (`/Profile/Search`) — find other humans by name
 
@@ -72,7 +72,7 @@ Go to `/Profile/Me/Emails`. Your OAuth login email is always there and cannot be
 
 ### Set communication preferences
 
-Go to `/Profile/Me/CommunicationPreferences`. Categories — Facilitated Messages, Ticketing, Volunteer Updates, Team Updates, Governance, and Marketing — can each be switched on or off for email. System and Campaign Codes are always on and cannot be opted out of. If you have a matched ticket order for the current year, Ticketing is locked on. Opting out of Facilitated Messages hides the Send Message button on your profile for other humans.
+Go to `/Email/CommunicationPreferences`. Categories — Facilitated Messages, Ticketing, Volunteer Updates, Team Updates, Governance, and Marketing — can each be switched on or off for email. System and Campaign Codes are always on and cannot be opted out of. If you have a matched ticket order for the current year, Ticketing is locked on. Opting out of Facilitated Messages hides the Send Message button on your profile for other humans.
 
 ### Set shift preferences
 
@@ -84,7 +84,7 @@ Click any name or avatar, or go to `/Profile/{id}`. You see their basic info plu
 
 ### Send a facilitated message
 
-On another human's profile, use Send Message (`/Profile/{id}/SendMessage`). The system relays your message via email without revealing either address. If the recipient has opted out of Facilitated Messages, the button is hidden.
+On another human's profile, use Send Message (`/Email/SendMessage/{id}`). The system relays your message via email without revealing either address. If the recipient has opted out of Facilitated Messages, the button is hidden.
 
 ### Search for humans
 
@@ -92,7 +92,7 @@ Go to `/Profile/Search` and type a name. Results respect your access level and e
 
 ### Export your data or delete your account
 
-Both live on `/Profile/Me/Privacy`. **Download My Data** gives you a JSON file with every section of personal data the system holds about you. **Account deletion** revokes your team memberships and roles immediately, then gives you a 30-day grace period (you can still log in and cancel) before your personal data is anonymised automatically. The plain-language walkthrough — including who can see your details and how to control which emails you get — is in [Your data & privacy](YourData.md).
+Both live on `/Consent/MyData`. **Download My Data** gives you a JSON file with every section of personal data the system holds about you. **Account deletion** revokes your team memberships and roles immediately, then gives you a 30-day grace period (you can still log in and cancel) before your personal data is anonymised automatically. The plain-language walkthrough — including who can see your details and how to control which emails you get — is in [Your data & privacy](YourData.md).
 
 ## As a Board member / Admin (Human Admin)
 
@@ -102,7 +102,7 @@ Go to `/Users/Admin/{id}` (or the admin list at `/Users/Admin`). All contact fie
 
 ### See a human's outbox
 
-From the admin detail page, open `/Users/Admin/{id}/Outbox` to see what emails the system has sent them — useful when debugging notifications or confirming a consent reminder went out.
+From the admin detail page, open `/Email/Admin/{id}/Outbox` to see what emails the system has sent them — useful when debugging notifications or confirming a consent reminder went out.
 
 ### Suspend or unsuspend a human
 
@@ -114,7 +114,7 @@ Use `/Users/Admin/{id}/Reject` for signups that should not proceed. Normal app a
 
 ### Manage a human's roles
 
-Use `/Users/Admin/{id}/Roles/Add` to assign or end [role assignments](Glossary.md#role-assignment) (Coordinator, Board, Admin, domain-specific admins). Role changes are recorded in the audit trail.
+Use `/Auth/Admin/{id}/Roles/Add` to assign or end [role assignments](Glossary.md#role-assignment) (Coordinator, Board, Admin, domain-specific admins). Role changes are recorded in the audit trail.
 
 ## Related sections
 

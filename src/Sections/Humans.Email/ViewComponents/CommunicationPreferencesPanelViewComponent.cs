@@ -10,7 +10,7 @@ namespace Humans.Email.ViewComponents;
 /// Renders the communication-preferences matrix for a given user.
 /// Two modes:
 ///   - <c>readonly: false</c> (self-service, default): toggle checkboxes that POST to
-///     <c>/Profile/Me/CommunicationPreferences/Update</c>.
+///     <c>/Email/CommunicationPreferences/Update</c>.
 ///   - <c>readonly: true</c> (admin view on <c>/Users/Admin/{id}</c>): values only,
 ///     plus per-category <c>UpdateSource</c> and <c>UpdatedAt</c> for attribution.
 ///     No POST forms, no anti-forgery, no submit buttons.

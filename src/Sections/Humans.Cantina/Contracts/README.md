@@ -5,7 +5,7 @@ Consumers: Shifts (signup gate, missing-dietary banner, volunteer search and adm
 Users (the medical prompt only shows while dietary is still open). The DTO carries no medical
 field.
 
-No `ICantinaWrite`: only Cantina's own `/Profile/Me/Dietary` form writes.
+No `ICantinaWrite`: only Cantina's own `/Cantina/Dietary` form writes.
 
 A folder rather than a `Humans.Cantina.Contracts` project: Cantina references only the
 `Shifts.Contracts` and `Users.Contracts` leaves, never the Shifts or Users projects, so the

@@ -37,7 +37,7 @@ public class MembershipRequiredFilterTests
             .FirstOrDefault(t => t is not null)
         ?? throw new InvalidOperationException(
             "Humans.Onboarding.Controllers.OnboardingWidgetController not found in any section assembly.");
-    // MemberOutboxController is internal to Humans.Email and serves /Profile/Me/Outbox.
+    // MemberOutboxController is internal to Humans.Email and serves /Email/Outbox.
     private static readonly Type MemberOutboxControllerType =
         SectionDiscoveryExtensions.SectionAssemblies()
             .Select(a => a.GetType("Humans.Email.Controllers.MemberOutboxController", throwOnError: false))
@@ -45,7 +45,7 @@ public class MembershipRequiredFilterTests
         ?? throw new InvalidOperationException(
             "Humans.Email.Controllers.MemberOutboxController not found in any section assembly.");
     // CommunicationPreferencesController is internal to Humans.Email and serves
-    // /Profile/Me/CommunicationPreferences (Users decomposition commit 14).
+    // /Email/CommunicationPreferences (Users decomposition commit 14).
     private static readonly Type CommunicationPreferencesControllerType =
         SectionDiscoveryExtensions.SectionAssemblies()
             .Select(a => a.GetType("Humans.Email.Controllers.CommunicationPreferencesController", throwOnError: false))
@@ -56,9 +56,9 @@ public class MembershipRequiredFilterTests
     // export/deletion-request actions and the account-status wall / pending-deletion landing.
     private static readonly Type MemberDataControllerType = GdprControllerType("MemberDataController");
     private static readonly Type UserControllerType = GdprControllerType("UserController");
-    // MyDataController is internal to Humans.Consent: the My Data page shell at /Profile/Me/Privacy.
+    // MyDataController is internal to Humans.Consent: the My Data page shell at /Consent/MyData.
     private static readonly Type MyDataControllerType = SectionControllerType("Humans.Consent", "MyDataController");
-    // CantinaProfileController is internal to Humans.Cantina: the dietary form at /Profile/Me/Dietary.
+    // CantinaProfileController is internal to Humans.Cantina: the dietary form at /Cantina/Dietary.
     private static readonly Type CantinaProfileControllerType = SectionControllerType("Humans.Cantina", "CantinaProfileController");
     private static readonly Type TicketParticipationControllerType = SectionControllerType("Humans.Tickets", "TicketParticipationController");
     private static readonly Type WorkspaceIdentityControllerType = SectionControllerType("Humans.GoogleIntegration", "WorkspaceIdentityController");
@@ -159,7 +159,7 @@ public class MembershipRequiredFilterTests
     public async Task Non_active_users_retain_profile_and_email_self_service(UserState state)
     {
         // Resolve the actual extracted actions; their controller identity is what the global
-        // filter sees even though their public URLs still belong to the Profile surface.
+        // filter sees, whichever section's URL serves them.
         foreach (var (type, action) in new[]
         {
             (typeof(ProfileController), nameof(ProfileController.Index)),
@@ -171,10 +171,8 @@ public class MembershipRequiredFilterTests
             (MyDataControllerType, "Index"),
             (typeof(ProfileController), nameof(ProfileController.Medical)),
             (CantinaProfileControllerType, "Dietary"),
-            (CantinaProfileControllerType, "LegacyDietaryMedical"),
             (CommunicationPreferencesControllerType, "Index"),
             (CommunicationPreferencesControllerType, "UpdatePreference"),
-            (CommunicationPreferencesControllerType, "Notifications"),
             (MemberDataControllerType, "DownloadData"),
             (MemberDataControllerType, "RequestDeletion"),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.Emails)),

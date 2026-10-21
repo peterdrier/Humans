@@ -14,7 +14,7 @@ using Xunit;
 
 namespace Humans.Consent.Tests.Controllers;
 
-/// <summary>The My Data page shell at <c>/Profile/Me/Privacy</c>.</summary>
+/// <summary>The My Data page shell at <c>/Consent/MyData</c>.</summary>
 public class MyDataControllerTests
 {
     private readonly Guid _userId = Guid.NewGuid();

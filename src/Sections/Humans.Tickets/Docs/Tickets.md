@@ -82,7 +82,7 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any authenticated member | Declare or withdraw their own `NotAttending` for the active event year (`/Profile/Me/DeclareNotAttending`, `/Profile/Me/UndoNotAttending`); see their own "Onsite since" chip on their profile |
+| Any authenticated member | Declare or withdraw their own `NotAttending` for the active event year (`/Tickets/DeclareNotAttending`, `/Tickets/UndoNotAttending`); see their own "Onsite since" chip on their profile |
 | Any authenticated user with attendees on their orders (Sender) | Send any `Valid` attendee from their own order to another Humans user; cancel a `Pending` transfer they created |
 | TicketAdmin, Board, Admin | View the ticket dashboard, orders, attendees, codes, gate list, sales aggregates, and the "Who Hasn't Bought" report (controller-wide policy `TicketAdminBoardOrAdmin`) |
 | TicketAdmin, Admin | Trigger an incremental ticket sync. Export attendee/order CSV (each download audits the actor, export kind and row count). Generate discount codes for campaigns (Campaign section, policy `TicketAdminOrAdmin`). Approve or reject pending transfer requests from `/Tickets/Admin/Transfers` (policy `TicketAdminOrAdmin`). Import attendee contacts (preview + selectively apply) from `/Tickets/Admin/Contacts` (policy `TicketAdminOrAdmin`). Set/rotate the gate-terminal password from `/Tickets/Admin/Gate` (policy `TicketAdminOrAdmin`; see `src/Sections/Humans.Scanner/Docs/features/gate-terminal-login.md`) |
@@ -167,8 +167,8 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 | `/Tickets/Admin/Gate` | GET | `TicketAdminOrAdmin` | Gate-terminal account status card |
 | `/Tickets/Admin/Gate/SetPassword` | POST | `TicketAdminOrAdmin` | Set/rotate the gate-terminal password |
 | `/Tickets/Participation/Backfill` | GET + POST | `AdminOnly` | CSV import of participation records |
-| `/Profile/Me/DeclareNotAttending` | POST | `[Authorize]` | The signed-in member declares they are not attending the active event year (`TicketParticipationController`; the dashboard ticket card posts it) |
-| `/Profile/Me/UndoNotAttending` | POST | `[Authorize]` | The signed-in member withdraws their own `NotAttending` declaration |
+| `/Tickets/DeclareNotAttending` | POST | `[Authorize]` | The signed-in member declares they are not attending the active event year (`TicketParticipationController`; the dashboard ticket card posts it) |
+| `/Tickets/UndoNotAttending` | POST | `[Authorize]` | The signed-in member withdraws their own `NotAttending` declaration |
 | `/Tickets/Export/Attendees` | GET | `TicketAdminOrAdmin` | CSV export of attendees |
 | `/Tickets/Export/Orders` | GET | `TicketAdminOrAdmin` | CSV export of orders |
 | `/Tickets/Export/AccountantReport` | GET | `TicketAdminOrAdmin` | CSV of monthly ticket income for the accountant: gross split into taxable ticket income, 10% VAT, VIP + standalone donations, fees, and refunded gross by purchase month |

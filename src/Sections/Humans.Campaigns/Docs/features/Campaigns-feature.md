@@ -59,7 +59,7 @@ Pages:
 ## Unsubscribe
 
 - Route: `/Unsubscribe/{token}` — public, no auth required
-- **New-format tokens** (signed via `CommunicationPreferences` Data Protection purpose, category-aware): redirect to the public communication-preferences page (`/Guest/CommunicationPreferences?utoken=…`) where the user toggles per-category opt-outs.
+- **New-format tokens** (signed via `CommunicationPreferences` Data Protection purpose, category-aware): redirect to the public communication-preferences page (`/Email/Guest/CommunicationPreferences?utoken=…`) where the user toggles per-category opt-outs.
 - **Legacy tokens** (signed via `CampaignUnsubscribe` time-limited Data Protection purpose, campaign-only): show a confirmation page and POST to confirm. Sets the `Marketing` category preference to opted-out via `ICommunicationPreferenceService.UpdatePreferenceAsync`. `User.UnsubscribedFromCampaigns` is **not** flipped — the per-category `CommunicationPreference` table is the source of truth.
 - RFC 8058 one-click POST (`/Unsubscribe/OneClick`) also routes through `UnsubscribeService.ConfirmUnsubscribeAsync`.
 - Campaign emails carry no unsubscribe footer link and no `List-Unsubscribe` header: `CampaignCodes` is always-on, so `OutboxEmailService` skips unsubscribe stamping for it (nobodies-collective/Humans#1032). Only opt-outable categories reach this endpoint.

@@ -15,7 +15,7 @@ namespace Humans.Email.Tests.Controllers;
 
 /// <summary>
 /// The per-member outbox pages served by Email (Users decomposition commit 3): the member's own
-/// at <c>/Profile/Me/Outbox</c>, the admin's at <c>/Users/Admin/{id}/Outbox</c>.
+/// at <c>/Email/Outbox</c>, the admin's at <c>/Email/Admin/{id}/Outbox</c>.
 /// </summary>
 public sealed class MemberOutboxControllerTests
 {
@@ -134,10 +134,10 @@ public sealed class MemberOutboxControllerTests
     }
 
     [HumansFact]
-    public void Routes_KeepTheStableUrls()
+    public void Routes_AreEmailUrls()
     {
-        Route(nameof(MemberOutboxController.MyOutbox)).Template.Should().Be("Profile/Me/Outbox");
-        Route(nameof(MemberOutboxController.AdminOutbox)).Template.Should().Be("Users/Admin/{id:guid}/Outbox");
+        Route(nameof(MemberOutboxController.MyOutbox)).Template.Should().Be("Email/Outbox");
+        Route(nameof(MemberOutboxController.AdminOutbox)).Template.Should().Be("Email/Admin/{id:guid}/Outbox");
     }
 
     [HumansFact]

@@ -387,7 +387,7 @@ internal sealed class ProfileController(
 
     // Medical conditions are GDPR Art. 9 data: owner-only here (every action acts on the signed-in
     // member), and elsewhere shown only behind MedicalDataViewer. The food answers that used to share
-    // this form are Cantina's, at /Profile/Me/Dietary.
+    // this form are Cantina's, at /Cantina/Dietary.
     [HttpGet("Me/Medical")]
     public async Task<IActionResult> Medical(CancellationToken ct)
     {

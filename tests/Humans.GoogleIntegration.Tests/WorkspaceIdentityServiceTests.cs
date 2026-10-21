@@ -358,12 +358,12 @@ public sealed class WorkspaceIdentityServiceTests
 
         var set = type.GetMethod(nameof(WorkspaceIdentityController.Set))!;
         set.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>().Should().NotBeNull();
-        set.GetCustomAttribute<HttpPostAttribute>()!.Template.Should().Be("Me/Emails/Google");
+        set.GetCustomAttribute<HttpPostAttribute>()!.Template.Should().Be("WorkspaceEmail");
         set.GetCustomAttributes<AuthorizeAttribute>().Should().BeEmpty();
 
         var adminSet = type.GetMethod(nameof(WorkspaceIdentityController.AdminSet))!;
         adminSet.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>().Should().NotBeNull();
-        adminSet.GetCustomAttribute<HttpPostAttribute>()!.Template.Should().Be("{id:guid}/Admin/Emails/Google");
+        adminSet.GetCustomAttribute<HttpPostAttribute>()!.Template.Should().Be("Admin/{id:guid}/WorkspaceEmail");
         adminSet.GetCustomAttribute<AuthorizeAttribute>()!.Policy.Should().Be(PolicyNames.HumanAdminBoardOrAdmin);
     }
 

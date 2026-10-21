@@ -42,7 +42,7 @@
 
 GDPR Article 15 gives every human the right to obtain a copy of all personal
 data an organization holds about them. Humans satisfies this right through a
-self-service download at `/Profile/Me/DownloadData` (for humans who already
+self-service download at `/Gdpr/DownloadData` (for humans who already
 have a profile) and `/Guest/DownloadData` (for authenticated accounts that have
 not yet completed onboarding). Both endpoints produce the same JSON document
 shape.
@@ -203,7 +203,7 @@ archived account and the survivor.
 | `SurveyInvitations` | `SurveyService` | Array of `{ Survey, InvitedAt, SentAt, EmailStatus, ReminderSentAt, Started, Completed }` — the invitation ledger, oldest first. Most responses are not identified, so for someone who was only invited, or who answered under completion tracking, this is the only survey record of theirs. Erased in full: the rows are deleted. |
 | `GateScans` | `GateService` | Array of `{ OccurredAt, Verdict, Role, LaneId }` — the user's own gate activity, as guest or as scanner (`Role` is "Guest" or "Scanner"). Data-minimized: no barcode, no other person's identifiers. |
 | `GoogleSyncLog` | `GoogleSyncLogService` | Array of `{ Action, OccurredAt, Description, ResourceName, UserEmail, Role, Source, Success, ErrorMessage }` — every Workspace sync row attributed to the human, merge tombstones followed. |
-| `EmailOutbox` | `EmailOutboxService` | Array of `{ RecipientEmail, RecipientName, Subject, HtmlBody, TemplateName, Status, CreatedAt, SentAt }` — the same per-user outbox history the human reads at `/Profile/Me/Outbox`. |
+| `EmailOutbox` | `EmailOutboxService` | Array of `{ RecipientEmail, RecipientName, Subject, HtmlBody, TemplateName, Status, CreatedAt, SentAt }` — the same per-user outbox history the human reads at `/Email/Outbox`. |
 | `BackdoorApiKeys` | `BackdoorApiKeyService` | Array of `{ Label, DisplayPrefix, CreatedAt, LastUsedAt, RevokedAt }` — the machine-API keys allocated to the human; null when they hold none. The stored hash is never exported: it is the credential itself. |
 | `RideshareTrips` | `CachingRideshareService` | Array of `{ Id, Year, Direction, MemberPlaceLabel, MemberLatitude, MemberLongitude, Waypoints[], DepartureDate, ExpectedDurationDays, OvernightPlan, VehicleType, SeatsOffered, LuggageCapacity, CapacityNote, Restrictions, WillingToDetour, CostSharing, CostNote, LinkedTripId, Status, CreatedAt, UpdatedAt }` — the human's ride offers, oldest first. |
 | `RideshareRequests` | `CachingRideshareService` | Array of `{ Id, Year, Direction, PickupPlaceLabel, PickupLatitude, PickupLongitude, DesiredDate, PartySize, LuggageLoad, CanContributeToFuel, Notes, Status, CreatedAt, UpdatedAt }` — the human's ride requests, oldest first. |

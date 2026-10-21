@@ -28,7 +28,7 @@ internal sealed class ConsentSubmitModel
 }
 
 /// <summary>
-/// The member's own My Data page (<c>/Profile/Me/Privacy</c>): deletion status from the cached
+/// The member's own My Data page (<c>/Consent/MyData</c>): deletion status from the cached
 /// <c>UserInfo</c> plus the legal documents they have signed.
 /// </summary>
 internal sealed class MyDataViewModel

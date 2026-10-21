@@ -14,9 +14,8 @@ namespace Humans.Gdpr.Controllers;
 /// <summary>
 /// A member's own subject-rights actions from the My Data page: the Article 15 data export and
 /// the Article 17 deletion request. Both act on the signed-in member only and never take a
-/// user id. The page itself (<c>/Profile/Me/Privacy</c>) is Consent's (<c>MyDataController</c>) and links here; the
-/// routes keep the <c>Profile/Me</c> prefix so member URLs do not change, as Shifts'
-/// <c>ShiftProfileController</c> does. The landing pages for the pending deletion are
+/// user id. The page itself (<c>/Consent/MyData</c>) is Consent's (<c>MyDataController</c>) and links here.
+/// The landing pages for the pending deletion are
 /// <see cref="UserController"/>.
 /// </summary>
 [Authorize]
@@ -29,7 +28,7 @@ internal sealed class MemberDataController(
     IStringLocalizer<GdprResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer) : HumansControllerBase(userService)
 {
-    [HttpPost("Profile/Me/Privacy/RequestDeletion")]
+    [HttpPost("Gdpr/RequestDeletion")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RequestDeletion()
     {
@@ -51,7 +50,7 @@ internal sealed class MemberDataController(
         return RedirectToAction("Index", "MyData");
     }
 
-    [HttpGet("Profile/Me/DownloadData")]
+    [HttpGet("Gdpr/DownloadData")]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public async Task<IActionResult> DownloadData(CancellationToken ct)
     {

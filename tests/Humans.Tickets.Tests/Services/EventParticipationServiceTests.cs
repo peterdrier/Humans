@@ -351,16 +351,16 @@ public sealed class EventParticipationServiceTests : IDisposable
             .Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
     }
 
-    // ─── /Profile/Me/DeclareNotAttending, /Profile/Me/UndoNotAttending ─────────────
+    // ─── /Tickets/DeclareNotAttending, /Tickets/UndoNotAttending ───────────────────
 
     [HumansTheory]
-    [InlineData(nameof(TicketParticipationController.DeclareNotAttending), "Me/DeclareNotAttending")]
-    [InlineData(nameof(TicketParticipationController.UndoNotAttending), "Me/UndoNotAttending")]
-    public void Declaration_IsAnAuthorizedAntiforgeryPost_AtTheProfileUrl(string action, string template)
+    [InlineData(nameof(TicketParticipationController.DeclareNotAttending), "DeclareNotAttending")]
+    [InlineData(nameof(TicketParticipationController.UndoNotAttending), "UndoNotAttending")]
+    public void Declaration_IsAnAuthorizedAntiforgeryPost_AtTheTicketsUrl(string action, string template)
     {
         var type = typeof(TicketParticipationController);
         type.GetCustomAttributes(typeof(AuthorizeAttribute), true).Should().ContainSingle();
-        ((RouteAttribute)type.GetCustomAttributes(typeof(RouteAttribute), true).Single()).Template.Should().Be("Profile");
+        ((RouteAttribute)type.GetCustomAttributes(typeof(RouteAttribute), true).Single()).Template.Should().Be("Tickets");
         var method = type.GetMethod(action)!;
         method.GetCustomAttributes(typeof(ValidateAntiForgeryTokenAttribute), true).Should().ContainSingle();
         ((HttpPostAttribute)method.GetCustomAttributes(typeof(HttpPostAttribute), true).Single()).Template

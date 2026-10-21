@@ -17,7 +17,7 @@ namespace Humans.Debug.Controllers;
 // review map for the consent-check column, Tickets' participations for the ticket column and Email's
 // Marketing preferences for the marketing column.
 [Authorize(Policy = PolicyNames.AdminOnly)]
-[Route("Users/Admin/Debug")]
+[Route("Debug/Users")]
 internal sealed class UsersDebugController(
     IUserService userService, IConsentService consentService, ITicketService tickets,
     ICommunicationPreferenceService preferences)

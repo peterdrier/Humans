@@ -50,10 +50,10 @@ public class UnsubscribeFlowTests(HumansTestDatabase database) : IntegrationTest
         // Use the per-test-class anonymous client (no session cookie). The GET with
         // utoken renders the page with an antiforgery field; the POST sends it back.
         var (formToken, cookie) = await GetAntiforgeryAsync(
-            $"/Guest/CommunicationPreferences?utoken={Uri.EscapeDataString(token)}");
+            $"/Email/Guest/CommunicationPreferences?utoken={Uri.EscapeDataString(token)}");
 
         var resp = await PostFormWithAntiforgeryAsync(
-            "/Guest/CommunicationPreferences/Update",
+            "/Email/Guest/CommunicationPreferences/Update",
             formToken,
             cookie,
             new Dictionary<string, string>(StringComparer.Ordinal)
@@ -86,10 +86,10 @@ public class UnsubscribeFlowTests(HumansTestDatabase database) : IntegrationTest
 
         // No utoken → ResolveUserIdOrTokenAsync prefers the authenticated session,
         // which produces fromToken=false and source="Guest".
-        var (formToken, cookie) = await GetAntiforgeryAsync("/Guest/CommunicationPreferences");
+        var (formToken, cookie) = await GetAntiforgeryAsync("/Email/Guest/CommunicationPreferences");
 
         var resp = await PostFormWithAntiforgeryAsync(
-            "/Guest/CommunicationPreferences/Update",
+            "/Email/Guest/CommunicationPreferences/Update",
             formToken,
             cookie,
             new Dictionary<string, string>(StringComparer.Ordinal)

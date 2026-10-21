@@ -53,7 +53,7 @@ When a user has a matched `TicketAttendee` record (auto-matched by email), their
 
 ### Facilitated Messages Opt-Out
 
-When a user opts out of Facilitated Messages, the "Send Message" button is hidden from their profile card, and the `/Profile/{id}/SendMessage` action (Email's `FacilitatedMessageController`) redirects with an error message. This prevents other users from sending messages to someone who doesn't want them.
+When a user opts out of Facilitated Messages, the "Send Message" button is hidden from their profile card, and the `/Email/SendMessage/{id}` action (Email's `FacilitatedMessageController`) redirects with an error message. This prevents other users from sending messages to someone who doesn't want them.
 
 ## Data Model
 
@@ -73,11 +73,10 @@ Until the legacy table is dropped, a (user, category) with no row here falls bac
 
 ## Routes
 
-- `GET /Profile/Me/CommunicationPreferences` — view/edit preferences (`CommunicationPreferencesController`)
-- `POST /Profile/Me/CommunicationPreferences/Update` — save one category's preference
+- `GET /Email/CommunicationPreferences` — view/edit preferences (`CommunicationPreferencesController`)
+- `POST /Email/CommunicationPreferences/Update` — save one category's preference
 - Member and guest preference updates return HTTP 400 for malformed binding before saving channels; missing users/tokens remain HTTP 401.
-- `GET /Profile/Me/Notifications` — permanent redirect to above (backwards compat)
-- `GET /Guest/CommunicationPreferences`, `POST /Guest/CommunicationPreferences/Update` — profileless-account variant (`GuestAccountController`, `[AllowAnonymous]`; accepts an unsubscribe token in place of a session; `UpdateSource` is `"Guest"` when signed in, `"MagicLink"` via token)
+- `GET /Email/Guest/CommunicationPreferences`, `POST /Email/Guest/CommunicationPreferences/Update` — profileless-account variant (`GuestAccountController`, `[AllowAnonymous]`; accepts an unsubscribe token in place of a session; `UpdateSource` is `"Guest"` when signed in, `"MagicLink"` via token)
 
 ## Migration History
 

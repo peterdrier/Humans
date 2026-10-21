@@ -105,8 +105,8 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 | `/Google/Accounts/ResetPassword` | POST | Admin | Reset password (shown once in modal) |
 | `/Google/Accounts/ResetPasswordAndGenerate2Fa` | POST | Admin | Reset password + issue one backup 2FA code |
 | `/Google/Accounts/Link` | POST | Admin | Link existing Workspace account to a human |
-| `/Profile/Me/Emails/Google` | POST | Signed-in member (self) | `WorkspaceIdentityController.Set`: designate one of the member's own verified addresses as their Google identity (antiforgery; exempt from `MembershipRequiredFilter` like the rest of the Emails grid) |
-| `/Profile/{id}/Admin/Emails/Google` | POST | HumanAdmin, Board, Admin (`HumanAdminBoardOrAdmin`) | `WorkspaceIdentityController.AdminSet`: same, on another member's grid; a merged-away `{id}` is 404 |
+| `/Google/WorkspaceEmail` | POST | Signed-in member (self) | `WorkspaceIdentityController.Set`: designate one of the member's own verified addresses as their Google identity (antiforgery; exempt from `MembershipRequiredFilter` like the rest of the Emails grid) |
+| `/Google/Admin/{id}/WorkspaceEmail` | POST | HumanAdmin, Board, Admin (`HumanAdminBoardOrAdmin`) | `WorkspaceIdentityController.AdminSet`: same, on another member's grid; a merged-away `{id}` is 404 |
 
 ## Actors & Roles
 
@@ -186,7 +186,7 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 - TeamsAdmin and Board **cannot** manage sync settings — that is Admin-only.
 - Coordinators **cannot** manage sync settings, execute bulk sync actions, or remediate Google Group settings drift.
 - Regular humans have no access to Google resource management.
-- A member **cannot** designate another member's Google identity, nor an address that is not their own verified row: `/Profile/Me/Emails/Google` acts on the signed-in member only, and `/Profile/{id}/Admin/Emails/Google` requires HumanAdmin, Board or Admin.
+- A member **cannot** designate another member's Google identity, nor an address that is not their own verified row: `/Google/WorkspaceEmail` acts on the signed-in member only, and `/Google/Admin/{id}/WorkspaceEmail` requires HumanAdmin, Board or Admin.
 - The admin Google Sync / @nobodies.team cards (`AdminDetailSidebar` user part) render nothing outside the admin view; the Re-run Google Sync button inside them is Admin-only.
 
 ## Triggers

@@ -16,8 +16,8 @@ namespace Humans.Email.Controllers;
 /// Self-service communication preferences for profileless accounts (authenticated users without
 /// a Profile) and for anyone arriving from an unsubscribe link. The dashboard frame itself lives
 /// in Humans.Onboarding; the guest data export and deletion actions live in Humans.Gdpr
-/// (<c>GuestDataController</c>). Moved from Users in Users decomposition commit 14 with the
-/// same <c>/Guest/CommunicationPreferences</c> URLs.
+/// (<c>GuestDataController</c>). Moved from Users in Users decomposition commit 14; served at
+/// <c>/Email/Guest/CommunicationPreferences</c>.
 /// </summary>
 [Authorize]
 internal sealed class GuestAccountController(
@@ -31,7 +31,7 @@ internal sealed class GuestAccountController(
     // WARNING: [AllowAnonymous] — accepts unauthenticated requests with a valid unsubscribe
     // token (utoken). The token scopes access to THIS page only. Do not add links to other
     // authenticated pages from the token-mode view. See EndpointAuthorizationTests allowlist.
-    [HttpGet("Guest/CommunicationPreferences")]
+    [HttpGet("Email/Guest/CommunicationPreferences")]
     [AllowAnonymous]
     public async Task<IActionResult> CommunicationPreferences(string? utoken)
     {
@@ -56,7 +56,7 @@ internal sealed class GuestAccountController(
 
     // WARNING: [AllowAnonymous] — paired with CommunicationPreferences GET above.
     // See EndpointAuthorizationTests allowlist.
-    [HttpPost("Guest/CommunicationPreferences/Update")]
+    [HttpPost("Email/Guest/CommunicationPreferences/Update")]
     [AllowAnonymous]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdatePreference(MessageCategory category, [BindRequired] bool emailEnabled, [BindRequired] bool alertEnabled, string? utoken)

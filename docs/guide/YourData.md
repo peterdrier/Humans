@@ -43,7 +43,7 @@ disappears from your profile.
 ## Choosing which emails you get
 
 Go to **Profile → Communication preferences**
-(`/Profile/Me/CommunicationPreferences`). You can turn most kinds of email on or
+(`/Email/CommunicationPreferences`). You can turn most kinds of email on or
 off — team updates, volunteer updates, governance, marketing, and so on.
 
 A couple are always on because they're essential (system messages, and discount
@@ -52,7 +52,7 @@ stay on so you don't miss anything important about getting in.
 
 ## Get a copy of everything
 
-Go to **Profile → Privacy** (`/Profile/Me/Privacy`) and choose **Download My
+Go to **Profile → Privacy** (`/Consent/MyData`) and choose **Download My
 Data**. You get a single file with **everything** the system holds about you —
 your account and emails, profile, contact details, team history, roles, consents,
 shift sign-ups, ticket info, notifications, the emails we've sent you, and the

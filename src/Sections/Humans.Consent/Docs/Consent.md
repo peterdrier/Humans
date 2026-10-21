@@ -116,7 +116,7 @@ Three controllers serve this section.
 |------------|-------------|------|
 | `LegalController` | `/Legal/{slug?}` | `[AllowAnonymous]` — Statutes page only |
 | `ConsentController` | `/Consent` (conventional) | `[Authorize]` |
-| `MyDataController` | `/Profile/Me/Privacy` (URL kept; `Profile/Me` prefix as Shifts does) | `[Authorize]` |
+| `MyDataController` | `/Consent/MyData` | `[Authorize]` |
 | `AdminLegalDocumentsController` | `/Legal/Admin/Documents` | `[Authorize(Policy = PolicyNames.BoardOrAdmin)]` |
 
 **Consent routes:**
@@ -126,7 +126,7 @@ Three controllers serve this section.
 | `/Consent` | GET | Dashboard (team-grouped document status) |
 | `/Consent/Review?id={versionId}` | GET | Document review before consent |
 | `/Consent/Submit` | POST | Record consent |
-| `/Profile/Me/Privacy` | GET | My Data page shell: Gdpr's export/deletion actions, the pending-deletion status (read from `UserInfo`) and the member's signed documents (consent history). Exempt from `MembershipRequiredFilter` so non-Active members reach it |
+| `/Consent/MyData` | GET | My Data page shell: Gdpr's export/deletion actions, the pending-deletion status (read from `UserInfo`) and the member's signed documents (consent history). Exempt from `MembershipRequiredFilter` so non-Active members reach it |
 
 **Admin routes:**
 

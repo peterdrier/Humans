@@ -10,20 +10,19 @@ using Microsoft.Extensions.Localization;
 namespace Humans.Email.Controllers;
 
 /// <summary>
-/// A member's own communication preferences, <c>/Profile/Me/CommunicationPreferences</c>. Moved
-/// from Users' <c>ProfileController</c> in Users decomposition commit 14; the <c>Profile</c> route
-/// prefix keeps the member URL, as Shifts' <c>ShiftProfileController</c> does. Acts on the
+/// A member's own communication preferences, <c>/Email/CommunicationPreferences</c>. Moved
+/// from Users' <c>ProfileController</c> in Users decomposition commit 14. Acts on the
 /// signed-in member only and never takes a user id.
 /// </summary>
 [Authorize]
-[Route("Profile")]
+[Route("Email")]
 internal sealed class CommunicationPreferencesController(
     IUserService userService,
     ICommunicationPreferenceManagement commPrefService,
     ILogger<CommunicationPreferencesController> logger,
     IStringLocalizer<EmailResource> localizer) : HumansControllerBase(userService)
 {
-    [HttpGet("Me/CommunicationPreferences")]
+    [HttpGet("CommunicationPreferences")]
     public async Task<IActionResult> Index()
     {
         try
@@ -42,7 +41,7 @@ internal sealed class CommunicationPreferencesController(
         }
     }
 
-    [HttpPost("Me/CommunicationPreferences/Update")]
+    [HttpPost("CommunicationPreferences/Update")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdatePreference(MessageCategory category, [BindRequired] bool emailEnabled, [BindRequired] bool alertEnabled)
     {
@@ -71,7 +70,4 @@ internal sealed class CommunicationPreferencesController(
             return StatusCode(500);
         }
     }
-
-    [HttpGet("Me/Notifications")]
-    public IActionResult Notifications() => RedirectToActionPermanent(nameof(Index));
 }

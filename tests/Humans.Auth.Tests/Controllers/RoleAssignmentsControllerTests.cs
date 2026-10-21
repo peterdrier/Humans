@@ -22,7 +22,7 @@ namespace Humans.Auth.Tests.Controllers;
 
 /// <summary>
 /// The role-assignment admin pages served by Auth (Users decomposition commit 4): the roster,
-/// assign and end. Pins the stable URLs, the gate, the per-role deny paths and the writes (whose
+/// assign and end. Pins the URLs, the gate, the per-role deny paths and the writes (whose
 /// audit entries are the write service's, covered by <c>RoleAssignmentServiceTests</c>).
 /// </summary>
 public sealed class RoleAssignmentsControllerTests
@@ -207,12 +207,12 @@ public sealed class RoleAssignmentsControllerTests
     }
 
     [HumansFact]
-    public void Routes_KeepTheStableUrls()
+    public void Routes_AreAuthUrls()
     {
-        Template<HttpGetAttribute>(nameof(RoleAssignmentsController.Roles)).Should().Be("Users/Admin/Roles");
-        Template<HttpGetAttribute>(nameof(RoleAssignmentsController.AddRole)).Should().Be("Users/Admin/{id:guid}/Roles/Add");
-        Template<HttpPostAttribute>(nameof(RoleAssignmentsController.AddRole)).Should().Be("Users/Admin/{id:guid}/Roles/Add");
-        Template<HttpPostAttribute>(nameof(RoleAssignmentsController.EndRole)).Should().Be("Users/Admin/{id:guid}/Roles/{roleId:guid}/End");
+        Template<HttpGetAttribute>(nameof(RoleAssignmentsController.Roles)).Should().Be("Auth/Admin/Roles");
+        Template<HttpGetAttribute>(nameof(RoleAssignmentsController.AddRole)).Should().Be("Auth/Admin/{id:guid}/Roles/Add");
+        Template<HttpPostAttribute>(nameof(RoleAssignmentsController.AddRole)).Should().Be("Auth/Admin/{id:guid}/Roles/Add");
+        Template<HttpPostAttribute>(nameof(RoleAssignmentsController.EndRole)).Should().Be("Auth/Admin/{id:guid}/Roles/{roleId:guid}/End");
     }
 
     [HumansFact]

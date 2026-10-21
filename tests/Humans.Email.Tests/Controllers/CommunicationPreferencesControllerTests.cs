@@ -25,8 +25,8 @@ namespace Humans.Email.Tests.Controllers;
 
 /// <summary>
 /// <see cref="CommunicationPreferencesController"/>: the member's own
-/// <c>/Profile/Me/CommunicationPreferences</c> page and its update endpoint, moved from Users'
-/// <c>ProfileController</c> in Users decomposition commit 14 with the same URLs.
+/// <c>/Email/CommunicationPreferences</c> page and its update endpoint, moved from Users'
+/// <c>ProfileController</c> in Users decomposition commit 14.
 /// </summary>
 public class CommunicationPreferencesControllerTests
 {
@@ -65,18 +65,16 @@ public class CommunicationPreferencesControllerTests
         new User { Id = _userId, DisplayName = "Human", PreferredLanguage = "en" }, [], [], [], profile: null, []);
 
     [HumansFact]
-    public void Routes_KeepTheProfileUrls_AndRequireSignIn()
+    public void Routes_AreEmailUrls_AndRequireSignIn()
     {
         var type = typeof(CommunicationPreferencesController);
         type.GetCustomAttribute<AuthorizeAttribute>().Should().NotBeNull();
-        type.GetCustomAttribute<RouteAttribute>()!.Template.Should().Be("Profile");
+        type.GetCustomAttribute<RouteAttribute>()!.Template.Should().Be("Email");
         type.GetMethod(nameof(CommunicationPreferencesController.Index))!
-            .GetCustomAttribute<HttpGetAttribute>()!.Template.Should().Be("Me/CommunicationPreferences");
+            .GetCustomAttribute<HttpGetAttribute>()!.Template.Should().Be("CommunicationPreferences");
         var update = type.GetMethod(nameof(CommunicationPreferencesController.UpdatePreference))!;
-        update.GetCustomAttribute<HttpPostAttribute>()!.Template.Should().Be("Me/CommunicationPreferences/Update");
+        update.GetCustomAttribute<HttpPostAttribute>()!.Template.Should().Be("CommunicationPreferences/Update");
         update.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>().Should().NotBeNull();
-        type.GetMethod(nameof(CommunicationPreferencesController.Notifications))!
-            .GetCustomAttribute<HttpGetAttribute>()!.Template.Should().Be("Me/Notifications");
     }
 
     [HumansFact]
@@ -111,14 +109,6 @@ public class CommunicationPreferencesControllerTests
         (await _controller.Index()).Should().BeOfType<ViewResult>();
         await request.CancelAsync();
         await FluentActions.Awaiting(() => _controller.Index()).Should().ThrowAsync<OperationCanceledException>();
-    }
-
-    [HumansFact]
-    public void Notifications_RedirectsPermanentlyToThePreferencesPage()
-    {
-        var result = _controller.Notifications().Should().BeOfType<RedirectToActionResult>().Subject;
-        result.Permanent.Should().BeTrue();
-        result.ActionName.Should().Be(nameof(CommunicationPreferencesController.Index));
     }
 
     [HumansTheory]

@@ -10,8 +10,7 @@ using Microsoft.Extensions.Configuration;
 namespace Humans.Consent.Controllers;
 
 /// <summary>
-/// The member's My Data page at <c>/Profile/Me/Privacy</c> (URL kept, as Shifts'
-/// <c>ShiftProfileController</c> keeps the <c>Profile/Me</c> prefix). It composes the pending-deletion
+/// The member's My Data page at <c>/Consent/MyData</c>. It composes the pending-deletion
 /// status from <c>UserInfo</c> and the legal documents the member signed; the export and deletion
 /// actions it links to are Gdpr's <c>MemberDataController</c> and <c>UserController</c>.
 /// </summary>
@@ -22,7 +21,7 @@ internal sealed class MyDataController(
     IConfiguration configuration,
     ConfigurationRegistry configRegistry) : HumansControllerBase(userService)
 {
-    [HttpGet("Profile/Me/Privacy")]
+    [HttpGet("Consent/MyData")]
     public async Task<IActionResult> Index()
     {
         var ct = HttpContext.RequestAborted;

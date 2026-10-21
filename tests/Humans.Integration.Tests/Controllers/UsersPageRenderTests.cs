@@ -80,10 +80,10 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
     [
         ("/Profile/Me/Edit", "Edit Profile"),                                // ProfileEdit_Title
         ("/Profile/Me/Emails", "Email Addresses"),                           // Emails_Title
-        ("/Profile/Me/Privacy", "My Data"),                                  // Consent_MyData_Title (served by Consent)
+        ("/Consent/MyData", "My Data"),                                      // Consent_MyData_Title (served by Consent)
         ("/Profile/Me/Medical", "Medical conditions"),                       // Profile_DietaryMedical_MedicalConditions_Title
-        ("/Profile/Me/CommunicationPreferences", "Communication Preferences"),// CommPrefs_Title
-        ("/Profile/Me/Outbox", "My Emails"),                                 // Email_Outbox_MyTitle (served by Email)
+        ("/Email/CommunicationPreferences", "Communication Preferences"),    // CommPrefs_Title (served by Email)
+        ("/Email/Outbox", "My Emails"),                                      // Email_Outbox_MyTitle (served by Email)
     ];
 
     [HumansFact(Timeout = 180000)]
@@ -242,7 +242,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
                  {
                      ("/Profile/Me/Edit", "Editar perfil"),          // ProfileEdit_Title
                      ("/Profile/Me/Emails", "Direcciones de correo"),// Emails_Title
-                     ("/Profile/Me/Privacy", "Mis datos"),           // Consent_MyData_Title (served by Consent)
+                     ("/Consent/MyData", "Mis datos"),               // Consent_MyData_Title (served by Consent)
                  })
         {
             var response = await Client.GetAsync(url, ct);

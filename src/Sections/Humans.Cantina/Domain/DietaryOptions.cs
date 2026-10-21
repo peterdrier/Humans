@@ -2,7 +2,7 @@ namespace Humans.Cantina.Domain;
 
 /// <summary>
 /// Canonical option lists for a member's dietary profile. Single source of truth for the
-/// chips/checkboxes on the <c>/Profile/Me/Dietary</c> form, the filter the save applies before
+/// chips/checkboxes on the <c>/Cantina/Dietary</c> form, the filter the save applies before
 /// persisting, and the labels the roster roll-up counts.
 /// </summary>
 internal static class DietaryOptions

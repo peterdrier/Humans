@@ -12,17 +12,18 @@ namespace Humans.GoogleIntegration.Controllers;
 /// Designates which verified address is a member's Google Workspace identity, from the Emails grid
 /// (the member's own <c>/Profile/Me/Emails</c> and the admin grid <c>/Profile/{id}/Admin/Emails</c>).
 /// Same self-or-HumanAdmin/Board/Admin gate as the grid. Moved out of Users'
-/// <c>ProfileEmailsController</c> in Users decomposition commit 15.
+/// <c>ProfileEmailsController</c> in Users decomposition commit 15; served at
+/// <c>/Google/WorkspaceEmail</c> (self) and <c>/Google/Admin/{id}/WorkspaceEmail</c> (admin).
 /// </summary>
 [Authorize]
-[Route("Profile")]
+[Route("Google")]
 internal sealed class WorkspaceIdentityController(
     IUserService userService,
     IWorkspaceIdentityManagement identities,
     IStringLocalizer<GoogleIntegrationResource> localizer,
     ILogger<WorkspaceIdentityController> logger) : HumansControllerBase(userService)
 {
-    [HttpPost("Me/Emails/Google")]
+    [HttpPost("WorkspaceEmail")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Set(Guid emailId, CancellationToken ct)
     {
@@ -34,7 +35,7 @@ internal sealed class WorkspaceIdentityController(
         return RedirectToAction("Emails", "ProfileEmails");
     }
 
-    [HttpPost("{id:guid}/Admin/Emails/Google")]
+    [HttpPost("Admin/{id:guid}/WorkspaceEmail")]
     [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AdminSet(Guid id, Guid emailId, CancellationToken ct)

@@ -130,7 +130,7 @@ Presentation the section does *not* own: the rota tables on the shifts step are 
   `guest-page` chrome slot. Anything added to that page belongs to the section that owns the
   data, not here. **Every inbound path to the page dead-ends for the audience it is built for.**
   `NameRequiredFilter` does not exempt `Guest`, so a profileless account asking for `/Guest` is
-  sent to the name form. It can still reach Email's `Guest/CommunicationPreferences`, which is
+  sent to the name form. It can still reach Email's `Email/Guest/CommunicationPreferences`, which is
   `[AllowAnonymous]` — and that page's breadcrumb and back button, `GuestAccountController`'s
   error and success redirects, and Gdpr's `Guest/DownloadData` all send it to `/Guest`, which
   bounces it again. Finding 1; the fix is Needs Peter.

@@ -16,7 +16,7 @@
 | `TicketController.ExportAccountantReport` | Action | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |
 | `TicketController.ExportDonations` | Action | `Admin` | `PolicyNames.AdminOnly` (donor-list CSV with buyer PII; pinned by `TicketControllerTests`) |
 | `TicketTransferController` | Class | `[Authorize]` (authenticated) | — |
-| `TicketParticipationController` (`/Profile/Me/DeclareNotAttending`, `/Profile/Me/UndoNotAttending`) | Class | `[Authorize]` (authenticated; acts on the signed-in member only, antiforgery POSTs) | — (exempt from `MembershipRequiredFilter`, as when Users served them) |
+| `TicketParticipationController` (`/Tickets/DeclareNotAttending`, `/Tickets/UndoNotAttending`) | Class | `[Authorize]` (authenticated; acts on the signed-in member only, antiforgery POSTs) | — (exempt from `MembershipRequiredFilter`, as when Users served them) |
 | `TicketTransferAdminController` | Class | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |
 | `TicketsContactsAdminController` | Class | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |
 | `TicketsOnsiteAdminController` | Class | `TicketAdmin, Admin, Board` OR the gate-terminal shared account (by well-known id) | `PolicyNames.ScannerAccess` (gate staff check the onsite roster from the door alongside the scanner) |

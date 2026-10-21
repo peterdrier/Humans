@@ -119,8 +119,8 @@ ledger, a fix that adds public surface either way.
 - **Gdpr does not register the contributor forwarding factories.** Each belongs beside the
   service that owns it; registering them here would make this section name every other
   section's internal service type.
-- **The `/Profile/Me/Privacy` page is not here.** It stays on Users until it moves to Consent; `MemberDataController` keeps the
-  `Profile/Me` route prefix so the export and deletion-request URLs did not change.
+- **The `/Consent/MyData` page is not here.** It is Consent's `MyDataController`, which links to
+  `MemberDataController`'s export and deletion-request actions.
 - **The deletion lifecycle is not here.** Grace period, ticket hold, audit entry and
   confirmation email belong to `AccountDeletionService` under Users.
 - **The export does not refuse an undeclared portion.** Dropping it would hand the person

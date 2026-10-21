@@ -17,7 +17,7 @@ namespace Humans.Gdpr.Tests.Controllers;
 
 /// <summary>
 /// <see cref="GuestDataController"/>'s deletion request and cancellation for profileless accounts
-/// (moved from Users' <c>GuestAccountController</c> in Users decomposition commit 14): routes kept,
+/// (moved from Users' <c>GuestAccountController</c> in Users decomposition commit 14): Gdpr routes,
 /// flash mapping, anti-forgery and the signed-in-only gate.
 /// </summary>
 public sealed class GuestDataControllerTests
@@ -48,9 +48,9 @@ public sealed class GuestDataControllerTests
     }
 
     [HumansTheory]
-    [InlineData(nameof(GuestDataController.RequestDeletion), "Guest/RequestDeletion")]
-    [InlineData(nameof(GuestDataController.CancelDeletion), "Guest/CancelDeletion")]
-    public void DeletionActions_KeepTheirGuestUrls_AndRequireAntiForgery(string action, string route)
+    [InlineData(nameof(GuestDataController.RequestDeletion), "Gdpr/Guest/RequestDeletion")]
+    [InlineData(nameof(GuestDataController.CancelDeletion), "Gdpr/Guest/CancelDeletion")]
+    public void DeletionActions_UseGdprGuestUrls_AndRequireAntiForgery(string action, string route)
     {
         var method = typeof(GuestDataController).GetMethod(action)!;
         method.GetCustomAttributes(typeof(HttpPostAttribute), false).Cast<HttpPostAttribute>()

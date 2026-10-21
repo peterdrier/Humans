@@ -24,7 +24,7 @@ The food answers are Cantina's (`cantina_dietary_profiles`, Users decomposition 
 
 ## Authorization
 
-- **Dietary form** (`/Profile/Me/Dietary`, Cantina's `CantinaProfileController`): any authenticated user, own answers only — the controller takes the user from the principal, never from the route.
+- **Dietary form** (`/Cantina/Dietary`, Cantina's `CantinaProfileController`): any authenticated user, own answers only — the controller takes the user from the principal, never from the route.
 - **Medical form** (`/Profile/Me/Medical`, Users' `ProfileController`): any authenticated user, own conditions only.
 - **Reading medical conditions:** owner, `NoInfoAdmin`, `Admin` (`MedicalDataViewer`). Shifts' badges keep their `ShowMedical` gate; Cantina never reads or returns medical data.
 - **Reading dietary answers:** any surface that already shows the volunteer's shift profile (coordinators, shift admins, volunteer search) and the `CantinaAdminOrAdmin` roster, all through `ICantinaService`.
@@ -47,7 +47,7 @@ Both forms are exempt from `MembershipRequiredFilter` so a not-yet-Active member
 
 ### US-35.2: Dietary form
 **Acceptance Criteria:**
-- `GET`/`POST /Profile/Me/Dietary`; full page, works without JS. The old `/Profile/Me/DietaryMedical` URL redirects permanently here, keeping the replay query.
+- `GET`/`POST /Cantina/Dietary`; full page, works without JS.
 - Fields: **Dietary preference** (required radio: Omnivore, Vegetarian, Vegan, Pescatarian); **Allergies** (chips from `DietaryOptions.AllergyOptions`, `Other` reveals `AllergyOtherText`, ≤ 500); **Intolerances** (chips, `Other` reveals `IntoleranceOtherText`, ≤ 500).
 - POST refuses `Other` without text; chips are filtered against `DietaryOptions`; Other text is kept only while `Other` is selected. The preference is not re-validated beyond being non-blank.
 - On success: replay the interrupted signup (below) or redirect to `/Profile/Me`; on failure re-render with values kept.
@@ -62,7 +62,7 @@ Both forms are exempt from `MembershipRequiredFilter` so a not-yet-Active member
 
 ### US-35.5: Hard gate on qualifying-shift signup
 **Acceptance Criteria:**
-- `ShiftsController.ToggleDay` redirects to `/Profile/Me/Dietary?returnAction=signup&shiftId=...` when the target shift `QualifiesForCantinaMeal()` and `ICantinaService` has no preference.
+- `ShiftsController.ToggleDay` redirects to `/Cantina/Dietary?returnAction=signup&shiftId=...` when the target shift `QualifiesForCantinaMeal()` and `ICantinaService` has no preference.
 - On save, `CantinaProfileController` replays the signup through `IShiftSignups` (single shift, range, or back to Shifts/Home per `returnAction`).
 - `DietaryMissingBannerViewComponent` on `/Shifts` and `/Shifts/Mine` plus disabled Sign-Up buttons catch members who already hold a qualifying signup without a preference.
 

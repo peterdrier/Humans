@@ -17,8 +17,8 @@ namespace Humans.Gdpr.Controllers;
 /// The subject-rights actions for profileless accounts (authenticated users without a Profile):
 /// the Article 15 data export and the Article 17 deletion request and its cancellation. The
 /// deletion actions moved here from Users' <c>GuestAccountController</c> in Users decomposition
-/// commit 14 with the same <c>/Guest/*</c> URLs, beside their <c>/Profile/Me</c> counterparts on
-/// <see cref="MemberDataController"/>.
+/// commit 14 and take Gdpr's <c>/Gdpr/Guest/*</c> URLs, beside their member counterparts on
+/// <see cref="MemberDataController"/>. The export keeps its older <c>/Guest/DownloadData</c>.
 /// </summary>
 [Authorize]
 internal sealed class GuestDataController(
@@ -59,7 +59,7 @@ internal sealed class GuestDataController(
         }
     }
 
-    [HttpPost("Guest/RequestDeletion")]
+    [HttpPost("Gdpr/Guest/RequestDeletion")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RequestDeletion()
     {
@@ -86,7 +86,7 @@ internal sealed class GuestDataController(
         return RedirectToAction("Index", "Guest");
     }
 
-    [HttpPost("Guest/CancelDeletion")]
+    [HttpPost("Gdpr/Guest/CancelDeletion")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CancelDeletion()
     {

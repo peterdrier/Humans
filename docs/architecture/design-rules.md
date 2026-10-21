@@ -316,7 +316,7 @@ See [`docs/architecture/dependency-graph.md`](dependency-graph.md) for the full 
 
 ### 8a. User-Scoped Sections Must Contribute to the GDPR Export
 
-Every section whose owned tables hold per-user rows MUST implement `IUserDataContributor` (`Humans.Gdpr.Contracts`) so the GDPR Article 15 data export (`IGdprService`) can assemble a complete document without any cross-section database reads. The orchestrator injects `IEnumerable<IUserDataContributor>`, fans out one call per contributor, and merges the returned slices into the JSON document the user downloads from `/Profile/Me/DownloadData` or `/Guest/DownloadData`.
+Every section whose owned tables hold per-user rows MUST implement `IUserDataContributor` (`Humans.Gdpr.Contracts`) so the GDPR Article 15 data export (`IGdprService`) can assemble a complete document without any cross-section database reads. The orchestrator injects `IEnumerable<IUserDataContributor>`, fans out one call per contributor, and merges the returned slices into the JSON document the user downloads from `/Gdpr/DownloadData` or `/Guest/DownloadData`.
 
 Adding a new user-scoped section to §8 above requires three coupled steps — all three, in any order, before the PR can land:
 

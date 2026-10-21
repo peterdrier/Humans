@@ -61,7 +61,7 @@ Multiple controllers serve this section:
 | `WelcomeController` | `GET /Welcome` | Anonymous explainer. Signed-in actives → `/Shifts`, signed-in non-actives → `/OnboardingWidget`. Routes on the `UserState` claim, **not** the widget step. |
 | `GuestController` | `GET /Guest` | Reachable only by typing the URL, by a user who already has a name — `Guest` is not exempt from `NameRequiredFilter`, and nothing links here. Bounces a mid-widget user back to the dispatcher. Page's fate is an open question for Peter. |
 | `AccountController` | Login/logout/OAuth | Exempt from membership gate; no onboarding-specific routes |
-| `MembershipRequiredFilter` | (global filter) | Routes by `UserState`: `Bare` → `/OnboardingWidget`, `DeletePending` → `/User/Deletion`, walled states → `/User/Status`, `Active` → app |
+| `MembershipRequiredFilter` | (global filter) | Routes by `UserState`: `Bare` → `/OnboardingWidget`, `DeletePending` → `/User/Deletion`, walled states → `/Gdpr/Status`, `Active` → app |
 | `NameRequiredFilter` | (global filter) | Name-gate: redirects authenticated live accounts without a real BurnerName to `/OnboardingWidget/Names`; terminal accounts proceed to the membership-state wall |
 
 Board voting moved to Governance: `/Governance/BoardVoting`. Onboarding only consumes `IGovernanceService` for pending-application badges and detail context.

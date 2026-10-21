@@ -40,7 +40,7 @@ One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the 
 | `/Debug/Translations` | GET | Admin | Localisation string reference gallery |
 | `/Debug/Maintenance` | GET | Admin | Maintenance operations |
 | `/Debug/Maintenance/ClearHangfireLocks` | POST | Admin | Clear stale Hangfire locks |
-| `/Users/Admin/Debug` | GET | Admin | All-users debug grid (`UsersDebugController`; URL kept from when Users owned it): flat paginated/sortable table of every user incl. tombstones, every column from the cached `UserInfo` snapshot via `IUserService.GetAllRawUserInfosAsync`; page size clamped 10-200, offsets past the end give an empty page |
+| `/Debug/Users` | GET | Admin | All-users debug grid (`UsersDebugController`): flat paginated/sortable table of every user incl. tombstones, every column from the cached `UserInfo` snapshot via `IUserService.GetAllRawUserInfosAsync`; page size clamped 10-200, offsets past the end give an empty page |
 | `/Debug/DataMigrations` | GET | Admin | Every registered data migration: section, key, title, what it retires, pending count and every pending row |
 | `/Debug/DataMigrations/Apply` | POST | Admin | Run one migration (`key`) for the acting admin; `data-confirm`, antiforgery, audited `DataMigrationApplied` |
 | `/api/data-migrations` | GET | Anonymous | Data-migration progress JSON — keys, pending counts, done flags; never row data |

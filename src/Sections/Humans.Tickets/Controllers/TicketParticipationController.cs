@@ -12,13 +12,11 @@ namespace Humans.Tickets.Controllers;
 /// The member's own "not attending this year" declaration, posted from the dashboard ticket card.
 /// </summary>
 /// <remarks>
-/// Writes <c>tickets_event_participations</c>, a Tickets table, under the <c>[Route("Profile")]</c>
-/// prefix so the URLs Users served until decomposition commit 13 stay the same (Shifts'
-/// <c>ShiftProfileController</c> is the precedent). Owner-only: every action acts on the signed-in
+/// Writes <c>tickets_event_participations</c>, a Tickets table. Owner-only: every action acts on the signed-in
 /// member.
 /// </remarks>
 [Authorize]
-[Route("Profile")]
+[Route("Tickets")]
 internal sealed class TicketParticipationController(
     IEventParticipationManagement participations,
     ISettingsService settingsService,
@@ -26,7 +24,7 @@ internal sealed class TicketParticipationController(
     IStringLocalizer<TicketsResource> localizer,
     ILogger<TicketParticipationController> logger) : HumansControllerBase(userService)
 {
-    [HttpPost("Me/DeclareNotAttending")]
+    [HttpPost("DeclareNotAttending")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeclareNotAttending()
     {
@@ -53,7 +51,7 @@ internal sealed class TicketParticipationController(
         return Redirect("/");
     }
 
-    [HttpPost("Me/UndoNotAttending")]
+    [HttpPost("UndoNotAttending")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UndoNotAttending()
     {

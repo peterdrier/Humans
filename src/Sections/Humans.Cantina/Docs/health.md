@@ -35,7 +35,7 @@ Everything the section exposes answers one of these questions.
 | **Week overview** | How many are here each day this week, and how many haven't answered? | `GET /Cantina/Roster` |
 | **Day detail** | Exactly who is here on this one day, and what does each of them eat? | `GET /Cantina/Roster/Day` |
 | **Take it away** | The same two answers, as a file. | `GET /Cantina/Roster/Csv`, `GET /Cantina/Roster/Day/Csv` |
-| **What do I eat?** | A member records their own food answers. | `GET`/`POST /Profile/Me/Dietary`, things-to-do `dietary` |
+| **What do I eat?** | A member records their own food answers. | `GET`/`POST /Cantina/Dietary`, things-to-do `dietary` |
 | **Has this member answered?** | Other sections read the answers. | `ICantinaService` |
 
 Five shapes, and "which week did you mean?" is not one of them — resolving a missing offset to

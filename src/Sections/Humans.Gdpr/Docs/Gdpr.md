@@ -48,23 +48,24 @@
 ## Routing
 
 Three controllers and two views (`Views/User/Status`, `Views/User/Deletion`), so the project is
-`Microsoft.NET.Sdk.Razor`. The member-facing routes keep their pre-move URLs; the
-`Profile/Me` prefix on `MemberDataController` follows Shifts' `ShiftProfileController`.
+`Microsoft.NET.Sdk.Razor`. The routes moved here from Users take Gdpr's own `/Gdpr/*` URLs, with
+one exception: `GET /User/Deletion` stays because the account-deletion confirmation email links
+to it. `GET /Guest/DownloadData` predates the Users decomposition.
 
 | Route | Controller action | Notes |
 |-------|------------------|-------|
-| `GET /Profile/Me/DownloadData` | `MemberDataController.DownloadData` | For a human who has completed onboarding; own data only |
-| `POST /Profile/Me/Privacy/RequestDeletion` | `MemberDataController.RequestDeletion` | Starts the deletion countdown via `IAccountDeletionService.RequestDeletionAsync`; redirects back to `/Profile/Me/Privacy` |
+| `GET /Gdpr/DownloadData` | `MemberDataController.DownloadData` | For a human who has completed onboarding; own data only |
+| `POST /Gdpr/RequestDeletion` | `MemberDataController.RequestDeletion` | Starts the deletion countdown via `IAccountDeletionService.RequestDeletionAsync`; redirects back to `/Consent/MyData` |
 | `GET /Guest/DownloadData` | `GuestDataController` | For an authenticated account with no profile yet |
-| `POST /Guest/RequestDeletion` | `GuestDataController.RequestDeletion` | Profileless deletion request via `IAccountDeletionService.RequestDeletionAsync` (ticket hold shown in the flash); redirects to `/Guest`. Moved from Users' `GuestAccountController` in Users decomposition commit 14, same URL |
-| `POST /Guest/CancelDeletion` | `GuestDataController.CancelDeletion` | `IAccountDeletionService.CancelDeletionAsync`; redirects to `/Guest` |
-| `GET /User/Status` | `UserController.Status` | Account-status wall for Suspended/AdminSuspended/Rejected/Deleted/Merged |
+| `POST /Gdpr/Guest/RequestDeletion` | `GuestDataController.RequestDeletion` | Profileless deletion request via `IAccountDeletionService.RequestDeletionAsync` (ticket hold shown in the flash); redirects to `/Guest`. Moved from Users' `GuestAccountController` in Users decomposition commit 14 (was `/Guest/RequestDeletion`) |
+| `POST /Gdpr/Guest/CancelDeletion` | `GuestDataController.CancelDeletion` | `IAccountDeletionService.CancelDeletionAsync`; redirects to `/Guest` |
+| `GET /Gdpr/Status` | `UserController.Status` | Account-status wall for Suspended/AdminSuspended/Rejected/Deleted/Merged |
 | `GET /User/Deletion` | `UserController.Deletion` | Pending-deletion landing; redirects home when nothing is pending |
-| `POST /User/Deletion/Cancel` | `UserController.CancelDeletion` | `IAccountDeletionService.CancelDeletionAsync` |
+| `POST /Gdpr/Deletion/Cancel` | `UserController.CancelDeletion` | `IAccountDeletionService.CancelDeletionAsync` |
 
 The views' copy lives in `GdprResource` (six cultures; keys `Gdpr_AccountStatus_*`, `Gdpr_AccountDeletion_*`, `Gdpr_Deletion_*`, and the guest deletion flashes `Gdpr_Guest_*`). For a Rejected account the wall renders the `UserPartSlots.AccountStatus` slot (Base), where Consent contributes the rejection reason — Gdpr cannot reference Consent, which owns the record (Users decomposition commit 12). Users keeps its own copies of the suspension keys its notification text reads; its deletion flash copies went with the guest deletion actions (Users decomposition commit 14).
 
-The `/Profile/Me/Privacy` page itself is Consent's (`MyDataController`) and links to the two
+The `/Consent/MyData` page itself is Consent's (`MyDataController`) and links to the two
 `MemberData` actions. The `User` controller and the two `MemberData` actions are exempt from
 `MembershipRequiredFilter` — they are its redirect targets and the recovery actions a non-Active
 account keeps (terminal states are denied everything but `Status`).

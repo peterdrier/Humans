@@ -19,7 +19,7 @@ using NSubstitute;
 namespace Humans.Cantina.Tests.Controllers;
 
 /// <summary>
-/// <c>/Profile/Me/Dietary</c> (Users decomposition commit 10): the owner-only form, its
+/// <c>/Cantina/Dietary</c> (Users decomposition commit 10): the owner-only form, its
 /// "Other needs text" guard, and the signup replay after a save. The replay is load-bearing:
 /// without it the dietary gate's redirect strands the member on Home with no signup performed
 /// (US-35.6 in Docs/features/dietary-nudge.md). A failed replay does not roll back the save.
@@ -92,20 +92,6 @@ public class CantinaProfileControllerTests
         model.IntoleranceOtherText.Should().Be("Fructose");
         model.ReturnAction.Should().Be("signup");
         model.ShiftId.Should().Be(shiftId);
-    }
-
-    [HumansFact]
-    public void Legacy_DietaryMedical_url_redirects_permanently_and_keeps_the_replay_route()
-    {
-        var shiftId = Guid.NewGuid();
-
-        var result = _controller.LegacyDietaryMedical(returnAction: "signup", shiftId: shiftId);
-
-        var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
-        redirect.Permanent.Should().BeTrue();
-        redirect.ActionName.Should().Be(nameof(CantinaProfileController.Dietary));
-        redirect.RouteValues!["returnAction"].Should().Be("signup");
-        redirect.RouteValues["shiftId"].Should().Be(shiftId);
     }
 
     [HumansFact]

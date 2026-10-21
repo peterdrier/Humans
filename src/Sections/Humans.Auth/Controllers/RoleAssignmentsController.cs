@@ -13,12 +13,11 @@ using NodaTime;
 namespace Humans.Auth.Controllers;
 
 /// <summary>
-/// The role-assignment admin pages: the system-wide roster at <c>/Users/Admin/Roles</c> and
-/// assign / end on a member at <c>/Users/Admin/{id}/Roles/...</c>. The per-member card on the
+/// The role-assignment admin pages: the system-wide roster at <c>/Auth/Admin/Roles</c> and
+/// assign / end on a member at <c>/Auth/Admin/{id}/Roles/...</c>. The per-member card on the
 /// admin human-detail page is this section's <c>RoleAssignmentsCardViewComponent</c> user part.
 /// </summary>
 /// <remarks>
-/// The routes keep the <c>Users/Admin</c> prefix so the URLs admins already have do not change.
 /// The class gate is <see cref="PolicyNames.HumanAdminBoardOrAdmin"/>; <c>AddRole</c> and
 /// <c>EndRole</c> add the resource-based <see cref="PolicyNames.RoleAssignmentManage"/> check per
 /// role name. The audit entries are written by <see cref="IRoleAssignmentWrite"/>.
@@ -33,7 +32,7 @@ internal sealed class RoleAssignmentsController(
     ILogger<RoleAssignmentsController> logger,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
-    [HttpGet("Users/Admin/Roles")]
+    [HttpGet("Auth/Admin/Roles")]
     public async Task<IActionResult> Roles(string? role, bool showInactive = false, int page = 1)
     {
         var pageSize = 50;
@@ -67,7 +66,7 @@ internal sealed class RoleAssignmentsController(
         return View(viewModel);
     }
 
-    [HttpGet("Users/Admin/{id:guid}/Roles/Add")]
+    [HttpGet("Auth/Admin/{id:guid}/Roles/Add")]
     public async Task<IActionResult> AddRole(Guid id)
     {
         if (await UserService.GetRawUserInfoAsync(id, HttpContext.RequestAborted) is null)
@@ -82,7 +81,7 @@ internal sealed class RoleAssignmentsController(
         return View(viewModel);
     }
 
-    [HttpPost("Users/Admin/{id:guid}/Roles/Add")]
+    [HttpPost("Auth/Admin/{id:guid}/Roles/Add")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddRole(Guid id, CreateRoleAssignmentViewModel model)
     {
@@ -124,7 +123,7 @@ internal sealed class RoleAssignmentsController(
         return RedirectToAction("AdminDetail", "UsersAdmin", new { id });
     }
 
-    [HttpPost("Users/Admin/{id:guid}/Roles/{roleId:guid}/End")]
+    [HttpPost("Auth/Admin/{id:guid}/Roles/{roleId:guid}/End")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EndRole(Guid id, Guid roleId, string? notes)
     {

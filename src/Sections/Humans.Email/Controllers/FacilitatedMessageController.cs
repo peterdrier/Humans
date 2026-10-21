@@ -13,12 +13,11 @@ namespace Humans.Email.Controllers;
 
 /// <summary>
 /// Facilitated messaging: one member sends another a one-off email relayed through Humans, at
-/// <c>/Profile/{id}/SendMessage</c>. A conduit, not a mailbox: nothing is stored beyond the
+/// <c>/Email/SendMessage/{id}</c>. A conduit, not a mailbox: nothing is stored beyond the
 /// outbox row and the audit entry, and the recipient's address is never shown to the sender.
 /// </summary>
 /// <remarks>
-/// The route keeps the <c>Profile</c> prefix so the URL members already have does not change,
-/// as <c>MemberOutboxController</c> does. The links that lead here are Users' profile-card
+/// The links that lead here are Users' profile-card
 /// button and Email's <c>TeamMessageButtonsViewComponent</c> user part.
 /// </remarks>
 [Authorize]
@@ -35,7 +34,7 @@ internal sealed class FacilitatedMessageController(
     private const string ProfileController = "ProfileView";
     private const string ViewProfileAction = "ViewProfile";
 
-    [HttpGet("Profile/{id:guid}/SendMessage")]
+    [HttpGet("Email/SendMessage/{id:guid}")]
     public async Task<IActionResult> SendMessage(Guid id, Guid? teamId, CancellationToken ct)
     {
         var currentUser = await GetCurrentUserInfoAsync(ct);
@@ -78,7 +77,7 @@ internal sealed class FacilitatedMessageController(
         return View(viewModel);
     }
 
-    [HttpPost("Profile/{id:guid}/SendMessage")]
+    [HttpPost("Email/SendMessage/{id:guid}")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SendMessage(Guid id, SendMessageViewModel model, CancellationToken ct)
     {

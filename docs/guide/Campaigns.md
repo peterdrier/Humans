@@ -49,7 +49,7 @@ When an Admin sends a wave that includes you, the code arrives by email to your 
 
 You cannot. `Campaign Codes` is an always-on category, like `System` — a code granted to you is always delivered. Because there is nothing an unsubscribe could do, campaign emails don't advertise one: no footer link, no RFC 8058 `List-Unsubscribe` header.
 
-Your Communication Preferences page (`/Guest/CommunicationPreferences`) still shows `Campaign Codes` as locked on, alongside everything else — Marketing, Governance, Ticketing, and so on — that you can toggle. Other email types still carry a working unsubscribe link and `List-Unsubscribe` header for their own (opt-outable) category.
+Your Communication Preferences page (`/Email/Guest/CommunicationPreferences`) still shows `Campaign Codes` as locked on, alongside everything else — Marketing, Governance, Ticketing, and so on — that you can toggle. Other email types still carry a working unsubscribe link and `List-Unsubscribe` header for their own (opt-outable) category.
 
 ## As a Board member / Admin
 

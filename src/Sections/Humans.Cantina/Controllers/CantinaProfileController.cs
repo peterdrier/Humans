@@ -12,18 +12,16 @@ using Microsoft.Extensions.Localization;
 namespace Humans.Cantina.Controllers;
 
 /// <summary>
-/// The member's own dietary profile at <c>/Profile/Me/Dietary</c>, and the replay of the shift
+/// The member's own dietary profile at <c>/Cantina/Dietary</c>, and the replay of the shift
 /// signup the dietary gate interrupted (Docs/features/dietary-nudge.md, US-35.6).
 /// </summary>
 /// <remarks>
-/// Reads and writes <c>cantina_dietary_profiles</c>, a Cantina table, under the
-/// <c>[Route("Profile")]</c> prefix so the member's own pages stay together (Shifts'
-/// <c>ShiftProfileController</c> is the precedent). Owner-only: every action acts on the
+/// Reads and writes <c>cantina_dietary_profiles</c>, a Cantina table. Owner-only: every action acts on the
 /// signed-in member. Medical conditions are not here; Users serves them at
 /// <c>/Profile/Me/Medical</c>.
 /// </remarks>
 [Authorize]
-[Route("Profile")]
+[Route("Cantina")]
 internal sealed class CantinaProfileController(
     IDietaryProfileManagement dietary,
     IShiftSignups shiftSignups,
@@ -31,17 +29,7 @@ internal sealed class CantinaProfileController(
     IStringLocalizer<CantinaResource> localizer,
     ILogger<CantinaProfileController> logger) : HumansControllerBase(userService)
 {
-    /// <summary>The page's address until Users decomposition commit 10, kept for bookmarks.</summary>
-    [HttpGet("Me/DietaryMedical")]
-    public IActionResult LegacyDietaryMedical(
-        string? returnAction = null,
-        Guid? shiftId = null,
-        Guid? rotaId = null,
-        int? startDayOffset = null,
-        int? endDayOffset = null) =>
-        RedirectToActionPermanent(nameof(Dietary), new { returnAction, shiftId, rotaId, startDayOffset, endDayOffset });
-
-    [HttpGet("Me/Dietary")]
+    [HttpGet("Dietary")]
     public async Task<IActionResult> Dietary(
         string? returnAction = null,
         Guid? shiftId = null,
@@ -72,7 +60,7 @@ internal sealed class CantinaProfileController(
         }
     }
 
-    [HttpPost("Me/Dietary")]
+    [HttpPost("Dietary")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Dietary(DietaryViewModel model)
     {

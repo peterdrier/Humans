@@ -140,7 +140,7 @@ Only controllers a non-Active user must still reach are exempt wholesale:
 
 **Profile** and **ProfileEmails** are not exempt wholesale — only specific own-profile actions are (edit, privacy/download-data/deletion-request, medical (plus Cantina's own-dietary form), communication preferences, notifications settings, and email management). Other Profile/ProfileEmails actions still require `UserState == Active`.
 
-`Deleted`/`Merged` accounts are walled off before any of the above: only `Account`, `Language`, and `User/Status` reach them — none of the other exemptions apply, so a lingering cookie can't be used to edit an anonymized profile.
+`Deleted`/`Merged` accounts are walled off before any of the above: only `Account`, `Language`, and `Gdpr/Status` reach them — none of the other exemptions apply, so a lingering cookie can't be used to edit an anonymized profile.
 
 Role-gated app controllers are reached only after the `UserState == Active` gate passes; `[AllowAnonymous]`/API-key controllers use anonymous pass-through.
 

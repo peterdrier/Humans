@@ -37,9 +37,9 @@ test.describe('Profile (02-profiles)', () => {
 
   test('GDPR: privacy page loads with data export and deletion options', async ({ page }) => {
     await loginAsVolunteer(page);
-    await page.goto('/Profile/Me/Privacy');
+    await page.goto('/Consent/MyData');
 
-    if (!page.url().includes('/Profile/Me/Privacy')) return; // onboarding redirect — skip gracefully
+    if (!page.url().includes('/Consent/MyData')) return; // onboarding redirect — skip gracefully
 
     await expect(page.locator('h1, h2, h3, h4').first()).toBeVisible();
     // Data export link
