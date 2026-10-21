@@ -59,6 +59,13 @@ internal sealed class CachingTicketQueryService : ITicketManagement, ITicketCach
         return holdings ?? new UserTicketHoldings(0, []);
     }
 
+    // Participation is not cached here: one keyed query plus the Users snapshot per read.
+    public Task<IReadOnlyList<EventParticipationInfo>> GetParticipationsAsync(Guid userId, CancellationToken ct = default) =>
+        WithInner(inner => inner.GetParticipationsAsync(userId, ct));
+
+    public Task<IReadOnlyList<EventParticipationInfo>> GetAllParticipationsAsync(CancellationToken ct = default) =>
+        WithInner(inner => inner.GetAllParticipationsAsync(ct));
+
     public Task<List<string>> GetAvailableTicketTypesAsync(CancellationToken ct = default) =>
         WithInner(inner => inner.GetAvailableTicketTypesAsync(ct));
 

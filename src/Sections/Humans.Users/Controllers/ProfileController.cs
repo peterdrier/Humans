@@ -1,10 +1,9 @@
-using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Humans.Consent.Contracts;
 using Humans.Users.Services;
 using Humans.Base.Models.Tables;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
 using Humans.Base.Controllers;
-using System.Globalization;
 using System.Web;
 using AngleSharp.Dom;
 using Humans.Users.Authorization;
@@ -15,17 +14,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
-using Humans.Gdpr.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Users.Models;
 using Microsoft.Extensions.Options;
-using NodaTime;
 using Humans.AuditLog.Contracts;
-using Humans.Campaigns.Contracts;
 using Humans.Camps.Contracts;
-using Humans.Email.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
@@ -49,27 +43,18 @@ internal sealed class ProfileController(
     UserManager<User> userManager,
     IProfileEditorService profileEditorService,
     IContactFieldService contactFieldService,
-    ICommunicationPreferenceService commPrefService,
     IOnboardingIntake onboardingService,
-    IShiftSignups shiftSignupService,
-    ISettingsService settingsService,
-    IShiftVolunteerProfiles shiftProfiles,
-    IShiftView shiftView,
-    IGdprService gdprExportService,
     IConfiguration configuration,
     ConfigurationRegistry configRegistry,
     ILogger<ProfileController> logger,
     IStringLocalizer<UsersResource> localizer,
-    // The tier-application copy and the generic Common_/Validation_ strings this controller
-    // formats stayed in SharedResource at the Users carve — Governance renders the same form.
+    // The generic Common_/Validation_/Profile_ strings this controller formats stayed in
+    // SharedResource at the Users carve.
     IStringLocalizer<SharedResource> sharedLocalizer,
-    ICampaignService campaignService,
-    IEmailOutboxService emailOutboxService,
-    IClock clock,
     IGovernanceService governanceService,
-    IGovernanceWrite governanceWrite,
     IAccountDeletionService accountDeletionService,
-    IMembershipCalculator membershipCalculator) : HumansControllerBase(userService)
+    IMembershipCalculator membershipCalculator,
+    IConsentService consentService) : HumansControllerBase(userService)
 {
     private readonly IUserManagement _userService = userService;
 
@@ -108,8 +93,7 @@ internal sealed class ProfileController(
 
         var applications = await governanceService.GetUserApplicationsAsync(info.Id, ct);
         var latestApplication = applications.MaxBy(a => a.SubmittedAt);
-
-        var campaignGrants = await campaignService.GetActiveOrCompletedGrantsForUserAsync(info.Id, ct);
+        var review = await consentService.GetConsentReviewAsync(info.Id, ct);
 
         var viewModel = new ProfileViewModel
         {
@@ -117,14 +101,9 @@ internal sealed class ProfileController(
             UserId = info.Id,
             HasPendingConsents = pendingConsentCount > 0,
             PendingConsentCount = pendingConsentCount,
-            IsApproved = profile?.IsApproved ?? false,
+            IsApproved = profile is not null && review.IsApproved,
             IsOwnProfile = true,
             DisplayName = info.BurnerName,
-            CampaignGrants = campaignGrants,
-            // Onsite chip — own profile, always visible. Issue
-            // nobodies-collective/Humans#736.
-            OnsiteSince = await ResolveOnsiteSinceAsync(info, ct),
-            CanViewOnsiteChip = true,
         };
 
         // Tier app status (skip Withdrawn).
@@ -138,19 +117,6 @@ internal sealed class ProfileController(
         return View("Index", viewModel);
     }
 
-    /// <summary>
-    /// Returns the user's "onsite since" instant for the active event year, or
-    /// null if they are not yet checked in (or there is no active event). Reads
-    /// from the cached <see cref="UserInfo"/> snapshot — no extra DB hit. Issue
-    /// nobodies-collective/Humans#736.
-    /// </summary>
-    private async Task<Instant?> ResolveOnsiteSinceAsync(UserInfo info, CancellationToken ct)
-    {
-        var active = await settingsService.GetActiveEventSettingsAsync(ct);
-        if (active is null || active.Year == 0) return null;
-        return info.OnsiteSinceForYear(active.Year);
-    }
-
     [HttpGet("Me/Edit")]
     public async Task<IActionResult> Edit([FromQuery] bool preview = false, CancellationToken ct = default)
     {
@@ -162,24 +128,13 @@ internal sealed class ProfileController(
         if (info is null) return NotFound();
 
         var applications = await governanceService.GetUserApplicationsAsync(user.Id, ct);
-        var allShiftTags = await shiftProfiles.GetTagsAsync(ct: ct);
-        // Tag prefs from cached ShiftUserView, not repo.
-        var userShiftView = await shiftView.GetUserAsync(user.Id, ct);
-        var preferredShiftTags = userShiftView.TagPreferences;
+        var review = await consentService.GetConsentReviewAsync(info.Id, ct);
         var viewModel = ProfileEditViewModelBuilder.Build(
             info,
             applications,
-            allShiftTags,
-            preferredShiftTags,
+            review.IsApproved,
             preview,
             p => Url.Action(nameof(ProfileViewController.Picture), "ProfileView", new { id = p.Id, v = p.UpdatedAt.ToUnixTimeTicks() }));
-
-        // Meal preference + allergies are Profile fields, surfaced on Edit as a
-        // second entry point alongside the dedicated DietaryMedical page (which owns
-        // intolerances + medical). Read straight off the UserInfo we already loaded.
-        viewModel.DietaryPreference = info.Profile?.DietaryPreference ?? string.Empty;
-        viewModel.Allergies = info.Profile is null ? [] : [.. info.Profile.Allergies];
-        viewModel.AllergyOtherText = info.Profile?.AllergyOtherText;
 
         ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
         return View(viewModel);
@@ -194,11 +149,6 @@ internal sealed class ProfileController(
         if (user is null) return NotFound();
         model.ContactFields = ProfileEditViewModelBuilder.BuildLegacyContactFields(user.Profile);
 
-        // Tag catalog not posted back — repopulate up front so validation-failure rerenders the picker.
-        model.AllShiftTags = (await shiftProfiles.GetTagsAsync())
-            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
         if (!ModelState.IsValid)
         {
             ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
@@ -212,18 +162,14 @@ internal sealed class ProfileController(
             return View(model);
         }
 
-        // Canonical predicate — UserInfo.IsApproved is the Consent-Coordinator gate, so
-        // "not approved yet" IS initial setup (it already absorbs the no-profile case).
-        // See memory/architecture/derived-predicates-on-userinfo.md.
-        var isInitialSetup = !user.IsApproved;
+        // The Consent Coordinator's approval (Consent's review): "not approved yet" IS initial
+        // setup (it already absorbs the no-profile case).
+        var isInitialSetup = user.Profile is null
+            || !(await consentService.GetConsentReviewAsync(user.Id)).IsApproved;
 
         var burnerCvResult = ValidateBurnerCvOrNull(model, isInitialSetup);
         if (burnerCvResult is not null)
             return burnerCvResult;
-
-        var tierValidationResult = ValidateTierApplicationOrNull(model, isInitialSetup);
-        if (tierValidationResult is not null)
-            return tierValidationResult;
 
         var pictureUpload = await TryReadProfilePictureUploadAsync(model);
         if (!pictureUpload.Success)
@@ -236,11 +182,11 @@ internal sealed class ProfileController(
         if (saveResult is not null)
             return saveResult;
 
-        // Cross-section peer calls (consent-check trigger, tier-application
-        // submit/update, pending-deletion cancel) stay controller-side per
+        // Cross-section peer calls (consent-check trigger, pending-deletion
+        // cancel) stay controller-side per
         // no-leaf-to-director-callbacks — the controller is the director,
         // services are peers/leaves that must not call each other back.
-        await RunPostProfileSaveOrchestrationAsync(user, model, isInitialSetup);
+        await RunPostProfileSaveOrchestrationAsync(user, isInitialSetup);
 
         await SaveEditedContactFieldsAsync(model, profileId);
 
@@ -255,17 +201,11 @@ internal sealed class ProfileController(
 
         await _userService.SaveProfileLanguagesAsync(profileId, newLanguages);
 
-        await shiftProfiles.SetVolunteerTagPreferencesAsync(user.Id, model.EditableShiftTagIds);
-
-        // Meal pref + allergies were persisted as part of the ProfileSaveRequest
-        // above (Profile now owns dietary). Intolerances + medical are untouched —
-        // they're owned by the DietaryMedical page.
-
         SetSuccess(sharedLocalizer["Profile_Updated"].Value);
         return RedirectToAction(nameof(Me));
     }
 
-    // Simple field-level guards (phone E.164 format, allergy "Other" text) —
+    // Simple field-level guards (phone E.164 format) —
     // localized, form-field-targeted, so they stay controller-side alongside
     // the ModelState they populate.
     private void ValidateEditSimpleFieldGuards(ProfileViewModel model)
@@ -285,15 +225,6 @@ internal sealed class ProfileController(
         {
             ModelState.AddModelError(nameof(model.EmergencyContactPhone),
                 sharedLocalizer["Validation_PhoneE164", localizer["Profile_EmergencyContactPhone"].Value].Value);
-        }
-
-        // Allergy "Other" requires accompanying free text (mirrors DietaryMedical POST).
-        // Validated here, before any persistence, so a bad submit can't half-save
-        // (main profile written but shift profile rejected, or vice versa).
-        if (model.Allergies.Contains(DietaryOptions.OtherOption) && string.IsNullOrWhiteSpace(model.AllergyOtherText))
-        {
-            ModelState.AddModelError(nameof(model.AllergyOtherText),
-                localizer["Profile_DietaryMedical_AllergyOther_Required"].Value);
         }
     }
 
@@ -316,68 +247,6 @@ internal sealed class ProfileController(
         }
 
         return null;
-    }
-
-    // Maps IGovernanceWrite's tier-application field rules onto localized,
-    // form-field-targeted ModelState errors — the same error keys, and the same mapping
-    // shape, GovernanceApplicationsController uses on the submit path. The rules
-    // themselves live in the service that owns tier-application state; this runs them
-    // before any persistence so a bad submit can't half-save. Returns the rerender
-    // result when invalid, null to continue.
-    private IActionResult? ValidateTierApplicationOrNull(ProfileViewModel model, bool isInitialSetup)
-    {
-        if (!isInitialSetup || model.SelectedTier == MembershipTier.Volunteer)
-            return null;
-
-        var result = governanceWrite.ValidateSubmission(
-            model.SelectedTier, model.ApplicationMotivation,
-            model.ApplicationSignificantContribution, model.ApplicationRoleUnderstanding, model.ApplicationAdditionalInfo);
-
-        if (result.Success)
-            return null;
-
-        logger.LogWarning("Profile tier application validation refused for tier {Tier}: {ErrorKey}", model.SelectedTier, result.ErrorKey);
-        switch (result.ErrorKey)
-        {
-            case "MotivationRequired":
-                ModelState.AddModelError(nameof(model.ApplicationMotivation),
-                    sharedLocalizer["Profile_MotivationRequired"].Value);
-                break;
-            case "SignificantContributionRequired":
-                ModelState.AddModelError(nameof(model.ApplicationSignificantContribution),
-                    sharedLocalizer["Application_SignificantContributionRequired"].Value);
-                break;
-            case "RoleUnderstandingRequired":
-                ModelState.AddModelError(nameof(model.ApplicationRoleUnderstanding),
-                    sharedLocalizer["Application_RoleUnderstandingRequired"].Value);
-                break;
-            case "MotivationLength":
-                ModelState.AddModelError(nameof(model.ApplicationMotivation),
-                    sharedLocalizer["Application_MotivationLength"].Value);
-                break;
-            case "AdditionalInfoTooLong":
-                ModelState.AddModelError(nameof(model.ApplicationAdditionalInfo),
-                    sharedLocalizer["Application_AdditionalInfoTooLong"].Value);
-                break;
-            case "SignificantContributionTooLong":
-                ModelState.AddModelError(nameof(model.ApplicationSignificantContribution),
-                    sharedLocalizer["Application_SignificantContributionTooLong"].Value);
-                break;
-            case "RoleUnderstandingTooLong":
-                ModelState.AddModelError(nameof(model.ApplicationRoleUnderstanding),
-                    sharedLocalizer["Application_RoleUnderstandingTooLong"].Value);
-                break;
-            default:
-                ModelState.AddModelError(string.Empty, sharedLocalizer["Application_InvalidTier"].Value);
-                break;
-        }
-
-        model.IsInitialSetup = true;
-        model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
-            && string.IsNullOrEmpty(model.LastName)
-            && string.IsNullOrEmpty(model.EmergencyContactName);
-        ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
-        return View(model);
     }
 
     // CV: existing rows keep Id/CreatedAt; new rows post Guid.Empty and get fresh Id.
@@ -416,10 +285,6 @@ internal sealed class ProfileController(
             ProfilePictureData: pictureUpload.Data,
             ProfilePictureContentType: pictureUpload.ContentType,
             RemoveProfilePicture: model.RemoveProfilePicture,
-            // Meal pref + allergies (the DietaryMedical page owns intolerances + medical).
-            DietaryPreference: string.IsNullOrWhiteSpace(model.DietaryPreference) ? null : model.DietaryPreference,
-            Allergies: [.. model.Allergies.Where(a => DietaryOptions.AllergyOptions.Contains(a, StringComparer.Ordinal))],
-            AllergyOtherText: model.Allergies.Contains(DietaryOptions.OtherOption) ? model.AllergyOtherText?.Trim() : null,
             VolunteerHistory: cvEntries);
     }
 
@@ -443,41 +308,10 @@ internal sealed class ProfileController(
         return (Guid.Empty, View(model));
     }
 
-    private async Task RunPostProfileSaveOrchestrationAsync(UserInfo user, ProfileViewModel model, bool isInitialSetup)
+    private async Task RunPostProfileSaveOrchestrationAsync(UserInfo user, bool isInitialSetup)
     {
         // Peer-call into Onboarding; ProfileEditorService doesn't.
         await onboardingService.SetConsentCheckPendingIfEligibleAsync(user.Id);
-
-        // Initial-setup tier-app: form's `isTierLocked` guard + ApplicationDecisionService AlreadyPending backstop.
-        if (isInitialSetup && model.SelectedTier != MembershipTier.Volunteer)
-        {
-            var existingApps = await governanceService.GetUserApplicationsAsync(user.Id);
-            var existingDraft = existingApps.FirstOrDefault(a =>
-                a.Status == ApplicationStatus.Submitted);
-            var hasApprovedApp = existingApps.Any(a =>
-                a.Status == ApplicationStatus.Approved);
-
-            if (existingDraft is not null)
-            {
-                await governanceWrite.UpdateDraftApplicationAsync(
-                    existingDraft.Id,
-                    model.SelectedTier,
-                    model.ApplicationMotivation!,
-                    model.ApplicationAdditionalInfo,
-                    model.SelectedTier == MembershipTier.Asociado ? model.ApplicationSignificantContribution : null,
-                    model.SelectedTier == MembershipTier.Asociado ? model.ApplicationRoleUnderstanding : null);
-            }
-            else if (!hasApprovedApp)
-            {
-                await governanceWrite.SubmitAsync(
-                    user.Id, model.SelectedTier,
-                    model.ApplicationMotivation!,
-                    model.ApplicationAdditionalInfo,
-                    model.SelectedTier == MembershipTier.Asociado ? model.ApplicationSignificantContribution : null,
-                    model.SelectedTier == MembershipTier.Asociado ? model.ApplicationRoleUnderstanding : null,
-                    CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
-            }
-        }
 
         // Route pending-deletion cancel through IAccountDeletionService, not raw UserManager.
         if (isInitialSetup && user.IsDeletionPending)
@@ -551,359 +385,42 @@ internal sealed class ProfileController(
         return (true, result.Value.Data, result.Value.ContentType);
     }
 
-    [HttpPost("Me/DeclareNotAttending")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeclareNotAttending()
-    {
-        var (errorResult, user) = await RequireCurrentUserAsync();
-        if (errorResult is not null) return errorResult;
-
-        try
-        {
-            var eventYear = await GetActiveEventYearOrSetErrorAsync();
-            if (eventYear is null)
-            {
-                return Redirect("/");
-            }
-
-            await _userService.DeclareNotAttendingAsync(user.Id, eventYear.Value);
-            SetSuccess(localizer["Profile_NotAttending_Declared"].Value);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to declare not attending for user {UserId}", user.Id);
-            SetError(localizer["Profile_NotAttending_Failed"].Value);
-        }
-
-        return Redirect("/");
-    }
-
-    [HttpPost("Me/UndoNotAttending")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UndoNotAttending()
-    {
-        var (errorResult, user) = await RequireCurrentUserAsync();
-        if (errorResult is not null) return errorResult;
-
-        try
-        {
-            var eventYear = await GetActiveEventYearOrSetErrorAsync();
-            if (eventYear is null)
-            {
-                return Redirect("/");
-            }
-
-            var undone = await _userService.UndoNotAttendingAsync(user.Id, eventYear.Value);
-            SetUndoNotAttendingResult(undone);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to undo not attending for user {UserId}", user.Id);
-            SetError(localizer["Profile_NotAttending_Failed"].Value);
-        }
-
-        return Redirect("/");
-    }
-
-    private async Task<int?> GetActiveEventYearOrSetErrorAsync()
-    {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync();
-        if (activeEvent is not null && activeEvent.Year > 0)
-        {
-            return activeEvent.Year;
-        }
-
-        SetError(localizer["Profile_NotAttending_NoActiveEvent"].Value);
-        return null;
-    }
-
-    private void SetUndoNotAttendingResult(bool undone)
-    {
-        if (undone)
-        {
-            SetSuccess(localizer["Profile_NotAttending_Undone"].Value);
-            return;
-        }
-
-        SetError(localizer["Profile_NotAttending_UndoFailed"].Value);
-    }
-
-    [HttpGet("Me/Outbox")]
-    public async Task<IActionResult> MyOutbox()
-    {
-        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
-        if (user is null)
-            return NotFound();
-
-        var messages = await emailOutboxService.GetMessagesForUserAsync(user.Id, HttpContext.RequestAborted);
-
-        return View("Outbox", messages);
-    }
-
-    [HttpGet("Me/Privacy")]
-    public async Task<IActionResult> Privacy()
-    {
-        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
-        if (user is null)
-            return NotFound();
-
-        var viewModel = new PrivacyViewModel
-        {
-            IsDeletionPending = user.IsDeletionPending,
-            DeletionRequestedAt = user.DeletionRequestedAt?.ToDateTimeUtc(),
-            DeletionScheduledFor = user.EffectiveDeletionDate?.ToDateTimeUtc()
-        };
-
-        ViewData["DpoEmail"] = configuration.GetOptionalSetting(configRegistry, "Email:DpoAddress", "Email", importance: ConfigurationImportance.Recommended);
-        return View(viewModel);
-    }
-
-    [HttpPost("Me/Privacy/RequestDeletion")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RequestDeletion()
-    {
-        var user = await GetCurrentUserInfoAsync();
-        if (user is null)
-            return NotFound();
-
-        var result = await accountDeletionService.RequestDeletionAsync(user.Id);
-        if (!result.Success)
-        {
-            if (string.Equals(result.ErrorKey, "AlreadyPending", StringComparison.Ordinal))
-                SetError(localizer["Profile_DeletionAlreadyPending"].Value);
-            return RedirectToAction(nameof(Privacy));
-        }
-
-        SetSuccess(string.Format(CultureInfo.CurrentCulture,
-            localizer["Profile_DeletionRequested"].Value,
-            result.EffectiveDeletionDate?.ToDateTimeUtc().ToDate() ?? ""));
-        return RedirectToAction(nameof(Privacy));
-    }
-
-    [HttpGet("Me/DietaryMedical")]
-    public async Task<IActionResult> DietaryMedical(
-        string? returnAction = null,
-        Guid? shiftId = null,
-        Guid? rotaId = null,
-        int? startDayOffset = null,
-        int? endDayOffset = null)
-    {
-        try
-        {
-            var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
-            if (user is null)
-                return NotFound();
-
-            // Dietary + medical are Profile fields now. The owner sees their own
-            // medical here (allowed); the data comes from the cached UserInfo.
-            var vm = user.Profile is null
-                ? new DietaryMedicalViewModel()
-                : DietaryMedicalViewModel.FromProfile(user.Profile);
-
-            // Carryover from the dietary-gate redirect (ShiftsController.SignUp/SignUpRange).
-            // The POST handler reads these to replay the original signup after a successful save.
-            vm.ReturnAction = returnAction;
-            vm.ShiftId = shiftId;
-            vm.RotaId = rotaId;
-            vm.StartDayOffset = startDayOffset;
-            vm.EndDayOffset = endDayOffset;
-
-            return View(vm);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
-        {
-            logger.LogError(ex, "Failed to load dietary/medical info for user");
-            SetError(localizer["Profile_DietaryMedical_LoadFailed"].Value);
-            return RedirectToAction(nameof(Me));
-        }
-    }
-
-    [HttpPost("Me/DietaryMedical")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DietaryMedical(DietaryMedicalViewModel model)
-    {
-        if (!ModelState.IsValid)
-            return View(model);
-
-        // Controller guards are the localized, field-targeted primary path for the
-        // "Other text required iff Other selected" rule. SaveDietaryMedicalAsync
-        // returns an ordinary refusal as a backstop for non-controller callers.
-        if (model.Allergies.Contains(DietaryMedicalViewModel.OtherOption) && string.IsNullOrWhiteSpace(model.AllergyOtherText))
-        {
-            ModelState.AddModelError(nameof(model.AllergyOtherText), localizer["Profile_DietaryMedical_AllergyOther_Required"].Value);
-            return View(model);
-        }
-        if (model.Intolerances.Contains(DietaryMedicalViewModel.OtherOption) && string.IsNullOrWhiteSpace(model.IntoleranceOtherText))
-        {
-            ModelState.AddModelError(nameof(model.IntoleranceOtherText), localizer["Profile_DietaryMedical_IntoleranceOther_Required"].Value);
-            return View(model);
-        }
-
-        try
-        {
-            var user = await GetCurrentUserInfoAsync();
-            if (user is null)
-                return NotFound();
-
-            // Owner editing their own dietary + medical — write the six Profile
-            // columns (the editor leaves all other profile fields untouched).
-            var save = await profileEditorService.SaveDietaryMedicalAsync(user.Id, model.ToCommand());
-            if (!save.Succeeded)
-            {
-                ModelState.AddModelError(string.Empty,
-                    localizer[save.ErrorKey ?? "Profile_DietaryMedical_SaveFailed"].Value);
-                return View(model);
-            }
-
-            // Signup-replay — the user was bounced here from
-            // ShiftsController.ToggleDay by the dietary gate. After a
-            // successful save we re-run the original signup and land them on
-            // /Shifts with the appropriate flash. See
-            // src/Sections/Humans.Users/Docs/features/dietary-medical-nudge.md (US-35.6).
-            // Replay failure does NOT roll back the dietary save — the user can
-            // retry the signup directly from /Shifts without re-entering it.
-            return await ReplayShiftSignupAfterDietaryMedicalSaveAsync(user.Id, model);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to save dietary/medical info");
-            SetError(localizer["Profile_DietaryMedical_SaveFailed"].Value);
-            return View(model);
-        }
-    }
-
-    // Flash mapping duplicated from ShiftsController.SignUp/SignUpRange; sharing it is tracked separately.
-    private async Task<IActionResult> ReplayShiftSignupAfterDietaryMedicalSaveAsync(Guid userId, DietaryMedicalViewModel model)
-    {
-        switch (model.ReturnAction)
-        {
-            case "signup" when model.ShiftId is { } sid:
-                {
-                    var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-                    var result = await shiftSignupService.SignUpAsync(
-                        userId,
-                        sid,
-                        actorUserId: null,
-                        flags: privileged ? ShiftSignupRequestFlags.Privileged : ShiftSignupRequestFlags.None);
-                    if (!result.Success)
-                        SetError(result.Error ?? localizer["Users_Profile_ShiftSignupFailed"].Value);
-                    else
-                        SetSuccess(result.Warning is not null
-                            ? string.Format(CultureInfo.CurrentCulture,
-                                localizer["Users_Profile_ShiftSignupSucceededWithWarning"].Value, result.Warning)
-                            : localizer["Users_Profile_ShiftSignupSucceeded"].Value);
-                    return RedirectToAction("Index", "Shifts");
-                }
-            case "signuprange" when model.RotaId is { } rid
-                                     && model.StartDayOffset is { } sd
-                                     && model.EndDayOffset is { } ed:
-                {
-                    var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-                    var flags = ShiftSignupRequestFlags.SkipConflicts;
-                    if (privileged) flags |= ShiftSignupRequestFlags.Privileged;
-                    var result = await shiftSignupService.SignUpRangeAsync(
-                        userId,
-                        rid,
-                        sd,
-                        ed,
-                        actorUserId: null,
-                        flags: flags);
-                    if (!result.Success)
-                        SetError(result.Error ?? localizer["Users_Profile_ShiftRangeSignupFailed"].Value);
-                    else
-                        SetSuccess(result.Warning is not null
-                            ? string.Format(CultureInfo.CurrentCulture,
-                                localizer["Users_Profile_ShiftRangeSignupSucceededWithWarning"].Value, result.Warning)
-                            : localizer["Users_Profile_ShiftRangeSignupSucceeded"].Value);
-                    return RedirectToAction("Index", "Shifts");
-                }
-            case "shifts":
-                SetSuccess(localizer["Profile_DietaryMedical_Saved"].Value);
-                return RedirectToAction("Index", "Shifts");
-            default:
-                SetSuccess(localizer["Profile_DietaryMedical_Saved"].Value);
-                return RedirectToAction("Index", "Home");
-        }
-    }
-
-    [HttpGet("Me/CommunicationPreferences")]
-    public async Task<IActionResult> CommunicationPreferences()
-    {
-        try
-        {
-            var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
-            if (user is null)
-                return NotFound();
-
-            return View(model: user.Id);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Failed to load communication preferences");
-            SetError(localizer["Users_Profile_CommunicationPreferencesLoadFailed"].Value);
-            return RedirectToAction(nameof(Me));
-        }
-    }
-
-    [HttpPost("Me/CommunicationPreferences/Update")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdatePreference(MessageCategory category, [BindRequired] bool emailEnabled, [BindRequired] bool alertEnabled)
-    {
-        try
-        {
-            var user = await GetCurrentUserInfoAsync();
-            if (user is null)
-                return Unauthorized();
-            if (!ModelState.IsValid)
-            {
-                logger.LogWarning("Rejected malformed communication preference update for {UserId}", user.Id);
-                return BadRequest(ModelState);
-            }
-
-            if (category.IsAlwaysOn())
-                return BadRequest(localizer["Users_Profile_AlwaysOnCategoryCannotChange"].Value);
-
-            await commPrefService.UpdatePreferenceAsync(
-                user.Id, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, "Profile", actorUserId: user.Id);
-
-            return Ok();
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to save communication preference for {Category}", category);
-            return StatusCode(500);
-        }
-    }
-
-    [HttpGet("Me/Notifications")]
-    public IActionResult Notifications() => RedirectToActionPermanent(nameof(CommunicationPreferences));
-
-    [HttpGet("Me/DownloadData")]
-    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-    public async Task<IActionResult> DownloadData(CancellationToken ct)
+    // Medical conditions are GDPR Art. 9 data: owner-only here (every action acts on the signed-in
+    // member), and elsewhere shown only behind MedicalDataViewer. The food answers that used to share
+    // this form are Cantina's, at /Cantina/Dietary.
+    [HttpGet("Me/Medical")]
+    public async Task<IActionResult> Medical(CancellationToken ct)
     {
         var user = await GetCurrentUserInfoAsync(ct);
         if (user is null)
             return NotFound();
 
+        return View(new MedicalViewModel { MedicalConditions = user.Profile?.MedicalConditions });
+    }
+
+    [HttpPost("Me/Medical")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Medical(MedicalViewModel model)
+    {
+        if (!ModelState.IsValid)
+            return View(model);
+
         try
         {
-            var export = await gdprExportService.ExportForUserAsync(user.Id, ct);
+            var user = await GetCurrentUserInfoAsync();
+            if (user is null)
+                return NotFound();
 
-            var bytes = GdprExportSerializer.Serialize(export);
-            var fileName = $"nobodies-profiles-export-{clock.GetCurrentInstant().ToDateTimeUtc().ToInvariantDate()}.json";
-
-            return File(bytes, "application/json", fileName);
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
+            await _userService.SaveMedicalConditionsAsync(user.Id,
+                string.IsNullOrWhiteSpace(model.MedicalConditions) ? null : model.MedicalConditions.Trim());
+            SetSuccess(localizer["Users_Medical_Saved"].Value);
+            return RedirectToAction(nameof(Index));
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to export data for user {UserId}", user.Id);
-            SetError(sharedLocalizer["Error_TryAgainLater"].Value);
-            return RedirectToAction(nameof(Privacy));
+            logger.LogError(ex, "Failed to save medical info");
+            SetError(localizer["Users_Medical_SaveFailed"].Value);
+            return View(model);
         }
     }
 

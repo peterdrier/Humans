@@ -1,6 +1,7 @@
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Settings.Contracts;
+using Humans.Tickets.Contracts;
 using Humans.Tickets.Services.Dtos;
 using NodaTime;
 using Humans.Tickets.Data;
@@ -13,7 +14,7 @@ internal sealed class AttendeeContactImportService(
     IUserEmailService userEmails,
     IAccountProvisioningService provisioning,
     IUserService users,
-    IUserWrite userWrite,
+    IEventParticipationManagement participations,
     ISettingsService settingsService,
     ITicketCacheInvalidator ticketCacheInvalidator,
     IAuditLogService audit,
@@ -112,7 +113,7 @@ internal sealed class AttendeeContactImportService(
             foreach (var group in importState.ToUpsert.GroupBy(a => a.MatchedUserId!.Value))
             {
                 var earliestScan = group.Min(a => a.CheckedInAt);
-                await userWrite.SetParticipationFromTicketSyncAsync(
+                await participations.SetParticipationFromTicketSyncAsync(
                     group.Key, active.Year,
                     earliestScan is not null ? ParticipationStatus.Attended : ParticipationStatus.Ticketed,
                     earliestScan, ct);

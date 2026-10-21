@@ -41,6 +41,10 @@ public class EnumStringStabilityTests
         },
         {
             typeof(VoteChoice), ["Yay", "Maybe", "No", "Abstain"]
+        },
+        {
+            // applications.MembershipTier and governance_membership_tiers.Tier (Users decomposition commit 11).
+            typeof(MembershipTier), ["Volunteer", "Colaborador", "Asociado"]
         }
     };
 }

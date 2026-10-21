@@ -21,6 +21,7 @@ internal sealed class GoogleController(
     ITeamResourceManagement teamResourceService,
     IEmailProvisioningService emailProvisioningService,
     IGoogleAdminService googleAdminService,
+    IGoogleIntegrationService workspaceIdentities,
     IGoogleSyncLogService syncLog,
     ILogger<GoogleController> logger) : HumansControllerBase(userService)
 {
@@ -616,14 +617,15 @@ internal sealed class GoogleController(
         ViewData["GoogleNotConfigured"] = !googleClient.IsConfigured;
         var events = (await googleSyncService.GetRecentOutboxEventsAsync(200, ct)).ToList();
 
-        // Display info via the UserInfo batch lookup. GoogleEmail from IsGoogle row, else primary. BurnerName per burnername-is-the-display-name.
+        // Display info via the UserInfo batch lookup. Google identity address, else primary. BurnerName per burnername-is-the-display-name.
         var userIds = events.Select(e => e.UserId).Distinct().ToList();
         var teamIds = events.Select(e => e.TeamId).Distinct().ToList();
         IReadOnlyDictionary<Guid, UserInfo> infos = userIds.Count == 0
             ? new Dictionary<Guid, UserInfo>()
             : await UserService.GetUserInfosAsync(userIds, ct);
+        var identities = await workspaceIdentities.GetWorkspaceIdentitiesAsync(userIds, ct);
         var googleEmailLookup = userIds.ToDictionary(userId => userId,
-            userId => infos.GetValueOrDefault(userId)?.GoogleEmail ?? infos.GetValueOrDefault(userId)?.Email ?? "unknown");
+            userId => identities.GetValueOrDefault(userId)?.Email ?? infos.GetValueOrDefault(userId)?.Email ?? "unknown");
         var displayNameLookup = userIds.ToDictionary(userId => userId,
             userId => infos.GetValueOrDefault(userId)?.BurnerName ?? "(unknown)");
         var teamsById = await teamService.GetTeamsAsync(ct);

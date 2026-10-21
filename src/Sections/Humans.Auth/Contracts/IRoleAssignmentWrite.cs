@@ -34,13 +34,6 @@ public interface IRoleAssignmentWrite : IApplicationService
     void InvalidateClaimsCacheForUser(Guid userId);
 
     /// <summary>
-    /// Bumps the global nav-badge cache so governance role lists (Board,
-    /// Coordinators, etc.) re-derive on the next badge read. Called
-    /// post-commit by <c>AccountMergeService.MergeAsync</c> after a fold.
-    /// </summary>
-    void InvalidateNavBadgeCache();
-
-    /// <summary>
     /// Evicts the singleton role-assignment row cache.
     /// <c>AccountMergeService.MergeAsync</c> calls it after commit, because the fold re-FKs
     /// rows through <c>IRoleAssignmentRepository.ReassignToUserAsync</c> and bypasses the

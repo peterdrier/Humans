@@ -139,7 +139,8 @@ public class EmailProvisioningServiceTests
         ITeamService TeamService,
         INotificationEmitter Notifications,
         IEmailService Emails,
-        IAuditLogService Audit);
+        IAuditLogService Audit,
+        IWorkspaceIdentityManagement Identities);
 
     private static ProvisioningFixture BuildFixture()
     {
@@ -151,15 +152,16 @@ public class EmailProvisioningServiceTests
         var emailMessages = TestGoogleIntegrationEmails.Create();
         var notify = Substitute.For<INotificationEmitter>();
         var audit = Substitute.For<IAuditLogService>();
+        var identities = Substitute.For<IWorkspaceIdentityManagement>();
 
         var service = new EmailProvisioningService(
-            userService, workspace, userEmail, teamService,
+            userService, workspace, userEmail, identities, teamService,
             email, emailMessages, notify, audit,
             NullLogger<EmailProvisioningService>.Instance);
 
         return new ProvisioningFixture(
             service, userService, workspace, userEmail,
-            teamService, notify, email, audit);
+            teamService, notify, email, audit, identities);
     }
 
     private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile, string language = "en", string? email = null) => UserInfo.Create(
@@ -228,9 +230,9 @@ public class EmailProvisioningServiceTests
             userId, UserFixtures.Profile(firstName: "Person", lastName: "Test"), email: oauthEmail));
         f.UserEmailService.GetUserEmailsAsync(userId, Arg.Any<CancellationToken>()).Returns(primaryEmail is null
             ? new List<UserEmailEditDto>()
-            : [new UserEmailEditDto(Guid.NewGuid(), primaryEmail, IsVerified: true, IsGoogle: false,
+            : [new UserEmailEditDto(Guid.NewGuid(), primaryEmail, IsVerified: true,
                 Provider: null, ProviderKey: null, IsPrimary: true, Visibility: null,
-                IsPendingVerification: false, GoogleEmailStatus: GoogleEmailStatus.Unknown)]);
+                IsPendingVerification: false)]);
         f.WorkspaceUserService.GetAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns((WorkspaceUserAccount?)null);
 
@@ -275,9 +277,8 @@ public class EmailProvisioningServiceTests
             Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    // Issue nobodies-collective/Humans#687: UserEmail.IsGoogle is the sole
-    // source of truth, so any user owning the address as their Google identity
-    // also has a matching user_emails row — caught by the first check above.
+    // The workspace identity always names one of the user's user_emails rows,
+    // so any user owning the address is caught by the first check above.
 
     [HumansFact]
     public async Task ProvisionNobodiesEmailAsync_RejectsWhenPrefixCollidesWithTeamGoogleGroup()
@@ -373,13 +374,13 @@ public class EmailProvisioningServiceTests
     }
 
     [HumansFact]
-    public async Task ProvisionNobodiesEmailAsync_HalfCompletedPriorProvisioning_VerifiesAndStampsIsGoogle()
+    public async Task ProvisionNobodiesEmailAsync_HalfCompletedPriorProvisioning_VerifiesAndSetsWorkspaceIdentity()
     {
         // Half-completed prior provisioning: a previous failed attempt (or a
         // user-initiated manual add) left an UNVERIFIED @nobodies.team row.
         // AddVerifiedEmailAsync short-circuits via ExistsForUserAsync and does
         // NOT promote the existing row to verified. EmailProvisioningService
-        // must close the gap so the row ends up verified AND IsGoogle=true.
+        // must close the gap so the row ends up verified AND the workspace identity.
         var f = BuildFixture();
 
         var userId = Guid.NewGuid();
@@ -389,16 +390,14 @@ public class EmailProvisioningServiceTests
             .Returns(WrapInUserInfo(userId, UserFixtures.Profile(firstName: "Person", lastName: "Test")));
 
         // Pre-existing UNVERIFIED row before AdminMarkVerifiedAsync runs;
-        // post-verification the row reads back verified but IsGoogle=false
-        // (simulates the rare case where EnsureGoogleInvariantAsync tie-broke
-        // against us, so SetGoogleAsync is the belt-and-suspenders catch).
+        // post-verification the row reads back verified; the workspace identity
+        // does not resolve to it yet, so SetAsync designates it.
         var unverifiedRow = new UserEmailEditDto(
             existingRowId, "bob@nobodies.team",
-            IsVerified: false, IsGoogle: false,
+            IsVerified: false,
             Provider: null, ProviderKey: null,
             IsPrimary: false, Visibility: null,
-            IsPendingVerification: true,
-            GoogleEmailStatus: GoogleEmailStatus.Unknown);
+            IsPendingVerification: true);
         var verifiedRow = unverifiedRow with { IsVerified = true, IsPendingVerification = false };
 
         var callCount = 0;
@@ -434,10 +433,9 @@ public class EmailProvisioningServiceTests
         await f.UserEmailService.Received(1).AdminMarkVerifiedAsync(
             userId, existingRowId, userId, Arg.Any<CancellationToken>());
 
-        // And then stamped IsGoogle (belt-and-suspenders catch when
-        // EnsureGoogleInvariantAsync didn't auto-stamp).
-        await f.UserEmailService.Received(1).SetGoogleAsync(
-            userId, existingRowId, userId, Arg.Any<CancellationToken>());
+        // And then designated as the workspace identity.
+        await f.Identities.Received(1).SetAsync(
+            userId, "bob@nobodies.team", userId, Arg.Any<CancellationToken>());
     }
 
     // --- ProvisionNobodiesEmailAsync: tombstone guard (nobodies-collective/Humans#1707) ---

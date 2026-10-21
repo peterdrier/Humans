@@ -6,7 +6,6 @@ using NodaTime;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
-using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
@@ -32,7 +31,6 @@ internal sealed class IssuesService(
     INotificationEmitter notifications,
     INotificationAutoResolve notificationInbox,
     IAuditLogService audit,
-    INavBadgeCacheInvalidator navBadge,
     IMemoryCache cache,
     IClock clock,
     IFileStorage fileStorage,
@@ -201,7 +199,6 @@ internal sealed class IssuesService(
             }
             throw;
         }
-        navBadge.Invalidate();
         EvictBadgeCounts(
             await ResolveBadgeUserIdsAsync(reporterUserId, section, null, ct));
 
@@ -485,7 +482,6 @@ internal sealed class IssuesService(
             await ResolveSubmittedNotificationsAsync(issue, senderUserId, ct);
         }
 
-        navBadge.Invalidate();
         if (statusChangedToOpen || resolveWithComment)
         {
             EvictBadgeCounts(
@@ -573,7 +569,6 @@ internal sealed class IssuesService(
             if (newStatus.IsTerminal())
                 await ResolveSubmittedNotificationsAsync(issue, actorUserId, ct);
 
-            navBadge.Invalidate();
             EvictBadgeCounts(
                 await ResolveBadgeUserIdsAsync(issue.ReporterUserId, issue.Section, null, ct));
 
@@ -663,7 +658,6 @@ internal sealed class IssuesService(
             await LogAuditAsync(
                 AuditAction.IssueSectionChanged, issueId, actorUserId,
                 $"section: {oldSection} → {nextSection}");
-            navBadge.Invalidate();
             EvictBadgeCounts(
                 await ResolveBadgeUserIdsAsync(issue.ReporterUserId, newSection, previousSection, ct));
 
@@ -802,7 +796,6 @@ internal sealed class IssuesService(
             "PurgeExpiredAsync: deleted {Count} issues older than {Cutoff} (retention {Days}d)",
             deleted, cutoff, RetentionPeriod.Days);
 
-        navBadge.Invalidate();
         return deleted;
     }
 

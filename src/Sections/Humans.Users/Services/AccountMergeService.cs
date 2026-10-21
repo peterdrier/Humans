@@ -163,7 +163,6 @@ internal sealed class AccountMergeService(
         {
             roleAssignmentService.InvalidateClaimsCacheForUser(archivedUserId);
             roleAssignmentService.InvalidateClaimsCacheForUser(survivorUserId);
-            roleAssignmentService.InvalidateNavBadgeCache();
             roleAssignmentService.InvalidateRoleAssignmentCache();
             notificationService.InvalidateBadgeCachesForUsers([archivedUserId, survivorUserId]);
             consentCacheInvalidator.InvalidateUser(archivedUserId);

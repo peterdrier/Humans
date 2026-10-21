@@ -31,13 +31,14 @@ internal sealed class ExpenseReportService(
     IBudgetService budgetService,
     ITeamService teamService,
     IUserService userService,
-    IUserWrite userWrite,
     IUserEmailService userEmailService,
     IEmailService emailService,
     ExpensesEmails emails,
     IAuditLogService auditLogService,
     IHoldedClient holdedClient,
     IHoldedFinanceService holdedFinance,
+    IFinanceService finance,
+    IFinanceWrite financeWrite,
     IPreapprovalService preapprovals,
     IPreapprovalWrite preapprovalWrites,
     IClock clock,
@@ -902,16 +903,15 @@ internal sealed class ExpenseReportService(
             // submitting on a member's behalf must snapshot the *member's* IBAN and legal name, or the
             // money goes to the wrong account.
             var profile = (await userService.GetUserInfoAsync(report.SubmitterUserId, ct))?.Profile;
-            if (profile?.Iban is null)
+            if (await finance.GetIbanAsync(report.SubmitterUserId, ct) is not { Length: > 0 } payeeIban)
                 return ExpenseMutationResult.Failure("Expenses_Validation_SubmitterNeedsIban");
 
             // Financial records use legal name (not BurnerName). See memory/architecture/burnername-is-the-display-name.md.
-            if (string.IsNullOrWhiteSpace(profile.FirstName) || string.IsNullOrWhiteSpace(profile.LastName))
+            if (string.IsNullOrWhiteSpace(profile?.FirstName) || string.IsNullOrWhiteSpace(profile.LastName))
             {
                 return ExpenseMutationResult.Failure("Expenses_Validation_SubmitterNeedsFirstAndLastName");
             }
             var legalName = $"{profile.FirstName} {profile.LastName}".Trim();
-            var payeeIban = profile.Iban;
 
             var now = clock.GetCurrentInstant();
             if (report.PreapprovalGrantId is not { } grantId)
@@ -1065,7 +1065,7 @@ internal sealed class ExpenseReportService(
         try
         {
             submitterUserId = (await userService.GetUserInfoAsync(submitterUserId, ct))?.Id ?? submitterUserId;
-            var saved = await userWrite.SetProfileIbanAsync(submitterUserId, normalized, ct);
+            var saved = await financeWrite.SetIbanAsync(submitterUserId, normalized, ct);
             if (!saved)
                 return IbanFailure("Expenses_Iban_SaveFailed", isValidationError: false);
 
@@ -1606,7 +1606,8 @@ internal sealed class ExpenseReportService(
         return null;
     }
 
-    /// <summary>User's reports (lines+attachment metadata), masked IBAN, audit. Includes accounts merged into this one.</summary>
+    /// <summary>User's reports (lines+attachment metadata) and audit. Includes accounts merged into this one.
+    /// The member's IBAN is Finance's slice (<c>PaymentDetails</c>).</summary>
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(
         Guid userId, CancellationToken ct)
     {
@@ -1621,11 +1622,6 @@ internal sealed class ExpenseReportService(
             var reports = await repo.GetForSubmitterAsync(id, ct);
             allReports.AddRange(reports);
         }
-
-        var profile = user?.Profile;
-        var maskedIban = string.IsNullOrEmpty(profile?.Iban)
-            ? null
-            : IbanFormatter.Mask(profile.Iban);
 
         var expenseActions = new List<AuditAction>
         {
@@ -1727,7 +1723,7 @@ internal sealed class ExpenseReportService(
                 shapedReports.Count > 0 ? shapedReports : null),
             new UserDataSlice(ExpenseAuditLog,
                 shapedAudit.Count > 0
-                    ? new { MaskedIban = maskedIban, Entries = shapedAudit }
+                    ? new { Entries = shapedAudit }
                     : (object?)null),
         ];
     }

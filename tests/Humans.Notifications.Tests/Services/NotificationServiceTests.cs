@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base.Caching;
 using Humans.Notifications.Data;

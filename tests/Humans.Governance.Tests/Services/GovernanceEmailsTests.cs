@@ -1,3 +1,4 @@
+using Humans.Governance.Contracts;
 using Xunit;
 using System.Net;
 using Humans.Base.Extensions;

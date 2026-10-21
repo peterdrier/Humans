@@ -2,11 +2,6 @@ namespace Humans.Base.Caching;
 
 public static class CacheKeys
 {
-    // Feedback nav-badge count cached at its owning service (FeedbackService).
-    // Evicted coarsely via InvalidateNavBadgeCounts(). The review count is not
-    // cached here — its source read is already cache-served by CachingUserService.
-    public const string FeedbackBadgeCount = "FeedbackBadgeCount";
-
     public static string NotificationBadgeCounts(Guid userId) => $"NotificationBadge:{userId:N}";
     public const string NotificationMeters = "NotificationMeters";
     public const string HoldedContacts = "HoldedContacts";

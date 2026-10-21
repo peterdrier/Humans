@@ -15,17 +15,15 @@ namespace Humans.GoogleIntegration.Services;
 /// <list type="bullet">
 ///   <item>
 ///     <description>
-///     <b>Variant 1 — Loss of access</b>: the address was the user's only
-///     <c>IsGoogle</c> address, or no other <c>IsGoogle</c> address remains
-///     verified after the removal. Sub-templates per resource type
+///     <b>Variant 1 — Loss of access</b>: the address is the user's Google
+///     Workspace identity, or they have none. Sub-templates per resource type
 ///     (Group / Drive).
 ///     </description>
 ///   </item>
 ///   <item>
 ///     <description>
-///     <b>Variant 2 — Secondary-email cleanup</b>: the user has another
-///     verified <c>IsGoogle</c> <c>UserEmail</c> row that is not also being
-///     removed; the message reassures the user that their primary
+///     <b>Variant 2 — Secondary-email cleanup</b>: the user's Google Workspace
+///     identity is another address; the message reassures the user that their primary
 ///     Nobodies access is unchanged.
 ///     </description>
 ///   </item>
@@ -92,7 +90,7 @@ internal enum SyncRemovalReason
     Reconciliation = 0,
 
     /// <summary>
-    /// The user's <c>IsGoogle</c> identity rotated from one address to
+    /// The user's Google Workspace identity rotated from one address to
     /// another, and the old address was cleaned up immediately after the
     /// new one was granted. The recipient still gets a Variant 2 ("secondary
     /// cleanup") email confirming which address was tidied up.

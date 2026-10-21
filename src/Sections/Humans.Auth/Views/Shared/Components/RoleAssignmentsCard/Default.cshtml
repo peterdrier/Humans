@@ -1,0 +1,55 @@
+@model Humans.Auth.ViewComponents.RoleAssignmentsCardViewModel
+
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>@Localizer["Auth_Roles_Assignments"]</span>
+        <a asp-controller="RoleAssignments" asp-action="AddRole" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-primary">@Localizer["Auth_Roles_AddRole"]</a>
+    </div>
+    @if (Model.Roles.Count > 0)
+    {
+        <div class="list-group list-group-flush">
+            @foreach (var role in Model.Roles)
+            {
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>@role.RoleName</strong>
+                        @if (role.IsActive)
+                        {
+                            <span class="badge bg-success ms-2">@SharedLocalizer["AdminHuman_Active"]</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary ms-2">@Localizer["Auth_Roles_Ended"]</span>
+                        }
+                        <br />
+                        <small class="text-muted">
+                            @Localizer["Auth_Roles_From"] @role.ValidFrom.ToDate()
+                            @if (role.ValidTo.HasValue)
+                            {
+                                <text> @Localizer["Auth_Roles_To"] @role.ValidTo.Value.ToDate()</text>
+                            }
+                            @if (!string.IsNullOrEmpty(role.Notes))
+                            {
+                                <text> &mdash; @role.Notes</text>
+                            }
+                        </small>
+                    </div>
+                    @if (role.IsActive)
+                    {
+                        <form asp-controller="RoleAssignments" asp-action="EndRole" asp-route-id="@Model.UserId" asp-route-roleId="@role.Id" method="post" class="d-inline"
+                              data-confirm="@Localizer["Auth_Roles_EndConfirm"].Value">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Auth_Roles_End"]</button>
+                        </form>
+                    }
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="card-body text-muted">
+            @Localizer["Auth_Roles_NoAssignments"]
+        </div>
+    }
+</div>

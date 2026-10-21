@@ -60,7 +60,7 @@ public class HasShiftAudienceTests
         shiftView.GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, ShiftUserSummary>>(viewsByUser));
 
-        return new HasShiftAudience(shiftView, users);
+        return new HasShiftAudience(shiftView, users, MarketingPreferenceStubs.For());
     }
 
     private static ShiftUserSummary ViewWith(Guid userId, SignupStatus status) =>

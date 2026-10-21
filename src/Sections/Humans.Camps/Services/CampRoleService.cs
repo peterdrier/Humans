@@ -14,7 +14,7 @@ internal sealed class CampRoleService(
     ICampRepository repo,
     ICampRoleCampAccess campAccess,
     ICampInfoInvalidator campInfoInvalidator,
-    IUserEmailService userEmailService,
+    IGoogleIntegrationService googleIdentities,
     IUserService userService,
     IAuditLogService auditLog,
     INotificationEmitter notificationEmitter,
@@ -524,9 +524,7 @@ internal sealed class CampRoleService(
             .ToDictionary(g => g.Key, g => g.ToList());
 
         var allUserIds = assignments.Select(a => a.CampMember.UserId).Distinct().ToList();
-        var emailsByUserId = allUserIds.Count == 0
-            ? new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>()
-            : await userEmailService.GetEntitiesByUserIdsAsync(allUserIds, ct);
+        var identitiesByUserId = await googleIdentities.GetWorkspaceIdentitiesAsync(allUserIds, ct);
 
         var rows = seasons
             .Select(s =>
@@ -535,19 +533,8 @@ internal sealed class CampRoleService(
                     ? list.Select(a =>
                     {
                         var userId = a.CampMember.UserId;
-                        string? googleEmail = null;
-                        if (emailsByUserId.TryGetValue(userId, out var emails))
-                        {
-                            googleEmail = emails
-                                .Where(e => e.IsVerified && e.IsGoogle)
-                                .Select(e => e.Email)
-                                .FirstOrDefault()
-                                ?? emails
-                                    .Where(e => e.IsVerified)
-                                    .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
-                                    .Select(e => e.Email)
-                                    .FirstOrDefault();
-                        }
+                        // The member's Google Workspace identity (GoogleIntegration); null without a verified address.
+                        var googleEmail = identitiesByUserId.TryGetValue(userId, out var identity) ? identity.Email : null;
 
                         return new CampRoleDrillDownAssignee(userId, googleEmail, a.AssignedAt);
                     }).ToList()

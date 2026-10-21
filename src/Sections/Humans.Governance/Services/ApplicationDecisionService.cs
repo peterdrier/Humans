@@ -28,7 +28,7 @@ namespace Humans.Governance.Services;
 internal sealed class ApplicationDecisionService(
     IApplicationRepository repository,
     IUserService userService,
-    IUserWrite userWrite,
+    MembershipTierService membershipTiers,
     IRoleAssignmentService roleAssignmentService,
     IAuditLogService auditLogService,
     IEmailService emailService,
@@ -37,7 +37,6 @@ internal sealed class ApplicationDecisionService(
     INotificationEmitter notificationService,
     ISystemTeamSync syncJob,
     IHumansMetrics metrics,
-    INavBadgeCacheInvalidator navBadge,
     INotificationMeterCacheInvalidator notificationMeter,
     IVotingBadgeCacheInvalidator votingBadge,
     IMemoryCache cache,
@@ -89,8 +88,7 @@ internal sealed class ApplicationDecisionService(
 
         await FinalizeDecisionAsync(application, reviewerUserId, cancellationToken);
 
-        await userWrite.SetMembershipTierAsync(
-            application.UserId, application.MembershipTier, cancellationToken);
+        await membershipTiers.GrantAsync(application, cancellationToken);
 
         if (application.MembershipTier == MembershipTier.Colaborador)
             await syncJob.SyncMembershipForUserAsync(
@@ -183,7 +181,6 @@ internal sealed class ApplicationDecisionService(
         var boardMemberIds = await GetBoardMemberIdsAsync(cancellationToken);
         await repository.FinalizeAsync(application, cancellationToken);
 
-        navBadge.Invalidate();
         notificationMeter.Invalidate();
         InvalidateVotingBadges(boardMemberIds);
 
@@ -315,7 +312,6 @@ internal sealed class ApplicationDecisionService(
         var boardMemberIds = await GetBoardMemberIdsAsync(ct);
         await repository.AddAsync(application, ct);
 
-        navBadge.Invalidate();
         notificationMeter.Invalidate();
         InvalidateVotingBadges(boardMemberIds);
 
@@ -340,7 +336,6 @@ internal sealed class ApplicationDecisionService(
         var boardMemberIds = await GetBoardMemberIdsAsync(ct);
         await repository.UpdateAsync(application, ct);
 
-        navBadge.Invalidate();
         notificationMeter.Invalidate();
         InvalidateVotingBadges(boardMemberIds);
 
@@ -428,6 +423,7 @@ internal sealed class ApplicationDecisionService(
 
             application.TermExpiresAt = row.ExpectedExpiry;
             await repository.UpdateAsync(application, ct);
+            await membershipTiers.SyncExpiryAsync(application.Id, row.ExpectedExpiry, ct);
 
             await auditLogService.LogAsync(
                 AuditAction.TierTermExpiryCorrected,
@@ -643,43 +639,19 @@ internal sealed class ApplicationDecisionService(
         Guid userId, MembershipTier tier, LocalDate today, CancellationToken ct = default) =>
         repository.HasActiveApprovedTierAsync(userId, tier, today, ct);
 
-    public Task<IReadOnlyDictionary<Guid, MembershipTier>> GetOtherActiveTierAssignmentsAsync(
-        MembershipTier excludeTier, LocalDate today, CancellationToken ct = default) =>
-        repository.GetOtherActiveTierAssignmentsAsync(excludeTier, today, ct);
+    public Task<MembershipTier> GetMembershipTierAsync(Guid userId, CancellationToken ct = default) =>
+        membershipTiers.GetTierAsync(userId, ct);
+
+    public Task<IReadOnlyDictionary<Guid, MembershipTier>> GetMembershipTiersAsync(CancellationToken ct = default) =>
+        membershipTiers.GetTiersAsync(ct);
+
+    public Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>> ExpireMembershipTiersAsync(
+        MembershipTier tier, LocalDate today, CancellationToken ct = default) =>
+        membershipTiers.ExpireAsync(tier, today, ct);
 
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct) =>
         repository.ReassignApplicationsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
-
-    public async Task UpdateDraftApplicationAsync(
-        Guid applicationId, MembershipTier tier, string motivation,
-        string? additionalInfo, string? significantContribution, string? roleUnderstanding,
-        CancellationToken ct = default)
-    {
-        var application = await repository.GetByIdAsync(applicationId, ct);
-        if (application is null)
-        {
-            logger.LogWarning("UpdateDraftApplicationAsync: application {Id} not found", applicationId);
-            return;
-        }
-
-        if (application.Status != ApplicationStatus.Submitted)
-        {
-            logger.LogWarning(
-                "UpdateDraftApplicationAsync: application {Id} is {Status}, not Submitted",
-                applicationId, application.Status);
-            return;
-        }
-
-        application.MembershipTier = tier;
-        application.Motivation = motivation;
-        application.AdditionalInfo = additionalInfo;
-        application.SignificantContribution = significantContribution;
-        application.RoleUnderstanding = roleUnderstanding;
-        application.UpdatedAt = clock.GetCurrentInstant();
-
-        await repository.UpdateAsync(application, ct);
-    }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {

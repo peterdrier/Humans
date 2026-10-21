@@ -1,0 +1,47 @@
+using Humans.Base.Enums;
+using Humans.Consent.Contracts;
+using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Humans.Consent.ViewComponents;
+
+/// <summary>
+/// The Consent review card, contributed to <c>UserPartSlots.AdminDetail</c>: the consent-check
+/// status and, for a Rejected account, the rejection reason, time and reviewer. Renders for the
+/// admin view mode only; the host page's own policy decides who reaches it.
+/// </summary>
+public sealed class ConsentReviewCardViewComponent(
+    IConsentService consent,
+    IUserService users) : ViewComponent
+{
+    public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
+    {
+        if (viewMode != ProfileCardViewMode.Admin)
+            return Content(string.Empty);
+
+        var ct = HttpContext.RequestAborted;
+        var info = await users.GetRawUserInfoAsync(userId, ct);
+        if (info is null)
+            return Content(string.Empty);
+
+        var review = await consent.GetConsentReviewAsync(userId, ct);
+        var rejectedByName = review.RejectedByUserId is { } rejectedBy
+            ? (await users.GetRawUserInfoAsync(rejectedBy, ct))?.BurnerName
+            : null;
+
+        return View(new ConsentReviewCardViewModel(
+            info.State == UserState.Rejected,
+            review.Status,
+            review.RejectionReason,
+            review.RejectedAt?.ToDateTimeUtc(),
+            rejectedByName));
+    }
+}
+
+/// <summary>What the Consent review card renders.</summary>
+internal sealed record ConsentReviewCardViewModel(
+    bool IsRejected,
+    ConsentCheckStatus? Status,
+    string? RejectionReason,
+    DateTime? RejectedAt,
+    string? RejectedByName);

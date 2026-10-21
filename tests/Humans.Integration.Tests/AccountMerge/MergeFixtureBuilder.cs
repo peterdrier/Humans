@@ -1,3 +1,5 @@
+using Humans.Email.Contracts;
+using Humans.Governance.Contracts;
 using Humans.Shifts.Data;
 using Humans.Shifts.Domain;
 using Humans.Auth.Data;
@@ -222,16 +224,17 @@ public sealed class MergeFixtureBuilder
     }
 
     // ------------------------------------------------------------------
-    // CommunicationPreference (Users section)
+    // CommunicationPreference (Users' frozen legacy table; Email reads it as a fallback until
+    // a row in email_communication_preferences shadows it — Users decomposition commit 14)
     // ------------------------------------------------------------------
 
-    public MergeFixtureBuilder WithSourceCommPref(MessageCategory category, bool optedOut, Instant? updatedAt = null)
+    public MergeFixtureBuilder WithSourceCommPref(LegacyMessageCategory category, bool optedOut, Instant? updatedAt = null)
         => AddCommPref(SourceUserId, category, optedOut, updatedAt);
 
-    public MergeFixtureBuilder WithTargetCommPref(MessageCategory category, bool optedOut, Instant? updatedAt = null)
+    public MergeFixtureBuilder WithTargetCommPref(LegacyMessageCategory category, bool optedOut, Instant? updatedAt = null)
         => AddCommPref(TargetUserId, category, optedOut, updatedAt);
 
-    private MergeFixtureBuilder AddCommPref(Guid userId, MessageCategory category, bool optedOut, Instant? updatedAt)
+    private MergeFixtureBuilder AddCommPref(Guid userId, LegacyMessageCategory category, bool optedOut, Instant? updatedAt)
     {
         _pending.Add(db => db.CommunicationPreferences.Add(new CommunicationPreference
         {
@@ -269,16 +272,17 @@ public sealed class MergeFixtureBuilder
     }
 
     // ------------------------------------------------------------------
-    // EventParticipation (Camps / Participation)
+    // EventParticipation — the frozen legacy Users table (Users decomposition
+    // commit 13). Tickets' merge fold materializes these into tickets_event_participations.
     // ------------------------------------------------------------------
 
-    public MergeFixtureBuilder WithSourceEventParticipation(int year, ParticipationStatus status)
+    public MergeFixtureBuilder WithSourceEventParticipation(int year, LegacyParticipationStatus status)
         => AddEventParticipation(SourceUserId, year, status);
 
-    public MergeFixtureBuilder WithTargetEventParticipation(int year, ParticipationStatus status)
+    public MergeFixtureBuilder WithTargetEventParticipation(int year, LegacyParticipationStatus status)
         => AddEventParticipation(TargetUserId, year, status);
 
-    private MergeFixtureBuilder AddEventParticipation(Guid userId, int year, ParticipationStatus status)
+    private MergeFixtureBuilder AddEventParticipation(Guid userId, int year, LegacyParticipationStatus status)
     {
         _pending.Add(db => db.EventParticipations.Add(new EventParticipation
         {
@@ -286,8 +290,8 @@ public sealed class MergeFixtureBuilder
             UserId = userId,
             Year = year,
             Status = status,
-            Source = ParticipationSource.UserDeclared,
-            DeclaredAt = status == ParticipationStatus.NotAttending ? _now : null,
+            Source = LegacyParticipationSource.UserDeclared,
+            DeclaredAt = status == LegacyParticipationStatus.NotAttending ? _now : null,
         }));
         return this;
     }

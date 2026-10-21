@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Xunit;
 using System.Globalization;
 using System.Security.Claims;
@@ -55,7 +56,7 @@ public class TeamControllerPageContentTests
             .ToDictionary(team => team.Id));
         var controller = new TeamController(
             teams, pages, Substitute.For<IUserService>(),
-            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
             services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
             new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)
@@ -132,7 +133,7 @@ public class TeamControllerPageContentTests
         };
         var controller = new TeamController(
             teams, Substitute.For<ITeamPageService>(), users,
-            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
             services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
             new ConfigurationRegistry(), SystemClock.Instance, auth, logger)
         {
@@ -253,7 +254,7 @@ public class TeamControllerPageContentTests
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, viewer.ToString()) };
         if (role is not null) claims.Add(new Claim(ClaimTypes.Role, role));
         var controller = new TeamController(
-            teams, pages, Substitute.For<IUserService>(), Substitute.For<ITeamResourceService>(),
+            teams, pages, Substitute.For<IUserService>(), Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(),
             Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<IStringLocalizer<SharedResource>>(),
             new ConfigurationBuilder().Build(), new ConfigurationRegistry(), SystemClock.Instance,
             Substitute.For<IAuthorizationService>(), NullLogger<TeamController>.Instance)
@@ -316,7 +317,7 @@ public class TeamControllerPageContentTests
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, userId.ToString()) };
         if (role is not null) claims.Add(new Claim(ClaimTypes.Role, role));
         var controller = new TeamController(
-            teams, pages, users, Substitute.For<ITeamResourceService>(),
+            teams, pages, users, Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(),
             Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<IStringLocalizer<SharedResource>>(),
             new ConfigurationBuilder().Build(), new ConfigurationRegistry(), SystemClock.Instance,
             Substitute.For<IAuthorizationService>(), NullLogger<TeamController>.Instance)
@@ -405,7 +406,7 @@ public class TeamControllerPageContentTests
         };
         var controller = new TeamController(
             teams, pages, users,
-            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
             services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
             new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)
@@ -484,7 +485,7 @@ public class TeamControllerPageContentTests
             };
             var controller = new TeamController(
                 teams, Substitute.For<ITeamPageService>(), users,
-                Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+                Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
                 services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
                 new ConfigurationRegistry(), Substitute.For<IClock>(), Substitute.For<IAuthorizationService>(),
                 NullLogger<TeamController>.Instance)
@@ -546,7 +547,7 @@ public class TeamControllerPageContentTests
         };
         var controller = new TeamController(
             teams, Substitute.For<ITeamPageService>(), users,
-            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
             services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
             new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)
@@ -631,7 +632,7 @@ public class TeamControllerPageContentTests
         pages.GetTeamPageDetailAsync("test", null, false, Arg.Any<CancellationToken>()).Returns(page);
         var controller = new TeamController(
             Substitute.For<ITeamManagementService>(), pages, Substitute.For<IUserService>(),
-            Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>(),
             Substitute.For<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
             new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)

@@ -83,17 +83,17 @@ graph LR
 
     User[UserService]:::users
     UEmail[UserEmailService]:::users
-    CommPref[CommunicationPreferenceService]:::users
     CF[ContactFieldService]:::users
     AcctProv[AccountProvisioningService]:::users
     AcctDel[AccountDeletionService]:::users
-    UserParticipationBackfill[UserParticipationBackfillService]:::users
     Merge[AccountMergeService]:::users
     DupAcct[DuplicateAccountService]:::users
     ExtLogin[ExternalLoginService]:::users
     UsersAudience[UsersAudienceService]:::users
     HumanLifecycle[HumanLifecycleService]:::users
-    TeamMsgOpts[TeamMessageOptionsProvider]:::users
+    TeamMsgOpts[TeamMessageOptionsProvider]:::teams
+    CommPref[CommunicationPreferenceService]:::email
+    Unsub[UnsubscribeService]:::email
     UserNameSync[UserNameSyncService]:::users
 
     AdminAuth[AdminAuthorizationService]:::auth
@@ -107,6 +107,7 @@ graph LR
     CampRole[CampRoleService]:::camps
 
     Cantina[CantinaRosterService]:::cantina
+    Dietary[DietaryProfileService]:::cantina
 
     CityPlan[CityPlanningService]:::cityplanning
 
@@ -119,6 +120,7 @@ graph LR
     Workload[WorkloadService]:::shifts
 
     AppDec[ApplicationDecisionService]:::governance
+    MemTier[MembershipTierService]:::governance
     MembershipCalc[MembershipCalculator]:::governance
     MemQuery[MembershipQuery]:::governance
     GovIndex[GovernanceIndexService]:::governance
@@ -127,6 +129,7 @@ graph LR
     LegalDoc[LegalDocumentService]:::legal
     LegalSync[LegalDocumentSyncService]:::legal
     Consent[ConsentService]:::consent
+    ConsentReview[ConsentReviewService]:::consent
     LegalSyncRunner[LegalDocumentSyncRunner]:::consent
 
     TicketQ[TicketQueryService]:::tickets
@@ -134,6 +137,8 @@ graph LR
     TicketTransfer[TicketTransferService]:::tickets
     AttendeeImport[AttendeeContactImportService]:::tickets
     OnsiteRoster[OnsiteRosterService]:::tickets
+    EventPart[EventParticipationService]:::tickets
+    UserParticipationBackfill[UserParticipationBackfillService]:::tickets
     TicketVendor[TicketVendorGateway]:::tickets
 
     TicketTailor[TicketTailorService]:::tickets
@@ -148,6 +153,7 @@ graph LR
     GDriveAccess[GoogleDriveAccessSyncService]:::google
     EmailProv[EmailProvisioningService]:::google
     GRemoval[GoogleRemovalNotificationService]:::google
+    GIdentity[WorkspaceIdentityService]:::google
     GSyncOutbox[GoogleSyncOutboxService]:::google
     GSyncOutboxProc[GoogleSyncOutboxProcessor]:::google
     GTrans[GoogleTranslationService]:::google
@@ -167,6 +173,7 @@ graph LR
     TicketBudget[TicketingBudgetService]:::budget
 
     Finance[HoldedFinanceManagement]:::finance
+    PayDetails[PaymentDetailsService]:::finance
 
     Holded[HoldedService]:::holded
 
@@ -238,13 +245,18 @@ graph LR
 
     %% Agent
     AgentSvc --> User
+    AgentSvc --> AppDec
+    AgentSvc --> Consent
     AgentSettings --> Audit
 
     %% Users
     User --> AdminAuth
     User --> Audit
     UEmail --> Audit
+    UEmail --> GIdentity
     CommPref --> Audit
+    CommPref --> User
+    Unsub --> User
     CF --> Team
     CF --> Role
     AcctProv --> Audit
@@ -256,7 +268,6 @@ graph LR
     AcctDel --> ShiftView
     AcctDel --> Audit
     AcctDel --> Email
-    UserParticipationBackfill --> SettingsSvc
     Merge --> Audit
     Merge --> Team
     Merge --> Role
@@ -265,6 +276,8 @@ graph LR
     DupAcct --> Team
     DupAcct --> Role
     DupAcct --> Audit
+    DupAcct --> AppDec
+    DupAcct --> Consent
     ExtLogin --> MagicLink
     UsersAudience --> TicketQ
     HumanLifecycle --> NotifEmitter
@@ -289,6 +302,7 @@ graph LR
     Team --> ShiftMgmt
     Team --> AdminAuth
     Team --> EarlyEntry
+    Team --> GIdentity
     TPage --> TRes
     TPage --> ShiftMgmt
     TPage --> SettingsSvc
@@ -300,11 +314,12 @@ graph LR
     Camp --> EarlyEntry
     Camp --> User
     Camp --> SettingsSvc
+    Camp --> TicketQ
     CampContact --> Email
     CampContact --> Audit
     CampContact --> NotifEmitter
     CampContact --> User
-    CampRole --> UEmail
+    CampRole --> GIdentity
     CampRole --> User
     CampRole --> Audit
     CampRole --> NotifEmitter
@@ -314,6 +329,15 @@ graph LR
     Cantina --> SettingsSvc
     Cantina --> User
     Cantina --> Audit
+    Dietary --> User
+    %% Governance
+    MemTier --> User
+    %% Consent
+    ConsentReview --> User
+    ConsentReview --> Consent
+    %% Finance
+    PayDetails --> User
+    PayDetails --> Audit
 
     %% CityPlanning
     CityPlan --> Camp
@@ -331,6 +355,7 @@ graph LR
     ShiftSign --> EarlyEntry
     ShiftSign --> User
     VolTrack --> User
+    VolTrack --> TicketQ
     VolTrack --> Audit
     VolTrackExport --> User
     VolTrackExport --> Audit
@@ -385,6 +410,7 @@ graph LR
     TicketQ --> Team
     TicketQ --> SettingsSvc
     TicketQ --> Audit
+    TicketQ --> AppDec
     TicketSync --> TicketTailor
     TicketSync --> Stripe
     TicketSync --> User
@@ -400,11 +426,13 @@ graph LR
     AttendeeImport --> User
     AttendeeImport --> SettingsSvc
     AttendeeImport --> Audit
-    OnsiteRoster --> User
     OnsiteRoster --> Camp
     OnsiteRoster --> Team
     OnsiteRoster --> Role
     TicketVendor --> TicketTailor
+    EventPart --> User
+    EventPart --> Audit
+    UserParticipationBackfill --> SettingsSvc
 
     %% Campaigns
     Campaign --> Team
@@ -439,6 +467,8 @@ graph LR
     GRemoval --> UEmail
     GRemoval --> User
     GRemoval --> Email
+    GIdentity --> User
+    GIdentity --> Audit
     GSyncOutboxProc --> User
     GSyncOutboxProc --> Team
     GSyncOutboxProc --> Metrics
@@ -524,6 +554,7 @@ graph LR
     NotifMeter --> TicketSync
     NotifMeter --> AppDec
     NotifMeter --> Camp
+    NotifMeter --> Consent
 
     %% Gdpr
     Gdpr --> User
@@ -600,11 +631,11 @@ graph LR
 
     %% Gate
     Gate --> TicketQ
+    Gate --> EventPart
     Gate --> EarlyEntry
     Gate --> SettingsSvc
     Gate --> ShiftMgmt
     Gate --> Role
-    Gate --> User
     Gate --> Audit
 
     %% Surveys
@@ -616,6 +647,8 @@ graph LR
     Survey --> UEmail
     Survey --> Email
     Survey --> GTrans
+    Survey --> AppDec
+    Survey --> Consent
     SurveyPrevEmail --> UEmail
     SurveyPrevEmail --> User
     SurveyPrevEmail --> Email
@@ -700,7 +733,7 @@ interfaces / infra connectors, which this graph doesn't chart):
 `AgentAnthropicBalanceProvider`, `AuditViewerService` (fans `IEntityNameContributor`),
 `BurnSettingsService`, `EmailProblemsService`, `EventBulkImporter` (Events' own repository only),
 `GoogleWorkspaceUserService`, `GuideContentService`, `MailerLiteService`, `NotificationInboxRead`
-(composes Notifications' own inbox + meter provider), `ProfileService`, `UnsubscribeService`.
+(composes Notifications' own inbox + meter provider), `ProfileService`.
 
 ## Cycles broken by lazy-resolution
 
@@ -729,7 +762,7 @@ The most depended-on cross-section surfaces (read the counts off the diagram):
 - **`UserService`** — largest fan-in by far; nearly every section reads users through `IUserService`; the few cross-section writes go through `IUserWrite`; the internal `IUserManagement` joins both with the section-only members. Its only outbound edges are `IAdminAuthorizationService` and the audit crosscut, which is what keeps it foundational.
 - **`AuditLogService`** — every write-path service logs audit events (in-service per design-rules §7a, not a decorator).
 - **`TeamService`** — second-largest section fan-in; read consumers go through `ITeamService`, cross-section writes through `ITeamWrite` (internal `ITeamManagement` joins them); batch methods exist to avoid N+1 at call sites.
-- **`UserEmailService`** — email-identity lookups across the system.
+- **`UserEmailService`** — email-identity lookups across the system. (The Google Workspace address is `WorkspaceIdentityService`'s since the Users decomposition.)
 - **`OutboxEmailService`** (`IEmailService`) / **`CommunicationPreferenceService`** — outbound mail and its consent/unsubscribe gating.
 - **`NotificationEmitter`** — the enqueue surface almost all notifiers inject; only `AccountMergeService` and `WorkgroupService` take the full `INotificationService`.
 - **`SettingsWriteService`** (`ISettingsService`) — event/app settings read by most event-facing sections.

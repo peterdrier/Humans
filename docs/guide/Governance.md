@@ -43,8 +43,8 @@ Both tiers run on synchronized 2-year terms that expire on December 31 of the cu
 - `/Governance/Votes/{id}` — the motion, the live participation numbers, and your ballot if you are on the roster.
 - `/Governance/Votes/{id}/Results` — the result, once the vote has closed. `Results.csv` is the same numbers as a download.
 - `/Governance/Votes/Admin` — every vote in every state, including drafts (Board and Admin).
-- `/Users/Admin/Roles` — paginated list of all role assignments, filterable by role (Human Admin, Board or Admin).
-- `/Users/Admin/{id}/Roles/Add` and `/Users/Admin/{id}/Roles/{roleId}/End` — assign and end role assignments on a specific human (Board, HumanAdmin, and Admin).
+- `/Auth/Admin/Roles` — paginated list of all role assignments, filterable by role (Human Admin, Board or Admin).
+- `/Auth/Admin/{id}/Roles/Add` and `/Auth/Admin/{id}/Roles/{roleId}/End` — assign and end role assignments on a specific human (Board, HumanAdmin, and Admin).
 
 ## As a Volunteer
 
@@ -129,7 +129,7 @@ Either way, finalization immediately **deletes all individual Board vote records
 
 ### Assign and revoke coordinator and admin roles
 
-Role assignments live on each human's detail page under the Admin area (`/Users/Admin/{id}`). Every assignment is temporal — it has a **valid from** date and an optional **valid to** date, and every change is audited. You can also browse all current and historical role assignments at `/Users/Admin/Roles`.
+Role assignments live on each human's detail page under the Admin area (`/Users/Admin/{id}`). Every assignment is temporal — it has a **valid from** date and an optional **valid to** date, and every change is audited. You can also browse all current and historical role assignments at `/Auth/Admin/Roles`.
 
 - **Admin** can assign and revoke any role, including Admin itself.
 - **Board** can assign and revoke any role **except** Admin.

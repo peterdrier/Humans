@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Base.Interfaces.Caching;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Feedback.Data;
@@ -13,8 +12,7 @@ namespace Humans.Feedback.Tests.Architecture;
 /// (nobodies-collective/Humans#866, G5) plus the §15 repository pattern it already had
 /// (issue #549). Feedback is admin-review-only and low-traffic, so no caching decorator sits
 /// in front of the service — the service goes directly through
-/// <see cref="IFeedbackRepository"/> and invalidates the nav-badge cache via
-/// <see cref="INavBadgeCacheInvalidator"/> after successful writes.
+/// <see cref="IFeedbackRepository"/> and evicts its own nav-badge count after successful writes.
 /// </summary>
 public class FeedbackArchitectureTests
 {
@@ -22,16 +20,6 @@ public class FeedbackArchitectureTests
 
     // IMemoryCache check covered by ApplicationServicesTakeNoMemoryCacheRule.
     // TakesRepository check covered by pattern G (positive wiring noise).
-
-    [HumansFact]
-    public void FeedbackService_TakesNavBadgeInvalidator()
-    {
-        var ctor = typeof(FeedbackService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(INavBadgeCacheInvalidator),
-            because: "FeedbackService invalidates the nav-badge count cache after writes that can change it (status change / message post) — the dependency proves the wire is in place");
-    }
 
     [HumansFact]
     public void FeedbackService_TakesCrossSectionServiceInterfaces()

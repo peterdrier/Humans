@@ -11,8 +11,6 @@ using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
-using Humans.Base.Interfaces.Caching;
-using Humans.Base.Caching;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
@@ -81,7 +79,6 @@ public sealed class IssuesServiceTests
     private readonly IRoleAssignmentService _roleService;
     private readonly INotificationEmitter _notificationService;
     private readonly INotificationAutoResolve _notificationInbox;
-    private readonly INavBadgeCacheInvalidator _navBadge;
     private readonly IIssuesRepository _repository;
     private readonly IFileStorage _fileStorage = Substitute.For<IFileStorage>();
     private readonly IssuesApplicationService _service;
@@ -127,7 +124,6 @@ public sealed class IssuesServiceTests
 
         _notificationService = Substitute.For<INotificationEmitter>();
         _notificationInbox = Substitute.For<INotificationAutoResolve>();
-        _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
 
         var issuesDbOptions = NewSectionDbOptions<IssuesDbContext>();
         _issuesDb = new IssuesDbContext(issuesDbOptions);
@@ -135,7 +131,7 @@ public sealed class IssuesServiceTests
 
         _service = new IssuesApplicationService(
             _repository, _userService, _userEmailService, _roleService,
-            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
+            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
             Cache,
             Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(),
             _logger);
@@ -383,7 +379,6 @@ public sealed class IssuesServiceTests
         issue.Status.Should().Be(IssueStatus.Triage);
         issue.ReporterUserId.Should().Be(userId);
         issue.Section.Should().Be("Tickets");
-        _navBadge.Received(1).Invalidate();
         BadgeCountCached(userId).Should().BeFalse();
         BadgeCountCached(bystanderId).Should().BeTrue();
 
@@ -460,7 +455,7 @@ public sealed class IssuesServiceTests
             repo.AddIssueAsync(Arg.Any<Issue>(), Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
             var service = new IssuesApplicationService(
                 repo, _userService, _userEmailService, _roleService,
-                _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
+                _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
                 Cache, Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
             using var content = new MemoryStream([1, 2, 3]);
             var screenshot = new FormFile(content, 0, content.Length, "Screenshot", "shot.png")
@@ -508,7 +503,7 @@ public sealed class IssuesServiceTests
                 : _repository.GetByIdAsync(call.ArgAt<Guid>(0), CancellationToken.None));
         var service = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
-            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
+            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
             Cache, Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
         var screenshot = PngUpload([1, 2, 3]);
 
@@ -982,7 +977,6 @@ public sealed class IssuesServiceTests
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(ids => ids.Contains(reporterId)),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
-        _navBadge.Received().Invalidate();
     }
 
     [HumansFact]
@@ -1197,7 +1191,7 @@ public sealed class IssuesServiceTests
         repo.SaveTrackedIssueAsync(issue, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
         var service = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
-            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
+            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
             Cache, Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
         var ct = Xunit.TestContext.Current.CancellationToken;
 
@@ -1390,7 +1384,6 @@ public sealed class IssuesServiceTests
     public async Task UpdateSectionAsync_audits_change_and_invalidates_nav_badge()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
-        _navBadge.ClearReceivedCalls();
         var actorId = Guid.NewGuid();
         var ticketAdminId = Guid.NewGuid();
         var teamsAdminId = Guid.NewGuid();
@@ -1403,7 +1396,6 @@ public sealed class IssuesServiceTests
         var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken);
         stored.Section.Should().Be("Teams");
 
-        _navBadge.Received(1).Invalidate();
         // Both queues' holders: the issue left one count and joined the other.
         BadgeCountCached(ticketAdminId).Should().BeFalse();
         BadgeCountCached(teamsAdminId).Should().BeFalse();
@@ -2278,7 +2270,7 @@ public sealed class IssuesServiceTests
         });
         var service = new IssuesApplicationService(
             _repository, _userService, _userEmailService, _roleService,
-            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
+            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
             Cache, Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
         if (gdprErasure) await service.EraseForUserAsync(reporterId, Ct);
@@ -2400,26 +2392,6 @@ public sealed class IssuesServiceTests
 
         deleted.Should().Be(1);
         _issuesDb.Issues.Any(i => i.Id == issueId).Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task PurgeExpiredAsync_InvalidatesNavBadge()
-    {
-        var oldResolved = Clock.GetCurrentInstant() - Duration.FromDays(200);
-        await SeedIssueWithResolvedAtAsync(IssueStatus.Resolved, oldResolved);
-
-        await _service.PurgeExpiredAsync(Xunit.TestContext.Current.CancellationToken);
-
-        _navBadge.Received().Invalidate();
-    }
-
-    [HumansFact]
-    public async Task PurgeExpiredAsync_NoOpWhenNothingExpired_DoesNotInvalidateNavBadge()
-    {
-        var deleted = await _service.PurgeExpiredAsync(Xunit.TestContext.Current.CancellationToken);
-
-        deleted.Should().Be(0);
-        _navBadge.DidNotReceive().Invalidate();
     }
 
     // ==========================================================================

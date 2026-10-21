@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Humans.Base.Caching;
 using Humans.Notifications.Domain;
 using Xunit;

@@ -389,3 +389,58 @@ re-basing its unit moves far more points than chasing its worst offenders.
 ```
 
 </details>
+
+---
+
+## 2026-10-21 — Humans 83c00df02 + Users decomposition commit 16 — reforge 0.29.0
+
+Taken on the end of the Users decomposition (commits 0 to 15 plus the commit 16 cleanup, tree
+uncommitted at the time, so the stamp carries the parent SHA `83c00df02` and `c16`). Full archive
+(`--all --top-symbols 0`), no truncation — JSON is 2.5 MB. Build clean (0 errors), `degraded: false`;
+`--allow-degraded` was not used.
+
+Raw: [`runs/2026-10-21-83c00df02-c16-reforge0.29.0.json`](runs/2026-10-21-83c00df02-c16-reforge0.29.0.json)
+· [`runs/2026-10-21-83c00df02-c16-reforge0.29.0.md`](runs/2026-10-21-83c00df02-c16-reforge0.29.0.md)
+
+reforge version string: `0.29.0+7bc639e8b15a66c3bcf253e06819ee857f38cb02`
+
+**Not comparable with the 2026-08-16 reading.** reforge 0.29.0 scores differently (it splits
+`Contracts` surface from main surface and counts `I*Write` contracts), so the same code now reads
+higher: the pre-decomposition parent `d34c5a10`, re-measured with 0.29.0, totals 17,620 against
+13,923 under 0.28.1. The like-for-like comparison below is `d34c5a10` against this tree, both
+0.29.0 (the parent was measured in a throwaway worktree, not archived).
+
+| Metric | 2026-08-16 (0.28.1) | d34c5a10 (0.29.0) | This tree (0.29.0) |
+|--------|---------------------|-------------------|--------------------|
+| total | 13,923 | 17,620 | 18,436 |
+| surfaceTotal | 10,770 | 13,431 | 14,297 |
+| internalComplexityTotal | 3,153 | 4,189 | 4,139 |
+| typesAnalyzed | 2,842 | 3,764 | 3,883 |
+
+### Section movement (0.29.0, like-for-like)
+
+| Section | Before (d34c5a10) | After (this tree) | Change |
+|---|---|---|---|
+| Users | 3,625 | 2,975 | -650 |
+| Email | 516 | 839 | +323 |
+| Finance | 967 | 1,149 | +182 |
+| GoogleIntegration | 922 | 1,085 | +163 |
+| Tickets | 744 | 870 | +126 |
+| Consent | 309 | 401 | +92 |
+| Governance | 532 | 550 | +18 |
+| Cantina | 67 | 134 | +67 |
+| Auth | 300 | 350 | +50 |
+| Gdpr | 124 | 155 | +31 |
+| Campaigns | 116 | 136 | +20 |
+| Debug | 20 | 39 | +19 |
+| Shifts | 1,518 | 1,527 | +9 |
+| **Solution total** | 17,620 | 18,436 | +816 |
+
+Users lost 650 points (3,625 to 2,975, minus 18%) and 3,750 production lines (19,482 to 15,732). Its
+remaining 2,975 is 509 main surface, 2,193 `Users.Contracts` surface and 273 internal complexity: what is
+left is mostly the contracts leaf (`IUserService`, `IUserWrite`, `UserInfo`, the merge and contributor
+seams), not screens or services. The plan's estimate of about 1,700 for Users was made on the 0.28.1
+scale and does not hold on the 0.29.0 one; the receiving sections absorbed more than the plan's 100 to
+400 each (Email +323, Finance +182, GoogleIntegration +163, Tickets +126), consistent with each
+gaining a contracts surface. The solution total rose 816 (4.6%): the moved code is still counted, now with a
+repository, an `I<Section>Write`, a user-merge fold and an export contributor per target.

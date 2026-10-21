@@ -87,11 +87,6 @@ internal sealed class UserInfoSaveChangesInterceptor(
             await RunAsync("RefreshUserEmails", userId, () => refresher.RefreshUserEmailsAsync(userId, ct));
         }
 
-        foreach (var userId in affected.EventParticipationUserIds.Except(affected.DeletedUserIds))
-        {
-            await RunAsync("RefreshEventParticipations", userId, () => refresher.RefreshEventParticipationsAsync(userId, ct));
-        }
-
         foreach (var userId in affected.ExternalLoginUserIds.Except(affected.DeletedUserIds))
         {
             await RunAsync("RefreshExternalLogins", userId, () => refresher.RefreshExternalLoginsAsync(userId, ct));
@@ -141,9 +136,6 @@ internal sealed class UserInfoSaveChangesInterceptor(
                 case UserEmail ue:
                     affected.UserEmailUserIds.Add(ue.UserId);
                     break;
-                case EventParticipation ep:
-                    affected.EventParticipationUserIds.Add(ep.UserId);
-                    break;
                 case IdentityUserLogin<Guid> uil:
                     affected.ExternalLoginUserIds.Add(uil.UserId);
                     break;
@@ -173,10 +165,8 @@ internal sealed class UserInfoSaveChangesInterceptor(
             DeletionRequestedAt = user.DeletionRequestedAt,
             DeletionScheduledFor = user.DeletionScheduledFor,
             DeletionEligibleAfter = user.DeletionEligibleAfter,
-            UnsubscribedFromCampaigns = user.UnsubscribedFromCampaigns,
-            SuppressScheduleChangeEmails = user.SuppressScheduleChangeEmails,
-            // GoogleEmailStatus removed — now per-address on UserEmail; UserInfo derives it from
-            // the canonical Google row, and a UserEmail change already invalidates the cache below.
+            // GoogleEmailStatus is not on UserInfo: the Google identity and its verdict are
+            // GoogleIntegration's google_workspace_identities (Users decomposition commit 15).
             ContactSource = user.ContactSource,
             ExternalSourceId = user.ExternalSourceId,
             MergedToUserId = user.MergedToUserId,
@@ -190,7 +180,6 @@ internal sealed class UserInfoSaveChangesInterceptor(
         public Dictionary<Guid, User> Users { get; } = new();
         public HashSet<Guid> DeletedUserIds { get; } = [];
         public HashSet<Guid> UserEmailUserIds { get; } = [];
-        public HashSet<Guid> EventParticipationUserIds { get; } = [];
         public HashSet<Guid> ExternalLoginUserIds { get; } = [];
         public HashSet<Guid> CommunicationPreferenceUserIds { get; } = [];
 
@@ -198,7 +187,6 @@ internal sealed class UserInfoSaveChangesInterceptor(
             Users.Count > 0 ||
             DeletedUserIds.Count > 0 ||
             UserEmailUserIds.Count > 0 ||
-            EventParticipationUserIds.Count > 0 ||
             ExternalLoginUserIds.Count > 0 ||
             CommunicationPreferenceUserIds.Count > 0;
     }

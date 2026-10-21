@@ -1,3 +1,4 @@
+using Humans.Governance.Contracts;
 using System.Globalization;
 using System.Net;
 using Humans.Base.Configuration;

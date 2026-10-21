@@ -1,10 +1,7 @@
-@using Humans.Campaigns.Contracts
 @inject IAuthorizationService AuthService
 @model Humans.Users.Models.AdminHumanDetailViewModel
 @{
     ViewData["Title"] = string.Format(Localizer["AdminHumanDetail_Title"].Value, Model.DisplayName);
-    var campaignGrants = Model.CampaignGrants;
-    var outboxCount = Model.OutboxCount;
     var isAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
     var stateLabel = Model.State == UserState.DeletePending ? "Delete Pending" : Model.State.ToString();
     var stateBadgeClass = StatusBadgeExtensions.GetMembershipStatusBadgeClass(stateLabel);
@@ -36,27 +33,6 @@
                     </div>
                 </div>
 
-                @if (Model.State == UserState.Rejected)
-                {
-                    <div class="alert alert-danger mt-3 mb-0">
-                        <strong><i class="fa-solid fa-ban me-1"></i> Rejected</strong>
-                        @if (!string.IsNullOrEmpty(Model.RejectionReason))
-                        {
-                            <p class="mb-1 mt-1" style="white-space: pre-wrap;">@Model.RejectionReason</p>
-                        }
-                        <small class="text-muted">
-                            @if (Model.RejectedAt.HasValue)
-                            {
-                                @Model.RejectedAt.Value.ToDateTime()
-                            }
-                            @if (!string.IsNullOrEmpty(Model.RejectedByName))
-                            {
-                                <text> by @Model.RejectedByName</text>
-                            }
-                        </small>
-                    </div>
-                }
-
                 <hr />
 
                 <dl class="row mb-0">
@@ -81,24 +57,6 @@
                             </div>
                         </dd>
                     }
-
-                    <dt class="col-sm-3">@Localizer["AdminHuman_ConsentCheck"]</dt>
-                    <dd class="col-sm-9">
-                        @if (Model.ConsentCheckStatus.HasValue)
-                        {
-                            var badgeClass = Model.ConsentCheckStatus.Value switch
-                            {
-                                ConsentCheckStatus.Cleared => "bg-success",
-                                ConsentCheckStatus.Flagged => "bg-danger",
-                                _ => "bg-warning"
-                            };
-                            <span class="badge @badgeClass">@Model.ConsentCheckStatus.Value</span>
-                        }
-                        else
-                        {
-                            <span class="text-muted">@Localizer["AdminHuman_NotStarted"]</span>
-                        }
-                    </dd>
 
                     <dt class="col-sm-3">@Localizer["AdminHuman_UserId"]</dt>
                     <dd class="col-sm-9"><code>@Model.UserId</code></dd>
@@ -148,109 +106,13 @@
             </div>
         }
 
-        <div class="card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>@Localizer["AdminHuman_RoleAssignments"]</span>
-                <a asp-action="AddRole" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-primary">@Localizer["AdminHuman_AddRole"]</a>
-            </div>
-            @if (Model.RoleAssignments.Count > 0)
-            {
-                <div class="list-group list-group-flush">
-                    @foreach (var role in Model.RoleAssignments)
-                    {
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>@role.RoleName</strong>
-                                @if (role.IsActive)
-                                {
-                                    <span class="badge bg-success ms-2">@SharedLocalizer["AdminHuman_Active"]</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-secondary ms-2">@Localizer["AdminHuman_Ended"]</span>
-                                }
-                                <br />
-                                <small class="text-muted">
-                                    @Localizer["AdminHuman_From"] @role.ValidFrom.ToDate()
-                                    @if (role.ValidTo.HasValue)
-                                    {
-                                        <text> @Localizer["AdminHuman_To"] @role.ValidTo.Value.ToDate()</text>
-                                    }
-                                    @if (!string.IsNullOrEmpty(role.Notes))
-                                    {
-                                        <text> &mdash; @role.Notes</text>
-                                    }
-                                </small>
-                            </div>
-                            @if (role.IsActive)
-                            {
-                                <form asp-action="EndRole" asp-route-id="@Model.UserId" asp-route-roleId="@role.Id" method="post" class="d-inline"
-                                      data-confirm="@Localizer["AdminHuman_EndRoleConfirm"].Value">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["AdminHuman_End"]</button>
-                                </form>
-                            }
-                        </div>
-                    }
-                </div>
-            }
-            else
-            {
-                <div class="card-body text-muted">
-                    @Localizer["AdminHuman_NoRoleAssignments"]
-                </div>
-            }
-        </div>
-
         <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" display-name="@Model.DisplayName" />
 
-        @* Section-contributed parts (IUserPart) — UserCalendar (Calendar), each auto-hides when empty *@
+        @* Section-contributed parts (IUserPart) — UserCalendar (Calendar), Role Assignments (Auth), Email Outbox and Communication Preferences (Email), each auto-hides when empty *@
         <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.AdminDetail" user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Admin" />
-
-        <h5 class="mt-4 mb-2">@Localizer["CommPrefs_Title"]</h5>
-        <vc:communication-preferences-panel user-id="@Model.UserId" read-only="true" />
 
         <vc:audit-log user-id="@Model.UserId" limit="50" title="@Localizer["AdminHuman_AuditHistory"].Value" />
 
-        @if (campaignGrants.Any())
-        {
-            Func<CampaignGrantSummary, IHtmlContent> codeCell =
-                @<text><code>@item.Code</code></text>;
-            Func<CampaignGrantSummary, IHtmlContent> statusCell = @<text>
-                @if (item.LatestEmailStatus.HasValue)
-                {
-                    var badgeClass = item.LatestEmailStatus switch
-                    {
-                        EmailOutboxStatus.Sent => "bg-success",
-                        EmailOutboxStatus.Failed => "bg-danger",
-                        EmailOutboxStatus.Queued => "bg-warning",
-                        _ => "bg-secondary"
-                    };
-                    <span class="badge @badgeClass">@item.LatestEmailStatus</span>
-                }
-            </text>;
-            var campaignCodesTable = TableModel.For(campaignGrants.OrderByDescending(g => g.AssignedAt).ToList())
-                .Column("Campaign", g => g.CampaignTitle)
-                .Template("Code", codeCell)
-                .Column("Assigned", g => g.AssignedAt, c => c.Date())
-                .Template("Status", statusCell)
-                .Build();
-            <div class="card mb-4">
-                <div class="card-header"><h6 class="mb-0">Campaign Codes</h6></div>
-                <div class="card-body p-0">
-                    <partial name="_Table" model="campaignCodesTable" />
-                </div>
-            </div>
-        }
-
-        <div class="card mb-4">
-            <div class="card-body d-flex justify-content-between align-items-center">
-                <span><i class="fa-solid fa-envelope me-2"></i> Email Outbox</span>
-                <a asp-action="AdminOutbox" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-primary">
-                    View emails <span class="badge bg-secondary ms-1">@outboxCount</span>
-                </a>
-            </div>
-        </div>
     </div>
 
     <div class="col-md-4">
@@ -266,82 +128,6 @@
                     <dt class="col-8">@Localizer["AdminHuman_ConsentCount"]</dt>
                     <dd class="col-4 text-end">@Model.ConsentCount</dd>
                 </dl>
-            </div>
-        </div>
-
-        <div class="card mb-4">
-            <div class="card-header">Google Sync</div>
-            <div class="card-body">
-                @{
-                    var googleSyncBadgeClass = Model.GoogleEmailStatus switch
-                    {
-                        GoogleEmailStatus.Valid => "bg-success",
-                        GoogleEmailStatus.Rejected => "bg-danger",
-                        _ => "bg-secondary"
-                    };
-                }
-                <div class="mb-2">
-                    <span class="badge @googleSyncBadgeClass me-1">@Model.GoogleEmailStatus</span>
-                    @if (Model.GoogleEmailStatus == GoogleEmailStatus.Rejected)
-                    {
-                        <small class="text-danger">Email rejected by Google sync</small>
-                    }
-                </div>
-                @if (isAdmin)
-                {
-                    <form asp-controller="Google" asp-action="RerunGoogleSync" asp-route-id="@Model.UserId" method="post" class="mb-2"
-                          data-confirm="Re-run Google sync for this user? This enqueues AddUserToTeamResources for all their teams.">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-outline-warning btn-sm w-100">
-                            <i class="fa-solid fa-rotate-right me-1"></i>Re-run Google Sync
-                        </button>
-                    </form>
-                }
-                <a asp-controller="Google" asp-action="Human" asp-route-id="@Model.UserId"
-                   class="btn btn-outline-secondary btn-sm w-100">View Google Sync Audit</a>
-            </div>
-        </div>
-
-        @if (isAdmin)
-        {
-            <div class="card mb-4">
-                <div class="card-header">Payment Details</div>
-                <div class="card-body">
-                    @if (Model.MaskedIban is not null)
-                    {
-                        <dl class="row mb-0">
-                            <dt class="col-5">IBAN</dt>
-                            <dd class="col-7">
-                                @if (Model.RevealedIban is not null)
-                                {
-                                    <code>@Model.RevealedIban</code>
-                                    <small class="d-block text-muted mt-1">Visible this page load only.</small>
-                                }
-                                else
-                                {
-                                    <code>@Model.MaskedIban</code>
-                                    <form asp-action="RevealIban" asp-route-id="@Model.UserId" method="post" class="mt-1">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-secondary">
-                                            <i class="fa-solid fa-eye me-1"></i> Reveal
-                                        </button>
-                                    </form>
-                                }
-                            </dd>
-                        </dl>
-                    }
-                    else
-                    {
-                        <span class="text-muted">No IBAN on record.</span>
-                    }
-                </div>
-            </div>
-        }
-
-        <div class="card mb-4">
-            <div class="card-header">@@nobodies.team Email</div>
-            <div class="card-body">
-                <vc:nobodies-email-badge user-id="@Model.UserId" mode="detail" />
             </div>
         </div>
 
@@ -367,10 +153,6 @@
                                 <div class="d-flex justify-content-between align-items-start">
                                     <code class="text-break">@email.Email</code>
                                     <div class="d-flex gap-1 flex-shrink-0 ms-2">
-                                        @if (email.IsGoogle)
-                                        {
-                                            <span class="badge bg-info" title="Canonical Google Workspace identity">Google</span>
-                                        }
                                         @if (email.IsVerified)
                                         {
                                             <span class="badge bg-success" title="Verified">
@@ -405,24 +187,6 @@
                         <span class="text-muted">No email records</span>
                     </div>
                 }
-            </div>
-            <div class="card-footer small text-muted">
-                <div class="d-flex justify-content-between">
-                    <span>Google service email:</span>
-                    <code>@(Model.GoogleServiceEmail ?? "—")</code>
-                </div>
-                <div class="d-flex justify-content-between">
-                    <span>Google email status:</span>
-                    @{
-                        var googleStatusBadge = Model.GoogleEmailStatus switch
-                        {
-                            GoogleEmailStatus.Valid => "bg-success",
-                            GoogleEmailStatus.Rejected => "bg-danger",
-                            _ => "bg-secondary"
-                        };
-                    }
-                    <span class="badge @googleStatusBadge">@Model.GoogleEmailStatus</span>
-                </div>
             </div>
         </div>
 

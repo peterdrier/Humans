@@ -17,7 +17,7 @@ public sealed class UserEmailLegacyFieldAnalyzer : DiagnosticAnalyzer
     private static readonly LocalizableString MessageFormat =
         "Member '{0}.{1}' was deleted by the email-identity-decoupling spec (PR 3). " +
         "Auth-side reads must use 'UserEmail.Provider != null'; " +
-        "Google-Workspace-side reads must use the IsGoogle-flagged 'UserEmail' row. " +
+        "Google-Workspace-side reads must use 'IGoogleIntegrationService.GetWorkspaceIdentityAsync'. " +
         "'UserEmail.IsOAuth' and 'UserEmail.DisplayOrder' columns are dropped; " +
         "'User.GoogleEmail' survives on disk as an EF shadow property only, via EF.Property<T>(...)";
 

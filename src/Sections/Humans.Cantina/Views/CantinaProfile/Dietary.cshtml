@@ -1,0 +1,159 @@
+@model DietaryViewModel
+@{
+    ViewData["Title"] = Localizer["Cantina_Dietary_PageTitle"].Value;
+}
+
+<div class="row">
+    <div class="col-12" style="max-width: 720px; margin: 0 auto;">
+        <nav aria-label="@Localizer["Cantina_Dietary_BreadcrumbNavigation"]">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-controller="Profile" asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a></li>
+                <li class="breadcrumb-item active" aria-current="page">@Localizer["Cantina_Dietary_PageTitle"]</li>
+            </ol>
+        </nav>
+
+
+        <h1>@Localizer["Cantina_Dietary_PageTitle"]</h1>
+
+        <form asp-action="Dietary" method="post" novalidate>
+            @Html.AntiForgeryToken()
+
+            @* Carryover routing data for the post-save signup-replay branch
+               (see CantinaProfileController.Dietary POST + Docs/features/dietary-nudge.md). *@
+            <input type="hidden" asp-for="ReturnAction" />
+            <input type="hidden" asp-for="ShiftId" />
+            <input type="hidden" asp-for="RotaId" />
+            <input type="hidden" asp-for="StartDayOffset" />
+            <input type="hidden" asp-for="EndDayOffset" />
+
+            @if (ViewData.ModelState.ErrorCount > 0)
+            {
+                <div class="alert alert-danger mb-3" id="validationSummary">
+                    <div asp-validation-summary="All"></div>
+                </div>
+            }
+
+            @* ===== Dietary Preference (required radio group) ===== *@
+            <fieldset class="mb-4">
+                <legend class="h6">
+                    @Localizer["Cantina_Dietary_DietaryPreference_Label"]
+                    <span class="text-danger" aria-hidden="true">*</span>
+                    <span class="visually-hidden">@SharedLocalizer["Common_Required"]</span>
+                </legend>
+                @foreach (var pref in DietaryOptions.DietaryPreferences)
+                {
+                    var isSelected = string.Equals(Model.DietaryPreference, pref, StringComparison.Ordinal);
+                    <div class="form-check">
+                        <input class="form-check-input"
+                               type="radio"
+                               asp-for="DietaryPreference"
+                               value="@pref"
+                               id="dp-@pref"
+                               checked="@(isSelected ? "checked" : null)" />
+                        <label class="form-check-label" for="dp-@pref">
+                            @Localizer[$"Cantina_Dietary_DietaryPreference_{pref}"]
+                        </label>
+                    </div>
+                }
+                <span asp-validation-for="DietaryPreference" class="text-danger"></span>
+            </fieldset>
+
+            @* ===== Allergies (multi-checkbox + Other text) ===== *@
+            <fieldset class="mb-4">
+                <legend class="h6">@Localizer["Cantina_Dietary_Allergies_Label"]</legend>
+                <div class="d-flex flex-wrap gap-3">
+                    @foreach (var opt in DietaryOptions.AllergyOptions.Where(o => o != DietaryOptions.OtherOption))
+                    {
+                        var isChecked = Model.Allergies.Contains(opt);
+                        <div class="form-check">
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   name="Allergies"
+                                   value="@opt"
+                                   id="al-@opt"
+                                   checked="@(isChecked ? "checked" : null)" />
+                            <label class="form-check-label" for="al-@opt">@Localizer[$"Cantina_Dietary_Allergy_{opt.Replace(" ", "").Replace("/", "")}"]</label>
+                        </div>
+                    }
+                </div>
+                @* Other on its own line — visual hint that it opens a free-text field *@
+                <div class="form-check mt-2 pt-2 border-top">
+                    <input class="form-check-input"
+                           type="checkbox"
+                           name="Allergies"
+                           value="@DietaryOptions.OtherOption"
+                           id="al-@DietaryOptions.OtherOption"
+                           checked="@(Model.Allergies.Contains(DietaryOptions.OtherOption) ? "checked" : null)" />
+                    <label class="form-check-label" for="al-@DietaryOptions.OtherOption">@SharedLocalizer["Common_Other"]</label>
+                </div>
+                <div class="mt-3" id="allergy-other-wrapper" style="display: @(Model.Allergies.Contains(DietaryOptions.OtherOption) ? "block" : "none");">
+                    <label asp-for="AllergyOtherText" class="form-label">@Localizer["Cantina_Dietary_AllergyOther_Label"]</label>
+                    <input asp-for="AllergyOtherText" class="form-control" maxlength="500" />
+                    <span asp-validation-for="AllergyOtherText" class="text-danger"></span>
+                </div>
+            </fieldset>
+
+            @* ===== Intolerances (multi-checkbox + Other text) ===== *@
+            <fieldset class="mb-4">
+                <legend class="h6">@Localizer["Cantina_Dietary_Intolerances_Label"]</legend>
+                <div class="d-flex flex-wrap gap-3">
+                    @foreach (var opt in DietaryOptions.IntoleranceOptions.Where(o => o != DietaryOptions.OtherOption))
+                    {
+                        var isChecked = Model.Intolerances.Contains(opt);
+                        <div class="form-check">
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   name="Intolerances"
+                                   value="@opt"
+                                   id="in-@opt"
+                                   checked="@(isChecked ? "checked" : null)" />
+                            <label class="form-check-label" for="in-@opt">@Localizer[$"Cantina_Dietary_Intolerance_{opt.Replace(" ", "").Replace("/", "")}"]</label>
+                        </div>
+                    }
+                </div>
+                @* Other on its own line — visual hint that it opens a free-text field *@
+                <div class="form-check mt-2 pt-2 border-top">
+                    <input class="form-check-input"
+                           type="checkbox"
+                           name="Intolerances"
+                           value="@DietaryOptions.OtherOption"
+                           id="in-@DietaryOptions.OtherOption"
+                           checked="@(Model.Intolerances.Contains(DietaryOptions.OtherOption) ? "checked" : null)" />
+                    <label class="form-check-label" for="in-@DietaryOptions.OtherOption">@SharedLocalizer["Common_Other"]</label>
+                </div>
+                <div class="mt-3" id="intolerance-other-wrapper" style="display: @(Model.Intolerances.Contains(DietaryOptions.OtherOption) ? "block" : "none");">
+                    <label asp-for="IntoleranceOtherText" class="form-label">@Localizer["Cantina_Dietary_IntoleranceOther_Label"]</label>
+                    <input asp-for="IntoleranceOtherText" class="form-control" maxlength="500" />
+                    <span asp-validation-for="IntoleranceOtherText" class="text-danger"></span>
+                </div>
+            </fieldset>
+
+            <div class="d-flex justify-content-between">
+                <a asp-controller="Profile" asp-action="Index" class="btn btn-outline-secondary">@SharedLocalizer["Common_Cancel"]</a>
+                <button type="submit" class="btn btn-primary">@SharedLocalizer["Common_Save"]</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script nonce="@Context.Items["CspNonce"]">
+        // Toggle the "Other" text input visibility based on the matching checkbox.
+        // Server-side validation (CantinaProfileController) still enforces the conditional-required
+        // rule, so users with JS disabled get a normal validation error and resubmit.
+        (function () {
+            function wireOther(prefix, otherValue) {
+                var checkbox = document.getElementById(prefix + '-' + otherValue);
+                var wrapper = document.getElementById(prefix === 'al' ? 'allergy-other-wrapper' : 'intolerance-other-wrapper');
+                if (!checkbox || !wrapper) return;
+                checkbox.addEventListener('change', function () {
+                    wrapper.style.display = checkbox.checked ? 'block' : 'none';
+                });
+            }
+            var otherValue = '@DietaryOptions.OtherOption';
+            wireOther('al', otherValue);
+            wireOther('in', otherValue);
+        })();
+    </script>
+}

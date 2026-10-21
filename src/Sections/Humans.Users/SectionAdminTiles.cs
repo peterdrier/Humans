@@ -1,6 +1,7 @@
 using System.Globalization;
 using Humans.Base.Interfaces;
 using Humans.Settings.Contracts;
+using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -31,9 +32,13 @@ internal sealed class SectionAdminTiles : ISectionAdminTiles
     private static async ValueTask<AdminTileValue?> TicketHoldersAsync(IServiceProvider sp, CancellationToken ct)
     {
         var activeEvent = await sp.GetRequiredService<ISettingsService>().GetActiveEventSettingsAsync(ct);
-        var count = activeEvent is { Year: > 0 }
-            ? (await Snapshot(sp, ct)).Count(u => u.HasTicketForYear(activeEvent.Year))
-            : 0;
+        var count = 0;
+        if (activeEvent is { Year: > 0 })
+        {
+            var living = (await Snapshot(sp, ct)).Select(u => u.Id).ToHashSet();
+            count = (await sp.GetRequiredService<ITicketService>().GetAllParticipationsAsync(ct))
+                .Count(p => p.Year == activeEvent.Year && p.HasTicket && living.Contains(p.UserId));
+        }
         return new AdminTileValue(count.ToString(CultureInfo.CurrentCulture), Summary: $"{count} with ticket");
     }
 

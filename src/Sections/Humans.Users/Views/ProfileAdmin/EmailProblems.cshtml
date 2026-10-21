@@ -37,8 +37,9 @@ else
 <h2>Legacy User.Email column not in user_emails</h2>
 <p class="text-muted">
     Pre-decoupling users whose <code>User.Email</code> AspNetIdentity column was populated but
-    no matching verified <code>UserEmail</code> row exists. Backfill creates a verified row from
-    the legacy column (idempotent — skips users whose row already exists).
+    no matching verified <code>UserEmail</code> row exists. The fix is the
+    <code>users.legacy-identity-emails</code> data migration on
+    <a href="/Debug/DataMigrations">Debug › Data migrations</a> (idempotent — skips users whose row already exists).
 </p>
 @if (Model.LegacyEmailRows.Count == 0)
 {
@@ -46,13 +47,6 @@ else
 }
 else
 {
-    <form method="post" asp-action="BackfillLegacyEmails" class="mb-2">
-        @Html.AntiForgeryToken()
-        <button type="submit" class="btn btn-warning"
-                data-confirm="Backfill verified UserEmail rows for @Model.LegacyEmailRows.Count user(s) from their legacy User.Email column?">
-            Backfill all (@Model.LegacyEmailRows.Count)
-        </button>
-    </form>
     Func<LegacyEmailRow, IHtmlContent> legacyUserCell =
         @<text><vc:human user-id="@item.UserId" link="Admin" /></text>;
     Func<LegacyEmailRow, IHtmlContent> legacyEmailCell =

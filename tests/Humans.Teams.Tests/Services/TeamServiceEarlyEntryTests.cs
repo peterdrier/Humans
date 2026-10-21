@@ -56,6 +56,7 @@ public sealed class TeamServiceEarlyEntryTests
             _eeInvalidator,
             new ServiceLocatorBuilder()
                 .With<IGoogleSyncOutboxService>()
+                .With<IGoogleIntegrationService>()
                 .With<ITeamResourceService>()
                 .With<IUserService>()
                 .With(_systemTeamSync)

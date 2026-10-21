@@ -7,8 +7,8 @@ namespace Humans.GoogleIntegration.Data;
 
 /// <summary>
 /// Per-section database context for the GoogleIntegration section: maps only <c>google_resources</c>,
-/// <c>google_sync_outbox</c>, <c>sync_service_settings</c> and
-/// <c>google_sync_log</c>, with its own
+/// <c>google_sync_outbox</c>, <c>sync_service_settings</c>,
+/// <c>google_sync_log</c> and <c>google_workspace_identities</c>, with its own
 /// <c>__EFMigrationsHistory_GoogleIntegration</c> table and migrations under
 /// <c>Migrations/GoogleIntegration/</c>. Same database, same connection — the
 /// split is a code-side partition of the EF model.
@@ -29,6 +29,7 @@ internal sealed class GoogleIntegrationDbContext(DbContextOptions<GoogleIntegrat
     public DbSet<GoogleSyncOutboxEvent> GoogleSyncOutboxEvents => Set<GoogleSyncOutboxEvent>();
     public DbSet<SyncServiceSettings> SyncServiceSettings => Set<SyncServiceSettings>();
     public DbSet<GoogleSyncLogEntry> GoogleSyncLog => Set<GoogleSyncLogEntry>();
+    public DbSet<WorkspaceIdentityRecord> WorkspaceIdentities => Set<WorkspaceIdentityRecord>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -38,5 +39,6 @@ internal sealed class GoogleIntegrationDbContext(DbContextOptions<GoogleIntegrat
         builder.ApplyConfiguration(new GoogleSyncOutboxEventConfiguration());
         builder.ApplyConfiguration(new SyncServiceSettingsConfiguration());
         builder.ApplyConfiguration(new GoogleSyncLogEntryConfiguration());
+        builder.ApplyConfiguration(new WorkspaceIdentityRecordConfiguration());
     }
 }

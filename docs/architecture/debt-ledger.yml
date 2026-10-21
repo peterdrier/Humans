@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 89
+next_id: 96
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0031-controller-logic
@@ -75,7 +75,7 @@ themes:
     detect: "build:HUM0028"
     review: panel
     last_swept: 2026-10-20
-    remaining: 14
+    remaining: 13
     parked: "Peter 2026-09-20 — 'I don't think fixing all 17 in one go is possible.. it's reworking a lot of things to not need the invalidators anymore, that won't be a short fix.' Rotation skips it; re-check on the interval below, not every rotation."
     recheck_every: 6 months
     recheck_due: 2027-03-20
@@ -83,6 +83,10 @@ themes:
       Burn-down resumed 2026-10-20 (Peter: "parked = defer till later, later is
       now"), one owner per PR, self-only invalidators first. IIssuesBadgeCacheInvalidator
       is gone: IssuesService was its only caller and already owned the cache.
+      INavBadgeCacheInvalidator is gone too: it only ever evicted Feedback's
+      count, so the Auth, Governance and Issues calls (and
+      IRoleAssignmentWrite.InvalidateNavBadgeCache) were dead; FeedbackService
+      now evicts its own key.
       PARKED 2026-09-20 (see `parked:`) — this supersedes the 2026-06-13
       'LEAVE in rotation, re-check periodically' instruction: the re-check now
       runs on `recheck_due`, so rotation stops spending a slot on it.
@@ -105,7 +109,7 @@ themes:
       breaks. Caller-map classification of all 16: 1 self/ordering-sensitive
       (RoleAssignment — stays); 15 cross-section merge/lifecycle or
       intra-section sibling signals that must stay (Consent, ActiveTeams,
-      UserInfo, RoleAssignmentClaims, ShiftAuthorization, NavBadge,
+      UserInfo, RoleAssignmentClaims, ShiftAuthorization, NavBadge [removed 2026-10-20],
       NotificationMeter, VotingBadge, EarlyEntry, ShiftView, LegalDocument [direct
       service-side InvalidateAll()], Ticket, CampInfo [CampRoleService sibling], IssuesBadge [absorbed 2026-10-20],
       CampLeadJoinRequestsBadge). None are sweep-mechanical. The HUM0028 ratchet correctly
@@ -255,12 +259,40 @@ themes:
     detect: "cat docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml 2>/dev/null | grep -c '^  - added:'"
     review: per-item
     last_swept: 2026-06-14
-    remaining: 5
+    remaining: 22
     notes: >-
       Each inbox entry carries its own review tier and a stable `id`; an item is
       closed by deleting its row and citing the id in the PR — ids are never
       recycled. Shape, id format and `status:` values:
       memory/process/debt-ledger-additions.md. Count re-measured 2026-10-18
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
-inbox: []
+inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
+  - added: 2026-10-21
+    id: CENTRAL-89
+    what: "Retirement PR for data migration finance.iban-to-payment-details (Users decomposition, Finance): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: PaymentDetailsService's legacy fallback (LegacyIban) and ProfileInfo.Iban with its HUM_PROFILE_IBAN obsolete; Users' erase line that nulls Profile.Iban stays until the USERS drop row. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
+    review: panel
+  - added: 2026-10-21
+    id: CENTRAL-90
+    what: "Retirement PR for data migration cantina.profile-dietary (Users decomposition, Cantina): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: DietaryProfileService's legacy fallback and the five ProfileInfo food fields (DietaryPreference, Allergies, AllergyOtherText, Intolerances, IntoleranceOtherText; HUM_PROFILE_DIETARY). Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
+    review: panel
+  - added: 2026-10-21
+    id: CENTRAL-91
+    what: "Retirement PR for data migration governance.profile-tier (Users decomposition, Governance): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: MembershipTierService's legacy fallback, ProfileInfo.MembershipTier and LegacyMembershipTier (HUM_PROFILE_TIER). Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
+    review: panel
+  - added: 2026-10-21
+    id: CENTRAL-92
+    what: "Retirement PR for data migration consent.profile-review (Users decomposition, Consent): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: ConsentReviewService's LegacyReview fallback, UserInfo.IsRejected's legacy arm and the UserStateClassifier profile.RejectedAt arm, the obsolete ProfileInfo review fields (HUM_PROFILE_REVIEW), LegacyConsentCheckStatus, the UserFixtures.StateFor pragma, and Users' export/erase of the legacy review columns. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
+    review: panel
+  - added: 2026-10-21
+    id: CENTRAL-93
+    what: "Retirement PR for data migration tickets.event-participations (Users decomposition, Tickets): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: EventParticipationService's LegacyRows, fallback, write seed and cleared-row handling, UserInfo.EventParticipations and its pragmas (HUM_USER_PARTICIPATIONS), LegacyEventParticipationInfo, the Legacy* participation enums and the Users LegacyEventParticipations export slice. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
+    review: panel
+  - added: 2026-10-21
+    id: CENTRAL-94
+    what: "Retirement PR for data migration email.communication-preferences (Users decomposition, Email): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: CommunicationPreferenceService's legacy fallback and cleared-row semantics, UserInfo.CommunicationPreferences (HUM_USER_COMMPREFS), LegacyMessageCategory, and Users' LegacyCommunicationPreferences export slice and erase. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
+    review: panel
+  - added: 2026-10-21
+    id: CENTRAL-95
+    what: "Retirement PR for data migration google.workspace-identities (Users decomposition, GoogleIntegration): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: WorkspaceIdentityService's legacy fallback, UserEmailInfo.IsGoogle/GoogleEmailStatus (HUM_USER_GOOGLE_IDENTITY), LegacyGoogleEmailStatus, the merge re-FK's IsGoogle = false, and the Users export keys IsGoogle/GoogleEmailStatus. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
+    review: panel

@@ -110,7 +110,7 @@ internal sealed class AgentPreloadAugmentor(
         Common user-facing routes:
         - /Profile/Me — your profile
         - /Profile/Me/Emails — manage linked emails
-        - /Profile/Me/Privacy — delete account / download data (GDPR)
+        - /Consent/MyData — delete account / download data (GDPR)
         - /Team — team directory and join requests
         - /Shifts — shift dashboard (if you have signup access)
         - /Legal — required legal documents + consent status

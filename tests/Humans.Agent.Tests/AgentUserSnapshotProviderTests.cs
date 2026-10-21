@@ -1,3 +1,4 @@
+using Humans.Governance.Contracts;
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.Consent.Contracts;
@@ -211,7 +212,7 @@ public class AgentUserSnapshotProviderTests
         var clock = new FakeClock(Instant.FromUtc(2026, 6, 1, 0, 0));
 
         return new AgentUserSnapshotProvider(
-            users, roles, teams, consents, feedback, tickets,
+            users, roles, teams, Substitute.For<IGovernanceService>(), consents, feedback, tickets,
             shiftView, burnSettings, clock);
     }
 

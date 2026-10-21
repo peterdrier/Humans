@@ -1,4 +1,5 @@
 using Humans.AuditLog.Contracts;
+using Humans.Consent.Contracts;
 using Humans.Base.Constants;
 using Humans.Onboarding.Contracts;
 using Humans.Tickets.Services;
@@ -19,7 +20,7 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
     private readonly UserManager<User> _credentialUsers = Substitute.For<UserManager<User>>(
         Substitute.For<IUserStore<User>>(), null, null, null, null, null, null, null, null);
     private readonly IProfileEditorService _profiles = Substitute.For<IProfileEditorService>();
-    private readonly IUserWrite _writes = Substitute.For<IUserWrite>();
+    private readonly IConsentWrite _consent = Substitute.For<IConsentWrite>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly MemoryCache _cache = new(new MemoryCacheOptions());
     private readonly ServiceProvider _credentialServices;
@@ -55,7 +56,7 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
                 _storedUser.LastName = "Terminal";
                 return new ProfileEditResult(true);
             });
-        _writes.ApplyProfileOnboardingMutationAsync(Arg.Any<Guid>(), Arg.Any<UserProfileOnboardingCommand>(), Arg.Any<CancellationToken>())
+        _consent.RecordConsentCheckAsync(Arg.Any<Guid>(), Arg.Any<ConsentCheckStatus>(), Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
     }
 
@@ -98,7 +99,7 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
     [HumansFact]
     public async Task ConsentAnnotationFailure_LeavesSetupRetryableWithoutSettingPassword()
     {
-        _writes.ApplyProfileOnboardingMutationAsync(Arg.Any<Guid>(), Arg.Any<UserProfileOnboardingCommand>(), Arg.Any<CancellationToken>())
+        _consent.RecordConsentCheckAsync(Arg.Any<Guid>(), Arg.Any<ConsentCheckStatus>(), Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(false, "ConsentCheckFailed"), new OnboardingResult(true));
         var service = NewService();
         var actor = Guid.NewGuid();
@@ -110,8 +111,8 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
         Assert.True((await service.SetPasswordAsync("password", actor)).Succeeded);
         Assert.NotNull(_storedUser.PasswordHash);
         await _users.Received(1).CreateAsync(Arg.Any<User>());
-        await _writes.Received(2).ApplyProfileOnboardingMutationAsync(
-            SystemUserIds.GateTerminal, Arg.Any<UserProfileOnboardingCommand>(), Arg.Any<CancellationToken>());
+        await _consent.Received(2).RecordConsentCheckAsync(
+            SystemUserIds.GateTerminal, ConsentCheckStatus.Cleared, Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -123,7 +124,7 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
 
         Assert.Equal("password-set", _storedUser.PasswordHash);
         Assert.Empty(_profiles.ReceivedCalls());
-        Assert.Empty(_writes.ReceivedCalls());
+        Assert.Empty(_consent.ReceivedCalls());
         await _users.DidNotReceive().CreateAsync(Arg.Any<User>());
     }
 
@@ -168,7 +169,7 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
 
     private GateTerminalAccountSeeder NewService() => new(
         _users, _credentialServices.GetRequiredService<IServiceScopeFactory>(),
-        _profiles, _writes, Substitute.For<IUserInfoInvalidator>(), _audit,
+        _profiles, _consent, Substitute.For<IUserInfoInvalidator>(), _audit,
         Clock, _cache, NullLogger<GateTerminalAccountSeeder>.Instance);
 
     protected override void Dispose(bool disposing)

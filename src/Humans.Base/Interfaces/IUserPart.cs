@@ -30,6 +30,10 @@ public static class UserPartSlots
 
     /// <summary>A sender or receiver on the ticket-transfer admin detail (Tickets <c>TicketTransferAdmin/Detail</c>).</summary>
     public const string TicketTransferParty = "ticket-transfer-party";
+
+    /// <summary>The signed-in member's own account-status wall, shown for a Rejected account only
+    /// (Gdpr <c>User/Status</c>).</summary>
+    public const string AccountStatus = "account-status";
 }
 
 /// <summary>The arguments an <see cref="IUserPart"/> component's Invoke/InvokeAsync accepts.</summary>

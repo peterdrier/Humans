@@ -16,11 +16,14 @@
 | `TicketController.ExportAccountantReport` | Action | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |
 | `TicketController.ExportDonations` | Action | `Admin` | `PolicyNames.AdminOnly` (donor-list CSV with buyer PII; pinned by `TicketControllerTests`) |
 | `TicketTransferController` | Class | `[Authorize]` (authenticated) | — |
+| `TicketParticipationController` (`/Tickets/DeclareNotAttending`, `/Tickets/UndoNotAttending`) | Class | `[Authorize]` (authenticated; acts on the signed-in member only, antiforgery POSTs) | — (exempt from `MembershipRequiredFilter`, as when Users served them) |
 | `TicketTransferAdminController` | Class | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |
 | `TicketsContactsAdminController` | Class | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |
 | `TicketsOnsiteAdminController` | Class | `TicketAdmin, Admin, Board` OR the gate-terminal shared account (by well-known id) | `PolicyNames.ScannerAccess` (gate staff check the onsite roster from the door alongside the scanner) |
 | `TicketsGateAdminController` (`/Tickets/Admin/Gate`) | Class | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` (gate-terminal credential management; `Index` and `SetPassword` inherit the class policy) |
 
 ### `IAuthorizationService.AuthorizeAsync` note
+
+`OnsiteChipViewComponent` (profile user part) renders for `ProfileCardViewMode.Self`, otherwise only when the viewer passes `PolicyNames.TicketAdminBoardOrAdmin`.
 
 `TicketController.Index` gates finance-only metrics with `RoleChecks.CanAccessFinance(User)` after the class-level policy.

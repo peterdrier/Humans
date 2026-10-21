@@ -82,7 +82,6 @@ public static class InfrastructureServiceCollectionExtensions
         // the section that owns the file is not always the section that owns the line
         // (design §15 step 4), and Section.Register may not register another layer's type.
         services.AddScoped<ICampLeadJoinRequestsBadgeCacheInvalidator, CampLeadJoinRequestsBadgeCacheInvalidator>();
-        services.AddScoped<INavBadgeCacheInvalidator, NavBadgeCacheInvalidator>();
         services.AddScoped<INotificationMeterCacheInvalidator, NotificationMeterCacheInvalidator>();
         services.AddScoped<IVotingBadgeCacheInvalidator, VotingBadgeCacheInvalidator>();
 
@@ -98,7 +97,8 @@ public static class InfrastructureServiceCollectionExtensions
         // left this list at G5 lane 5c (nobodies-collective/Humans#866): all three orchestrate
         // Users' own section and every outbound edge is another section's leaf, so they now
         // register from Humans.Users' Section.cs — the same call lane 4b-2d made for
-        // HumanLifecycleService.
+        // HumanLifecycleService. UserParticipationBackfillService has since moved to Tickets
+        // (Users decomposition commit 13).
 
         // The admin dashboard's aggregator moved back to Users' own Section.Register at
         // nobodies-collective/Humans#1091 — Shell only hosts /Admin/*'s page bodies now, not

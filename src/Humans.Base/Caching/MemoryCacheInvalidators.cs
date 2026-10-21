@@ -12,11 +12,6 @@ namespace Humans.Base.Caching;
 /// Application layer can describe their cross-section cache dependencies
 /// without coupling directly to <c>IMemoryCache</c>.
 /// </summary>
-public sealed class NavBadgeCacheInvalidator(IMemoryCache cache) : INavBadgeCacheInvalidator
-{
-    public void Invalidate() => cache.InvalidateNavBadgeCounts();
-}
-
 public sealed class NotificationMeterCacheInvalidator(IMemoryCache cache) : INotificationMeterCacheInvalidator
 {
     public void Invalidate() => cache.InvalidateNotificationMeters();

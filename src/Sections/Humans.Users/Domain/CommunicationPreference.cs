@@ -5,8 +5,10 @@ using Humans.Users.Contracts;
 namespace Humans.Users.Domain;
 
 /// <summary>
-/// Tracks a user's opt-in/opt-out preference for a specific message category.
-/// One row per user per category. Used for CAN-SPAM/GDPR compliance.
+/// The frozen legacy <c>communication_preferences</c> row. Email owns the live preferences in
+/// <c>email_communication_preferences</c> since Users decomposition commit 14; this table is no longer
+/// written except by erasure, is read into the obsolete <see cref="UserInfo.CommunicationPreferences"/>
+/// for Email's fallback and copy, and is dropped once <c>email.communication-preferences</c> reports done.
 /// </summary>
 internal sealed class CommunicationPreference
 {
@@ -14,7 +16,7 @@ internal sealed class CommunicationPreference
 
     public Guid UserId { get; init; }
 
-    public MessageCategory Category { get; init; }
+    public LegacyMessageCategory Category { get; init; }
 
     public bool OptedOut { get; set; }
 

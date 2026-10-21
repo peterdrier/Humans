@@ -68,6 +68,10 @@ internal sealed class TeamService(
     private IUserService UserService
         => serviceProvider.GetRequiredService<IUserService>();
 
+    // GoogleIntegration's identity read resolves IUserService too, so it is lazy for the same reason.
+    private IGoogleIntegrationService GoogleIdentities
+        => serviceProvider.GetRequiredService<IGoogleIntegrationService>();
+
     private IGoogleSyncOutboxService GoogleSyncOutboxService
         => serviceProvider.GetRequiredService<IGoogleSyncOutboxService>();
 
@@ -2143,8 +2147,7 @@ internal sealed class TeamService(
                     Email: u?.Email,
                     ProfilePictureUrl: u?.ProfilePictureUrl,
                     Role: m.Role,
-                    JoinedAt: m.JoinedAt,
-                    GoogleEmailStatus: u?.GoogleEmailStatus ?? GoogleEmailStatus.Unknown);
+                    JoinedAt: m.JoinedAt);
             })
             .ToList(),
         ParentTeamId: team.ParentTeamId,
@@ -2213,11 +2216,11 @@ internal sealed class TeamService(
         string eventType,
         CancellationToken ct)
     {
-        var user = await UserService.GetUserInfoAsync(userId, ct);
-        if (user?.GoogleEmailStatus == GoogleEmailStatus.Rejected)
+        var identity = await GoogleIdentities.GetWorkspaceIdentityAsync(userId, ct);
+        if (identity?.Status == GoogleEmailStatus.Rejected)
         {
             logger.LogDebug(
-                "Skipping Google sync outbox event {EventType} for user {UserId} — GoogleEmailStatus is Rejected",
+                "Skipping Google sync outbox event {EventType} for user {UserId} — Google identity is Rejected",
                 eventType, userId);
             return null;
         }

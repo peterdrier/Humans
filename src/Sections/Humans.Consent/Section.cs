@@ -88,6 +88,13 @@ public sealed class Section : ISection, IIssueQueueOwner
         // Hosted for symmetry; warmOnStartup: false so StartAsync is a no-op.
         services.AddHostedService(sp => sp.GetRequiredService<CachingConsentService>());
 
+        // Consent Coordinator review (consent_reviews): reads ride IConsentService through
+        // ConsentService; IConsentWrite carries the annotations; export/erase slice.
+        services.AddSingleton<IConsentReviewRepository, ConsentReviewRepository>();
+        services.AddScoped<ConsentReviewService>();
+        services.AddScoped<IConsentWrite>(sp => sp.GetRequiredService<ConsentReviewService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ConsentReviewService>());
+
         services.AddScoped<SyncLegalDocumentsJob>();
         services.AddScoped<SendReConsentReminderJob>();
 

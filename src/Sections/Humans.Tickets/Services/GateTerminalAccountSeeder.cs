@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
@@ -27,7 +28,7 @@ internal sealed class GateTerminalAccountSeeder(
     UserManager<User> userManager,
     IServiceScopeFactory scopeFactory,
     IProfileEditorService profileEditorService,
-    IUserWrite userService,
+    IConsentWrite consentWrite,
     IUserInfoInvalidator userInfoInvalidator,
     IAuditLogService auditLogService,
     IClock clock,
@@ -137,13 +138,11 @@ internal sealed class GateTerminalAccountSeeder(
         }
 
         // Keep the account out of the Consent Coordinator review queue.
-        var consentResult = await userService.ApplyProfileOnboardingMutationAsync(
+        var consentResult = await consentWrite.RecordConsentCheckAsync(
             SystemUserIds.GateTerminal,
-            new UserProfileOnboardingCommand(
-                UserProfileOnboardingMutation.RecordConsentCheck,
-                ActorUserId: actorUserId,
-                ConsentCheckStatus: ConsentCheckStatus.Cleared,
-                Notes: "System gate-terminal account — not a person"));
+            ConsentCheckStatus.Cleared,
+            actorUserId,
+            "System gate-terminal account — not a person");
         if (!consentResult.Success)
         {
             logger.LogWarning("Gate terminal consent-check clear failed: {ErrorKey}", consentResult.ErrorKey);

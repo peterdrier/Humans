@@ -39,7 +39,7 @@ internal static class PersonSearchMatcher
         var p = user.Profile;
 
         // Implicit scope: rejected profiles are never searchable.
-        if (p.RejectedAt is not null)
+        if (user.IsRejected)
             return null;
 
         var q = query.Trim();

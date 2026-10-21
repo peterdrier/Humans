@@ -263,9 +263,9 @@
                         {
                             <span class="badge bg-dark">@Localizer["Workgroups_Board"]</span>
                         }
-                        else if (info?.Profile?.MembershipTier is { } tier)
+                        else if (info?.Profile is not null)
                         {
-                            <span class="badge bg-light text-dark border">@tier</span>
+                            <span class="badge bg-light text-dark border">@Model.Tiers.GetValueOrDefault(m.UserId, MembershipTier.Volunteer)</span>
                         }
                     </span>
                 </li>
