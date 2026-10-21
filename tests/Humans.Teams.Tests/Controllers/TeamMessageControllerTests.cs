@@ -74,7 +74,7 @@ public sealed class TeamMessageControllerTests
     private static UserInfo Info(Guid id, string name, string email, string language = "en") =>
         new(id, name, false, language, null, Instant.FromUnixTimeSeconds(0),
             null, null, null, null, null, null, null,
-            null, null, email, [], [], [], null, []);
+            null, null, email, [], [], null, []);
 
     private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
 

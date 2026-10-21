@@ -46,7 +46,7 @@ public class BackdoorApiKeyServiceTests
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
                 new User { Id = userId, State = state, PreferredLanguage = "en" },
-                [], [], [], profile: null, [])));
+                [], [], profile: null, [])));
     }
 
     // ==========================================================================

@@ -1035,7 +1035,6 @@ public sealed class FeedbackServiceTests
         var info = UserInfo.Create(
             user: user,
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: null,
             communicationPreferences: []);

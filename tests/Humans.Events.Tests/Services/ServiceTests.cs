@@ -66,7 +66,7 @@ public sealed class EventServiceTests
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct)
             .Returns(new Dictionary<Guid, UserInfo>
             {
-                [submitterId] = UserInfo.Create(new User { Id = submitterId, BurnerName = "Flame" }, [], [], [], null, [])
+                [submitterId] = UserInfo.Create(new User { Id = submitterId, BurnerName = "Flame" }, [], [], null, [])
             });
         if (expectedRows > 0)
             _repo.Events.Add(new Event
@@ -647,7 +647,7 @@ public sealed class EventServiceTests
             .Returns(UserInfo.Create(
                 user,
                 [new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = email, IsVerified = true, IsPrimary = true }],
-                [], [], profile: null, []));
+                [], profile: null, []));
         return userId;
     }
 
@@ -847,7 +847,7 @@ public sealed class EventServiceTests
         var strangerId = Guid.NewGuid();
         var requestedId = archivedId ? sourceId : survivorId;
         _userService.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = survivorId, BurnerName = "Survivor" }, [], [], [], null, [])
+            UserInfo.Create(new User { Id = survivorId, BurnerName = "Survivor" }, [], [], null, [])
                 with
             { MergedUserIds = [sourceId] });
         foreach (var id in new[] { survivorId, sourceId, strangerId })

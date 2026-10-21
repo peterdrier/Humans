@@ -61,7 +61,7 @@ public class AgentServiceTests
         var requestedId = archivedId ? sourceId : survivorId;
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = survivorId, BurnerName = "Survivor" }, [], [], [], null, [])
+            UserInfo.Create(new User { Id = survivorId, BurnerName = "Survivor" }, [], [], null, [])
                 with
             { MergedUserIds = [sourceId] });
         var (service, client) = await BuildService(settings => settings.Enabled = true, users: users);

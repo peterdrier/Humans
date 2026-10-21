@@ -90,7 +90,6 @@ public class ShiftsControllerNameGateTests
                     : UserState.Active,
             },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: new Profile
             {

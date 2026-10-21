@@ -73,7 +73,6 @@ public class PreferredLanguageCalculatorTests
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         },
         userEmails: [],
-        eventParticipations: [],
         externalLogins: [],
         profile: null,
         contactFields: [],

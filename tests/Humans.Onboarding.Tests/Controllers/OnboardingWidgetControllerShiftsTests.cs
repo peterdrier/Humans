@@ -80,7 +80,7 @@ public class OnboardingWidgetControllerShiftsTests
         var inputId = mergedAlias ? Guid.NewGuid() : userId;
         var shiftId = Guid.NewGuid();
         _userService.GetUserInfoAsync(inputId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = userId, State = UserState.Active }, [], [], [],
+            .Returns(UserInfo.Create(new User { Id = userId, State = UserState.Active }, [], [],
                 UserFixtures.Profile(burnerName: "Burner", firstName: "First", lastName: "Last"), []));
         _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(BurnFixtures.Burn());

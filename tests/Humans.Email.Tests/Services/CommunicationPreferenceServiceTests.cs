@@ -68,7 +68,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
 
     private UserInfo Info(Guid id) => UserInfo.Create(
         new User { Id = id, DisplayName = "", PreferredLanguage = "en", CreatedAt = Instant.MinValue },
-        [], [], [], profile: null, _legacy.GetValueOrDefault(id) ?? []);
+        [], [], profile: null, _legacy.GetValueOrDefault(id) ?? []);
 
     private void SeedLegacy(Guid userId, LegacyMessageCategory category, bool optedOut,
         bool inboxEnabled = true, Instant? updatedAt = null, string source = "Profile", Instant? subscribedAt = null)

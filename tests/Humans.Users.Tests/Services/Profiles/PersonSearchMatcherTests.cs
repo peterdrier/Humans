@@ -116,7 +116,6 @@ public class PersonSearchMatcherTests
         return UserInfoFactory.Create(
             user: user,
             userEmails: emailEntities,
-            eventParticipations: [],
             externalLogins: [],
             profile: profile,
             contactFields: contactEntities,

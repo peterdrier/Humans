@@ -636,7 +636,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
                 CreatedAt = profile.CreatedAt,
             },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: profile,
             contactFields: fields,

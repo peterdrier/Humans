@@ -272,7 +272,7 @@ internal sealed class WebsiteScopeHarness
             MessageCategory.Marketing, optedOut, InboxEnabled: true, source,
             Instant.FromUtc(2026, 5, 19, 12, 0), subscribedAt);
         var ue = new UserEmail { Id = Guid.NewGuid(), UserId = id, Email = email, IsVerified = true, IsPrimary = true };
-        return UserInfo.Create(new User { Id = id }, [ue], [], [], null, []);
+        return UserInfo.Create(new User { Id = id }, [ue], [], null, []);
     }
 
     public void SetUserInfo(Guid id, UserInfo info) =>

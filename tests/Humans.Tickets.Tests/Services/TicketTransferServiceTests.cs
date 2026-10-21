@@ -1075,7 +1075,6 @@ public sealed class TicketTransferServiceTests
     private static UserInfo WrapInUserInfo(User user, ProfileInfo? profile) => UserInfo.Create(
         user: user,
         userEmails: [],
-        eventParticipations: [],
         externalLogins: [],
         profile: profile,
         communicationPreferences: []);

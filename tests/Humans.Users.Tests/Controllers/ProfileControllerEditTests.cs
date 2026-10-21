@@ -258,7 +258,7 @@ public class ProfileControllerEditTests
             Value = "legacy@example.org",
             Visibility = ContactFieldVisibility.BoardOnly
         };
-        var info = UserInfoFactory.Create(new User { Id = _userId, PreferredLanguage = "en" }, [], [], [],
+        var info = UserInfoFactory.Create(new User { Id = _userId, PreferredLanguage = "en" }, [], [],
             new Profile { Id = _profileId, UserId = _userId, FirstName = "First", LastName = "Last" }, [legacy], [], [], []);
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(info));
         var model = MakeValidModel();
@@ -529,7 +529,6 @@ public class ProfileControllerEditTests
     private UserInfo BuildUserInfo(Profile? profile) => UserInfoFactory.Create(
         user: new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" },
         userEmails: [],
-        eventParticipations: [],
         externalLogins: [],
         profile: profile,
         contactFields: [],

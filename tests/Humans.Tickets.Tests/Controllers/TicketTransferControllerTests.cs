@@ -30,7 +30,7 @@ public class TicketTransferControllerTests
         users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = id }, [], [], [], null, []));
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = id }, [], [], null, []));
         });
         var transfers = Substitute.For<ITicketTransferService>();
         transfers.GetMyAttendeesAsync(id, Arg.Any<CancellationToken>()).Returns([]);
@@ -69,7 +69,7 @@ public class TicketTransferControllerTests
             var user = new User { Id = userId };
             var users = Substitute.For<IUserService>();
             users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-                .Returns(UserInfo.Create(user, [], [], [], null, []));
+                .Returns(UserInfo.Create(user, [], [], null, []));
             var transfers = Substitute.For<ITicketTransferService>();
             transfers.GetMyAttendeesAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
             transfers.GetBySenderAsync(userId, Arg.Any<CancellationToken>()).Returns([]);

@@ -21,22 +21,20 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
-using LegacyRow = Humans.Users.Contracts.EventParticipation;
 using TicketRow = Humans.Tickets.Domain.EventParticipation;
 
 namespace Humans.Tickets.Tests.Services;
 
 /// <summary>
-/// tickets_event_participations (Users decomposition commit 13): the read with its legacy Users
-/// fallback, writes over a legacy row, the admin backfill audit, the tickets.event-participations
-/// copy, the merge fold, export and erasure, the onsite chip and the declaration endpoints.
+/// tickets_event_participations (Users decomposition commit 13): the read, writes over an
+/// attended row, the admin backfill audit, the merge fold, export and erasure, the onsite chip
+/// and the declaration endpoints.
 /// </summary>
 public sealed class EventParticipationServiceTests : IDisposable
 {
@@ -46,7 +44,6 @@ public sealed class EventParticipationServiceTests : IDisposable
     private readonly FakeClock _clock = new(Now);
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
-    private readonly List<UserInfo> _all = [];
     private readonly TicketsDbContext _db;
     private readonly EventParticipationService _sut;
 
@@ -58,34 +55,36 @@ public sealed class EventParticipationServiceTests : IDisposable
         _sut = new EventParticipationService(
             new EventParticipationRepository(new TestDbContextFactory<TicketsDbContext>(options)),
             _users, _audit, _clock, NullLogger<EventParticipationService>.Instance);
-        _users.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>()).Returns(_ => _all.ToList());
     }
 
     public void Dispose() => _db.Dispose();
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    /// <summary>A member whose frozen Users participation rows are <paramref name="legacy"/>.</summary>
-    private UserInfo SeedUser(params (int Year, LegacyParticipationStatus Status, LegacyParticipationSource Source)[] legacy)
+    /// <summary>
+    /// A member with <paramref name="rows"/> in <c>tickets_event_participations</c>; an Attended row
+    /// carries an <see cref="Earlier"/> arrival.
+    /// </summary>
+    private UserInfo SeedUser(params (int Year, ParticipationStatus? Status, ParticipationSource Source)[] rows)
     {
         var userId = Guid.NewGuid();
         var info = UserInfo.Create(
             new User { Id = userId, BurnerName = "Ana", CreatedAt = Now },
             [],
-            [.. legacy.Select(l => new LegacyRow
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Year = l.Year,
-                Status = l.Status,
-                Source = l.Source,
-                DeclaredAt = l.Status == LegacyParticipationStatus.NotAttending ? Earlier : null,
-                CheckedInAt = l.Status == LegacyParticipationStatus.Attended ? Earlier : null,
-            })],
             [], null, []);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
         _users.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
-        _all.Add(info);
+        _db.EventParticipations.AddRange(rows.Select(r => new TicketRow
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Year = r.Year,
+            Status = r.Status,
+            Source = r.Source,
+            CheckedInAt = r.Status == ParticipationStatus.Attended ? Earlier : null,
+        }));
+        _db.SaveChanges();
+        _db.ChangeTracker.Clear();
         return info;
     }
 
@@ -95,30 +94,30 @@ public sealed class EventParticipationServiceTests : IDisposable
     // ─── Read ────────────────────────────────────────────────────────────────────
 
     [HumansFact]
-    public async Task Read_FallsBackToTheLegacyRow_UntilARowExistsForThatYear()
+    public async Task Read_SkipsClearedRows_AndOrdersByYear()
     {
         var user = SeedUser(
-            (2025, LegacyParticipationStatus.Attended, LegacyParticipationSource.TicketSync),
-            (2026, LegacyParticipationStatus.Ticketed, LegacyParticipationSource.TicketSync));
+            (2026, ParticipationStatus.Ticketed, ParticipationSource.TicketSync),
+            (2024, null, ParticipationSource.UserDeclared),
+            (2025, ParticipationStatus.Attended, ParticipationSource.TicketSync));
 
         (await _sut.GetParticipationsAsync(user.Id, Ct)).Should().BeEquivalentTo(
         [
             new { Year = 2025, Status = ParticipationStatus.Attended, OnsiteSince = (Instant?)Earlier },
             new { Year = 2026, Status = ParticipationStatus.Ticketed, OnsiteSince = (Instant?)null },
-        ], o => o.ExcludingMissingMembers());
+        ], o => o.ExcludingMissingMembers().WithStrictOrdering());
 
         await _sut.SetParticipationFromTicketSyncAsync(user.Id, 2026, ParticipationStatus.Attended, Now, Ct);
 
         var read = await _sut.GetParticipationsAsync(user.Id, Ct);
         read.Single(p => p.Year == 2026).OnsiteSince.Should().Be(Now);
-        read.Single(p => p.Year == 2025).Status.Should().Be(ParticipationStatus.Attended);
         (await _sut.GetAllParticipationsAsync(Ct)).Should().BeEquivalentTo(read);
     }
 
     [HumansFact]
     public async Task Read_AMergedAwayId_ResolvesToTheSurvivorsParticipations()
     {
-        var survivor = SeedUser((2026, LegacyParticipationStatus.Ticketed, LegacyParticipationSource.TicketSync));
+        var survivor = SeedUser((2026, ParticipationStatus.Ticketed, ParticipationSource.TicketSync));
         var archivedId = Guid.NewGuid();
         _users.GetUserInfoAsync(archivedId, Arg.Any<CancellationToken>()).Returns(survivor);
 
@@ -126,26 +125,12 @@ public sealed class EventParticipationServiceTests : IDisposable
             .Which.UserId.Should().Be(survivor.Id);
     }
 
-    // ─── Writes over a legacy row ────────────────────────────────────────────────
+    // ─── Writes ──────────────────────────────────────────────────────────────────
 
     [HumansFact]
-    public async Task Undo_OfALegacyDeclaration_LeavesAClearedRow_SoTheLegacyValueNeverComesBack()
+    public async Task Writes_NeverDowngradeAnAttendance()
     {
-        var user = SeedUser((2026, LegacyParticipationStatus.NotAttending, LegacyParticipationSource.UserDeclared));
-
-        (await _sut.UndoNotAttendingAsync(user.Id, 2026, Ct)).Should().BeTrue();
-
-        (await _sut.GetParticipationsAsync(user.Id, Ct)).Should().BeEmpty();
-        (await _sut.GetAllParticipationsAsync(Ct)).Should().BeEmpty();
-        (await RowsAsync(user.Id)).Should().ContainSingle().Which.Status.Should().BeNull();
-        (await _sut.GetUncopiedLegacyParticipationsAsync(Ct)).Should().BeEmpty();
-        (await _sut.UndoNotAttendingAsync(user.Id, 2026, Ct)).Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task Writes_StartFromTheLegacyRow_SoALegacyAttendanceIsNeverDowngraded()
-    {
-        var user = SeedUser((2026, LegacyParticipationStatus.Attended, LegacyParticipationSource.TicketSync));
+        var user = SeedUser((2026, ParticipationStatus.Attended, ParticipationSource.TicketSync));
 
         (await _sut.DeclareNotAttendingAsync(user.Id, 2026, Ct)).Should().BeFalse();
         await _sut.RemoveTicketSyncParticipationAsync(user.Id, 2026, Ct);
@@ -157,7 +142,7 @@ public sealed class EventParticipationServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Declare_ThenUndo_WithNoLegacyRow_LeavesNothing()
+    public async Task Declare_ThenUndo_LeavesNothing()
     {
         var user = SeedUser();
 
@@ -168,13 +153,14 @@ public sealed class EventParticipationServiceTests : IDisposable
 
         (await _sut.UndoNotAttendingAsync(user.Id, 2026, Ct)).Should().BeTrue();
         (await RowsAsync(user.Id)).Should().BeEmpty();
+        (await _sut.UndoNotAttendingAsync(user.Id, 2026, Ct)).Should().BeFalse();
     }
 
     [HumansFact]
     public async Task Backfill_AuditsOnlyCommittedFinalChanges_AndNoOpsOnRepeat()
     {
         var user = SeedUser();
-        var attended = SeedUser((2025, LegacyParticipationStatus.Attended, LegacyParticipationSource.TicketSync));
+        var attended = SeedUser((2025, ParticipationStatus.Attended, ParticipationSource.TicketSync));
         var actorId = Guid.NewGuid();
         List<(Guid UserId, ParticipationStatus Status)> entries =
         [
@@ -194,66 +180,18 @@ public sealed class EventParticipationServiceTests : IDisposable
         _audit.ReceivedCalls().Should().HaveCount(1);
     }
 
-    // ─── tickets.event-participations ────────────────────────────────────────────
-
-    [HumansFact]
-    public async Task Copy_ListsEveryUncopiedLegacyRow_ThenIsIdempotent()
-    {
-        var a = SeedUser(
-            (2025, LegacyParticipationStatus.Attended, LegacyParticipationSource.TicketSync),
-            (2026, LegacyParticipationStatus.NotAttending, LegacyParticipationSource.UserDeclared));
-        var b = SeedUser((2026, LegacyParticipationStatus.NoShow, LegacyParticipationSource.AdminBackfill));
-        SeedUser();
-
-        (await _sut.GetUncopiedLegacyParticipationsAsync(Ct)).Select(p => (p.UserId, p.Year))
-            .Should().BeEquivalentTo([(a.Id, 2025), (a.Id, 2026), (b.Id, 2026)]);
-
-        (await _sut.CopyLegacyParticipationsAsync(Ct)).Should().Be(3);
-        (await _sut.CopyLegacyParticipationsAsync(Ct)).Should().Be(0);
-        (await _sut.GetUncopiedLegacyParticipationsAsync(Ct)).Should().BeEmpty();
-        (await RowsAsync(a.Id)).Should().BeEquivalentTo(
-        [
-            new { Year = 2025, Status = (ParticipationStatus?)ParticipationStatus.Attended, Source = ParticipationSource.TicketSync, CheckedInAt = (Instant?)Earlier },
-            new { Year = 2026, Status = (ParticipationStatus?)ParticipationStatus.NotAttending, Source = ParticipationSource.UserDeclared, CheckedInAt = (Instant?)null },
-        ], o => o.ExcludingMissingMembers());
-        (await RowsAsync(b.Id)).Single().Source.Should().Be(ParticipationSource.AdminBackfill);
-    }
-
-    [HumansFact]
-    public async Task Copy_NeverOverwritesARowWrittenSinceTheDeploy()
-    {
-        var user = SeedUser((2026, LegacyParticipationStatus.Ticketed, LegacyParticipationSource.TicketSync));
-        await _sut.SetParticipationFromTicketSyncAsync(user.Id, 2026, ParticipationStatus.Attended, Now, Ct);
-
-        (await _sut.CopyLegacyParticipationsAsync(Ct)).Should().Be(0);
-        (await RowsAsync(user.Id)).Single().Status.Should().Be(ParticipationStatus.Attended);
-    }
-
-    [HumansFact]
-    public async Task DataMigration_IsRegistered_AndRunsTheCopy()
-    {
-        SeedUser((2026, LegacyParticipationStatus.Ticketed, LegacyParticipationSource.TicketSync));
-        var services = new ServiceCollection().AddSingleton<IEventParticipationManagement>(_sut).BuildServiceProvider();
-        var migration = new SectionDataMigrations().Migrations().Should().ContainSingle().Subject;
-
-        migration.Key.Should().Be("tickets.event-participations");
-        (await migration.Status(services, Ct)).Pending.Should().Be(1);
-        (await migration.Apply(services, Guid.NewGuid(), Ct)).Should().Be(1);
-        (await migration.Status(services, Ct)).Pending.Should().Be(0);
-    }
-
     // ─── Merge ───────────────────────────────────────────────────────────────────
 
     [HumansFact]
-    public async Task Merge_FoldsBothUsersLegacyRows_ByPrecedence_AndClearsTheSource()
+    public async Task Merge_FoldsBothUsersRows_ByPrecedence_AndEmptiesTheSource()
     {
         var source = SeedUser(
-            (2024, LegacyParticipationStatus.Attended, LegacyParticipationSource.TicketSync),
-            (2025, LegacyParticipationStatus.NotAttending, LegacyParticipationSource.UserDeclared),
-            (2023, LegacyParticipationStatus.Attended, LegacyParticipationSource.TicketSync));
+            (2024, ParticipationStatus.Attended, ParticipationSource.TicketSync),
+            (2025, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared),
+            (2023, ParticipationStatus.Attended, ParticipationSource.TicketSync));
         var target = SeedUser(
-            (2024, LegacyParticipationStatus.NotAttending, LegacyParticipationSource.UserDeclared),
-            (2025, LegacyParticipationStatus.Ticketed, LegacyParticipationSource.TicketSync));
+            (2024, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared),
+            (2025, ParticipationStatus.Ticketed, ParticipationSource.TicketSync));
 
         await _sut.ReassignAsync(source.Id, target.Id, Guid.NewGuid(), Now, Ct);
 
@@ -263,8 +201,7 @@ public sealed class EventParticipationServiceTests : IDisposable
             (2024, ParticipationStatus.Attended),
             (2025, ParticipationStatus.Ticketed),
         ]);
-        (await _sut.GetParticipationsAsync(source.Id, Ct)).Should().BeEmpty();
-        (await RowsAsync(source.Id)).Should().OnlyContain(r => r.Status == null);
+        (await RowsAsync(source.Id)).Should().BeEmpty();
     }
 
     // ─── Export, erasure ─────────────────────────────────────────────────────────
@@ -272,7 +209,9 @@ public sealed class EventParticipationServiceTests : IDisposable
     [HumansFact]
     public async Task Export_CarriesTheEffectiveRows_AsAList()
     {
-        var user = SeedUser((2025, LegacyParticipationStatus.Attended, LegacyParticipationSource.TicketSync));
+        var user = SeedUser(
+            (2025, ParticipationStatus.Attended, ParticipationSource.TicketSync),
+            (2026, null, ParticipationSource.TicketSync));
         var none = SeedUser();
 
         var slice = (await _sut.ContributeForUserAsync(user.Id, Ct)).Should().ContainSingle().Subject;

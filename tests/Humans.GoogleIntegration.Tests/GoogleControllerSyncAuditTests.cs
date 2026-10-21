@@ -33,7 +33,7 @@ public sealed class GoogleControllerSyncAuditTests
         controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"));
         _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = actorId }, [], [], [], null, []));
+            UserInfo.Create(new User { Id = actorId }, [], [], null, []));
         controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
         const string warning = "Account created; ask an admin to reset the password.";
         _provisioning.ProvisionNobodiesEmailAsync(targetId, "person", actorId)
@@ -98,7 +98,7 @@ public sealed class GoogleControllerSyncAuditTests
         var controller = BuildSut(Xunit.TestContext.Current.CancellationToken);
         controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"));
-        var actor = UserInfo.Create(new User { Id = actorId, BurnerName = "Admin" }, [], [], [], null, []);
+        var actor = UserInfo.Create(new User { Id = actorId, BurnerName = "Admin" }, [], [], null, []);
         _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(actor);
         controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
         var settings = Substitute.For<ISyncSettingsService>();

@@ -175,7 +175,6 @@ public sealed class MagicLinkServiceTests : IDisposable
             user,
             [],
             [],
-            [],
             null,
             []);
 

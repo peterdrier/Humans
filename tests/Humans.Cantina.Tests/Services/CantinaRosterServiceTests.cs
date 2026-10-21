@@ -620,7 +620,6 @@ public class CantinaRosterServiceTests
                 // UserInfo.BurnerName reads User.BurnerName only (#1098).
                 user: new User { Id = p.UserId, DisplayName = p.Profile.BurnerName, BurnerName = p.Profile.BurnerName, PreferredLanguage = "en" },
                 userEmails: [],
-                eventParticipations: [],
                 externalLogins: [],
                 profile: p.Profile,
                 communicationPreferences: []));

@@ -37,7 +37,7 @@ public class HumanNameLocalizationTests
         };
         var userId = Guid.NewGuid();
         var nameless = UserInfo.Create(new User { Id = userId, BurnerName = "", PreferredLanguage = "en" },
-            [], [], [], null, []);
+            [], [], null, []);
 
         foreach (var id in new[] { Guid.Empty, userId })
         {

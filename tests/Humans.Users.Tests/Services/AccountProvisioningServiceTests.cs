@@ -101,9 +101,6 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<EventParticipation>> GetEventParticipationsByUserIdAsync(
-            Guid userId, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<IReadOnlyDictionary<Guid, IReadOnlyList<EventParticipation>>>
             GetEventParticipationsByUserIdsAsync(
                 IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>

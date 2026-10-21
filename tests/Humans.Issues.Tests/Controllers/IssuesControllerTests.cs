@@ -47,7 +47,7 @@ public sealed class IssuesControllerTests
                 null, null, null, null, actor, Guid.NewGuid(), actor, 42, null, default, default, null, 0));
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = actor }, [], [], [], null, []));
+            UserInfo.Create(new User { Id = actor }, [], [], null, []));
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
@@ -157,7 +157,7 @@ public sealed class IssuesControllerTests
             .Returns(IssueMutationResult.Success());
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = viewerId }, [], [], [], null, []));
+            UserInfo.Create(new User { Id = viewerId }, [], [], null, []));
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(allowed ? AuthorizationResult.Success() : AuthorizationResult.Failed());
@@ -204,7 +204,7 @@ public sealed class IssuesControllerTests
             .Returns(IssueMutationResult.Success());
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = actor }, [], [], [], null, []));
+            UserInfo.Create(new User { Id = actor }, [], [], null, []));
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
@@ -274,7 +274,7 @@ public sealed class IssuesControllerTests
         var users = Substitute.For<IUserService>();
         if (viewerExists)
             users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
-                UserInfo.Create(new User { Id = actor }, [], [], [], null, []));
+                UserInfo.Create(new User { Id = actor }, [], [], null, []));
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
         using var services = registrations.BuildServiceProvider();
@@ -347,7 +347,7 @@ public sealed class IssuesControllerTests
             });
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(adminId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = adminId }, [], [], [], null, []));
+            UserInfo.Create(new User { Id = adminId }, [], [], null, []));
         var controller = new IssuesController(issues, Substitute.For<IAuthorizationService>(), users,
             new IssueSectionRouting([]), Substitute.For<IStringLocalizer<IssuesResource>>(),
             NullLogger<IssuesController>.Instance)

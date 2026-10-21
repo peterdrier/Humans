@@ -24,7 +24,6 @@ internal static class UserInfoStubHelpers
             user,
             userEmails ?? user.UserEmails?.ToList() ?? [],
             [],
-            [],
             profile: profile,
             []);
 
@@ -36,7 +35,6 @@ internal static class UserInfoStubHelpers
             // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
             // UserInfo.BurnerName reads User.BurnerName only (#1098).
             new User { Id = userId, PreferredLanguage = "en", BurnerName = resolvedProfile.BurnerName },
-            [],
             [],
             [],
             profile: resolvedProfile,

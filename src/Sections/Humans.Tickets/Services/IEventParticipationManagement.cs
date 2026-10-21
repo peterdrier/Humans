@@ -5,8 +5,7 @@ namespace Humans.Tickets.Services;
 
 /// <summary>
 /// Tickets-internal surface over <c>tickets_event_participations</c>: the reads <see cref="ITicketService"/>
-/// forwards, the member's own declaration, ticket-sync reconciliation, the admin backfill and the legacy
-/// copy behind <c>tickets.event-participations</c>.
+/// forwards, the member's own declaration, ticket-sync reconciliation and the admin backfill.
 /// </summary>
 internal interface IEventParticipationManagement : ITicketWrite, IApplicationService
 {
@@ -33,11 +32,4 @@ internal interface IEventParticipationManagement : ITicketWrite, IApplicationSer
         int year, IReadOnlyList<(Guid UserId, ParticipationStatus Status)> entries, Guid actorUserId,
         CancellationToken ct = default);
 
-    /// <summary>Legacy Users rows with no <c>tickets_event_participations</c> row (cleared or not) for
-    /// their user and year, oldest year first.</summary>
-    Task<IReadOnlyList<EventParticipationInfo>> GetUncopiedLegacyParticipationsAsync(CancellationToken ct = default);
-
-    /// <summary>Copies every pending legacy row. Idempotent: a row written since the list was read is
-    /// left alone. Returns the rows written.</summary>
-    Task<int> CopyLegacyParticipationsAsync(CancellationToken ct = default);
 }

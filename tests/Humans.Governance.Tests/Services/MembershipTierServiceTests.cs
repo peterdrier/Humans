@@ -48,7 +48,7 @@ public sealed class MembershipTierServiceTests : IDisposable
         var userId = id ?? Guid.NewGuid();
         var info = UserInfo.Create(
             new User { Id = userId, BurnerName = "Ana", CreatedAt = Now },
-            [], [], [], UserFixtures.Profile(), []);
+            [], [], UserFixtures.Profile(), []);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
         _users.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
         _all.Add(info);

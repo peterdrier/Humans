@@ -460,7 +460,7 @@ public class ServiceIssueInvoiceTests
         var localizer = services.GetRequiredService<IStringLocalizer<StoreResource>>();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(_actor, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = _actor }, [], [], [], null, []));
+            UserInfo.Create(new User { Id = _actor }, [], [], null, []));
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());

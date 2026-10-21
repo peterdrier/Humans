@@ -61,9 +61,9 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         var operation = Enum.Parse<ExpenseReportOperation>(operationName);
         var survivor = Guid.NewGuid();
         _users.GetUserInfoAsync(survivor, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = survivor }, [], [], [], null, []) with { MergedUserIds = [SubmitterId] });
+            UserInfo.Create(new User { Id = survivor }, [], [], null, []) with { MergedUserIds = [SubmitterId] });
         _users.GetUserInfoAsync(RandomUserId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = RandomUserId }, [], [], [], null, []) with { MergedUserIds = [Guid.NewGuid()] });
+            UserInfo.Create(new User { Id = RandomUserId }, [], [], null, []) with { MergedUserIds = [Guid.NewGuid()] });
         var report = MakeReport(SubmitterId, status);
 
         (await EvaluateAsync(CreateUser(survivor), report, operation)).Should().BeTrue();

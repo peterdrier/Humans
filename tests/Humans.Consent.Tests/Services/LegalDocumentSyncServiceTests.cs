@@ -573,7 +573,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
                 PreferredLanguage = spanishIds.Contains(id) || id == inactiveId ? "es" : id == englishIds[0] ? "en" : "unsupported",
                 State = id == inactiveId ? UserState.Rejected : UserState.Active
             },
-            [], [], [], UserFixtures.Profile(), [])).ToList();
+            [], [], UserFixtures.Profile(), [])).ToList();
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns((IReadOnlyCollection<UserInfo>)users);
         var document = await SeedDocumentAsync("Privacy", folderPath: "privacy/", currentCommitSha: "sha-1");
         if (update)
@@ -755,7 +755,6 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
                 State = UserFixtures.StateFor(profile),
             },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: profile,
             communicationPreferences: []);

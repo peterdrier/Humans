@@ -17,10 +17,8 @@ namespace Humans.Tickets.Services;
 /// declaration, ticket-sync reconciliation, the admin backfill, the Article 15/17 slice and the
 /// account-merge fold.
 /// <para>
-/// Until <c>tickets.event-participations</c> has run, a user and year with no row here reads the
-/// frozen legacy Users row through <see cref="UserInfo"/> (plan §3.1 step 4), and writes start from
-/// that row. Removing a record that a legacy row backs leaves a cleared row so the legacy value never
-/// comes back.
+/// A row with a null status is a cleared row, written while legacy Users rows still had to be
+/// shadowed (before <c>tickets.event-participations</c> was retired); reads skip it.
 /// </para>
 /// </summary>
 internal sealed class EventParticipationService(
@@ -40,24 +38,14 @@ internal sealed class EventParticipationService(
     {
         var info = await users.GetUserInfoAsync(userId, ct);
         var id = info?.Id ?? userId;
-        return Effective(await repo.GetByUserIdAsync(id, ct), LegacyRows(info));
+        return Effective(await repo.GetByUserIdAsync(id, ct));
     }
 
-    public async Task<IReadOnlyList<EventParticipationInfo>> GetAllParticipationsAsync(CancellationToken ct = default)
-    {
-        var legacy = (await users.GetAllRawUserInfosAsync(ct)).SelectMany(LegacyRows).ToList();
-        return Effective(await repo.GetAllAsync(ct), legacy);
-    }
+    public async Task<IReadOnlyList<EventParticipationInfo>> GetAllParticipationsAsync(CancellationToken ct = default) =>
+        Effective(await repo.GetAllAsync(ct));
 
-    private static List<EventParticipationInfo> Effective(
-        IReadOnlyList<EventParticipation> rows, IReadOnlyList<EventParticipation> legacy)
-    {
-        var shadowed = rows.Select(r => (r.UserId, r.Year)).ToHashSet();
-        return [.. rows.Where(r => r.Status is not null)
-            .Concat(legacy.Where(l => !shadowed.Contains((l.UserId, l.Year))))
-            .OrderBy(r => r.Year)
-            .Select(ToInfo)];
-    }
+    private static List<EventParticipationInfo> Effective(IReadOnlyList<EventParticipation> rows) =>
+        [.. rows.Where(r => r.Status is not null).OrderBy(r => r.Year).Select(ToInfo)];
 
     private static EventParticipationInfo ToInfo(EventParticipation r) =>
         new(r.UserId, r.Year, r.Status!.Value, r.Source, r.DeclaredAt, r.CheckedInAt);
@@ -68,7 +56,7 @@ internal sealed class EventParticipationService(
     {
         var written = await repo.UpsertAsync(
             userId, year, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared,
-            declaredAt: clock.GetCurrentInstant(), checkedInAt: null, await LegacyRowAsync(userId, year, ct), ct);
+            declaredAt: clock.GetCurrentInstant(), checkedInAt: null, ct);
 
         if (!written)
         {
@@ -83,7 +71,7 @@ internal sealed class EventParticipationService(
 
     public async Task<bool> UndoNotAttendingAsync(Guid userId, int year, CancellationToken ct = default)
     {
-        var current = (await EffectiveForRawUserAsync(userId, ct)).FirstOrDefault(p => p.Year == year);
+        var current = Effective(await repo.GetByUserIdAsync(userId, ct)).FirstOrDefault(p => p.Year == year);
         if (current is not { Status: ParticipationStatus.NotAttending, Source: ParticipationSource.UserDeclared })
         {
             logger.LogWarning(
@@ -92,8 +80,7 @@ internal sealed class EventParticipationService(
             return false;
         }
 
-        var removed = await repo.ClearAsync(
-            userId, year, ParticipationSource.UserDeclared, await LegacyRowAsync(userId, year, ct), ct);
+        var removed = await repo.ClearAsync(userId, year, ParticipationSource.UserDeclared, ct);
         if (removed)
             logger.LogInformation("User {UserId} undid NotAttending declaration for year {Year}", userId, year);
         return removed;
@@ -103,24 +90,16 @@ internal sealed class EventParticipationService(
         Guid userId, int year, ParticipationStatus status, Instant? checkedInAt, CancellationToken ct = default) =>
         await repo.UpsertAsync(
             userId, year, status, ParticipationSource.TicketSync,
-            declaredAt: null, checkedInAt, await LegacyRowAsync(userId, year, ct), ct);
+            declaredAt: null, checkedInAt, ct);
 
     public async Task RemoveTicketSyncParticipationAsync(Guid userId, int year, CancellationToken ct = default) =>
-        await repo.ClearAsync(
-            userId, year, ParticipationSource.TicketSync, await LegacyRowAsync(userId, year, ct), ct);
+        await repo.ClearAsync(userId, year, ParticipationSource.TicketSync, ct);
 
     public async Task<int> BackfillParticipationsAsync(
         int year, IReadOnlyList<(Guid UserId, ParticipationStatus Status)> entries, Guid actorUserId,
         CancellationToken ct = default)
     {
-        var ids = entries.Select(e => e.UserId).ToHashSet();
-        var legacyByUser = (await users.GetAllRawUserInfosAsync(ct))
-            .Where(u => ids.Contains(u.Id))
-            .SelectMany(LegacyRows)
-            .Where(l => l.Year == year)
-            .ToDictionary(l => l.UserId);
-
-        var changed = await repo.BackfillAsync(year, entries, legacyByUser, ct);
+        var changed = await repo.BackfillAsync(year, entries, ct);
         foreach (var (userId, status) in changed)
         {
             await audit.LogAsync(AuditAction.ParticipationBackfilled, nameof(User), userId,
@@ -131,68 +110,6 @@ internal sealed class EventParticipationService(
         return changed.Count;
     }
 
-    // ─── tickets.event-participations ────────────────────────────────────────────
-
-    public async Task<IReadOnlyList<EventParticipationInfo>> GetUncopiedLegacyParticipationsAsync(
-        CancellationToken ct = default)
-    {
-        var present = (await repo.GetAllAsync(ct)).Select(r => (r.UserId, r.Year)).ToHashSet();
-        return [.. (await users.GetAllRawUserInfosAsync(ct))
-            .SelectMany(LegacyRows)
-            .Where(l => !present.Contains((l.UserId, l.Year)))
-            .OrderBy(l => l.Year).ThenBy(l => l.UserId)
-            .Select(ToInfo)];
-    }
-
-    public async Task<int> CopyLegacyParticipationsAsync(CancellationToken ct = default)
-    {
-        var written = 0;
-        foreach (var p in await GetUncopiedLegacyParticipationsAsync(ct))
-        {
-            var row = new EventParticipation
-            {
-                Id = Guid.NewGuid(),
-                UserId = p.UserId,
-                Year = p.Year,
-                Status = p.Status,
-                Source = p.Source,
-                DeclaredAt = p.DeclaredAt,
-                CheckedInAt = p.CheckedInAt,
-            };
-            if (await repo.TryInsertAsync(row, ct))
-                written++;
-        }
-        return written;
-    }
-
-    // ─── Legacy ──────────────────────────────────────────────────────────────────
-
-    private async Task<IReadOnlyList<EventParticipationInfo>> EffectiveForRawUserAsync(Guid userId, CancellationToken ct) =>
-        Effective(await repo.GetByUserIdAsync(userId, ct), LegacyRows(await users.GetRawUserInfoAsync(userId, ct)));
-
-    private async Task<EventParticipation?> LegacyRowAsync(Guid userId, int year, CancellationToken ct) =>
-        LegacyRows(await users.GetRawUserInfoAsync(userId, ct)).FirstOrDefault(l => l.Year == year);
-
-    /// <summary>The one reader of the obsolete legacy slice: the read fallback, the write seed and the
-    /// copy above. Deleted with the migration once production reports it done. Enum values map by name.</summary>
-    private static IReadOnlyList<EventParticipation> LegacyRows(UserInfo? info)
-    {
-        if (info is null) return [];
-#pragma warning disable HUM_USER_PARTICIPATIONS // the fallback and copy the field is kept for (plan §3.1)
-        var legacy = info.EventParticipations;
-#pragma warning restore HUM_USER_PARTICIPATIONS
-        return [.. legacy.Select(l => new EventParticipation
-        {
-            Id = l.Id,
-            UserId = info.Id,
-            Year = l.Year,
-            Status = Enum.Parse<ParticipationStatus>(l.Status.ToString()),
-            Source = Enum.Parse<ParticipationSource>(l.Source.ToString()),
-            DeclaredAt = l.DeclaredAt,
-            CheckedInAt = l.CheckedInAt,
-        })];
-    }
-
     // ─── IUserMerge ──────────────────────────────────────────────────────────────
 
     public async Task ReassignAsync(
@@ -200,11 +117,7 @@ internal sealed class EventParticipationService(
     {
         _ = actorUserId;
         _ = now;
-        await repo.ReassignAsync(
-            mergedFromUserId, mergedToUserId,
-            LegacyRows(await users.GetRawUserInfoAsync(mergedFromUserId, ct)),
-            LegacyRows(await users.GetRawUserInfoAsync(mergedToUserId, ct)),
-            ct);
+        await repo.ReassignAsync(mergedFromUserId, mergedToUserId, ct);
     }
 
     // ─── IUserDataContributor ────────────────────────────────────────────────────

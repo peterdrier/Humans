@@ -109,7 +109,6 @@ public class ShiftsControllerDietaryGateTests
             .Returns(UserInfoFactory.Create(
                 user: _user,
                 userEmails: [],
-                eventParticipations: [],
                 externalLogins: [],
                 profile: new Profile
                 {

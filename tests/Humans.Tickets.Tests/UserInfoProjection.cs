@@ -15,7 +15,6 @@ internal static class UserInfoProjection
             user,
             userEmails ?? user.UserEmails?.ToList() ?? [],
             [],
-            [],
             profile: profile,
             []);
 }

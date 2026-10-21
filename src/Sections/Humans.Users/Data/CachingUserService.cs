@@ -418,7 +418,6 @@ internal sealed class CachingUserService(
         Set(user.Id, UserInfo.Create(
             user,
             user.UserEmails.ToList(),
-            user.EventParticipations.ToList(),
             externalLogins: [],
             profile: null,
             communicationPreferences: []));
@@ -477,13 +476,12 @@ internal sealed class CachingUserService(
     }
 
     private static UserInfo WithUserFields(UserInfo current, User user) =>
-        UserInfo.Create(user, [], [], [], current.Profile, []) with
+        UserInfo.Create(user, [], [], current.Profile, []) with
         {
             UserEmails = current.UserEmails,
-#pragma warning disable HUM_USER_PARTICIPATIONS, HUM_USER_COMMPREFS // carrying the frozen legacy slices across a user-row refresh, not reading them
-            EventParticipations = current.EventParticipations,
+#pragma warning disable HUM_USER_COMMPREFS // carrying the frozen legacy slice across a user-row refresh, not reading it
             CommunicationPreferences = current.CommunicationPreferences,
-#pragma warning restore HUM_USER_PARTICIPATIONS, HUM_USER_COMMPREFS
+#pragma warning restore HUM_USER_COMMPREFS
             ExternalLogins = current.ExternalLogins,
             MergedUserIds = current.MergedUserIds,
         };

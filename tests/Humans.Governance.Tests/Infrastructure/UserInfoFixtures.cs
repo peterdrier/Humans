@@ -22,7 +22,6 @@ internal static class UserInfoFixtures
             user,
             user.UserEmails?.ToList() ?? [],
             [],
-            [],
             profile: profile,
             []);
 }

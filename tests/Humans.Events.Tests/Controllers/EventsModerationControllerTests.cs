@@ -228,7 +228,6 @@ public sealed class EventsModerationControllerTests
     private static UserInfo UserInfoFor(Guid userId) => UserInfo.Create(
         new User { Id = userId, DisplayName = "Moderator", PreferredLanguage = "en", CreatedAt = Instant.MinValue },
         userEmails: [],
-        eventParticipations: [],
         externalLogins: [],
         profile: UserFixtures.Profile(burnerName: "Moderator", firstName: "Mod", lastName: "Erator"),
         communicationPreferences: []);

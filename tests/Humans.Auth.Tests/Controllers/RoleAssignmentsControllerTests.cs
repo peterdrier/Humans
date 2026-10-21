@@ -70,7 +70,7 @@ public sealed class RoleAssignmentsControllerTests
     private static ValueTask<UserInfo?> User(Guid id) => new(new UserInfo(
         id, "Member", false, "en", null, Instant.FromUnixTimeSeconds(0),
         null, null, null, null, null, null, null,
-        null, null, null, [], [], [], null, []));
+        null, null, null, [], [], null, []));
 
     private void GivenAuthorization(string roleName, bool succeeds) =>
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), roleName, PolicyNames.RoleAssignmentManage)

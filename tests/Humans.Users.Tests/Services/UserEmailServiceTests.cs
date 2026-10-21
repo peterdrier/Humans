@@ -328,7 +328,6 @@ public class UserEmailServiceTests
                 CreatedAt = Instant.MinValue,
             },
             userEmails: emails,
-            eventParticipations: [],
             externalLogins: [],
             profile: null,
             contactFields: [],

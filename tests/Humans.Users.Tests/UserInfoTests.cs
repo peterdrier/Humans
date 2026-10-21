@@ -49,7 +49,6 @@ public class UserInfoTests
         var info = UserInfoFactory.Create(
             user: MinimalUser(userId),
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: null,
             contactFields: [],
@@ -80,7 +79,7 @@ public class UserInfoTests
         user.BurnerName = "From User";
 
         var info = UserInfoFactory.Create(
-            user, [], [], [], NamedProfile(userId, "From Profile"), [], [], [], []);
+            user, [], [], NamedProfile(userId, "From Profile"), [], [], [], []);
 
         info.BurnerName.Should().Be("From User");
     }
@@ -96,7 +95,7 @@ public class UserInfoTests
         user.BurnerName = userBurnerName;
 
         var info = UserInfoFactory.Create(
-            user, [], [], [], NamedProfile(userId, "From Profile"), [], [], [], []);
+            user, [], [], NamedProfile(userId, "From Profile"), [], [], [], []);
 
         info.BurnerName.Should().BeEmpty();
     }
@@ -111,7 +110,7 @@ public class UserInfoTests
         user.BurnerName = null;
 
         var info = UserInfoFactory.Create(
-            user, [], [], [], profile: null, [], [], [], []);
+            user, [], [], profile: null, [], [], [], []);
 
         info.BurnerName.Should().BeEmpty();
     }
@@ -127,7 +126,7 @@ public class UserInfoTests
         user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
 
         var info = UserInfoFactory.Create(
-            user, [], [], [], profile: null, [], [], [], []);
+            user, [], [], profile: null, [], [], [], []);
 
         info.BurnerName.Should().Be(UserInfo.GdprAnonymizedBurnerName);
     }
@@ -143,7 +142,7 @@ public class UserInfoTests
         user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
 
         var info = UserInfoFactory.Create(
-            user, [], [], [], profile: null, [], [], [], []);
+            user, [], [], profile: null, [], [], [], []);
 
         info.BurnerName.Should().Be(UserInfo.GdprAnonymizedBurnerName);
     }
@@ -159,7 +158,7 @@ public class UserInfoTests
         user.MergedAt = Instant.FromUtc(2026, 1, 1, 0, 0);
 
         var info = UserInfoFactory.Create(
-            user, [], [], [], NamedProfile(userId, "Merged"), [], [], [], []);
+            user, [], [], NamedProfile(userId, "Merged"), [], [], [], []);
 
         info.IsActive.Should().BeFalse();
     }
@@ -175,7 +174,7 @@ public class UserInfoTests
         user.Email = $"deleted-{userId:N}@deleted.local";
 
         var info = UserInfoFactory.Create(
-            user, [], [], [], NamedProfile(userId, "Deleted User"), [], [], [], []);
+            user, [], [], NamedProfile(userId, "Deleted User"), [], [], [], []);
 
         info.IsActive.Should().BeFalse();
     }
@@ -191,7 +190,7 @@ public class UserInfoTests
         user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
 
         var info = UserInfoFactory.Create(
-            user, [], [], [], profile: null, [], [], [], []);
+            user, [], [], profile: null, [], [], [], []);
 
         info.IsActive.Should().BeFalse();
         info.BurnerName.Should().Be(UserInfo.GdprAnonymizedBurnerName);
@@ -205,7 +204,7 @@ public class UserInfoTests
         user.Email = "someone@merged.local";
 
         var info = UserInfoFactory.Create(
-            user, [], [], [], NamedProfile(userId, "Merged"), [], [], [], []);
+            user, [], [], NamedProfile(userId, "Merged"), [], [], [], []);
 
         info.IsActive.Should().BeFalse();
     }
@@ -227,7 +226,7 @@ public class UserInfoTests
         user.Email = "alice@example.com";
 
         var info = UserInfoFactory.Create(
-            user, [], [], [], NamedProfile(userId, "Deleted User"), [], [], [], []);
+            user, [], [], NamedProfile(userId, "Deleted User"), [], [], [], []);
 
         info.IsGdprAnonymized.Should().BeFalse();
         info.IsTombstone.Should().BeFalse();
@@ -242,7 +241,7 @@ public class UserInfoTests
         user.Email = $"deleted-{userId:N}@deleted.local";
 
         var info = UserInfoFactory.Create(
-            user, [], [], [], profile: null, [], [], [], []);
+            user, [], [], profile: null, [], [], [], []);
 
         info.IsGdprAnonymized.Should().BeTrue();
         info.IsTombstone.Should().BeTrue();
@@ -265,7 +264,7 @@ public class UserInfoTests
         user.Email = "legacy-erased@example.com"; // ordinary email — pre-scrub shape
 
         var info = UserInfoFactory.Create(
-            user, [], [], [], profile: null, [], [], [], []);
+            user, [], [], profile: null, [], [], [], []);
 
         info.IsGdprAnonymized.Should().BeTrue();
     }
@@ -285,7 +284,7 @@ public class UserInfoTests
         user.Email = "real.member@example.com";
 
         var info = UserInfoFactory.Create(
-            user, [], [], [], NamedProfile(userId, "Deleted User"), [], [], [], []);
+            user, [], [], NamedProfile(userId, "Deleted User"), [], [], [], []);
 
         info.IsGdprAnonymized.Should().BeFalse();
         info.IsTombstone.Should().BeFalse();
@@ -298,7 +297,7 @@ public class UserInfoTests
         var user = MinimalUser(userId);
 
         var info = UserInfoFactory.Create(
-            user, [], [], [], NamedProfile(userId, "Test"), [], [], [], []);
+            user, [], [], NamedProfile(userId, "Test"), [], [], [], []);
 
         info.IsActive.Should().BeTrue();
     }
@@ -311,7 +310,7 @@ public class UserInfoTests
         user.State = UserState.Rejected;
 
         var info = UserInfoFactory.Create(
-            user, [], [], [], NamedProfile(userId, "Test"), [], [], [], []);
+            user, [], [], NamedProfile(userId, "Test"), [], [], [], []);
 
         info.IsActive.Should().BeFalse();
     }

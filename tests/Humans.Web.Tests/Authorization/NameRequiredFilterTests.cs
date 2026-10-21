@@ -168,7 +168,7 @@ public class NameRequiredFilterTests
     private static UserInfo MakeUserInfo(ProfileInfo? profile) =>
         UserInfo.Create(
             new User { Id = UserId, PreferredLanguage = "en", State = UserFixtures.StateFor(profile) },
-            [], [], [],
+            [], [],
             profile: profile,
             []);
 

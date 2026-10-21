@@ -93,7 +93,6 @@ public class OnboardingWidgetControllerConsentsTests
             State = UserFixtures.StateFor(profile),
         },
         userEmails: [],
-        eventParticipations: [],
         externalLogins: [],
         profile: profile,
         communicationPreferences: []);

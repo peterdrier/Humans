@@ -239,7 +239,6 @@ public class OnboardingWidgetControllerNamesTests
                     : UserState.Active,
             },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: UserFixtures.Profile(
                 burnerName: burner,

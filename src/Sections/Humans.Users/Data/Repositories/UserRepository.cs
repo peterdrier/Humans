@@ -400,16 +400,6 @@ internal sealed partial class UserRepository : IUserRepository
 
     // Reads — EventParticipation
 
-    public async Task<IReadOnlyList<EventParticipation>> GetEventParticipationsByUserIdAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.EventParticipations
-            .AsNoTracking()
-            .Where(ep => ep.UserId == userId)
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<EventParticipation>>>
         GetEventParticipationsByUserIdsAsync(
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)

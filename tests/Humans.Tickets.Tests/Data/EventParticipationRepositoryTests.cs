@@ -9,7 +9,8 @@ namespace Humans.Tickets.Tests.Data;
 
 /// <summary>
 /// <c>tickets_event_participations</c>: the lifecycle rules moved from Users' repository in
-/// decomposition commit 13, plus the legacy seed and cleared-row behaviour the move added.
+/// decomposition commit 13, and how they treat a cleared row (null status) left from before the
+/// legacy Users rows were retired.
 /// </summary>
 public sealed class EventParticipationRepositoryTests : IDisposable
 {
@@ -61,7 +62,7 @@ public sealed class EventParticipationRepositoryTests : IDisposable
         var userId = Guid.NewGuid();
 
         (await _repo.UpsertAsync(userId, 2026, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared,
-            Now, null, legacy: null, Ct)).Should().BeTrue();
+            Now, null, Ct)).Should().BeTrue();
 
         var row = (await RowsAsync(userId)).Should().ContainSingle().Subject;
         row.Status.Should().Be(ParticipationStatus.NotAttending);
@@ -76,7 +77,7 @@ public sealed class EventParticipationRepositoryTests : IDisposable
         await SeedAsync(Row(userId, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared, declaredAt: Now));
 
         await _repo.UpsertAsync(userId, 2026, ParticipationStatus.Ticketed, ParticipationSource.TicketSync,
-            null, null, legacy: null, Ct);
+            null, null, Ct);
 
         var row = (await RowsAsync(userId)).Single();
         row.Status.Should().Be(ParticipationStatus.Ticketed);
@@ -91,7 +92,7 @@ public sealed class EventParticipationRepositoryTests : IDisposable
         await SeedAsync(Row(userId, ParticipationStatus.Attended, ParticipationSource.TicketSync, checkedInAt: Now));
 
         (await _repo.UpsertAsync(userId, 2026, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared,
-            Now, null, legacy: null, Ct)).Should().BeFalse();
+            Now, null, Ct)).Should().BeFalse();
 
         (await RowsAsync(userId)).Single().Status.Should().Be(ParticipationStatus.Attended);
     }
@@ -103,9 +104,9 @@ public sealed class EventParticipationRepositoryTests : IDisposable
         await SeedAsync(Row(userId, ParticipationStatus.Attended, ParticipationSource.AdminBackfill));
 
         (await _repo.UpsertAsync(userId, 2026, ParticipationStatus.Attended, ParticipationSource.TicketSync,
-            null, Now, legacy: null, Ct)).Should().BeTrue();
+            null, Now, Ct)).Should().BeTrue();
         (await _repo.UpsertAsync(userId, 2026, ParticipationStatus.Attended, ParticipationSource.TicketSync,
-            null, Now + Duration.FromHours(1), legacy: null, Ct)).Should().BeFalse();
+            null, Now + Duration.FromHours(1), Ct)).Should().BeFalse();
 
         var row = (await RowsAsync(userId)).Single();
         row.CheckedInAt.Should().Be(Now);
@@ -119,23 +120,11 @@ public sealed class EventParticipationRepositoryTests : IDisposable
         await SeedAsync(Row(userId, ParticipationStatus.Ticketed, ParticipationSource.TicketSync));
 
         await _repo.UpsertAsync(userId, 2026, ParticipationStatus.Attended, ParticipationSource.TicketSync,
-            null, Now, legacy: null, Ct);
+            null, Now, Ct);
 
         var row = (await RowsAsync(userId)).Single();
         row.Status.Should().Be(ParticipationStatus.Attended);
         row.CheckedInAt.Should().Be(Now);
-    }
-
-    [HumansFact]
-    public async Task Upsert_StartsFromTheLegacyRow_WhenTheTableHasNone()
-    {
-        var userId = Guid.NewGuid();
-        var legacy = Row(userId, ParticipationStatus.Attended, ParticipationSource.TicketSync, checkedInAt: Now);
-
-        // A legacy Attended row is permanent: the declaration is refused and nothing is written.
-        (await _repo.UpsertAsync(userId, 2026, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared,
-            Now, null, legacy, Ct)).Should().BeFalse();
-        (await RowsAsync(userId)).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -145,7 +134,7 @@ public sealed class EventParticipationRepositoryTests : IDisposable
         await SeedAsync(Row(userId, null, ParticipationSource.UserDeclared));
 
         await _repo.UpsertAsync(userId, 2026, ParticipationStatus.Ticketed, ParticipationSource.TicketSync,
-            null, null, legacy: null, Ct);
+            null, null, Ct);
 
         (await RowsAsync(userId)).Single().Status.Should().Be(ParticipationStatus.Ticketed);
     }
@@ -153,39 +142,14 @@ public sealed class EventParticipationRepositoryTests : IDisposable
     // ─── ClearAsync ──────────────────────────────────────────────────────────
 
     [HumansFact]
-    public async Task Clear_DeletesWhenSourceMatches_AndNoLegacyRow()
+    public async Task Clear_DeletesWhenSourceMatches()
     {
         var userId = Guid.NewGuid();
         await SeedAsync(Row(userId, ParticipationStatus.Ticketed, ParticipationSource.TicketSync));
 
-        (await _repo.ClearAsync(userId, 2026, ParticipationSource.TicketSync, legacy: null, Ct)).Should().BeTrue();
+        (await _repo.ClearAsync(userId, 2026, ParticipationSource.TicketSync, Ct)).Should().BeTrue();
 
         (await RowsAsync(userId)).Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task Clear_KeepsAClearedRow_WhenALegacyRowBacksTheYear()
-    {
-        var userId = Guid.NewGuid();
-        await SeedAsync(Row(userId, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared, declaredAt: Now));
-        var legacy = Row(userId, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared, declaredAt: Now);
-
-        (await _repo.ClearAsync(userId, 2026, ParticipationSource.UserDeclared, legacy, Ct)).Should().BeTrue();
-
-        var row = (await RowsAsync(userId)).Single();
-        row.Status.Should().BeNull();
-        row.DeclaredAt.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task Clear_OfALegacyOnlyRecord_WritesAClearedRow()
-    {
-        var userId = Guid.NewGuid();
-        var legacy = Row(userId, ParticipationStatus.Ticketed, ParticipationSource.TicketSync);
-
-        (await _repo.ClearAsync(userId, 2026, ParticipationSource.TicketSync, legacy, Ct)).Should().BeTrue();
-
-        (await RowsAsync(userId)).Single().Status.Should().BeNull();
     }
 
     [HumansTheory]
@@ -196,7 +160,7 @@ public sealed class EventParticipationRepositoryTests : IDisposable
         var userId = Guid.NewGuid();
         await SeedAsync(Row(userId, status, source));
 
-        (await _repo.ClearAsync(userId, 2026, ParticipationSource.TicketSync, legacy: null, Ct)).Should().BeFalse();
+        (await _repo.ClearAsync(userId, 2026, ParticipationSource.TicketSync, Ct)).Should().BeFalse();
 
         (await RowsAsync(userId)).Single().Status.Should().Be(status);
     }
@@ -209,28 +173,23 @@ public sealed class EventParticipationRepositoryTests : IDisposable
         var newId = Guid.NewGuid();
         var existingId = Guid.NewGuid();
         var attendedId = Guid.NewGuid();
-        var legacyId = Guid.NewGuid();
         await SeedAsync(
             Row(existingId, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared, year: 2025),
             Row(attendedId, ParticipationStatus.Attended, ParticipationSource.TicketSync, year: 2025));
-        var legacyAttended = Row(legacyId, ParticipationStatus.Attended, ParticipationSource.TicketSync, year: 2025);
         var entries = new List<(Guid UserId, ParticipationStatus Status)>
         {
             (newId, ParticipationStatus.Ticketed),
             (existingId, ParticipationStatus.Ticketed),
             (attendedId, ParticipationStatus.NotAttending),
-            (legacyId, ParticipationStatus.NotAttending),
         };
-        var legacy = new Dictionary<Guid, EventParticipation> { [legacyId] = legacyAttended };
 
-        (await _repo.BackfillAsync(2025, entries, legacy, Ct)).Should().Equal(
+        (await _repo.BackfillAsync(2025, entries, Ct)).Should().Equal(
             (newId, ParticipationStatus.Ticketed), (existingId, ParticipationStatus.Ticketed));
-        (await _repo.BackfillAsync(2025, entries, legacy, Ct)).Should().BeEmpty();
+        (await _repo.BackfillAsync(2025, entries, Ct)).Should().BeEmpty();
 
         (await RowsAsync(newId)).Single().Source.Should().Be(ParticipationSource.AdminBackfill);
         (await RowsAsync(existingId)).Single().Status.Should().Be(ParticipationStatus.Ticketed);
         (await RowsAsync(attendedId)).Single().Status.Should().Be(ParticipationStatus.Attended);
-        (await RowsAsync(legacyId)).Single().Status.Should().Be(ParticipationStatus.Attended);
     }
 
     // ─── ReassignAsync (merge fold) ──────────────────────────────────────────
@@ -249,7 +208,7 @@ public sealed class EventParticipationRepositoryTests : IDisposable
             Row(sourceId, ParticipationStatus.Attended, ParticipationSource.TicketSync, checkedInAt: Now),
             Row(targetId, targetStatus, ParticipationSource.AdminBackfill, checkedInAt: targetArrival));
 
-        await _repo.ReassignAsync(sourceId, targetId, [], [], Ct);
+        await _repo.ReassignAsync(sourceId, targetId, Ct);
 
         (await RowsAsync(sourceId)).Should().BeEmpty();
         var row = (await RowsAsync(targetId)).Single();
@@ -260,36 +219,20 @@ public sealed class EventParticipationRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Reassign_MovesSourceOnlyYears_AndCountsLegacyRowsOnBothSides()
+    public async Task Reassign_MovesSourceOnlyYears_AndDropsTheSourcesClearedRows()
     {
         var sourceId = Guid.NewGuid();
         var targetId = Guid.NewGuid();
-        await SeedAsync(Row(sourceId, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared, year: 2024));
-        var legacySource = new[] { Row(sourceId, ParticipationStatus.Ticketed, ParticipationSource.TicketSync, year: 2025) };
-        var legacyTarget = new[] { Row(targetId, ParticipationStatus.Attended, ParticipationSource.TicketSync, year: 2025, checkedInAt: Now) };
+        await SeedAsync(
+            Row(sourceId, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared, year: 2024),
+            Row(sourceId, null, ParticipationSource.TicketSync, year: 2025),
+            Row(targetId, ParticipationStatus.Attended, ParticipationSource.TicketSync, year: 2025, checkedInAt: Now));
 
-        await _repo.ReassignAsync(sourceId, targetId, legacySource, legacyTarget, Ct);
+        await _repo.ReassignAsync(sourceId, targetId, Ct);
 
         var target = await RowsAsync(targetId);
         target.Single(r => r.Year == 2024).Status.Should().Be(ParticipationStatus.NotAttending);
         target.Single(r => r.Year == 2025).Status.Should().Be(ParticipationStatus.Attended);
-        // The 2024 row had no legacy backing: deleted. 2025 was legacy-backed: cleared, so the
-        // frozen Users row stays shadowed.
-        var source = await RowsAsync(sourceId);
-        source.Should().ContainSingle().Which.Should().Match<EventParticipation>(r => r.Year == 2025 && r.Status == null);
-    }
-
-    // ─── TryInsertAsync (copy) ───────────────────────────────────────────────
-
-    [HumansFact]
-    public async Task TryInsert_SkipsAYearThatHasAnyRow_ClearedIncluded()
-    {
-        var userId = Guid.NewGuid();
-        await SeedAsync(Row(userId, null, ParticipationSource.UserDeclared));
-
-        (await _repo.TryInsertAsync(Row(userId, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared), Ct))
-            .Should().BeFalse();
-        (await _repo.TryInsertAsync(Row(userId, ParticipationStatus.Ticketed, ParticipationSource.TicketSync, year: 2025), Ct))
-            .Should().BeTrue();
+        (await RowsAsync(sourceId)).Should().BeEmpty();
     }
 }

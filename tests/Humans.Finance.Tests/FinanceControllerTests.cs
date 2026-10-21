@@ -755,7 +755,6 @@ public class FinanceControllerTests
         MergedAt: null,
         IdentityEmailColumn: null,
         UserEmails: [],
-        EventParticipations: [],
         ExternalLogins: [],
         Profile: null,
         CommunicationPreferences: []);

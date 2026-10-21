@@ -1295,5 +1295,5 @@ public sealed class GoogleWorkspaceSyncServiceTests
             },
             [new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = email,
                 IsVerified = true, IsGoogle = true, GoogleEmailStatus = (LegacyGoogleEmailStatus)status }],
-            [], [], null, []);
+            [], null, []);
 }

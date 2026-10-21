@@ -149,7 +149,7 @@ public class AgentControllerTests
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
                 return new ValueTask<UserInfo?>(UserInfo.Create(
                     new User { Id = userId, DisplayName = "T", PreferredLanguage = "en" },
-                    [], [], [], profile: null, []));
+                    [], [], profile: null, []));
             });
 
         users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

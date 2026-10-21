@@ -135,7 +135,6 @@ public sealed class VolunteerTrackingControllerExportXlsxTests
             .Returns(new ValueTask<UserInfo?>(UserInfoFactory.Create(
                 user: currentUser,
                 userEmails: [],
-                eventParticipations: [],
                 externalLogins: [],
                 profile: profile,
                 contactFields: [],

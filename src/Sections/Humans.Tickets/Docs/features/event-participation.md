@@ -73,7 +73,7 @@ Attended is permanent -- cannot be reverted by any mechanism.
 
 ## Legacy data and the move from Users
 
-Until Users decomposition commit 13 the records lived in Users' `event_participations`. That table is now frozen: nothing writes it, and the only reader is `EventParticipationService`, which answers a user and year with no Tickets record from the legacy row and seeds every write from it. A removal that a legacy row backs leaves a cleared record so the legacy value cannot return. The `tickets.event-participations` data migration (`/Debug/DataMigrations`) copies the legacy rows; a later PR retires the fallback and drops the table.
+Until Users decomposition commit 13 the records lived in Users' `event_participations`. The `tickets.event-participations` data migration copied those rows into Tickets and has been retired; Users' table is frozen (read only by Users' export) until its drop PR. Records with a null status, left from the copy period, are skipped by reads.
 
 ## Account merge
 

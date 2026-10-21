@@ -357,7 +357,7 @@ public class MembershipRequiredFilterTests
                 burnerName: hasNames ? "Member" : "", firstName: "Deleted", lastName: "User");
             var info = UserInfo.Create(
                 new User { Id = Guid.NewGuid(), State = state!.Value },
-                [], [], [], profile, []);
+                [], [], profile, []);
             users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(info);
             var nameFilter = new NameRequiredFilter(users);
             await nameFilter.OnActionExecutionAsync(ctx, async () =>

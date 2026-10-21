@@ -768,7 +768,6 @@ public class VolunteerTrackingServiceTests
                             CreatedAt = TestNow
                         },
                         userEmails: [],
-                        eventParticipations: [],
                         externalLogins: [],
                         profile: null,
                         contactFields: [],

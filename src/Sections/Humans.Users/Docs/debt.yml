@@ -33,7 +33,7 @@ inbox:
     review: panel
   - added: 2026-10-21
     id: USERS-19
-    what: "Drop the event_participations table (Users) and delete the EventParticipation entity, its configuration, the User.EventParticipations navigation and the merge/purge code that touches the table. Replaced by data migration tickets.event-participations; blocked on CENTRAL-93 (the retirement PR) merged and deployed. The production done reading of tickets.event-participations (quoted with its date) is the standing approval in memory/architecture/no-drops-until-prod-verified.md; the drop is its own generated migration with a baseline entry in NoDestructiveMigrationOps.baseline.txt whose Approval line cites that reading and Evidence line cites the retirement PR."
+    what: "Drop the event_participations table (Users) and delete the EventParticipation entity, its configuration, the User.EventParticipations navigation, the LegacyParticipationStatus/LegacyParticipationSource enums, Users' LegacyEventParticipations export slice and the merge/purge code that touches the table. Replaced by data migration tickets.event-participations; blocked on CENTRAL-93 (the retirement PR) merged and deployed. The production done reading of tickets.event-participations (quoted with its date) is the standing approval in memory/architecture/no-drops-until-prod-verified.md; the drop is its own generated migration with a baseline entry in NoDestructiveMigrationOps.baseline.txt whose Approval line cites that reading and Evidence line cites the retirement PR."
     review: panel
   - added: 2026-10-21
     id: USERS-20

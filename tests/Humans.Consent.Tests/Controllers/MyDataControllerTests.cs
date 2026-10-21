@@ -51,7 +51,6 @@ public class MyDataControllerTests
                 DeletionEligibleAfter = eligibleAfter,
             },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: null,
             communicationPreferences: []);

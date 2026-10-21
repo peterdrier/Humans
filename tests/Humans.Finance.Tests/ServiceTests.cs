@@ -2125,7 +2125,7 @@ public class HoldedFinanceServiceTests
         var requestedId = archivedId ? sourceId : survivorId;
         var info = UserInfo.Create(
             new User { Id = survivorId, BurnerName = "Survivor", CreatedAt = FixedNow },
-            [], [], [], null, []) with
+            [], [], null, []) with
         { MergedUserIds = [sourceId] };
         _users.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>()).Returns(info);
         foreach (var (id, contact) in new[] { (survivorId, "survivor-contact"), (sourceId, "source-contact") })
@@ -2161,7 +2161,7 @@ public class HoldedFinanceServiceTests
         var survivorId = Guid.NewGuid();
         var sourceId = Guid.NewGuid();
         _users.GetUserInfoAsync(survivorId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = survivorId }, [], [], [], null, []) with { MergedUserIds = [sourceId] });
+            UserInfo.Create(new User { Id = survivorId }, [], [], null, []) with { MergedUserIds = [sourceId] });
         _repo.GetCreditorContactByUserAsync(sourceId, Arg.Any<CancellationToken>()).Returns(
             new HoldedCreditorContact { UserId = sourceId, HoldedContactId = "source-only", SupplierAccountNum = 40000004 });
 
@@ -2660,7 +2660,7 @@ public class HoldedFinanceServiceTests
         {
             [userId] = UserInfo.Create(
                 new User { Id = userId, BurnerName = "Ana", PreferredLanguage = "es", CreatedAt = FixedNow },
-                [], [], [], null, []),
+                [], [], null, []),
         };
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
@@ -2759,10 +2759,10 @@ public class HoldedFinanceServiceTests
             {
                 [firstUserId] = UserInfo.Create(
                     new User { Id = firstUserId, BurnerName = "Ana", CreatedAt = FixedNow },
-                    [], [], [], null, []),
+                    [], [], null, []),
                 [secondUserId] = UserInfo.Create(
                     new User { Id = secondUserId, BurnerName = "Dani", CreatedAt = FixedNow },
-                    [], [], [], null, []),
+                    [], [], null, []),
             });
         _userEmails.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string>
@@ -2804,7 +2804,7 @@ public class HoldedFinanceServiceTests
             {
                 [userId] = UserInfo.Create(
                     user: new User { Id = userId, DisplayName = burnerName, BurnerName = burnerName, PreferredLanguage = language, CreatedAt = FixedNow },
-                    userEmails: [], eventParticipations: [], externalLogins: [],
+                    userEmails: [], externalLogins: [],
                     profile: null, communicationPreferences: []),
             });
         _userEmails.GetNotificationTargetEmailsAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)), Arg.Any<CancellationToken>())

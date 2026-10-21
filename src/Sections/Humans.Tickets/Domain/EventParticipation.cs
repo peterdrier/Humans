@@ -18,11 +18,9 @@ internal sealed class EventParticipation
     public int Year { get; set; }
 
     /// <summary>
-    /// Current status. Null marks a <b>cleared</b> row: the record was removed (undo, stale ticket,
-    /// merge fold) while the frozen legacy Users row for the same user and year still exists, so the
-    /// row stays to keep that legacy value from reappearing through the read fallback or the
-    /// <c>tickets.event-participations</c> copy. Reads treat a cleared row as no record. Only written
-    /// until the copy's retirement PR.
+    /// Current status. Null marks a <b>cleared</b> row, written before the
+    /// <c>tickets.event-participations</c> copy was retired to shadow a frozen legacy Users row.
+    /// Nothing writes one now; reads treat it as no record, and a later write or merge replaces it.
     /// </summary>
     public ParticipationStatus? Status { get; set; }
 

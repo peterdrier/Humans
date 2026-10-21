@@ -153,7 +153,7 @@ public class AgentUserSnapshotProviderTests
             .Returns(new ValueTask<UserInfo?>(
                 UserInfo.Create(
                     new User { Id = userId, DisplayName = "T", PreferredLanguage = "es" },
-                    [], [], [], profile: null, [])));
+                    [], [], profile: null, [])));
         var roles = Substitute.For<IRoleAssignmentService>();
         roles.GetActiveForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);

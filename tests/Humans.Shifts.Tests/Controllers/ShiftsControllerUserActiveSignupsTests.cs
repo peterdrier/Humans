@@ -344,7 +344,6 @@ public class ShiftsControllerUserActiveSignupsTests
                 State = UserState.Active,
             },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: new Profile
             {

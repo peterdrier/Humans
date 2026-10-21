@@ -205,5 +205,5 @@ public sealed class FormViewModelTests
     private static UserInfo User(ProfileInfo? profile) => new(
         Guid.NewGuid(), "Ada", false, "en", null, Now,
         null, null, null, null, null, null, null,
-        null, null, null, [], [], [], profile, []);
+        null, null, null, [], [], profile, []);
 }

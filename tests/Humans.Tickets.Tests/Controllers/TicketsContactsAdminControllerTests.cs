@@ -27,7 +27,6 @@ public class TicketsContactsAdminControllerTests
                 currentUser,
                 [],
                 [],
-                [],
                 profile: null,
                 [])));
 

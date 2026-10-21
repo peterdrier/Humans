@@ -67,7 +67,6 @@ internal sealed class UserService(
         if (user is null) return null;
 
         var userEmails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
-        var participations = await repo.GetEventParticipationsByUserIdAsync(userId, ct);
         var externalLoginsMap = await repo.GetExternalLoginsByUserIdsAsync([userId], ct);
         var externalLogins = externalLoginsMap.TryGetValue(userId, out var logins)
             ? logins
@@ -88,7 +87,7 @@ internal sealed class UserService(
             .GetByUserIdReadOnlyAsync(userId, ct);
 
         var info = UserInfoFactory.Create(
-            user, userEmails, participations, externalLogins,
+            user, userEmails, externalLogins,
             profile, contactFields, languages, volunteerHistory,
             communicationPreferences);
 
@@ -117,7 +116,6 @@ internal sealed class UserService(
             .GroupBy(c => c.ProfileId)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<ContactField>)g.ToList());
 
-        var participationsByUser = await repo.GetEventParticipationsByUserIdsAsync(userIds, ct);
 
         var allPreferences = await communicationPreferenceRepo.GetAllAsync(ct);
         var preferencesByUser = allPreferences
@@ -129,9 +127,6 @@ internal sealed class UserService(
         {
             var emails = emailsByUser.TryGetValue(user.Id, out var es) ? es : [];
             var logins = loginsByUser.TryGetValue(user.Id, out var ls) ? ls : [];
-            var participations = participationsByUser.TryGetValue(user.Id, out var ps)
-                ? ps
-                : (IReadOnlyList<EventParticipation>)[];
 
             profileByUser.TryGetValue(user.Id, out var profile);
             IReadOnlyList<ContactField> contactFields = [];
@@ -147,7 +142,7 @@ internal sealed class UserService(
             var preferences = preferencesByUser.TryGetValue(user.Id, out var pp) ? pp : [];
 
             var info = UserInfoFactory.Create(
-                user, emails, participations, logins,
+                user, emails, logins,
                 profile, contactFields, languages, volunteerHistory,
                 preferences);
             result.Add(info);

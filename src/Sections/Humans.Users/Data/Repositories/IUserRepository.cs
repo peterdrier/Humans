@@ -176,23 +176,15 @@ internal partial interface IUserRepository : IRepository
 
     // ==========================================================================
     // Reads — EventParticipation (frozen legacy; Tickets owns participation since
-    // Users decomposition commit 13 and reads these through UserInfo)
+    // Users decomposition commit 13)
     // ==========================================================================
-
-    /// <summary>
-    /// Returns all participation records for a given user (across all years),
-    /// ordered by year ascending. Read-only (AsNoTracking). Used by the GDPR
-    /// export contributor under the <c>LegacyEventParticipations</c> key.
-    /// </summary>
-    Task<IReadOnlyList<EventParticipation>> GetEventParticipationsByUserIdAsync(
-        Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Bulk-loads all <c>event_participations</c> rows for the given userIds,
     /// grouped by <c>UserId</c>. Users with no participations are absent from
-    /// the dictionary. Read-only (AsNoTracking). Used by
-    /// <c>CachingUserService.WarmAllAsync</c> to avoid N+1 per-user fetches
-    /// when populating the UserInfo cache for every user at startup.
+    /// the dictionary. Read-only (AsNoTracking). Used by the GDPR export
+    /// contributor under the <c>LegacyEventParticipations</c> key until the
+    /// table is dropped.
     /// </summary>
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<EventParticipation>>>
         GetEventParticipationsByUserIdsAsync(

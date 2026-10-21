@@ -144,7 +144,7 @@ public sealed class BudgetServiceTests
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(_ => cancelActorRead
             ? new ValueTask<UserInfo?>(Task.FromException<UserInfo?>(new OperationCanceledException(request.Token)))
-            : new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = viewerId }, [], [], [], null, [])));
+            : new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = viewerId }, [], [], null, [])));
         var auth = Substitute.For<IAuthorizationService>();
         auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
             .Returns(AuthorizationResult.Success());
@@ -486,7 +486,7 @@ public sealed class BudgetServiceTests
         var users = Substitute.For<IUserService>();
         if (viewerExists)
             users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
-                UserInfo.Create(new User { Id = viewerId }, [], [], [], null, []));
+                UserInfo.Create(new User { Id = viewerId }, [], [], null, []));
         var tickets = Substitute.For<ITicketService>();
         var http = new DefaultHttpContext
         {
@@ -592,7 +592,7 @@ public sealed class BudgetServiceTests
         var (admin, budget, viewerId) = CreateAdminController(true);
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = viewerId }, [], [], [], null, []));
+            UserInfo.Create(new User { Id = viewerId }, [], [], null, []));
         var category = new BudgetCategorySnapshot(_yearId, _yearId, "Category", 0m, default, null, 0, null, []);
         budget.GetCategoryByIdAsync(_yearId).Returns(category);
         budget.GetLineItemByIdAsync(_yearId).Returns(new BudgetLineItemSnapshot(
@@ -1722,7 +1722,7 @@ public sealed class BudgetServiceTests
             }
             await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
-        var info = UserInfo.Create(new User { Id = userId }, [], [], [], null, []) with { MergedUserIds = [sourceId] };
+        var info = UserInfo.Create(new User { Id = userId }, [], [], null, []) with { MergedUserIds = [sourceId] };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
 
         var slices = await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken);

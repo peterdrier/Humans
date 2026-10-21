@@ -175,7 +175,6 @@ public class ShiftsControllerSummaryTests
                 State = UserState.Active,
             },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: new Profile
             {

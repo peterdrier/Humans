@@ -28,7 +28,6 @@ public class TeamAdminControllerTicketLookupTests
             // UserInfo.BurnerName reads User.BurnerName only (#1098).
             new User { Id = id, PreferredLanguage = "en", BurnerName = burnerName },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: new Profile
             {
@@ -48,7 +47,7 @@ public class TeamAdminControllerTicketLookupTests
     private static UserInfo InactiveHuman(Guid id) =>
         UserInfoFactory.Create(
             new User { Id = id, PreferredLanguage = "en" },
-            [], [], [], profile: null, [], [], [], []);
+            [], [], profile: null, [], [], [], []);
 
     [HumansFact]
     public void BuildRows_ActiveMatchedHuman_ReturnsOneRow()

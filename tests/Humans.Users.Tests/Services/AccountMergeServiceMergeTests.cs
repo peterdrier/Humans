@@ -153,7 +153,7 @@ public class AccountMergeServiceMergeTests
     {
         var src = Guid.NewGuid(); var tgt = Guid.NewGuid();
         _userService.GetRawUserInfoAsync(tgt, Arg.Any<CancellationToken>())
-            .Returns(UserInfoFactory.Create(new User { Id = tgt }, [], [], [], null, [], [], [], []));
+            .Returns(UserInfoFactory.Create(new User { Id = tgt }, [], [], null, [], [], [], []));
         // archived (src) returns null by default — Substitute.For<>'s default for ValueTask<UserInfo?> is null
         var act = () => BuildSut().MergeAsync(tgt, src, Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>();

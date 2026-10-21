@@ -1416,7 +1416,6 @@ public sealed class CampaignServiceTests
         var info = UserInfo.Create(
             user: user,
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: null,
             communicationPreferences: []);

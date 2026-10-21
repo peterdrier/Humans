@@ -7,10 +7,8 @@ namespace Humans.Tickets.Data;
 
 /// <summary>
 /// The only reader and writer of <c>tickets_event_participations</c>. Reads return cleared rows
-/// (<see cref="EventParticipation.Status"/> null) too: the service needs them to know which legacy
-/// Users rows are shadowed. Writes that take a <c>legacy</c> row treat it as the existing record
-/// when the table has none for that user and year, so the lifecycle rules see the same record the
-/// reads do (Users decomposition plan §3.1 step 4).
+/// (<see cref="EventParticipation.Status"/> null, written before the legacy Users rows were
+/// retired) too; the service skips them.
 /// </summary>
 internal interface IEventParticipationRepository : IRepository
 {
@@ -26,17 +24,14 @@ internal interface IEventParticipationRepository : IRepository
     /// </summary>
     Task<bool> UpsertAsync(
         Guid userId, int year, ParticipationStatus status, ParticipationSource source,
-        Instant? declaredAt, Instant? checkedInAt, EventParticipation? legacy, CancellationToken ct = default);
+        Instant? declaredAt, Instant? checkedInAt, CancellationToken ct = default);
 
     /// <summary>
-    /// Remove the record when its source is <paramref name="requiredSource"/> and it is not
-    /// Attended. With a <paramref name="legacy"/> row for the same user and year the record is
-    /// cleared (kept with a null status) instead of deleted, so the legacy value stays shadowed.
-    /// Returns true when a record was removed.
+    /// Delete the record when its source is <paramref name="requiredSource"/> and it is not
+    /// Attended. Returns true when a record was removed.
     /// </summary>
     Task<bool> ClearAsync(
-        Guid userId, int year, ParticipationSource requiredSource, EventParticipation? legacy,
-        CancellationToken ct = default);
+        Guid userId, int year, ParticipationSource requiredSource, CancellationToken ct = default);
 
     /// <summary>
     /// Admin backfill for one year: each entry takes its status with source AdminBackfill unless
@@ -44,20 +39,12 @@ internal interface IEventParticipationRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<(Guid UserId, ParticipationStatus Status)>> BackfillAsync(
         int year, IReadOnlyList<(Guid UserId, ParticipationStatus Status)> entries,
-        IReadOnlyDictionary<Guid, EventParticipation> legacyByUser, CancellationToken ct = default);
-
-    /// <summary>Inserts <paramref name="row"/> unless a row (cleared or not) exists for its user and
-    /// year. The legacy copy's idempotent write.</summary>
-    Task<bool> TryInsertAsync(EventParticipation row, CancellationToken ct = default);
+        CancellationToken ct = default);
 
     /// <summary>
     /// Account-merge fold of <paramref name="sourceUserId"/> onto <paramref name="targetUserId"/>,
     /// per year: the survivor keeps the higher-precedence status (Attended &gt; Ticketed &gt; NoShow
-    /// &gt; NotAttending) and the first check-in. The source's record is then removed, or cleared
-    /// where it has a legacy row. Each user's legacy rows count as their records.
+    /// &gt; NotAttending) and the first check-in. The source's records are then removed.
     /// </summary>
-    Task ReassignAsync(
-        Guid sourceUserId, Guid targetUserId,
-        IReadOnlyList<EventParticipation> legacySource, IReadOnlyList<EventParticipation> legacyTarget,
-        CancellationToken ct = default);
+    Task ReassignAsync(Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
 }

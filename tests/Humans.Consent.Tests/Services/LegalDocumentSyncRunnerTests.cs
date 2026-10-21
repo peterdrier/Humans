@@ -37,7 +37,7 @@ public sealed class LegalDocumentSyncRunnerTests
         var member = new User { Id = Guid.NewGuid(), BurnerName = "Member", PreferredLanguage = language! };
         var user = UserInfo.Create(member,
             [new UserEmail { Id = Guid.NewGuid(), UserId = member.Id, Email = "member@example.com", IsVerified = true, IsPrimary = true }],
-            [], [], null, []);
+            [], null, []);
         var own = MakeDocument("Own required", true);
         var other = MakeDocument("Other required", true);
         var optional = MakeDocument("Own optional", false);

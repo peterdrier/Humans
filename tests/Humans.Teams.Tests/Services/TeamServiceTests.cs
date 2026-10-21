@@ -2862,7 +2862,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         if (alreadyMember) SeedTeamMember(team.Id, target.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         _userService.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
-            UserInfo.Create(target, [], [], [], null, [])));
+            UserInfo.Create(target, [], [], null, [])));
 
         if (alreadyMember)
         {
@@ -2897,7 +2897,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         var sourceId = Guid.NewGuid();
         _userService.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
-            UserInfo.Create(target, [], [], [], null, [])));
+            UserInfo.Create(target, [], [], null, [])));
 
         var assignment = await _service.AssignToRoleAsync(definition.Id, sourceId, actor.Id,
             Xunit.TestContext.Current.CancellationToken);

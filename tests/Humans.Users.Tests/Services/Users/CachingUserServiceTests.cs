@@ -49,7 +49,6 @@ public class CachingUserServiceTests
         UserInfoFactory.Create(
             new User { Id = userId, BurnerName = displayName, PreferredLanguage = "en" },
             userEmails: [],
-            eventParticipations: eventParticipations ?? [],
             externalLogins: [],
             profile: SampleProfile(userId, displayName),
             contactFields: [],
@@ -85,7 +84,7 @@ public class CachingUserServiceTests
             Status = LegacyParticipationStatus.Ticketed,
             Source = LegacyParticipationSource.TicketSync,
         };
-        var original = UserInfoFactory.Create(user, [], [participation], [], profile, [], [], [], []);
+        var original = UserInfoFactory.Create(user, [], [], profile, [], [], [], []);
         var options = new DbContextOptionsBuilder<UsersDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString(), new InMemoryDatabaseRoot()).Options;
         await using (var seed = new UsersDbContext(options))
@@ -119,9 +118,6 @@ public class CachingUserServiceTests
         refreshed.BurnerName.Should().Be("After");
         refreshed.PreferredLanguage.Should().Be("es");
         refreshed.Profile.Should().BeEquivalentTo(original.Profile);
-#pragma warning disable HUM_USER_PARTICIPATIONS // the frozen legacy slice must survive a user-row refresh: Tickets' fallback reads it
-        refreshed.EventParticipations.Should().BeEquivalentTo(original.EventParticipations);
-#pragma warning restore HUM_USER_PARTICIPATIONS
     }
 
     [HumansFact]
@@ -564,8 +560,7 @@ public class CachingUserServiceTests
             };
 
         var fullInfo = UserInfoFactory.Create(
-            user, [userEmail], [participation],
-            externalLogins,
+            user, [userEmail], externalLogins,
             profile, [contactField],
             profile.Languages.ToList(),
             profile.VolunteerHistory.ToList(),
@@ -583,10 +578,6 @@ public class CachingUserServiceTests
         result.PreferredLanguage.Should().Be("es");
         result.UserEmails.Should().ContainSingle(e =>
             e.Id == emailId && e.IsPrimary && e.IsVerified);
-#pragma warning disable HUM_USER_PARTICIPATIONS // the legacy table still flows into UserInfo for Tickets' fallback
-        result.EventParticipations.Should().ContainSingle(p =>
-            p.Id == participationId && p.Year == 2026 && p.Status == LegacyParticipationStatus.Ticketed);
-#pragma warning restore HUM_USER_PARTICIPATIONS
         result.ExternalLogins.Should().ContainSingle(l =>
             l.Provider == "Google" && l.ProviderKey == "ext-key-1");
         result.Profile.Should().NotBeNull();
@@ -787,7 +778,6 @@ public class CachingUserServiceTests
 
         return UserInfoFactory.Create(
             user, userEmails,
-            eventParticipations: [],
             externalLogins: [],
             hasProfile ? profile : null, cfRows,
             profileLanguages: [],
@@ -1051,7 +1041,6 @@ public class CachingUserServiceTests
         UserInfoFactory.Create(
             new User { Id = userId, BurnerName = profile?.BurnerName, PreferredLanguage = "en" },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: profile,
             contactFields: [],
@@ -1075,7 +1064,6 @@ public class CachingUserServiceTests
                     UpdatedAt = Instant.MinValue,
                 }
             ],
-            eventParticipations: [],
             externalLogins: [],
             profile: SampleProfile(userId, "Alice"),
             contactFields: [],
@@ -1396,7 +1384,7 @@ public class CachingUserServiceTests
                 MergedAt = mergedTo is not null || gdprErased ? Instant.FromUtc(2026, 1, 1, 0, 0) : null,
                 State = gdprErased ? UserState.Deleted : mergedTo is not null ? UserState.Merged : UserState.Active,
             },
-            userEmails: [], eventParticipations: [], externalLogins: [],
+            userEmails: [], externalLogins: [],
             profile: null, contactFields: [], profileLanguages: [],
             volunteerHistory: [], communicationPreferences: []);
 
@@ -1516,7 +1504,7 @@ public class CachingUserServiceTests
             Email = "alice@example.com",
         };
         var info = UserInfoFactory.Create(
-            user, userEmails: [], eventParticipations: [], externalLogins: [],
+            user, userEmails: [], externalLogins: [],
             profile: SampleProfile(userId, "Deleted User"), contactFields: [],
             profileLanguages: [], volunteerHistory: [], communicationPreferences: []);
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())

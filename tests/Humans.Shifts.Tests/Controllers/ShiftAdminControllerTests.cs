@@ -973,7 +973,6 @@ public class ShiftAdminControllerTests
     private static UserInfo MakeUserInfo(Guid userId) => UserInfoFactory.Create(
         user: new User { Id = userId, DisplayName = "Coord", PreferredLanguage = "en" },
         userEmails: [],
-        eventParticipations: [],
         externalLogins: [],
         profile: new Profile { UserId = userId, BurnerName = "Coord" },
         contactFields: [],

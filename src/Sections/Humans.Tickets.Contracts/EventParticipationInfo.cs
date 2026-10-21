@@ -4,8 +4,7 @@ namespace Humans.Tickets.Contracts;
 
 /// <summary>
 /// One member's participation in one event year, as <see cref="ITicketService"/> reads it from
-/// <c>tickets_event_participations</c> (falling back to the frozen legacy Users row until
-/// <c>tickets.event-participations</c> has run). No record for a year means unknown / no response.
+/// <c>tickets_event_participations</c>. No record for a year means unknown / no response.
 /// </summary>
 /// <param name="UserId">The member, resolved forward through any account merge.</param>
 /// <param name="Year">The event year (e.g. 2026).</param>

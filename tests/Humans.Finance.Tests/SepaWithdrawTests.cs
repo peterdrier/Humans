@@ -57,7 +57,7 @@ public class SepaWithdrawTests
                     DeletionEligibleAfter: null,
                     ContactSource: null,
                     ExternalSourceId: null, MergedToUserId: null, MergedAt: null, IdentityEmailColumn: null,
-                    UserEmails: [], EventParticipations: [], ExternalLogins: [], Profile: null,
+                    UserEmails: [], ExternalLogins: [], Profile: null,
                     CommunicationPreferences: []),
             });
         _userEmails.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

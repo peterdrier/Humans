@@ -72,5 +72,5 @@ public sealed class GoogleSyncSettingsTabViewComponentTests
     private static UserInfo MakeUser(Guid userId, string burnerName) =>
         UserInfo.Create(
             new User { Id = userId, UserName = $"user-{userId:N}", BurnerName = burnerName },
-            [], [], [], null, []);
+            [], [], null, []);
 }

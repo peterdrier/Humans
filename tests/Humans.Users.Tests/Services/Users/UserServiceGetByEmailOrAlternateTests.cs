@@ -45,8 +45,6 @@ public sealed class UserServiceGetByEmailOrAlternateTests : ServiceTestHarness
             .Returns(new User { Id = userId, DisplayName = "Test User", PreferredLanguage = "en" });
         _repo.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<UserEmail>)[]);
-        _repo.GetEventParticipationsByUserIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<EventParticipation>)[]);
         _repo.GetExternalLoginsByUserIdsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>());
