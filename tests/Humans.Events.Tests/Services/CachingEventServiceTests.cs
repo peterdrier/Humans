@@ -168,6 +168,26 @@ public sealed class CachingEventServiceTests
             .Host.Should().BeNull();
     }
 
+    [HumansFact]
+    public async Task ReassignAsync_RefreshesTheCachedEvents()
+    {
+        // The merge fold re-points the submitter of an approved event the cache is serving.
+        var before = Approved("Sunset Yoga");
+        SeedApproved(before);
+        (await _service.GetApprovedEventByIdAsync(before.Id, TestContext.Current.CancellationToken))!
+            .SubmitterUserId.Should().Be(before.SubmitterUserId);
+
+        var survivor = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        var now = Instant.FromUtc(2026, 6, 1, 12, 0);
+        SeedApproved(before with { SubmitterUserId = survivor });
+        await _service.ReassignAsync(before.SubmitterUserId, survivor, actor, now, TestContext.Current.CancellationToken);
+
+        await _inner.Received(1).ReassignAsync(before.SubmitterUserId, survivor, actor, now, Arg.Any<CancellationToken>());
+        (await _service.GetApprovedEventByIdAsync(before.Id, TestContext.Current.CancellationToken))!
+            .SubmitterUserId.Should().Be(survivor);
+    }
+
     [HumansTheory]
     [InlineData("mutation", false)]
     [InlineData("mutation", true)]
