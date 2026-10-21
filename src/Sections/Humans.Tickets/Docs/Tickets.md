@@ -86,6 +86,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 ## Invariants
 
 - Section-owned resource keys use the `Tickets_` prefix in all six cultures; transfer-wizard keys use `Tickets_TicketTransfer_`.
+- The gate credential page links to the Gate admissions terminal and explains that the shared account can record admissions. The kiosk is restricted to Gate and its sign-in/sign-out pages; it cannot browse Scanner or ticket administration.
 
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant. Guest order totals, dashboard cards, order and attendee amounts, VIP splits, fee rates and sales aggregate totals use the same UI culture; chart JSON stays numeric.
 - Orders, Attendees and Who Hasn’t Bought GETs retain request cancellation through ticket queries, ticket-type filters and member/team/settings enrichment. Code tracking, sales aggregates and the accountant CSV retain it through reporting queries and campaign enrichment.

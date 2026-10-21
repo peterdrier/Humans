@@ -31,14 +31,14 @@ personas. It is not a person — no email, no roles, no team memberships. Ticket
 admins set its password from the ticketing admin pages; gate staff sign the laptop
 in once and the session persists across restarts.
 
-**Read-only by construction, not by enforcement.** The account holds no admin
-roles, so every admin surface and private-info page stays invisible. Self-scoped
-writes are the same writes any baseline volunteer could do, scoped to the gate
-account itself. There is no per-controller read-only machinery, deliberately. A
-route-restriction middleware in `src/Humans.Web/Program.cs` bounces the signed-in gate
-account to `/Gate` for any path outside `/Gate/*`, `/Account/GateLogin`,
-`/Account/Logout`, and `/Account/AccessDenied` — defense in depth on top of the zero
-roles.
+**Gate admissions access without admin roles.** The account can scan tickets and
+record admission decisions through Gate's `GateAdmit` policy. It has no admin
+roles. The credential page links to the Gate admissions terminal and states this
+write capability. A route-restriction middleware in `src/Humans.Web/Program.cs`
+bounces the signed-in gate account to `/Gate` for any path outside `/Gate/*`,
+`/Account/GateLogin`, `/Account/Logout`, and `/Account/AccessDenied` — defense in
+depth on top of the zero roles. The separate Scanner tool remains read-only and
+cannot be opened by the kiosk account.
 
 ## How It Works
 
