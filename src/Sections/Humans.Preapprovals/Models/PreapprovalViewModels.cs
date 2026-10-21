@@ -124,6 +124,6 @@ internal sealed class ProgramFormViewModel
         ClaimBy = p.ClaimBy,
         Status = p.Status,
         ManagerUserIds = p.ManagerUserIds.ToList(),
-        KindLocked = p.Grants.Count > 0
+        KindLocked = p.KindLocked
     };
 }
