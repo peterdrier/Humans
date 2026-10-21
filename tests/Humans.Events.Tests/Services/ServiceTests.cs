@@ -1530,6 +1530,9 @@ public sealed class EventServiceTests
         public Task<Event?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default)
             => Task.FromResult(Events.FirstOrDefault(e => e.Id == eventId));
 
+        public Task<Event?> GetEventWithDetailsAsync(Guid eventId, CancellationToken ct = default)
+            => Task.FromResult(Events.FirstOrDefault(e => e.Id == eventId));
+
         public Task<IReadOnlyList<CampEventOverlap>> GetActiveCampEventsAsync(CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<CampEventOverlap>>([]);
 

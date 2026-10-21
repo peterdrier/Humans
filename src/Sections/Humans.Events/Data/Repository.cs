@@ -214,7 +214,7 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
     public async Task<Event?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Events.AsNoTracking().FirstOrDefaultAsync(
+        return await WithDetails(ctx.Events.AsNoTracking()).FirstOrDefaultAsync(
             e => e.Id == eventId && e.CampId == null && e.SubmitterUserId == userId, ct);
     }
 
@@ -231,7 +231,7 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
     public async Task<Event?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Events.AsNoTracking().FirstOrDefaultAsync(
+        return await WithDetails(ctx.Events.AsNoTracking()).FirstOrDefaultAsync(
             e => e.Id == eventId && e.CampId == campId, ct);
     }
 
@@ -342,6 +342,20 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Events.AsNoTracking().FirstOrDefaultAsync(e => e.Id == eventId, ct);
     }
+
+    public async Task<Event?> GetEventWithDetailsAsync(Guid eventId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await WithDetails(ctx.Events.AsNoTracking()).FirstOrDefaultAsync(e => e.Id == eventId, ct);
+    }
+
+    // Read-only point reads project to EventInfo, which carries category, venue and
+    // moderation history. Write loads (GetEventForModerationAsync) stay nav-free so
+    // Attach on save never drags a stale Category/EventVenue graph along.
+    private static IQueryable<Event> WithDetails(IQueryable<Event> query) => query
+        .Include(e => e.Category)
+        .Include(e => e.EventVenue)
+        .Include(e => e.EventModerationActions);
 
     public async Task<IReadOnlyList<CampEventOverlap>> GetActiveCampEventsAsync(CancellationToken ct = default)
     {

@@ -438,7 +438,7 @@ internal sealed class EventService(
 
     public async Task<EventInfo?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default)
     {
-        var guideEvent = await repo.GetEventForModerationAsync(eventId, ct);
+        var guideEvent = await repo.GetEventWithDetailsAsync(eventId, ct);
         return guideEvent is null ? null : ToEventInfo(guideEvent);
     }
 
