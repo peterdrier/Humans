@@ -1,5 +1,4 @@
 using Humans.Shifts.Services.Dtos;
-using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
@@ -28,7 +27,6 @@ internal sealed class VolunteerTrackingController(
     IVolunteerTrackingExportService exportService,
     VolunteerTrackingXlsxBuilder xlsxBuilder,
     IUserService userService,
-    IAuditLogService auditLogService,
     IStringLocalizer<ShiftsResource> localizer,
     ILogger<VolunteerTrackingController> logger) : HumansControllerBase(userService)
 {
@@ -216,33 +214,8 @@ internal sealed class VolunteerTrackingController(
             return RedirectBack(returnUrl);
         }
 
-        await EmitCampSetupAuditAsync(form, current.Id, result.AutoClearedDayOffs);
-
         SetSuccess(localizer["VolTrack_Msg_CampSetupSaved"]);
         return RedirectBack(returnUrl);
-    }
-
-    private async Task EmitCampSetupAuditAsync(
-        SetCampSetupForm form, Guid actorUserId,
-        IReadOnlyList<int>? autoClearedDayOffs)
-    {
-        await auditLogService.LogAsync(
-            AuditAction.VolunteerCampSetupSet,
-            nameof(VolunteerBuildStatus),
-            form.UserId,
-            $"BarrioSetupStartDate set to {form.Date}; notes={form.Notes ?? "—"}",
-            actorUserId);
-
-        if (autoClearedDayOffs is null || autoClearedDayOffs.Count == 0) return;
-
-        // Fresh DbContext per call → safe to fan out concurrently.
-        await Task.WhenAll(autoClearedDayOffs.Select(dayOffset =>
-            auditLogService.LogAsync(
-                AuditAction.VolunteerDayOffCleared,
-                nameof(VolunteerBuildStatus),
-                form.UserId,
-                $"DayOffset={dayOffset}; auto-cleared by camp-setup change",
-                actorUserId)));
     }
 
     [HttpPost("ClearCampSetup")]
@@ -260,13 +233,6 @@ internal sealed class VolunteerTrackingController(
         if (current is null) return Forbid();
 
         await service.ClearCampSetupAsync(userId, current.Id, ct);
-
-        await auditLogService.LogAsync(
-            AuditAction.VolunteerCampSetupCleared,
-            nameof(VolunteerBuildStatus),
-            userId,
-            "BarrioSetupStartDate cleared",
-            current.Id);
 
         SetSuccess(localizer["VolTrack_Msg_CampSetupCleared"]);
         return RedirectBack(returnUrl);
@@ -304,13 +270,6 @@ internal sealed class VolunteerTrackingController(
             return RedirectBack(returnUrl);
         }
 
-        await auditLogService.LogAsync(
-            AuditAction.VolunteerDayOffMarked,
-            nameof(VolunteerBuildStatus),
-            form.UserId,
-            $"DayOffset={form.DayOffset}; reason={(string.IsNullOrWhiteSpace(form.Reason) ? "—" : form.Reason)}",
-            current.Id);
-
         SetSuccess(localizer["VolTrack_Msg_DayOffMarked"]);
         return RedirectBack(returnUrl);
     }
@@ -336,12 +295,6 @@ internal sealed class VolunteerTrackingController(
             ct);
         if (result.Removed)
         {
-            await auditLogService.LogAsync(
-                AuditAction.VolunteerDayOffCleared,
-                nameof(VolunteerBuildStatus),
-                form.UserId,
-                $"DayOffset={form.DayOffset}; cleared by coordinator",
-                current.Id);
             SetSuccess(localizer["VolTrack_Msg_DayOffCleared"]);
         }
         else
@@ -377,12 +330,10 @@ internal sealed class VolunteerTrackingController(
             es.Id,
             offset,
             available: true,
+            current.Id,
             ct);
         if (changed)
         {
-            await auditLogService.LogAsync(
-                AuditAction.VolunteerAvailabilitySet, nameof(GeneralAvailability), targetUserId,
-                $"DayOffset={offset}; marked available by coordinator", current.Id);
             SetSuccess(localizer["VolTrack_Msg_AvailabilitySet"]);
         }
         return RedirectBack(returnUrl);
@@ -413,12 +364,10 @@ internal sealed class VolunteerTrackingController(
             es.Id,
             offset,
             available: false,
+            current.Id,
             ct);
         if (changed)
         {
-            await auditLogService.LogAsync(
-                AuditAction.VolunteerAvailabilityCleared, nameof(GeneralAvailability), targetUserId,
-                $"DayOffset={offset}; availability cleared by coordinator", current.Id);
             SetSuccess(localizer["VolTrack_Msg_AvailabilityCleared"]);
         }
         return RedirectBack(returnUrl);
