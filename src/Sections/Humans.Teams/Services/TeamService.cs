@@ -153,20 +153,11 @@ internal sealed class TeamService(
         throw new InvalidOperationException($"Could not generate unique slug for team '{name}' after 10 attempts");
     }
 
-    public async Task<Team?> GetTeamEntityBySlugAsync(string slug, CancellationToken cancellationToken = default)
-    {
-        var normalizedSlug = slug.ToLowerInvariant();
-        return await repo.GetBySlugWithRelationsAsync(normalizedSlug, cancellationToken);
-    }
-
     public async Task<TeamInfo?> GetTeamBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
         var teamsById = await LoadTeamsByIdAsync(cancellationToken);
         return TeamSlugResolver.Find(teamsById, slug);
     }
-
-    public async Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default) =>
-        await repo.GetByIdWithRelationsAsync(teamId, cancellationToken);
 
     public async Task<TeamInfo?> GetTeamAsync(
         Guid teamId,

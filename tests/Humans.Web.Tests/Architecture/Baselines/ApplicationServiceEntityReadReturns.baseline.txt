@@ -30,5 +30,3 @@ Humans.Shifts.Services.IShiftManagement.GetRotaByIdAsync:Humans.Shifts.Domain.Ro
 Humans.Shifts.Services.IShiftManagement.GetRotasByDepartmentAsync:Humans.Shifts.Domain.Rota
 Humans.Shifts.Services.IShiftManagement.GetShiftByIdAsync:Humans.Shifts.Domain.Shift
 Humans.Shifts.Services.IShiftSignupService.GetByUserAsync:Humans.Shifts.Domain.ShiftSignup
-Humans.Teams.Services.ITeamManagementService.GetTeamByIdAsync:Humans.Teams.Domain.Team
-Humans.Teams.Services.ITeamManagementService.GetTeamEntityBySlugAsync:Humans.Teams.Domain.Team

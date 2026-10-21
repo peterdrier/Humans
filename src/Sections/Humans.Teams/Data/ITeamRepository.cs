@@ -46,12 +46,6 @@ internal interface ITeamRepository : IRepository
     Task<Team?> FindForMutationAsync(Guid teamId, CancellationToken ct = default);
 
     /// <summary>
-    /// Load a team by its slug or custom slug with active members, parent,
-    /// and children. Detached. Used by the public team detail page.
-    /// </summary>
-    Task<Team?> GetBySlugWithRelationsAsync(string normalizedSlug, CancellationToken ct = default);
-
-    /// <summary>
     /// Load every team id whose <c>Slug</c> OR <c>CustomSlug</c> matches one
     /// of the given candidates, optionally excluding a specific team id.
     /// Used by create/update to detect slug collisions.

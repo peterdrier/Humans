@@ -47,17 +47,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         return await db.Teams.FindAsync([teamId], ct);
     }
 
-    public async Task<Team?> GetBySlugWithRelationsAsync(string normalizedSlug, CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-        return await db.Teams
-            .AsNoTracking()
-            .Include(t => t.Members.Where(m => m.LeftAt == null))
-            .Include(t => t.ParentTeam)
-            .Include(t => t.ChildTeams)
-            .FirstOrDefaultAsync(t => t.Slug == normalizedSlug || t.CustomSlug == normalizedSlug, ct);
-    }
-
     public async Task<bool> SlugExistsAsync(string slug, Guid? excludingTeamId, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
