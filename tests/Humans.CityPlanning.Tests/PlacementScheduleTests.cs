@@ -293,6 +293,8 @@ public sealed class PlacementScheduleTests : CityPlanningTestBase
     [InlineData(-30, null, -5, "ChangeableWithoutClose")]
     [InlineData(-30, -10, -20, "ChangeableBeforeCloses")]
     [InlineData(-400, -10, null, "OutOfRange")]
+    [InlineData(int.MinValue, null, null, "OutOfRange")]
+    [InlineData(null, int.MaxValue, null, "OutOfRange")]
     public async Task UpdatePlacementScheduleAsync_InconsistentDays_AreRefusedWithoutWritingOrAuditing(
         int? opens, int? closes, int? changeableUntil, string errorKey)
     {

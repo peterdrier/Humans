@@ -119,6 +119,7 @@ internal sealed class CityPlanningController(
 
     [HttpPost("BarrioMap/Admin/FollowPlacementSchedule")]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = PolicyNames.CityPlanningMapAdmin)]
     public async Task<IActionResult> FollowPlacementSchedule(CancellationToken cancellationToken)
     {
         var (error, user) = await RequireMapAdminAsync(cancellationToken);
@@ -189,6 +190,7 @@ internal sealed class CityPlanningController(
 
     [HttpPost("BarrioMap/Admin/UpdatePlacementSchedule")]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = PolicyNames.CityPlanningMapAdmin)]
     public async Task<IActionResult> UpdatePlacementSchedule(
         int? opensOffset, int? closesOffset, int? changeableUntilOffset, CancellationToken cancellationToken)
     {

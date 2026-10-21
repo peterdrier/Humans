@@ -552,7 +552,7 @@ internal sealed class CityPlanningService(
         Guid userId, CancellationToken cancellationToken = default)
     {
         if (new[] { opensOffset, closesOffset, changeableUntilOffset }
-            .Any(o => o is { } days && Math.Abs(days) > MaxPlacementOffsetDays))
+            .Any(o => o is { } days && (days < -MaxPlacementOffsetDays || days > MaxPlacementOffsetDays)))
             return new PlacementScheduleUpdateResult(false, "OutOfRange");
         if (opensOffset is { } opens && closesOffset is { } closes && closes < opens)
             return new PlacementScheduleUpdateResult(false, "ClosesBeforeOpens");
