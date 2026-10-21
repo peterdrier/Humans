@@ -25,7 +25,7 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
 
         // Copy varies by whether a qualifying shift already needs feeding; the entry is the same either way.
         // A failure here is logged by ThingsToDoViewComponent, which drops this contributor's entries.
-        var hasQualifyingSignup = await services.GetRequiredService<IShiftManagementService>()
+        var hasQualifyingSignup = await services.GetRequiredService<IShiftService>()
             .HasQualifyingCantinaSignupAsync(userId);
         var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
         return

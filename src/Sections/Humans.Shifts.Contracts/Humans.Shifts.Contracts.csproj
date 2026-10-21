@@ -12,7 +12,7 @@
     The split is carved from the call sites, not from the interfaces (Notifications'
     rule). A member is on this leaf if something outside the section calls it, and
     nowhere else. From IShiftManagement that is the cross-section reads
-    (IShiftManagementService), the volunteer-profile surface Shell's profile page
+    (IShiftService), the volunteer-profile surface Shell's profile page
     and widget gallery read (IShiftVolunteerProfiles), and the dev-fixture verbs
     Humans.Development's seeder needs (IShiftSeeding); the rota/shift generation,
     coordinator-dashboard and post-event-stats surface has no outside caller and stays

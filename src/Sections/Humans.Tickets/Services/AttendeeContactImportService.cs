@@ -113,7 +113,7 @@ internal sealed class AttendeeContactImportService(
             foreach (var group in importState.ToUpsert.GroupBy(a => a.MatchedUserId!.Value))
             {
                 var earliestScan = group.Min(a => a.CheckedInAt);
-                await participations.SetParticipationFromTicketSyncAsync(
+                await participations.RecordParticipationAsync(
                     group.Key, active.Year,
                     earliestScan is not null ? ParticipationStatus.Attended : ParticipationStatus.Ticketed,
                     earliestScan, ct);

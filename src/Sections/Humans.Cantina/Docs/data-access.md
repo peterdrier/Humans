@@ -21,7 +21,7 @@ merge chain and the legacy `ProfileInfo` food fields through
 
 ### CantinaRosterService (Scoped)
 
-No repository. Cross-section reads via `IShiftManagementService`
+No repository. Cross-section reads via `IShiftService`
 (on-site cohort per day, via `GetOnSiteUserIdsForDayAsync`), `ISettingsService`
 (active-burn metadata — `GetActiveAsync` returning `EventSettingsInfo`, for
 the gate-opening/strike-end date range and event timezone),
@@ -35,7 +35,7 @@ around food, not medical history.
 
 Arrival-day feeding: each human is also fed the day before their first
 confirmed shift of the event. The first-shift scan reads confirmed
-signups through the same `IShiftManagementService` surface, one call
+signups through the same `IShiftService` surface, one call
 per day from build start through `min(StrikeEndOffset, the last day the
 caller needs)` — not the whole event every time.
 

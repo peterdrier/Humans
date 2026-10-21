@@ -56,7 +56,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         _pages = new TeamPageService(
             _service,
             Substitute.For<Humans.GoogleIntegration.Contracts.ITeamResourceService>(),
-            Substitute.For<Humans.Shifts.Contracts.IShiftManagementService>(),
+            Substitute.For<Humans.Shifts.Contracts.IShiftService>(),
             Substitute.For<Humans.Settings.Contracts.ISettingsService>(),
             userService,
             _roleAssignmentService);

@@ -46,7 +46,7 @@ internal sealed class ProfileViewController(
     IUserManagement userService,
     IProfilePictureService profilePictureService,
     IShiftSignups shiftSignupService,
-    IShiftManagementService shiftMgmt,
+    IShiftService shiftMgmt,
     IStringLocalizer<SharedResource> sharedLocalizer,
     ITeamService teamService,
     ICampService campService,

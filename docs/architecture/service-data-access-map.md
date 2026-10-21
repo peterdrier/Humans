@@ -317,7 +317,7 @@ Every table is owned by exactly one repository; there are no HUM0025
     `IShiftManagement` — all §15-compliant service-interface calls.
     Its one cross-section **write** — projecting an admit onto the guest's
     participation record as `Attended` — goes through the
-    owning `ITicketWrite.SetParticipationFromTicketSyncAsync` (Tickets), so no
+    owning `ITicketWrite.RecordParticipationAsync` (Tickets), so no
     design-rule violation. `IGateRepository` reads/writes only the three
     Gate-owned tables. The section deliberately has **no caching
     decorator**: admission verdicts must be live.

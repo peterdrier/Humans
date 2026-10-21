@@ -24,7 +24,7 @@
   <ItemGroup>
     <!--
       Cantina owns cantina_dietary_profiles (its own CantinaDbContext). The roster service
-      composes over IShiftManagementService / ISettingsService / IUserService, all in their
+      composes over IShiftService / ISettingsService / IUserService, all in their
       owners' public contracts, and the CSV writers use Humans.Base.Csv.HumansCsv. Gdpr for
       IUserDataContributor (export/erase of the dietary profile).
     -->

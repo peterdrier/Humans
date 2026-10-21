@@ -29,7 +29,7 @@ public sealed class SearchServiceTests
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly ICampService _camps = Substitute.For<ICampService>();
-    private readonly IShiftManagementService _shifts = Substitute.For<IShiftManagementService>();
+    private readonly IShiftService _shifts = Substitute.For<IShiftService>();
     private readonly IEventService _events = Substitute.For<IEventService>();
 
     public SearchServiceTests()

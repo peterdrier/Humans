@@ -14,7 +14,7 @@ namespace Humans.Shifts.ViewComponents;
 /// the tri-card row for a quiet "season wrapped" note.
 /// </summary>
 public sealed class DashboardShiftsViewComponent(
-    IShiftManagementService shiftMgmt,
+    IShiftService shiftMgmt,
     IShiftView shiftView,
     IBurnSettingsService burnSettings,
     ISettingsService settingsService,

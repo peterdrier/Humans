@@ -22,7 +22,7 @@ namespace Humans.Cantina.Tests.Services;
 /// </summary>
 public class CantinaDailyRosterServiceTests
 {
-    private readonly IShiftManagementService _shiftMgmt;
+    private readonly IShiftService _shiftMgmt;
     private readonly ISettingsService _burnSettings;
     private readonly IUserService _userRead;
     private readonly ICantinaService _dietary = Substitute.For<ICantinaService>();
@@ -35,7 +35,7 @@ public class CantinaDailyRosterServiceTests
 
     public CantinaDailyRosterServiceTests()
     {
-        _shiftMgmt = Substitute.For<IShiftManagementService>();
+        _shiftMgmt = Substitute.For<IShiftService>();
         _burnSettings = Substitute.For<ISettingsService>();
         _userRead = Substitute.For<IUserService>();
         _clock = new FakeClock(Instant.FromUtc(2026, 7, 7, 12, 0));
