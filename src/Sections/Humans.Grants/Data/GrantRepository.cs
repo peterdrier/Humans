@@ -117,12 +117,14 @@ internal sealed class GrantRepository(IDbContextFactory<GrantsDbContext> factory
             .Where(p => userIds.Contains(p.CreatedByUserId)).ToListAsync(ct);
         var managerRows = await ctx.Managers.AsNoTracking().Include(m => m.Program)
             .Where(m => userIds.Contains(m.UserId)).ToListAsync(ct);
+        var managersAdded = await ctx.Managers.AsNoTracking().Include(m => m.Program)
+            .Where(m => userIds.Contains(m.AddedByUserId)).ToListAsync(ct);
         var issued = await ctx.Grants.AsNoTracking().Include(g => g.Program)
             .Where(g => userIds.Contains(g.IssuedByUserId)).ToListAsync(ct);
         var revoked = await ctx.Grants.AsNoTracking().Include(g => g.Program)
             .Where(g => g.RevokedByUserId != null && userIds.Contains(g.RevokedByUserId.Value))
             .ToListAsync(ct);
-        return new GrantUserRows(grants, created, managerRows, issued, revoked);
+        return new GrantUserRows(grants, created, managerRows, managersAdded, issued, revoked);
     }
 
     public async Task EraseUserAsync(Guid userId, CancellationToken ct = default)

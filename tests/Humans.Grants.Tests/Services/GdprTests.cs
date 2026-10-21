@@ -52,6 +52,24 @@ public sealed class GdprTests : GrantsTestHarness
     }
 
     [HumansFact]
+    public async Task Export_DecisionsSlice_ListsManagersTheyNamed_ErasureKeepsTheActorId()
+    {
+        var program = await SeedProgramAsync(managers: SeedUser("Manager"));
+        Guid namer;
+        await using (var db = OpenContext())
+            namer = (await db.Managers.SingleAsync(Ct)).AddedByUserId;
+
+        var slices = await NewService().ContributeForUserAsync(namer, Ct);
+        System.Text.Json.JsonSerializer.Serialize(slices[1].Data)
+            .Should().Contain("\"ManagersNamed\":[{\"Program\":\"" + program.Name + "\"");
+
+        await NewService().EraseForUserAsync(namer, Ct);
+        await using var read = OpenContext();
+        (await read.Managers.SingleAsync(Ct)).AddedByUserId.Should().Be(namer);
+        NewService().ErasureDeclaration[GrantService.GrantDecisions].Should().Contain("managers they named");
+    }
+
+    [HumansFact]
     public async Task Erase_DeletesTheirGrantsAndManagerRows_KeepsGrantsTheyIssued()
     {
         var person = SeedUser("Person");

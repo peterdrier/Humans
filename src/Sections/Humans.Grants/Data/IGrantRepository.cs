@@ -12,6 +12,7 @@ internal sealed record GrantUserRows(
     IReadOnlyList<Grant> Grants,
     IReadOnlyList<GrantProgram> ProgramsCreated,
     IReadOnlyList<GrantProgramManager> ManagerRows,
+    IReadOnlyList<GrantProgramManager> ManagersAdded,
     IReadOnlyList<Grant> GrantsIssued,
     IReadOnlyList<Grant> GrantsRevoked);
 

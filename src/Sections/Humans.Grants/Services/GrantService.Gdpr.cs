@@ -8,7 +8,7 @@ namespace Humans.Grants.Services;
 
 /// <summary>
 /// The GDPR surface. Export: the person's own grants, and what they did as a creator, manager
-/// or issuer. Erasure deletes the person's grants and manager rows; the bare actor ids on rows
+/// or issuer (programs created, managers named, grants issued or revoked). Erasure deletes the person's grants and manager rows; the bare actor ids on rows
 /// they decided stay as the record of who decided. Merge re-keys every user-id column onto the
 /// surviving account, revoking a duplicate live grant.
 /// </summary>
@@ -18,8 +18,8 @@ internal sealed partial class GrantService : IUserDataContributor, IUserMerge
     internal const string GrantDecisions = "GrantDecisions";
 
     private const string ActorRetention =
-        "Manager rows are deleted. The person's id stays on programs they created and grants they " +
-        "issued or revoked, as the record of who decided, which the Board relies on (GDPR Art. 6(1)(f)); " +
+        "Manager rows are deleted. The person's id stays on programs they created, managers they named " +
+        "and grants they issued or revoked, as the record of who decided, which the Board relies on (GDPR Art. 6(1)(f)); " +
         "it is a bare id that no longer resolves to a person once the account is anonymized.";
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
@@ -51,10 +51,11 @@ internal sealed partial class GrantService : IUserDataContributor, IUserMerge
         {
             ProgramsCreated = rows.ProgramsCreated.Select(p => new { p.Name, p.Year, CreatedAt = p.CreatedAt.ToIso8601() }).ToList(),
             ManagerOf = rows.ManagerRows.Select(m => new { Program = m.Program.Name, AddedAt = m.AddedAt.ToIso8601() }).ToList(),
+            ManagersNamed = rows.ManagersAdded.Select(m => new { Program = m.Program.Name, AddedAt = m.AddedAt.ToIso8601() }).ToList(),
             GrantsIssued = rows.GrantsIssued.Select(g => new { Program = g.Program.Name, IssuedAt = g.IssuedAt.ToIso8601() }).ToList(),
             GrantsRevoked = rows.GrantsRevoked.Select(g => new { Program = g.Program.Name, RevokedAt = g.RevokedAt.ToIso8601() }).ToList()
         };
-        var hasDecisions = decisions.ProgramsCreated.Count + decisions.ManagerOf.Count
+        var hasDecisions = decisions.ProgramsCreated.Count + decisions.ManagerOf.Count + decisions.ManagersNamed.Count
             + decisions.GrantsIssued.Count + decisions.GrantsRevoked.Count > 0;
 
         return
