@@ -1,0 +1,62 @@
+# Runs the opt-in Humans.Integration.Tests suite on a GitHub runner, where Docker is
+# available for its Testcontainers Postgres. This is NOT a CI gate: nothing waits on it
+# and build.yml keeps excluding the suite. It exists so the suite's real behaviour
+# (flakes, timeouts, migration drift) is measured somewhere other than Peter's machine:
+# on demand from the Actions tab, and once a night so a history accumulates.
+name: Integration tests
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'
+
+concurrency:
+  group: integration-tests-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: '10.0.x'
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      # Same key as build.yml, so this run reads the cache build.yml maintains on main.
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', 'Directory.Build.props', 'global.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Run Humans.Integration.Tests
+        env:
+          # The suite is opt-in (csproj IsTestProject + IntegrationTestGate); this is the opt-in.
+          HUMANS_INTEGRATION_TESTS: '1'
+        run: |
+          dotnet test tests/Humans.Integration.Tests/Humans.Integration.Tests.csproj \
+            --configuration Release \
+            --verbosity quiet \
+            --blame-hang-timeout 5m \
+            --logger "trx;LogFileName=integration-results.trx" \
+            --logger "console;verbosity=normal" \
+            --results-directory TestResults
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: integration-test-results
+          path: TestResults
+          if-no-files-found: warn
