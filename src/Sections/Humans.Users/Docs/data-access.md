@@ -276,8 +276,9 @@ sections' repositories. Both tables it touches are **owned by the Users
 section** (no cross-section table access). Implements `IAccountMergeService`,
 `IUserDataContributor`. Calls the section's own `IUserManagement`; cross-section
 calls via `IRoleAssignmentWrite`, `INotificationService`, `IAuditLogService`,
-`IUserInfoInvalidator`, `IActiveTeamsCacheInvalidator`,
-`IConsentCacheInvalidator`, plus the `IUserMerge` aggregator.
+`IUserInfoInvalidator`, `IActiveTeamsCacheInvalidator`, plus the `IUserMerge`
+aggregator. Consent's per-user cache needs no merge signal: it rebuilds an entry
+whose `UserInfo.AllUserIds` changed when the tombstone lands.
 
 Cache: per-section `IUserMerge` implementations invalidate their own
 caches; the unified read-model is evicted via `IUserInfoInvalidator`.

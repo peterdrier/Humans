@@ -22,7 +22,7 @@ can read the association's statutes.
 | Keep documents current | "Has the source changed? Pull it." | internal sync surface (`SyncAllDocumentsAsync`, `SyncDocumentAsync`), `ILegalDocumentSyncRunner` (job body), the sync + reminder Hangfire jobs at 04:00 |
 | Admin CRUD | "Create/edit/archive/sync a document" | `IAdminLegalDocumentService`, the routes under `/Legal/Admin/Documents` |
 | Public statutes | "Show the published statutes/terms" | `ILegalDocumentService`, `/Legal/{slug?}`, GitHub-direct, no DB |
-| Cache signals | "This data changed elsewhere" | `IConsentCacheInvalidator` (account merge), internal `ILegalDocumentCacheInvalidator` (writer self-invalidation) |
+| Cache freshness | "This data changed" | No signals in or out: the per-user cache reloads an entry built over a stale merge chain; the sole legal-document writer evicts its own decorator's cache after each write |
 
 Owned tables: `legal_documents`, `document_versions`, `consent_records` (append-only, DB
 triggers). Cross-section calls out: Teams (names), Users (info, merge chains, reminder

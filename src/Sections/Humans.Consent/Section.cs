@@ -47,8 +47,6 @@ public sealed class Section : ISection, IIssueQueueOwner
             sp.GetRequiredService<CachingLegalDocumentSyncService>());
         services.AddSingleton<ILegalDocumentSyncService>(sp =>
             sp.GetRequiredService<CachingLegalDocumentSyncService>());
-        services.AddSingleton<ILegalDocumentCacheInvalidator>(sp =>
-            sp.GetRequiredService<CachingLegalDocumentSyncService>());
         services.AddSingleton<ICacheStats>(sp =>
             sp.GetRequiredService<CachingLegalDocumentSyncService>());
 
@@ -79,8 +77,6 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddSingleton<IConsentService>(sp =>
             sp.GetRequiredService<CachingConsentService>());
         services.AddSingleton<IConsentSubmission>(sp =>
-            sp.GetRequiredService<CachingConsentService>());
-        services.AddSingleton<IConsentCacheInvalidator>(sp =>
             sp.GetRequiredService<CachingConsentService>());
         services.AddSingleton<ICacheStats>(sp =>
             sp.GetRequiredService<CachingConsentService>());

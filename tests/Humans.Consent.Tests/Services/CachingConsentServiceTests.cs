@@ -23,16 +23,31 @@ public sealed class CachingConsentServiceTests
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
 
+    public CachingConsentServiceTests()
+    {
+        // The batched lookup answers per id exactly as the single one does, as the real one does.
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                var infos = new Dictionary<Guid, UserInfo>();
+                foreach (var id in call.ArgAt<IReadOnlyCollection<Guid>>(0))
+                {
+                    if (await _userService.GetUserInfoAsync(id, call.ArgAt<CancellationToken>(1)) is { } info)
+                        infos[id] = info;
+                }
+                return (IReadOnlyDictionary<Guid, UserInfo>)infos;
+            });
+    }
+
     private CachingConsentService CreateSut()
     {
         var services = new ServiceCollection();
         services.AddKeyedScoped<IConsentManagement>(
             CachingConsentService.InnerServiceKey, (_, _) => _inner);
-        services.AddScoped<IUserService>(_ => _userService);
         var scopeFactory = services.BuildServiceProvider()
             .GetRequiredService<IServiceScopeFactory>();
         return new CachingConsentService(
-            _legalSync, _clock,
+            _legalSync, _userService, _clock,
             scopeFactory,
             NullLogger<CachingConsentService>.Instance);
     }
@@ -154,6 +169,70 @@ public sealed class CachingConsentServiceTests
             Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == missIds.Count
                 && ids.All(missIds.Contains)),
             Arg.Any<CancellationToken>());
+    }
+
+    // ── Account merge — entries rebuild against the new chain ────────────────
+
+    /// <summary>
+    /// The merge tombstone changes both humans' <c>AllUserIds</c>; the next read of either
+    /// id rebuilds over the merged chain with no signal from Users. Until then (and when
+    /// nothing changed) the entry is served from cache.
+    /// </summary>
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Reads_AfterMergeChangesUserIds_RebuildEntries(bool bulk)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var survivorId = Guid.NewGuid();
+        var archivedId = Guid.NewGuid();
+        var survivorVersion = Guid.NewGuid();
+        var archivedVersion = Guid.NewGuid();
+        IReadOnlySet<Guid> Set(params Guid[] ids) => new HashSet<Guid>(ids);
+        _userService.GetUserInfoAsync(survivorId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = survivorId }, [], [], [], null, []));
+        _userService.GetUserInfoAsync(archivedId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = archivedId }, [], [], [], null, []));
+        _inner.GetConsentedVersionIdsAsync(survivorId, Arg.Any<CancellationToken>()).Returns(Set(survivorVersion));
+        _inner.GetConsentedVersionIdsAsync(archivedId, Arg.Any<CancellationToken>()).Returns(Set(archivedVersion));
+        _inner.GetConsentMapForUsersAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlySet<Guid>>
+            {
+                [survivorId] = Set(survivorVersion),
+                [archivedId] = Set(archivedVersion),
+            });
+        var sut = CreateSut();
+        async Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> ReadBothAsync() => bulk
+            ? await sut.GetConsentMapForUsersAsync([survivorId, archivedId], ct)
+            : new Dictionary<Guid, IReadOnlySet<Guid>>
+            {
+                [survivorId] = await sut.GetConsentedVersionIdsAsync(survivorId, ct),
+                [archivedId] = await sut.GetConsentedVersionIdsAsync(archivedId, ct),
+            };
+        await ReadBothAsync();
+        await ReadBothAsync();
+        _inner.ClearReceivedCalls();
+
+        // The tombstone lands: both ids now resolve to the survivor's record.
+        var merged = UserInfo.Create(new User { Id = survivorId }, [], [], [], null, []) with { MergedUserIds = [archivedId] };
+        _userService.GetUserInfoAsync(survivorId, Arg.Any<CancellationToken>()).Returns(merged);
+        _userService.GetUserInfoAsync(archivedId, Arg.Any<CancellationToken>()).Returns(merged);
+        _inner.GetConsentedVersionIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Set(survivorVersion, archivedVersion));
+        _inner.GetConsentMapForUsersAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlySet<Guid>>
+            {
+                [survivorId] = Set(survivorVersion, archivedVersion),
+                [archivedId] = Set(survivorVersion, archivedVersion),
+            });
+
+        var after = await ReadBothAsync();
+
+        after[survivorId].Should().BeEquivalentTo(new[] { survivorVersion, archivedVersion });
+        after[archivedId].Should().BeEquivalentTo(new[] { survivorVersion, archivedVersion });
+        _inner.ClearReceivedCalls();
+        await ReadBothAsync();
+        _inner.ReceivedCalls().Should().BeEmpty("the rebuilt entries match the current chain");
     }
 
     // ── SubmitConsentAsync — synchronous cache refresh ───────────────────────
