@@ -161,6 +161,6 @@ public class RideshareArchitectureTests
     {
         var authorize = typeof(TController).GetCustomAttribute<AuthorizeAttribute>();
         authorize.Should().NotBeNull(because: $"{typeof(TController).Name} must not be reachable anonymously");
-        return authorize!.Policy;
+        return authorize.Policy;
     }
 }

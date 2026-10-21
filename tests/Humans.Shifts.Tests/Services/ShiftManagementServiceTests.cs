@@ -57,8 +57,8 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
             .With(_userService)
-            .With<IUserService>(_userService)
-            .With<IRoleAssignmentService>(_roleAssignmentService)
+            .With(_userService)
+            .With(_roleAssignmentService)
             .Build();
 
         var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);

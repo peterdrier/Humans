@@ -592,7 +592,7 @@ public class CalendarControllerICalTests
 
         await _calendar.Received(1).OverrideOccurrenceAsync(id, original,
             Arg.Is<OverrideOccurrenceDto>(d => d.OverrideStartUtc == Instant.FromUtc(2026, 6, 3, 10, 0)),
-            _viewer, Arg.Any<CancellationToken>(), null);
+            _viewer, Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
@@ -659,7 +659,7 @@ public class CalendarControllerICalTests
                 Xunit.TestContext.Current.CancellationToken)).Should().BeOfType<RedirectToActionResult>();
         }
         await _calendar.Received(2).OverrideOccurrenceAsync(id, original,
-            Arg.Any<OverrideOccurrenceDto>(), _viewer, Arg.Any<CancellationToken>(), null);
+            Arg.Any<OverrideOccurrenceDto>(), _viewer, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

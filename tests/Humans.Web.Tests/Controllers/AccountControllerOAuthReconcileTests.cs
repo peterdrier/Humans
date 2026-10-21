@@ -263,7 +263,7 @@ public class AccountControllerOAuthReconcileTests
         await _userManager.DidNotReceiveWithAnyArgs().AddLoginAsync(default!, default!);
         await _userManager.DidNotReceiveWithAnyArgs().RemoveLoginAsync(default!, default!, default!);
         await _userManager.DidNotReceiveWithAnyArgs().CreateAsync(default!);
-        await _userEmailService.DidNotReceiveWithAnyArgs().ReconcileOAuthIdentityAsync(default, default!, default!, default!, default, default);
+        await _userEmailService.DidNotReceiveWithAnyArgs().ReconcileOAuthIdentityAsync(default, default!, default!, default!, default);
     }
 
     [HumansFact]
@@ -297,7 +297,7 @@ public class AccountControllerOAuthReconcileTests
 
         // The relink resolves to a different account than the one Identity
         // matched, so the cookie must be issued for the active target.
-        await _signInManager.Received(1).SignInAsync(activeTarget, true, null);
+        await _signInManager.Received(1).SignInAsync(activeTarget, true);
     }
 
     // ─── Path 4: email-match link (unauthenticated, address already known) ───
@@ -324,8 +324,8 @@ public class AccountControllerOAuthReconcileTests
         await _userManager.DidNotReceiveWithAnyArgs().AddLoginAsync(default!, default!);
         await _userManager.DidNotReceiveWithAnyArgs().RemoveLoginAsync(default!, default!, default!);
         await _userManager.DidNotReceiveWithAnyArgs().CreateAsync(default!);
-        await _signInManager.DidNotReceiveWithAnyArgs().SignInAsync(default!, default(bool), default);
-        await _userEmailService.DidNotReceiveWithAnyArgs().ReconcileOAuthIdentityAsync(default, default!, default!, default!, default, default);
+        await _signInManager.DidNotReceiveWithAnyArgs().SignInAsync(default!, default(bool));
+        await _userEmailService.DidNotReceiveWithAnyArgs().ReconcileOAuthIdentityAsync(default, default!, default!, default!, default);
     }
 
     [HumansFact]
@@ -355,7 +355,7 @@ public class AccountControllerOAuthReconcileTests
 
         // Identity's external sign-in failed (no login row yet), so the cookie
         // for the email-matched account is issued by the callback itself.
-        await _signInManager.Received(1).SignInAsync(existingUser, true, null);
+        await _signInManager.Received(1).SignInAsync(existingUser, true);
     }
 
     // ─── Path 5: new-user creation ───────────────────────────────────────────

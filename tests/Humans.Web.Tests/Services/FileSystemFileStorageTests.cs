@@ -190,7 +190,7 @@ public class FileSystemFileStorageTests : IDisposable
         await _store.DeleteAsync("uploads/issues/first", Xunit.TestContext.Current.CancellationToken, recursiveDirectory: true);
 
         Directory.Exists(Path.Combine(_wwwroot, "uploads", "issues", "first")).Should().BeFalse();
-        (await _store.TryReadAsync("uploads/issues/second/c.png", Xunit.TestContext.Current.CancellationToken)).Should().Equal((byte)3);
+        (await _store.TryReadAsync("uploads/issues/second/c.png", Xunit.TestContext.Current.CancellationToken)).Should().Equal(3);
     }
 
     [HumansFact]

@@ -55,8 +55,8 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
             .With(userService)
-            .With<IUserService>(userService)
-            .With<IRoleAssignmentService>(_roleAssignments)
+            .With(userService)
+            .With(_roleAssignments)
             .Build();
 
         _service = new ShiftManagementService(

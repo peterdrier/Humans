@@ -151,7 +151,7 @@ public class AuditViewerServiceTests
         var contributor = Substitute.For<IEntityNameContributor>();
         var dict = entries.ToDictionary(e => e.Id, e => new EntityName(entityType, e.Name));
         contributor.ResolveNamesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyDictionary<Guid, EntityName>)dict);
+            .Returns(dict);
         return contributor;
     }
 

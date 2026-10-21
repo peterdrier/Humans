@@ -1015,7 +1015,7 @@ public sealed class BudgetServiceTests
 
         var active = await _service.GetActiveYearAsync();
         active.Should().NotBeNull();
-        active!.Id.Should().Be(activeYearId);
+        active.Id.Should().Be(activeYearId);
         await using var verify = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
         var archived = await verify.BudgetYears.SingleAsync(y => y.Id == _yearId, TestContext.Current.CancellationToken);
         archived.IsDeleted.Should().BeTrue();

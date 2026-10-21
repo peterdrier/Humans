@@ -145,7 +145,7 @@ public class CalendarServiceAuditTests
         await _audit.Received(1).LogAsync(
             AuditAction.CalendarOccurrenceCancelled, AuditEntityTypes.CalendarEvent, eventId,
             Arg.Any<string>(), actor,
-            null, null);
+            null);
     }
 
     [HumansFact]
@@ -171,6 +171,6 @@ public class CalendarServiceAuditTests
         await _audit.Received(1).LogAsync(
             AuditAction.CalendarOccurrenceOverridden, AuditEntityTypes.CalendarEvent, eventId,
             Arg.Any<string>(), actor,
-            null, null);
+            null);
     }
 }

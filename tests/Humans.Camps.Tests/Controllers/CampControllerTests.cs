@@ -73,7 +73,7 @@ public class CampControllerTests
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         _camps.UpdateCampAsync(Arg.Any<CampUpdateInput>(), userId).Returns(CampUpdateResult.Success());
-        _camps.CreateCampAsync(default, default!, default!, default!, null, null, false, 0, default!, null, 0, default)
+        _camps.CreateCampAsync(default, default!, default!, default!, null, null, false, 0, default!, null, 0)
             .ReturnsForAnyArgs(new CampWriteResult<Camp>(new Camp { Id = camp.Id, Slug = camp.Slug }));
         _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var controller = BuildController(userId);
@@ -397,7 +397,7 @@ public class CampControllerTests
         _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
         var reservedKey = "Camps_Flash_ReservedName";
         _camps.CreateCampAsync(default, default!, default!, default!, null, null, false, 0,
-                default!, null, 0, default)
+                default!, null, 0)
             .ReturnsForAnyArgs(new CampWriteResult<Camp>(null, reservedKey));
         var controller = BuildController(userId, localizer);
         var model = new CampRegisterViewModel { Name = "Register" };
@@ -806,7 +806,7 @@ public class CampControllerTests
             result.Should().BeOfType<BadRequestObjectResult>();
         else
             result.Should().BeOfType<ForbidResult>();
-        await _camps.DidNotReceiveWithAnyArgs().SetEarlyEntryAsync(default, default, default, default, default);
+        await _camps.DidNotReceiveWithAnyArgs().SetEarlyEntryAsync(default, default, default, default);
     }
 
     [HumansTheory]
@@ -858,8 +858,8 @@ public class CampControllerTests
             result.Should().BeOfType<BadRequestObjectResult>();
         else
             result.Should().BeOfType<ForbidResult>();
-        await _camps.DidNotReceiveWithAnyArgs().AddCampMemberToActiveSeasonAsync(default, default, default, default, default);
-        await _camps.DidNotReceiveWithAnyArgs().AddMemberAndAssignRoleInActiveSeasonAsync(default, default, default, default, default, default);
+        await _camps.DidNotReceiveWithAnyArgs().AddCampMemberToActiveSeasonAsync(default, default, default);
+        await _camps.DidNotReceiveWithAnyArgs().AddMemberAndAssignRoleInActiveSeasonAsync(default, default, default, default);
     }
 
     [HumansTheory]
@@ -914,7 +914,7 @@ public class CampControllerTests
         var result = await BuildController(actorId).AssignRole(camp.Slug, roleId, member.Id, ct);
 
         if (foreignMember)
-            await _roles.DidNotReceiveWithAnyArgs().AssignAsync(default, default, default, default, default);
+            await _roles.DidNotReceiveWithAnyArgs().AssignAsync(default, default, default, default);
         else
         {
             await _roles.Received(1).AssignAsync(target.Id, roleId, member.Id, actorId, ct);

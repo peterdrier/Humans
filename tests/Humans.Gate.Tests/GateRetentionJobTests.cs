@@ -40,6 +40,6 @@ public class GateRetentionJobTests
         await Job(("Gate:RetentionDays", "0")).ExecuteAsync();
         await Job(("Gate:RetentionDays", "-1")).ExecuteAsync();
 
-        await _retention.DidNotReceiveWithAnyArgs().PurgeScansBeforeAsync(default, default);
+        await _retention.DidNotReceiveWithAnyArgs().PurgeScansBeforeAsync(default);
     }
 }

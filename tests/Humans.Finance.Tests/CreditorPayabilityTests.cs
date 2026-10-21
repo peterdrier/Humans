@@ -114,7 +114,7 @@ public class CreditorPayabilityTests
             0, row.PendingPayoutFileName, row.HasDuplicateDocuments).NotPayableReason.Should().Be("in payout file m929.xml, not booked yet");
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("already in payout file m929.xml");
-        await _repo.DidNotReceiveWithAnyArgs().AddSepaPayoutAsync(default!, default!, default);
+        await _repo.DidNotReceiveWithAnyArgs().AddSepaPayoutAsync(default!, default!);
     }
 
     [HumansTheory]
@@ -152,7 +152,7 @@ public class CreditorPayabilityTests
             0, null, true).NotPayableReason.Should().Be(CreditorAccountRowVm.DuplicateDocumentsReason);
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("duplicate documents in Holded");
-        await _repo.DidNotReceiveWithAnyArgs().AddSepaPayoutAsync(default!, default!, default);
+        await _repo.DidNotReceiveWithAnyArgs().AddSepaPayoutAsync(default!, default!);
     }
 
     [HumansFact]

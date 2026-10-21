@@ -127,7 +127,7 @@ public class HoldedFinanceServiceTests
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return (IReadOnlyDictionary<int, decimal>)new Dictionary<int, decimal>();
+            return new Dictionary<int, decimal>();
         });
         _holded.GetLedgerLinesAsync(40000001, Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -393,7 +393,7 @@ public class HoldedFinanceServiceTests
         };
 
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
-            .ReturnsForAnyArgs((IReadOnlyList<HoldedPurchaseDocListItemDto>)docs1);
+            .ReturnsForAnyArgs(docs1);
 
         IReadOnlyList<HoldedExpenseDoc>? capturedDocs = null;
         await _repo.ReplaceDocsAsync(
@@ -437,7 +437,7 @@ public class HoldedFinanceServiceTests
         _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedCategoryMap>());
         _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new HoldedDocSyncState());
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
-            (IReadOnlyList<HoldedPurchaseDocListItemDto>)
+            
             [
                 new()
                 {
@@ -493,7 +493,7 @@ public class HoldedFinanceServiceTests
         _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedCategoryMap>());
         _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new HoldedDocSyncState());
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
-            (IReadOnlyList<HoldedPurchaseDocListItemDto>)
+            
             [
                 Doc("d-desc", " ER: Tent pegs "),
                 Doc("d-blank", "  "),
@@ -606,7 +606,7 @@ public class HoldedFinanceServiceTests
         var status = await MakeService().GetCreditorStatusAsync(40000001, TestContext.Current.CancellationToken);
 
         status.Should().NotBeNull();
-        status!.Balance.Should().Be(-3180m);
+        status.Balance.Should().Be(-3180m);
         status.OwedToMember.Should().Be(3180m);
         status.TotalPaid.Should().Be(9540m);                 // debit lines only, summed
         status.LastPaymentDate.Should().Be(new LocalDate(2026, 4, 21));
@@ -884,7 +884,7 @@ public class HoldedFinanceServiceTests
         var winner = BoundTo(userId, "contact-B");
         // Reads: run 1 initial, run 2 initial, run 2 re-read (still none) — then run 2's binding.
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((HoldedCreditorContact?)null, (HoldedCreditorContact?)null, (HoldedCreditorContact?)null, winner);
+            .Returns(null, null, null, winner);
 
         var run1 = MakeService().EnsureCreditorContactAsync(userId, "Maria Garcia", null, null, null, null, ct);
         while (Volatile.Read(ref posts) < 1) await Task.Yield();
@@ -898,7 +898,7 @@ public class HoldedFinanceServiceTests
             Arg.Is<HoldedCreditorContact>(c => c.HoldedContactId == "contact-B"), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().TryInsertCreditorContactAsync(
             Arg.Is<HoldedCreditorContact>(c => c.HoldedContactId == "contact-A"), Arg.Any<CancellationToken>());
-        await _repo.DidNotReceiveWithAnyArgs().UpsertCreditorContactAsync(default!, default, default);
+        await _repo.DidNotReceiveWithAnyArgs().UpsertCreditorContactAsync(default!, default);
         await _client.Received(1).DeleteContactAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _client.Received(1).DeleteContactAsync("contact-A", Arg.Any<CancellationToken>());
     }
@@ -908,7 +908,7 @@ public class HoldedFinanceServiceTests
     {
         var userId = Guid.NewGuid();
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((HoldedCreditorContact?)null, BoundTo(userId, "contact-B"));
+            .Returns(null, BoundTo(userId, "contact-B"));
         _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("contact-A");
 
         var id = await MakeService().EnsureCreditorContactAsync(
@@ -916,7 +916,7 @@ public class HoldedFinanceServiceTests
 
         id.Should().Be("contact-B");
         await _client.Received(1).DeleteContactAsync("contact-A", Arg.Any<CancellationToken>());
-        await _repo.DidNotReceiveWithAnyArgs().UpsertCreditorContactAsync(default!, default, default);
+        await _repo.DidNotReceiveWithAnyArgs().UpsertCreditorContactAsync(default!, default);
     }
 
     [HumansFact]
@@ -925,7 +925,7 @@ public class HoldedFinanceServiceTests
         var userId = Guid.NewGuid();
         // Initial read and the pre-write re-read see nothing; the insert loses; the next read finds the winner.
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((HoldedCreditorContact?)null, (HoldedCreditorContact?)null, BoundTo(userId, "contact-B"));
+            .Returns(null, null, BoundTo(userId, "contact-B"));
         _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("contact-A");
         _repo.TryInsertCreditorContactAsync(Arg.Any<HoldedCreditorContact>(), Arg.Any<CancellationToken>())
             .Returns(false);
@@ -949,7 +949,7 @@ public class HoldedFinanceServiceTests
             userId, "Maria Garcia", null, null, null, null, TestContext.Current.CancellationToken);
 
         id.Should().Be("contact-A");
-        await _client.DidNotReceiveWithAnyArgs().DeleteContactAsync(default!, default);
+        await _client.DidNotReceiveWithAnyArgs().DeleteContactAsync(default!);
     }
 
     [HumansFact]
@@ -1200,7 +1200,7 @@ public class HoldedFinanceServiceTests
         var userId = Guid.NewGuid();
         var logger = new CapturingLogger<Service>();
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
-            (HoldedCreditorContact?)null,
+            null,
             new HoldedCreditorContact                  // re-check: admin bound them while we pushed
             {
                 Id = Guid.NewGuid(),
@@ -1548,7 +1548,7 @@ public class HoldedFinanceServiceTests
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
             Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(
-            default, default!, default, default!, Guid.Empty, default, default);
+            default, default!, default, default!, Guid.Empty);
     }
 
     [HumansFact]
@@ -1778,7 +1778,7 @@ public class HoldedFinanceServiceTests
 
         removed.Should().BeFalse();
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(
-            default, default!, default, default!, Guid.Empty, default, default);
+            default, default!, default, default!, Guid.Empty);
     }
 
     // ─── Unmatched worklist ──────────────────────────────────────────────────────
@@ -3205,7 +3205,7 @@ public class HoldedFinanceServiceTests
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("already booked");
         await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
-            default!, default, default, default, default, default);
+            default!, default, default, default, default);
     }
 
     [HumansFact]
@@ -3221,7 +3221,7 @@ public class HoldedFinanceServiceTests
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("no Holded contact binding");
         await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
-            default!, default, default, default, default, default);
+            default!, default, default, default, default);
     }
 
     [HumansFact]
@@ -3246,7 +3246,7 @@ public class HoldedFinanceServiceTests
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("binding changed");
         await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
-            default!, default, default, default, default, default);
+            default!, default, default, default, default);
     }
 
     [HumansFact]
@@ -3273,11 +3273,11 @@ public class HoldedFinanceServiceTests
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("different Holded contact");
-        await _client.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync(default);
+        await _client.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync();
         await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
-            default!, default, default, default, default, default);
+            default!, default, default, default, default);
         await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
-            default, default, default, default!, default, default, default);
+            default, default, default, default!, default, default);
     }
 
     [HumansFact]
@@ -3312,7 +3312,7 @@ public class HoldedFinanceServiceTests
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("Sepa:TreasuryAccountId");
         await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
-            default!, default, default, default, default, default);
+            default!, default, default, default, default);
     }
 
     [HumansFact]
@@ -3330,7 +3330,7 @@ public class HoldedFinanceServiceTests
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("Sepa:TreasuryLedgerAccount");
         await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
-            default!, default, default, default, default, default);
+            default!, default, default, default, default);
     }
 
     [HumansFact]
@@ -3380,7 +3380,7 @@ public class HoldedFinanceServiceTests
 
         result.Succeeded.Should().BeTrue();
         await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
-            default!, default, default, default, default, default);
+            default!, default, default, default, default);
         await _client.Received(1).PostLedgerEntryAsync(
             Arg.Any<LocalDate>(), 40000004, 57200001, 30m, Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).SaveSepaTransferBookingAsync(
@@ -3408,7 +3408,7 @@ public class HoldedFinanceServiceTests
         // The terminal partial-save is gone (nobodies-collective/Humans#1185 T2): a failed run
         // writes nothing to the transfer row now.
         await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
-            default, default, default, default!, default, default, default);
+            default, default, default, default!, default, default);
         await _audit.Received(1).LogAsync(
             AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), BookableTransferId,
             Arg.Is<string>(d => d.Contains("PARTIAL", StringComparison.Ordinal)
@@ -3442,7 +3442,7 @@ public class HoldedFinanceServiceTests
             Arg.Any<string>(), Arg.Any<CancellationToken>());
         // Fully covered by documents: nothing is left for a journal entry.
         await _client.DidNotReceiveWithAnyArgs().PostLedgerEntryAsync(
-            default, default, default, default, default!, default);
+            default, default, default, default, default!);
     }
 
     [HumansFact]
@@ -3489,7 +3489,7 @@ public class HoldedFinanceServiceTests
         // The terminal partial-save is gone (nobodies-collective/Humans#1185 T2): a failed run
         // writes nothing to the transfer row now.
         await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
-            default, default, default, default!, default, default, default);
+            default, default, default, default!, default, default);
     }
 
     [HumansFact]
@@ -3529,7 +3529,7 @@ public class HoldedFinanceServiceTests
 
         unavailable.Should().Contain("Sepa:TreasuryAccountId");
         rows.Should().ContainSingle().Which.NotBookableReason.Should().BeNull();
-        await _client.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync(default);
+        await _client.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync();
     }
 
     /// <summary>Backdoor's <c>sepa-transfers</c> route (peterdrier/Humans#1838) reuses
@@ -3550,7 +3550,7 @@ public class HoldedFinanceServiceTests
         transfers.Should().ContainSingle();
         unavailable.Should().BeNull();
         await _client.DidNotReceiveWithAnyArgs().ListBankMovementsAsync(
-            default!, default, default, default);
+            default!, default, default);
     }
 
     [HumansFact]
@@ -3652,7 +3652,7 @@ public class HoldedFinanceServiceTests
         // CanBook also needs a matched bank line now (nobodies-collective/Humans#1185 T3/T4 wire
         // it); this test only covers the account/contact guard, so it checks the guard directly.
         rows.Should().ContainSingle().Which.NotBookableReason.Should().BeNull();
-        await _client.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync(default);
+        await _client.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync();
     }
 
     /// <summary>

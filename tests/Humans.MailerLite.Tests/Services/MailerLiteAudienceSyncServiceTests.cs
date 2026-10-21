@@ -187,7 +187,7 @@ public class MailerLiteAudienceSyncServiceTests
 
         var state = await _repository.GetSyncStateAsync("a-aud", ct);
         state.Should().NotBeNull();
-        state!.LastSyncAt.Should().Be(SyncedAt);
+        state.LastSyncAt.Should().Be(SyncedAt);
         state.GroupId.Should().Be("g1");
         state.GroupName.Should().Be("Humans - A");
         state.Candidates.Should().Be(1);

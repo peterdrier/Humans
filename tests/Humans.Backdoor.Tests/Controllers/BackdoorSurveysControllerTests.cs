@@ -137,7 +137,7 @@ public class BackdoorSurveysControllerTests
         var result = await _sut.Responses(Guid.NewGuid(), null, null, 100, null, null, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<UnauthorizedResult>();
-        await _surveys.DidNotReceiveWithAnyArgs().GetResponseExportAsync(default, default, default);
+        await _surveys.DidNotReceiveWithAnyArgs().GetResponseExportAsync(default, default);
     }
 
     [HumansFact]

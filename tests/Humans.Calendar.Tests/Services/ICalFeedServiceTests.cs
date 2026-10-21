@@ -192,7 +192,7 @@ public class ICalFeedServiceTests
         contributor.GetCalendarItemsForUserAsync(userId, Arg.Any<CancellationToken>()).Returns(async _ =>
         {
             await Task.Yield();
-            return (IReadOnlyList<CalendarFeedItem>)[
+            return [
                 MakeItem("shift-1@humans.nobodies.team", "Shifts", Instant.FromUtc(2026, 7, 2, 8, 0))
                     with { Summary = $"Owner language {CultureInfo.CurrentUICulture.Name}" },
             ];
@@ -214,7 +214,7 @@ public class ICalFeedServiceTests
         ics.Should().Contain("X-WR-CALNAME:Nobodies");
 
         // Round-trips through the same library calendar clients use.
-        var parsed = Ical.Net.Calendar.Load(ics!);
+        var parsed = Ical.Net.Calendar.Load(ics);
         parsed!.Events.Should().HaveCount(1);
     }
 
@@ -229,7 +229,7 @@ public class ICalFeedServiceTests
         var ics = await service.GetFeedIcsAsync(userId, token, TestContext.Current.CancellationToken);
 
         ics.Should().NotBeNull();
-        var parsed = Ical.Net.Calendar.Load(ics!);
+        var parsed = Ical.Net.Calendar.Load(ics);
         parsed!.Events.Should().BeEmpty();
     }
 

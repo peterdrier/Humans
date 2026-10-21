@@ -174,7 +174,7 @@ public class BackdoorFinanceControllerTests
         var json = Emitted(result);
         json.Should().Contain(@"""payeeIbanMasked"":""ES79****789""");
         json.Should().Contain(@"""syncState"":null");
-        await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!, default);
+        await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!);
     }
 
     [HumansFact]
@@ -233,7 +233,7 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(@"""payeeName"":null");
         json.Should().Contain(@"""payeeIbanMasked"":null");
         json.Should().Contain(@"""syncState"":null");
-        await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!, default);
+        await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!);
     }
 
     /// <summary>The <c>year</c> query param (peterdrier/Humans#1839).</summary>
@@ -360,7 +360,7 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(@"""syncState"":null");
         json.Should().Contain(@"""registeredInHolded"":null");
         // Nothing to show either half, so the report/timeline call is skipped outright.
-        await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!, default);
+        await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!);
     }
 
     /// <summary>The submitter half: they see the payee name (it is their own reimbursement)

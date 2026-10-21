@@ -29,7 +29,7 @@ public class ProfilePictureProcessorTests
         var result = ProfilePictureProcessor.ResizeProfilePicture(bytes);
 
         result.Should().NotBeNull();
-        result!.Value.ContentType.Should().Be("image/jpeg");
+        result.Value.ContentType.Should().Be("image/jpeg");
         using var picture = new MagickImage(result.Value.Data);
         picture.Width.Should().Be(500);
         picture.Height.Should().Be(1000);

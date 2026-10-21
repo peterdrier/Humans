@@ -109,7 +109,7 @@ public class OnboardingReviewControllerTests
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Which;
         redirect.ActionName.Should().Be(nameof(OnboardingReviewController.Detail));
         redirect.RouteValues.Should().ContainKey("userId").WhoseValue.Should().Be(survivorId);
-        await _onboarding.DidNotReceiveWithAnyArgs().GetReviewDetailAsync(default, default);
+        await _onboarding.DidNotReceiveWithAnyArgs().GetReviewDetailAsync(default);
     }
 
     // --- Outcome reporting ---
@@ -202,7 +202,7 @@ public class OnboardingReviewControllerTests
 
         result.Should().BeOfType<NotFoundResult>();
         await _onboarding.DidNotReceiveWithAnyArgs()
-            .RejectSignupAsync(default, default, default, default);
+            .RejectSignupAsync(default, default, default);
     }
 
     private static IEnumerable<MethodInfo> MutatingActions() =>

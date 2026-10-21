@@ -131,7 +131,7 @@ public class StorePricesViewTests
         var footer = html[html.IndexOf("<tfoot", StringComparison.Ordinal)..];
         footer = footer[..footer.IndexOf("</tfoot>", StringComparison.Ordinal)];
         footer.Should().Contain(HtmlEncoder.Default.Encode(due));
-        footer.Split(HtmlEncoder.Default.Encode(paidAndBalance), StringSplitOptions.None).Should().HaveCount(3);
+        footer.Split(HtmlEncoder.Default.Encode(paidAndBalance)).Should().HaveCount(3);
         CultureInfo.CurrentCulture.Name.Should().Be("en");
     }
 

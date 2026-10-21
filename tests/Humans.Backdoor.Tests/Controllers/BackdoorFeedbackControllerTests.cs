@@ -277,6 +277,6 @@ public class BackdoorFeedbackControllerTests
 
         await _sut.List(status: null, category: null, limit: requested);
 
-        await _feedback.Received(1).GetFeedbackListAsync(null, null, limit: expected);
+        await _feedback.Received(1).GetFeedbackListAsync(null, limit: expected);
     }
 }

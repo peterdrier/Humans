@@ -232,7 +232,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             result.Success.Should().BeFalse();
             result.ErrorKey.Should().Be("ContentUnavailable");
             _metrics.DidNotReceive().RecordConsentGiven();
-            await _notificationInboxService.DidNotReceiveWithAnyArgs().ResolveBySourceAsync(default, default, default);
+            await _notificationInboxService.DidNotReceiveWithAnyArgs().ResolveBySourceAsync(default, default);
         }
         (await LegalDb.ConsentRecords.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }

@@ -47,7 +47,7 @@ public sealed class GovernanceAuthorizationTests
     {
         var attribute = typeof(TController).GetCustomAttribute<AuthorizeAttribute>();
         attribute.Should().NotBeNull($"{typeof(TController).Name} must have [Authorize]");
-        attribute!.Policy.Should().Be(expectedPolicy);
+        attribute.Policy.Should().Be(expectedPolicy);
     }
 
     private static void AssertActionPolicy<TController>(string actionName, string expectedPolicy)
@@ -58,6 +58,6 @@ public sealed class GovernanceAuthorizationTests
         var attribute = action.GetCustomAttribute<AuthorizeAttribute>();
 
         attribute.Should().NotBeNull($"{typeof(TController).Name}.{actionName} must override its controller policy");
-        attribute!.Policy.Should().Be(expectedPolicy);
+        attribute.Policy.Should().Be(expectedPolicy);
     }
 }

@@ -44,7 +44,7 @@ public sealed class StoreAdminControllerTests
         var method = typeof(StoreAdminController).GetMethod(nameof(StoreAdminController.RepairOrderYears));
 
         method.Should().NotBeNull();
-        method!.GetCustomAttributes(typeof(HttpPostAttribute), inherit: false).Should().ContainSingle();
+        method.GetCustomAttributes(typeof(HttpPostAttribute), inherit: false).Should().ContainSingle();
         method.GetCustomAttributes(typeof(ValidateAntiForgeryTokenAttribute), inherit: false).Should().ContainSingle();
     }
 }

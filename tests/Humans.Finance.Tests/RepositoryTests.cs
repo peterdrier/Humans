@@ -164,7 +164,7 @@ public class RepositoryTests
             Binding(userId, "contact-1", 40000004, CreditorContactSource.Manual), Created, Ct);
 
         await repo.UpsertCreditorContactAsync(
-            Binding(userId, "contact-2", null, CreditorContactSource.Auto), Now, Ct);
+            Binding(userId, "contact-2", null), Now, Ct);
 
         await using var ctx = await factory.CreateDbContextAsync(Ct);
         var stored = ctx.HoldedCreditorContacts.Single();

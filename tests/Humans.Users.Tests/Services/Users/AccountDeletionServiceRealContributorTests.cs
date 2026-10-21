@@ -61,7 +61,7 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
         // that contributor leaves on the row, not the (trivial) loop that drives it.
         var gdprService = Substitute.For<IGdprService>();
         gdprService.EraseForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(ci => ((IUserDataContributor)_userService)
+            .Returns(ci => (_userService)
                 .EraseForUserAsync(ci.Arg<Guid>(), ci.Arg<CancellationToken>()));
 
         _service = new AccountDeletionService(

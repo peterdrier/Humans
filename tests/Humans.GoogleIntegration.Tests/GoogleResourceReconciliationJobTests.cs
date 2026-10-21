@@ -80,11 +80,11 @@ public class GoogleResourceReconciliationJobTests : IDisposable
         await _googleSyncService.DidNotReceiveWithAnyArgs()
             .SyncResourcesByTypeAsync(default, default, default, default);
         await _googleGroupSync.DidNotReceiveWithAnyArgs()
-            .ReconcileAllAsync(default, default);
+            .ReconcileAllAsync(default);
         await _googleDriveSync.DidNotReceiveWithAnyArgs()
-            .ReconcileAllAsync(default, default);
+            .ReconcileAllAsync(default);
         await _googleSyncService.DidNotReceiveWithAnyArgs()
-            .CheckGroupSettingsAsync(default);
+            .CheckGroupSettingsAsync();
     }
 
     [HumansFact]

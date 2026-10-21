@@ -164,7 +164,7 @@ public class AccountDeletionServiceTests
             .Returns(new Dictionary<Guid, string>());
         if (emailFailure)
             _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
-                .Returns<Task>(_ => throw failure);
+                .Returns(_ => throw failure);
         else
             _roleAssignmentService.RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>())
                 .Returns<Task<int>>(_ => throw failure);

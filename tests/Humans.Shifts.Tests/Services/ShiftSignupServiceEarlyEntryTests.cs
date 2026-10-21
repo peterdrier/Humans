@@ -37,8 +37,8 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
         var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         var serviceProvider = new ServiceLocatorBuilder()
             .With(teamService)
-            .With<ITeamService>(teamService)
-            .With<IRoleAssignmentService>(roleAssignmentService)
+            .With(teamService)
+            .With(roleAssignmentService)
             .Build();
 
         var shiftRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);

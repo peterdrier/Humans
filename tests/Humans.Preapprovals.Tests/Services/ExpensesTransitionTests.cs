@@ -151,7 +151,7 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
         stored.ExpenseReportId.Should().Be(Report);
         stored.MaxAmount.Should().Be(300m);
         await AuditLog.Received(1).LogAsync(AuditAction.PreapprovalGrantConsumed, AuditEntityTypes.Grant, grant.Id, Arg.Any<string>(), person, Report, AuditEntityTypes.ExpenseReport);
-        await Notifications.DidNotReceiveWithAnyArgs().SendAsync(default, default, default, default!, default!, default, default, default, default, default, default);
+        await Notifications.DidNotReceiveWithAnyArgs().SendAsync(default, default, default, default!, default!);
     }
 
     [HumansTheory]

@@ -183,7 +183,7 @@ public sealed class CachingConsentServiceTests
             .Returns(call =>
             {
                 call.ArgAt<CancellationToken>(1).ThrowIfCancellationRequested();
-                return (IReadOnlySet<Guid>)new HashSet<Guid> { versionId };
+                return new HashSet<Guid> { versionId };
             });
 
         var sut = CreateSut();
@@ -231,7 +231,7 @@ public sealed class CachingConsentServiceTests
         foreach (var id in user.AllUserIds)
             sut.ContainsKey(id).Should().BeFalse("no merge-chain alias may retain the pre-submit consent set");
         _inner.GetConsentedVersionIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns((IReadOnlySet<Guid>)new HashSet<Guid> { versionId });
+            .Returns(new HashSet<Guid> { versionId });
         foreach (var id in user.AllUserIds)
             (await sut.GetConsentedVersionIdsAsync(id, TestContext.Current.CancellationToken))
                 .Should().Contain(versionId);

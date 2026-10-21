@@ -460,7 +460,7 @@ public class EmailOutboxProcessorTests : IDisposable
         updated.Status.Should().Be(EmailOutboxStatus.Sent);
 
         await _transport.DidNotReceiveWithAnyArgs().SendAsync(
-            default!, default, default!, default!, default, default, default, default);
+            default!, default, default!, default!, default);
 
         var counts = await FreshCountsQuery().ToListAsync(TestContext.Current.CancellationToken);
         counts.Should().BeEmpty();

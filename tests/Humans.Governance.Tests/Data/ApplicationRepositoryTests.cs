@@ -455,9 +455,9 @@ public sealed class ApplicationRepositoryTests : IDisposable
         var membership = Substitute.For<IMembershipCalculator>();
         membership.GetUsersWithAllRequiredConsentsAsync(
                 Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns((IReadOnlySet<Guid>)new HashSet<Guid>());
+            .Returns(new HashSet<Guid>());
         membership.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>(), Arg.Any<Duration?>())
-            .Returns((IReadOnlyList<Guid>)[]);
+            .Returns([]);
         var services = new ServiceCollection();
         services.AddSingleton(applications);
         services.AddSingleton(users);

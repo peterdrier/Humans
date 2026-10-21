@@ -979,7 +979,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     [HumansFact]
     public async Task UpdateRegistrationInfoAsync_FallsBackToPublicYear_WhenNoOpenSeasons()
     {
-        SetupCampSettings(2026);
+        SetupCampSettings();
 
         await _sut.UpdateRegistrationInfoAsync("Blurb", TestContext.Current.CancellationToken);
 
@@ -991,7 +991,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     [HumansFact]
     public async Task UpdateRegistrationInfoAsync_TrimsInput_AndStoresNullForBlank()
     {
-        SetupCampSettings(2026);
+        SetupCampSettings();
 
         await _sut.UpdateRegistrationInfoAsync("  padded  ", TestContext.Current.CancellationToken);
         (await _sut.GetRegistrationInfoAsync(TestContext.Current.CancellationToken)).Should().Be("padded");

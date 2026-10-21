@@ -123,7 +123,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
 
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
-            .With<IUserService>(_userService)
+            .With(_userService)
             .With(_campService)
             .Build();
 
@@ -152,7 +152,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
                 _event.Id, Arg.Any<IReadOnlyCollection<Guid>?>(), _rPower, Arg.Any<CancellationToken>())
             .Returns([]);
         var services = new ServiceLocatorBuilder()
-            .With(_teamService).With<IUserService>(_userService).With(_campService).Build();
+            .With(_teamService).With(_userService).With(_campService).Build();
         var service = new ShiftManagementService(
             repo, AuditLog, AdminAuthorization, services, Cache,
             Substitute.For<IShiftViewInvalidator>(), NewCalendarResolver(), Clock,

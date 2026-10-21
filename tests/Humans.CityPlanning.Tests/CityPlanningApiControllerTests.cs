@@ -337,7 +337,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     public async Task SaveCampPolygon_BroadcastFails_TheSaveStandsAndTheCallerGetsOk()
     {
         var ct = TestContext.Current.CancellationToken;
-        _allClients.SendCoreAsync(default!, default!, default)
+        _allClients.SendCoreAsync(default!, default!)
             .ThrowsAsyncForAnyArgs(new InvalidOperationException("hub down"));
 
         var result = await CreateController(RoleNames.CampAdmin).SaveCampPolygon(

@@ -24,7 +24,7 @@ public class UiCultureOnlyRequestCultureProviderTests
         var result = await provider.DetermineProviderCultureResult(new DefaultHttpContext());
 
         result.Should().NotBeNull();
-        result!.Cultures[0].Value.Should().Be("en");
+        result.Cultures[0].Value.Should().Be("en");
         result.UICultures[0].Value.Should().Be("es");
     }
 
@@ -43,7 +43,7 @@ public class UiCultureOnlyRequestCultureProviderTests
         var result = await provider.DetermineProviderCultureResult(new DefaultHttpContext());
 
         result.Should().NotBeNull();
-        result!.Cultures[0].Value.Should().Be("en");
+        result.Cultures[0].Value.Should().Be("en");
         result.UICultures.Select(c => c.Value).Should().Equal("pt-BR", "es");
     }
 

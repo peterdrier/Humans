@@ -316,7 +316,7 @@ public class HoldedDuplicateTests
         await _audit.Received(1).LogAsync(AuditAction.HoldedDuplicateRemoved, "ExpenseLine", Arg.Any<Guid>(),
             Arg.Is<string>(d => d.Contains("doc-c")), Actor, UserId, nameof(User));
         await _audit.Received(1).LogAsync(AuditAction.HoldedDuplicateRemoved, nameof(User), UserId,
-            Arg.Is<string>(d => d.Contains("contact c2") && d.Contains("kept c1")), Actor, null, null);
+            Arg.Is<string>(d => d.Contains("contact c2") && d.Contains("kept c1")), Actor);
     }
 
     [HumansFact]

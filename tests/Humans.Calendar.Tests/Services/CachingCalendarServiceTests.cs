@@ -347,7 +347,7 @@ public sealed class CachingCalendarServiceTests
         _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>()).Returns([]);
         var contributor = Substitute.For<ICalendarFeedContributor>();
         contributor.GetPublicItemsForWindowAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<CalendarFeedItem>)[]);
+            .Returns([]);
         var sut = CreateSut(contributor);
 
         var from = Instant.FromUtc(2026, 6, 1, 0, 0);
