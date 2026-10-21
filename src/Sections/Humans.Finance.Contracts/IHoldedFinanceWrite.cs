@@ -5,14 +5,12 @@ namespace Humans.Finance.Contracts;
 
 /// <summary>
 /// The writes other sections make on Finance, alongside the read-only
-/// <see cref="IHoldedFinanceService"/>: the Holded sync trigger, expense-account resolution and
-/// retirement for workgroups, and creditor-contact binding for expense payouts. Everything else
-/// the section's service does is internal to <c>Humans.Finance</c>.
+/// <see cref="IHoldedFinanceService"/>: expense-account resolution and retirement for workgroups,
+/// and creditor-contact binding for expense payouts. Everything else the section's service does —
+/// the purchase-doc sync included — is internal to <c>Humans.Finance</c>.
 /// </summary>
 public interface IHoldedFinanceWrite : IApplicationService
 {
-    Task<HoldedSyncResult> SyncAsync(CancellationToken ct = default);
-
     /// <summary>Resolves an expense account for a caller that has no budget category: an explicit
     /// <paramref name="existingAccountNum"/> is verified against the live chart and returned; else an
     /// account whose name normalizes equal to <paramref name="name"/> is returned; else one is created

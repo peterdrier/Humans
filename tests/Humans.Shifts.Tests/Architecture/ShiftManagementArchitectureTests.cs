@@ -26,14 +26,6 @@ namespace Humans.Shifts.Tests.Architecture;
 /// </summary>
 public class ShiftManagementArchitectureTests
 {
-    [HumansFact]
-    public void ShiftManagementService_ImplementsShiftAuthorizationInvalidator()
-    {
-        typeof(IShiftAuthorizationInvalidator).IsAssignableFrom(typeof(ShiftManagementService))
-            .Should().BeTrue(
-                because: "the service owns the shift-auth cache and external sections (Profile deletion) drop it through this invalidator rather than poking IMemoryCache directly");
-    }
-
     /// <summary>
     /// Asserts that <see cref="IShiftManagement"/> and <see cref="IShiftService"/> resolve to the same
     /// scoped instance from the production DI registration — <c>Section.Register</c>
@@ -83,7 +75,6 @@ public class ShiftManagementArchitectureTests
         services.AddSingleton(Substitute.For<ISettingsService>());
         services.AddSingleton(Substitute.For<IAuditLogService>());
         services.AddSingleton(Substitute.For<IAdminAuthorizationService>());
-        services.AddSingleton(Substitute.For<IEarlyEntryInvalidator>());
         services.AddSingleton(Substitute.For<IUserService>());
         services.AddSingleton(Substitute.For<ITicketService>());
         // Only constructed, never connected: the repositories build their contexts lazily.

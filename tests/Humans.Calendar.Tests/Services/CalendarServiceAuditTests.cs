@@ -35,6 +35,7 @@ public class CalendarServiceAuditTests
 
     private CalendarService CreateSut() => new(
         _repo,
+        CalendarServiceValidationTests.ActiveTeams(),
         new FakeClock(Now),
         _audit,
         NullLogger<CalendarService>.Instance);

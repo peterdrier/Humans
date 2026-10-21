@@ -1298,6 +1298,19 @@ public class ExpenseReportServiceHoldedOutboxTests
         timeline.CanRetry.Should().BeFalse();
     }
 
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GetFailedHoldedPushReportIdsAsync_IsFinanceAdminOnly(bool isFinanceAdmin)
+    {
+        var failed = Guid.NewGuid();
+        _repo.GetFailedOutboxReportIdsAsync(Arg.Any<CancellationToken>()).Returns([failed]);
+
+        var ids = await _sut.GetFailedHoldedPushReportIdsAsync(isFinanceAdmin, TestContext.Current.CancellationToken);
+
+        ids.Should().BeEquivalentTo(isFinanceAdmin ? [failed] : Array.Empty<Guid>());
+    }
+
     // ─── manual re-queue ──────────────────────────────────────────────────────
 
     [HumansFact]

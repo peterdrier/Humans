@@ -5,6 +5,7 @@ using Humans.Email.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Domain;
 using Humans.Email.Services;
+using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
@@ -28,6 +29,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 1, 12, 0));
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
+    private readonly ITicketService _tickets = Substitute.For<ITicketService>();
     private readonly Dictionary<Guid, List<LegacyCommunicationPreferenceInfo>> _legacy = [];
     private readonly Dictionary<Guid, Guid> _mergedTo = [];
     private readonly IDataProtectionProvider _dataProtection = DataProtectionProvider.Create("TestApp");
@@ -58,7 +60,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
 
         _service = new CommunicationPreferenceService(
             new CommunicationPreferenceRepository(new TestDbContextFactory<EmailDbContext>(options)),
-            _users, tokenProvider, _clock, _audit, NullLogger<CommunicationPreferenceService>.Instance);
+            _users, tokenProvider, _tickets, _clock, _audit, NullLogger<CommunicationPreferenceService>.Instance);
     }
 
     public void Dispose() => _db.Dispose();
@@ -183,6 +185,36 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
         _audit.ReceivedCalls().Should().BeEmpty();
         (await _service.IsOptedOutAsync(userId, MessageCategory.System, Ct)).Should().BeFalse();
         (await _service.IsOptedOutAsync(userId, MessageCategory.CampaignCodes, Ct)).Should().BeFalse();
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task MemberToggle_TicketingIsRefusedWhileTheMemberHoldsATicket(bool holdsTicket)
+    {
+        var userId = Guid.NewGuid();
+        _tickets.GetUserTicketHoldingsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new UserTicketHoldings(holdsTicket ? 1 : 0, []));
+
+        var applied = await _service.UpdatePreferenceAsync(userId, MessageCategory.Ticketing,
+            optedOut: true, inboxEnabled: false, source: "Guest", actorUserId: userId, cancellationToken: Ct);
+
+        applied.Should().Be(!holdsTicket);
+        (await RowsAsync(userId)).Should().HaveCount(holdsTicket ? 0 : 1);
+        _audit.ReceivedCalls().Should().HaveCount(holdsTicket ? 0 : 1);
+    }
+
+    [HumansFact]
+    public async Task MemberToggle_OtherCategoriesIgnoreTheTicketLock()
+    {
+        var userId = Guid.NewGuid();
+        _tickets.GetUserTicketHoldingsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new UserTicketHoldings(1, []));
+
+        (await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing,
+            optedOut: true, inboxEnabled: false, source: "Guest", actorUserId: userId, cancellationToken: Ct))
+            .Should().BeTrue();
+        await _tickets.DidNotReceive().GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

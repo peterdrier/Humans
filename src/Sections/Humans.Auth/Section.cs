@@ -68,8 +68,6 @@ public sealed class Section : ISection
             sp.GetRequiredService<IRoleAssignmentManagement>());
         services.AddSingleton<IRoleAssignmentWrite>(sp =>
             sp.GetRequiredService<IRoleAssignmentManagement>());
-        services.AddSingleton<IRoleAssignmentCacheInvalidator>(sp =>
-            sp.GetRequiredService<CachingRoleAssignmentService>());
         services.AddSingleton<ICacheStats>(sp =>
             sp.GetRequiredService<CachingRoleAssignmentService>());
         services.AddHostedService(sp => sp.GetRequiredService<CachingRoleAssignmentService>());

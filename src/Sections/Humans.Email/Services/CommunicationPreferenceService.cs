@@ -4,6 +4,7 @@ using Humans.Email.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Domain;
 using Humans.Gdpr.Contracts;
+using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
 
@@ -25,6 +26,7 @@ internal sealed class CommunicationPreferenceService(
     ICommunicationPreferenceRepository repository,
     IUserService userService,
     IUnsubscribeTokenProvider tokenProvider,
+    ITicketService ticketService,
     IClock clock,
     IAuditLogService auditLog,
     ILogger<CommunicationPreferenceService> logger)
@@ -119,11 +121,28 @@ internal sealed class CommunicationPreferenceService(
         UpdatePreferenceCoreAsync(userId, category, optedOut, inboxEnabled: null, source,
             actorUserId: null, cancellationToken);
 
-    public Task UpdatePreferenceAsync(
+    public async Task<bool> UpdatePreferenceAsync(
         Guid userId, MessageCategory category, bool optedOut, bool inboxEnabled, string source,
-        Guid? actorUserId = null, CancellationToken cancellationToken = default) =>
-        UpdatePreferenceCoreAsync(userId, category, optedOut, inboxEnabled, source,
+        Guid? actorUserId = null, CancellationToken cancellationToken = default)
+    {
+        if (category == MessageCategory.Ticketing && IsTicketingLocked(category,
+                (await ticketService.GetUserTicketHoldingsAsync(userId, cancellationToken)).HasTicketAttendeeMatch))
+        {
+            logger.LogWarning("Attempted to change locked Ticketing preference for ticket holder {UserId} — refused", userId);
+            return false;
+        }
+
+        await UpdatePreferenceCoreAsync(userId, category, optedOut, inboxEnabled, source,
             actorUserId, cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// The Ticketing row is locked on for a member holding a matched ticket order this year: the
+    /// member's toggle write refuses it, and the preference pages render it read-only from this same rule.
+    /// </summary>
+    internal static bool IsTicketingLocked(MessageCategory category, bool hasTicketOrder) =>
+        category == MessageCategory.Ticketing && hasTicketOrder;
 
     private async Task UpdatePreferenceCoreAsync(
         Guid userId, MessageCategory category, bool optedOut, bool? inboxEnabled, string source,

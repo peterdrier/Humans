@@ -199,4 +199,5 @@
   <data name="Email_CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Actualités de la communauté</value></data>
   <data name="Email_CommPrefs_AlwaysOnCategoryCannotChange" xml:space="preserve"><value>Les catégories toujours actives ne peuvent pas être modifiées.</value></data>
   <data name="Email_CommPrefs_LoadFailed" xml:space="preserve"><value>Impossible de charger les préférences de communication.</value></data>
+  <data name="Email_CommPrefs_TicketingLockedCannotChange" xml:space="preserve"><value>Les messages de billetterie restent activés tant que tu as un billet pour cette année.</value></data>
 </root>

@@ -206,9 +206,7 @@ internal sealed class ShiftsController(
         var blocked = await ComputeSignupsBlockedByMissingDietaryAsync(user, ct);
 
         Response.Headers["X-Signed-Up"] = outcome.SignedUp ? "true" : "false";
-        Response.Headers["X-My-Signup-Count"] = outcome.SignupsAfter
-            .Count(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
-            .ToString(CultureInfo.InvariantCulture);
+        Response.Headers["X-My-Signup-Count"] = outcome.ActiveSignupCount.ToString(CultureInfo.InvariantCulture);
 
         if (!result.Success && result.Error is not null)
             SetToastHeader("warning", result.Error);

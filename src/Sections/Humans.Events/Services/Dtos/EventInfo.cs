@@ -116,6 +116,12 @@ internal sealed record EventInfo(
     public bool IsAllDay => DurationMinutes == Event.AllDayDurationMinutes;
 
     /// <summary>
+    /// Whether a submitter edit is a resubmission after moderation sent the event back
+    /// (rejected, or edits requested).
+    /// </summary>
+    public bool IsResubmission => Status is EventStatus.Rejected or EventStatus.ResubmitRequested;
+
+    /// <summary>
     /// Expands this event into concrete occurrence instants. A non-null
     /// <paramref name="dayOffset"/> narrows a recurring event to the single
     /// occurrence on that day offset (non-recurring events ignore it).

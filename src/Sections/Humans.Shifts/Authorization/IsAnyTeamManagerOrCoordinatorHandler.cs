@@ -13,8 +13,7 @@ namespace Humans.Shifts.Authorization;
 /// <see cref="PolicyNames.ShiftDepartmentManager"/> can express role-or-team-coord
 /// as a single requirement (multiple requirements on a policy AND together).
 /// Reads the coordinator-team-ids list through <see cref="IShiftService.GetCoordinatorTeamIdsAsync"/>
-/// so it picks up the existing 60-second per-user cache (CacheKeys.ShiftAuthorization)
-/// rather than hitting the DB on every request.
+/// which Teams answers from its in-RAM team read model, so no request hits the DB.
 /// </summary>
 internal sealed class IsAnyTeamManagerOrCoordinatorHandler(IShiftService shiftManagement)
     : AuthorizationHandler<IsAnyTeamManagerOrCoordinatorRequirement>

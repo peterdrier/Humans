@@ -204,4 +204,17 @@
             });
         </script>
     }
+    else if (Model.CanCreateICal)
+    {
+        <div class="card mb-4">
+            <div class="card-header"><h5 class="mb-0">@Localizer["Calendar_IcalFeedTitle"]</h5></div>
+            <div class="card-body">
+                <p class="text-muted">@Localizer["Calendar_IcalFeedHelp"]</p>
+                <form asp-action="CreateIcal" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-outline-primary">@Localizer["Calendar_IcalCreate"]</button>
+                </form>
+            </div>
+        </div>
+    }
 </div>

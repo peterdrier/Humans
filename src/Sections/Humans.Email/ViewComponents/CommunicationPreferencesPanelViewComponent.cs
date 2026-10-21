@@ -1,5 +1,6 @@
 using Humans.Email.Contracts;
 using Humans.Email.Models;
+using Humans.Email.Services;
 using Humans.Tickets.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
@@ -38,7 +39,7 @@ public sealed class CommunicationPreferencesPanelViewComponent(
         {
             var pref = prefsByCategory.GetValueOrDefault(category);
             var isAlwaysOn = category.IsAlwaysOn();
-            var isTicketingLocked = category == MessageCategory.Ticketing && hasTicketOrder;
+            var isTicketingLocked = CommunicationPreferenceService.IsTicketingLocked(category, hasTicketOrder);
 
             categories.Add(new CategoryPreferenceItem
             {

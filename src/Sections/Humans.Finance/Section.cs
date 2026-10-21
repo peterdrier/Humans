@@ -20,10 +20,8 @@ namespace Humans.Finance;
 /// <remarks>
 /// The Holded HTTP client is <em>not</em> registered here. <c>IHoldedClient</c> belongs to the
 /// Holded section, which registers it; Finance consumes it through
-/// <c>Humans.Holded.Contracts</c>. <c>HoldedSyncJob</c> is not registered here either, and is
-/// not this section's: it is a shim over Holded's <c>IHoldedNightlySync</c>, which calls this
-/// section's <c>IHoldedFinanceWrite.SyncAsync</c> first, and it lives in
-/// <c>src/Sections/Humans.Holded/Jobs/</c>.
+/// <c>Humans.Holded.Contracts</c>. The purchase-doc sync's nightly job, <c>HoldedDocSyncJob</c>, is
+/// this section's (<c>Jobs/</c>); the ledger mirror's <c>HoldedSyncJob</c> is Holded's.
 /// </remarks>
 public sealed class Section : ISection
 {
@@ -63,6 +61,7 @@ public sealed class Section : ISection
         // project's Jobs/ (nobodies-collective/Humans#1185).
         services.AddScoped<ISepaBankBooking>(sp => sp.GetRequiredService<Service>());
         services.AddScoped<Jobs.SepaBankBookingJob>();
+        services.AddScoped<Jobs.HoldedDocSyncJob>();
         // Owns the user-scoped holded_creditor_contacts table → GDPR export contributor (design-rules §8a).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<Service>());
 

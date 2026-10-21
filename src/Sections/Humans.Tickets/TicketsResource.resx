@@ -86,4 +86,5 @@
   <data name="Tickets_NotAttending_NoActiveEvent" xml:space="preserve"><value>No active event configured.</value></data>
   <data name="Tickets_NotAttending_Undone" xml:space="preserve"><value>Your declaration has been removed.</value></data>
   <data name="Tickets_NotAttending_UndoFailed" xml:space="preserve"><value>Could not undo — your status may have been updated by ticket sync.</value></data>
+  <data name="Tickets_MemberTicketStatus_Unavailable" xml:space="preserve"><value>Your ticket status is unavailable right now. Please try again later.</value></data>
 </root>

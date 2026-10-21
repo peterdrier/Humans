@@ -7,6 +7,7 @@ using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Services;
+using Humans.Shifts.Tests.Infrastructure;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using NodaTime.Testing;
@@ -36,10 +37,10 @@ public class ShiftUrgencyTests
             Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
-            Substitute.For<IShiftViewInvalidator>(),
+            new ShiftViewProbe().Cache,
             new EventCalendarResolver(Substitute.For<ISettingsService>()),
             new FakeClock(TestNow),
-            Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
     }
 
     private static EventSettingsInfo MakeCalendar(

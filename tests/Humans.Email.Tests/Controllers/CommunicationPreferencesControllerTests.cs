@@ -38,6 +38,8 @@ public class CommunicationPreferencesControllerTests
     public CommunicationPreferencesControllerTests()
     {
         _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.ArgAt<string>(0), call.ArgAt<string>(0)));
+        _commPrefService.UpdatePreferenceAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<bool>(),
+            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(true);
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(Viewer()));
 
@@ -137,6 +139,18 @@ public class CommunicationPreferencesControllerTests
         result.Should().BeOfType<BadRequestObjectResult>()
             .Which.Value.Should().Be("Email_CommPrefs_AlwaysOnCategoryCannotChange");
         Assert.Empty(_commPrefService.ReceivedCalls());
+    }
+
+    [HumansFact]
+    public async Task UpdatePreference_ServiceRefusesLockedTicketing_IsRejected()
+    {
+        _commPrefService.UpdatePreferenceAsync(_userId, MessageCategory.Ticketing, Arg.Any<bool>(), Arg.Any<bool>(),
+            Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await _controller.UpdatePreference(MessageCategory.Ticketing, emailEnabled: false, alertEnabled: false);
+
+        result.Should().BeOfType<BadRequestObjectResult>()
+            .Which.Value.Should().Be("Email_CommPrefs_TicketingLockedCannotChange");
     }
 
     [HumansFact]

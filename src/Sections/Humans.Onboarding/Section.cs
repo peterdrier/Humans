@@ -30,9 +30,9 @@ public sealed class Section : ISection, IIssueQueueOwner
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         // No back-call from leaf services into this director: ProfileService and
-        // ConsentService do not inject IOnboardingIntake. The consent-check threshold
-        // (SetConsentCheckPendingIfEligibleAsync) is invoked by controllers as a peer
-        // call after the leaf-service write.
+        // ConsentService do not inject IOnboardingIntake. The writing controller reports
+        // the save (ProfileSavedAsync / ConsentSignedAsync) and Onboarding applies the
+        // follow-ups.
         services.AddScoped<OnboardingService>();
         services.AddScoped<IOnboardingService>(sp => sp.GetRequiredService<OnboardingService>());
         services.AddScoped<IOnboardingIntake>(sp => sp.GetRequiredService<OnboardingService>());

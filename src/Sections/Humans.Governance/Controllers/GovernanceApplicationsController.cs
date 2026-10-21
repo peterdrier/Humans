@@ -75,8 +75,9 @@ internal sealed class GovernanceApplicationsController(
             return RedirectToAction(nameof(Index));
         }
 
-        var isApprovedColaborador = applications.Any(a =>
-            a.Status == ApplicationStatus.Approved && a.MembershipTier == MembershipTier.Colaborador);
+        // Radio default only: Submit accepts either tier.
+        var isApprovedColaborador = await applicationDecisionService.HasActiveApprovedTierAsync(
+            user.Id, MembershipTier.Colaborador, clock.GetCurrentInstant().InUtc().Date, HttpContext.RequestAborted);
 
         return View("~/Views/Governance/Applications/Create.cshtml", new ApplicationCreateViewModel
         {

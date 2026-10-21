@@ -285,7 +285,6 @@ internal sealed class PlanHarness
     public IAccountProvisioningService Provisioning { get; } = Substitute.For<IAccountProvisioningService>();
     public IUserService Users { get; } = Substitute.For<IUserService>();
     public ISettingsService Shifts { get; } = Substitute.For<ISettingsService>();
-    public ITicketCacheInvalidator TicketCacheInvalidator { get; } = Substitute.For<ITicketCacheInvalidator>();
     public IAuditLogService Audit { get; } = Substitute.For<IAuditLogService>();
     public FakeClock Clock { get; } = new(Instant.FromUtc(2026, 5, 13, 12, 0));
 
@@ -303,6 +302,6 @@ internal sealed class PlanHarness
     public void AddUnmatched(TicketAttendee a) => _unmatched.Add(a);
 
     public AttendeeContactImportService Service => new(
-        TicketRepo, UserEmails, Provisioning, Users, Substitute.For<IEventParticipationManagement>(), Shifts, TicketCacheInvalidator, Audit, Clock,
+        TicketRepo, UserEmails, Provisioning, Users, Substitute.For<IEventParticipationManagement>(), Shifts, Audit, Clock,
         NullLogger<AttendeeContactImportService>.Instance);
 }

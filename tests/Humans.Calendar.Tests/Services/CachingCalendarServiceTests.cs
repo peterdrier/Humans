@@ -51,7 +51,7 @@ public sealed class CachingCalendarServiceTests
         };
         var ct = TestContext.Current.CancellationToken;
         await repo.AddAsync(ev, ct);
-        var inner = new CalendarService(repo, new FakeClock(before.UpdatedAt),
+        var inner = new CalendarService(repo, CalendarServiceValidationTests.ActiveTeams(), new FakeClock(before.UpdatedAt),
             Substitute.For<IAuditLogService>(), NullLogger<CalendarService>.Instance);
         var services = new ServiceCollection();
         services.AddKeyedScoped<ICalendarService>(CachingCalendarService.InnerServiceKey, (_, _) => inner);

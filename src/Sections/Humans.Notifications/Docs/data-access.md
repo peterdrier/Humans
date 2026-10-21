@@ -66,17 +66,18 @@ No repository. Pure read-aggregation over owning services.
 
 | Cache Key | TTL | Read | Write | Invalidate |
 |-----------|-----|------|-------|------------|
-| `NotificationMeters` | 2 min | yes | yes | (per `INotificationMeterCacheInvalidator` callers) |
-| `NavBadge:CampLeadJoinRequests:{userId}` | 2 min | yes | yes | (per `ICampLeadJoinRequestsBadgeCacheInvalidator`) |
+| `NotificationMeters` (`CountsCacheKey`) | 2 min | yes | yes | none (TTL only; team join-request count is read live from `ITeamService`) |
 
 Cross-section calls via `IUserService`, `IGoogleSyncService`,
 `ITeamService`, `ITicketSync`, `IGovernanceService`,
 `ICampService`. **No direct DB access** — every counter fans out
-through an owning-service interface call.
+through an owning-service interface call. The per-lead camp join-request
+count is not cached here: it reads Camps' in-RAM `CampInfo` projection,
+which Camps evicts on its own writes.
 
 ### NotificationInboxRead (Scoped)
 
-No repository. Implements `INotificationInboxRead` (`Contracts/`), the
+No repository. Implements `INotificationInboxRead` (`Humans.Notifications.Contracts`), the
 snapshot Backdoor serves at `/api/backdoor/notifications`: the unread tab
 of `NotificationInboxService.GetInboxAsync` plus
 `NotificationMeterProvider.GetMetersForUserAsync`, both same-section.

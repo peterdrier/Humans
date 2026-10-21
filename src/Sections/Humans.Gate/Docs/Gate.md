@@ -72,7 +72,7 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
   provider can't enforce unique indexes) — a Postgres-backed race test is tracked in the debt-ledger
   inbox (2026-06-29).
 - Only a violation of `ix_gate_scan_events_admit_dedupe_key` becomes a duplicate-admit outcome; unrelated persistence failures propagate.
-- **Vendor check-in mirror** — on an admit the controller enqueues `GateVendorCheckInJob`
+- **Vendor check-in mirror** — on an admit `GateService.RecordDecisionAsync` enqueues `GateVendorCheckInJob`
   (fire-and-forget) which calls Tickets' `ITicketVendorMirror.CreateCheckInAsync` (TicketTailor
   `POST /v1/check_ins`, reached through Tickets rather than the vendor port directly — Tickets is
   the application's only door to ticketing). Best-effort only; `gate_scan_events` remains the dedupe authority.
@@ -171,8 +171,9 @@ nobodies-collective/Humans#933.)
 - **A result card auto-clears** back to the Ready screen so the previous guest's name never lingers on
   the shared kiosk (PII) and the screen is never stuck on the last scan. Timeouts vary by outcome (a
   quick ADMIT clears in ~10s; a STOP/AMBER refusal that gets explained to the guest lingers ~30s); a
-  terminal card also shows a "Next ticket" button with a live countdown. Any tap on the card pushes the
-  deadline back (active use keeps it up). The interim ID-confirm card has a longer ~60s **safety**
+  terminal card also shows a "Next ticket" button with a live countdown. Any tap on the card, or typing or
+  scanning into the scan field, pushes the deadline back (active use keeps it up, and a reset can't
+  wipe a scan mid-burst). The interim ID-confirm card has a longer ~60s **safety**
   timeout only (it shows a name but the operator is mid-decision); the supervisor-override panel pauses
   the timer while a PIN is being entered.
 - **No dead-ends / minimal-training affordances** (kiosk is chromeless — no browser back). Every screen

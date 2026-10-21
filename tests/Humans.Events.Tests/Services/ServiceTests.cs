@@ -480,12 +480,13 @@ public sealed class EventServiceTests
         _repo.Events.Add(guideEvent);
         var actorUserId = Guid.NewGuid();
 
-        await _service.ApplyModerationAsync(
+        var outcome = await _service.ApplyModerationAsync(
             guideEvent.Id,
             actorUserId,
             EventModerationActionType.ResubmitRequested,
             "Add location", submitterEditUrl: null, TestContext.Current.CancellationToken);
 
+        outcome.Should().Be(ModerationOutcome.Applied);
         guideEvent.Status.Should().Be(EventStatus.ResubmitRequested);
         guideEvent.LastUpdatedAt.Should().Be(_clock.GetCurrentInstant());
         _repo.EventModerationActions.Should().ContainSingle(action =>
@@ -505,6 +506,7 @@ public sealed class EventServiceTests
     [InlineData("fr-FR", "Your event submission has been received")]
     public async Task SubmitEventAsync_WithActionUrl_EmailsSubmitterConfirmation(string language, string subject)
     {
+        OpenSubmissionWindow();
         using var actorCulture = new CultureScope("fr");
         var submitterId = StubSubmitterWithEmail("sub@example.com", "Burner", language);
         var guideEvent = new Event
@@ -512,7 +514,6 @@ public sealed class EventServiceTests
             Id = Guid.NewGuid(),
             SubmitterUserId = submitterId,
             Title = "Fire show",
-            Status = EventStatus.Pending,
         };
 
         await _service.SubmitEventAsync(guideEvent, "https://x/Events/MySubmissions", TestContext.Current.CancellationToken);
@@ -530,8 +531,9 @@ public sealed class EventServiceTests
     [HumansFact]
     public async Task SubmitEventAsync_NullActionUrl_SkipsEmail()
     {
+        OpenSubmissionWindow();
         // Bulk import opts out — one email per CSV row would spam the uploader.
-        var guideEvent = new Event { Id = Guid.NewGuid(), SubmitterUserId = Guid.NewGuid(), Status = EventStatus.Pending };
+        var guideEvent = new Event { Id = Guid.NewGuid(), SubmitterUserId = Guid.NewGuid() };
 
         await _service.SubmitEventAsync(guideEvent, lifecycleActionUrl: null, TestContext.Current.CancellationToken);
 
@@ -592,12 +594,12 @@ public sealed class EventServiceTests
     [HumansFact]
     public async Task SubmitEventAsync_SubmitterLookupFailure_DoesNotFailCommittedSubmission()
     {
+        OpenSubmissionWindow();
         var guideEvent = new Event
         {
             Id = Guid.NewGuid(),
             SubmitterUserId = Guid.NewGuid(),
             Title = "Fire show",
-            Status = EventStatus.Pending
         };
         _userService.GetUserInfoAsync(guideEvent.SubmitterUserId, Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromException<UserInfo?>(new InvalidOperationException("User lookup unavailable")));
@@ -634,6 +636,14 @@ public sealed class EventServiceTests
             action.GuideEventId == guideEvent.Id && action.Action == EventModerationActionType.Rejected);
         await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
     }
+
+    private void OpenSubmissionWindow() =>
+        _repo.Settings ??= new EventGuideSettings
+        {
+            Id = Guid.NewGuid(),
+            SubmissionOpenAt = _clock.GetCurrentInstant() - Duration.FromDays(1),
+            SubmissionCloseAt = _clock.GetCurrentInstant() + Duration.FromDays(1)
+        };
 
     private Guid StubSubmitterWithEmail(string email, string burnerName, string language = "en")
     {
@@ -751,6 +761,25 @@ public sealed class EventServiceTests
     }
 
     [HumansTheory]
+    [InlineData(EventStatus.Pending, false, true)]
+    [InlineData(EventStatus.Draft, false, true)]
+    [InlineData(EventStatus.Draft, true, false)]
+    [InlineData(EventStatus.Rejected, false, false)]
+    [InlineData(EventStatus.Withdrawn, false, false)]
+    public async Task ModeratorWithdrawAsync_FollowsTheSubmitterWithdrawRule(EventStatus status, bool isCampEvent, bool expected)
+    {
+        var guideEvent = new Event { Id = Guid.NewGuid(), Status = status, CampId = isCampEvent ? Guid.NewGuid() : null };
+        _repo.Events.Add(guideEvent);
+
+        var withdrawn = await _service.ModeratorWithdrawAsync(guideEvent.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        withdrawn.Should().Be(expected);
+        guideEvent.Status.Should().Be(expected ? EventStatus.Withdrawn : status);
+        _repo.EventModerationActions.Should().HaveCount(expected ? 1 : 0);
+        _repo.SaveChangesCount.Should().Be(expected ? 1 : 0);
+    }
+
+    [HumansTheory]
     [InlineData("")]
     [InlineData("   ")]
     public async Task AdminUpdateAsync_BlankNote_AppendsEditedActionWithNullReason_AnyStatePreserved(string note)
@@ -764,6 +793,153 @@ public sealed class EventServiceTests
         _repo.EventModerationActions.Should().ContainSingle(a =>
             a.Action == EventModerationActionType.Edited && a.Reason == null);
         _repo.SaveChangesCount.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task SubmitEventAsync_MovesDraftToPending()
+    {
+        OpenSubmissionWindow();
+        var guideEvent = new Event { Id = Guid.NewGuid(), SubmitterUserId = Guid.NewGuid() };
+
+        await _service.SubmitEventAsync(guideEvent, lifecycleActionUrl: null, TestContext.Current.CancellationToken);
+
+        guideEvent.Status.Should().Be(EventStatus.Pending);
+        guideEvent.SubmittedAt.Should().Be(_clock.GetCurrentInstant());
+    }
+
+    [HumansFact]
+    public async Task SubmitEventAsync_WindowClosed_ThrowsAndWritesNothing()
+    {
+        _repo.Settings = new EventGuideSettings
+        {
+            Id = Guid.NewGuid(),
+            SubmissionOpenAt = _clock.GetCurrentInstant() - Duration.FromDays(3),
+            SubmissionCloseAt = _clock.GetCurrentInstant() - Duration.FromDays(1)
+        };
+        var guideEvent = new Event { Id = Guid.NewGuid(), SubmitterUserId = Guid.NewGuid() };
+
+        var act = () => _service.SubmitEventAsync(guideEvent, lifecycleActionUrl: null, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _repo.Events.Should().NotContain(guideEvent);
+    }
+
+    [HumansFact]
+    public async Task BulkImportAsync_WindowClosed_Throws()
+    {
+        var act = () => _service.BulkImportAsync(
+            Guid.NewGuid(), Guid.NewGuid(), [], new LocalDate(2026, 7, 1), 6, DateTimeZone.Utc,
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [HumansFact]
+    public async Task SubmitEventAsync_RecurrenceDayOutsideCalendar_ThrowsAndWritesNothing()
+    {
+        OpenSubmissionWindow();
+        StubEventCalendar(eventEndOffset: 6);
+        var guideEvent = new Event { Id = Guid.NewGuid(), IsRecurring = true, RecurrenceDays = "0,9" };
+
+        var act = () => _service.SubmitEventAsync(guideEvent, lifecycleActionUrl: null, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _repo.Events.Should().NotContain(guideEvent);
+    }
+
+    [HumansFact]
+    public async Task UpdateAndResubmitAsync_RecurrenceDayOutsideCalendar_ThrowsAndLeavesEventUnchanged()
+    {
+        StubEventCalendar(eventEndOffset: 6);
+        var guideEvent = new Event { Id = Guid.NewGuid(), CampId = Guid.NewGuid(), Status = EventStatus.Rejected };
+        _repo.Events.Add(guideEvent);
+
+        var act = () => _service.UpdateAndResubmitAsync(
+            guideEvent.Id, EditOf(guideEvent) with { IsRecurring = true, RecurrenceDays = "2,2" },
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        guideEvent.Status.Should().Be(EventStatus.Rejected);
+        _repo.SaveChangesCount.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task AdminUpdateAsync_RecurrenceDayOutsideCalendar_ThrowsAndAppendsNothing()
+    {
+        StubEventCalendar(eventEndOffset: 6);
+        var guideEvent = new Event { Id = Guid.NewGuid(), CampId = Guid.NewGuid(), Status = EventStatus.Approved };
+        _repo.Events.Add(guideEvent);
+
+        var act = () => _service.AdminUpdateAsync(
+            guideEvent.Id, EditOf(guideEvent) with { IsRecurring = true, RecurrenceDays = "7" }, Guid.NewGuid(), null,
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _repo.EventModerationActions.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task AdminUpdateAsync_IndividualEventWithEmptyVenue_Throws()
+    {
+        var guideEvent = new Event { Id = Guid.NewGuid(), GuideSharedVenueId = Guid.NewGuid(), Status = EventStatus.Approved };
+        _repo.Events.Add(guideEvent);
+
+        var act = () => _service.AdminUpdateAsync(
+            guideEvent.Id, EditOf(guideEvent) with { VenueId = Guid.Empty }, Guid.NewGuid(), null,
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _repo.EventModerationActions.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(true, null)]
+    [InlineData(false, "  ")]
+    public async Task ApplyModerationAsync_ReasonMissing_RefusesAndLeavesPending(bool reject, string? reason)
+    {
+        var actionType = reject ? EventModerationActionType.Rejected : EventModerationActionType.ResubmitRequested;
+        var guideEvent = new Event { Id = Guid.NewGuid(), Status = EventStatus.Pending };
+        _repo.Events.Add(guideEvent);
+
+        var outcome = await _service.ApplyModerationAsync(
+            guideEvent.Id, Guid.NewGuid(), actionType, reason, submitterEditUrl: null, TestContext.Current.CancellationToken);
+
+        outcome.Should().Be(ModerationOutcome.ReasonRequired);
+        guideEvent.Status.Should().Be(EventStatus.Pending);
+        _repo.EventModerationActions.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task ApplyModerationAsync_NotPending_RefusesAndWritesNothing()
+    {
+        var guideEvent = new Event { Id = Guid.NewGuid(), Status = EventStatus.Approved };
+        _repo.Events.Add(guideEvent);
+
+        var outcome = await _service.ApplyModerationAsync(
+            guideEvent.Id, Guid.NewGuid(), EventModerationActionType.Rejected, "reason", submitterEditUrl: null,
+            TestContext.Current.CancellationToken);
+
+        outcome.Should().Be(ModerationOutcome.NotPending);
+        guideEvent.Status.Should().Be(EventStatus.Approved);
+        _repo.EventModerationActions.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task ApplyModerationAsync_MissingEvent_Throws()
+    {
+        var act = () => _service.ApplyModerationAsync(
+            Guid.NewGuid(), Guid.NewGuid(), EventModerationActionType.Approved, null, submitterEditUrl: null,
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+    }
+
+    private void StubEventCalendar(int eventEndOffset)
+    {
+        var burn = BurnFixtures.Burn(eventEndOffset: eventEndOffset);
+        _repo.Settings ??= new EventGuideSettings { Id = Guid.NewGuid() };
+        _repo.Settings.EventSettingsId = burn.Id;
+        _burnSettings.GetEventSettingsByIdAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(burn);
     }
 
     private static EventEdit EditOf(Event e) => new(
@@ -922,6 +1098,7 @@ public sealed class EventServiceTests
     [InlineData("ca", "El camp Title és obligatori.")]
     public async Task BulkImportAsync_InvalidRow_ReturnsErrorsAndWritesNothing_UsesUploaderCulture(string culture, string expectedError)
     {
+        OpenSubmissionWindow();
         var originalCulture = CultureInfo.CurrentUICulture;
         try
         {
@@ -955,6 +1132,7 @@ public sealed class EventServiceTests
     public async Task BulkImportAsync_CalendarRange_IsValidatedBeforeAnyRowIsSaved(
         string date, string time, int offsetHours, bool valid)
     {
+        OpenSubmissionWindow();
         _repo.Categories.Add(new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true });
 
         var result = await _service.BulkImportAsync(
@@ -977,6 +1155,7 @@ public sealed class EventServiceTests
     [HumansFact]
     public async Task BulkImportAsync_AmbiguousCategory_ReturnsErrorsAndWritesNothing()
     {
+        OpenSubmissionWindow();
         var campId = Guid.NewGuid();
         _repo.Categories.AddRange(
             new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop-a", IsActive = true },
@@ -996,6 +1175,7 @@ public sealed class EventServiceTests
     [HumansFact]
     public async Task BulkImportAsync_InvalidRecurrenceDay_ReturnsErrorsAndWritesNothing()
     {
+        OpenSubmissionWindow();
         var campId = Guid.NewGuid();
         _repo.Categories.Add(new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true });
 
@@ -1013,6 +1193,7 @@ public sealed class EventServiceTests
     [HumansFact]
     public async Task BulkImportAsync_DuplicateExistingId_ReturnsErrorsAndWritesNothing()
     {
+        OpenSubmissionWindow();
         var campId = Guid.NewGuid();
         var category = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
         _repo.Categories.Add(category);
@@ -1036,6 +1217,7 @@ public sealed class EventServiceTests
     [InlineData(true)]
     public async Task BulkImportAsync_CreatesOrEditsColumnsWithoutReplacingExistingIdentity(bool update)
     {
+        OpenSubmissionWindow();
         var campId = Guid.NewGuid();
         var submitter = Guid.NewGuid();
         var cat = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
@@ -1073,6 +1255,7 @@ public sealed class EventServiceTests
     [HumansFact]
     public async Task BulkImportAsync_UnrankedRow_IsAcceptedAndStaysUnranked()
     {
+        OpenSubmissionWindow();
         var campId = Guid.NewGuid();
         _repo.Categories.Add(new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true });
 
@@ -1104,6 +1287,7 @@ public sealed class EventServiceTests
     [HumansFact]
     public async Task BulkImportAsync_UnchangedExistingRow_IsNoOp()
     {
+        OpenSubmissionWindow();
         var campId = Guid.NewGuid();
         var cat = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
         _repo.Categories.Add(cat);
@@ -1124,6 +1308,7 @@ public sealed class EventServiceTests
     [HumansFact]
     public async Task BulkImportAsync_EditedApprovedRow_RequeuesToPending()
     {
+        OpenSubmissionWindow();
         var campId = Guid.NewGuid();
         var cat = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
         _repo.Categories.Add(cat);
@@ -1143,6 +1328,7 @@ public sealed class EventServiceTests
     [HumansFact]
     public async Task BulkImportAsync_EditedDraftRow_SubmitsViaUpdatePath_NoDuplicateInsert()
     {
+        OpenSubmissionWindow();
         // Regression: the Draft branch previously called SubmitEventAsync (INSERT)
         // on an already-persisted entity, which throws a duplicate-key error.
         var campId = Guid.NewGuid();
@@ -1166,6 +1352,7 @@ public sealed class EventServiceTests
     [InlineData("Thu", "1,8")]
     public async Task BulkImportAsync_TitleEditPreservesRecurrenceUnlessWeekdaysChange(string days, string expectedOffsets)
     {
+        OpenSubmissionWindow();
         var gate = new LocalDate(2026, 7, 8);
         var campId = Guid.NewGuid();
         var category = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
@@ -1189,6 +1376,7 @@ public sealed class EventServiceTests
     [HumansFact]
     public async Task BulkImportAsync_RecurrenceDayNameRoundTrip_IsNoOp()
     {
+        OpenSubmissionWindow();
         // Existing recurrence is stored as offsets ("0"); the CSV carries the
         // equivalent day name. The round-trip must not be seen as an edit.
         var gate = new LocalDate(2026, 7, 8);

@@ -17,11 +17,11 @@ public class UserArchitectureTests
     // ── Public faces share one instance ──────────────────────────────────────
 
     [HumansFact]
-    public void IUserManagement_IUserService_IUserWrite_And_IUserInfoInvalidator_ResolveToSameSingleton()
+    public void IUserManagement_IUserService_IUserWrite_And_IUserInfoSliceRefresher_ResolveToSameSingleton()
     {
         // The real section registration: the same CachingUserService singleton
-        // must back every interface key, or an external "user changed"
-        // signal misses the cache owner.
+        // must back every interface key, or a "user changed" refresh from
+        // the interceptor or Users' own services misses the cache owner.
         var services = new ServiceCollection();
         new Section().Register(services, new ConfigurationBuilder().Build());
         services.AddLogging();
@@ -31,13 +31,13 @@ public class UserArchitectureTests
         var fromManagement = provider.GetRequiredService<IUserManagement>();
         var fromRead = provider.GetRequiredService<IUserService>();
         var fromWrite = provider.GetRequiredService<IUserWrite>();
-        var fromInvalidator = provider.GetRequiredService<IUserInfoInvalidator>();
+        var fromRefresher = provider.GetRequiredService<IUserInfoSliceRefresher>();
         var concrete = provider.GetRequiredService<CachingUserService>();
 
         ReferenceEquals(fromManagement, concrete).Should().BeTrue();
         ReferenceEquals(fromRead, concrete).Should().BeTrue();
         ReferenceEquals(fromWrite, concrete).Should().BeTrue();
-        ReferenceEquals(fromInvalidator, concrete).Should().BeTrue();
+        ReferenceEquals(fromRefresher, concrete).Should().BeTrue();
     }
 
     [HumansFact]

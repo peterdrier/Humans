@@ -4,7 +4,6 @@ using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Base.Constants;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 
@@ -29,10 +28,8 @@ internal sealed class GateTerminalAccountSeeder(
     IServiceScopeFactory scopeFactory,
     IProfileEditorService profileEditorService,
     IConsentWrite consentWrite,
-    IUserInfoInvalidator userInfoInvalidator,
     IAuditLogService auditLogService,
     IClock clock,
-    IMemoryCache cache,
     ILogger<GateTerminalAccountSeeder> logger)
 {
     public async Task<GateTerminalStatus> GetStatusAsync()
@@ -147,8 +144,6 @@ internal sealed class GateTerminalAccountSeeder(
             return null;
         }
 
-        cache.InvalidateUserAccess(SystemUserIds.GateTerminal);
-        await userInfoInvalidator.InvalidateAsync(SystemUserIds.GateTerminal);
 
         logger.LogWarning("Gate terminal account provisioned by {ActorUserId}", actorUserId);
         return user;

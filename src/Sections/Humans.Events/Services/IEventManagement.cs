@@ -73,8 +73,10 @@ internal interface IEventManagement : IApplicationService, IEventService
     /// <summary>
     /// Moderator withdrawal: withdraws the event and appends a
     /// <see cref="EventModerationActionType.Withdrawn"/> history row naming the moderator.
+    /// Allowed whenever the submitter could withdraw (<c>Event.CanBeWithdrawnBySubmitter</c>);
+    /// otherwise returns <c>false</c> and writes nothing.
     /// </summary>
-    Task ModeratorWithdrawAsync(Guid eventId, Guid actorUserId, CancellationToken ct = default);
+    Task<bool> ModeratorWithdrawAsync(Guid eventId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
     /// Admin / moderator in-place edit. Applies <paramref name="edit"/> (camp or
@@ -128,8 +130,9 @@ internal interface IEventManagement : IApplicationService, IEventService
     Task<IReadOnlyList<CampEventOverlap>> GetCampEventsForOverlapAsync(CancellationToken ct = default);
     // Applies the decision, records history, and emails the submitter the outcome
     // (part of the moderation workflow). submitterEditUrl is the caller's routing
-    // concern; null opts out of the notification.
-    Task ApplyModerationAsync(Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason, string? submitterEditUrl = null, CancellationToken ct = default);
+    // concern; null opts out of the notification. Returns the refusal when a
+    // reason is missing or the event is not pending.
+    Task<ModerationOutcome> ApplyModerationAsync(Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason, string? submitterEditUrl = null, CancellationToken ct = default);
 
     // ── GDPR ──────────────────────────────────────────────────────────────
     // IUserDataContributor is carried by CachingEventService (erasure edits cached

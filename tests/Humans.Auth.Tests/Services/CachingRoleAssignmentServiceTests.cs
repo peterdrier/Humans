@@ -104,13 +104,13 @@ public sealed class CachingRoleAssignmentServiceTests
     }
 
     [HumansFact]
-    public async Task InvalidateAll_DropsCache_NextReadReWarms()
+    public async Task Clear_DropsCache_NextReadReWarms()
     {
         var now = Instant.FromUtc(2026, 5, 17, 12, 0);
         var (service, inner) = BuildService([Active("Board", now)], new FakeClock(now));
 
         await service.GetActiveCountsByRoleAsync(Xunit.TestContext.Current.CancellationToken);
-        service.InvalidateAll();
+        service.Clear();
         await service.GetActiveCountsByRoleAsync(Xunit.TestContext.Current.CancellationToken);
 
         await inner.Received(2).GetFilteredAsync(

@@ -14,10 +14,8 @@ namespace Humans.Gdpr.Controllers;
 
 /// <summary>
 /// The subject-rights actions for profileless accounts (authenticated users without a Profile):
-/// the Article 15 data export and the Article 17 deletion request and its cancellation. The
-/// deletion actions moved here from Users' <c>GuestAccountController</c> in Users decomposition
-/// commit 14 and take Gdpr's <c>/Gdpr/Guest/*</c> URLs, beside their member counterparts on
-/// <see cref="MemberDataController"/>. The export moved with them to <c>/Gdpr/Guest/DownloadData</c>.
+/// the Article 15 data export and the Article 17 deletion request and its cancellation, at
+/// <c>/Gdpr/Guest/*</c> beside their member counterparts on <see cref="MemberDataController"/>.
 /// </summary>
 [Authorize]
 internal sealed class GuestDataController(
