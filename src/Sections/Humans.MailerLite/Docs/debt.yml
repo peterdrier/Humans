@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 4
-inbox:
-  - added: 2026-10-17
-    id: MAILERLITE-3
-    what: "MailerLiteImportService applies Website subscriber decisions per email to a single per-user Marketing preference. Conflicting statuses on two verified addresses for the same person repeatedly flip that preference on unchanged imports; the last enumerated address wins, including an active address overwriting an opt-out. Define same-human conflict precedence before applying changes, preserving the documented idempotency invariant. Found by tracing BuildPlanAsync, ApplyAsync and ApplyMarketingDeltaAsync."
-    review: panel
+inbox: []

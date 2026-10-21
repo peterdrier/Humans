@@ -1275,4 +1275,5 @@
     <value>Merci pour cette année. Les créneaux rouvriront quand le Conseil publiera le prochain événement.</value>
   </data>
   <data name="Shifts_StatusReasonTooLong" xml:space="preserve"><value>Le motif ne peut pas dépasser 1 000 caractères.</value></data>
+  <data name="Shifts_Bail_NotActive" xml:space="preserve"><value>Cette inscription n’est plus active et ne peut plus être annulée.</value></data>
 </root>

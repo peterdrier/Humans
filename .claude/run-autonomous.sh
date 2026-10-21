@@ -13,7 +13,6 @@ tiered mode (model escalation from Sonnet to Opus).
 Modes:
   bug-hunt         Autonomous bug-fix (find and fix by category)
   tech-debt        Autonomous tech-debt discovery (agent decides what to improve)
-  tech-debt-tasks  Execute specific tasks from the tech-debt backlog
 
 Options:
   --mode <name>                Run mode: bug-hunt or tech-debt
@@ -178,12 +177,6 @@ case "$mode" in
     prompt_path="${prompt_override:-.codex/tech-debt-prompt.md}"
     runs_dir="${runs_dir_override:-local/claude-runs/tech-debt}"
     branch_prefix="${branch_prefix_override:-claude/weekly-tech-debt}"
-    tiers_file=".claude/tiers/tech-debt.json"
-    ;;
-  tech-debt-tasks)
-    prompt_path="${prompt_override:-.claude/tech-debt-tasks-prompt.md}"
-    runs_dir="${runs_dir_override:-local/claude-runs/tech-debt-tasks}"
-    branch_prefix="${branch_prefix_override:-claude/tech-debt-tasks}"
     tiers_file=".claude/tiers/tech-debt.json"
     ;;
   *)

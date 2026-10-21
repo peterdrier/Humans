@@ -1603,5 +1603,8 @@ public sealed class EventServiceTests
             }
             return Task.FromResult(cleared);
         }
+
+        public Task ReassignToUserAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) =>
+            throw new NotSupportedException("Merge folding is covered by EventRepositoryTests.");
     }
 }

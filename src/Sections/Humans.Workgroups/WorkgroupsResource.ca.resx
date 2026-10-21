@@ -353,4 +353,5 @@
   <data name="Workgroups_Todo_MembershipRequests_Title" xml:space="preserve"><value>Sol·licituds d'ingrés pendents</value></data>
   <data name="Workgroups_Todo_MembershipRequests_Description" xml:space="preserve"><value>{0} té {1} sol·licitud(s) d'ingrés.</value></data>
   <data name="Workgroups_Todo_MembershipRequests_Action" xml:space="preserve"><value>Revisar les sol·licituds</value></data>
+  <data name="Workgroups_Error_DiscordUrlInvalid" xml:space="preserve"><value>Introdueix un URL absolut HTTP o HTTPS per a l’enllaç de Discord.</value></data>
 </root>

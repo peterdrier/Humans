@@ -30,6 +30,7 @@ public sealed class Section : ISection
         services.AddScoped<FeedbackEmails>();
         services.AddScoped<IEmailPreviewContributor, FeedbackEmailPreviews>();
 
+        services.AddScoped<FeedbackReplyDelivery>();
         services.AddScoped<FeedbackService>();
         services.AddScoped<IFeedbackService>(sp => sp.GetRequiredService<FeedbackService>());
         services.AddScoped<IFeedbackTriage>(sp => sp.GetRequiredService<FeedbackService>());

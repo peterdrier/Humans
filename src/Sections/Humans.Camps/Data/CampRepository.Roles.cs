@@ -23,11 +23,8 @@ internal sealed partial class CampRepository
     public async Task<CampRoleDefinition?> GetDefinitionBySlugAsync(string slug, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var lowered = slug.ToLowerInvariant();
-        return await ctx.CampRoleDefinitions.AsNoTracking()
-#pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
-            .FirstOrDefaultAsync(d => d.Slug.ToLower() == lowered, ct);
-#pragma warning restore MA0011
+        var definitions = await ctx.CampRoleDefinitions.AsNoTracking().ToListAsync(ct);
+        return definitions.FirstOrDefault(d => string.Equals(d.Slug, slug, StringComparison.OrdinalIgnoreCase));
     }
 
     public async Task<CampRoleDefinition?> GetSpecialDefinitionAsync(CampSpecialRole specialRole, CancellationToken ct = default)
@@ -66,27 +63,21 @@ internal sealed partial class CampRepository
     public async Task<bool> DefinitionSlugExistsAsync(string slug, Guid? excludingId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var lowered = slug.ToLowerInvariant();
-        var query = ctx.CampRoleDefinitions.AsNoTracking()
-#pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
-            .Where(d => d.Slug.ToLower() == lowered);
-#pragma warning restore MA0011
+        var query = ctx.CampRoleDefinitions.AsNoTracking();
         if (excludingId is { } id)
             query = query.Where(d => d.Id != id);
-        return await query.AnyAsync(ct);
+        var slugs = await query.Select(d => d.Slug).ToListAsync(ct);
+        return slugs.Exists(s => string.Equals(s, slug, StringComparison.OrdinalIgnoreCase));
     }
 
     public async Task<bool> DefinitionNameExistsAsync(string name, Guid? excludingId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var lowered = name.ToLowerInvariant();
-        var query = ctx.CampRoleDefinitions.AsNoTracking()
-#pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
-            .Where(d => d.Name.ToLower() == lowered);
-#pragma warning restore MA0011
+        var query = ctx.CampRoleDefinitions.AsNoTracking();
         if (excludingId is { } id)
             query = query.Where(d => d.Id != id);
-        return await query.AnyAsync(ct);
+        var names = await query.Select(d => d.Name).ToListAsync(ct);
+        return names.Exists(n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase));
     }
 
     public async Task AddDefinitionAsync(CampRoleDefinition definition, CancellationToken ct = default)

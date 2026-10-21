@@ -26,20 +26,30 @@ Repository: `IFeedbackRepository`.
 |-----------|-----|------|-------|------------|
 | `FeedbackBadgeCount` | 2 min | yes | yes | yes (in-service) |
 
-Cross-section calls via `IUserService`, `IUserEmailService`,
-`ITeamService`, `IEmailService`, the section's own `FeedbackEmails`
-builder,
-`INotificationEmitter`, `IAuditLogService`, and `IFileStorage`
-(screenshot blob deletion during GDPR erasure). Implements `IFeedbackService`, `IFeedbackTriage`
-(Backdoor's machine-API triage surface, nobodies-collective/Humans#1128),
-`IUserDataContributor`, `IUserMerge`, `IRecurringJob` (minute retry of owned pending reply emails). Reply creation commits its pending flag with the message and report timestamps; email handoff clears only that message flag through the repository. Owns and caches `FeedbackBadgeCount`
-inside `GetActionableCountAsync`.
+Cross-section calls via `IUserService`, `ITeamService`, `IAuditLogService`, and
+`IFileStorage` (screenshot blob deletion during GDPR erasure). Implements
+`IFeedbackService`, `IFeedbackTriage` (Backdoor's machine-API triage surface,
+nobodies-collective/Humans#1128), `IUserDataContributor`, and `IUserMerge`.
+Reply creation commits its pending flag with the message and report timestamps,
+then calls `FeedbackReplyDelivery`. Owns and caches `FeedbackBadgeCount` inside
+`GetActionableCountAsync`.
+
+### FeedbackReplyDelivery (Scoped, internal)
+
+Repository: `IFeedbackRepository`. Reads `FeedbackReports` and `FeedbackMessages`;
+clears the message's pending-email flag after handoff. No cache.
+
+Implements `IRecurringJob` for the minute retry of owned pending reply emails.
+The request handoff and retry pass use the same pipeline, including its static
+lock and stable Email delivery id. Cross-section calls use `IUserService`,
+`IUserEmailService`, `IEmailService`, `INotificationEmitter`, and `IAuditLogService`;
+`FeedbackEmails` builds the section's copy.
 
 ### FeedbackEmails (Scoped, internal)
 
 No repository. Pure builder — reads `FeedbackResource` (via
 `IStringLocalizer<FeedbackResource>`), writes nothing. Returns
-`EmailMessage` values for `FeedbackService` to pass to
+`EmailMessage` values for `FeedbackReplyDelivery` to pass to
 `IEmailService.SendAsync`. No DB access, no cache.
 
 ### FeedbackEmailPreviews (Scoped)

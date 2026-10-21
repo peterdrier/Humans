@@ -17,6 +17,7 @@ internal static class WorkgroupErrorKeys
     public const string NameRequired = "Workgroups_Error_NameRequired";
     public const string PurposeRequired = "Workgroups_Error_PurposeRequired";
     public const string DeliverableRequired = "Workgroups_Error_DeliverableRequired";
+    public const string DiscordUrlInvalid = "Workgroups_Error_DiscordUrlInvalid";
     public const string ReasonsRequired = "Workgroups_Error_ReasonsRequired";
     public const string NameTaken = "Workgroups_Error_NameTaken";
     public const string CoordinatorCount = "Workgroups_Error_CoordinatorCount";
