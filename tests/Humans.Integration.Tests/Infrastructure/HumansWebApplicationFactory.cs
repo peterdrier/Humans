@@ -16,8 +16,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 using NodaTime;
 using NSubstitute;
 using Xunit;
@@ -88,6 +90,18 @@ public class HumansWebApplicationFactory(string connectionString)
         // time that gap is observable. Published output copies the files physically under
         // wwwroot/_content/, so this is a test-host gap only.
         builder.UseStaticWebAssets();
+
+        // A test host must not hold file watchers. Each one is an inotify instance, a disposed
+        // host does not release them (nothing disposes the PhysicalFileProviders behind them),
+        // and Linux caps a user at 128 — so a few hundred hosts exhausted the cap and every host
+        // after that failed to boot. Two sources: the appsettings JSON sources reload on change
+        // by default (this setting reaches WebApplication.CreateBuilder as a host argument, so
+        // it is read before the sources are added), and asp-append-version watches every
+        // versioned file under the web root, which the wrapper below answers without a watcher.
+        builder.UseSetting("hostBuilder:reloadConfigOnChange", "false");
+        builder.ConfigureAppConfiguration((context, _) =>
+            context.HostingEnvironment.WebRootFileProvider =
+                new NonWatchingFileProvider(context.HostingEnvironment.WebRootFileProvider));
 
         builder.ConfigureAppConfiguration((_, config) =>
         {
@@ -455,6 +469,19 @@ public class HumansWebApplicationFactory(string connectionString)
 
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
+}
+
+/// <summary>
+/// Serves files from <paramref name="inner"/> but never watches them: a test host's files do
+/// not change under it, and every watch would cost an inotify instance it never gives back.
+/// </summary>
+internal sealed class NonWatchingFileProvider(IFileProvider inner) : IFileProvider
+{
+    public IFileInfo GetFileInfo(string subpath) => inner.GetFileInfo(subpath);
+
+    public IDirectoryContents GetDirectoryContents(string subpath) => inner.GetDirectoryContents(subpath);
+
+    public IChangeToken Watch(string filter) => NullChangeToken.Singleton;
 }
 
 /// <summary>
