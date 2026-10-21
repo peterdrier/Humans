@@ -58,6 +58,10 @@ public sealed class Section : ISection, IIssueQueueOwner
 
         services.AddScoped<ITeamPageService, TeamPageService>();
 
+        // Who may send a facilitated message as which team; the profile-page buttons
+        // (TeamMessageButtonsViewComponent) and TeamMessageController both inject it.
+        services.AddScoped<ITeamMessageOptionsProvider, TeamMessageOptionsProvider>();
+
         // Teams owns its email copy and its gallery samples; Email keeps the mechanics
         // (memory/architecture/email-templates-live-in-sender.md).
         services.AddScoped<TeamsEmails>();
