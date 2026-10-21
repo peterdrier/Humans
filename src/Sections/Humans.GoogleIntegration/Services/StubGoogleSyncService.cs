@@ -2,6 +2,7 @@ using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Services.Workspace;
 using Humans.Base.Enums;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.GoogleIntegration.Services;
 
@@ -13,7 +14,8 @@ internal sealed class StubGoogleSyncService(
     ILogger<StubGoogleSyncService> logger,
     IGoogleSyncOutboxRepository outboxRepository,
     IGoogleDrivePermissionsClient drivePermissions,
-    IGoogleDriveAccessSyncScheduler driveAccessSyncScheduler) : IGoogleSyncManagement
+    IGoogleDriveAccessSyncScheduler driveAccessSyncScheduler,
+    IAuditLogService auditLogService) : IGoogleSyncManagement
 {
     public async Task<string> CreateSubfolderAsync(
         string parentFolderId,
@@ -142,21 +144,24 @@ internal sealed class StubGoogleSyncService(
         return Task.FromResult<IReadOnlyList<GoogleSyncOutboxEventSnapshot>>([]);
     }
 
-    public Task<bool> RequeueOutboxEventAsync(Guid id, CancellationToken cancellationToken = default)
+    public Task<bool> RequeueOutboxEventAsync(Guid id, Guid actorUserId, CancellationToken cancellationToken = default)
     {
+        // Nothing is requeued, so nothing is audited (as in the real service).
         logger.LogInformation("[STUB] Would requeue Google sync outbox event {Id}", id);
         return Task.FromResult(false);
     }
 
-    public Task<int> RequeueAllFailedOutboxEventsAsync(CancellationToken cancellationToken = default)
+    public async Task<int> RequeueAllFailedOutboxEventsAsync(Guid actorUserId, CancellationToken cancellationToken = default)
     {
         logger.LogInformation("[STUB] Would requeue all permanently-failed Google sync outbox events");
-        return Task.FromResult(0);
+        await GoogleWorkspaceSyncService.AuditRequeueAllAsync(auditLogService, 0, actorUserId);
+        return 0;
     }
 
-    public Task<int> EnqueueUserSyncAsync(Guid userId, CancellationToken cancellationToken = default)
+    public async Task<int> EnqueueUserSyncAsync(Guid userId, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         logger.LogInformation("[STUB] Would enqueue Google sync re-run for user {UserId}", userId);
-        return Task.FromResult(0);
+        await GoogleWorkspaceSyncService.AuditUserSyncRerunAsync(auditLogService, userId, 0, actorUserId);
+        return 0;
     }
 }
