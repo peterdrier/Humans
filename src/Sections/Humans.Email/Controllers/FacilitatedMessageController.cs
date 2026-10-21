@@ -3,7 +3,6 @@ using Humans.Base;
 using Humans.Base.Controllers;
 using Humans.Email.Contracts;
 using Humans.Email.Models;
-using Humans.Email.Services;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,8 +16,9 @@ namespace Humans.Email.Controllers;
 /// outbox row and the audit entry, and the recipient's address is never shown to the sender.
 /// </summary>
 /// <remarks>
-/// The links that lead here are Users' profile-card
-/// button and Email's <c>TeamMessageButtonsViewComponent</c> user part.
+/// The link that leads here is Users' profile-card button. Sending on behalf of a team is
+/// Teams' (<c>/Teams/{teamId}/SendMessage/{id}</c>), through the same
+/// <see cref="IEmailMessageFactory.FacilitatedMessage"/> with the team's group as reply-to.
 /// </remarks>
 [Authorize]
 internal sealed class FacilitatedMessageController(
@@ -27,7 +27,6 @@ internal sealed class FacilitatedMessageController(
     IEmailMessageFactory emailMessages,
     ICommunicationPreferenceService commPrefService,
     IAuditLogService auditLogService,
-    ITeamMessageOptionsProvider teamMessageOptionsProvider,
     IStringLocalizer<EmailResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer) : HumansControllerBase(userService)
 {
@@ -35,7 +34,7 @@ internal sealed class FacilitatedMessageController(
     private const string ViewProfileAction = "ViewProfile";
 
     [HttpGet("Email/SendMessage/{id:guid}")]
-    public async Task<IActionResult> SendMessage(Guid id, Guid? teamId, CancellationToken ct)
+    public async Task<IActionResult> SendMessage(Guid id, CancellationToken ct)
     {
         var currentUser = await GetCurrentUserInfoAsync(ct);
         if (currentUser is null)
@@ -57,21 +56,11 @@ internal sealed class FacilitatedMessageController(
             return RedirectToProfile(id);
         }
 
-        var teamSender = teamId is null
-            ? null
-            : (await teamMessageOptionsProvider.GetOptionsAsync(currentUser.Id, ct))
-                .FirstOrDefault(t => t.TeamId == teamId.Value);
-        if (teamId is not null && teamSender is null)
-            return Forbid();
-
         var viewModel = new SendMessageViewModel
         {
             RecipientId = id,
             RecipientDisplayName = targetInfo.BurnerName,
             SenderEmail = currentUser.Email ?? string.Empty,
-            SendAsTeamId = teamSender?.TeamId,
-            SendAsTeamName = teamSender?.TeamName,
-            TeamReplyToEmail = teamSender?.GoogleGroupEmail,
         };
 
         return View(viewModel);
@@ -106,16 +95,6 @@ internal sealed class FacilitatedMessageController(
         model.RecipientDisplayName = targetUser.BurnerName;
         model.SenderEmail = currentUser.Email ?? string.Empty;
 
-        var teamSender = model.SendAsTeamId is null
-            ? null
-            : (await teamMessageOptionsProvider.GetOptionsAsync(currentUser.Id, ct))
-                .FirstOrDefault(t => t.TeamId == model.SendAsTeamId.Value);
-        if (model.SendAsTeamId is not null && teamSender is null)
-            return Forbid();
-
-        model.SendAsTeamName = teamSender?.TeamName;
-        model.TeamReplyToEmail = teamSender?.GoogleGroupEmail;
-
         if (!ModelState.IsValid)
             return View(model);
 
@@ -129,24 +108,22 @@ internal sealed class FacilitatedMessageController(
             return View(model);
         }
 
-        var message = WithTeamReplyTo(emailMessages.FacilitatedMessage(
+        var message = emailMessages.FacilitatedMessage(
             request.RecipientEmail,
             request.RecipientDisplayName,
             request.SenderDisplayName,
             request.Message,
             request.IncludeContactInfo,
             request.SenderEmail,
-            request.RecipientPreferredLanguage), teamSender);
+            request.RecipientPreferredLanguage);
 
         await emailService.SendAsync(message, CancellationToken.None);
 
         await auditLogService.LogAsync(
             AuditAction.FacilitatedMessageSent,
             "User", targetUser.Id,
-            DescribeFacilitatedMessage(targetUser.BurnerName, model.IncludeContactInfo, teamSender),
-            currentUser.Id,
-            relatedEntityId: teamSender?.TeamId,
-            relatedEntityType: teamSender is null ? null : "Team");
+            $"Message sent to {targetUser.BurnerName} (contact info shared: {(model.IncludeContactInfo ? "yes" : "no")})",
+            currentUser.Id);
 
         SetSuccess(string.Format(
             localizer["Email_SendMessage_Success"].Value,
@@ -157,18 +134,4 @@ internal sealed class FacilitatedMessageController(
 
     private IActionResult RedirectToProfile(Guid id) =>
         RedirectToAction(ViewProfileAction, ProfileController, new { id });
-
-    private static EmailMessage WithTeamReplyTo(EmailMessage message, TeamMessageOption? teamSender) =>
-        teamSender is null ? message : message with { ReplyTo = teamSender.GoogleGroupEmail };
-
-    private static string DescribeFacilitatedMessage(
-        string recipientName,
-        bool includeContactInfo,
-        TeamMessageOption? teamSender)
-    {
-        var contactInfo = includeContactInfo ? "yes" : "no";
-        return teamSender is null
-            ? $"Message sent to {recipientName} (contact info shared: {contactInfo})"
-            : $"Message sent to {recipientName} from team {teamSender.TeamName} (contact info shared: {contactInfo})";
-    }
 }

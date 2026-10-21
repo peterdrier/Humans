@@ -1,0 +1,13 @@
+@model Humans.Teams.ViewComponents.TeamMessageButtonsViewModel
+
+<div class="d-flex flex-wrap gap-2 mb-4">
+    @foreach (var team in Model.Teams)
+    {
+        <a asp-controller="TeamMessage" asp-action="SendMessage"
+           asp-route-teamId="@team.TeamId" asp-route-id="@Model.UserId"
+           class="btn btn-outline-primary">
+            <i class="fa-solid fa-envelope me-1"></i>
+            @Localizer["Teams_SendMessage_FromTeam", Model.DisplayName, team.TeamName]
+        </a>
+    }
+</div>

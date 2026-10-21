@@ -120,13 +120,10 @@ public sealed class EmailDependencyCycleTests
         ProjectReferencesOf("Humans.Email").Should().BeSubsetOf(
             [
                 "Humans.AuditLog", "Humans.Base", "Humans.Campaigns", "Humans.Email.Contracts",
-                "Humans.Gdpr", "Humans.GoogleIntegration", "Humans.Settings", "Humans.Teams.Contracts",
-                "Humans.Tickets.Contracts", "Humans.Users.Contracts"
+                "Humans.Gdpr", "Humans.Settings", "Humans.Tickets.Contracts", "Humans.Users.Contracts"
             ],
             because: "Email is a crosscut: it may lose section references, never gain one. "
-                + "Teams.Contracts and GoogleIntegration arrived with facilitated messaging "
-                + "(Users decomposition commit 7): TeamMessageOptionsProvider reads ITeamService "
-                + "and ITeamResourceService. Tickets.Contracts (a Base-only leaf) arrived with "
+                + "Tickets.Contracts (a Base-only leaf) arrived with "
                 + "communication preferences (Users decomposition commit 14): the preferences panel "
                 + "locks the Ticketing row through ITicketService.GetUserTicketHoldingsAsync");
 

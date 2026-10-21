@@ -29,19 +29,11 @@
     <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
-      Facilitated messaging offers the viewer's coordinated teams through ITeamService and
-      ITeamResourceService. Acyclic: Humans.Teams.Contracts references only Base and
-      Users.Contracts, and Humans.GoogleIntegration reaches Email only through
-      Humans.Email.Contracts.
-    -->
-    <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
-    <!--
       Communication preferences (Users decomposition commit 14) lock the Ticketing row for a member
       holding a matched ticket order, read through ITicketService. Acyclic: Humans.Tickets.Contracts
       references only Base.
     -->
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
     <!--
       The outbox drain mirrors a campaign grant's delivery status, and the pause flag is a
       system_settings row. Both reference the other section's project, and the graph stays

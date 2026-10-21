@@ -1,10 +1,10 @@
-using Humans.Email.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Enums;
 using Humans.Base.Interfaces;
-using Humans.Email.Services;
-using Humans.Email.ViewComponents;
+using Humans.Email.Contracts;
+using Humans.Teams.Services;
+using Humans.Teams.ViewComponents;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
@@ -13,11 +13,11 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using NodaTime;
 using NSubstitute;
 
-namespace Humans.Email.Tests.ViewComponents;
+namespace Humans.Teams.Tests.ViewComponents;
 
 /// <summary>
-/// The "send a message from {team}" buttons Email contributes to the profile page (Users
-/// decomposition commit 7): who sees them and which teams they offer.
+/// The "send a message from {team}" buttons Teams contributes to the profile page: who sees
+/// them and which teams they offer.
 /// </summary>
 public sealed class TeamMessageButtonsViewComponentTests
 {

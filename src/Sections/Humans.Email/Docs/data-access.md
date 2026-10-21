@@ -87,19 +87,10 @@ through `IUserService`. No cache.
 No repository. Pure builder for the one template this section still owns —
 `FacilitatedMessage`, the volunteer-to-volunteer relay — reading
 `EmailResource` (via `IStringLocalizer<EmailResource>`) and writing nothing.
-Returns an `EmailMessage` for Email's `FacilitatedMessageController` and Camps'
-`CampContactService` to pass to `IEmailService.SendAsync`. No DB access, no
+Returns an `EmailMessage` for Email's `FacilitatedMessageController`, Camps'
+`CampContactService` and Teams' `TeamMessageController` (which passes the team's
+group address as `replyTo`) to pass to `IEmailService.SendAsync`. No DB access, no
 cache.
-
-### TeamMessageOptionsProvider (Scoped, internal — `IOrchestrator`)
-
-No repository, no cache, no direct DB access. Section-internal
-`ITeamMessageOptionsProvider`: the teams a viewer may send a facilitated message
-for — active teams the viewer coordinates whose linked Google Group is synced.
-Cross-section reads via `ITeamService.GetTeamsAsync` (Teams) and
-`ITeamResourceService.GetResourcesByTeamIdsAsync` (GoogleIntegration); it touches
-neither section's tables. Callers: `FacilitatedMessageController` and
-`TeamMessageButtonsViewComponent`.
 
 ### FacilitatedMessagePreviews (Scoped)
 

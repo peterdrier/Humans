@@ -24,8 +24,4 @@ internal sealed class SendMessageViewModel
     public bool IncludeContactInfo { get; set; } = true;
 
     public string SenderEmail { get; set; } = string.Empty;
-
-    public Guid? SendAsTeamId { get; set; }
-    public string? SendAsTeamName { get; set; }
-    public string? TeamReplyToEmail { get; set; }
 }

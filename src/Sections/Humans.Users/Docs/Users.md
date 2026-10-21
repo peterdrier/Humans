@@ -605,7 +605,7 @@ Self-service profile functionality lives under `/Profile`, split by shape across
 | `/Profile/{id}` | View another human's profile |
 | `/Profile/{id}/Popover` | Quick profile popup |
 | `/Profile/{id}/PublicPopover` | `[AllowAnonymous]` — public-page coordinator popover; 404 unless the target coordinates a public-page team ([spec](features/public-coordinator-popover.md)) |
-| `/Email/SendMessage/{id}` | GET/POST — send facilitated message; served by Email's `FacilitatedMessageController` (the profile card links to it) |
+| `/Email/SendMessage/{id}` | GET/POST — send facilitated message; served by Email's `FacilitatedMessageController` (the profile card links to it). Send as team is Teams' `/Teams/{teamId}/SendMessage/{id}`, offered by Teams' `Profile` user part |
 | `/Profile/Search` | People search |
 | `/Profile/Picture` | `[AllowAnonymous]` — profile picture bytes |
 | `/api/profiles/search` | API people search |

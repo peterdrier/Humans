@@ -89,12 +89,6 @@
   <data name="Email_SendMessage_Success" xml:space="preserve">
     <value>El teu missatge s’ha enviat a {0}.</value>
   </data>
-  <data name="Email_SendMessage_FromTeamButton" xml:space="preserve">
-    <value>Envia un missatge a {0} des de {1}</value>
-  </data>
-  <data name="Email_SendMessage_FromTeamNotice" xml:space="preserve">
-    <value>Estàs enviant en nom de {0}. Les respostes s'enviaran a {1}.</value>
-  </data>
   <data name="Email_SendMessage_OptedOut" xml:space="preserve"><value>Aquesta persona ha decidit no rebre missatges.</value></data>
   <data name="Email_BreadcrumbNavigation" xml:space="preserve"><value>Ruta de navegació</value></data>
   <data name="Email_CommPrefs_Title" xml:space="preserve">

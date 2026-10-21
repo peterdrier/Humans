@@ -1,0 +1,57 @@
+@model TeamSendMessageViewModel
+@{
+    ViewData["Title"] = string.Format(Localizer["Teams_SendMessage_FromTeam"].Value, Model.RecipientDisplayName, Model.TeamName);
+}
+
+<nav aria-label="@Localizer["Teams_BreadcrumbNavigation"]">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
+        <li class="breadcrumb-item"><a asp-controller="ProfileView" asp-action="ViewProfile" asp-route-id="@Model.RecipientId">@Model.RecipientDisplayName</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Teams_SendMessage_Breadcrumb"]</li>
+    </ol>
+</nav>
+
+<h1>@string.Format(Localizer["Teams_SendMessage_FromTeam"].Value, Model.RecipientDisplayName, Model.TeamName)</h1>
+
+<div class="card">
+    <div class="card-body">
+        <form asp-controller="TeamMessage" asp-action="SendMessage" asp-route-teamId="@Model.TeamId" asp-route-id="@Model.RecipientId" method="post">
+            @Html.AntiForgeryToken()
+
+            <div class="alert alert-info">
+                @Localizer["Teams_SendMessage_FromTeamNotice", Model.TeamName, Model.TeamReplyToEmail]
+            </div>
+
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+            @await Html.PartialAsync("_EmailComposer", new Humans.Base.Models.EmailComposerViewModel
+            {
+                BodyName = "Message",
+                BodyValue = Model.Message,
+                BodyLabel = Localizer["Teams_SendMessage_MessageLabel"].Value,
+                BodyRows = 8,
+                BodyMaxLength = 2000,
+                Category = nameof(Humans.Email.Contracts.MessageCategory.FacilitatedMessages),
+                RecipientCount = 1,
+                RecipientUserId = Model.RecipientId,
+            })
+
+            <div class="mb-3 form-check">
+                <input asp-for="IncludeContactInfo" class="form-check-input" type="checkbox" />
+                <label asp-for="IncludeContactInfo" class="form-check-label">
+                    @Localizer["Teams_SendMessage_IncludeContactInfo"]
+                    @if (!string.IsNullOrEmpty(Model.SenderEmail))
+                    {
+                        <span class="text-muted">(@Model.SenderEmail)</span>
+                    }
+                </label>
+                <div class="form-text">@Localizer["Teams_SendMessage_IncludeContactInfoHelp"]</div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">@Localizer["Teams_SendMessage_Send"]</button>
+                <a asp-controller="ProfileView" asp-action="ViewProfile" asp-route-id="@Model.RecipientId" class="btn btn-outline-secondary">@SharedLocalizer["Common_Cancel"]</a>
+            </div>
+        </form>
+    </div>
+</div>

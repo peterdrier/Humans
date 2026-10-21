@@ -42,6 +42,18 @@ public sealed class EmailMessageFactoryTests
         msg.HtmlBody.Should().Contain("Email_FacilitatedMessage_NoContactInfo");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public void FacilitatedMessage_WithReplyTo_RoutesRepliesThereWhateverTheContactChoice(bool includeContactInfo)
+    {
+        var msg = _factory.FacilitatedMessage(
+            "rcpt@x.com", "Rcpt", "Sender", "Hi", includeContactInfo, senderEmail: "sender@x.com", "en",
+            replyTo: "team@nobodies.team");
+
+        msg.ReplyTo.Should().Be("team@nobodies.team");
+    }
+
     [HumansFact]
     public void FacilitatedMessage_renders_markdown_instead_of_html_encoded_plain_text()
     {

@@ -1,17 +1,17 @@
-using Humans.Email.Contracts;
 using System.Security.Claims;
 using Humans.Base.Enums;
-using Humans.Email.Services;
+using Humans.Email.Contracts;
+using Humans.Teams.Services;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Humans.Email.ViewComponents;
+namespace Humans.Teams.ViewComponents;
 
 /// <summary>
 /// The "Send a message from {team}" buttons, contributed to <c>UserPartSlots.Profile</c>. They
 /// show on another member's profile (never the viewer's own) when that member accepts facilitated
 /// messages, one per team the viewer may send as (<see cref="ITeamMessageOptionsProvider"/>);
-/// nothing otherwise. The send endpoint re-checks the team, so these buttons only offer.
+/// nothing otherwise. <c>TeamMessageController</c> re-checks the team, so these buttons only offer.
 /// </summary>
 internal sealed class TeamMessageButtonsViewComponent(
     ITeamMessageOptionsProvider options,

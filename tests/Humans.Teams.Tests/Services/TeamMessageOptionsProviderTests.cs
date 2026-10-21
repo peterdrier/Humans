@@ -2,12 +2,11 @@ using AwesomeAssertions;
 using Humans.Base.Enums;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Email.Models;
-using Humans.Email.Services;
+using Humans.Teams.Services;
 using NodaTime;
 using NSubstitute;
 
-namespace Humans.Email.Tests.Services;
+namespace Humans.Teams.Tests.Services;
 
 public class TeamMessageOptionsProviderTests
 {

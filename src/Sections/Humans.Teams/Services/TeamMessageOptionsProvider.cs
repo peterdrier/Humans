@@ -1,15 +1,14 @@
 using Humans.Base.Constants;
-using Humans.Base.Interfaces;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Teams.Contracts;
 
-namespace Humans.Email.Services;
+namespace Humans.Teams.Services;
 
 /// <summary>
 /// The teams a viewer may send a facilitated message on behalf of: active teams the viewer
 /// coordinates whose Google Group is linked and synced. The profile-page buttons
-/// (<c>TeamMessageButtonsViewComponent</c>) render the list and the send endpoints authorize a
-/// requested team by looking it up in the same list.
+/// (<c>TeamMessageButtonsViewComponent</c>) render the list and <c>TeamMessageController</c>
+/// authorizes the requested team by looking it up in the same list.
 /// </summary>
 internal interface ITeamMessageOptionsProvider
 {
@@ -19,10 +18,11 @@ internal interface ITeamMessageOptionsProvider
 /// <summary>A team the viewer may send a facilitated message as, with the group address replies go to.</summary>
 internal sealed record TeamMessageOption(Guid TeamId, string TeamName, string GoogleGroupEmail);
 
-// Owns no tables: coordinates Teams and GoogleIntegration through their public interfaces.
+// Teams' own rule over its teams, with the group's sync state read through GoogleIntegration's
+// ITeamResourceService.
 internal sealed class TeamMessageOptionsProvider(
     ITeamService teamService,
-    ITeamResourceService teamResourceService) : ITeamMessageOptionsProvider, IOrchestrator
+    ITeamResourceService teamResourceService) : ITeamMessageOptionsProvider
 {
     public async Task<IReadOnlyList<TeamMessageOption>> GetOptionsAsync(Guid viewerId, CancellationToken ct = default)
     {

@@ -139,6 +139,8 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 | `POST /Teams/{id:guid}/Edit` | `EditTeam` (POST) | `TeamController` | `[Authorize(Policy = TeamsAdminBoardOrAdmin)]` |
 | `POST /Teams/{id:guid}/Delete` | `DeleteTeam` | `TeamController` | `[Authorize(Policy = BoardOrAdmin)]` |
 | `GET /Teams/{teamId:guid}/GoogleResources` | `GetTeamGoogleResources` | `TeamController` | `[Authorize(Policy = TeamsAdminBoardOrAdmin)]` — JSON API for resource picker |
+| `GET /Teams/{teamId:guid}/SendMessage/{id:guid}` | `SendMessage` (GET) | `TeamMessageController` | `[Authorize]` + `ITeamMessageOptionsProvider` — send as team: the team must be one the viewer may send as (see Invariants); 403 otherwise, redirect to the profile for self or an opted-out recipient |
+| `POST /Teams/{teamId:guid}/SendMessage/{id:guid}` | `SendMessage` (POST) | `TeamMessageController` | `[Authorize]`, anti-forgery, same guards re-checked |
 | `GET /Teams/{slug}/Members` | `Members` | `TeamAdminController` | `ResolveTeamManagementAsync` (coordinator or TeamsAdmin/Admin) |
 | `POST /Teams/{slug}/Members/Add` | `AddMember` | `TeamAdminController` | `ResolveTeamManagementAsync` |
 | `POST /Teams/{slug}/Members/{userId}/Remove` | `RemoveMember` | `TeamAdminController` | `ResolveTeamManagementAsync` |
@@ -266,6 +268,10 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - The Members page's `@nobodies.team` column is this section's own: `TeamAdminController.Members` batches each member's verified nobodies.team email through `IUserService.GetUserInfosAsync` and the view renders the address, or a form posting to this controller's own `ProvisionEmail`, itself (nobodies-collective/Humans#1815). It is not a cross-section widget.
 - Workspace provisioning shows credential-handoff warnings separately from account creation: a created and linked account remains successful when its credentials email cannot be queued or has no recovery address. The coordinator sees the admin password-reset guidance; accepted handoffs are described as queued rather than delivered.
 
+## Send as team
+
+A coordinator can relay a one-off message to another member on behalf of a team, with replies going to the team's Google Group. The rule is Teams' own (`TeamMessageOptionsProvider`, internal): an **active** team the viewer **coordinates** (`TeamMemberRole.Coordinator`), with a Google Group prefix whose group is linked (`ITeamResourceService`, GoogleIntegration), active, synced at least once and error-free, matched on the group's URL. `TeamMessageButtonsViewComponent` (a `Profile` user part, weight 200, registered by `SectionUserParts`) offers one button per such team on another member's profile; `TeamMessageController` re-checks the same list on GET and POST. Both refuse an opted-out recipient (`ICommunicationPreferenceService.AcceptsFacilitatedMessagesAsync`) and self-send. The message goes through Email's `IEmailMessageFactory.FacilitatedMessage` with the group as `replyTo`, then `IEmailService.SendAsync`, and is audited `FacilitatedMessageSent` against the recipient, with the team as the related entity; the audit text names the team and never copies its address. Nothing else is stored. Personal facilitated messages stay with Email (`/Email/SendMessage/{id}`).
+
 ## Negative Access Rules
 
 - Regular humans **cannot** manage other teams' members, roles, or settings.
@@ -274,6 +280,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - A resource manager cannot target another team’s resource ID through an authorized team’s URL. Resource administration passes the authenticated manager ID to GoogleIntegration, which records persisted changes in the audit trail.
 - TeamsAdmin **cannot** delete teams or execute sync actions.
 - Nobody can manually add or remove members from system teams.
+- Nobody can send as a team they do not coordinate, or as a team whose group is unlinked, unsynced or failing — not even Admin or TeamsAdmin (403). Nobody can send as a team to an opted-out recipient or to themselves.
 
 ## Triggers
 
@@ -297,11 +304,11 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 - **Users.Contracts**: `IUserService.GetUserInfosAsync` batch-resolves `UserInfo` for nav-stripped reads, projected straight into DTOs; `IUserService` feeds the reconciler.
 - **Auth:** `IRoleAssignmentService` for role-holder reads and `IAdminAuthorizationService` for the actor checks; `IRoleAssignmentClaimsCacheInvalidator` after Coordinators reconciliation.
-- **GoogleIntegration:** each team can have linked Google resources (Drive folders, Groups). Membership changes append events through `IGoogleSyncOutboxService`, whose processor calls `IGoogleSyncWrite.AddUserToTeamResourcesAsync` for joins (a leave event needs no call: reconciliation removes the access); `TeamDriveAccessSource` supplies expected Drive access; `ITeamResourceService` / `ITeamResourceWrite` for the Resources page and the Google-group reconciliation.
+- **GoogleIntegration:** each team can have linked Google resources (Drive folders, Groups). Membership changes append events through `IGoogleSyncOutboxService`, whose processor calls `IGoogleSyncWrite.AddUserToTeamResourcesAsync` for joins (a leave event needs no call: reconciliation removes the access); `TeamDriveAccessSource` supplies expected Drive access; `ITeamResourceService` / `ITeamResourceWrite` for the Resources page, the Google-group reconciliation and send as team's linked-and-synced group check.
 - **Shifts.Contracts:** `IShiftManagementService` for the team page's shifts card; `IShiftAuthorizationInvalidator` after coordinator changes. Rotas belong to a department or sub-team, and coordinator/manager status is what scopes their shift management.
 - **Notifications.Contracts:** `INotificationEmitter` on join-request events; `INotificationMeterCacheInvalidator`.
 - **AuditLog:** `IAuditLogService` for every membership and EE mutation, and `<vc:audit-log>` in `TeamAdmin/Members`.
-- **Email.Contracts:** transport only (`IEmailService.SendAsync`) for the reconciler's "added to team" mail. Teams owns the template: `TeamsEmails` (internal) builds the `EmailMessage` from Teams' own `Teams_Email_*` keys in `TeamsResource`, renders linked resources alphabetically in the recipient's supported culture via `CultureScope` (English fallback for missing or unsupported saved preferences), and `TeamsEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists it at `/Email/EmailPreview` (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651).
+- **Email.Contracts:** `IEmailService.SendAsync`, `IEmailMessageFactory.FacilitatedMessage` (with the team's group as `replyTo`) and `ICommunicationPreferenceService.AcceptsFacilitatedMessagesAsync` for send as team. Otherwise transport only (`IEmailService.SendAsync`) for the reconciler's "added to team" mail. Teams owns the template: `TeamsEmails` (internal) builds the `EmailMessage` from Teams' own `Teams_Email_*` keys in `TeamsResource`, renders linked resources alphabetically in the recipient's supported culture via `CultureScope` (English fallback for missing or unsupported saved preferences), and `TeamsEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists it at `/Email/EmailPreview` (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651).
 - **Gdpr:** `IUserDataContributor` (export + erasure).
 - **EarlyEntry** (full section): `IEarlyEntryProvider` — `GetEarlyEntriesAsync` projects grants from `EarlyEntryEnabled` teams to the cross-section `EarlyEntryGrant` view (`"{TeamName}: {ProjectName}"`) via `TeamEarlyEntryProjection`; `IEarlyEntryInvalidator` on grant writes.
 - **Camps.Contracts:** active camp lead assignments feed the Barrio Leads system team via `ICampLeadDirectory`.
