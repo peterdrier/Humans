@@ -103,19 +103,6 @@ public class ProfileTests
         profile.RejectedByUserId.Should().Be(adminId);
     }
 
-    [HumansTheory]
-    [InlineData(LegacyMembershipTier.Volunteer)]
-    [InlineData(LegacyMembershipTier.Colaborador)]
-    [InlineData(LegacyMembershipTier.Asociado)]
-    public void Profile_CanSetMembershipTier(LegacyMembershipTier tier)
-    {
-        var profile = CreateProfile();
-
-        profile.MembershipTier = tier;
-
-        profile.MembershipTier.Should().Be(tier);
-    }
-
     private static Profile CreateProfile()
     {
         return new Profile

@@ -25,7 +25,7 @@ inbox:
     review: panel
   - added: 2026-10-21
     id: USERS-17
-    what: "Drop profiles.MembershipTier (Users) and delete the Profile.MembershipTier entity property and configuration. Replaced by data migration governance.profile-tier; blocked on CENTRAL-91 (the retirement PR) merged and deployed. The production done reading of governance.profile-tier (quoted with its date) is the standing approval in memory/architecture/no-drops-until-prod-verified.md; the drop is its own generated migration with a baseline entry in NoDestructiveMigrationOps.baseline.txt whose Approval line cites that reading and Evidence line cites the retirement PR."
+    what: "Drop profiles.MembershipTier (Users) and delete the Profile.MembershipTier entity property, its configuration and the internal LegacyMembershipTier enum. Replaced by data migration governance.profile-tier; blocked on CENTRAL-91 (the retirement PR) merged and deployed. The production done reading of governance.profile-tier (quoted with its date) is the standing approval in memory/architecture/no-drops-until-prod-verified.md; the drop is its own generated migration with a baseline entry in NoDestructiveMigrationOps.baseline.txt whose Approval line cites that reading and Evidence line cites the retirement PR."
     review: panel
   - added: 2026-10-21
     id: USERS-18

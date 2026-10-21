@@ -5,10 +5,9 @@ namespace Humans.Governance.Domain;
 
 /// <summary>
 /// A member's current membership tier, one row per member (<c>governance_membership_tiers</c>).
-/// Replaces <c>profiles.MembershipTier</c>, which Users keeps unwritten until the
-/// <c>governance.profile-tier</c> data migration is done in production. A member with no row is a
-/// Volunteer (after the copy); a row holding <see cref="MembershipTier.Volunteer"/> records an
-/// expired term, so the read never falls back to the legacy profile value.
+/// Replaces <c>profiles.MembershipTier</c>, which Users keeps unwritten and unread until its drop.
+/// A member with no row is a Volunteer; a row holding <see cref="MembershipTier.Volunteer"/>
+/// records an expired term.
 /// </summary>
 internal sealed class MembershipTierRecord
 {

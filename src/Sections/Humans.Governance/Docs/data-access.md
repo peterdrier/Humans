@@ -67,12 +67,10 @@ and term data for the copy, in-term sets for expiry).
 | MembershipTiers | R/W |
 | Applications | R |
 
-Cross-section reads: `IUserService` (legacy `ProfileInfo.MembershipTier` fallback while a
-user has no row; read only in `LegacyTier`, inside `#pragma warning disable HUM_PROFILE_TIER`).
+Cross-section reads: `IUserService` (merge-chain resolution on the single-member read).
 Implements `IUserDataContributor` (slice `MembershipTier`; erasure retains the row — register
 of members, Ley Orgánica 1/2002 Art. 14, GDPR Art. 17(3)(b)) and `IUserMerge` (survivor's tier
-wins). Data migration `governance.profile-tier` (`SectionDataMigrations`) copies legacy
-non-Volunteer profile tiers into rows.
+wins).
 
 ### AssemblyVoteService (Scoped)
 

@@ -63,17 +63,17 @@ Tier application entity with state machine workflow. Used for Colaborador and As
 
 ### MembershipTierRecord (`governance_membership_tiers`)
 
-One row per member; a member with no row is a Volunteer once `governance.profile-tier` has run.
+One row per member; a member with no row is a Volunteer.
 
 | Property | Type | Purpose |
 |---|---|---|
 | UserId | Guid | PK — **FK only**, no nav |
-| Tier | MembershipTier | The member's current tier, stored as string. A `Volunteer` row records an expired term, so the read never falls back to the legacy profile value |
+| Tier | MembershipTier | The member's current tier, stored as string. A `Volunteer` row records an expired term |
 | GrantedAt | Instant | When this tier was written (approval, expiry downgrade, or the copy) |
 | ExpiresAt | LocalDate? | The granting application's `TermExpiresAt`; kept in step by the term-expiry repair |
 | GrantedByApplicationId | Guid? | The approved application that granted the tier; null for Volunteer or a copied tier with no matching approval |
 
-**Legacy fallback (until `governance.profile-tier` is done in production):** a member with no row reads the frozen `profiles.MembershipTier` through the `[Obsolete(HUM_PROFILE_TIER)]` `ProfileInfo.MembershipTier` (type `LegacyMembershipTier` in `Users.Contracts`, which cannot name Governance's enum). `MembershipTierService.LegacyTier` is the one reader. The copy (`/Debug/DataMigrations`) writes a row for every living member whose legacy tier is not Volunteer, taking the term and grant from their latest Approved application of that tier. The retirement PR deletes the migration, the fallback, the obsolete field and `LegacyMembershipTier`; a drop PR then removes the column.
+Replaces the frozen `profiles.MembershipTier` (Users). The `governance.profile-tier` data migration copied every legacy non-Volunteer tier, taking the term and grant from the member's latest Approved application of that tier, and was retired once production reported it done; a drop PR removes the column (Users' USERS-17).
 
 ### ApplicationStateHistory
 
@@ -360,7 +360,7 @@ Approval and rejection share one committed-decision path: capture Board ids, fin
 
 ## Cross-Section Dependencies
 
-- **Users:** `IUserService` — the tier read's legacy fallback and the `governance.profile-tier` copy read `ProfileInfo.MembershipTier` (obsolete, `LegacyMembershipTier`). Users renders the tier on its popover, profile card, admin detail and duplicate-account queue through `IGovernanceService`, and the profile setup form links to `/Governance/Applications/Create`. `GovernanceIndexService` counts the sidebar tiers itself from `IUserService.GetAllUserInfosAsync`. Account merge: `ApplicationDecisionService` implements `IUserMerge`; `AccountMergeService` (Users section) fans out to all `IUserMerge` implementations, which triggers `ApplicationDecisionService.ReassignAsync` → `IApplicationRepository.ReassignApplicationsToUserAsync` to re-FK `Application.UserId` from source to target. `BoardVote.BoardMemberUserId` is not re-FK'd (votes are transient, deleted on finalization).
+- **Users:** `IUserService` — merge-chain resolution on the single-member tier read. Users renders the tier on its popover, profile card, admin detail and duplicate-account queue through `IGovernanceService`, and the profile setup form links to `/Governance/Applications/Create`. `GovernanceIndexService` counts the sidebar tiers itself from `IUserService.GetAllUserInfosAsync`. Account merge: `ApplicationDecisionService` implements `IUserMerge`; `AccountMergeService` (Users section) fans out to all `IUserMerge` implementations, which triggers `ApplicationDecisionService.ReassignAsync` → `IApplicationRepository.ReassignApplicationsToUserAsync` to re-FK `Application.UserId` from source to target. `BoardVote.BoardMemberUserId` is not re-FK'd (votes are transient, deleted on finalization).
 - **Teams:** `ISystemTeamSync` — tier approval or expiry adds/removes the human from Colaboradors/Asociados system teams. `SystemTeamSyncJob` calls `IGovernanceWrite.ExpireMembershipTiersAsync` and audits the downgrades.
 - **Tier readers:** Onboarding (review queue and detail), Workgroups (budget visibility, roster badge), Tickets (who-hasn't-bought tier filter), Surveys (Asociado eligibility) and Agent (user snapshot) read the tier through `IGovernanceService`; the Shell's dashboard renders `<vc:membership-tier-badge>`.
 - **Onboarding:** Tier applications are a separate, optional path — never block Volunteer onboarding.

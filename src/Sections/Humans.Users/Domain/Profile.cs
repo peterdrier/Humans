@@ -131,8 +131,8 @@ internal sealed class Profile
 
     /// <summary>
     /// Frozen legacy column: no longer written. The live tier is Governance's
-    /// <c>governance_membership_tiers</c> (Users decomposition commit 11); kept until the
-    /// <c>governance.profile-tier</c> copy reports done in production and a drop PR removes it.
+    /// <c>governance_membership_tiers</c> (Users decomposition commit 11); the
+    /// <c>governance.profile-tier</c> copy is retired, and a drop PR removes the column.
     /// </summary>
     public LegacyMembershipTier MembershipTier { get; set; }
 

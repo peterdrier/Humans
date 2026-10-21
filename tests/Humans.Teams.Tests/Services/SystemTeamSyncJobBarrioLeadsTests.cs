@@ -123,7 +123,6 @@ public class SystemTeamSyncJobBarrioLeadsTests
             ContributionInterests: null,
             BoardNotes: null,
             IsApproved: false,
-            MembershipTier: LegacyMembershipTier.Volunteer,
             ConsentCheckStatus: null,
             ConsentCheckAt: null,
             ConsentCheckedByUserId: null,

@@ -936,8 +936,8 @@ internal sealed class UserService(
             profile.Pronouns,
             profile.ContributionInterests,
             profile.BoardNotes,
-            // Frozen legacy column, still held here until the governance.profile-tier retirement drops
-            // it; the live tier is Governance's MembershipTier slice (Users decomposition commit 11).
+            // Frozen legacy column, exported while it is held (until its drop); the live tier is
+            // Governance's MembershipTier slice (Users decomposition commit 11).
             profile.MembershipTier,
             profile.IsApproved,
             // JSON key pinned per memory/code/no-rename-serialized-fields.md (GDPR export stability).

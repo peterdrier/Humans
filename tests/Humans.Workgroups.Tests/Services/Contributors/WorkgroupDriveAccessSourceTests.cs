@@ -104,13 +104,13 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
                     Instant.FromUtc(2026, 1, 1, 0, 0))]));
 
         var colaborador = SeedUser("Colaborador", profile: UserFixtures.Profile(
-            isApproved: true, membershipTier: LegacyMembershipTier.Colaborador));
+            isApproved: true));
         var asociado = SeedUser("Asociado", profile: UserFixtures.Profile(
-            isApproved: true, membershipTier: LegacyMembershipTier.Asociado));
+            isApproved: true));
         var unapprovedColaborador = SeedUser("Unapproved", profile: UserFixtures.Profile(
-            isApproved: false, membershipTier: LegacyMembershipTier.Colaborador));
+            isApproved: false));
         var volunteer = SeedUser("Volunteer", profile: UserFixtures.Profile(
-            isApproved: true, membershipTier: LegacyMembershipTier.Volunteer));
+            isApproved: true));
 
         var access = await NewSource().GetExpectedAccessAsync(ct: Ct);
 
