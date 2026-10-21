@@ -89,6 +89,11 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 - Ticket fee reads require explicit EUR currency, case-insensitively, on the balance
   transaction and every fee entry. The charge's currency cannot establish the settlement
   currency. Missing or foreign currencies throw before returning any fee amounts.
+- Ticket fee reads keep every Stripe fee bucket: `stripe_fee` and `payment_method_passthrough_fee`
+  are `StripeFee` (processing cost), `application_fee` is `ApplicationFee`, `tax` (VAT Stripe
+  charges on its fees) is `FeeTax`, `withheld_tax` is `WithheldTax`. When the buckets do not sum
+  to the balance transaction's total fee (an unrecognised fee type), the read logs a Warning and
+  still returns the known buckets.
 - Store session reads require explicit EUR currency, case-insensitively, before projecting `AmountEur`. Webhooks reject foreign or missing currency; reconciliation rejects the whole list instead of silently dropping sessions. Adaptive Pricing's customer presentment currency does not replace the integration currency or amount.
 - The section references no other section. That is what makes `Humans.Store → Humans.Stripe`
   and `Humans.Tickets → Humans.Stripe` acyclic and a `.Contracts` leaf unnecessary.

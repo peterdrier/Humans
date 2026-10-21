@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.EarlyEntry.Contracts;
 using Humans.EarlyEntry.Services;
-using Humans.Settings.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;

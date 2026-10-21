@@ -161,7 +161,7 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
 
         await _syncService.ReconcileOneAsync(TestGroupEmail, SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
-        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
     }
 
     private void StageGroupResource()

@@ -4,7 +4,6 @@ using System.Net;
 using Humans.Base.Configuration;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
-using Humans.Users.Contracts;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 using NodaTime;

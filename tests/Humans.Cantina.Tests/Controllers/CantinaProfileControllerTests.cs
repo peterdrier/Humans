@@ -220,7 +220,7 @@ public class CantinaProfileControllerTests
         result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
         _controller.ModelState[string.Empty]!.Errors.Should().ContainSingle()
             .Which.ErrorMessage.Should().Be("Cantina_Dietary_IntoleranceOther_Required");
-        await _signupService.DidNotReceiveWithAnyArgs().SignUpAsync(default, default, default, default);
+        await _signupService.DidNotReceiveWithAnyArgs().SignUpAsync(default, default);
     }
 
     private static void AssertRedirect(IActionResult result, string action, string controller)

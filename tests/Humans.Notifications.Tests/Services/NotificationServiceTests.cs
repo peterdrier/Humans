@@ -1,6 +1,5 @@
 using Humans.Email.Contracts;
 using Humans.Auth.Contracts;
-using Humans.Base.Caching;
 using Humans.Notifications.Data;
 using Humans.Notifications.Services;
 using AwesomeAssertions;
@@ -15,7 +14,6 @@ using NSubstitute;
 using Xunit;
 
 
-using Humans.Users.Contracts;
 
 namespace Humans.Notifications.Tests.Services;
 
@@ -76,11 +74,11 @@ public class NotificationServiceTests : IDisposable
             NotificationClass.Informational,
             NotificationPriority.Normal,
             "Added to team",
-            [user], cancellationToken: Xunit.TestContext.Current.CancellationToken);
+            [user], cancellationToken: TestContext.Current.CancellationToken);
 
         var notification = await _notificationsDb.Notifications
             .Include(n => n.Recipients)
-            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(TestContext.Current.CancellationToken);
 
         notification.Title.Should().Be("Added to team");
         notification.Recipients.Single().UserId.Should().Be(user);
@@ -105,11 +103,11 @@ public class NotificationServiceTests : IDisposable
             NotificationPriority.Normal,
             "New tier application submitted",
             "Board",
-            actionUrl: "/Governance/BoardVoting", cancellationToken: Xunit.TestContext.Current.CancellationToken);
+            actionUrl: "/Governance/BoardVoting", cancellationToken: TestContext.Current.CancellationToken);
 
         var notifications = await _notificationsDb.Notifications
             .Include(n => n.Recipients)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+            .ToListAsync(TestContext.Current.CancellationToken);
 
         notifications.Should().HaveCount(1);
         var notification = notifications.Single();
@@ -128,10 +126,10 @@ public class NotificationServiceTests : IDisposable
 
         await _service.SendToRoleAsync(NotificationSource.WorkgroupRegistrationPending,
             NotificationClass.Actionable, NotificationPriority.Normal, title, "Board", detail,
-            cancellationToken: Xunit.TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var notification = await _notificationsDb.Notifications.Include(n => n.Recipients)
-            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(TestContext.Current.CancellationToken);
         notification.Title.Should().Be(string.Concat(title.EnumerateRunes().Take(199)) + "…");
         notification.Body.Should().Be(string.Concat((title + "\n\n" + detail).EnumerateRunes().Take(1999)) + "…");
         notification.TargetGroupName.Should().Be("Board");
@@ -157,11 +155,11 @@ public class NotificationServiceTests : IDisposable
             NotificationClass.Informational,
             NotificationPriority.Normal,
             "Heads up",
-            "Board", cancellationToken: Xunit.TestContext.Current.CancellationToken);
+            "Board", cancellationToken: TestContext.Current.CancellationToken);
 
         var notification = await _notificationsDb.Notifications
             .Include(n => n.Recipients)
-            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(TestContext.Current.CancellationToken);
         notification.Recipients.Select(r => r.UserId).Should().BeEquivalentTo([allowed]);
     }
 
@@ -190,11 +188,11 @@ public class NotificationServiceTests : IDisposable
             NotificationClass.Actionable,
             NotificationPriority.Normal,
             "Act on this",
-            "Board", cancellationToken: Xunit.TestContext.Current.CancellationToken);
+            "Board", cancellationToken: TestContext.Current.CancellationToken);
 
         var notification = await _notificationsDb.Notifications
             .Include(n => n.Recipients)
-            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(TestContext.Current.CancellationToken);
         notification.Recipients.Single().UserId.Should().Be(holder);
     }
 
@@ -216,9 +214,9 @@ public class NotificationServiceTests : IDisposable
             NotificationClass.Informational,
             NotificationPriority.Normal,
             "Heads up",
-            "Board", cancellationToken: Xunit.TestContext.Current.CancellationToken);
+            "Board", cancellationToken: TestContext.Current.CancellationToken);
 
-        (await _notificationsDb.Notifications.AnyAsync(Xunit.TestContext.Current.CancellationToken))
+        (await _notificationsDb.Notifications.AnyAsync(TestContext.Current.CancellationToken))
             .Should().BeFalse();
     }
 }

@@ -196,7 +196,7 @@ public class MailerLiteImportServiceClassifierTests
         result.HumansCreated.Should().Be(fails ? 0 : 1);
         result.UnverifiedEmailsReplaced.Should().Be(fails ? 0 : 1);
         result.Errors.Should().Be(fails ? 1 : 0);
-        await harness.UserEmails.DidNotReceiveWithAnyArgs().DeleteEmailAsync(default, default, default);
+        await harness.UserEmails.DidNotReceiveWithAnyArgs().DeleteEmailAsync(default, default);
         await harness.Provisioning.Received(1).ReplaceUnverifiedEmailAndProvisionAsync(
             oldUserId, oldEmailId, "pending@x.com", null, ContactSource.MailerLite, ct);
     }

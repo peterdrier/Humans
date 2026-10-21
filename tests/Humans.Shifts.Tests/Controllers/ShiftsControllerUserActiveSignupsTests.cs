@@ -251,7 +251,7 @@ public class ShiftsControllerUserActiveSignupsTests
         var translated = resources.GetString(key, System.Globalization.CultureInfo.CurrentUICulture)!;
         _localizer[key].Returns(new LocalizedString(key, translated));
         var blockId = Guid.NewGuid();
-        _signupService.BailRangeAsync(blockId, _userId, null).Returns(new BailRangeResult(key));
+        _signupService.BailRangeAsync(blockId, _userId).Returns(new BailRangeResult(key));
         var controller = BuildSut();
 
         (await controller.BailRange(blockId)).Should().BeOfType<RedirectToActionResult>();
@@ -266,7 +266,7 @@ public class ShiftsControllerUserActiveSignupsTests
     {
         var blockId = Guid.NewGuid();
         var fault = new InvalidOperationException("database diagnostic");
-        _signupService.BailRangeAsync(blockId, _userId, null)
+        _signupService.BailRangeAsync(blockId, _userId)
             .Returns(Task.FromException<BailRangeResult>(fault));
         var controller = BuildSut();
 

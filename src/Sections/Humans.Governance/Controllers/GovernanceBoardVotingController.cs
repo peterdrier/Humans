@@ -1,4 +1,3 @@
-using Humans.Governance.Contracts;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Governance.Services;
 using Humans.Governance.Domain;

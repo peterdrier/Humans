@@ -464,7 +464,7 @@ public sealed class WorkspaceIdentityServiceTests
         (await controller.AdminSet(archivedId, target.UserEmails[0].Id, Ct)).Should().BeOfType<NotFoundResult>();
         // An email id that is not the target's own row never reaches the service.
         (await controller.AdminSet(target.Id, admin.UserEmails[0].Id, Ct)).Should().BeOfType<RedirectToActionResult>();
-        await identities.DidNotReceiveWithAnyArgs().SetAsync(default, default!, default, default);
+        await identities.DidNotReceiveWithAnyArgs().SetAsync(default, default!, default);
     }
 
     [HumansTheory]
@@ -484,7 +484,7 @@ public sealed class WorkspaceIdentityServiceTests
         var result = await sut.InvokeAsync(Guid.NewGuid(), mode);
 
         result.Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
-        await identities.DidNotReceiveWithAnyArgs().GetWorkspaceIdentityAsync(default, default);
+        await identities.DidNotReceiveWithAnyArgs().GetWorkspaceIdentityAsync(default);
     }
 
     [HumansFact]

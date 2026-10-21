@@ -2,7 +2,6 @@ using System.Globalization;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Email.Services;
-using Humans.Users.Contracts;
 using NSubstitute;
 
 namespace Humans.Email.Tests.Services;
@@ -74,7 +73,7 @@ public sealed class EmailPreviewServiceTests
         composer.Compose(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>()).Returns(("<html>Branded</html>", "Plain"));
         var sut = new EmailPreviewService(composer);
 
-        sut.RenderMarkdown("Subject", "Hi", null);
+        sut.RenderMarkdown("Subject", "Hi");
 
         composer.Received(1).Compose(Arg.Any<string>(), null, CultureInfo.CurrentUICulture.Name);
     }

@@ -1,6 +1,5 @@
 using Humans.Auth.Data;
 using Humans.Auth.Contracts;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Base.Attributes;
 using Humans.Base.Extensions;

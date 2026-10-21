@@ -55,7 +55,7 @@ public class EventsArchitectureTests
             var authorize = controller.GetCustomAttribute<AuthorizeAttribute>();
             authorize.Should().NotBeNull(
                 because: $"{controller.Name} is an Events administration surface");
-            authorize!.Policy.Should().Be(PolicyNames.EventsAdminOrAdmin,
+            authorize.Policy.Should().Be(PolicyNames.EventsAdminOrAdmin,
                 because: $"{controller.Name} is an Events administration surface");
         }
     }

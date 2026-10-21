@@ -1,9 +1,9 @@
 @model IReadOnlyList<Humans.Campaigns.Contracts.CampaignGrantSummary>
 @* Admin-only card on /Users/Admin/{id}: no localization keys (memory/code/localization-admin-exempt.md). *@
 @{
-    Func<Humans.Campaigns.Contracts.CampaignGrantSummary, IHtmlContent> codeCell =
+    Func<CampaignGrantSummary, IHtmlContent> codeCell =
         @<text><code>@item.Code</code></text>;
-    Func<Humans.Campaigns.Contracts.CampaignGrantSummary, IHtmlContent> statusCell = @<text>
+    Func<CampaignGrantSummary, IHtmlContent> statusCell = @<text>
         @if (item.LatestEmailStatus.HasValue)
         {
             var badgeClass = item.LatestEmailStatus switch

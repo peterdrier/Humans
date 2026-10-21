@@ -6,7 +6,6 @@ using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Data.Repositories;
-using Humans.Users.Domain;
 using Humans.Users.Contracts;
 using Humans.Base.Threading;
 using Humans.Base.Helpers;
@@ -919,7 +918,7 @@ internal sealed class UserService(
         ];
     }
 
-    private static object ShapeProfileForExport(Humans.Users.Domain.Profile profile, bool isSuspended) =>
+    private static object ShapeProfileForExport(Profile profile, bool isSuspended) =>
         new
         {
             profile.BurnerName,

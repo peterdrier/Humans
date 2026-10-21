@@ -1,12 +1,9 @@
 @using Humans.Teams.Contracts
 @model Humans.Debug.Controllers.WidgetGalleryViewModel
 @using Humans.Base.Authorization
-@using Humans.Base.Interfaces
-@using Humans.Base.Models.Tables
 @using Humans.Shifts.Contracts
 @using Humans.Tickets.Contracts
 @using Humans.Base.Enums
-@using Microsoft.AspNetCore.Html
 @* The section tag-helper assemblies this catalog renders are opened in Views/_ViewImports.cshtml.
    AdminBreadcrumb, ChromeSlot, SectionNav and ThingsToDo live in Humans.Base (every section's
    _ViewImports opens it), so they render as ordinary <vc:> tag helpers here. Widgets owned by a
@@ -979,7 +976,7 @@
                         ("@@model", "<code>EmailComposerViewModel</code> — RecipientCount/RecipientSummary/RecipientUserId/WarnRecipientCount for the To: line, BodyName/BodyValue/BodyLabel/BodyRows/BodyRequired/BodyMaxLength/BodyHelpText/BodyPlaceholder/BodyLabelVisuallyHidden, optional SubjectName/SubjectValue/SubjectLabel/SubjectRequired/SubjectMaxLength, Category (a <code>MessageCategory</code> name — drives the placeholder unsubscribe footer in the preview), and PreviewSubjectName/PreviewModalId/IncludePreviewModal for hosts with more than one instance on a page or that inject this partial via AJAX (Feedback/Issues)")
                     )
                     <div class="wg-card-example">
-                        @await Html.PartialAsync("_EmailComposer", new Humans.Base.Models.EmailComposerViewModel
+                        @await Html.PartialAsync("_EmailComposer", new EmailComposerViewModel
                         {
                             SubjectName = "widget-gallery-email-subject",
                             SubjectValue = "A message from the gallery",

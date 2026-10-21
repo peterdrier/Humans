@@ -11,8 +11,6 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
-using Humans.Testing;
-using Humans.Users.Contracts;
 using Humans.Workgroups.Controllers;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Models;
@@ -86,11 +84,11 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
     [InlineData(true, "ca")]
     public async Task RuleRejection_IsVisibleWithoutExceptionStack(bool form, string culture)
     {
-        using var scope = new Humans.Base.Extensions.CultureScope(culture);
+        using var scope = new CultureScope(culture);
         var (controller, workgroup) = await BuildAsync(asMember: true);
         var key = form ? WorkgroupErrorKeys.WindowInvalid : WorkgroupErrorKeys.DoneReasonInvalid;
         var resources = new System.Resources.ResourceManager(typeof(WorkgroupsResource));
-        var translated = resources.GetString(key, System.Globalization.CultureInfo.CurrentUICulture)!;
+        var translated = resources.GetString(key, CultureInfo.CurrentUICulture)!;
         _localizer[key, Arg.Any<object[]>()].Returns(new LocalizedString(key, translated));
 
         IActionResult result;
@@ -549,9 +547,9 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
     }
 
     [HumansTheory]
-    [Xunit.InlineData(nameof(MembershipTier.Volunteer), false)]
-    [Xunit.InlineData(nameof(MembershipTier.Colaborador), true)]
-    [Xunit.InlineData(nameof(MembershipTier.Asociado), true)]
+    [InlineData(nameof(MembershipTier.Volunteer), false)]
+    [InlineData(nameof(MembershipTier.Colaborador), true)]
+    [InlineData(nameof(MembershipTier.Asociado), true)]
     public async Task Details_BudgetBlockVisibility_FollowsMembershipTier(string tierName, bool expected)
     {
         var tier = Enum.Parse<MembershipTier>(tierName);

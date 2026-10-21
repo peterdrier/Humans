@@ -1010,7 +1010,7 @@ public sealed class TicketTransferServiceTests
 
         if (string.Equals(action, "cancel", StringComparison.Ordinal))
         {
-            var result = await (Task<TicketTransferMutationResult>)second;
+            var result = await second;
             result.RefusalKey.Should().Be("Tickets_TicketTransfer_OnlyPendingCanBeCancelled");
         }
         else

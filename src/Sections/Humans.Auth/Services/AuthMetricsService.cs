@@ -1,7 +1,6 @@
 using System.Diagnostics.Metrics;
 using Humans.Base.Hosting;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace Humans.Auth.Services;
 

@@ -416,7 +416,7 @@ public class ShiftAdminControllerTests
         _localizer["Shifts_Delete_ConfirmedSignups", Arg.Any<object[]>()]
             .Returns(new LocalizedString("Shifts_Delete_ConfirmedSignups", reason));
         var signupBlockId = Guid.NewGuid();
-        _signupService.BailRangeAsync(signupBlockId, UserId, null)
+        _signupService.BailRangeAsync(signupBlockId, UserId)
             .Returns(new BailRangeResult("Shifts_BailRange_NotAuthorized"));
         _localizer["Shifts_BailRange_NotAuthorized"].Returns(new LocalizedString("Shifts_BailRange_NotAuthorized", reason));
         var ctrl = BuildSut();
@@ -863,7 +863,7 @@ public class ShiftAdminControllerTests
     {
         var blockId = Guid.NewGuid();
         var fault = new InvalidOperationException("database diagnostic");
-        _signupService.BailRangeAsync(blockId, UserId, null)
+        _signupService.BailRangeAsync(blockId, UserId)
             .Returns(Task.FromException<BailRangeResult>(fault));
         var controller = BuildSut();
 

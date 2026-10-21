@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Gdpr.Contracts;
 using Humans.Gdpr.Services;
-using Humans.Testing;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;

@@ -30,7 +30,7 @@ namespace Humans.Rideshare.Tests.Controllers;
 public sealed class RideshareControllerTests
 {
     private static readonly Instant Now = Instant.FromUtc(2026, 3, 1, 12, 0);
-    private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
+    private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private readonly IRideshareService _rideshare = Substitute.For<IRideshareService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
@@ -52,7 +52,7 @@ public sealed class RideshareControllerTests
         var result = await BuildController(signedIn: false).Accept(Guid.NewGuid(), Ct);
 
         result.Should().BeOfType<ChallengeResult>();
-        await _rideshare.DidNotReceiveWithAnyArgs().AcceptInterestAsync(default, default, default);
+        await _rideshare.DidNotReceiveWithAnyArgs().AcceptInterestAsync(default, default);
     }
 
     [HumansFact]
@@ -195,7 +195,7 @@ public sealed class RideshareControllerTests
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Index");
         controller.TempData[TempDataKeys.ErrorMessage].Should().Be("L:Rideshare_PickAnOffer");
-        await _rideshare.DidNotReceiveWithAnyArgs().ExpressInterestAsync(default, default, default, default, default, default);
+        await _rideshare.DidNotReceiveWithAnyArgs().ExpressInterestAsync(default, default, default, default, default);
     }
 
     [HumansFact]
@@ -209,7 +209,7 @@ public sealed class RideshareControllerTests
         result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
         controller.ModelState[nameof(model.DepartureDate)]!.Errors.Should().ContainSingle()
             .Which.ErrorMessage.Should().Be("L:Rideshare_InvalidDate");
-        await _rideshare.DidNotReceiveWithAnyArgs().CreateOfferAsync(default, default, default!, default);
+        await _rideshare.DidNotReceiveWithAnyArgs().CreateOfferAsync(default, default, default!);
     }
 
     [HumansTheory]
@@ -224,11 +224,11 @@ public sealed class RideshareControllerTests
         using var scope = new Humans.Base.Extensions.CultureScope(culture);
         const string key = "Rideshare_Error_PlaceNotFound";
         var resources = new System.Resources.ResourceManager(typeof(RideshareResource));
-        var translated = string.Format(System.Globalization.CultureInfo.CurrentUICulture,
-            resources.GetString(key, System.Globalization.CultureInfo.CurrentUICulture)!, "Atlantis");
+        var translated = string.Format(CultureInfo.CurrentUICulture,
+            resources.GetString(key, CultureInfo.CurrentUICulture)!, "Atlantis");
         _localizer[key, Arg.Any<object[]>()].Returns(call => new LocalizedString(key,
-            string.Format(System.Globalization.CultureInfo.CurrentUICulture,
-                resources.GetString(key, System.Globalization.CultureInfo.CurrentUICulture)!, call.Arg<object[]>())));
+            string.Format(CultureInfo.CurrentUICulture,
+                resources.GetString(key, CultureInfo.CurrentUICulture)!, call.Arg<object[]>())));
         _rideshare.CreateOfferAsync(_me, 2026, Arg.Any<TripSave>(), Arg.Any<CancellationToken>())
             .Returns(new RideshareMutationResult(Refusal: new("Rideshare_Error_PlaceNotFound", "Atlantis")));
         var model = new OfferFormViewModel { MemberPlaceLabel = "Atlantis", DepartureDate = "2026-07-03" };
@@ -245,8 +245,8 @@ public sealed class RideshareControllerTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task OfferPost_MapsMissingAndForbidden_AndLogsWithoutStack(bool forbidden)
     {
         var id = Guid.NewGuid();
@@ -324,7 +324,7 @@ public sealed class RideshareControllerTests
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Mine");
         await _rideshare.Received(1).UpdateOfferAsync(id, _me, Arg.Is<TripSave>(s => s.MemberPlaceLabel == "Paris"), Arg.Any<CancellationToken>());
-        await _rideshare.DidNotReceiveWithAnyArgs().CreateOfferAsync(default, default, default!, default);
+        await _rideshare.DidNotReceiveWithAnyArgs().CreateOfferAsync(default, default, default!);
         controller.TempData[TempDataKeys.SuccessMessage].Should().Be("L:Rideshare_OfferSaved");
     }
 

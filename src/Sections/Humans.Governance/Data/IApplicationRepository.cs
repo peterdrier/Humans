@@ -1,4 +1,3 @@
-using Humans.Users.Contracts;
 using Humans.Base.Interfaces.Repositories;
 using Humans.Governance.Contracts;
 using Humans.Governance.Domain;

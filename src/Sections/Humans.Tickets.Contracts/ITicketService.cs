@@ -1,5 +1,3 @@
-using Humans.Base.Attributes;
-
 using Humans.Base.Interfaces;
 
 namespace Humans.Tickets.Contracts;

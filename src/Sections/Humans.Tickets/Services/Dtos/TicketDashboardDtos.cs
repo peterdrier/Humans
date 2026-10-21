@@ -1,6 +1,5 @@
 using Humans.Governance.Contracts;
 using System.Text.Json.Serialization;
-using Humans.Users.Contracts;
 using NodaTime;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain;
@@ -14,6 +13,8 @@ internal sealed class TicketDashboardStats
     public decimal Revenue { get; init; }
     public decimal TotalStripeFees { get; init; }
     public decimal TotalApplicationFees { get; init; }
+    public decimal TotalFeeTax { get; init; }
+    public decimal TotalWithheldTax { get; init; }
     public decimal NetRevenue { get; init; }
     public decimal GrossAveragePrice { get; init; }
     public int UnmatchedOrderCount { get; init; }
@@ -109,6 +110,10 @@ internal sealed class MonthlySalesAggregate
     public decimal VatAmount { get; init; }
     public decimal StripeFees { get; init; }
     public decimal ApplicationFees { get; init; }
+    /// <summary>VAT Stripe charged on its fees (Stripe's <c>tax</c> bucket).</summary>
+    public decimal FeeTax { get; init; }
+    /// <summary>Tax Stripe withheld from the payout (Stripe's <c>withheld_tax</c> bucket).</summary>
+    public decimal WithheldTax { get; init; }
     public decimal RefundedGross { get; init; }
 
     /// <summary>
@@ -292,6 +297,8 @@ internal sealed class TicketDashboardTotals
     public decimal GrossRevenue { get; init; }
     public decimal TotalStripeFees { get; init; }
     public decimal TotalApplicationFees { get; init; }
+    public decimal TotalFeeTax { get; init; }
+    public decimal TotalWithheldTax { get; init; }
     public int UnmatchedOrderCount { get; init; }
 }
 
@@ -342,6 +349,8 @@ internal sealed class PaidOrderSalesRow
     public decimal DiscountAmount { get; init; }
     public decimal? StripeFee { get; init; }
     public decimal? ApplicationFee { get; init; }
+    public decimal? FeeTax { get; init; }
+    public decimal? WithheldTax { get; init; }
 }
 
 /// <summary>
@@ -354,6 +363,8 @@ internal sealed class RefundedOrderRow
     public decimal TotalAmount { get; init; }
     public decimal? StripeFee { get; init; }
     public decimal? ApplicationFee { get; init; }
+    public decimal? FeeTax { get; init; }
+    public decimal? WithheldTax { get; init; }
 }
 
 /// <summary>
@@ -397,6 +408,8 @@ internal sealed class OrderExportRow
     public string? PaymentMethod { get; init; }
     public decimal? StripeFee { get; init; }
     public decimal? ApplicationFee { get; init; }
+    public decimal? FeeTax { get; init; }
+    public decimal? WithheldTax { get; init; }
     public string PaymentStatus { get; init; } = string.Empty;
     public string VendorOrderId { get; init; } = string.Empty;
     public Instant PurchasedAt { get; init; }

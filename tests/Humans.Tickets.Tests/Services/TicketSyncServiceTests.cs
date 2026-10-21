@@ -107,6 +107,33 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         dbOrders.Select(o => o.VendorOrderId).Should().BeEquivalentTo("ord_001", "ord_002");
     }
 
+    [HumansFact]
+    public async Task SyncOrdersAndAttendeesAsync_StoresEveryStripeFeeBucket_AndKeepsThemOnResync()
+    {
+        var orders = new List<VendorOrderDto>
+        {
+            MakeOrderDto("ord_fees", "Alice Smith", "alice@example.com") with { StripePaymentIntentId = "pi_fees" }
+        };
+        _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(orders);
+        _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorTicketDto>());
+        _stripeService.IsConfigured.Returns(true);
+        _stripeService.GetPaymentDetailsAsync("pi_fees", Arg.Any<CancellationToken>())
+            .Returns(new StripePaymentDetails("card", "visa", StripeFee: 1.20m, ApplicationFee: 0.45m,
+                FeeTax: 0.25m, WithheldTax: 0.10m));
+
+        await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var order = await TicketsDb.TicketOrders.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        order.StripeFee.Should().Be(1.20m);
+        order.ApplicationFee.Should().Be(0.45m);
+        order.FeeTax.Should().Be(0.25m);
+        order.WithheldTax.Should().Be(0.10m);
+        await _stripeService.Received(1).GetPaymentDetailsAsync("pi_fees", Arg.Any<CancellationToken>());
+    }
+
     // ==========================================================================
     // SyncOrdersAndAttendeesAsync_InvalidatesVendorEventSummary
     // ==========================================================================

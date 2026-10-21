@@ -1,5 +1,4 @@
 using Humans.Email.Contracts;
-using Humans.Users.Contracts;
 using Humans.Notifications.Contracts;
 
 namespace Humans.Notifications.Services;

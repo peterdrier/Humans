@@ -103,6 +103,60 @@ public class StripeServiceContractTests
         available.ApplicationFee.Should().Be(0m);
     }
 
+    [HumansFact]
+    public async Task PaymentDetails_captures_every_fee_bucket_and_stays_quiet_when_they_cover_the_total()
+    {
+        var http = Substitute.For<IHttpClient>();
+        using var headers = new HttpResponseMessage();
+        const string payload = """
+            {"id":"pi_all","object":"payment_intent","latest_charge":{
+              "id":"ch_all","object":"charge","payment_method_details":{"type":"card"},
+              "balance_transaction":{"id":"txn_all","object":"balance_transaction","currency":"eur","fee":214,
+                "fee_details":[{"type":"stripe_fee","amount":100,"currency":"eur"},
+                               {"type":"payment_method_passthrough_fee","amount":20,"currency":"eur"},
+                               {"type":"application_fee","amount":45,"currency":"eur"},
+                               {"type":"tax","amount":25,"currency":"eur"},
+                               {"type":"withheld_tax","amount":24,"currency":"eur"}]}}}
+            """;
+        http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new StripeResponse(HttpStatusCode.OK, headers.Headers, payload));
+        var log = new CapturingLogger<StripeService>();
+        var service = new StripeService(Options.Create(new StripeSettings { TicketsKey = "sk_test_fees" }), log, http);
+
+        var details = await service.GetPaymentDetailsAsync("pi_all", TestContext.Current.CancellationToken);
+
+        details.Should().NotBeNull();
+        details.StripeFee.Should().Be(1.20m);
+        details.ApplicationFee.Should().Be(0.45m);
+        details.FeeTax.Should().Be(0.25m);
+        details.WithheldTax.Should().Be(0.24m);
+        log.Entries.Should().NotContain(e => e.Level == LogLevel.Warning);
+    }
+
+    [HumansFact]
+    public async Task PaymentDetails_warns_when_an_unknown_fee_type_leaves_the_total_unaccounted()
+    {
+        var http = Substitute.For<IHttpClient>();
+        using var headers = new HttpResponseMessage();
+        const string payload = """
+            {"id":"pi_new","object":"payment_intent","latest_charge":{
+              "id":"ch_new","object":"charge","payment_method_details":{"type":"card"},
+              "balance_transaction":{"id":"txn_new","object":"balance_transaction","currency":"eur","fee":150,
+                "fee_details":[{"type":"stripe_fee","amount":100,"currency":"eur"},
+                               {"type":"some_future_fee","amount":50,"currency":"eur"}]}}}
+            """;
+        http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new StripeResponse(HttpStatusCode.OK, headers.Headers, payload));
+        var log = new CapturingLogger<StripeService>();
+        var service = new StripeService(Options.Create(new StripeSettings { TicketsKey = "sk_test_fees" }), log, http);
+
+        var details = await service.GetPaymentDetailsAsync("pi_new", TestContext.Current.CancellationToken);
+
+        details.Should().NotBeNull();
+        details.StripeFee.Should().Be(1.00m);
+        log.Entries.Should().ContainSingle(e => e.Level == LogLevel.Warning && e.Message.Contains("pi_new"));
+    }
+
     [HumansTheory]
     [InlineData("transaction", null, true)]
     [InlineData("transaction", null, false)]

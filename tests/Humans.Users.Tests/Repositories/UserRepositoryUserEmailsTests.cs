@@ -3,7 +3,6 @@ using Humans.Users.Tests.Infrastructure;
 using Humans.Users.Data.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using NodaTime;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
 

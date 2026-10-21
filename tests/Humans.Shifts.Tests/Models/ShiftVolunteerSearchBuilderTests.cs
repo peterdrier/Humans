@@ -93,8 +93,8 @@ public class ShiftVolunteerSearchBuilderTests
         Assert.True(row.HasOverlap); // 12:00–16:00 overlaps the 10:00–14:00 target.
 
         // Active burn already in hand — no extra GetByIdAsync round trip.
-        await _burnSettings.DidNotReceiveWithAnyArgs().GetByIdAsync(default, default);
-        await _signupService.DidNotReceiveWithAnyArgs().GetByUserAsync(default, default);
+        await _burnSettings.DidNotReceiveWithAnyArgs().GetByIdAsync(default);
+        await _signupService.DidNotReceiveWithAnyArgs().GetByUserAsync(default);
         await _tracking.Received(1).GetAvailableForDayAsync(ActiveBurnId, 1);
     }
 

@@ -69,6 +69,12 @@ internal sealed class TicketOrder
     /// <summary>Application fee (Ticket Tailor platform fee) in order currency.</summary>
     public decimal? ApplicationFee { get; set; }
 
+    /// <summary>Stripe's <c>tax</c> fee bucket: VAT Stripe charged on its fees. Null on orders enriched before it was captured.</summary>
+    public decimal? FeeTax { get; set; }
+
+    /// <summary>Stripe's <c>withheld_tax</c> fee bucket: tax withheld from the payout. Null on orders enriched before it was captured.</summary>
+    public decimal? WithheldTax { get; set; }
+
     /// <summary>Discount amount applied to order (from vendor line items). Stored as positive value.</summary>
     public decimal? DiscountAmount { get; set; }
 
