@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 
@@ -9,7 +10,8 @@ namespace Humans.MailerLite.Services.Audiences;
 /// </summary>
 internal sealed class HasTicketAudience(
     ITicketService tickets,
-    IUserService users) : MailerLiteAudienceBase(users)
+    IUserService users,
+    ICommunicationPreferenceService prefs) : MailerLiteAudienceBase(users, prefs)
 {
     public override string Key => "has-ticket";
     public override string DisplayName => "Ticket holders";

@@ -85,6 +85,16 @@ public sealed class Section : ISection, IIssueQueueOwner
 
         services.AddScoped<IOnsiteRosterService, OnsiteRosterService>();
 
+        // Event participation (Users decomposition commit 13): reads forward through ITicketService,
+        // Gate writes through ITicketWrite.
+        services.AddSingleton<IEventParticipationRepository, EventParticipationRepository>();
+        services.AddScoped<EventParticipationService>();
+        services.AddScoped<IEventParticipationManagement>(sp => sp.GetRequiredService<EventParticipationService>());
+        services.AddScoped<ITicketWrite>(sp => sp.GetRequiredService<EventParticipationService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<EventParticipationService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<EventParticipationService>());
+        services.AddScoped<IUserParticipationBackfillService, UserParticipationBackfillService>();
+
         // Base's EnumBadgeMap holds no section rows any more; each section pushes its own in
         // (memory/architecture/base-ui-registries-are-section-populated.md).
         EnumBadgeMap.Register(new Dictionary<Enum, string>

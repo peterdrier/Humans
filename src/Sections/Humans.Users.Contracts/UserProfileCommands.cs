@@ -1,28 +1,6 @@
 
 namespace Humans.Users.Contracts;
 
-/// <summary>
-/// Consolidated storage mutation for profile-side onboarding state carried by
-/// <see cref="UserInfo"/>. Callers own workflow policy and audit text;
-/// <c>IUserService</c> owns the profile row write.
-/// </summary>
-public sealed record UserProfileOnboardingCommand(
-    UserProfileOnboardingMutation Mutation,
-    Guid? ActorUserId = null,
-    ConsentCheckStatus? ConsentCheckStatus = null,
-    string? Notes = null,
-    string? RejectionReason = null,
-    bool? Suspended = null,
-    bool AdminSuspension = false);
-
-public enum UserProfileOnboardingMutation
-{
-    RecordConsentCheck,
-    RejectSignup,
-    SetSuspension,
-    SetConsentCheckPending,
-}
-
 public sealed record UserProfileSaveCommand(
     string DisplayName,
     string BurnerName,
@@ -44,12 +22,7 @@ public sealed record UserProfileSaveCommand(
     string? EmergencyContactRelationship,
     bool NoPriorBurnExperience,
     UserProfilePictureMutation PictureMutation,
-    string? ProfilePictureContentType,
-    // Edit-page-owned dietary fields (meal pref + allergies). Intolerances +
-    // medical are written separately via UserProfileDietaryMedicalCommand.
-    string? DietaryPreference = null,
-    List<string>? Allergies = null,
-    string? AllergyOtherText = null);
+    string? ProfilePictureContentType);
 
 public enum UserProfilePictureMutation
 {

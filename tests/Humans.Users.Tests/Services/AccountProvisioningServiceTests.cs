@@ -101,9 +101,6 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<EventParticipation?> GetParticipationAsync(
-            Guid userId, int year, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<IReadOnlyList<EventParticipation>> GetEventParticipationsByUserIdAsync(
             Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
@@ -111,25 +108,10 @@ public class AccountProvisioningServiceTests
             GetEventParticipationsByUserIdsAsync(
                 IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<EventParticipation?> UpsertParticipationAsync(
-            Guid userId, int year, ParticipationStatus status,
-            ParticipationSource source, Instant? declaredAt, Instant? checkedInAt,
-            CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<bool> RemoveParticipationAsync(
-            Guid userId, int year, ParticipationSource requiredSource, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<IReadOnlyList<(Guid UserId, ParticipationStatus Status)>> BackfillParticipationsAsync(
-            int year, IReadOnlyList<(Guid UserId, ParticipationStatus Status)> entries,
-            CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<bool> AnonymizeForMergeAsync(
             Guid sourceUserId, Guid targetUserId, Instant now, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task ReassignLoginsToUserAsync(
-            Guid sourceUserId, Guid targetUserId, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task ReassignEventParticipationToUserAsync(
             Guid sourceUserId, Guid targetUserId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task SetLastConsentReminderSentAsync(Guid userId, Instant sentAt, CancellationToken ct = default) =>
@@ -193,18 +175,13 @@ public class AccountProvisioningServiceTests
         public Task<IReadOnlySet<Guid>> SuspendManyAsync(
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>> DowngradeTierForExpiredAsync(
-            MembershipTier currentTier,
-            IReadOnlyCollection<Guid> userIdsToKeep,
-            IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
-            Instant now,
-            CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<(Guid ProfileId, string? ContentType, string? StorageKey)?> ReassignSubAggregatesToUserAsync(
             Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<bool> SetSuspensionAsync(
             Guid userId, bool suspended, bool adminSuspension, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> SetRejectedAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdReadOnlyAsync(
             Guid userId, CancellationToken ct = default) =>
@@ -900,6 +877,39 @@ public class AccountProvisioningServiceTests
         await ProvisionAsync();
         profiles.Should().ContainSingle();
         _audit.ReceivedCalls().Should().HaveCount(1);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(0, 256)]
+    [Xunit.InlineData(1, 256)]
+    [Xunit.InlineData(2, 256)]
+    [Xunit.InlineData(0, 257)]
+    [Xunit.InlineData(1, 257)]
+    [Xunit.InlineData(2, 257)]
+    public async Task CompleteMagicLinkSignupAsync_ValidatesNameLengthsBeforeCreatingAccount(int field, int length)
+    {
+        string[] names = ["Burner", "First", "Last"];
+        names[field] = " " + new string('x', length) + " ";
+
+        var result = await _service.CompleteMagicLinkSignupAsync(
+            "length@example.com", names[0], names[1], names[2], Xunit.TestContext.Current.CancellationToken);
+
+        if (length > 256)
+        {
+            result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.Failed);
+            result.User.Should().BeNull();
+            _userRepo.Count.Should().Be(0);
+            _userEmailFake.All.Should().BeEmpty();
+            await _userManager.DidNotReceive().CreateAsync(Arg.Any<User>());
+            await _userService.DidNotReceive().EnsureStubProfileAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.Created);
+            await _userService.Received(1).EnsureStubProfileAsync(
+                result.User!.Id, names[0].Trim(), names[1].Trim(), names[2].Trim(), Arg.Any<CancellationToken>());
+        }
     }
 
     [HumansFact]

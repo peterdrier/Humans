@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Tests.Infrastructure;
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
@@ -61,7 +62,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         Substitute.For<ITeamService>();
 
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IUserWrite _userServiceWrite = Substitute.For<IUserWrite>();
+    private readonly IWorkspaceIdentityManagement _identities;
 
     private readonly IUserEmailService _userEmailService =
         Substitute.For<IUserEmailService>();
@@ -97,6 +98,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
     public GoogleWorkspaceSyncServiceTests()
     {
+        _identities = WorkspaceIdentityFakes.ResolvingThrough(_userService);
         // Safe defaults for audit / service-account helpers that every code
         // path may call even when the test doesn't care about them.
         _teamResourceClient
@@ -116,7 +118,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
                 return new Dictionary<string, GoogleDriveAccessClaim>(StringComparer.Ordinal) { [call.ArgAt<string?>(0) ?? TestGoogleFolderId] = new(access) };
             });
         var driveSync = new GoogleDriveAccessSyncService(
-            [_driveSource], _drivePermissions, _userService, _userServiceWrite, _userEmailService, _syncSettingsService,
+            [_driveSource], _drivePermissions, _userService, _identities, _userEmailService, _syncSettingsService,
             _googleSyncLog, _removalNotifications, _resourceRepository, _teamService,
             Substitute.For<ITeamResourceManagement>(), clock,
             Substitute.For<ILogger<GoogleDriveAccessSyncService>>());
@@ -128,7 +130,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             _resourceRepository,
             _googleSyncOutboxRepository,
             _teamService,
-            _userService, _userServiceWrite,
+            _userService, _identities,
             _googleGroupSync,
             driveSync,
             [_driveSource],
@@ -205,11 +207,11 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         selected.Should().BeSameAs(replacement);
         result.UserId.Should().Be(TestUserId);
-        result.GoogleEmailId.Should().Be(attempted.UserEmails.Single().Id);
+        result.GoogleEmail.Should().Be("old@example.org");
         result.Outcome.Should().Be(rejectsTarget ? GoogleResourceGrantOutcome.Failed : GoogleResourceGrantOutcome.Accepted);
         if (rejectsTarget)
-            await _userServiceWrite.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
-                TestUserId, GoogleEmailStatus.Rejected, ct, attempted.UserEmails.Single().Id);
+            await _identities.Received(1).SetStatusFromSyncAsync(
+                TestUserId, "old@example.org", GoogleEmailStatus.Rejected, ct);
         await _userEmailService.DidNotReceiveWithAnyArgs().GetEntitiesByUserIdAsync(default, default);
     }
 
@@ -352,7 +354,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
                     IsVerified: true,
                     Provider: null,
                     ProviderKey: null,
-                    IsGoogle: true,
                     IsPrimary: false,
                     Visibility: null,
                     VerificationSentAt: null,
@@ -472,7 +473,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
                     IsVerified: true,
                     Provider: null,
                     ProviderKey: null,
-                    IsGoogle: true,
                     IsPrimary: false,
                     Visibility: null,
                     VerificationSentAt: null,
@@ -501,10 +501,11 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, Xunit.TestContext.Current.CancellationToken);
 
-        await _userServiceWrite.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
+        await _identities.Received(1).SetStatusFromSyncAsync(
             TestUserId,
+            Arg.Any<string>(),
             GoogleEmailStatus.Rejected,
-            Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
+            Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
@@ -554,7 +555,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .Returns(MakeUser(TestUserId, TestUserEmail));
         _userEmailService.GetEntitiesByUserIdAsync(TestUserId, Arg.Any<CancellationToken>())
             .Returns([new UserEmailRowSnapshot(Guid.NewGuid(), TestUserId, TestUserEmail,
-                IsVerified: true, Provider: null, ProviderKey: null, IsGoogle: true, IsPrimary: false,
+                IsVerified: true, Provider: null, ProviderKey: null, IsPrimary: false,
                 Visibility: null, VerificationSentAt: null, CreatedAt: default, UpdatedAt: default)]);
         _resourceRepository.GetActiveByTeamIdAsync(TestTeamId, Arg.Any<CancellationToken>())
             .Returns(groupOnly
@@ -597,7 +598,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .Returns(MakeUser(TestUserId, TestUserEmail));
         _userEmailService.GetEntitiesByUserIdAsync(TestUserId, Arg.Any<CancellationToken>())
             .Returns([new UserEmailRowSnapshot(Guid.NewGuid(), TestUserId, TestUserEmail,
-                IsVerified: true, Provider: null, ProviderKey: null, IsGoogle: true, IsPrimary: false,
+                IsVerified: true, Provider: null, ProviderKey: null, IsPrimary: false,
                 Visibility: null, VerificationSentAt: null, CreatedAt: default, UpdatedAt: default)]);
         _resourceRepository.GetActiveByTeamIdAsync(TestTeamId, Arg.Any<CancellationToken>())
             .Returns([MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId)]);
@@ -625,12 +626,14 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         _userService.GetUserInfoAsync(archivedId, Arg.Any<CancellationToken>())
             .Returns(MakeUser(TestUserId, TestUserEmail));
+        _userService.GetUserInfoAsync(TestUserId, Arg.Any<CancellationToken>())
+            .Returns(MakeUser(TestUserId, TestUserEmail));
         _userEmailService
             .GetEntitiesByUserIdAsync(TestUserId, Arg.Any<CancellationToken>())
             .Returns([
                 new UserEmailRowSnapshot(
                     Guid.NewGuid(), TestUserId, TestUserEmail,
-                    IsVerified: true, Provider: null, ProviderKey: null, IsGoogle: true,
+                    IsVerified: true, Provider: null, ProviderKey: null,
                     IsPrimary: false, Visibility: null, VerificationSentAt: null,
                     CreatedAt: default, UpdatedAt: default)
             ]);
@@ -698,7 +701,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
                     IsVerified: true,
                     Provider: null,
                     ProviderKey: null,
-                    IsGoogle: true,
                     IsPrimary: false,
                     Visibility: null,
                     VerificationSentAt: null,
@@ -768,7 +770,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
                     IsVerified: true,
                     Provider: null,
                     ProviderKey: null,
-                    IsGoogle: true,
                     IsPrimary: false,
                     Visibility: null,
                     VerificationSentAt: null,
@@ -794,8 +795,8 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, Xunit.TestContext.Current.CancellationToken);
 
-        await _userServiceWrite.DidNotReceiveWithAnyArgs()
-            .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
+        await _identities.DidNotReceiveWithAnyArgs()
+            .SetStatusFromSyncAsync(Guid.Empty, Arg.Any<string>(), default, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -828,7 +829,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
                     IsVerified: true,
                     Provider: null,
                     ProviderKey: null,
-                    IsGoogle: true,
                     IsPrimary: false,
                     Visibility: null,
                     VerificationSentAt: null,
@@ -856,8 +856,8 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, Xunit.TestContext.Current.CancellationToken);
 
-        await _userServiceWrite.DidNotReceiveWithAnyArgs()
-            .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
+        await _identities.DidNotReceiveWithAnyArgs()
+            .SetStatusFromSyncAsync(Guid.Empty, Arg.Any<string>(), default, Arg.Any<CancellationToken>());
     }
 
     // ==========================================================================
@@ -896,7 +896,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
                     IsVerified: true,
                     Provider: null,
                     ProviderKey: null,
-                    IsGoogle: true,
                     IsPrimary: false,
                     Visibility: null,
                     VerificationSentAt: null,
@@ -1033,7 +1032,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         var member = new TeamMemberInfo(
             Guid.NewGuid(), TestUserId, "Alice Test", plusAddressedEmail, null,
-            TeamMemberRole.Member, Instant.MinValue, GoogleEmailStatus.Valid);
+            TeamMemberRole.Member, Instant.MinValue);
         var teamInfo = new TeamInfo(
             TestTeamId, "Test Team", null, "test-team",
             IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
@@ -1052,7 +1051,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
                 [
                     new UserEmailRowSnapshot(
                         Guid.NewGuid(), TestUserId, plusAddressedEmail,
-                        IsVerified: true, Provider: null, ProviderKey: null, IsGoogle: true,
+                        IsVerified: true, Provider: null, ProviderKey: null,
                         IsPrimary: false, Visibility: null, VerificationSentAt: null,
                         CreatedAt: default, UpdatedAt: default)
                 ]
@@ -1270,7 +1269,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         [TestTeamId] = new TeamInfo(TestTeamId, "Test Team", null, "test-team", true, false,
             SystemTeamType.None, false, false, false, false, Instant.MinValue,
             [new TeamMemberInfo(Guid.NewGuid(), TestUserId, "Alice Test", TestUserEmail, null,
-                TeamMemberRole.Member, Instant.MinValue, GoogleEmailStatus.Valid)])
+                TeamMemberRole.Member, Instant.MinValue)])
     };
 
     private static GoogleResource MakeDriveFolderResource(Guid id, Guid teamId, string googleId) =>
@@ -1295,6 +1294,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
                 Email = email
             },
             [new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = email,
-                IsVerified = true, IsGoogle = true, GoogleEmailStatus = status }],
+                IsVerified = true, IsGoogle = true, GoogleEmailStatus = (LegacyGoogleEmailStatus)status }],
             [], [], null, []);
 }

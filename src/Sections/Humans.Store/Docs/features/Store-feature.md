@@ -1,6 +1,11 @@
 <!-- freshness:triggers
   src/Sections/Humans.Store/**
   src/Sections/Humans.Stripe/**
+  src/Humans.Base/Authorization/RoleChecks.cs
+  src/Sections/Humans.Camps/Contracts/**
+  src/Sections/Humans.Teams.Contracts/**
+  src/Sections/Humans.Holded/Contracts/**
+  src/Sections/Humans.Backdoor/Controllers/BackdoorStoreController.cs
 -->
 <!-- freshness:flag-on-change
   Store catalog editing, order lifecycle, OrderableUntil gate, Stripe Checkout flow, webhook ingestion, invoice issuance idempotency, and resource-based authorization — review when Store services/entities/controllers/auth handlers change.
@@ -10,7 +15,7 @@
 
 ## Business Context
 
-The Store section lets Camp Leads order infrastructure-as-a-service items from the collective for the year (containers, electrical hookups, generator hours, etc.) and pay against those orders incrementally as the camp budget firms up. It provides: a section-owned product catalog (priced once per year by `StoreAdmin`), a per-camp running tab of order lines snapshotted at add-time, payments (Stripe Checkout for cards; bank transfer / cash entry is not yet built) accumulating against the order, and a single Holded-issued factura emitted by `FinanceAdmin` once the camp finishes and all reconciliation is done.
+The Store section lets Camp Leads order infrastructure-as-a-service items from the collective for the year (containers, electrical hookups, generator hours, etc.) and pay against those orders incrementally as the camp budget firms up. It provides: a section-owned product catalog (priced once per year by `StoreAdmin`), a per-camp running tab of order lines snapshotted at add-time, payments (Stripe Checkout for cards; bank transfer / cash entry is not yet built) accumulating against the order, and a single Holded-issued factura emitted by a Store admin once the camp finishes and all reconciliation is done.
 
 This is fundamentally **camp data** with provenance recording (per `memory/architecture/provenance-fks-not-user-scoped.md`): order lines, payments, and invoices belong to the `CampSeason`, not to the lead who clicked the button. The `AddedByUserId` / `RecordedByUserId` / `IssuedByUserId` columns are audit/provenance only — deleting a user does not delete the order data.
 
@@ -29,7 +34,7 @@ The section invariant doc is [`Store.md`](../Store.md).
 - Create/edit share a single action at `/Store/Admin/Catalog/Edit` (no id = create, `/Store/Admin/Catalog/Edit/{id}` = edit). Submit posts to `/Store/Admin/Catalog/Save`. Trim+validate name (≤200), description (≤2000), non-negative numerics, VAT rate 0–100. `OrderableUntil` accepts any date — past, present, or future. The authorization guard in `OrderAuthorizationHandler` denies non-admin line edits once today's event-zone date has passed it, so a date in the past simply makes the product no longer orderable by Camp Leads; admins can extend or shorten it freely and are not blocked past the deadline.
 - "Deactivate" button performs a soft-deactivate (sets `IsActive = false`); never a hard delete. Deactivated products are hidden from the Camp Lead catalog view immediately, and `Service.AddLineAsync` rejects new lines against them with a clear error.
 - The active year is derived via `ISettingsService.GetActiveEventSettingsAsync(ct)`, preserving read cancellation through catalog-year and live-price lookups (see Cross-Section Dependencies in `Store.md`).
-- Audit-logged: `StoreProductCreated`, `StoreProductUpdated`, `StoreProductDeactivated` with the actor user id. A unit-price change additionally emits a dedicated `StoreProductPriceChanged` entry (#816); the catalog edit page shows that product's price history.
+- Audit-logged: `StoreProductCreated`, `StoreProductUpdated`, `StoreProductDeactivated` with the actor user id. A unit-price change additionally emits a dedicated `StoreProductPriceChanged` entry (nobodies-collective/Humans#816); the catalog edit page shows that product's price history.
 
 ### US-30.2: Build a Camp's Running Tab (Camp Lead)
 
@@ -40,11 +45,11 @@ The section invariant doc is [`Store.md`](../Store.md).
 - `/Store` shows the lead's camp seasons for the active year (resolved via `ICampService.GetCampsForYearAsync`, scanning each camp's `GetLeadSeasonIdForYear`) with a list of orders for each.
 - "Create order" creates a new `Order` in `Open` state attached to the camp season; `CreateOrderAsync` rejects a second order for a season that already has one — any one, including a legacy row still at `Year = 0` — so a camp season carries at most one.
 - Order detail at `/Store/Order/{id}` shows the line list, payment list, running balance, and counterparty fields.
-- Add-line form posts to `/Store/Order/{id}/AddLine` with a product id and quantity. The line snapshots `UnitPriceSnapshot`, `VatRateSnapshot`, and `DepositAmountSnapshot` from the product at add-time. **An `Open` order is a live running tab (#816):** it reprices its lines to the current catalog price, so catalog edits DO propagate to Open orders; the snapshot is only frozen into the effective price once the order is `InvoiceIssued` (`Store.md`).
+- Add-line form posts to `/Store/Order/{id}/AddLine` with a product id and quantity. The line snapshots `UnitPriceSnapshot`, `VatRateSnapshot`, and `DepositAmountSnapshot` from the product at add-time. **An `Open` order is a live running tab (nobodies-collective/Humans#816):** it reprices its lines to the current catalog price, so catalog edits DO propagate to Open orders; the snapshot is only frozen into the effective price once the order is `InvoiceIssued` (`Store.md`).
 - Editable order pages use the catalog for `Order.Year`. `AddLineAsync` resolves a legacy zero year through the existing audited camp-season repair before the line write, and refuses an unresolved year or a product whose year differs from the order, using localized feedback.
 - `AddLineAsync` rejects with a clear message if (a) the order is not `Open` or (b) the product is deactivated. The `OrderableUntil` deadline is **not** enforced by the service — it is enforced at the **authorization layer**: `OrderAuthorizationHandler` denies non-admin line edits once today's event-zone date has passed the product's deadline (using the `OrderLineContext` resource). Store admins are exempt and may add/remove lines on any Open order regardless of deadline. The service only annotates the audit entry with `(past order deadline …)` when a line is written past the deadline.
 - Remove-line form posts to `/Store/Order/{id}/RemoveLine` and is gated identically to AddLine on order state and product deadline.
-- Counterparty fields (name, VAT id, address, country code, email) are editable while the order is `Open`; `FinanceAdmin` can edit them in any state.
+- Counterparty fields (name, VAT id, address, country code, email) are editable while the order is `Open`; Store admins (StoreAdmin, FinanceAdmin, Admin) can edit them in any state.
 - Audit-logged: `StoreOrderCreated`, `StoreOrderYearBackfilled`, `StoreLineAdded`, `StoreLineRemoved`, `StoreCounterpartyEdited`.
 
 ### US-30.3: Pay Online via Stripe Checkout (Camp Lead)
@@ -59,7 +64,7 @@ The section invariant doc is [`Store.md`](../Store.md).
 - `async_payment_succeeded` flips the matching Pending payment to `Paid`; `async_payment_failed` flips it to `Failed` (the order returns to unpaid, never paid-then-reversed). Both are idempotent and tolerate out-of-order delivery. Only `Paid` rows count toward the order balance.
 - Stripe payments insert a `Payment` row with `Method = Stripe`, `RecordedByUserId = null`, the appropriate `Status`, audit-logged with job actor `"StripeWebhook"`.
 - Pay is allowed regardless of order state (payments continue after invoice issuance — see `OrderOperationRequirement.Pay`).
-- Webhook errors are logged but the controller returns 200 to prevent Stripe retry storms; signature failures return 400.
+- The controller returns 503 when `STRIPE_STORE_WEBHOOK_SECRET` is unset and 400 for an unparseable or badly signed body. Exceptions thrown by the handler propagate (non-2xx), so Stripe retries; recording is idempotent on the payment intent.
 
 ### US-30.4: Record Deposit Returns and Refunds (Store admin)
 
@@ -76,11 +81,11 @@ The section invariant doc is [`Store.md`](../Store.md).
 
 ### US-30.5: Issue the Consolidated Factura (Treasurer)
 
-**As** a `FinanceAdmin`, **I want** to emit one Holded factura per order once the camp's purchases are finalized, **so that** the camp gets a single consolidated invoice rather than line-item-by-line-item paperwork.
+**As** a Store admin (`StoreAdmin`, `FinanceAdmin` or `Admin`), **I want** to emit one Holded factura per order once the camp's purchases are finalized, **so that** the camp gets a single consolidated invoice rather than line-item-by-line-item paperwork.
 
 **Acceptance Criteria:**
 - POST to `/Store/Order/{id}/IssueInvoice` validates: order must be `Open`, must have at least one line, `IssuedInvoiceId` must be null, and Holded must be configured.
-- Before issuing, each line's `UnitPriceSnapshot` / `VatRateSnapshot` / `DepositAmountSnapshot` is rewritten from the live catalog (#816), so the document and the order agree forever after.
+- Before issuing, each line's `UnitPriceSnapshot` / `VatRateSnapshot` / `DepositAmountSnapshot` is rewritten from the live catalog (nobodies-collective/Humans#816), so the document and the order agree forever after.
 - Issues a full Holded `invoice` (with an upserted `client` contact) when the counterparty has name, address, and a tax id; otherwise a contact-less `sales-receipt`, allowed only at or below `Store:SimplifiedInvoiceThresholdEur` (default €400) — above it issuance is refused rather than downgraded. Each line resolves its Holded revenue account from the product's `HoldedRevenueAccountNum`; deposit lines post tax-0 to `Store:DepositLiabilityAccountNum`.
 - The document is approved (a Holded draft books no revenue) and read back for its `document_number`, then written to an `Invoice` row (`OrderId`, `HoldedDocId`, `HoldedDocNumber`, `IssuedAt`, `IssuedByUserId`, full request/response payloads) in the same save that sets the order's `State = InvoiceIssued` and `IssuedInvoiceId`.
 - Idempotent: re-issuing an already-issued order throws. If an earlier attempt created a Holded document but failed before the local save, the retry recovers that same document by tag instead of creating a second one — and refuses if the order changed since.
@@ -107,9 +112,15 @@ The section invariant doc is [`Store.md`](../Store.md).
   - **By-camp** — one row per order with Camp / State / Total due / Paid / Balance. Camp name links to `/Store/Order/{id}`. Columns are client-side sortable. A paid-status dropdown (All / Paid / Partial / Unpaid) filters rows in-place; classification rule: `Balance ≤ 0` → paid, else `Paid > 0` → partial, else unpaid. A footer summary row totals Total due / Paid / Balance across **camp counterparties only** (team orders are excluded so the totals reconcile: teams never pay, so their due would break `Total due = Paid + Balance`). **Totals use effective pricing** — Open orders use the live catalog price (same as the order page); InvoiceIssued orders use frozen snapshots.
   - **By-item** — one row per product (qty, revenue €), including deactivated products that still have lines in the year. Amounts use effective pricing (live catalog for Open orders).
   - **Cross-tab** — camps × products matrix with qty cells (blank for 0) and a per-product column-totals footer row. Both axes alphabetical. Column totals are consistent with by-item totals.
-- Service surface: `Service.GetStoreSummaryAsync(int year, CancellationToken)` returns a `SummaryDto` composing the three projections. Replaces the earlier `GetAllOrderSummariesAsync` stub (no production callers existed).
+- Service surface: `Service.GetStoreSummaryAsync(int year, CancellationToken)` returns a `SummaryDto` composing the three projections.
 - Single repository round-trip via `Repository.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync` (orders with `Lines + Payments` eager-loaded), plus one camp-name batch via `ICampService.GetCampsForYearAsync` (projecting each camp's seasons for the year) and one product fetch via `GetAllProductsForYearAsync`. All aggregation is in-memory per the §Scale-and-Deployment rule in `CLAUDE.md`.
 - Reachable from the admin nav under Store → "Summary" (gated by the same policy so it stays hidden for non-admins).
+
+### US-30.8: Repair Legacy Rows (Store admin)
+
+**Acceptance Criteria:**
+- `/Store/Admin/OrderYears` lists orders whose stored `Year` is 0; the confirmed POST resolves each one's year from its camp season and audits it (`StoreOrderYearBackfilled`).
+- `/Store/Admin/PaymentMethods` lists payments whose string `MethodName` is null; the confirmed POST copies `Method` into it and audits it (`StorePaymentMethodBackfilled`).
 
 ## Data Model
 
@@ -118,7 +129,7 @@ See [`Store.md`](../Store.md) for the full table schema. Summary:
 | Entity | Table | Aggregate root | Cross-section linkage |
 |---|---|---|---|
 | `Product` | `store_products` | yes | none |
-| `Order` | `store_orders` | yes | `CampSeasonId` (bare Guid → Camps) |
+| `Order` | `store_orders` | yes | `CampSeasonId` (bare Guid → Camps) xor `TeamId` (bare Guid → Teams) |
 | `OrderLine` | `store_order_lines` | child of `Order` | `ProductId` (intra), `AddedByUserId` (provenance) |
 | `Payment` | `store_payments` | child of `Order` | `RecordedByUserId` (provenance, nullable for Stripe) |
 | `Invoice` | `store_invoices` | yes (one per order) | `OrderId` (intra), `IssuedByUserId` (provenance) |
@@ -145,12 +156,12 @@ All cross-section linkage is bare `Guid` columns — no FK constraints, no nav p
                   RecordPayment / Pay continue ─────┘
 ```
 
-- **Open**: lines/counterparty editable by the Camp Lead; `FinanceAdmin` can edit counterparty regardless of state. Payments accumulate.
+- **Open**: lines/counterparty editable by the Camp Lead; Store admins can edit counterparty regardless of state. Payments accumulate.
 - **InvoiceIssued**: the consolidated factura has been emitted to Holded. Lines and counterparty are frozen at the auth layer for Camp Leads. Payments continue (refunds, late bank transfers, post-issuance Stripe captures all hit the same row).
 
 ## Authorization
 
-Resource-based via `OrderAuthorizationHandler` keyed on `OrderOperationRequirement` ({`View`, `Create`, `AddLine`, `RemoveLine`, `EditCounterparty`, `Pay`, `Delete`, `IssueInvoice`, `RecordPayment`, `Refund`, `DeletePayment`}). Logic for the camp-order operations (the last three are Store-admin-only; `Refund` is FinanceAdmin/Admin only and `DeletePayment` Admin only — see `Store.md`):
+Resource-based via `OrderAuthorizationHandler` keyed on `OrderOperationRequirement` ({`View`, `Create`, `AddLine`, `RemoveLine`, `EditCounterparty`, `Pay`, `Delete`, `IssueInvoice`, `RecordPayment`, `Refund`, `DeletePayment`}). Logic for the camp-order operations (`Delete`, `IssueInvoice`, `RecordPayment`, `Refund` and `DeletePayment` are never granted to camp leads or coordinators; `Refund` needs FinanceAdmin/Admin, `DeletePayment` needs Admin, and a TeamsAdmin also gets `Delete` on team orders — see `Store.md`):
 
 | Role | View | AddLine / RemoveLine / EditCounterparty | Pay |
 |---|---|---|---|
@@ -169,8 +180,10 @@ Resource-based via `OrderAuthorizationHandler` keyed on `OrderOperationRequireme
 | `ITeamService` | department (team order) lookups: team name, top-level check, coordinator check |
 | `ISettingsService` | derive the active event year + time zone for OrderableUntil deadline gate |
 | `IAuditLogService` | audit every write |
-| `IStripeService` | Checkout Session creation; webhook signature verification |
+| `IStripeService` | Checkout Session creation; webhook signature verification; listing Store Checkout Sessions (`ListStoreCheckoutSessionsAsync`) for reconciliation |
 | `IHoldedClient` | factura issuance (treasury sync is not built) |
+| `IUserService` | current-user resolution in the Store controllers |
+| Backdoor (consumer) | `/api/backdoor/store/*` reads the accounting export through `IStoreAccountingRead` |
 
 ## Configuration
 

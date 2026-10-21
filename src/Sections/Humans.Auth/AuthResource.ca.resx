@@ -52,4 +52,82 @@
   <data name="Auth_Email_MagicLinkSignup_Body" xml:space="preserve">
     <value>&lt;p&gt;Benvingut/da a Nobodies!&lt;/p&gt;&lt;p&gt;Fes clic a l’enllaç següent per crear el teu compte:&lt;/p&gt;&lt;p&gt;&lt;a href="{0}"&gt;Crea el teu compte&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Aquest enllaç expira en 15 minuts i només es pot fer servir una vegada.&lt;/p&gt;&lt;p&gt;Si no has sol·licitat això, pots ignorar aquest correu.&lt;/p&gt;</value>
   </data>
+  <data name="Auth_Roles_Title" xml:space="preserve">
+    <value>Assignacions de rols</value>
+  </data>
+  <data name="Auth_Roles_All" xml:space="preserve">
+    <value>Tots</value>
+  </data>
+  <data name="Auth_Roles_HideInactive" xml:space="preserve">
+    <value>Amaga inactius</value>
+  </data>
+  <data name="Auth_Roles_ShowInactive" xml:space="preserve">
+    <value>Mostra inactius</value>
+  </data>
+  <data name="Auth_Roles_User" xml:space="preserve">
+    <value>Usuari</value>
+  </data>
+  <data name="Auth_Roles_ValidFrom" xml:space="preserve">
+    <value>Vàlid des de</value>
+  </data>
+  <data name="Auth_Roles_ValidTo" xml:space="preserve">
+    <value>Vàlid fins a</value>
+  </data>
+  <data name="Auth_Roles_Assignments" xml:space="preserve">
+    <value>Assignacions de rols</value>
+  </data>
+  <data name="Auth_Roles_AddRole" xml:space="preserve">
+    <value>Afegir rol</value>
+  </data>
+  <data name="Auth_Roles_Ended" xml:space="preserve">
+    <value>Finalitzat</value>
+  </data>
+  <data name="Auth_Roles_From" xml:space="preserve">
+    <value>Des de</value>
+  </data>
+  <data name="Auth_Roles_To" xml:space="preserve">
+    <value>fins a</value>
+  </data>
+  <data name="Auth_Roles_EndConfirm" xml:space="preserve">
+    <value>Finalitzar aquesta assignació de rol?</value>
+  </data>
+  <data name="Auth_Roles_End" xml:space="preserve">
+    <value>Finalitzar</value>
+  </data>
+  <data name="Auth_Roles_NoAssignments" xml:space="preserve">
+    <value>Sense assignacions de rols.</value>
+  </data>
+  <data name="Auth_AddRole_Title" xml:space="preserve">
+    <value>Afegir rol</value>
+  </data>
+  <data name="Auth_AddRole_SelectRole" xml:space="preserve">
+    <value>Selecciona un rol...</value>
+  </data>
+  <data name="Auth_AddRole_AdminDesc" xml:space="preserve">
+    <value>Accés complet al sistema</value>
+  </data>
+  <data name="Auth_AddRole_BoardDesc" xml:space="preserve">
+    <value>Permisos de membre de la junta</value>
+  </data>
+  <data name="Auth_AddRole_TeamsAdminDesc" xml:space="preserve">
+    <value>Gestionar tots els equips i pertinences</value>
+  </data>
+  <data name="Auth_AddRole_ConsentCoordinatorDesc" xml:space="preserve">
+    <value>Verificacions de seguretat durant la incorporació</value>
+  </data>
+  <data name="Auth_AddRole_CampAdminDesc" xml:space="preserve">
+    <value>Gestionar el mapa del camp i les fases de col·locació</value>
+  </data>
+  <data name="Auth_AddRole_VolunteerCoordinatorDesc" xml:space="preserve">
+    <value>Facilitació de la incorporació, gestió de torns global</value>
+  </data>
+  <data name="Auth_AddRole_NoInfoAdminDesc" xml:space="preserve">
+    <value>Aprovar inscripcions en torns, veure dades mèdiques de voluntaris</value>
+  </data>
+  <data name="Auth_AddRole_NotesLabel" xml:space="preserve">
+    <value>Notes (opcional)</value>
+  </data>
+  <data name="Auth_AddRole_NotesPlaceholder" xml:space="preserve">
+    <value>Motiu de la assignació</value>
+  </data>
 </root>

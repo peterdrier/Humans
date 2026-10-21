@@ -8,7 +8,6 @@ public record UserEmailDto(
     Guid Id,
     string Email,
     bool IsVerified,
-    bool IsGoogle,
     string? Provider,
     string? ProviderKey,
     bool IsPrimary,
@@ -21,13 +20,11 @@ public record UserEmailEditDto(
     Guid Id,
     string Email,
     bool IsVerified,
-    bool IsGoogle,
     string? Provider,
     string? ProviderKey,
     bool IsPrimary,
     ContactFieldVisibility? Visibility,
     bool IsPendingVerification,
-    GoogleEmailStatus GoogleEmailStatus,
     bool IsMergePending = false);
 
 /// <summary>

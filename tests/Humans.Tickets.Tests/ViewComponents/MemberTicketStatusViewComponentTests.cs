@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.ViewComponents;
-using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
@@ -18,7 +17,6 @@ namespace Humans.Tickets.Tests.ViewComponents;
 public sealed class MemberTicketStatusViewComponentTests
 {
     private readonly ITicketService _tickets = Substitute.For<ITicketService>();
-    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
 
     private static EventSettingsInfo Event(bool isOffSeason) => new(
@@ -32,7 +30,7 @@ public sealed class MemberTicketStatusViewComponentTests
         httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())], "test"));
         return new MemberTicketStatusViewComponent(
-            _tickets, _users, _settings, Options.Create(new TicketVendorSettings()),
+            _tickets, _settings, Options.Create(new TicketVendorSettings()),
             NullLogger<MemberTicketStatusViewComponent>.Instance)
         {
             ViewComponentContext = new ViewComponentContext

@@ -5,8 +5,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Humans.Finance.Data;
 
 /// <summary>
-/// Finance's own context (nobodies-collective/Humans#858): the five holded_* tables and the two
-/// sepa_payout_* tables it owns, its own
+/// Finance's own context (nobodies-collective/Humans#858): the five holded_* tables, the two
+/// sepa_payout_* tables and finance_payment_details it owns, its own
 /// <c>__EFMigrationsHistory_Finance</c>, same database and connection. Configurations are applied
 /// explicitly, never by assembly scan, so this model cannot accrete another section's tables.
 /// </summary>
@@ -20,6 +20,7 @@ internal sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> option
     public DbSet<HoldedManagedAccount> HoldedManagedAccounts => Set<HoldedManagedAccount>();
     public DbSet<SepaPayoutFile> SepaPayoutFiles => Set<SepaPayoutFile>();
     public DbSet<SepaPayoutTransfer> SepaPayoutTransfers => Set<SepaPayoutTransfer>();
+    public DbSet<PaymentDetails> PaymentDetails => Set<PaymentDetails>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -32,5 +33,6 @@ internal sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> option
         builder.ApplyConfiguration(new HoldedManagedAccountConfiguration());
         builder.ApplyConfiguration(new SepaPayoutFileConfiguration());
         builder.ApplyConfiguration(new SepaPayoutTransferConfiguration());
+        builder.ApplyConfiguration(new PaymentDetailsConfiguration());
     }
 }

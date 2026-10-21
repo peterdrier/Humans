@@ -425,4 +425,5 @@ public enum AuditAction
     VolunteerTrackingExported,
     ExpenseLineDeclined,
     ExpenseLineDeclineUndone,
+    DataMigrationApplied,
 }

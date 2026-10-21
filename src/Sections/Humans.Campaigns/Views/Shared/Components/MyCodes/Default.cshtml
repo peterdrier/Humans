@@ -1,0 +1,29 @@
+@model IReadOnlyList<Humans.Campaigns.Contracts.CampaignGrantSummary>
+
+<div class="card mb-3">
+    <div class="card-header">
+        <h5 class="mb-0">@Localizer["Campaigns_MyCodes_Title"]</h5>
+    </div>
+    <div class="card-body p-0">
+        @{
+            Func<Humans.Campaigns.Contracts.CampaignGrantSummary, IHtmlContent> redeemedCell =
+                @<text>
+                    @if (item.RedeemedAt.HasValue)
+                    {
+                        <span class="badge bg-success">@item.RedeemedAt.Value.ToDate()</span>
+                    }
+                    else
+                    {
+                        <span class="text-muted">&mdash;</span>
+                    }
+                </text>;
+            var grantsTable = TableModel.For(Model.OrderByDescending(g => g.AssignedAt).ToList())
+                .Column(Localizer["Campaigns_MyCodes_Campaign"].Value, g => g.CampaignTitle)
+                .Column(Localizer["Campaigns_MyCodes_Code"].Value, g => g.Code)
+                .Column(Localizer["Campaigns_MyCodes_Assigned"].Value, g => g.AssignedAt, c => c.Date())
+                .Template(Localizer["Campaigns_MyCodes_Redeemed"].Value, redeemedCell)
+                .Build();
+        }
+        <partial name="_Table" model="grantsTable" />
+    </div>
+</div>

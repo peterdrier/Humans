@@ -1,6 +1,7 @@
 using Humans.Teams.Contracts;
 using Humans.Base.Helpers;
 using Humans.Camps.Contracts;
+using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Users.Models;
@@ -27,6 +28,8 @@ internal static class ProfileSummaryViewModelBuilder
     public static ProfileSummaryViewModel BuildWithProfile(
         UserInfo info,
         IReadOnlyList<TeamMembership> memberships,
+        MembershipTier tier,
+        bool isApproved,
         CampUserInfo? camp = null)
     {
         ArgumentNullException.ThrowIfNull(info);
@@ -46,9 +49,9 @@ internal static class ProfileSummaryViewModelBuilder
             Email = info.Email,
             ProfilePictureUrl = info.ProfilePictureUrl,
             PreferredLanguage = info.PreferredLanguage,
-            MembershipTier = profile.MembershipTier.ToString(),
+            MembershipTier = tier.ToString(),
             MembershipStatus = info.IsSuspended ? "Suspended"
-                : profile.IsApproved ? "Active" : "Pending",
+                : isApproved ? "Active" : "Pending",
             City = profile.City,
             CountryCode = profile.CountryCode,
             IsSuspended = info.IsSuspended,

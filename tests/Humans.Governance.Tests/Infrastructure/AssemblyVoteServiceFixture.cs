@@ -1,3 +1,4 @@
+using Humans.Governance.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Constants;
 using Humans.Email.Contracts;

@@ -2,12 +2,14 @@ using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Base.Configuration;
 using Humans.Web.Models;
+using Humans.Consent.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Web.Controllers;
 
 public class HomeController(
     IUserService userService,
+    IConsentService consentService,
     IConfiguration configuration,
     ConfigurationRegistry configRegistry) : HumansControllerBase(userService)
 {
@@ -24,6 +26,8 @@ public class HomeController(
             return View();
         }
 
+        var review = await consentService.GetConsentReviewAsync(user.Id);
+
         // Name-only access: the MembershipRequiredFilter routes non-Active users away, so any
         // authenticated user reaching the dashboard is Active (named, not suspended/etc.).
         var viewModel = new DashboardViewModel
@@ -33,8 +37,8 @@ public class HomeController(
             ProfilePictureUrl = user.ProfilePictureUrl,
             HasProfile = user.Profile is not null,
             ProfileComplete = !string.IsNullOrEmpty(user.Profile?.FirstName),
-            IsRejected = user.Profile?.RejectedAt is not null,
-            RejectionReason = user.Profile?.RejectionReason,
+            IsRejected = user.Profile is not null && review.IsRejected,
+            RejectionReason = user.Profile is null ? null : review.RejectionReason,
             MemberSince = user.CreatedAt.ToDateTimeUtc(),
             LastLogin = user.LastLoginAt?.ToDateTimeUtc(),
         };

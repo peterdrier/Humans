@@ -255,6 +255,23 @@ namespace Humans.Finance.Data.Migrations
                     b.ToTable("holded_managed_accounts", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Finance.Domain.PaymentDetails", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Iban")
+                        .HasMaxLength(34)
+                        .HasColumnType("character varying(34)");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("finance_payment_details", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Finance.Domain.SepaPayoutFile", b =>
                 {
                     b.Property<Guid>("Id")

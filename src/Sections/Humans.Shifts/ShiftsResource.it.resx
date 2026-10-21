@@ -1275,4 +1275,5 @@
     <value>Grazie per quest'anno. I turni riapriranno quando il Consiglio pubblicherà il prossimo evento.</value>
   </data>
   <data name="Shifts_StatusReasonTooLong" xml:space="preserve"><value>Il motivo non può superare i 1000 caratteri.</value></data>
+  <data name="Shifts_Bail_NotActive" xml:space="preserve"><value>Questa iscrizione non è più attiva e non può essere annullata.</value></data>
 </root>

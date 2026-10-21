@@ -25,3 +25,11 @@ each contributor's own section also lists it in that section's
 `data-access.md`.
 
 ---
+
+## Controllers
+
+`MemberDataController` and `UserController` (`Controllers/`) hold no data and no cache. They
+inject `IUserService` (current-user lookup via `HumansControllerBase`), `IGdprService`
+(`MemberDataController`, the export) and Users.Contracts' `IAccountDeletionService`
+(request and cancel). The deletion timestamps stay on `users`, written by Users behind
+`IUserWrite`; Gdpr never touches them.

@@ -12,7 +12,7 @@ public interface IOnboardingIntake
     /// Threshold check fired by callers as a peer call after a profile-save or
     /// consent-grant. If the user has a profile, is not approved or rejected, has no
     /// existing consent-check status, and has all required consents for the Volunteers
-    /// team, flips <c>Profile.ConsentCheckStatus</c> to <c>Pending</c>. Returns true if the
+    /// team, sets the Consent review's status to <c>Pending</c>. Returns true if the
     /// status was set. Raises no notification — the coordinator finds the queue through the
     /// admin sidebar's Review pill.
     ///

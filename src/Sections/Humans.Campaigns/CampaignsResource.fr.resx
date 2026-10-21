@@ -36,4 +36,9 @@
   <data name="Campaigns_Notification_ReceivedTitle" xml:space="preserve"><value>Tu as reçu un code de la campagne : {0}</value></data>
   <data name="Campaigns_Notification_ReceivedBody" xml:space="preserve"><value>Ton code de campagne est disponible dans Mes codes sur ton profil.</value></data>
   <data name="Campaigns_Notification_MyCodes" xml:space="preserve"><value>Mes codes</value></data>
+  <data name="Campaigns_MyCodes_Title" xml:space="preserve"><value>Mes codes</value></data>
+  <data name="Campaigns_MyCodes_Campaign" xml:space="preserve"><value>Campagne</value></data>
+  <data name="Campaigns_MyCodes_Code" xml:space="preserve"><value>Code</value></data>
+  <data name="Campaigns_MyCodes_Assigned" xml:space="preserve"><value>Attribué</value></data>
+  <data name="Campaigns_MyCodes_Redeemed" xml:space="preserve"><value>Utilisé</value></data>
 </root>

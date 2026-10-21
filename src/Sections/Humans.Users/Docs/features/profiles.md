@@ -215,18 +215,18 @@ Users must provide at least one Burner CV entry **or** check the "No prior burn 
 
 ### Data Export (Right of Access)
 
-Members can download all their personal data as JSON from `/Profile/Me/DownloadData`. The export includes profile fields, contact fields, volunteer history, consent records, team memberships, applications, and role assignments. Response headers disable caching (`no-store`).
+Members can download all their personal data as JSON from `/Gdpr/DownloadData`. The export includes profile fields, contact fields, volunteer history, consent records, team memberships, applications, and role assignments. Response headers disable caching (`no-store`).
 
-**Route:** `GET /Profile/Me/DownloadData`
+**Route:** `GET /Gdpr/DownloadData` (served by Gdpr's `MemberDataController`)
 
 ### Account Deletion (Right to Erasure)
 
-Members can request account deletion from the Privacy page (`/Profile/Me/Privacy`). The process uses a 30-day grace period with anonymization rather than hard delete (per decision R-02).
+Members can request account deletion from the Privacy page (`/Consent/MyData`). The process uses a 30-day grace period with anonymization rather than hard delete (per decision R-02).
 
 #### Deletion Workflow
 
 ```
-User requests deletion (/Profile/Me/Privacy/RequestDeletion)
+User requests deletion (/Gdpr/RequestDeletion)
     │
     ├── DeletionRequestedAt = now
     ├── DeletionScheduledFor = now + 30 days
@@ -240,7 +240,7 @@ User requests deletion (/Profile/Me/Privacy/RequestDeletion)
     │   │  30-day grace period                │
     │   │  • User can still log in            │
     │   │  • User can cancel at any time      │
-    │   │    via /User/Deletion/Cancel        │
+    │   │    via /Gdpr/Deletion/Cancel        │
     │   │  • Memberships already revoked      │
     │   │  • Cancellation does NOT restore    │
     │   │    memberships (must rejoin teams)   │
@@ -285,10 +285,10 @@ This two-step approach ensures Google deprovisioning uses the same tested code p
 
 | Route | Method | Purpose |
 |-------|--------|---------|
-| `/Profile/Me/Privacy` | GET | View deletion status, data export link |
-| `/Profile/Me/Privacy/RequestDeletion` | POST | Start 30-day deletion countdown |
-| `/User/Deletion/Cancel` | POST | Cancel pending deletion (`UserController`) |
-| `/Profile/Me/DownloadData` | GET | Download personal data as JSON |
+| `/Consent/MyData` | GET | View deletion status, data export link (Consent's `MyDataController`) |
+| `/Gdpr/RequestDeletion` | POST | Start 30-day deletion countdown (Gdpr's `MemberDataController`) |
+| `/Gdpr/Deletion/Cancel` | POST | Cancel pending deletion (Gdpr's `UserController`) |
+| `/Gdpr/DownloadData` | GET | Download personal data as JSON (Gdpr's `MemberDataController`) |
 
 ## Related Features
 

@@ -123,7 +123,7 @@ internal sealed class FeedbackRepository(IDbContextFactory<FeedbackDbContext> fa
         return await ctx.FeedbackReports
             .AsNoTracking()
             .Include(fr => fr.Messages)
-            .Where(fr => fr.UserId == userId)
+            .Where(fr => fr.UserId == userId || fr.Messages.Any(m => m.SenderUserId == userId))
             .ToListAsync(ct);
     }
 

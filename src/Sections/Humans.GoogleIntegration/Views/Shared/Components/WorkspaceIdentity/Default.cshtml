@@ -1,0 +1,49 @@
+@model WorkspaceIdentityCellViewModel
+@{
+    var action = Model.AdminContext ? "AdminSet" : "Set";
+    Guid? routeId = Model.AdminContext ? Model.UserId : null;
+}
+@if (Model.IsIdentity)
+{
+    <span class="d-inline-flex align-items-center">
+        <i class="fa-brands fa-google text-success me-1" aria-label="@Localizer["GoogleIntegration_Identity_Google"]"></i>
+        @if (Model.Status == GoogleEmailStatus.Rejected)
+        {
+            <span class="badge bg-danger me-1" title="@Localizer["GoogleIntegration_Identity_Problem"].Value">@Localizer["GoogleIntegration_Identity_Problem"]</span>
+            @* The rejected identity has no other retry surface — re-assert it (resets Rejected→Unknown, #687)
+               so the next reconcile retries. *@
+            <form asp-controller="WorkspaceIdentity" asp-action="@action" asp-route-id="@routeId"
+                  method="post" class="d-inline me-1">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="emailId" value="@Model.EmailId" />
+                <button type="submit" class="btn btn-outline-danger btn-sm py-0"
+                        title="@Localizer["GoogleIntegration_Identity_Retry"].Value">
+                    <i class="fa-solid fa-rotate-right me-1"></i>@Localizer["GoogleIntegration_Identity_Retry"]
+                </button>
+            </form>
+        }
+        else if (Model.Status == GoogleEmailStatus.Valid)
+        {
+            <span class="badge bg-success" title="@Localizer["GoogleIntegration_Identity_Ok"].Value">@Localizer["GoogleIntegration_Identity_Ok"]</span>
+        }
+    </span>
+}
+else if (!Model.IsVerified)
+{
+    <span class="text-muted small">@Localizer["GoogleIntegration_Identity_VerifyFirst"]</span>
+}
+else if (Model.IsLocked)
+{
+    <span class="text-muted small" title="@Localizer["GoogleIntegration_Identity_Locked"].Value">—</span>
+}
+else
+{
+    <form asp-controller="WorkspaceIdentity" asp-action="@action" asp-route-id="@routeId"
+          method="post" class="d-inline">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="emailId" value="@Model.EmailId" />
+        <button type="submit" class="btn btn-outline-secondary btn-sm">
+            @Localizer["GoogleIntegration_Identity_Set"]
+        </button>
+    </form>
+}

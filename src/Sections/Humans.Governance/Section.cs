@@ -30,6 +30,11 @@ public sealed class Section : ISection, IIssueQueueOwner
 
         services.AddSingleton<IApplicationRepository, ApplicationRepository>();
 
+        services.AddSingleton<IMembershipTierRepository, MembershipTierRepository>();
+        services.AddScoped<MembershipTierService>();
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<MembershipTierService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<MembershipTierService>());
+
         services.AddScoped<ApplicationDecisionService>();
         services.AddScoped<IGovernanceManagement>(sp => sp.GetRequiredService<ApplicationDecisionService>());
         services.AddScoped<IGovernanceService>(sp => sp.GetRequiredService<ApplicationDecisionService>());

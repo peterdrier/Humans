@@ -4,22 +4,19 @@
     <ProjectReference Include="..\..\src\Sections\Humans.Cantina\Humans.Cantina.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Gdpr\Humans.Gdpr.csproj" />
     <ProjectReference Include="..\..\src\Humans.Base\Humans.Base.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
     <PackageReference Include="NodaTime.Testing" />
   </ItemGroup>
 
   <!--
-    No EF Core package: Cantina owns no tables, so there is no DbContext to fixture. That is
-    why tests/Directory.Build.props excludes this project from the shared TestDbContextFactory
-    /CapturingLogger compile items — see the comment there.
-
-    No FrameworkReference either, unlike Humans.Scanner.Tests: these tests cover the roster
-    service, the display-sort assembler and the two CSV writers, none of which names an
-    ASP.NET type. The controller is exercised by CantinaPageRenderTests in
-    Humans.Integration.Tests.
+    EF Core InMemory backs the cantina_dietary_profiles repository in DietaryProfileTests.
+    No FrameworkReference: the controller tests use the MVC types the section project already
+    brings in transitively. CantinaPageRenderTests in Humans.Integration.Tests renders the pages.
   -->
 
 </Project>

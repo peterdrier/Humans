@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using AwesomeAssertions;
 using Humans.Tickets.Contracts;
 using Humans.MailerLite.Tests.Infrastructure;
@@ -19,14 +20,9 @@ public class MarketingNoTicketAudienceTests
         var noPrefRow = Guid.NewGuid();       // no row                      → OUT
 
         var audience = NewAudience(
-            users: new[]
-            {
-                UserWithMarketingPref(optInNoTicket, optedOut: false),
-                UserWithMarketingPref(optInWithTicket, optedOut: false),
-                UserWithMarketingPref(optedOut, optedOut: true),
-                UserWithoutMarketingPref(noPrefRow),
-            },
-            ticketHolders: [optInWithTicket]);
+            users: [User(optInNoTicket), User(optInWithTicket), User(optedOut), User(noPrefRow)],
+            ticketHolders: [optInWithTicket],
+            (optInNoTicket, false), (optInWithTicket, false), (optedOut, true));
 
         var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -53,7 +49,8 @@ public class MarketingNoTicketAudienceTests
 
     private static MarketingNoTicketAudience NewAudience(
         IReadOnlyList<UserInfo> users,
-        HashSet<Guid> ticketHolders)
+        HashSet<Guid> ticketHolders,
+        params (Guid UserId, bool OptedOut)[] marketing)
     {
         var userService = Substitute.For<IUserService>();
         userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(users);
@@ -62,7 +59,7 @@ public class MarketingNoTicketAudienceTests
         ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
             .Returns(OrdersForTicketHolders(ticketHolders));
 
-        return new MarketingNoTicketAudience(userService, ticketService);
+        return new MarketingNoTicketAudience(userService, ticketService, MarketingPreferenceStubs.For(marketing));
     }
 
     private static IReadOnlyList<TicketOrderInfo> OrdersForTicketHolders(IEnumerable<Guid> userIds) =>
@@ -89,16 +86,6 @@ public class MarketingNoTicketAudienceTests
                 Status: TicketAttendeeStatus.Valid,
                 MatchedUserId: userId)])).ToList();
 
-    private static UserInfo UserWithMarketingPref(Guid userId, bool optedOut) =>
-        UserInfo.Create(
-            new User { Id = userId, DisplayName = "u", PreferredLanguage = "en" },
-            [], [], [], profile: null,
-            [UserFixtures.Preference(
-                category: MessageCategory.Marketing,
-                optedOut: optedOut,
-                updatedAt: Instant.FromUnixTimeSeconds(0),
-                updateSource: "Test")]);
-
-    private static UserInfo UserWithoutMarketingPref(Guid userId) =>
+    private static UserInfo User(Guid userId) =>
         UserInfoStubHelpers.MakeUserInfo(userId);
 }

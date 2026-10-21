@@ -1,3 +1,4 @@
+using Humans.Governance.Contracts;
 using System.Text.Json.Serialization;
 using Humans.Users.Contracts;
 using NodaTime;

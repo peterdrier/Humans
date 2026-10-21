@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Humans.Base.Caching;
 using Humans.Notifications.Domain;
 using Xunit;
@@ -156,8 +157,10 @@ public class NotificationEmitterTests : IDisposable
         (await _notificationsDb.Notifications.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
-    [HumansFact]
-    public async Task SendAsync_Actionable_BypassesInboxSuppression()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SendAsync_Actionable_BypassesInboxSuppression(bool preferenceReadFails)
     {
         var suppressed = Guid.NewGuid();
 
@@ -168,6 +171,11 @@ public class NotificationEmitterTests : IDisposable
             InboxEnabled = false,
         });
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        if (preferenceReadFails)
+            _preferenceService.GetUsersWithInboxDisabledAsync(
+                    Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<MessageCategory>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<IReadOnlySet<Guid>>(new InvalidOperationException("Preferences unavailable")));
 
         await _emitter.SendAsync(
             NotificationSource.ApplicationSubmitted,

@@ -20,7 +20,7 @@ namespace Humans.MailerLite;
 /// <remarks>
 /// MailerLite stays the system of record for subscriber state — every Humans-side write to it
 /// routes through another section's service (<c>IUserEmailService</c>,
-/// <c>IAccountProvisioningService</c>, <c>ICommunicationPreferenceService</c>). The one thing
+/// <c>IAccountProvisioningService</c>, Email's <c>ICommunicationPreferenceWrite</c>). The one thing
 /// this section owns is <c>mailerlite_sync_states</c>: when each audience last synced and what
 /// happened (nobodies-collective/Humans#1082).
 /// <para>

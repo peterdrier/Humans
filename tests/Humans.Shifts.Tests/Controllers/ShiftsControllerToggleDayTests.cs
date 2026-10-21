@@ -1,3 +1,4 @@
+using Humans.Cantina.Contracts;
 using Humans.Shifts.Domain;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -44,6 +45,7 @@ public class ShiftsControllerToggleDayTests
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly ICantinaService _cantina = Substitute.For<ICantinaService>();
     private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
     // The name-gate message came home with Onboarding's G5; the controller now resolves it
     // through the section's own resource set.
@@ -88,7 +90,7 @@ public class ShiftsControllerToggleDayTests
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(userInfo);
         var ctrl = new ShiftsController(
             _shiftMgmt, _burnSettings, _signupService, _volunteerTrackingService, _shiftView, _teamService,
-            _auditLogService, _userService, _localizer, _onboardingLocalizer, _clock, _builder, _logger);
+            _auditLogService, _userService, _cantina, _localizer, _onboardingLocalizer, _clock, _builder, _logger);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
@@ -105,16 +107,17 @@ public class ShiftsControllerToggleDayTests
         return ctrl;
     }
 
-    private static UserInfo MakeUserInfo(
+    private UserInfo MakeUserInfo(
         Guid userId, string burner, string first, string last, string? dietary)
     {
+        _cantina.GetDietaryProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(dietary is null ? null : new DietaryProfileInfo(userId, dietary, [], null, [], null));
         var profile = new Profile
         {
             UserId = userId,
             BurnerName = burner,
             FirstName = first,
             LastName = last,
-            DietaryPreference = dietary,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };

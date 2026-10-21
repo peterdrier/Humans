@@ -57,6 +57,7 @@ public class BalanceCalculatorTests
         r.LinesSubtotalEur.Should().Be(30m);
         r.VatTotalEur.Should().Be(6.30m);
         r.DepositTotalEur.Should().Be(100m);
+        r.TotalDueEur.Should().Be(136.30m);
         r.BalanceEur.Should().Be(136.30m);
         r.Lines.Should().ContainSingle().Which.Should().Be(
             new BalanceCalculator.LineTotals(lineId, 30m, 21m, 100m, 30m, 6.30m, 100m, 136.30m));

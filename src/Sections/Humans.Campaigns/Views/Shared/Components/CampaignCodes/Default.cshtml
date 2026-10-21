@@ -1,0 +1,31 @@
+@model IReadOnlyList<Humans.Campaigns.Contracts.CampaignGrantSummary>
+@* Admin-only card on /Users/Admin/{id}: no localization keys (memory/code/localization-admin-exempt.md). *@
+@{
+    Func<Humans.Campaigns.Contracts.CampaignGrantSummary, IHtmlContent> codeCell =
+        @<text><code>@item.Code</code></text>;
+    Func<Humans.Campaigns.Contracts.CampaignGrantSummary, IHtmlContent> statusCell = @<text>
+        @if (item.LatestEmailStatus.HasValue)
+        {
+            var badgeClass = item.LatestEmailStatus switch
+            {
+                EmailOutboxStatus.Sent => "bg-success",
+                EmailOutboxStatus.Failed => "bg-danger",
+                EmailOutboxStatus.Queued => "bg-warning",
+                _ => "bg-secondary"
+            };
+            <span class="badge @badgeClass">@item.LatestEmailStatus</span>
+        }
+    </text>;
+    var campaignCodesTable = TableModel.For(Model.OrderByDescending(g => g.AssignedAt).ToList())
+        .Column("Campaign", g => g.CampaignTitle)
+        .Template("Code", codeCell)
+        .Column("Assigned", g => g.AssignedAt, c => c.Date())
+        .Template("Status", statusCell)
+        .Build();
+}
+<div class="card mb-4">
+    <div class="card-header"><h6 class="mb-0">Campaign Codes</h6></div>
+    <div class="card-body p-0">
+        <partial name="_Table" model="campaignCodesTable" />
+    </div>
+</div>

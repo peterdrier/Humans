@@ -100,7 +100,7 @@ public sealed class StoreControllerRecordPaymentTests
 
     private static UserInfo MakeUserInfo(Guid id) => new(
         id, "Tester", false, "en", null, Instant.FromUtc(2026, 1, 1, 0, 0), null, null, null, null, null,
-        false, false, null, null, null, null, null, [], [], [], null, []);
+        null, null, null, null, null, [], [], [], null, []);
 
     [HumansTheory]
     [InlineData(false)]
@@ -296,4 +296,50 @@ public sealed class StoreControllerRecordPaymentTests
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
     }
 
+    [HumansTheory]
+    [InlineData(RoleNames.StoreAdmin, false, false)]
+    [InlineData(RoleNames.FinanceAdmin, true, false)]
+    [InlineData(RoleNames.Admin, true, true)]
+    public async Task Order_page_offers_refund_and_payment_delete_by_role(string role, bool canRefund, bool canDeletePayment)
+    {
+        var controller = BuildController(role);
+
+        var result = await controller.Order(_order.Id, TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<OrderViewModel>().Which;
+        model.CanRecordPayment.Should().BeTrue();
+        model.CanRefund.Should().Be(canRefund);
+        model.CanDeletePayment.Should().Be(canDeletePayment);
+    }
+
+    [HumansFact]
+    public async Task Order_page_hides_Delete_when_a_payment_row_exists_at_zero_balance()
+    {
+        _order.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = _order.Id,
+            AmountEur = 10m,
+            Method = PaymentMethod.Stripe,
+            Status = PaymentStatus.Pending,
+        });
+        var controller = BuildController(RoleNames.Admin);
+
+        var result = await controller.Order(_order.Id, TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<OrderViewModel>().Which;
+        model.Order.BalanceEur.Should().Be(0m);
+        model.CanDelete.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task Order_page_offers_Delete_on_an_empty_open_order()
+    {
+        var controller = BuildController(RoleNames.Admin);
+
+        var result = await controller.Order(_order.Id, TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<OrderViewModel>().Which
+            .CanDelete.Should().BeTrue();
+    }
 }

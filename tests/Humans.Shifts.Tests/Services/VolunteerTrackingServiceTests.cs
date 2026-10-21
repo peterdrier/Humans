@@ -8,6 +8,7 @@ using Humans.Shifts.Services;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Humans.Users.Services;
 
@@ -32,7 +33,7 @@ public class VolunteerTrackingServiceTests
         var service = new VolunteerTrackingService(
             repo, Substitute.For<IShiftManagementRepository>(),
             new EventCalendarResolver(Substitute.For<ISettingsService>()),
-            Substitute.For<IUserService>(), Substitute.For<IShiftViewInvalidator>(),
+            Substitute.For<IUserService>(), Substitute.For<ITicketService>(), Substitute.For<IShiftViewInvalidator>(),
             new FakeClock(TestNow), Substitute.For<IAuditLogService>());
 
         Func<Task> read = () => service.GetAvailableForDayAsync(eventId, -1, cancellation.Token);
@@ -723,15 +724,8 @@ public class VolunteerTrackingServiceTests
             UpdatedAt = TestNow,
         };
 
-    private static EventParticipation Participation(Guid userId, ParticipationStatus status, int year)
-        => new()
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Year = year,
-            Status = status,
-            Source = ParticipationSource.UserDeclared,
-        };
+    private static EventParticipationInfo Participation(Guid userId, ParticipationStatus status, int year)
+        => new(userId, year, status, ParticipationSource.UserDeclared, null, null);
 
     // ----------------------------------------------------------------------
     // Test SUT builder with fakes
@@ -741,7 +735,7 @@ public class VolunteerTrackingServiceTests
         EventSettings? activeEvent,
         IReadOnlyList<EligibleBuildSignup>? signups = null,
         IReadOnlyList<VolunteerBuildStatus>? buildStatuses = null,
-        IReadOnlyList<EventParticipation>? participations = null,
+        IReadOnlyList<EventParticipationInfo>? participations = null,
         IReadOnlyList<GeneralAvailability>? availabilities = null,
         Instant? now = null,
         FakeVolunteerTrackingRepository? trackingRepo = null)
@@ -774,7 +768,7 @@ public class VolunteerTrackingServiceTests
                             CreatedAt = TestNow
                         },
                         userEmails: [],
-                        eventParticipations: g.ToList(),
+                        eventParticipations: [],
                         externalLogins: [],
                         profile: null,
                         contactFields: [],
@@ -785,12 +779,16 @@ public class VolunteerTrackingServiceTests
                 return Task.FromResult<IReadOnlyCollection<UserInfo>>(users);
             });
 
+        var tickets = Substitute.For<ITicketService>();
+        tickets.GetAllParticipationsAsync(Arg.Any<CancellationToken>())
+            .Returns(participations ?? []);
+
         trackingRepo ??= new FakeVolunteerTrackingRepository(
             buildStatuses ?? [],
             availabilities ?? []);
 
         return new VolunteerTrackingService(
-            trackingRepo, shiftMgmt, calendarResolver, userService, Substitute.For<IShiftViewInvalidator>(), clock,
+            trackingRepo, shiftMgmt, calendarResolver, userService, tickets, Substitute.For<IShiftViewInvalidator>(), clock,
             Substitute.For<IAuditLogService>());
     }
 

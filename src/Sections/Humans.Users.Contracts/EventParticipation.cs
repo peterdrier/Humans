@@ -3,8 +3,11 @@ using NodaTime;
 namespace Humans.Users.Contracts;
 
 /// <summary>
-/// Per-user, per-year record tracking event participation status.
-/// No record = unknown/no response yet (default state, not stored).
+/// The legacy <c>event_participations</c> row: frozen since Users decomposition commit 13, when
+/// participation moved to Tickets' <c>tickets_event_participations</c>. Nothing writes it; it is read
+/// only into the obsolete <see cref="UserInfo.EventParticipations"/> (Tickets' legacy fallback and the
+/// <c>tickets.event-participations</c> copy) and Users' export of the rows it still holds. The table is
+/// dropped by an evidence-gated PR once production reports the copy done.
 /// </summary>
 public class EventParticipation
 {
@@ -23,7 +26,7 @@ public class EventParticipation
     /// <summary>
     /// Current participation status.
     /// </summary>
-    public ParticipationStatus Status { get; set; }
+    public LegacyParticipationStatus Status { get; set; }
 
     /// <summary>
     /// When the user self-declared NotAttending (null for other sources).
@@ -33,10 +36,10 @@ public class EventParticipation
     /// <summary>
     /// When the user was first checked in at the event gate (from the
     /// TicketTailor <c>check_in.checked_in_at</c> field or a local gate admit).
-    /// Populated by a scan establishing <see cref="ParticipationStatus.Attended"/>,
+    /// Populated by a scan establishing <see cref="LegacyParticipationStatus.Attended"/>,
     /// including a later scan when attendance was already known. Once set it is never
     /// cleared or overwritten — matches the existing invariant that
-    /// <see cref="ParticipationStatus.Attended"/> rows are permanent and not
+    /// <see cref="LegacyParticipationStatus.Attended"/> rows are permanent and not
     /// removed by sync. May be null if the vendor did not return a timestamp
     /// when the status flipped (graceful fallback).
     /// </summary>
@@ -45,5 +48,5 @@ public class EventParticipation
     /// <summary>
     /// How the status was set.
     /// </summary>
-    public ParticipationSource Source { get; set; }
+    public LegacyParticipationSource Source { get; set; }
 }

@@ -46,6 +46,10 @@
       Humans.<Section>.Contracts"). It also means no consumer needed a new
       project reference at all.
 
+    IAccountDeletionService joined later (Users decomposition, commit 0) so Gdpr's deletion
+    screens can inject it; it dropped IOrchestrator for the same reason, and
+    AccountDeletionService carries the marker instead.
+
     Still NOT here, and staying internal to the section: IAccountMergeService,
     IDuplicateAccountService, IUnsubscribeService, IUnsubscribeTokenProvider,
     IEmailProblemsService, IProfilePictureService and

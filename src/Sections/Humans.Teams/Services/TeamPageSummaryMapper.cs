@@ -42,7 +42,7 @@ internal static class TeamPageSummaryMapper
             isPublicPage,
             showCoordinatorsOnPublicPage,
             pageContent,
-            callsToAction,
+            callsToAction.Where(c => TeamService.IsSafeCallToActionUrl(c.Url)).ToList(),
             pageContentUpdatedAt,
             pageContentUpdatedByUserId,
             parentLink);

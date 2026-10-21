@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Shifts.Contracts;
+using Humans.Cantina.Contracts;
 using Humans.Cantina.Services;
 using Humans.Users.Contracts;
 
@@ -15,12 +16,13 @@ public class CantinaArchitectureTests
     public void RosterServiceReadsOtherSectionsThroughPublicContracts()
     {
         // The invariants doc's load-bearing claim: the cantina never touches the Shifts
-        // repository, and dietary comes off the cached UserInfo rather than an entity read.
+        // repository; names come off the cached UserInfo and dietary through Cantina's own service.
         var paramTypes = typeof(CantinaRosterService).GetConstructors().Single()
             .GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(IShiftManagementService));
         paramTypes.Should().Contain(typeof(IUserService));
+        paramTypes.Should().Contain(typeof(ICantinaService));
     }
 
     [HumansFact]
@@ -28,8 +30,8 @@ public class CantinaArchitectureTests
     {
         // GDPR Article 9 boundary, and the reason this section exists in the shape it does:
         // the cantina plans around food, not medical history. MedicalConditions is on the
-        // cached ProfileInfo the service already holds, so nothing but this stops it being
-        // projected out (docs Cantina.md — Negative Access Rules).
+        // cached ProfileInfo the service already holds for names, so nothing but this stops it
+        // being projected out (docs Cantina.md — Negative Access Rules).
         var offenders = typeof(Section).Assembly.GetTypes()
             .Where(t => string.Equals(t.Namespace, "Humans.Cantina.Services.Dtos", StringComparison.Ordinal))
             .SelectMany(t => t.GetProperties().Select(p => $"{t.Name}.{p.Name}"))

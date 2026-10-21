@@ -7,6 +7,7 @@ using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Services;
 using Humans.Base;
 using Humans.Base.Authorization;
+using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Onboarding.Controllers;
@@ -35,8 +36,8 @@ internal sealed class OnboardingReviewController(
 
         var viewModel = new OnboardingReviewIndexViewModel
         {
-            PendingReviews = data.Pending.Select(u => MapToItem(u, data.PendingAppUserIds, data.ConsentProgress)).ToList(),
-            FlaggedReviews = data.Flagged.Select(u => MapToItem(u, data.PendingAppUserIds, data.ConsentProgress)).ToList()
+            PendingReviews = data.Pending.Select(u => MapToItem(u, data)).ToList(),
+            FlaggedReviews = data.Flagged.Select(u => MapToItem(u, data)).ToList()
         };
 
         return View(viewModel);
@@ -231,22 +232,19 @@ internal sealed class OnboardingReviewController(
             : sharedLocalizer["Common_Error"].Value);
     }
 
-    private static OnboardingReviewItemViewModel MapToItem(
-        UserInfo info,
-        HashSet<Guid> pendingAppUserIds,
-        Dictionary<Guid, ConsentProgressInfo> consentProgress)
+    private static OnboardingReviewItemViewModel MapToItem(UserInfo info, ReviewQueueData data)
     {
-        var progress = consentProgress.GetValueOrDefault(info.Id);
+        var progress = data.ConsentProgress.GetValueOrDefault(info.Id);
         var profile = info.Profile!;
         return new OnboardingReviewItemViewModel
         {
             UserId = info.Id,
             LegalName = profile.FullName,
             Email = info.Email ?? string.Empty,
-            ConsentCheckStatus = profile.ConsentCheckStatus,
-            MembershipTier = profile.MembershipTier,
+            ConsentCheckStatus = data.Reviews.GetValueOrDefault(info.Id)?.Status,
+            MembershipTier = data.Tiers.GetValueOrDefault(info.Id, MembershipTier.Volunteer),
             ProfileCreatedAt = profile.CreatedAt.ToDateTimeUtc(),
-            HasPendingApplication = pendingAppUserIds.Contains(info.Id),
+            HasPendingApplication = data.PendingAppUserIds.Contains(info.Id),
             ConsentCount = progress?.Signed ?? 0,
             RequiredConsentCount = progress?.Required ?? 0
         };

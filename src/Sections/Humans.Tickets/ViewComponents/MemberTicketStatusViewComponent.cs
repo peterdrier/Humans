@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
@@ -15,7 +14,6 @@ namespace Humans.Tickets.ViewComponents;
 /// </summary>
 public sealed class MemberTicketStatusViewComponent(
     ITicketService ticketService,
-    IUserService userService,
     ISettingsService settingsService,
     IOptions<TicketVendorSettings> ticketSettings,
     ILogger<MemberTicketStatusViewComponent> logger) : ViewComponent
@@ -84,8 +82,8 @@ public sealed class MemberTicketStatusViewComponent(
     {
         try
         {
-            var info = await userService.GetUserInfoAsync(userId, ct);
-            return info?.EventParticipations.FirstOrDefault(p => p.Year == year)?.Status;
+            return (await ticketService.GetParticipationsAsync(userId, ct))
+                .FirstOrDefault(p => p.Year == year)?.Status;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

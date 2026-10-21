@@ -10,10 +10,9 @@ using Microsoft.Extensions.Localization;
 namespace Humans.Debug.Tests;
 
 /// <summary>
-/// Architecture tests enforcing the section shape for Debug. There is deliberately no test
-/// that <c>Section.Register</c> registers nothing: an empty registration is an absence with no
-/// behaviour to regress, and the test could only fail on the deliberate edit that would have
-/// updated it anyway.
+/// Architecture tests enforcing the section shape for Debug. The anonymous
+/// <c>/api/data-migrations</c> endpoint is a minimal-API map, not a controller action, so it is
+/// pinned by <see cref="DataMigrationsTests"/> rather than here.
 /// </summary>
 public class DebugArchitectureTests
 {

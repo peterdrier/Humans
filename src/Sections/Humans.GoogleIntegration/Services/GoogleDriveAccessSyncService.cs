@@ -14,7 +14,7 @@ internal sealed class GoogleDriveAccessSyncService(
     IEnumerable<IGoogleDriveAccessSource> sources,
     IGoogleDrivePermissionsClient drivePermissions,
     IUserService userService,
-    IUserWrite userWrite,
+    IWorkspaceIdentityManagement workspaceIdentities,
     IUserEmailService userEmailService,
     ISyncSettingsService syncSettingsService,
     IGoogleSyncLogService googleSyncLog,
@@ -337,13 +337,13 @@ internal sealed class GoogleDriveAccessSyncService(
         CancellationToken ct)
     {
         var eligibleMembers = await GoogleSyncMemberHydration.LoadAsync(
-            access.Keys.ToList(), userService, ct);
+            access.Keys.ToList(), userService, workspaceIdentities, ct);
         var result = new Dictionary<Guid, DriveExpectedMember>();
         foreach (var (userId, level) in access)
         {
             if (level != DrivePermissionLevel.None && eligibleMembers.TryGetValue(userId, out var member))
                 result[userId] = new DriveExpectedMember(
-                    member.UserId, member.Email, member.DisplayName, member.ProfilePictureUrl, level, member.GoogleEmailId);
+                    member.UserId, member.Email, member.DisplayName, member.ProfilePictureUrl, level, member.IdentityEmail);
         }
 
         return result;
@@ -439,7 +439,7 @@ internal sealed class GoogleDriveAccessSyncService(
         }
 
         return new DrivePlan(members, idByEmail,
-            byEmail.ToDictionary(kv => kv.Key, kv => kv.Value.GoogleEmailId, GmailAliasEmailComparer.Instance));
+            byEmail.ToDictionary(kv => kv.Key, kv => kv.Value.IdentityEmail, GmailAliasEmailComparer.Instance));
     }
 
     private async Task<List<string>> ApplyMissingAndChangedAsync(FolderClaim claim, DrivePlan plan, SyncMode mode, GoogleSyncSource syncSource, CancellationToken ct)
@@ -483,8 +483,8 @@ internal sealed class GoogleDriveAccessSyncService(
                         errorMessage: error, userId: member.UserId, ct: ct);
                     errors.Add(error);
                     if (result.Error is { IsDriveTargetRejection: true } && member.UserId is { } rejectedUserId)
-                        await userWrite.TrySetGoogleEmailStatusFromSyncAsync(
-                            rejectedUserId, GoogleEmailStatus.Rejected, ct, plan.GoogleEmailIdsByEmail[member.Email]);
+                        await workspaceIdentities.SetStatusFromSyncAsync(
+                            rejectedUserId, plan.IdentityEmailsByEmail[member.Email], GoogleEmailStatus.Rejected, ct);
                     break;
             }
         }
@@ -617,9 +617,9 @@ internal sealed class GoogleDriveAccessSyncService(
     }
 
     private sealed record DriveExpectedMember(
-        Guid UserId, string Email, string DisplayName, string? ProfilePictureUrl, DrivePermissionLevel Level, Guid GoogleEmailId);
+        Guid UserId, string Email, string DisplayName, string? ProfilePictureUrl, DrivePermissionLevel Level, string IdentityEmail);
 
     private sealed record DrivePlan(
         List<MemberSyncStatus> Members, Dictionary<string, string> PermissionIdByEmail,
-        Dictionary<string, Guid> GoogleEmailIdsByEmail);
+        Dictionary<string, string> IdentityEmailsByEmail);
 }

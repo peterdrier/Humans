@@ -68,6 +68,10 @@ internal sealed class TeamService(
     private IUserService UserService
         => serviceProvider.GetRequiredService<IUserService>();
 
+    // GoogleIntegration's identity read resolves IUserService too, so it is lazy for the same reason.
+    private IGoogleIntegrationService GoogleIdentities
+        => serviceProvider.GetRequiredService<IGoogleIntegrationService>();
+
     private IGoogleSyncOutboxService GoogleSyncOutboxService
         => serviceProvider.GetRequiredService<IGoogleSyncOutboxService>();
 
@@ -388,6 +392,9 @@ internal sealed class TeamService(
             if (normalizedCallsToAction.Count(c => c.Style == CallToActionStyle.Primary) > 1)
                 throw new TeamPageRuleException("Only one primary call to action is allowed.");
 
+            if (normalizedCallsToAction.Any(c => !IsSafeCallToActionUrl(c.Url)))
+                throw new TeamPageRuleException("Calls to action require a relative URL or an HTTP, HTTPS or mailto URL.");
+
             var canBePublic = !team.IsSystemTeam && !team.ParentTeamId.HasValue;
 
             if (isPublicPage && !canBePublic)
@@ -427,6 +434,13 @@ internal sealed class TeamService(
             return new TeamPageUpdateResult(false, null);
         }
     }
+
+    // Shared by writes and the page projection so unsafe legacy values never become links.
+    internal static bool IsSafeCallToActionUrl(string? url) =>
+        !string.IsNullOrWhiteSpace(url)
+        && !url.Any(char.IsControl)
+        && Uri.TryCreate(url, UriKind.RelativeOrAbsolute, out var uri)
+        && (!uri.IsAbsoluteUri || uri.Scheme is "http" or "https" or "mailto");
 
     private sealed class TeamPageRuleException : InvalidOperationException
     {
@@ -824,16 +838,17 @@ internal sealed class TeamService(
 
     private async Task<IReadOnlyList<TeamRoleAssignment>> MarkMemberLeftWithOutboxAsync(
         TeamMember member,
+        Guid? mergeIntoMemberId,
         CancellationToken ct)
     {
         var outboxEvent = await BuildOutboxEventAsync(
             member.Id, member.TeamId, member.UserId, GoogleSyncOutboxEventTypes.RemoveUserFromTeamResources, ct);
         var leftAt = clock.GetCurrentInstant();
         if (outboxEvent is null)
-            return await repo.MarkMemberLeftAsync(member.Id, leftAt, ct);
+            return await repo.MarkMemberLeftAsync(member.Id, leftAt, mergeIntoMemberId, ct);
 
         using var scope = CreateTransactionScope();
-        var removedAssignments = await repo.MarkMemberLeftAsync(member.Id, leftAt, ct);
+        var removedAssignments = await repo.MarkMemberLeftAsync(member.Id, leftAt, mergeIntoMemberId, ct);
         await GoogleSyncOutboxService.AddAsync(outboxEvent, ct);
         scope.Complete();
         return removedAssignments;
@@ -902,7 +917,7 @@ internal sealed class TeamService(
 
         var wasCoordinator = member.Role == TeamMemberRole.Coordinator;
 
-        var removedAssignments = await MarkMemberLeftWithOutboxAsync(member, cancellationToken);
+        var removedAssignments = await MarkMemberLeftWithOutboxAsync(member, null, cancellationToken);
 
         await auditLogService.LogAsync(
             AuditAction.TeamLeft, nameof(Team), teamId,
@@ -1141,11 +1156,15 @@ internal sealed class TeamService(
         return TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, teamId, userId);
     }
 
-    public async Task<TeamMemberRemovalResult> RemoveMemberAsync(
+    public Task<TeamMemberRemovalResult> RemoveMemberAsync(
         Guid teamId,
         Guid userId,
         Guid actorUserId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        RemoveMemberCoreAsync(teamId, userId, actorUserId, null, cancellationToken);
+
+    private async Task<TeamMemberRemovalResult> RemoveMemberCoreAsync(
+        Guid teamId, Guid userId, Guid actorUserId, Guid? mergeTargetUserId, CancellationToken cancellationToken)
     {
         var team = await repo.GetByIdAsync(teamId, cancellationToken);
         if (team is null)
@@ -1162,9 +1181,17 @@ internal sealed class TeamService(
         if (member is null)
             return RefuseMemberRemoval(teamId, userId, actorUserId, "Teams_RemoveMember_NotMember", "User is not a member of this team");
 
+        TeamMember? mergeTarget = null;
+        if (mergeTargetUserId is { } targetUserId)
+        {
+            if (targetUserId == userId)
+                throw new InvalidOperationException("Cannot merge a membership into itself");
+            mergeTarget = await repo.FindActiveMemberForMutationAsync(teamId, targetUserId, cancellationToken)
+                ?? await AddMemberToTeamAsync(teamId, targetUserId, actorUserId, cancellationToken);
+        }
         var wasCoordinator = member.Role == TeamMemberRole.Coordinator;
 
-        var removedAssignments = await MarkMemberLeftWithOutboxAsync(member, cancellationToken);
+        var removedAssignments = await MarkMemberLeftWithOutboxAsync(member, mergeTarget?.Id, cancellationToken);
 
         await auditLogService.LogAsync(
             AuditAction.TeamMemberRemoved, nameof(Team), teamId,
@@ -1173,6 +1200,15 @@ internal sealed class TeamService(
             relatedEntityId: userId, relatedEntityType: nameof(User));
 
         InvalidateShiftAuthorizationIfNeeded(userId, removedAssignments);
+        if (mergeTarget is not null)
+        {
+            InvalidateShiftAuthorizationIfNeeded(mergeTarget.UserId, removedAssignments);
+            if (wasCoordinator || removedAssignments.Count > 0)
+                await auditLogService.LogAsync(
+                    AuditAction.TeamMemberRoleChanged, nameof(Team), teamId,
+                    $"Folded {removedAssignments.Count} role assignment(s) from merged account {userId}; source coordinator: {wasCoordinator}",
+                    actorUserId, mergeTarget.UserId, nameof(User));
+        }
 
         try
         {
@@ -1195,7 +1231,7 @@ internal sealed class TeamService(
 
         // Removing a coordinator changes their Coordinators system-team eligibility —
         // reconcile as part of the mutation, not as a caller-remembered follow-up.
-        if (wasCoordinator)
+        if (wasCoordinator && mergeTarget is null)
             await SystemTeamSync.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, cancellationToken);
         return new TeamMemberRemovalResult();
     }
@@ -1860,10 +1896,9 @@ internal sealed class TeamService(
         Instant updatedAt,
         CancellationToken cancellationToken)
     {
-        // TeamMember fold via AddMemberToTeamAsync/RemoveMemberAsync (system teams skipped — reconciled by SystemTeamSyncJob).
+        // End source memberships through the ordinary authorized removal/outbox path,
+        // folding roles into the survivor in the same save. System teams reconcile separately.
         var sourceMemberships = await GetUserTeamMembershipsAsync(sourceUserId, cancellationToken);
-        var targetMemberships = await GetUserTeamMembershipsAsync(targetUserId, cancellationToken);
-        var targetTeamIds = targetMemberships.Select(m => m.TeamId).ToHashSet();
         var sourceTeamsById = await repo.GetByIdsWithParentsAsync(
             sourceMemberships.Select(m => m.TeamId).Distinct().ToList(), cancellationToken);
 
@@ -1872,12 +1907,8 @@ internal sealed class TeamService(
             if (sourceTeamsById.TryGetValue(membership.TeamId, out var team) && team.IsSystemTeam)
                 continue;
 
-            if (!targetTeamIds.Contains(membership.TeamId))
-            {
-                await AddMemberToTeamAsync(membership.TeamId, targetUserId, actorUserId, cancellationToken);
-            }
-
-            var removal = await RemoveMemberAsync(membership.TeamId, sourceUserId, actorUserId, cancellationToken);
+            var removal = await RemoveMemberCoreAsync(
+                membership.TeamId, sourceUserId, actorUserId, targetUserId, cancellationToken);
             if (removal.ErrorKey is not null)
                 throw new InvalidOperationException(removal.ErrorMessage);
         }
@@ -1890,6 +1921,10 @@ internal sealed class TeamService(
         await repo.ReassignEarlyEntryGrantsAsync(sourceUserId, targetUserId, cancellationToken);
         earlyEntryInvalidator.InvalidateUser(sourceUserId);
         earlyEntryInvalidator.InvalidateUser(targetUserId);
+        // Always retry both reconciles, even when a previous pass already ended every
+        // source membership before failing here.
+        await SystemTeamSync.SyncMembershipForUserAsync(sourceUserId, SystemTeamType.Coordinators, cancellationToken);
+        await SystemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.Coordinators, cancellationToken);
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
@@ -2112,8 +2147,7 @@ internal sealed class TeamService(
                     Email: u?.Email,
                     ProfilePictureUrl: u?.ProfilePictureUrl,
                     Role: m.Role,
-                    JoinedAt: m.JoinedAt,
-                    GoogleEmailStatus: u?.GoogleEmailStatus ?? GoogleEmailStatus.Unknown);
+                    JoinedAt: m.JoinedAt);
             })
             .ToList(),
         ParentTeamId: team.ParentTeamId,
@@ -2182,11 +2216,11 @@ internal sealed class TeamService(
         string eventType,
         CancellationToken ct)
     {
-        var user = await UserService.GetUserInfoAsync(userId, ct);
-        if (user?.GoogleEmailStatus == GoogleEmailStatus.Rejected)
+        var identity = await GoogleIdentities.GetWorkspaceIdentityAsync(userId, ct);
+        if (identity?.Status == GoogleEmailStatus.Rejected)
         {
             logger.LogDebug(
-                "Skipping Google sync outbox event {EventType} for user {UserId} — GoogleEmailStatus is Rejected",
+                "Skipping Google sync outbox event {EventType} for user {UserId} — Google identity is Rejected",
                 eventType, userId);
             return null;
         }

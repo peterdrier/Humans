@@ -66,7 +66,7 @@ public class AgentPreloadAugmentorTests
         var faq = Faq();
         faq.Should().Contain("early-entry");                 // early-entry-for-shifts policy
         faq.Should().Contain("/Profile/Me/Emails");          // bought-under-other-email + change email
-        faq.Should().Contain("/Profile/Me/Privacy");         // delete account / data export
+        faq.Should().Contain("/Consent/MyData");             // delete account / data export
         faq.Should().Contain("https://nobodies.team/");      // external comms channels
     }
 

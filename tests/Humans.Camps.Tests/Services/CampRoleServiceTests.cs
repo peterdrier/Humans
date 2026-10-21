@@ -14,7 +14,7 @@ namespace Humans.Camps.Tests.Services;
 public sealed class CampRoleServiceTests : CampsTestHarness
 {
     private readonly CampRoleService _service;
-    private readonly IUserEmailService _userEmailService;
+    private readonly IGoogleIntegrationService _googleIdentities;
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICampRoleCampAccess _campAccess;
     private readonly ICampInfoInvalidator _campInfoInvalidator;
@@ -23,7 +23,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     public CampRoleServiceTests()
         : base(Instant.FromUtc(2026, 4, 26, 12, 0))
     {
-        _userEmailService = Substitute.For<IUserEmailService>();
+        _googleIdentities = Substitute.For<IGoogleIntegrationService>();
         _campAccess = Substitute.For<ICampRoleCampAccess>();
         _campInfoInvalidator = Substitute.For<ICampInfoInvalidator>();
 
@@ -33,7 +33,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
             repo,
             _campAccess,
             _campInfoInvalidator,
-            _userEmailService,
+            _googleIdentities,
             _userService,
             AuditLog,
             Notifier,
