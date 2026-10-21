@@ -26,7 +26,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
     private readonly CachingTeamService _service;
     private readonly TeamPageService _pages;
     private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
-    private readonly IShiftManagementService _shifts = Substitute.For<IShiftManagementService>();
+    private readonly IShiftService _shifts = Substitute.For<IShiftService>();
 
     public CachingTeamServiceGetTeamDetailTests()
     {

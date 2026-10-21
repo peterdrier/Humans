@@ -85,7 +85,7 @@ Repository: `ITeamRepository`.
 | `EarlyEntry.UserEarlyEntry` TrackedCache (`IEarlyEntryInvalidator`) | yes (per-user on grant writes / merge; `InvalidateAll` on team EE-flag flip) |
 
 Cross-section calls via `IAuditLogService`, `INotificationEmitter`,
-`IShiftManagementService`, `IAdminAuthorizationService`,
+`IShiftService`, `IAdminAuthorizationService`,
 `IEarlyEntryInvalidator`, `IShiftAuthorizationInvalidator`,
 `INotificationMeterCacheInvalidator`; lazy-resolved via `IServiceProvider` for
 cycle-breaking: `IGoogleSyncOutboxService` (transactional outbox appends),
@@ -129,7 +129,7 @@ snapshot, never the DB. Surfaced on `/Debug/CacheStats`.
 
 Read-only assemblers — no repository, no cache. `TeamPageService` fans out
 over `ITeamManagementService`, `ITeamResourceService`,
-`IShiftManagementService`, `ISettingsService`, `IUserService` and Auth’s
+`IShiftService`, `ISettingsService`, `IUserService` and Auth’s
 `IRoleAssignmentService`. It owns detail-page visibility, viewer affordances and
 member/child projections over the cached `TeamInfo` snapshot, with live
 pending-request reads through `ITeamManagementService`. The My Teams projection

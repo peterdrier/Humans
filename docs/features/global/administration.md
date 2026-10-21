@@ -191,7 +191,7 @@ Each active section implementing `ISectionAdminTiles` contributes `AdminTile`s (
 | `users.total` | Total users | Users | — | `IUserService` snapshot count |
 | `users.profiles` | Active (has profile) | Users | — | Snapshot count where `IsActive` |
 | `users.tickets` | Ticket holders | Users | — | Snapshot count with a ticket for the active event year; 0 with no active event |
-| `shifts.coverage` | Shifts staffed | Shifts | — | `IShiftManagementService.GetOverallCoverageAsync` |
+| `shifts.coverage` | Shifts staffed | Shifts | — | `IShiftService.GetOverallCoverageAsync` |
 | `feedback.open` | Open feedback | Feedback | AdminOnly | `FeedbackService.GetActionableCountAsync` (section-internal) — Board/domain admins don't see it (nobodies-collective/Humans#977) |
 | `shell.online.now` | Online now | Shell | — | `IUserActivityTracker`, 5-minute window |
 | `shell.online.hour` | Active (1h) | Shell | — | `IUserActivityTracker`, 1-hour window |

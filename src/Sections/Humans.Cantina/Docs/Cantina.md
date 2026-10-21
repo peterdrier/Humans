@@ -37,7 +37,7 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). Mig
 
 ### Read sources
 
-- `shift_signups` — owned by **Shifts** ([`Shifts.md`](../../Humans.Shifts/Docs/Shifts.md)). Filtered to `Status = Confirmed` joined to `shifts` by `DayOffset`. Read **through `IShiftManagementService`** (`GetOnSiteUserIdsForDayAsync`), never the Shifts repository directly.
+- `shift_signups` — owned by **Shifts** ([`Shifts.md`](../../Humans.Shifts/Docs/Shifts.md)). Filtered to `Status = Confirmed` joined to `shifts` by `DayOffset`. Read **through `IShiftService`** (`GetOnSiteUserIdsForDayAsync`), never the Shifts repository directly.
 - `profiles` / `users` — owned by **Users/Identity**. Burner names, the merge chain and the legacy food fallback are read via **`IUserService`** (cached `UserInfo`). **`MedicalConditions` is never read by the cantina** — no Cantina DTO has such a field.
 
 ## Routing
@@ -89,14 +89,14 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). Mig
 
 - View renders on each request; no cache, no background job, no scheduled invalidation. Data is live as of the request.
 - CSV export computes the same in-memory aggregate as the HTML view and streams it as `text/csv; charset=utf-8` with filename `cantina-roster-week-of-<yyyy-MM-dd>.csv`.
-- The dietary things-to-do (`SectionThingsToDo`, key `dietary`) shows while the member has no preference; its copy switches on `IShiftManagementService.HasQualifyingCantinaSignupAsync`. Saving a preference clears it, Shifts' signup gate and the `/Shifts` banner.
+- The dietary things-to-do (`SectionThingsToDo`, key `dietary`) shows while the member has no preference; its copy switches on `IShiftService.HasQualifyingCantinaSignupAsync`. Saving a preference clears it, Shifts' signup gate and the `/Shifts` banner.
 - Weekly/daily CSV callers pass their actor to the existing roster service, which audits after the personal rows are built. No notifications or outbox events.
 
 ## Cross-Section Dependencies
 
 - **AuditLog:** `IAuditLogService` records existing weekly/daily personal-data CSV disclosures.
 
-- **Shifts:** `IShiftManagementService.GetOnSiteUserIdsForDayAsync` (on-site cohort) + `ISettingsService.GetActiveEventSettingsAsync` (active event/burn). Service-layer reads only; the cantina never touches the Shifts repository.
+- **Shifts:** `IShiftService.GetOnSiteUserIdsForDayAsync` (on-site cohort) + `ISettingsService.GetActiveEventSettingsAsync` (active event/burn). Service-layer reads only; the cantina never touches the Shifts repository.
 - **Users/Identity:** `IUserService.GetUserInfosAsync` / `GetUserInfoAsync` — cached `UserInfo` for burner names, the merge chain and the legacy food fallback. No entity reads.
 - **Shifts (write, replay):** `IShiftSignups` — the dietary form replays the signup the gate interrupted.
 - **Gdpr:** implements `IUserDataContributor` and `IUserMerge` (`DietaryProfileService`).
@@ -112,10 +112,10 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). Mig
 
 - Everything but `Section`, `CantinaResource` and `Contracts/` is `internal` (HUM0034). `Contracts/ICantinaService` (+ `DietaryProfileInfo`) is the public read surface; a folder, not a `.Contracts` project, because no consumer closes a cycle (Cantina references `Shifts.Contracts` and `Users.Contracts` only). There is no `ICantinaWrite`: only the section's own form writes. `IDietaryProfileManagement` (internal) adds the save and the legacy copy. `ICantinaRosterService` stays in `Services/`, `internal`.
 - **`CantinaDbContext`** registered via `AddSectionDbContext` (sentinel `cantina_dietary_profiles`); `DietaryProfileRepository` is its only reader/writer and only `DietaryProfileService` calls it.
-- **The roster reads no repository.** `CantinaRosterService` calls **only section services** (`IShiftManagementService`, `ISettingsService`, `IUserService`, `ICantinaService`). This keeps the reads cacheable via the owning sections' decorators and avoids cross-section repository coupling.
+- **The roster reads no repository.** `CantinaRosterService` calls **only section services** (`IShiftService`, `ISettingsService`, `IUserService`, `ICantinaService`). This keeps the reads cacheable via the owning sections' decorators and avoids cross-section repository coupling.
 - **Access is a policy, not a service.** `CantinaAdminOrAdmin` (Admin or the grantable `CantinaAdmin` role) gates the controller and the nav link; there is no `ICantinaAccessService`. The section registers it itself, in `SectionPolicies.cs` via `ISectionPolicies` (the G5 split design's §8 parked policy registration in the Shell; `ISectionPolicies` superseded that). `RoleNames.CantinaAdmin` / `PolicyNames.CantinaAdminOrAdmin` stay in `Humans.Base` — they are `string` constants, not references to this project.
 - **Display sort is presentation.** `CantinaRosterAssembler`, `CantinaRosterCsvWriter` and `CantinaDailyMatrixCsvWriter` moved from `Humans.Web/Cantina/` into the section's `Models/` (`memory/architecture/display-sort-in-controllers.md`).
 - **Decorator decision — no caching decorators.** Roster aggregation is live per request; dietary reads are one keyed row (or one batched query) on a handful of pages — a `TrackedCache` decorator buys nothing at this scale.
 - **Cross-domain navs** — none declared; `DietaryProfile` keys on `UserId` only. All cross-section linkage is via service interfaces, by id.
-- **Cross-section calls** — `IShiftManagementService` (on-site cohort), `ISettingsService` (active event/burn), `IUserService` (burner names, merge chain, legacy fallback), `ICantinaService` (dietary), `IShiftSignups` (form replay).
+- **Cross-section calls** — `IShiftService` (on-site cohort), `ISettingsService` (active event/burn), `IUserService` (burner names, merge chain, legacy fallback), `ICantinaService` (dietary), `IShiftSignups` (form replay).
 - **Tests** — `tests/Humans.Cantina.Tests/Services/CantinaRosterServiceTests.cs` and `CantinaDailyRosterServiceTests.cs` pin the aggregation rules; `Models/CantinaRosterAssemblerTests.cs` and `Models/CantinaCsvWritersTests.cs` pin the display sort and the export layout; `CantinaArchitectureTests.cs` pins the section shape, including that no roster DTO grows a `Medical*` property; `DietaryProfileTests.cs` pins fallback, save rules, merge, migration, export/erase and the nudge; `Controllers/CantinaProfileControllerTests.cs` pins the form, the legacy redirect and the signup replay. `tests/Humans.Integration.Tests/Controllers/CantinaPageRenderTests.cs` renders both pages, both CSV exports and the access gate, in English and Spanish.

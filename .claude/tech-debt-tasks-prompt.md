@@ -114,7 +114,7 @@ Tasks are ordered by priority. Check git log and handoff notes to see which are 
 
 #### T9: Move shift profile methods from ProfileService
 **Status:** Not started (identified in super tier handoff)
-**What:** `ProfileService.cs` lines 786-827 has `GetOrCreateShiftProfileAsync`, `UpdateShiftProfileAsync`, `GetShiftProfileAsync` — these operate on `VolunteerEventProfile`, not `Profile`. They belong in `IShiftManagementService` or `IShiftSignupService`.
+**What:** `ProfileService.cs` lines 786-827 has `GetOrCreateShiftProfileAsync`, `UpdateShiftProfileAsync`, `GetShiftProfileAsync` — these operate on `VolunteerEventProfile`, not `Profile`. They belong in `IShiftService` or `IShiftSignupService`.
 **Where:** `src/Humans.Infrastructure/Services/ProfileService.cs`
 
 #### T10: Move shift-count query from TeamService

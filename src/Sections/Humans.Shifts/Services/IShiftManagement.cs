@@ -16,11 +16,11 @@ namespace Humans.Shifts.Services;
 /// </summary>
 /// <remarks>
 /// The section's own interface; the cross-section members live on
-/// <see cref="IShiftManagementService"/>, <see cref="IShiftVolunteerProfiles"/>
+/// <see cref="IShiftService"/>, <see cref="IShiftVolunteerProfiles"/>
 /// and <see cref="IShiftSeeding"/>, which this inherits.
 /// </remarks>
 internal interface IShiftManagement
-    : IShiftManagementService, IShiftVolunteerProfiles, IShiftSeeding, IApplicationService
+    : IShiftService, IShiftVolunteerProfiles, IShiftSeeding, IApplicationService
 {
     // === Dashboard / staffing reads (section-internal — no caller outside the section) ===
 

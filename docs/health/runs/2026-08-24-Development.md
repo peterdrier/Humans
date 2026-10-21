@@ -21,7 +21,7 @@ anonymous Admin over real QA data.
 
 The material finding is doc drift, not shape drift: `Contracts/README.md`
 still lists service names that G5 collapse renamed (`ICampService`,
-`ICampRoleService`, `IShiftManagementService`, `IShiftSignupService`), and
+`ICampRoleService`, `IShiftService`, `IShiftSignupService`), and
 `Development.md` names two pinning tests that never shipped
 (`SectionTakesNoDbContextOrRepository`, the `IStringLocalizer<T>` guard). The
 `Development.md` freshness-triggers block is otherwise accurate.
@@ -35,7 +35,7 @@ between `DevLoginController` and `DevPersonaSeeder` (finding #4).
 1. `Contracts/README.md` names dependencies that no longer exist — service
    names collapsed at each dependency's G5 (`ICampService` →
    `ICampServiceRead`/`ICampSeeding`; `ICampRoleService` → `ICampRoleSeeding`;
-   `IShiftManagementService` → `IShiftSeeding` + `IBurnSettingsService`;
+   `IShiftService` → `IShiftSeeding` + `IBurnSettingsService`;
    `IShiftSignupService` → `IShiftSignupSeeding`). Doc lists 12; real is 18,
    and 4 of the 12 are wrong strings. — **dedup w/ Development.md** (docs)
 2. `Development.md` claims `DevelopmentArchitectureTests.SectionTakesNoDbContextOrRepository`

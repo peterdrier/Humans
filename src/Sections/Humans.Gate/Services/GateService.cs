@@ -29,7 +29,7 @@ internal sealed class GateService(
     ITicketService tickets,
     IEarlyEntryService earlyEntry,
     ISettingsService settingsService,
-    IShiftManagementService shifts,
+    IShiftService shifts,
     IRoleAssignmentService roles,
     ITicketWrite ticketWrite,
     IPasswordHasher<GateStaffPin> pinHasher,
