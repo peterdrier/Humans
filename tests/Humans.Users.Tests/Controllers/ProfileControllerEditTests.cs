@@ -56,7 +56,6 @@ public class ProfileControllerEditTests
     private readonly IGovernanceService _governanceService =
         Substitute.For<IGovernanceService>();
     private readonly IOnboardingIntake _onboardingService = Substitute.For<IOnboardingIntake>();
-    private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly ProfileController _controller;
@@ -95,7 +94,6 @@ public class ProfileControllerEditTests
             localizer,
             sharedLocalizer,
             _governanceService,
-            _accountDeletionService,
             _membershipCalculator,
             ConsentReviewStubs.Create());
 
@@ -422,30 +420,13 @@ public class ProfileControllerEditTests
     }
 
     [HumansFact]
-    public async Task Edit_InitialSetup_TriggersOnboardingConsentCheck()
+    public async Task Edit_ReportsTheSaveToOnboarding()
     {
         var model = MakeValidModel();
 
         await _controller.Edit(model);
 
-        await _onboardingService.Received(1)
-            .SetConsentCheckPendingIfEligibleAsync(_userId, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task Edit_InitialSetup_DeletionPending_CancelsDeletion()
-    {
-        // User in pending-deletion state: completing the profile must cancel the deletion.
-        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(
-                new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en", DeletionRequestedAt = SystemClock.Instance.GetCurrentInstant() }
-                    .ToUserInfo()));
-
-        var model = MakeValidModel();
-
-        await _controller.Edit(model);
-
-        await _accountDeletionService.Received(1).CancelDeletionAsync(_userId, Arg.Any<CancellationToken>());
+        await _onboardingService.Received(1).ProfileSavedAsync(_userId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -462,7 +443,7 @@ public class ProfileControllerEditTests
         _controller.ModelState[nameof(ProfileViewModel.NoPriorBurnExperience)]!.Errors.Should().ContainSingle()
             .Which.ErrorMessage.Should().Be("Profile_BurnerCVRequired");
         await _userService.DidNotReceiveWithAnyArgs().SaveProfileLanguagesAsync(default, default!, default);
-        await _onboardingService.DidNotReceiveWithAnyArgs().SetConsentCheckPendingIfEligibleAsync(default, default);
+        await _onboardingService.DidNotReceiveWithAnyArgs().ProfileSavedAsync(default, default);
     }
 
     // ─── /Profile/Me/Medical (GDPR Art. 9, owner-only) ─────────────────────────

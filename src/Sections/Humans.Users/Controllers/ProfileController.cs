@@ -38,7 +38,6 @@ internal sealed class ProfileController(
     // SharedResource at the Users carve.
     IStringLocalizer<SharedResource> sharedLocalizer,
     IGovernanceService governanceService,
-    IAccountDeletionService accountDeletionService,
     IMembershipCalculator membershipCalculator,
     IConsentService consentService) : HumansControllerBase(userService)
 {
@@ -164,11 +163,10 @@ internal sealed class ProfileController(
         if (saveResult is not null)
             return saveResult;
 
-        // Cross-section peer calls (consent-check trigger, pending-deletion
-        // cancel) stay controller-side per
-        // no-leaf-to-director-callbacks — the controller is the director,
-        // services are peers/leaves that must not call each other back.
-        await RunPostProfileSaveOrchestrationAsync(user, isInitialSetup);
+        // Onboarding owns what follows a profile save (consent-check trigger,
+        // pending-deletion cancel); ProfileEditorService must not call it back
+        // (no-leaf-to-director-callbacks), so the controller reports the save.
+        await onboardingService.ProfileSavedAsync(user.Id);
 
         await SaveEditedContactFieldsAsync(model, profileId);
 
@@ -269,21 +267,6 @@ internal sealed class ProfileController(
             && string.IsNullOrEmpty(model.EmergencyContactName);
         ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
         return (Guid.Empty, View(model));
-    }
-
-    private async Task RunPostProfileSaveOrchestrationAsync(UserInfo user, bool isInitialSetup)
-    {
-        // Peer-call into Onboarding; ProfileEditorService doesn't.
-        await onboardingService.SetConsentCheckPendingIfEligibleAsync(user.Id);
-
-        // Route pending-deletion cancel through IAccountDeletionService, not raw UserManager.
-        if (isInitialSetup && user.IsDeletionPending)
-        {
-            await accountDeletionService.CancelDeletionAsync(user.Id);
-            logger.LogInformation(
-                "Cancelled pending deletion request for user {UserId} on profile creation",
-                user.Id);
-        }
     }
 
     private async Task SaveEditedContactFieldsAsync(ProfileViewModel model, Guid profileId)

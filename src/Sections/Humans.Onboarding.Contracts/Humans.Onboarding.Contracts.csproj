@@ -6,7 +6,7 @@
     Onboarding's cross-section surface. This leaf is a *project* rather than a Contracts/
     folder for a reason no earlier section had: the pair Onboarding/Consent points both
     ways. Humans.Consent's ConsentController peer-calls
-    IOnboardingIntake.SetConsentCheckPendingIfEligibleAsync after a consent submit, and
+    IOnboardingIntake.ConsentSignedAsync after a consent submit, and
     Humans.Onboarding names ConsentResource (the widget's Consents step renders Consent's
     copy through Consent's own _ConsentReviewBody partial), so a folder inside
     Humans.Onboarding would make the two section projects reference each other. The leaf

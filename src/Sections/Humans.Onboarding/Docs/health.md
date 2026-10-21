@@ -30,7 +30,7 @@ Six questions. Everything in the section is one of these.
 |---|---|---|---|
 | 1 | Where is this person in the funnel? | `IOnboardingWidgetState.GetCurrentStepAsync` | the widget dispatcher, the Guest dashboard, the layout banner |
 | 2 | Record this step's answer and move them on | `Names` POST, `SignUp`, `SignUpRange`, `Skip`, `SignConsent` | the three step pages |
-| 3 | Did that write push them over the review threshold? | `IOnboardingIntake.SetConsentCheckPendingIfEligibleAsync` | peer-called by three controllers after a profile or consent write |
+| 3 | Did that write push them over the review threshold? | `IOnboardingIntake.ProfileSavedAsync` / `ConsentSignedAsync` | reported by three controllers after a profile or consent write |
 | 4 | What is left for them to sign? | `GetNextUnsignedConsentAsync` | the widget's consent step |
 | 5 | Who is waiting for a coordinator, and what do I do about them? | review queue, review detail, clear / bulk clear / flag | `/OnboardingReview` |
 | 6 | This person is out | `IOnboardingIntake.RejectSignupAsync` | the review detail page and Users' admin screen |

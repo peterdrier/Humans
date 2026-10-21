@@ -32,6 +32,7 @@ internal sealed class OnboardingService(
     IConsentService consentService,
     IHumanLifecycleService humanLifecycleService,
     IAuditLogService auditLogService,
+    IAccountDeletionService accountDeletionService,
     ILogger<OnboardingService> logger) : IOnboardingService
 {
     private static readonly ResourceManager NoticeResources = new(typeof(OnboardingResource));
@@ -258,8 +259,34 @@ internal sealed class OnboardingService(
         return result;
     }
 
-    // --- Consent-check pending threshold (peer-called by controllers after Profile/Consent writes) ---
+    // --- Follow-ups to the member's own Profile/Consent writes (reported by the writing controller) ---
 
+    public async Task ProfileSavedAsync(Guid userId, CancellationToken ct = default)
+    {
+        await SetConsentCheckPendingIfEligibleAsync(userId, ct);
+
+        // Finishing setup is a change of mind: a not-yet-approved member who saves their
+        // profile withdraws a pending deletion request. An approved member's edit does not.
+        var info = await userService.GetUserInfoAsync(userId, ct);
+        if (info is not { IsDeletionPending: true })
+            return;
+        if ((await consentService.GetConsentReviewAsync(info.Id, ct)).IsApproved)
+            return;
+
+        await accountDeletionService.CancelDeletionAsync(info.Id, ct);
+        logger.LogInformation(
+            "Cancelled pending deletion request for user {UserId} on profile setup", info.Id);
+    }
+
+    public Task ConsentSignedAsync(Guid userId, CancellationToken ct = default) =>
+        SetConsentCheckPendingIfEligibleAsync(userId, ct);
+
+    /// <summary>
+    /// If the user has a profile, is not approved or rejected, has no existing consent-check
+    /// status, and has all required consents for the Volunteers team, sets the Consent
+    /// review's status to <c>Pending</c>. Returns true if the status was set. Raises no
+    /// notification — the coordinator finds the queue through the admin sidebar's Review pill.
+    /// </summary>
     public async Task<bool> SetConsentCheckPendingIfEligibleAsync(
         Guid userId, CancellationToken ct = default)
     {

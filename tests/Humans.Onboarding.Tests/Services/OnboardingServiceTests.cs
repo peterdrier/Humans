@@ -31,6 +31,7 @@ public sealed class OnboardingServiceTests
     private readonly IConsentService _consentService = Substitute.For<IConsentService>();
     private readonly IHumanLifecycleService _humanLifecycle = Substitute.For<IHumanLifecycleService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
+    private readonly IAccountDeletionService _accountDeletion = Substitute.For<IAccountDeletionService>();
     private readonly OnboardingEmails _emailMessages = TestOnboardingEmails.Create();
 
     public OnboardingServiceTests()
@@ -65,6 +66,7 @@ public sealed class OnboardingServiceTests
             _consentService,
             _humanLifecycle,
             _auditLogService,
+            _accountDeletion,
             NullLogger<OnboardingService>.Instance);
 
     [HumansFact]
@@ -338,6 +340,48 @@ public sealed class OnboardingServiceTests
 
         set.Should().BeTrue();
         await _consentWrite.Received(1).SetConsentCheckPendingAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, true, true)]
+    [Xunit.InlineData(true, true, false)]
+    [Xunit.InlineData(false, false, false)]
+    public async Task ProfileSavedAsync_CancelsAPendingDeletionOnlyBeforeApproval(
+        bool approved, bool deletionPending, bool expectCancel)
+    {
+        var userId = Guid.NewGuid();
+        var info = UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(burnerName: "Burner"))
+            with
+        { DeletionRequestedAt = deletionPending ? Instant.FromUnixTimeSeconds(1) : null };
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(info));
+        Review(userId, isApproved: approved);
+
+        await BuildSut().ProfileSavedAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        if (expectCancel)
+            await _accountDeletion.Received(1).CancelDeletionAsync(userId, Arg.Any<CancellationToken>());
+        else
+            await _accountDeletion.DidNotReceiveWithAnyArgs().CancelDeletionAsync(default, default);
+    }
+
+    [HumansFact]
+    public async Task ProfileSavedAndConsentSigned_ApplyTheConsentCheckThreshold()
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(
+                burnerName: "Burner", firstName: "First", lastName: "Last", createdAt: Instant.FromUnixTimeSeconds(1)))));
+        _membershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+            .Returns(true);
+        _consentWrite.SetConsentCheckPendingAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(true));
+        var sut = BuildSut();
+
+        await sut.ProfileSavedAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await sut.ConsentSignedAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        await _consentWrite.Received(2).SetConsentCheckPendingAsync(userId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
