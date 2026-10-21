@@ -17,6 +17,17 @@
                         </div>
                     </div>
                 }
+                else if (Model.HoldingsUnavailable)
+                {
+                    <div class="d-flex align-items-center">
+                        <div class="dashboard-action-icon dashboard-action-icon-sm dashboard-action-icon-warning me-3">
+                            <i class="fa-solid fa-ticket"></i>
+                        </div>
+                        <div>
+                            <strong>@Localizer["Tickets_MemberTicketStatus_Unavailable"]</strong>
+                        </div>
+                    </div>
+                }
                 else if (Model.HasTicket)
                 {
                     <div class="d-flex align-items-center">
