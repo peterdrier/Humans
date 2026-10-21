@@ -94,13 +94,16 @@ public sealed class OnboardingServiceTests
     }
 
     [HumansFact]
-    public async Task RejectSignupAsync_WhenStorageFails_SkipsAuditDeprovisionAndNotifications()
+    public async Task RejectSignupAsync_WhenAlreadyRejectedInBothSections_SkipsAuditDeprovisionAndNotifications()
     {
         var userId = Guid.NewGuid();
         var reviewerId = Guid.NewGuid();
 
         _consentWrite.RecordRejectionAsync(userId, reviewerId, "duplicate", Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(false, "AlreadyRejected"));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(
+                UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile()) with { State = UserState.Rejected }));
 
         var result = await BuildSut().RejectSignupAsync(userId, reviewerId, "duplicate", Xunit.TestContext.Current.CancellationToken);
 
@@ -123,6 +126,42 @@ public sealed class OnboardingServiceTests
             default,
             default!,
             default!, cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RejectSignupAsync_RetryAfterConsentOnlyWrite_ReconcilesStateAuditAndDeprovisionWithRecordedReason()
+    {
+        // The first attempt recorded Consent's rejection, then died before Users stored the state.
+        // The retry gets AlreadyRejected from Consent and must still finish the job, once.
+        var userId = Guid.NewGuid();
+        var originalReviewer = Guid.NewGuid();
+        var retryReviewer = Guid.NewGuid();
+
+        _consentWrite.RecordRejectionAsync(userId, retryReviewer, Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(false, "AlreadyRejected"));
+        _reviews[userId] = ConsentReviewInfo.None(userId) with
+        {
+            RejectionReason = "duplicate account",
+            RejectedAt = Instant.FromUtc(2026, 10, 1, 12, 0),
+            RejectedByUserId = originalReviewer,
+        };
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(
+                UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile()) with { State = UserState.Active }));
+
+        var result = await BuildSut()
+            .RejectSignupAsync(userId, retryReviewer, "retry text", Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        await _userServiceWrite.Received(1).SetRejectedAsync(userId, Arg.Any<CancellationToken>());
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.SignupRejected,
+            AuditEntityTypes.Profile,
+            userId,
+            "Signup rejected: duplicate account",
+            originalReviewer);
+        await _syncJob.Received(3).SyncMembershipForUserAsync(
+            userId, Arg.Any<SystemTeamType>(), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]

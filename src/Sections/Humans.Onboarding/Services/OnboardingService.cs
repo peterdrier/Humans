@@ -186,7 +186,17 @@ internal sealed class OnboardingService(
         // Two writes: Consent records the rejection (reason, time, reviewer), Users the state.
         var result = await consentWrite.RecordRejectionAsync(userId, reviewerId, reason, ct);
         if (!result.Success)
-            return result;
+        {
+            // A rejection Consent recorded but Users never stored (the second write failed) is
+            // finished here rather than refused: state, audit, deprovision and notices run once,
+            // with the recorded reason and reviewer. Once the state is Rejected, it is refused.
+            if (!string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal)
+                || (await userService.GetUserInfoAsync(userId, ct))?.State is null or UserState.Rejected)
+                return result;
+            var recorded = await consentService.GetConsentReviewAsync(userId, ct);
+            reason = recorded.RejectionReason;
+            reviewerId = recorded.RejectedByUserId ?? reviewerId;
+        }
         result = await userWrite.SetRejectedAsync(userId, ct);
         if (!result.Success)
             return result;
