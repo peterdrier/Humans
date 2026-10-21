@@ -147,6 +147,18 @@ public sealed class CityPlanningContainerAdminYearTests : CityPlanningTestBase
         result.Should().BeOfType<ForbidResult>();
     }
 
+    [HumansFact]
+    public async Task ContainerMap_NonLeadIsRefusedWithoutCreatingASettingsRow()
+    {
+        _campService.GetCampsForYearAsync(RouteYear, Arg.Any<CancellationToken>()).Returns([]);
+        var controller = CreateController();
+
+        var result = await controller.ContainerMap(RouteYear, TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ForbidResult>();
+        CityPlanningDb.CityPlanningSettings.Should().BeEmpty();
+    }
+
     private static void AssertRedirectsToContainers(IActionResult result, int year)
     {
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;

@@ -275,9 +275,10 @@ internal sealed class CityPlanningController(
 
         var isMapAdmin = await IsMapAdminAsync();
         var userCamp = await FindUserLeadCampAsync(user.Id, year, cancellationToken);
-        var settings = await cityPlanningService.GetSettingsAsync(cancellationToken, year);
 
-        if (!isMapAdmin && (!settings.IsContainerPlacementOpen || userCamp is null))
+        // Settings only for a year the caller leads a camp in: reading them creates the year's row.
+        if (!isMapAdmin &&
+            (userCamp is null || !(await cityPlanningService.GetSettingsAsync(cancellationToken, year)).IsContainerPlacementOpen))
         {
             return Forbid();
         }
