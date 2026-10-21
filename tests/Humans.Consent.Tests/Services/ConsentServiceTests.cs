@@ -22,7 +22,8 @@ namespace Humans.Consent.Tests.Services;
 public sealed class ConsentServiceTests : ConsentTestHarness
 {
     private readonly ConsentService _service;
-    private readonly IConsentCacheInvalidator _consentCacheInvalidator = Substitute.For<IConsentCacheInvalidator>();
+    // The real decorator over _service: the inner submit evicts it before its membership check.
+    private readonly CachingConsentService _cache;
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly ILegalDocumentSyncManagement _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncManagement>();
     private readonly INotificationAutoResolve _notificationInboxService = Substitute.For<INotificationAutoResolve>();
@@ -91,9 +92,15 @@ public sealed class ConsentServiceTests : ConsentTestHarness
                     lastName: "Last",
                     createdAt: Clock.GetCurrentInstant())));
 
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<IConsentManagement>(CachingConsentService.InnerServiceKey, (_, _) => _service);
+        _cache = new CachingConsentService(_legalDocumentSyncService, _userService, Clock,
+            services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<CachingConsentService>.Instance);
+
         _service = new ConsentService(
             consentRepository,
-            _consentCacheInvalidator,
+            _cache,
             _legalDocumentSyncService,
             _notificationInboxService,
             _humanLifecycleService,
@@ -125,14 +132,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
         SeedDocumentVersion(versionId, "Privacy Policy", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
-        var services = new ServiceCollection();
-        services.AddKeyedScoped<IConsentManagement>(CachingConsentService.InnerServiceKey, (_, _) => _service);
-        services.AddScoped<IUserService>(_ => _userService);
-        using var provider = services.BuildServiceProvider();
-        var cached = new CachingConsentService(_legalDocumentSyncService, Clock,
-            provider.GetRequiredService<IServiceScopeFactory>(), NullLogger<CachingConsentService>.Instance);
-        _consentCacheInvalidator.When(signal => signal.InvalidateUser(Arg.Any<Guid>()))
-            .Do(call => cached.InvalidateUser(call.Arg<Guid>()));
+        var cached = _cache;
         _membershipCalculator.HasAllRequiredConsentsAsync(userId, Arg.Any<CancellationToken>())
             .Returns(async call => (await cached.GetConsentedVersionIdsAsync(
                 userId, call.ArgAt<CancellationToken>(1))).Contains(versionId));

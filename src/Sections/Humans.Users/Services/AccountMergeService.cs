@@ -5,7 +5,6 @@ using Humans.Base.Extensions;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
 using Humans.AuditLog.Contracts;
-using Humans.Consent.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Teams.Contracts;
@@ -24,8 +23,7 @@ internal sealed class AccountMergeService(
     IUserManagement userService,
     IActiveTeamsCacheInvalidator activeTeamsCacheInvalidator,
     IRoleAssignmentWrite roleAssignmentService,
-    INotificationService notificationService,
-    IConsentCacheInvalidator consentCacheInvalidator) : IAccountMergeService, IUserDataContributor
+    INotificationService notificationService) : IAccountMergeService, IUserDataContributor
 {
     /// <summary>GDPR export JSON key for this contributor's data.</summary>
     internal const string AccountMergeRequests = "AccountMergeRequests";
@@ -164,8 +162,6 @@ internal sealed class AccountMergeService(
             roleAssignmentService.InvalidateClaimsCacheForUser(survivorUserId);
             roleAssignmentService.InvalidateRoleAssignmentCache();
             notificationService.InvalidateBadgeCachesForUsers([archivedUserId, survivorUserId]);
-            consentCacheInvalidator.InvalidateUser(archivedUserId);
-            consentCacheInvalidator.InvalidateUser(survivorUserId);
             activeTeamsCacheInvalidator.Invalidate();
         }
     }

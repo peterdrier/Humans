@@ -34,8 +34,7 @@ namespace Humans.Consent.Tests.Architecture;
 /// services (<see cref="ConsentService"/>, <see cref="LegalDocumentSyncService"/>)
 /// hold no cache state themselves. <see cref="LegalDocumentSyncService"/> is the
 /// sole writer for <c>legal_documents</c>/<c>document_versions</c>
-/// (nobodies-collective/Humans#751) and depends on
-/// <see cref="ILegalDocumentCacheInvalidator"/> to signal the decorator
+/// (nobodies-collective/Humans#751) and evicts its decorator's cache
 /// directly after each successful write, rather than via a SaveChanges
 /// interceptor.
 /// </para>
@@ -64,38 +63,6 @@ public sealed class ConsentArchitectureTests
     // the DB triggers enforce append-only at the storage layer.
 
     // ── T-04 cache decorators ────────────────────────────────────────────────
-
-    /// <summary>
-    /// T-04: the decorator implements both <see cref="IConsentManagement"/>
-    /// and <see cref="IConsentCacheInvalidator"/> on the same Singleton so
-    /// cross-section signallers (e.g. <c>AccountMergeService</c>) and read
-    /// callers hit the same instance.
-    /// </summary>
-    [HumansFact]
-    public void CachingConsentService_ImplementsBothServiceAndInvalidator()
-    {
-        typeof(IConsentManagement).IsAssignableFrom(typeof(CachingConsentService))
-            .Should().BeTrue();
-        typeof(IConsentCacheInvalidator).IsAssignableFrom(typeof(CachingConsentService))
-            .Should().BeTrue(
-                because: "merge accept fan-out resolves IConsentCacheInvalidator and must hit the same singleton that backs IConsentManagement");
-    }
-
-    /// <summary>
-    /// T-04: the global-document decorator implements both
-    /// <see cref="ILegalDocumentSyncManagement"/> and
-    /// <see cref="ILegalDocumentCacheInvalidator"/> so the SaveChanges
-    /// interceptor and read callers share one instance.
-    /// </summary>
-    [HumansFact]
-    public void CachingLegalDocumentSyncService_ImplementsBothServiceAndInvalidator()
-    {
-        typeof(ILegalDocumentSyncManagement).IsAssignableFrom(typeof(CachingLegalDocumentSyncService))
-            .Should().BeTrue();
-        typeof(ILegalDocumentCacheInvalidator).IsAssignableFrom(typeof(CachingLegalDocumentSyncService))
-            .Should().BeTrue(
-                because: "LegalDocumentSyncService resolves ILegalDocumentCacheInvalidator directly after each write and must hit the same singleton that backs ILegalDocumentSyncManagement (nobodies-collective/Humans#751)");
-    }
 
     /// <summary>
     /// T-04 load-bearing invariant: the decorator's
