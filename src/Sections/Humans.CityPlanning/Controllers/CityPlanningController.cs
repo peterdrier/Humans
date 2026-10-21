@@ -275,7 +275,7 @@ internal sealed class CityPlanningController(
 
         var isMapAdmin = await IsMapAdminAsync();
         var userCamp = await FindUserLeadCampAsync(user.Id, year, cancellationToken);
-        var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
+        var settings = await cityPlanningService.GetSettingsAsync(cancellationToken, year);
 
         if (!isMapAdmin && (!settings.IsContainerPlacementOpen || userCamp is null))
         {
@@ -346,23 +346,21 @@ internal sealed class CityPlanningController(
         return View(vm);
     }
 
-    [HttpPost("BarrioMap/Admin/Containers/Barrios/{campId}/Create")]
+    [HttpPost("BarrioMap/Admin/Containers/{year:int}/Barrios/{campId}/Create")]
     [ValidateAntiForgeryToken]
     [RequestSizeLimit(55 * 1024 * 1024)] // 5 images × 10 MB plus multipart overhead; service enforces the per-image cap
-    public async Task<IActionResult> CreateBarrioContainer(Guid campId, ContainerFormModel model, CancellationToken cancellationToken)
+    public async Task<IActionResult> CreateBarrioContainer(int year, Guid campId, ContainerFormModel model, CancellationToken cancellationToken)
     {
         var (error, user) = await RequireMapAdminAsync(cancellationToken);
         if (error is not null) return error;
 
-        var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
-
         if (!ModelState.IsValid)
         {
             SetError("Please correct the validation errors.");
-            return RedirectToAction(nameof(Containers), new { year = settings.Year });
+            return RedirectToAction(nameof(Containers), new { year });
         }
 
-        return await TryCreateContainerAsync(model, campId, settings.Year, user!.Id, cancellationToken);
+        return await TryCreateContainerAsync(model, campId, year, user!.Id, cancellationToken);
     }
 
     private async Task<IActionResult> TryCreateContainerAsync(
@@ -380,10 +378,10 @@ internal sealed class CityPlanningController(
         return RedirectToAction(nameof(Containers), new { year });
     }
 
-    [HttpPost("BarrioMap/Admin/Containers/{id}/Edit")]
+    [HttpPost("BarrioMap/Admin/Containers/{year:int}/{id}/Edit")]
     [ValidateAntiForgeryToken]
     [RequestSizeLimit(55 * 1024 * 1024)] // 5 images × 10 MB plus multipart overhead; service enforces the per-image cap
-    public async Task<IActionResult> EditContainer(Guid id, ContainerFormModel model, CancellationToken cancellationToken)
+    public async Task<IActionResult> EditContainer(int year, Guid id, ContainerFormModel model, CancellationToken cancellationToken)
     {
         var (error, user) = await RequireMapAdminAsync(cancellationToken);
         if (error is not null) return error;
@@ -391,15 +389,13 @@ internal sealed class CityPlanningController(
         var container = await containerService.GetByIdAsync(id, cancellationToken);
         if (container is null) return NotFound();
 
-        var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
-
         if (!ModelState.IsValid)
         {
             SetError("Please correct the validation errors.");
-            return RedirectToAction(nameof(Containers), new { year = settings.Year });
+            return RedirectToAction(nameof(Containers), new { year });
         }
 
-        return await TryUpdateContainerAsync(id, model, container.CampId, settings.Year, user!.Id, cancellationToken);
+        return await TryUpdateContainerAsync(id, model, container.CampId, year, user!.Id, cancellationToken);
     }
 
     private async Task<IActionResult> TryUpdateContainerAsync(
@@ -417,9 +413,9 @@ internal sealed class CityPlanningController(
         return RedirectToAction(nameof(Containers), new { year });
     }
 
-    [HttpPost("BarrioMap/Admin/Containers/{id}/Delete")]
+    [HttpPost("BarrioMap/Admin/Containers/{year:int}/{id}/Delete")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteContainer(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> DeleteContainer(int year, Guid id, CancellationToken cancellationToken)
     {
         var (error, user) = await RequireMapAdminAsync(cancellationToken);
         if (error is not null) return error;
@@ -427,9 +423,8 @@ internal sealed class CityPlanningController(
         var container = await containerService.GetByIdAsync(id, cancellationToken);
         if (container is null) return NotFound();
 
-        var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
         await containerService.DeleteAsync(id, user!.Id, cancellationToken);
         SetSuccess("Container deleted.");
-        return RedirectToAction(nameof(Containers), new { year = settings.Year });
+        return RedirectToAction(nameof(Containers), new { year });
     }
 }
