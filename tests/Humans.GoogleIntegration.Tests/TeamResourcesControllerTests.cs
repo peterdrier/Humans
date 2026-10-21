@@ -146,6 +146,17 @@ public class TeamResourcesControllerTests
         await _resources.DidNotReceive().GetTeamResourcesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task Index_AcceptsTeamGuidInTheSlugSlot()
+    {
+        _teams.GetTeamAsync(_team.Id, Arg.Any<CancellationToken>()).Returns(_team);
+        var controller = BuildSut(RoleNames.Admin);
+
+        var result = await controller.Index(_team.Id.ToString());
+
+        result.Should().BeOfType<ViewResult>();
+    }
+
     [HumansTheory]
     [InlineData(RoleNames.Admin)]
     [InlineData(RoleNames.Board)]

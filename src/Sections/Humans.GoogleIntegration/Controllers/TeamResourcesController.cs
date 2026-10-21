@@ -253,7 +253,10 @@ internal sealed class TeamResourcesController(
             return (currentUserNotFound, user, null!);
         }
 
+        // Slug first, then the GUID in the same slot (slug-routes-fallback-to-guid).
         var team = await teamService.GetTeamBySlugAsync(slug, ct);
+        if (team is null && Guid.TryParse(slug, out var teamId))
+            team = await teamService.GetTeamAsync(teamId, ct);
         if (team is null)
         {
             return (NotFound(), user, null!);
