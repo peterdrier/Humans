@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 89
+next_id: 90
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0031-controller-logic
@@ -275,4 +275,8 @@ inbox:
   - added: 2026-10-19
     id: CENTRAL-88
     what: "CacheKeys.MagicLinkUsed in Humans.Base names its parameter tokenPrefix, but its only caller (Auth's MagicLinkRateLimiter) passes a SHA-256 digest of the whole token. Rename the parameter. Found by section-doctor on Auth."
+    review: light
+  - added: 2026-10-21
+    id: CENTRAL-89
+    what: "Remaining MA0011 suppressions on column-side .ToLower() in EF queries: TicketRepository (GetOrdersPageAsync/GetAttendeesPageAsync search + duplicate-email grouping), UserRepository.UserEmails (batch lowered-IN lookup; UserEmail.Email is not stored normalized, OAuth claim emails keep their case), GoogleSyncLogRepository.GetRecentAsync (text filter applied before Take(limit) on an unbounded log). Npgsql 10 translates only parameterless ToLower() (ToLowerInvariant/ToLower(culture) throw); EF.Functions.ILike breaks the InMemory repo tests. Fix needs a cheap in-memory shape or an accepted test strategy. Found in the debt/ma0011 burndown."
     review: light
