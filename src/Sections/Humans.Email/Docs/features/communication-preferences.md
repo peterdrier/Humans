@@ -1,0 +1,90 @@
+<!-- freshness:triggers
+  src/Sections/Humans.Email/Services/CommunicationPreferenceService.cs
+  src/Sections/Humans.Email/Controllers/CommunicationPreferencesController.cs
+  src/Sections/Humans.Email/Controllers/UnsubscribeController.cs
+  src/Sections/Humans.Email/Controllers/GuestAccountController.cs
+  src/Sections/Humans.Email/Domain/CommunicationPreference.cs
+  src/Sections/Humans.Email/Data/CommunicationPreferenceConfiguration.cs
+-->
+<!-- freshness:flag-on-change
+  Category list, always-on/locked rules, ticketing lock, or facilitated-message opt-out behavior may have shifted.
+-->
+
+# Communication Preferences
+
+## Business Context
+
+GDPR and CAN-SPAM compliance require giving users control over which communications they receive. The Communication Preferences page lets users manage their email and in-app alert preferences at a granular category level.
+
+## Categories
+
+| Category | Email | Alert | Default | Editable |
+|---|---|---|---|---|
+| System (account, consent, security) | Always on | Always on | On | No |
+| Campaign Codes (discount codes, grants) | Always on | Always on | On | No |
+| Facilitated Messages (user-to-user via Humans) | Opt-in | Opt-in | On | Yes |
+| Ticketing — [year] (purchase confirmations, event info) | Opt-in / Locked | Opt-in / Locked | On | Conditional |
+| Volunteer Updates (shift changes, schedule updates) | Opt-in | Opt-in | On | Yes |
+| Team Updates (Drive permissions, member adds/removes) | Opt-in | Opt-in | On | Yes |
+| Governance (board voting, tier applications, role assignments) | Opt-in | Opt-in | On | Yes |
+| Marketing (mailing list, promotions) | Opt-in | Opt-in | Off | Yes |
+
+Category names, descriptions, the clock-derived Ticketing year heading and ticket-lock note are localized in all six supported cultures on member and guest pages. Guest one-click banners and legacy Marketing unsubscribe pages share the translated category names.
+
+The member panel currently shows only the Email control. Its updates preserve the existing inbox setting rather than resetting the hidden channel. Save requests reject redirects; an expired or revoked session restores the checkbox and shows failure feedback instead of confirming a save.
+
+Guest updates serialize per row by disabling both editable channels and the matching one-click unsubscribe control while a save is pending. Success/failure unlocks the row; failures revert the edited value. Other categories stay independent.
+
+GDPR erasure invalidates preference access through both current and legacy unsubscribe tokens, even while their cryptographic lifetime remains valid. Guest access also refuses an erased signed-in account. These paths cannot recreate the preference rows erasure deleted.
+
+Tokens minted before an account merge resolve to the surviving account for both Guest preference reads and writes, as in the one-click unsubscribe flow.
+
+Signed-in Profile and Guest updates audit the authenticated actor. Magic-link, one-click and imported changes keep service attribution; a stale token on a signed-in Guest request does not change its source or actor. Both channel-update overloads share one service write path, preserving the inbox channel on email-only writes, the first subscription date and no-op metadata.
+
+Each checkbox has an accessible name combining the localized channel and category, including locked and read-only controls.
+
+### Always-On Categories
+
+System and Campaign Codes are always locked on — users cannot opt out. These categories cover critical account operations and code delivery.
+
+### Ticketing Locking
+
+When a user has a matched `TicketAttendee` record (auto-matched by email), their Ticketing preference is locked on. Purchase confirmations and event information are mandatory for ticket attendees. Users without a ticket attendee match can opt in/out freely.
+
+### Facilitated Messages Opt-Out
+
+When a user opts out of Facilitated Messages, the "Send Message" button is hidden from their profile card, and the `/Email/SendMessage/{id}` action (Email's `FacilitatedMessageController`) redirects with an error message. This prevents other users from sending messages to someone who doesn't want them.
+
+## Data Model
+
+**Entity:** `CommunicationPreference` (table: `email_communication_preferences`, Email's since Users decomposition commit 14)
+- `UserId` + `Category` (unique index) — one row per user per category
+- `OptedOut` (bool?) — true = user does NOT receive email for this category; null = a cleared row (reset, or the merge source) that only shadows a legacy row
+- `InboxEnabled` (bool) — true = user receives in-app alerts for this category
+- `UpdatedAt` (Instant) — when preference was last changed
+- `UpdateSource` (string) — how it was set: "Profile" (signed-in profile UI), "Guest" (signed-in Guest dashboard, profileless), "MagicLink" (anonymous unsubscribe-token endpoints), "OneClick" (RFC 8058 List-Unsubscribe), "Default" (historical lazy seed), "DataMigration"
+- `SubscribedAt` (Instant, nullable) — earliest known opt-in instant for this category; stamped on first opt-in transition or import from a source with a real subscribe date, preserved across later opt-out/re-opt cycles. An account merge fills a missing survivor timestamp from the source before removing its row, retaining any known survivor timestamp regardless of which account's current preference wins.
+
+Until the legacy table is dropped, a (user, category) with no row here falls back to Users' frozen `communication_preferences` row (read through `UserInfo`); the first write seeds from it, and the `email.communication-preferences` data migration copies the rest.
+
+**Enum:** `MessageCategory` (`Humans.Email.Contracts`) — stored as string in DB
+- Active: System, CampaignCodes, FacilitatedMessages, Ticketing, VolunteerUpdates, TeamUpdates, Governance, Marketing
+- Deprecated: EventOperations (→ VolunteerUpdates + TeamUpdates), CommunityUpdates (→ FacilitatedMessages)
+
+## Routes
+
+- `GET /Email/CommunicationPreferences` — view/edit preferences (`CommunicationPreferencesController`)
+- `POST /Email/CommunicationPreferences/Update` — save one category's preference
+- Member and guest preference updates return HTTP 400 for malformed binding before saving channels; missing users/tokens remain HTTP 401.
+- `GET /Email/Guest/CommunicationPreferences`, `POST /Email/Guest/CommunicationPreferences/Update` — profileless-account variant (`GuestAccountController`, `[AllowAnonymous]`; accepts an unsubscribe token in place of a session; `UpdateSource` is `"Guest"` when signed in, `"MagicLink"` via token)
+
+## Migration History
+
+- `SplitCommunicationCategories` — data migration splitting EventOperations → VolunteerUpdates + TeamUpdates, renaming CommunityUpdates → FacilitatedMessages
+- `AddEmailCommunicationPreferences` + data migration `email.communication-preferences` — Users decomposition commit 14 moves the table to Email
+
+## Related Features
+
+- [Notification Inbox (#292-295)](../../../Humans.Notifications/Docs/features/notification-inbox.md) — in-app alerts controlled by the Alert column
+- Unsubscribe flow — RFC 8058 one-click + browser-based unsubscribe using category-aware tokens
+- Facilitated Messaging — user-to-user email via Humans, gated by FacilitatedMessages preference

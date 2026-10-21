@@ -13,8 +13,8 @@ namespace Humans.Teams;
 /// Five keys stay in <c>SharedResource</c> because something outside the section renders
 /// them too: <c>Teams_Member</c> (<c>_RoleBadge</c>, also rendered by Users' ProfileCard and
 /// Shell's gallery), <c>MyTeams_View</c> (Users' <c>UsersAdmin/AdminList</c>),
-/// <c>Teams_Title</c> (Shell pages), <c>MyTeams_Role</c> (<c>_RolesListContent</c>,
-/// <c>UsersAdmin/AddRole</c>) and <c>TeamDetail_Actions</c> (<c>UsersAdmin/AdminDetail</c>).
+/// <c>Teams_Title</c> (Shell pages), <c>MyTeams_Role</c> (Auth's <c>_RolesListContent</c>,
+/// <c>RoleAssignments/AddRole</c>) and <c>TeamDetail_Actions</c> (<c>UsersAdmin/AdminDetail</c>).
 /// Those call sites bind <c>SharedLocalizer</c>, as do the section's <c>Enum_SlotPriority_*</c>
 /// and <c>Enum_RolePeriod_*</c> reads — both enums are Base's vocabulary.
 /// </remarks>

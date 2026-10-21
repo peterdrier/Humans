@@ -177,20 +177,15 @@ on expression trees + reflection + dynamic dispatch, codegen-evolution risk on
 
 ## ReSharper InspectCode (CLI)
 
-Full analysis using existing `.DotSettings`:
+Full analysis using the existing `Humans.slnx.DotSettings`, against a built solution:
 
 ```bash
-# PowerShell
-./scripts/run-inspectcode.ps1
-./scripts/run-inspectcode.ps1 -Severity SUGGESTION -Output Html
-
-# Bash
-./scripts/run-inspectcode.sh
-./scripts/run-inspectcode.sh SUGGESTION Json
+dotnet tool install -g JetBrains.ReSharper.GlobalTools   # once
+dotnet build Humans.slnx -v quiet
+jb inspectcode Humans.slnx --no-build --severity=WARNING -f=Sarif -o=insp.sarif
 ```
 
 **Severity:** HINT, SUGGESTION, WARNING, ERROR
-**Output:** Text (default), Xml, Json, Html
+**Format (`-f`):** Sarif (default), Xml, Html, Text
 
-Results: `inspectcode-results.*` (gitignored)
-First run auto-installs `JetBrains.ReSharper.GlobalTools`.
+Name the output `insp.*` (sarif, json and xml are gitignored).

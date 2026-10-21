@@ -3,7 +3,6 @@
   src/Sections/Humans.Shifts/Data/ShiftRepository.Signups.cs
   src/Sections/Humans.Users/Domain/Profile.cs
   src/Sections/Humans.Users.Contracts/UserInfo.cs
-  src/Sections/Humans.Users.Contracts/DietaryOptions.cs
   src/Sections/Humans.Cantina/**
 -->
 <!-- freshness:flag-on-change
@@ -16,7 +15,7 @@
 
 Cantina coordinators feed everyone on site during the build and event week. They need a week-at-a-glance view of who's on site so they can plan meals, batch-buy ingredients across multiple days, and account for dietary restrictions, allergies, and intolerances.
 
-Until now, the data was collected via the [Dietary & Medical Nudge](../../../Humans.Users/Docs/features/dietary-medical-nudge.md) (#279) but had no aggregated read path — coordinators had to ask each volunteer individually, or chase down the data through per-profile badges. This feature surfaces a printable per-week roster behind a single URL, with a CSV download for offline planning, and tightens the GDPR boundary by excluding medical-condition data that the cantina doesn't need.
+Until now, the data was collected via the [Dietary Nudge](dietary-nudge.md) (#279) but had no aggregated read path — coordinators had to ask each volunteer individually, or chase down the data through per-profile badges. This feature surfaces a printable per-week roster behind a single URL, with a CSV download for offline planning, and tightens the GDPR boundary by excluding medical-condition data that the cantina doesn't need.
 
 The two views split by the job in hand. The weekly view is **overview-only** — week-level aggregates plus a per-day mini-summary (counts only) — because shopping and batch-prep are planned on totals, not on names. The per-day drill-down carries the person-by-person detail, because cooking a specific meal means knowing who is at that meal. Each day's row in the mini-summary links straight into it.
 
@@ -36,9 +35,9 @@ Access is role-based only. There is no team-membership-based path.
 
 This tightens the Art. 9 boundary: cantina coordinators don't need health data and don't get it. The exclusion happens at the DTO boundary (not at query time) so the field can never reach the view layer.
 
-`DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText` are not special-category data — they're personal data already disclosed to coordinators via the existing badges path, and the roster aggregates them. This feature introduces no retention policy of its own; the fields live on `Profile` and follow whatever that row's lifecycle is.
+`DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText` are not special-category data — they're personal data already disclosed to coordinators via the existing badges path, and the roster aggregates them. The roster introduces no retention policy of its own; the answers live in Cantina's `cantina_dietary_profiles` (see [Dietary Nudge](dietary-nudge.md)).
 
-> **Retention, as actually implemented:** right-to-erasure clears the dietary fields. `GdprService.EraseForUserAsync` fans out to Users' erasure contributor (`UserService.EraseForUserAsync`), which calls `UserRepository.EraseProfileExtrasForUserAsync` — that nulls `DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText` and `MedicalConditions` — after the shared anonymization pass (`AnonymizeProfileForDeletionAsync`) has run over the rest of the profile, so a failure between the two leaves ordinary profile PII anonymized while the food and health fields await the retry (nobodies-collective/Humans#1446). The merge fold deliberately does *not* clear them: a merged account's surviving profile keeps its food answers. Cantina holds no copy of any of this — it owns no tables and reads through `IUserService`, so an erased profile drops off this page on the next read. nobodies-collective/Humans#1113 still moves the food fields into Cantina, at which point Cantina gains its own erasure contributor; it is a data-ownership move, not an erasure gap.
+> **Retention, as actually implemented:** right-to-erasure deletes the member's `cantina_dietary_profiles` row (`DietaryProfileService.EraseForUserAsync`, a Gdpr erasure contributor), and Users' erasure still nulls the legacy food columns on `profiles` plus `MedicalConditions` (nobodies-collective/Humans#1446). A merge keeps the survivor's answers; the source's move only when the survivor has none. An erased member drops off this page on the next read.
 
 ## Week Boundary
 
@@ -166,22 +165,22 @@ The roster does NOT use the qualifying-shift gate (6+ hours) from the dietary-me
 
 ## Data Model
 
-No new entities, no new columns, no migration. The week-level view consumes the same source tables as the previous daily view; aggregation is in-memory in `CantinaRosterService`.
+The roster adds no tables of its own; it reads Cantina's `cantina_dietary_profiles` through `ICantinaService` (legacy `Profile` columns as fallback until copied). Aggregation is in-memory in `CantinaRosterService`.
 
 Reads:
 
 | Source | Used for | Notes |
 |---|---|---|
 | `ShiftSignup.Status`, `Shift.DayOffset` | Filter on-site cohort per day; service unions across the 7 days of the week | Read via `IShiftManagementService`, never the repository |
-| `Profile.DietaryPreference` | Per-human dietary chip + breakdown counts | Owned by Users; read from the cached `ProfileInfo` on `UserInfo` |
-| `Profile.Allergies` (`List<string>`) | Allergy chips + roll-up | Same read path |
-| `Profile.AllergyOtherText` | "Other (N): …" list, deduped across the week | Same read path |
-| `Profile.Intolerances` (`List<string>`) | Intolerance chips + roll-up | Same read path |
-| `Profile.IntoleranceOtherText` | "Other (N): …" list, deduped across the week | Same read path |
+| `DietaryProfileInfo.DietaryPreference` | Per-human dietary chip + breakdown counts | `ICantinaService.GetDietaryProfilesAsync`, one batched read |
+| `DietaryProfileInfo.Allergies` (`List<string>`) | Allergy chips + roll-up | Same read path |
+| `DietaryProfileInfo.AllergyOtherText` | "Other (N): …" list, deduped across the week | Same read path |
+| `DietaryProfileInfo.Intolerances` (`List<string>`) | Intolerance chips + roll-up | Same read path |
+| `DietaryProfileInfo.IntoleranceOtherText` | "Other (N): …" list, deduped across the week | Same read path |
 | `UserInfo.BurnerName` | Row label on the drill-down matrix and in both CSVs | Already resolved by Users (`User.BurnerName` → `Profile.BurnerName` → legacy display name, nobodies-collective/Humans#1097); `"(unknown)"` covers a user id the cohort read did not return |
 | `EventSettingsInfo.GateOpeningDate`, `EventSettingsInfo.TimeZoneId` | Compute calendar dates for each day in the week + default week | Existing, via `ISettingsService` |
 
-At our small scale, the service issues 7 sequential per-day cohort queries (`GetOnSiteUserIdsForDayAsync`, one per day) plus a single batched `IUserService.GetUserInfosAsync` for the week's unique cohort (dietary + names from the cached `UserInfo`). For the arrival-day rule it additionally scans per-day cohorts from build start up to the window's end (capped at strike end) to find each human's first confirmed shift.
+At our small scale, the service issues 7 sequential per-day cohort queries (`GetOnSiteUserIdsForDayAsync`, one per day) plus a single batched `IUserService.GetUserInfosAsync` (names) and `ICantinaService.GetDietaryProfilesAsync` (answers) for the week's unique cohort. For the arrival-day rule it additionally scans per-day cohorts from build start up to the window's end (capped at strike end) to find each human's first confirmed shift.
 
 Explicitly **excluded** at the DTO boundary regardless of viewer role:
 
@@ -235,17 +234,17 @@ The day matrix has its own export at `GET /Cantina/Roster/Day/Csv`, filename `ca
 This feature lives in the `Cantina/` section and reads **only through section services** — it never touches a repository.
 
 - **Shifts (read, on-site cohort):** `IShiftManagementService.GetOnSiteUserIdsForDayAsync`, called in a 7-day loop and unioned into the unique-humans cohort.
-- **Users/Identity (read, dietary + names):** `IUserService.GetUserInfosAsync` — batched, cached `UserInfo`. Dietary lives on `Profile`; `CantinaRosterService` never reads `MedicalConditions`.
+- **Cantina (read, dietary):** `ICantinaService.GetDietaryProfilesAsync` — batched; the DTO has no medical field, so `CantinaRosterService` never sees `MedicalConditions`.
 - **Users/Identity (read, burner names):** `IUserService.GetUserInfosAsync` — batched, cached `UserInfo`. No entity reads, no new surface.
 - **Event settings:** `ISettingsService.GetActiveEventSettingsAsync` for `GateOpeningDate` / `TimeZoneId` (week-boundary computation and per-day calendar labels).
 - **Authorization:** the `CantinaAdminOrAdmin` policy (Admin or the grantable `CantinaAdmin` role). No team-name heuristic, no bespoke access service.
-- **No new Domain entity, no schema change, no migration.**
+- **No roster-specific entity or migration** (the dietary table belongs to the [Dietary Nudge](dietary-nudge.md)).
 
 New / updated components:
 
 | Layer | Component | Purpose |
 |---|---|---|
-| Application | `CantinaRosterService` | Build weekly aggregates + per-day mini-summary + unique-humans table; reads via `IShiftManagementService`, `ISettingsService` + `IUserService` |
+| Application | `CantinaRosterService` | Build weekly aggregates + per-day mini-summary + unique-humans table; reads via `IShiftManagementService`, `ISettingsService`, `IUserService` + `ICantinaService` |
 | Application | `WeeklyRosterDto`, `DailyMatrixDto`, `DayRosterSummaryDto`, `RosterPersonDto`, `DailyPersonRowDto`, `RollupItemDto` | Payload contracts; no `MedicalConditions` field |
 | Base | `RoleNames.CantinaAdmin` | Grantable admin role; wired into `RoleNames.All` + `AnyAdminRole` + the `CantinaAdminOrAdmin` policy |
 | Section | `CantinaController` | `[Authorize(Policy = CantinaAdminOrAdmin)]`; `GET /Cantina/Roster(/Csv)` + `/Roster/Day(/Csv)` |
@@ -272,6 +271,6 @@ New / updated components:
 
 ## Related Features
 
-- [35 — Dietary & Medical Nudge](../../../Humans.Users/Docs/features/dietary-medical-nudge.md): the data-collection counterpart. This feature is its read consumer — the nudge collects `DietaryPreference` / `Allergies` / `Intolerances` / `*OtherText`, and the roster aggregates them.
+- [35 — Dietary Nudge](dietary-nudge.md): the data-collection counterpart. This feature is its read consumer — the nudge collects `DietaryPreference` / `Allergies` / `Intolerances` / `*OtherText`, and the roster aggregates them.
 - [25 — Shift Management](../../../Humans.Shifts/Docs/features/shift-management.md): supplies the `ShiftSignup` rows and `Shift.DayOffset` that define the per-day cohort.
 - [Issue #279](https://github.com/nobodies-collective/Humans/issues/279): tracking issue for the dietary-nudge + roster bundle. This spec is the roster half.

@@ -6,8 +6,9 @@ Empty on purpose.
 it owns no tables and no services, and nothing outside it names a Debug type. The controllers
 compose over Base diagnostics singletons (`IClientStatsTracker`, `IHttpStatusTracker`,
 `ConfigurationRegistry`, `QueryStatistics`, `ICacheStatsProvider`, `IEnumerable<ICacheStats>`,
-`IAdminDatabaseDiagnosticsService`, `ISectionCatalog`), each registered by its own owner, so
-`Section.Register` is empty too.
+`IAdminDatabaseDiagnosticsService`, `ISectionCatalog`), each registered by its own owner. The
+one registration in `Section.Register` is the internal `DataMigrationService`, which hosts every
+section's `ISectionDataMigrations` (a Base seam, so no Debug type is named from outside).
 
 What Debug contributes outward goes by *name*, not by type: `SectionAdminNav` supplies the
 Diagnostics and Design sidebar groups (controller/action names, all on `PolicyNames.AdminOnly`)

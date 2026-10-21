@@ -14,6 +14,62 @@ namespace Humans.Workgroups.Tests.Services;
 
 public sealed class WorkgroupInputValidationTests : WorkgroupsTestHarness
 {
+    [HumansTheory]
+    [InlineData("apply", "javascript:alert(1)")]
+    [InlineData("existing", "javascript:alert(1)")]
+    [InlineData("edit", "javascript:alert(1)")]
+    [InlineData("apply", "data:text/html,hello")]
+    [InlineData("apply", "//discord.com/channels/123")]
+    [InlineData("apply", "ftp://example.org/channel")]
+    public async Task DiscordLink_RejectsUnsafeUrlsBeforeMutation(string path, string url)
+    {
+        var group = await SeedWorkgroupAsync();
+        var actor = group.Members.Single().UserId;
+        var service = NewService();
+        var application = new WorkgroupApplication("New group", "Purpose", "Report",
+            WorkgroupDeliverableKind.Report, WorkgroupAudience.Board, null, url, null);
+        WorkgroupMutationResult result;
+        if (string.Equals(path, "edit", StringComparison.Ordinal))
+            result = await service.EditRegisterAsync(group.Id, actor,
+                new WorkgroupRegisterEdit(application.Name, application.Purpose, application.Deliverable,
+                    application.DeliverableKind, application.Audience, null, url), Ct);
+        else if (string.Equals(path, "existing", StringComparison.Ordinal))
+            result = await service.RegisterExistingAsync(actor,
+                new WorkgroupBootstrap(application, actor, Clock.GetCurrentInstant()), Ct);
+        else
+            result = await service.ApplyAsync(actor, application, Ct);
+
+        result.Refusal.Should().NotBeNull();
+        result.Refusal!.Key.Should().Be("Workgroups_Error_DiscordUrlInvalid");
+        await using var db = OpenContext();
+        var saved = (await db.Workgroups.ToListAsync(Ct)).Should().ContainSingle().Subject;
+        saved.Name.Should().Be(group.Name);
+        saved.DiscordChannelUrl.Should().Be(group.DiscordChannelUrl);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("javascript:alert(1)", null)]
+    [InlineData("data:text/html,hello", null)]
+    [InlineData("https://discord.com/channels/123", "https://discord.com/channels/123")]
+    [InlineData(" http://example.org/channel ", "http://example.org/channel")]
+    public async Task DiscordLink_ProjectionOmitsUnsafeLegacyValuesWithoutChangingStorage(string url, string? expected)
+    {
+        var group = await SeedWorkgroupAsync();
+        await using (var db = OpenContext())
+        {
+            var saved = await db.Workgroups.SingleAsync(Ct);
+            saved.DiscordChannelUrl = url;
+            await db.SaveChangesAsync(Ct);
+        }
+
+        var info = await NewService().GetByIdAsync(group.Id, Ct);
+
+        info!.DiscordChannelUrl.Should().Be(expected);
+        await using var check = OpenContext();
+        (await check.Workgroups.SingleAsync(Ct)).DiscordChannelUrl.Should().Be(url);
+    }
+
     [HumansFact]
     public void MeetingForm_AcceptsAConferencingUrlAtTheStorageLimit()
     {

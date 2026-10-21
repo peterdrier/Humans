@@ -93,4 +93,36 @@
   <data name="GoogleIntegration_Notification_WorkspaceReadyBody" xml:space="preserve"><value>S’ha creat el teu correu de Workspace {0}. Revisa el teu correu personal per obtenir les credencials d’accés.</value></data>
   <data name="GoogleIntegration_Notification_ViewProfile" xml:space="preserve"><value>Mostra el perfil</value></data>
   <data name="GoogleIntegration_Notification_WorkspaceReadyWithoutCredentialsBody" xml:space="preserve"><value>S’ha creat el teu correu de Workspace {0}. Contacta amb un administrador per obtenir les credencials d’accés.</value></data>
+  <data name="GoogleIntegration_NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Té un compte de correu @nobodies.team</value></data>
+  <data name="GoogleIntegration_Identity_SyncRejectedTitle" xml:space="preserve">
+    <value>Sincronització de Google pausada per a aquesta adreça.</value>
+  </data>
+  <data name="GoogleIntegration_Identity_SyncRejectedBody" xml:space="preserve">
+    <value>Google ha rebutjat el correu de Google seleccionat en intentar concedir accés a Drive o afegir-te a un grup — normalment perquè l’adreça no està vinculada a un compte de Google. Els nous intents de sincronització es suprimeixen fins que un administrador ho resolgui. Selecciona un altre correu vinculat a un compte de Google i demana a un administrador que esborri l’estat rebutjat.</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Problem" xml:space="preserve">
+    <value>Problema de sincronització amb Google</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Ok" xml:space="preserve">
+    <value>Google correcte</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Retry" xml:space="preserve">
+    <value>Torna-ho a provar</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Set" xml:space="preserve">
+    <value>Establir per a Google</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Updated" xml:space="preserve">
+    <value>Correu de servei de Google actualitzat. La sincronització es reintentarà amb el correu nou.</value>
+  </data>
+  <data name="GoogleIntegration_Identity_SetRejected" xml:space="preserve">
+    <value>No s'ha pogut establir el correu de servei de Google: fila desconeguda o no verificada.</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Google" xml:space="preserve">
+    <value>Google</value>
+  </data>
+  <data name="GoogleIntegration_Identity_VerifyFirst" xml:space="preserve">
+    <value>Verifica primer</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Locked" xml:space="preserve"><value>Bloquejat per la fila del correu de Workspace</value></data>
 </root>

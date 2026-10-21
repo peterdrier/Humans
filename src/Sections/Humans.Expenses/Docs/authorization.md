@@ -17,6 +17,6 @@
 |---|---|---|---|
 | `ExpenseReportAuthorizationHandler` | `ExpenseReportOperationRequirement` (`View`, `Edit`, `Submit`, `Withdraw`, `Endorse`, `CoordinatorReject`, `DeclineLine`, `Approve`, `FinanceReject`, `RequeueHoldedPush`). `DeclineLine` grants a finance admin any report in Submitted / CoordinatorEndorsed and the category's coordinator a Submitted one (the window in which each holds Endorse); never the submitter. `Edit` grants the submitter their own Draft, and a finance admin any report in Draft / Submitted / CoordinatorEndorsed; `Submit` grants either of them a Draft; `Withdraw` grants the submitter alone (Submitted / CoordinatorEndorsed / Approved) — withdrawal is never done on a member's behalf | `ExpenseReportDto` | `Authorization/ExpenseReportAuthorizationHandler.cs` (registered in `Section.cs`) |
 
-Raw-IBAN access has no resource handler. The only raw reveal is `/Users/Admin/{id}/RevealIban`
-(`[Authorize(Policy = AdminOnly)]`, audited per reveal, in `Humans.Users`); `/Expenses/{id}/Iban`
+Raw-IBAN access has no resource handler. The only raw reveal is `/Finance/Admin/Members/{id}/RevealIban`
+(`[Authorize(Policy = AdminOnly)]`, audited per reveal, in `Humans.Finance`); `/Expenses/{id}/Iban`
 renders masked and gates *setting* the value on submitter-or-`Edit`.

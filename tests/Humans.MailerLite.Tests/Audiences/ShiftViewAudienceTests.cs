@@ -106,7 +106,7 @@ public class ShiftViewAudienceTests
         shiftView.GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, ShiftUserSummary>>(viewsByUser));
 
-        return (TAudience)Activator.CreateInstance(typeof(TAudience), shiftView, users)!;
+        return (TAudience)Activator.CreateInstance(typeof(TAudience), shiftView, users, MarketingPreferenceStubs.For())!;
     }
 
     /// <summary>

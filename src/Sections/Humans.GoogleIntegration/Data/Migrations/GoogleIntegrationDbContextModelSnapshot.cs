@@ -251,6 +251,28 @@ namespace Humans.GoogleIntegration.Data.Migrations
 
                     b.ToTable("google_sync_log", (string)null);
                 });
+
+            modelBuilder.Entity("Humans.GoogleIntegration.Domain.WorkspaceIdentityRecord", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("google_workspace_identities", (string)null);
+                });
 #pragma warning restore 612, 618
         }
     }

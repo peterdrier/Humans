@@ -1539,7 +1539,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task SetGitHubIssueNumberAsync_returns_success_when_link_updates()
+    public async Task SetGitHubIssueNumberAsync_returns_success_when_link_updates_or_clears()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
 
@@ -1547,6 +1547,33 @@ public sealed class IssuesServiceTests
 
         result.Succeeded.Should().BeTrue();
         result.NotFound.Should().BeFalse();
+
+        var cleared = await _service.SetGitHubIssueNumberAsync(issueId, Admin, null, Admin.UserId,
+            Xunit.TestContext.Current.CancellationToken);
+        cleared.Succeeded.Should().BeTrue();
+        (await _issuesDb.Issues.AsNoTracking().SingleAsync(i => i.Id == issueId,
+            Xunit.TestContext.Current.CancellationToken)).GitHubIssueNumber.Should().BeNull();
+    }
+
+    [HumansTheory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task SetGitHubIssueNumberAsync_RejectsNonpositiveNumbersWithoutChangingLink(int number)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
+        await _service.SetGitHubIssueNumberAsync(issueId, Admin, 123, Admin.UserId, ct);
+        AuditLog.ClearReceivedCalls();
+
+        var result = await _service.SetGitHubIssueNumberAsync(issueId, Admin, number, Admin.UserId, ct);
+
+        result.NotFound.Should().BeFalse();
+        result.Rejected.Should().BeTrue();
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("positive");
+        (await _issuesDb.Issues.AsNoTracking().SingleAsync(i => i.Id == issueId, ct))
+            .GitHubIssueNumber.Should().Be(123);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -1722,7 +1749,7 @@ public sealed class IssuesServiceTests
             .Returns(Info(survivorId)! with { MergedUserIds = [sourceId] });
         var sourceIssueId = await SeedIssueRowAsync(sourceId, IssueStatus.Open, "Source issue");
         await SeedIssueRowAsync(survivorId, IssueStatus.Open, "Survivor issue");
-        await SeedIssueRowAsync(strangerId, IssueStatus.Open, "Stranger issue");
+        var strangerIssueId = await SeedIssueRowAsync(strangerId, IssueStatus.Open, "Stranger issue");
         foreach (var (sender, content) in new[]
         {
             (sourceId, "Before merge"), (survivorId, "After merge"), (strangerId, "Another person")
@@ -1735,11 +1762,26 @@ public sealed class IssuesServiceTests
                 Content = content,
                 CreatedAt = Clock.GetCurrentInstant()
             });
+        foreach (var (sender, content) in new[]
+        {
+            (sourceId, "My archived comment elsewhere"),
+            (survivorId, "My current comment elsewhere"),
+            (strangerId, "Private stranger comment")
+        })
+            _issuesDb.IssueComments.Add(new IssueComment
+            {
+                Id = Guid.NewGuid(),
+                IssueId = strangerIssueId,
+                SenderUserId = sender,
+                Content = content,
+                CreatedAt = Clock.GetCurrentInstant()
+            });
         await _issuesDb.SaveChangesAsync(ct);
 
         var slices = await _service.ContributeForUserAsync(requestedId, ct);
 
-        var exported = System.Text.Json.JsonSerializer.SerializeToElement(slices.Single().Data);
+        var exported = System.Text.Json.JsonSerializer.SerializeToElement(
+            slices.Single(slice => string.Equals(slice.SectionName, "Issues", StringComparison.Ordinal)).Data);
         exported.EnumerateArray().Select(issue => issue.GetProperty("Title").GetString())
             .Should().BeEquivalentTo(["Source issue", "Survivor issue"]);
         var comments = exported.EnumerateArray()
@@ -1749,6 +1791,19 @@ public sealed class IssuesServiceTests
         comments["Before merge"].Should().BeTrue();
         comments["After merge"].Should().BeTrue();
         comments["Another person"].Should().BeFalse();
+
+        var ownComments = System.Text.Json.JsonSerializer.SerializeToElement(
+            slices.Single(slice => string.Equals(slice.SectionName, "IssueComments", StringComparison.Ordinal)).Data);
+        ownComments.EnumerateArray().Select(comment => comment.GetProperty("Content").GetString())
+            .Should().BeEquivalentTo(["My archived comment elsewhere", "My current comment elsewhere"]);
+        foreach (var comment in ownComments.EnumerateArray())
+        {
+            comment.GetProperty("IssueId").GetGuid().Should().Be(strangerIssueId);
+            comment.GetProperty("CreatedAt").GetString().Should().NotBeNullOrEmpty();
+            comment.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo(
+                "IssueId", "Content", "CreatedAt");
+        }
+        _service.ErasureDeclaration.Should().ContainKey("IssueComments");
     }
 
     [HumansFact]
@@ -1770,7 +1825,10 @@ public sealed class IssuesServiceTests
 
         var slices = await _service.ContributeForUserAsync(aliceId, TestContext.Current.CancellationToken);
 
-        slices.Should().ContainSingle();
+        slices.Select(slice => slice.SectionName).Should().BeEquivalentTo("Issues", "IssueComments");
+        System.Text.Json.JsonSerializer.SerializeToElement(
+                slices.Single(slice => string.Equals(slice.SectionName, "IssueComments", StringComparison.Ordinal)).Data)
+            .GetArrayLength().Should().Be(0);
         slices[0].SectionName.Should().Be("Issues");
         var data = slices[0].Data.Should().BeAssignableTo<System.Collections.IEnumerable>().Subject;
         data.Cast<object>().Should().HaveCount(2);

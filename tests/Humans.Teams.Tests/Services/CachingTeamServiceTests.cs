@@ -874,9 +874,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
                             email,
                             user?.ProfilePictureUrl,
                             m.Role,
-                            m.JoinedAt,
-                            user?.UserEmails.FirstOrDefault(e => e.IsGoogle && e.IsVerified)?.GoogleEmailStatus
-                                ?? GoogleEmailStatus.Unknown);
+                            m.JoinedAt);
                     })
                     .ToList(),
                 ParentTeamId: t.ParentTeamId,

@@ -1,37 +1,17 @@
 using Humans.Users.Contracts;
-using NodaTime;
 using Humans.Base.Interfaces.Repositories;
 
 namespace Humans.Users.Data.Repositories;
 
 /// <summary>
-/// Repository for the <c>communication_preferences</c> table.
-/// The only non-test file that may write to this DbSet.
+/// Repository for the frozen legacy <c>communication_preferences</c> table (Email owns the live
+/// preferences since Users decomposition commit 14). Reads feed the <see cref="UserInfo"/> cache;
+/// the one write left is GDPR erasure. The only non-test file that touches this DbSet.
 /// </summary>
 internal interface ICommunicationPreferenceRepository : IRepository
 {
     /// <summary>
-    /// Returns a single preference by user and category, tracked.
-    /// </summary>
-    Task<CommunicationPreference?> GetByUserAndCategoryAsync(
-        Guid userId, MessageCategory category, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns user ids from the input list that have inbox disabled
-    /// for the given category.
-    /// </summary>
-    Task<IReadOnlySet<Guid>> GetUsersWithInboxDisabledAsync(
-        IReadOnlyList<Guid> userIds, MessageCategory category,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns user ids from the input list that have any preference rows.
-    /// </summary>
-    Task<IReadOnlySet<Guid>> GetUsersWithAnyPreferencesAsync(
-        IReadOnlyList<Guid> userIds, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns all preferences for a user, read-only. Used by the
+    /// Returns all legacy preferences for a user, read-only. Used by the
     /// <see cref="UserInfo"/> cache rebuild path and GDPR export.
     /// </summary>
     Task<IReadOnlyList<CommunicationPreference>> GetByUserIdReadOnlyAsync(
@@ -44,47 +24,6 @@ internal interface ICommunicationPreferenceRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<CommunicationPreference>> GetAllAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the count of preferences matching the given category and opt-out state.
-    /// Used for dashboard metrics.
-    /// </summary>
-    Task<int> GetCountByCategoryAndStateAsync(
-        MessageCategory category, bool optedOut, CancellationToken ct = default);
-
-    Task AddAsync(CommunicationPreference preference, CancellationToken ct = default);
-
-    /// <summary>
-    /// Persists changes to a single tracked <see cref="CommunicationPreference"/> entity.
-    /// The caller must have obtained the entity via a tracked query method in the same scope.
-    /// </summary>
-    Task UpdateAsync(CommunicationPreference preference, CancellationToken ct = default);
-
-    /// <summary>
-    /// Deletes the single <c>communication_preferences</c> row for a user+category,
-    /// returning the category to its "no row recorded" (null) state — distinct
-    /// from an explicit opt-out. Returns true if a row was deleted, false if none
-    /// existed. Used by the MailerLite import GDPR remediation.
-    /// </summary>
-    Task<bool> DeleteByUserAndCategoryAsync(
-        Guid userId, MessageCategory category, CancellationToken ct = default);
-
     /// <summary>GDPR Art. 17: removes every communication preference row for the user.</summary>
     Task<int> DeleteAllForUserAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Bulk-moves <c>communication_preferences</c> rows from
-    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/> for the
-    /// account-merge fold flow. Conflict rule per the fold spec: when source and
-    /// target both have a row for the same <see cref="MessageCategory"/>, the
-    /// rows collapse — the row with the most-recent <c>UpdatedAt</c> wins. If
-    /// the source row is newer, its <c>OptedOut</c>, <c>InboxEnabled</c>, and
-    /// <c>UpdateSource</c> values are copied onto the target row; the source
-    /// row is then deleted. If the target row is at least as recent, the source
-    /// row is simply deleted. Surviving source rows (no target row for the
-    /// category) are re-FK'd to target. <c>UpdatedAt</c> is stamped to
-    /// <paramref name="updatedAt"/> on every row touched.
-    /// </summary>
-    Task ReassignToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
-        CancellationToken ct = default);
 }

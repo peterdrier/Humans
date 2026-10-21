@@ -125,38 +125,10 @@
 <div class="wg-card">
     <div class="wg-card-header">
         <div>
-            <span class="wg-card-name">&lt;vc:communication-preferences-panel&gt;</span>
-            <span class="wg-card-kind kind-vc">ViewComponent</span>
-        </div>
-        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/CommunicationPreferencesPanelViewComponent.cs</span>
-    </div>
-    <div class="wg-card-note">
-        Per-user communication-preferences matrix. Write mode (default) renders toggle checkboxes that POST to <code>/Profile/Me/CommunicationPreferences/Update</code>. Read-only mode hides the form and surfaces <code>UpdateSource</code> + <code>UpdatedAt</code> per category — used on <code>/Users/Admin/{id}</code>.
-    </div>
-    @ParamsBlock(
-        ("user-id", "<code>Guid</code> — required"),
-        ("read-only", "<code>bool</code> — default <code>false</code>; <code>true</code> hides forms and adds attribution columns")
-    )
-    <div class="wg-variants">
-        <div class="wg-variant-label">read-only="false"<span class="wg-variant-sub">default — toggleable</span></div>
-        <div class="wg-variant-render" style="display:block;">
-            <vc:communication-preferences-panel user-id="@Model.CurrentUserId" />
-        </div>
-
-        <div class="wg-variant-label">read-only="true"<span class="wg-variant-sub">admin view</span></div>
-        <div class="wg-variant-render" style="display:block;">
-            <vc:communication-preferences-panel user-id="@Model.CurrentUserId" read-only="true" />
-        </div>
-    </div>
-</div>
-
-<div class="wg-card">
-    <div class="wg-card-header">
-        <div>
             <span class="wg-card-name">&lt;vc:nobodies-email-badge&gt;</span>
             <span class="wg-card-kind kind-vc">ViewComponent</span>
         </div>
-        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/NobodiesEmailBadgeViewComponent.cs</span>
+        <span class="wg-card-path">src/Sections/Humans.GoogleIntegration/ViewComponents/NobodiesEmailBadgeViewComponent.cs</span>
     </div>
     <div class="wg-card-note">
         Indicates whether a human has a <code>nobodies.team</code> Workspace email. Four modes selected by the caller.
@@ -177,26 +149,5 @@
 
         <div class="wg-variant-label">mode="detail"<span class="wg-variant-sub">address + linked badge</span></div>
         <div class="wg-variant-render"><vc:nobodies-email-badge user-id="@Model.CurrentUserId" mode="detail" /></div>
-    </div>
-</div>
-
-<div class="wg-card">
-    <div class="wg-card-header">
-        <div>
-            <span class="wg-card-name">&lt;vc:membership-tier-badge&gt;</span>
-            <span class="wg-card-kind kind-vc">ViewComponent</span>
-        </div>
-        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/MembershipTierBadgeViewComponent.cs</span>
-    </div>
-    <div class="wg-card-note">
-        The member's Colaborador/Asociado tier badge beside their name on the dashboard. Renders
-        nothing for a plain Volunteer, which is nearly everyone — so it's empty here unless your
-        account holds a tier.
-    </div>
-    @ParamsBlock(
-        ("userId", "<code>Guid</code> — required")
-    )
-    <div class="wg-card-example">
-        <vc:membership-tier-badge user-id="@Model.CurrentUserId" />
     </div>
 </div>

@@ -3,7 +3,7 @@
   src/Sections/Humans.Shifts.Contracts/**
   src/Humans.Base/Authorization/ShiftRoleChecks.cs
   src/Humans.Base/Authorization/PolicyNames.cs
-  src/Sections/Humans.Users.Contracts/ParticipationStatus.cs
+  src/Sections/Humans.Tickets.Contracts/ParticipationStatus.cs
   src/Sections/Humans.Teams.Contracts/ITeamService.cs
   src/Sections/Humans.Users.Contracts/IUserMerge.cs
 -->
@@ -23,10 +23,10 @@ Event shifts, rotas, signups, range blocks, event settings, general availability
 - **Range Signups** link multiple shifts via a block ID (`SignupBlockId`). Operations on a range (sign-up, voluntell, bail, approve, refuse) apply to the entire block atomically.
 - **Event Settings** is Shifts' per-event knobs row — global volunteer cap, reminder lead time, and whether shift browsing is open to regular volunteers. The calendar (dates, timezone, early-entry capacity/allocation/close instant) and "which event is active" live in Settings (see Data Model).
 - **General Availability** tracks per-human per-event day availability (one row per user per event; `AvailableDayOffsets` is a jsonb list of day offsets). Saving without an active event returns a localized 400 response and writes no availability.
-- **Volunteer Event Profile** stores per-user shift-matching data: skills, quirks (working-style toggles like Sober Shift, Work In Shade, plus a single time preference), and languages. One-to-one with `User`. Dietary preference, allergies, intolerances and medical conditions live on `Profile` (Users section) and are read via `IUserService`; the unused VEP columns for them await a post-prod-soak drop.
+- **Volunteer Event Profile** stores per-user shift-matching data: skills, quirks (working-style toggles like Sober Shift, Work In Shade, plus a single time preference), and languages. One-to-one with `User`. Dietary preference, allergies and intolerances live in Cantina (`cantina_dietary_profiles`, read via `ICantinaService`); medical conditions live on `Profile` (Users section, read via `IUserService`); the unused VEP columns for them await a post-prod-soak drop.
 - **Rota Tags** (`shift_tags`) are labels applied to rotas (e.g., "Heavy lifting"). Volunteers save preferred tags via `VolunteerTagPreference`; matching rotas are starred on the browse page.
 - **Voluntelling** is when an Admin, NoInfoAdmin, VolunteerCoordinator, or department coordinator signs up a human for a shift on their behalf. Voluntold signups are auto-confirmed and recorded with `Enrolled = true` and `EnrolledByUserId`.
-- **Event Participation** is a per-user, per-year record tracking declared event participation status, used cross-section (e.g., to gate "who hasn't bought a ticket" lists). Owned by Users (see [`Users.md`](../../Humans.Users/Docs/Users.md)); Shifts may surface it as a derived view but does not write to it.
+- **Event Participation** is a per-user, per-year record tracking declared event participation status, used cross-section (e.g., to gate "who hasn't bought a ticket" lists). Owned by Tickets since Users decomposition commit 13 (see [`Tickets.md`](../../Humans.Tickets/Docs/Tickets.md)); Shifts reads it through `ITicketService.GetAllParticipationsAsync` and does not write to it.
 - **Shift Summary by Camp** is a read-only roll-up of confirmed-shift totals (hours + count) per human and pivoted per camp, viewable at three scopes (global / team-set / single rota). Pure read view over confirmed signups — no new tables, no writes. Built by `IShiftManagement.BuildSummaryAsync` (`ShiftSummary` DTO); gated by the `ShiftDepartmentManager` policy. Department expansion and rota metadata reads retain caller cancellation.
 
 ## Data Model
@@ -114,15 +114,15 @@ All mutations route through `IVolunteerTrackingRepository` and emit `AuditAction
 
 ### VolunteerEventProfile
 
-Per-user shift-matching profile (1:1 with User) capturing `Skills`, `Quirks`, `Languages` (jsonb lists). Unique on `UserId`. The columns `DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText`, `MedicalConditions` are unused (the data lives on `Profile`) and await a post-prod-soak drop.
+Per-user shift-matching profile (1:1 with User) capturing `Skills`, `Quirks`, `Languages` (jsonb lists). Unique on `UserId`. The columns `DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText`, `MedicalConditions` are unused (food answers live in Cantina, medical on `Profile`) and await a post-prod-soak drop.
 
 **Table:** `volunteer_event_profiles`
 
 `UserId` is a bare Guid column with no navigation property and no FK constraint, so no DB-level cascade delete applies; account deletion goes through `CancelActiveSignupsForUserAsync` and the GDPR path.
 
-### EventParticipation (owned by Users)
+### EventParticipation (owned by Tickets)
 
-The `event_participations` entity is owned by Users — the natural key is User + Year. See [`Users.md`](../../Humans.Users/Docs/Users.md) for field-level detail. Shifts consumes it as a read-only cross-section reference and does not write to the table directly.
+Event participation (`tickets_event_participations`) is owned by Tickets — see [`Tickets.md`](../../Humans.Tickets/Docs/Tickets.md) for field-level detail. Shifts reads it through `ITicketService.GetAllParticipationsAsync` (volunteer tracking's ticketed/attended cohort) and never writes it.
 
 ### Shift tag tables
 
@@ -168,7 +168,7 @@ These controllers serve this section, each with distinct URL scope and authoriza
 | `ShiftDashboardController` | `/Shifts/Dashboard` | `[Authorize(Policy = PolicyNames.ShiftDepartmentManager)]` |
 | `VolunteerTrackingController` | `/Shifts/Dashboard/VolunteerTracking` | `[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]` (per-action `VolunteerTrackingWrite` for mutating POSTs — Admin / VolunteerCoordinator) |
 | `ShiftWorkloadAdminController` | `/Shifts/Admin/Workload` | `[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]` |
-| `ShiftProfileController` | `/Profile` | `[Authorize]` — two actions (`GET`/`POST /Profile/Me/ShiftInfo`); the route stays under `/Profile` because the URL is bookmarked |
+| `ShiftProfileController` | `/Shifts` | `[Authorize]` — two actions (`GET`/`POST /Shifts/ShiftInfo`) |
 
 Selected routes:
 
@@ -220,8 +220,8 @@ Selected routes:
 | `GET /Shifts/Dashboard/VolunteerTracking/ExportXlsx` | Grid export, burner names only |
 | `POST /Shifts/Dashboard/VolunteerTracking/{SetCampSetup,ClearCampSetup,SetDayOff,ClearDayOff,SetAvailabilityDay,ClearAvailabilityDay}` | Coordinator edits to a volunteer's build-week status and per-day availability (`VolunteerTrackingWrite`) |
 | `GET /Shifts/Admin/Workload` | Per-person / per-department hour workload (`ShiftDashboardAccess`) |
-| `GET /Profile/Me/ShiftInfo` | Volunteer's own shift-matching profile (skills, quirks, languages) |
-| `POST /Profile/Me/ShiftInfo` | Save shift-matching profile |
+| `GET /Shifts/ShiftInfo` | Volunteer's own shift-matching profile (skills, quirks, languages, preferred shift tags); linked from `/Profile/Me/Edit` |
+| `POST /Shifts/ShiftInfo` | Save shift-matching profile and tag preferences (`SetVolunteerTagPreferencesAsync`) |
 
 The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryRosterController` in `Humans.EarlyEntry`; Shifts only contributes to it through `IEarlyEntryProvider`.
 
@@ -297,7 +297,7 @@ Operator build/strike staffing and event-shift generation reject malformed numer
 - No-show history reads carry caller cancellation through signup and event-calendar lookups.
 - Signup creation and confirmation share an in-process gate across single, range, member and coordinator paths. Duplicate and capacity checks see prior committed enrollments; the gate is released after the save, before audits and notices.
 - Early-entry freeze: after `EventSettings.EarlyEntryClose`, non-privileged humans cannot sign up for, range-sign-up to, bail from, or have approval issued on Build-period shifts. Admin/NoInfoAdmin/VolunteerCoordinator/dept coordinators bypass the freeze.
-- Voluntelling and signup overlap detection rejects a target shift whose absolute time range intersects any of the user's existing Confirmed signups. The check uses event-timezone-resolved absolute instants. Single and range signup use the same confirmed-only rule; Pending signups only reserve their exact shift against duplicate signup.
+- Voluntelling and signup overlap detection rejects a target shift whose absolute time range intersects any of the user's existing Confirmed signups. The check uses event-timezone-resolved absolute instants. Single and range signup use the same confirmed-only rule; Pending signups only reserve their exact shift against duplicate signup. Range signup and range voluntell also treat multiple selected all-day shifts on the same date as a conflict, skipping that date where conflict skipping applies. Range approval rechecks existing confirmed commitments and overlaps within the selected block, reporting the dates as warnings while retaining the same coordinator override as single approval.
 - All-day shifts cover the standard work block **08:00–18:00** local time (`Shift.AllDayWindowStart` / `Shift.AllDayWindowEnd`). Patterns outside this window must be modeled as regular time-slotted shifts, not as `IsAllDay = true`. The window is computed at read time by `GetAbsoluteStart` / `GetAbsoluteEnd`; the `StartTime` and `Duration` columns on `IsAllDay` rows are don't-care and must never be used directly for overlap math or staffing calculations.
 - All dashboard endpoints on `ShiftDashboardController` (and its analytics methods on `IShiftManagement`: `GetDashboardOverviewAsync`, `GetCoordinatorActivityAsync`, `GetDashboardTrendsAsync`, `GetCoverageHeatmapAsync`, `GetDailyDepartmentStaffingAsync`, `GetShiftDurationBreakdownAsync`, `GetPostEventStatsAsync`) sit behind the controller's `ShiftDepartmentManager` policy; `PostEventStats`, `SearchVolunteers` and `Voluntell` narrow to `ShiftDashboardAccess` (Admin/NoInfoAdmin/VolunteerCoordinator). The services themselves are auth-free per design rules.
 - **Coordinator dashboard metric definitions** (authoritative; unit tests pin these):
@@ -335,7 +335,7 @@ Invalid rota and shift edits redisplay the team shift page without saving. Only 
 ## Negative Access Rules
 
 - Self-signup, including all-day ranges and onboarding/dietary form replay, requires an existing `UserState.Active` account. Privileged/conflict flags do not bypass account eligibility. Named Active humans may still sign up before consent completion; explicit admin-on-behalf Voluntell paths retain their own authorization.
-- The advisory dietary-missing banner passes `HttpContext.RequestAborted` through its qualifying-signup and profile reads. It still suppresses operational failures so the Shifts page renders, but does not log a disconnected browser as a banner failure.
+- The advisory dietary-missing banner passes `HttpContext.RequestAborted` through its qualifying-signup and Cantina dietary reads. It still suppresses operational failures so the Shifts page renders, but does not log a disconnected browser as a banner failure.
 
 - Regular humans **cannot** manage rotas or shifts. They can only browse and sign up.
 - Coordinator range assignment requires both day offsets and rejects missing or malformed
@@ -343,7 +343,7 @@ Invalid rota and shift edits redisplay the team shift page without saving. Only 
   Explicit day zero remains valid input.
 - Range signup and assignment localize missing rota, empty range, already-assigned range, fully conflicting range, fully booked range and restricted-range rejections in all six cultures. Multi-day signup also localizes duplicate-day and time-conflict summaries, partially full shift and early-entry warnings, and the nothing-to-add result.
 - Duplicate signup, missing shift, closed browsing, restricted shift, closed early-entry signup and full-shift rejections use the six-culture Shifts resources across their single, range and coordinator assignment call sites. Single-shift time conflicts (including the missing-team label) and advisory early-entry-capacity warnings also use those resources; capacity warnings identify the day and do not block signup.
-- Regular humans **cannot** approve, refuse, or bail other humans' signups. Single and range bail rejections (including early-entry closure) use the six-culture Shifts resources, as do shared signup-not-found and missing-calendar errors; the signup modal uses the shared localized close label.
+- Regular humans **cannot** approve, refuse, or bail other humans' signups. Single bail refuses Refused, Cancelled and NoShow signups with localized feedback instead of attempting an invalid transition; their recorded history is unchanged. Single and range bail rejections (including early-entry closure) use the six-culture Shifts resources, as do shared signup-not-found and missing-calendar errors; the signup modal uses the shared localized close label.
 - Regular humans **cannot** voluntell other humans.
 - Regular humans (no team coordinator / management role anywhere) **cannot** see the cross-department shift dashboard.
 - Department coordinators / sub-team managers **cannot** see the dashboard's coordinator-activity panel or trigger the per-shift voluntell action — those stay on the narrower `ShiftDashboardAccess` policy (Admin / NoInfoAdmin / VolunteerCoordinator). The page entry is on the wider `ShiftDepartmentManager` policy.
@@ -360,7 +360,7 @@ Invalid rota and shift edits redisplay the team shift page without saving. Only 
 - Personal calendar feed summaries localize the Pending marker through the existing Shifts resource set; authored rota and department names remain unchanged.
 - Every signup state change writes an audit log entry and dispatches a `ShiftSignupChange` notification to the department's coordinators via `INotificationEmitter`. Action set: `AuditAction.ShiftSignup{Created,Confirmed,Refused,Voluntold,Bailed,Cancelled,NoShow,Reassigned}`. `ShiftSignupCreated` fires on every self-signup (Pending or Confirmed) so the creation moment is always traceable; `ShiftSignupConfirmed` fires only on the later Pending → Confirmed transition by an approver. `ShiftSignupReassigned` fires once per account-merge fold (re-FK of signups from source to target).
 - Voluntelling additionally fires a `ShiftAssigned` informational notification to the assigned volunteer (best-effort; failures logged but do not roll back the signup). Single-shift and range notices use the volunteer’s saved supported language, with English fallback for missing/unsupported language or lookup failures; one-shift ranges use a singular message and the action reuses the localized browse-shifts label. This volunteer-facing notification is **suppressed for past shifts**: a single-shift voluntell skips it when the shift has ended (`shift.GetAbsoluteEnd(es) <= now`); a range voluntell skips its single aggregate notification when *every* assigned shift is already past. The audit entry and the coordinator `ShiftSignupChange` ping are always emitted regardless of shift timing.
-- When a Bail or Remove drops the confirmed count below `MinVolunteers`, a `ShiftCoverageGap` actionable notification (priority High) is sent to the department's coordinators.
+- When a Bail (single or range) or Remove reduces confirmed staffing and leaves it below `MinVolunteers`, a `ShiftCoverageGap` actionable notification (priority High) is sent to the department's coordinators. Withdrawing a pending signup leaves staffing unchanged and sends only the ordinary signup-change notice; mixed range blocks check coverage only for their previously confirmed signups.
 - Range signup, range voluntell, range bail, range approve, and range refuse all use a shared `SignupBlockId` and operate on the entire block atomically (with per-shift filtering for capacity/conflicts on creation paths).
 - Moving a rota to a different team writes an `AuditAction.RotaMovedToTeam` log entry and updates `Rota.TeamId` via a targeted update (only `TeamId` + `UpdatedAt` are marked modified).
 - Sending the team-wide coordinator message writes one `AuditAction.CoordinatorTeamRotasMessageSent` entry per dispatch — not one per recipient. Both per-rota and team-wide audit entries and operator success messages report successful send requests, not queued or delivered emails: Email may suppress an opted-out recipient without throwing.
@@ -400,11 +400,12 @@ section and is not on the leaf.
 - **Teams:** `ITeamService` — rotas belong to a department or sub-team. Used for `GetTeamsAsync`, `GetTeamAsync`, `GetTeamBySlugAsync`, `GetUserCoordinatedTeamIdsAsync`. Coordinator status determines shift management access.
 - **Users:** `IUserService` — `GetUserInfosAsync` resolves display data (name, profile picture) for signup rows now that `ShiftSignup.User` nav is stripped. Also used by the dashboard activity computation and the volunteer search builder.
 - **Auth:** `IRoleAssignmentService` (lazy-resolved) — role checks for `Admin`, `NoInfoAdmin`, `VolunteerCoordinator` from `HasActiveRoleAsync`.
-- **Tickets:** `ITicketService` — used by the coordinator dashboard to compute ticket-buyer cross-references from `TicketOrderInfo`; `EventParticipation` is consumed by Tickets to gate "who hasn't bought" lists.
+- **Tickets:** `ITicketService` — used by the coordinator dashboard to compute ticket-buyer cross-references from `TicketOrderInfo`; `GetAllParticipationsAsync` gives volunteer tracking each living user's participation status for the active year.
 - **Audit Log:** `IAuditLogService` — every signup state change and rota move emits an audit entry.
 - **Notifications:** `INotificationEmitter` — coordinator notifications for signup changes, voluntell assignments, and coverage gaps. No direct email-outbox dependency from this section.
 - **GDPR:** `ShiftSignupService` implements `IUserDataContributor` (export of signups, volunteer event profile, general availability, tag preferences) and `CancelActiveSignupsForUserAsync` (deletion).
 - **iCal feed:** `ShiftSignupService` implements `Humans.Calendar.Contracts.ICalendarFeedContributor` (`Humans.Shifts` references `Humans.Calendar` for the contributor interface) — contributes the user's Confirmed and Pending shift signups (with rota/team name, shift description, and practical info) to the personal iCal feed assembled by `IICalFeedService`. Only active commitments (Confirmed + Pending) are exported; Cancelled/Bailed/NoShow history is excluded. Shifts is a **contributor only**: the subscription card, the feed URL and the token rotation live on `/Calendar` (Calendar owns the feed end to end), and no Shifts page renders them.
+- **Cantina:** `ICantinaService` (project reference; acyclic — Cantina reaches only `Shifts.Contracts`) — the `ToggleDay` dietary gate, `DietaryMissingBannerViewComponent`, and the dietary badges in volunteer search and the shift-admin page. The gate redirects to Cantina's `/Cantina/Dietary`, which replays the signup through `IShiftSignups`.
 - **Users (account merge):** `ShiftManagementService`, `ShiftSignupService` and `VolunteerTrackingService` each register as `IUserMerge`; `AccountMergeService.AcceptAsync` fans out to them to re-FK Shifts-owned user-scoped rows from source to target (see Triggers).
 - **Settings:** `ISettingsService` (`Humans.Settings.Contracts`) — the calendar authority as of nobodies-collective/Humans#1630, and "active event" authority as of nobodies-collective/Humans#1631. Internal `EventCalendarResolver` wraps it (memoized per request) and resolves the calendar by `Rota.EventSettingsId` via `GetEventSettingsByIdAsync`, or `GetActiveEventSettingsAsync` for active-event paths. No fallback to this section's own `EventSettings` columns when the calendar can't be resolved — those columns are dead.
 - **Early Entry contributor:** `VolunteerTrackingExportService` implements `IEarlyEntryProvider` — derives EE grants (earliest confirmed build-shift day − 1, source = that shift's team) for the cross-source EE roster. `ShiftSignupService` evicts the per-user EE cache via `IEarlyEntryInvalidator` on every build-shift confirm/bail/remove/no-show/reassign path. Shift edits and rota-team moves evict all EE answers so dates and source labels reload. Range approval and bail evict affected users after the save attempt, including uncertain completion, so reads during the save cannot retain the old grant.
@@ -454,5 +455,7 @@ sends this section's stored issues to the Admin-only queue.
 Range bail returns untranslated refusal keys for missing event calendar, unauthorized actors and closed Early Entry. Member and department-admin callers translate these keys and log expected refusals without exception objects. Dependency faults propagate and are never displayed as refusal feedback; empty blocks remain idempotent successes. Successful mutation, audit, notifications and early-entry cache invalidation are unchanged.
 
 Event deletion evicts Early Entry answers and event dashboard/shift caches after the repository cascade attempt, including uncertain completion. Admin authorization remains before the mutation.
+
+Account-deletion signup cancellation, signup reassignment on account merge, and bulk signup deletion capture the source signups' event IDs before writing and evict those events' dashboard aggregates after a change. Existing row-view and Early Entry invalidation remains in place; bulk deletion authorizes the admin before reading or writing signups.
 
 - Rota and shift deletion return resource-key refusals for missing records or confirmed signups, warning without an exception before any cascade delete. Department coordinators receive refusal counts and successful deletion feedback in all six cultures. Dependency faults propagate instead of becoming refusal text; department ownership/authorization gates, confirmed-signup protection and existing cascade/cache behavior remain.

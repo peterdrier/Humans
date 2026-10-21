@@ -53,6 +53,9 @@
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <!-- The Consent Coordinator review (IConsentService): tier-team approval gate, and the
+         birthday/map listings. Consent reaches only Teams.Contracts, never this project. -->
+    <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
   </ItemGroup>
 
   <ItemGroup>

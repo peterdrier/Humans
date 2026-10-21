@@ -139,7 +139,7 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
         return await db.Issues
             .AsNoTracking()
             .Include(i => i.Comments)
-            .Where(i => i.ReporterUserId == userId)
+            .Where(i => i.ReporterUserId == userId || i.Comments.Any(c => c.SenderUserId == userId))
             .ToListAsync(ct);
     }
 

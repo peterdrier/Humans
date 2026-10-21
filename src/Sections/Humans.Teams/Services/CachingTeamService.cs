@@ -94,12 +94,6 @@ internal sealed class CachingTeamService(
         MutateAsync(inner => inner.CreateTeamAsync(
             name, description, requiresApproval, parentTeamId, googleGroupPrefix, isHidden, cancellationToken));
 
-    public Task<Team?> GetTeamEntityBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetTeamEntityBySlugAsync(slug, cancellationToken));
-
-    public Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetTeamByIdAsync(teamId, cancellationToken));
-
     public async Task<TeamInfo?> GetTeamAsync(
         Guid teamId,
         CancellationToken cancellationToken = default)

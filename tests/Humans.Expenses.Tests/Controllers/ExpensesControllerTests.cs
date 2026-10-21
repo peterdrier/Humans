@@ -73,7 +73,7 @@ public sealed class ExpensesControllerTests
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
         };
         var controller = new ExpensesController(users, reports, Substitute.For<IBudgetService>(),
-            Substitute.For<IHoldedFinanceService>(), Substitute.For<IPreapprovalService>(), authorization,
+            Substitute.For<IHoldedFinanceService>(), Substitute.For<IFinanceService>(), Substitute.For<IPreapprovalService>(), authorization,
             TestClock, NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -131,7 +131,7 @@ public sealed class ExpensesControllerTests
                 Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Failed());
         var controller = new ExpensesController(users, reports,
-            Substitute.For<IBudgetService>(), Substitute.For<IHoldedFinanceService>(),
+            Substitute.For<IBudgetService>(), Substitute.For<IHoldedFinanceService>(), Substitute.For<IFinanceService>(),
             Substitute.For<IPreapprovalService>(), authorization, TestClock,
             NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>())
         {
@@ -238,7 +238,7 @@ public sealed class ExpensesControllerTests
         var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var controller = new ExpensesController(users, reports, Substitute.For<IBudgetService>(),
-            Substitute.For<IHoldedFinanceService>(), Substitute.For<IPreapprovalService>(), authorization,
+            Substitute.For<IHoldedFinanceService>(), Substitute.For<IFinanceService>(), Substitute.For<IPreapprovalService>(), authorization,
             TestClock, NullLogger<ExpensesController>.Instance, localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -297,7 +297,7 @@ public sealed class ExpensesControllerTests
                 [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
         };
         var controller = new ExpensesController(users, reports,
-            Substitute.For<IBudgetService>(), Substitute.For<IHoldedFinanceService>(),
+            Substitute.For<IBudgetService>(), Substitute.For<IHoldedFinanceService>(), Substitute.For<IFinanceService>(),
             Substitute.For<IPreapprovalService>(), Substitute.For<IAuthorizationService>(), TestClock,
             NullLogger<ExpensesController>.Instance, localizer)
         {
@@ -356,7 +356,7 @@ public sealed class ExpensesControllerTests
                 [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
         };
         var controller = new ExpensesController(users, reports, budget,
-            Substitute.For<IHoldedFinanceService>(), Substitute.For<IPreapprovalService>(),
+            Substitute.For<IHoldedFinanceService>(), Substitute.For<IFinanceService>(), Substitute.For<IPreapprovalService>(),
             Substitute.For<IAuthorizationService>(), TestClock,
             NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>())
         {
@@ -417,7 +417,7 @@ public sealed class ExpensesControllerTests
                 [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
         };
         var controller = new ExpensesController(users, reports, budget,
-            Substitute.For<IHoldedFinanceService>(), Substitute.For<IPreapprovalService>(),
+            Substitute.For<IHoldedFinanceService>(), Substitute.For<IFinanceService>(), Substitute.For<IPreapprovalService>(),
             Substitute.For<IAuthorizationService>(), TestClock,
             NullLogger<ExpensesController>.Instance, localizer)
         {

@@ -18,7 +18,7 @@ internal sealed class GoogleGroupSyncService(
     ITeamResourceManagement teamResourceService,
     ITeamService teamService,
     IUserService userService,
-    IUserWrite userWrite,
+    IWorkspaceIdentityManagement workspaceIdentities,
     IUserEmailService userEmailService,
     ISyncSettingsService syncSettingsService,
     IAuditLogService auditLogService,
@@ -54,7 +54,7 @@ internal sealed class GoogleGroupSyncService(
         var claims = await LoadClaimsAsync(groupKey: null, ct, syncSource);
         var resourcesByGroup = await LoadActiveGroupResourcesByEmailAsync(ct);
         var expectedMembersByUserId = await GoogleSyncMemberHydration.LoadAsync(
-            claims.SelectMany(c => c.UserIds).Distinct().ToList(), userService, ct);
+            claims.SelectMany(c => c.UserIds).Distinct().ToList(), userService, workspaceIdentities, ct);
         var diffs = new List<ResourceSyncDiff>();
 
         foreach (var claim in claims)
@@ -169,7 +169,7 @@ internal sealed class GoogleGroupSyncService(
                 ct);
         }
 
-        expectedMembersByUserId ??= await GoogleSyncMemberHydration.LoadAsync(claim.UserIds, userService, ct);
+        expectedMembersByUserId ??= await GoogleSyncMemberHydration.LoadAsync(claim.UserIds, userService, workspaceIdentities, ct);
         var expectedMembers = new Dictionary<string, GoogleSyncMember>(GmailAliasEmailComparer.Instance);
         foreach (var userId in claim.UserIds.Order())
         {
@@ -433,8 +433,8 @@ internal sealed class GoogleGroupSyncService(
                 if (failure.RejectTarget)
                 {
                     var target = plan.ExpectedByEmail[member.Email];
-                    await userWrite.TrySetGoogleEmailStatusFromSyncAsync(
-                        target.UserId, GoogleEmailStatus.Rejected, ct, target.GoogleEmailId);
+                    await workspaceIdentities.SetStatusFromSyncAsync(
+                        target.UserId, target.IdentityEmail, GoogleEmailStatus.Rejected, ct);
                     logger.LogWarning(
                         "Google rejected target member email {Email} while adding to Google Group {GroupKey} ({GroupId}) - HTTP {StatusCode}. " +
                         "Google email status marked Rejected for the address when a matching user was found. Google error: {ErrorMessage}",

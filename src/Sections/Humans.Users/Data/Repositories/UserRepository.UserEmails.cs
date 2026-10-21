@@ -147,8 +147,10 @@ internal sealed partial class UserRepository
             }
             else
             {
-                // Re-FK to target. Clear IsPrimary/IsGoogle so the target's
-                // existing authoritative selections stand.
+                // Re-FK to target. Clear IsPrimary so the target's existing primary stands.
+                // IsGoogle is frozen (GoogleIntegration owns the identity since Users
+                // decomposition commit 15); clearing it here keeps the target's legacy
+                // designation the one the google.workspace-identities fallback reads.
                 ctx.Entry(src).Property(nameof(UserEmail.UserId)).CurrentValue = targetUserId;
                 src.IsPrimary = false;
                 src.IsGoogle = false;
@@ -252,47 +254,6 @@ internal sealed partial class UserRepository
             .Select(ue => ue.UserId)
             .Distinct()
             .ToListAsync(ct);
-    }
-
-    public async Task SetUserEmailGoogleExclusiveAsync(
-        Guid userId,
-        Guid userEmailId,
-        Instant updatedAt,
-        CancellationToken cancellationToken = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(cancellationToken);
-        await using var tx = await ctx.Database.BeginTransactionAsync(cancellationToken);
-
-        var rows = await ctx.UserEmails
-            .Where(e => e.UserId == userId)
-            .ToListAsync(cancellationToken);
-
-        foreach (var row in rows)
-        {
-            var shouldBeGoogle = row.Id == userEmailId;
-            var rowChanged = false;
-
-            if (row.IsGoogle != shouldBeGoogle)
-            {
-                row.IsGoogle = shouldBeGoogle;
-                rowChanged = true;
-            }
-
-            // Designating a row as the Google identity clears a prior rejection ON THAT ROW so sync
-            // retries the address (#687 retry path). Applies even when IsGoogle is unchanged — that's
-            // how the sole/current rejected address gets a retry. Don't downgrade a Valid status.
-            if (shouldBeGoogle && row.GoogleEmailStatus == GoogleEmailStatus.Rejected)
-            {
-                row.GoogleEmailStatus = GoogleEmailStatus.Unknown;
-                rowChanged = true;
-            }
-
-            if (rowChanged)
-                row.UpdatedAt = updatedAt;
-        }
-
-        await ctx.SaveChangesAsync(cancellationToken);
-        await tx.CommitAsync(cancellationToken);
     }
 
     public async Task AddUserEmailAsync(UserEmail email, CancellationToken ct = default)

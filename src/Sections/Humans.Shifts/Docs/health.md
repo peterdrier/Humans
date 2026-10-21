@@ -28,7 +28,7 @@ audited and the affected coordinators are notified.
 | **Review a slot** — approve/refuse/no-show/remove/voluntell, single and block | `ShiftAdminController` signups/voluntell routes, `ShiftDashboardController.Voluntell`, `IShiftSignupService` review methods, `IShiftSignups.Voluntell/Refuse` | Agent (voluntell) |
 | **Look at the schedule** — browse, mine, urgent, staffing snapshot, summary-by-camp, per-user/per-rota projections, search hit | `GET /Shifts`, `/Shifts/Mine`, `/Shifts/Summary*`, `IShiftManagementService`, `IShiftView`/`IShiftRowView`, `<vc:shifts-search-result>`, `<vc:dashboard-shifts>`, `<vc:shifts-gallery>`, `<vc:shift-signups>`, `<vc:onboarding-shifts-list>` | Search, Teams, Tickets, Store, Cantina, Gate, MailerLite, Camps, Events, Users, Scanner, Surveys |
 | **The event calendar** — active event settings, build sub-periods, EE close, browsing toggle | `GET/POST /Shifts/Settings`, `IBurnSettingsService`/`BurnSettingsInfo`, `BuildSubPeriodClassifier` | Every section that needs "which year / which day offset is today" (Events, Camps, Tickets, Notifications, Settings, …) |
-| **Who I am as a volunteer** — shift profile, tag preferences, general availability | `ShiftProfileController` (`/Profile/Me/ShiftInfo`), `POST /Shifts/Preferences/Tags`, `POST /Shifts/Mine/Availability`, `IShiftVolunteerProfiles`, `IVolunteerTrackingManagement.SetAvailabilityAsync` | Users (profile page), Onboarding |
+| **Who I am as a volunteer** — shift profile, tag preferences, general availability | `ShiftProfileController` (`/Shifts/ShiftInfo`), `POST /Shifts/Preferences/Tags`, `POST /Shifts/Mine/Availability`, `IShiftVolunteerProfiles`, `IVolunteerTrackingManagement.SetAvailabilityAsync` | Users (profile page), Onboarding |
 | **Coordinator analytics** — overview, activity, trends, heatmap, daily staffing, duration breakdown, coverage pies, post-event stats, workload | `ShiftDashboardController`, `ShiftWorkloadAdminController`, `IShiftManagement` analytics methods, `IWorkloadService` | none |
 | **Build-week tracking** — availability grid, day-off, camp-set-up marker, xlsx export, profile build strip, EE derivation | `VolunteerTrackingController`, `IVolunteerTrackingManagement`, `IVolunteerTrackingExportService`, `IVolunteerTrackingService`, `IEarlyEntryProvider` | Users (build strip), EarlyEntry (provider) |
 | **Tell people** — rota / team-rota coordinator email | `ShiftAdminController` `Email` routes, `IRotaCoordinatorMessageService` | none |
@@ -108,8 +108,6 @@ The shapes imply:
 
 ## Load-bearing weirdness
 
-- `ShiftProfileController` routes under `/Profile`, not `/Shifts`: the URL predates the
-  section split and is bookmarked/embedded; keep it.
 - `IShiftView` is a **singleton** over a keyed-scoped inner and implements `IHostedService`
   with no-op start/stop for symmetry with the sibling caches — the registration looks
   redundant and is not.

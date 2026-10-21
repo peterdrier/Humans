@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Humans.Teams.Data;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Base.Extensions;
@@ -26,6 +27,7 @@ internal sealed class TeamController(
     ITeamManagementService teamService,
     ITeamPageService teamPageService,
     IUserService userService,
+    IConsentService consentService,
     ITeamResourceService teamResourceService,
     IStringLocalizer<TeamsResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer,
@@ -233,8 +235,9 @@ internal sealed class TeamController(
         if (currentMonth < 1 || currentMonth > 12)
             currentMonth = clock.GetCurrentInstant().InZone(currentZone).Month;
 
+        var approved = await ApprovedUserIdsAsync(ct);
         var profilesWithBirthdays = (await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
-            .Where(u => u.Profile is { IsApproved: true } && !u.IsSuspended
+            .Where(u => u.Profile is not null && approved.Contains(u.Id) && !u.IsSuspended
                         && u.Profile.BirthdayMonth == currentMonth
                         && u.Profile.BirthdayDay.HasValue)
             .OrderBy(u => u.Profile!.BirthdayDay)
@@ -332,8 +335,9 @@ internal sealed class TeamController(
     [HttpGet("Map")]
     public async Task<IActionResult> Map(CancellationToken ct)
     {
+        var approved = await ApprovedUserIdsAsync(ct);
         var profiles = (await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
-            .Where(u => u.Profile is { IsApproved: true, Latitude: not null, Longitude: not null } && !u.IsSuspended)
+            .Where(u => u.Profile is { Latitude: not null, Longitude: not null } && approved.Contains(u.Id) && !u.IsSuspended)
             .Select(u => new LocationProfileInfo(
                 u.Id,
                 u.BurnerName,
@@ -417,7 +421,7 @@ internal sealed class TeamController(
             return currentUserError;
         }
 
-        var team = await teamService.GetTeamEntityBySlugAsync(slug, ct);
+        var team = await teamService.GetTeamBySlugAsync(slug, ct);
         if (team is null || !team.IsActive)
         {
             return NotFound();
@@ -434,8 +438,7 @@ internal sealed class TeamController(
             return NotFound();
         }
 
-        var teamInfo = await teamService.GetTeamAsync(team.Id, ct);
-        var isMember = teamInfo is { IsActive: true } && teamInfo.Members.Any(m => m.UserId == user.Id);
+        var isMember = team.Members.Any(m => m.UserId == user.Id);
         if (isMember)
         {
             SetError(localizer["Teams_Team_AlreadyMember"].Value);
@@ -470,7 +473,7 @@ internal sealed class TeamController(
             return currentUserError;
         }
 
-        var team = await teamService.GetTeamEntityBySlugAsync(slug);
+        var team = await teamService.GetTeamBySlugAsync(slug);
         if (team is null || !team.IsActive)
         {
             return NotFound();
@@ -532,7 +535,7 @@ internal sealed class TeamController(
             return currentUserError;
         }
 
-        var team = await teamService.GetTeamEntityBySlugAsync(slug);
+        var team = await teamService.GetTeamBySlugAsync(slug);
         if (team is null)
         {
             return NotFound();
@@ -703,7 +706,7 @@ internal sealed class TeamController(
     [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
     public async Task<IActionResult> EditTeam(Guid id, CancellationToken cancellationToken)
     {
-        var team = await teamService.GetTeamByIdAsync(id, cancellationToken);
+        var team = await teamService.GetTeamAsync(id, cancellationToken);
         if (team is null)
         {
             return NotFound();
@@ -846,4 +849,10 @@ internal sealed class TeamController(
         model.EligibleParents = await GetEligibleParentTeamsAsync(excludeTeamId, CancellationToken.None);
     }
 
+    // Birthdays and the map list members the Consent Coordinator cleared.
+    private async Task<HashSet<Guid>> ApprovedUserIdsAsync(CancellationToken ct) =>
+        (await consentService.GetConsentReviewsAsync(ct)).Values
+            .Where(r => r.IsApproved)
+            .Select(r => r.UserId)
+            .ToHashSet();
 }

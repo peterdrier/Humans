@@ -13,8 +13,8 @@ directly. Owns `Events`,
 edition settings row is Settings' `settings_event` table (on
 `SettingsDbContext`, read only through `ISettingsService`; Shifts' similarly-named
 `event_settings` is a different table Events never reads) and
-`EventParticipations` is **Users-owned** (lives on `UsersDbContext` —
-see [Users](../../Humans.Users/Docs/data-access.md)); `EventGuideDbContext`
+event participation is **Tickets-owned** (lives on `TicketsDbContext` —
+see [Tickets](../../Humans.Tickets/Docs/data-access.md)); `EventGuideDbContext`
 deliberately excludes both
 (see its doc comment).
 
@@ -75,9 +75,9 @@ No cross-section calls — `IClock` and `IStringLocalizer<EventsResource>` only.
 | `EventGuideSettingsView` singleton | Static | yes | yes | yes |
 
 Implements `IEventManagement` (which extends the public contract
-`IEventService`), `IEventSettingsChangeListener`, `IUserDataContributor`
-(delegates to the inner service, then refreshes the affected cache slice —
-erasure edits a cached row's Host name),
+`IEventService`), `IEventSettingsChangeListener`, `IUserDataContributor` and
+`IUserMerge` (each delegates to the inner service, then refreshes the approved
+events — erasure edits a cached row's Host name, the merge fold its submitter),
 `IHostedService` (`StartAsync` warms all four projections).
 `IEventService` (approved events / guide settings / favourite ids) is
 registered as a forward to this singleton so cross-section consumers (the

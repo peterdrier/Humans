@@ -70,7 +70,7 @@ Project references (`Humans.Scanner.csproj`): `Humans.Base`, `Humans.Issues` (`I
 - **Tickets**: `ITicketService.FindCurrentEventAttendeeByBarcodeAsync` (read-only) and `<vc:ticket-stub>`. The barcode tool has no runtime Tickets coupling — it is gated behind `ScannerAccess` because its use case is reading TicketTailor ticket stubs.
 - **EarlyEntry**: `IEarlyEntryService.GetForUserAsync` — earliest entry date and grant-source list for the matched Human.
 - **Consent**: `IConsentService.GetPendingDocumentNamesAsync` — names of unsigned required consent documents for the matched Human.
-- **Users**: `IUserService.GetUserInfoAsync` — event participations (check-in timestamp for the active event year).
+- **Tickets**: `ITicketService.GetParticipationsAsync` — the matched Human's check-in timestamp for the active event year.
 - **Events**: `IEventService.GetApprovedEventsAsync` — events the matched Human is offering (`SubmitterUserId` match, non-camp, expanded per occurrence for recurring events).
 - **Settings / Calendar**: `ISettingsService.GetActiveEventSettingsAsync` (`EventSettingsInfo`) for the active event year and time zone; `IICalFeedService.GetFeedItemsAsync` for the Human's shift commitments (`Shifts`-sourced items only).
 - **Issues**: feedback filed from `/Scanner/*` routes to the `Scanner` queue this section declares on its own `Section` through `IIssueQueueOwner` (see "Issue queue" below), which TicketAdmin and Board handlers see. Scanner does not call `IIssuesService`.

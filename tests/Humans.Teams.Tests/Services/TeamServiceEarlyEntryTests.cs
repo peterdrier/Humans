@@ -12,6 +12,8 @@ using Humans.Notifications.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Services;
 using Humans.Teams.Data;
+using Humans.Teams.Contracts;
+using Humans.Base.Enums;
 using Humans.Teams.Domain;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -37,6 +39,8 @@ public sealed class TeamServiceEarlyEntryTests
     private readonly IEarlyEntryInvalidator _eeInvalidator = Substitute.For<IEarlyEntryInvalidator>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
     private readonly TeamService _service;
+    private readonly ISystemTeamSync _systemTeamSync = Substitute.For<ISystemTeamSync>();
+    private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
     private readonly INotificationMeterCacheInvalidator _meterInvalidator = Substitute.For<INotificationMeterCacheInvalidator>();
 
     public TeamServiceEarlyEntryTests()
@@ -52,8 +56,11 @@ public sealed class TeamServiceEarlyEntryTests
             _eeInvalidator,
             new ServiceLocatorBuilder()
                 .With<IGoogleSyncOutboxService>()
+                .With<IGoogleIntegrationService>()
                 .With<ITeamResourceService>()
                 .With<IUserService>()
+                .With(_systemTeamSync)
+                .With(_roles)
                 .Build(),
             _clock,
             NullLogger<TeamService>.Instance);
@@ -436,6 +443,47 @@ public sealed class TeamServiceEarlyEntryTests
     // ==========================================================================
     // ReassignAsync (merge fold)
     // ==========================================================================
+
+    [HumansFact]
+    public async Task ReassignAsync_MovesRolesThroughAuthorizedRemoval_AndRetriesCoordinatorSync()
+    {
+        var sourceId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var team = new Team { Id = Guid.NewGuid(), Name = "Merge team", Slug = "merge-team" };
+        var source = new TeamMember { Id = Guid.NewGuid(), TeamId = team.Id, Team = team, UserId = sourceId };
+        var target = new TeamMember { Id = Guid.NewGuid(), TeamId = team.Id, Team = team, UserId = targetId };
+        _repo.GetActiveByUserIdAsync(sourceId, Arg.Any<CancellationToken>())
+            .Returns(_ => source.LeftAt is null ? new[] { source } : []);
+        _repo.GetByIdsWithParentsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, Team> { [team.Id] = team });
+        _repo.GetByIdAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
+        _repo.FindActiveMemberForMutationAsync(team.Id, sourceId, Arg.Any<CancellationToken>()).Returns(source);
+        _repo.FindActiveMemberForMutationAsync(team.Id, targetId, Arg.Any<CancellationToken>()).Returns(target);
+        _roles.IsUserAdminAsync(actorId, Arg.Any<CancellationToken>()).Returns(true);
+        _repo.MarkMemberLeftAsync(source.Id, Arg.Any<Instant>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                source.LeftAt = call.Arg<Instant>();
+                return Array.Empty<TeamRoleAssignment>();
+            });
+        _systemTeamSync.SyncMembershipForUserAsync(sourceId, SystemTeamType.Coordinators, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("sync unavailable")), Task.CompletedTask);
+        var first = () => _service.ReassignAsync(sourceId, targetId, actorId,
+            _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
+
+        await first.Should().ThrowAsync<InvalidOperationException>().WithMessage("sync unavailable");
+        _eeInvalidator.Received(1).InvalidateUser(sourceId);
+        _eeInvalidator.Received(1).InvalidateUser(targetId);
+        await _service.ReassignAsync(sourceId, targetId, actorId,
+            _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).MarkMemberLeftAsync(source.Id, Arg.Any<Instant>(), target.Id, Arg.Any<CancellationToken>());
+        await _systemTeamSync.Received(2).SyncMembershipForUserAsync(
+            sourceId, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
+        await _systemTeamSync.Received(1).SyncMembershipForUserAsync(
+            targetId, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
+    }
 
     [HumansFact]
     public async Task ReassignAsync_FoldsGrantsToTargetAndInvalidatesBoth()

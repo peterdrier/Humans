@@ -30,7 +30,7 @@ internal sealed partial class WorkgroupService
         w.DormantReason,
         w.Reasons,
         w.DriveFolderId,
-        w.DiscordChannelUrl,
+        SafeDiscordLink(w.DiscordChannelUrl),
         w.AppliedByUserId,
         w.AppliedAt,
         w.RegisteredAt,
@@ -170,7 +170,7 @@ internal sealed partial class WorkgroupService
     private async Task<WorkgroupMutationResult<WorkgroupApplication>> ValidateApplicationAsync(
         WorkgroupApplication application, CancellationToken ct)
     {
-        if (ValidateRegisterFields(application.Name, application.Purpose, application.Deliverable) is { } refusal)
+        if (ValidateRegisterFields(application.Name, application.Purpose, application.Deliverable, application.DiscordChannelUrl) is { } refusal)
             return new(Refusal: refusal);
         if (application.SecondCoordinatorUserId is not { } second)
             return new(application);
@@ -186,7 +186,7 @@ internal sealed partial class WorkgroupService
         return user is null || user.IsTombstone ? null : user.Id;
     }
 
-    private static WorkgroupRefusal? ValidateRegisterFields(string name, string purpose, string deliverable)
+    private static WorkgroupRefusal? ValidateRegisterFields(string name, string purpose, string deliverable, string? discordChannelUrl)
     {
         if (string.IsNullOrWhiteSpace(name))
             return new(WorkgroupErrorKeys.NameRequired);
@@ -194,7 +194,17 @@ internal sealed partial class WorkgroupService
             return new(WorkgroupErrorKeys.PurposeRequired);
         if (string.IsNullOrWhiteSpace(deliverable))
             return new(WorkgroupErrorKeys.DeliverableRequired);
+        if (!string.IsNullOrWhiteSpace(discordChannelUrl) && SafeDiscordLink(discordChannelUrl) is null)
+            return new(WorkgroupErrorKeys.DiscordUrlInvalid);
         return null;
+    }
+
+    // The same check protects existing stored links when projecting them into an href.
+    private static string? SafeDiscordLink(string? url)
+    {
+        var trimmed = Trimmed(url);
+        return Uri.TryCreate(trimmed, UriKind.Absolute, out var uri)
+            && uri.Scheme is "http" or "https" ? trimmed : null;
     }
 
     private static WorkgroupRefusal? ValidateMeeting(WorkgroupMeetingSave save)

@@ -35,11 +35,12 @@ internal sealed class UserEmailConfiguration : IEntityTypeConfiguration<UserEmai
         builder.Property(e => e.UpdatedAt)
             .IsRequired();
 
-        // Provider / ProviderKey carry the OAuth identity tied to this row;
-        // IsGoogle marks the canonical Workspace identity.
-        // Single-row-per-(Provider, ProviderKey) and at-most-one-IsGoogle-true-
-        // per-UserId are service-enforced inside UserEmailService — no DB
-        // indexes per feedback_db_enforcement_minimal.
+        // Provider / ProviderKey carry the OAuth identity tied to this row.
+        // Single-row-per-(Provider, ProviderKey) is service-enforced inside
+        // UserEmailService — no DB index per feedback_db_enforcement_minimal.
+        // IsGoogle / GoogleEmailStatus are frozen: the Google Workspace identity is
+        // GoogleIntegration's google_workspace_identities (Users decomposition commit 15);
+        // the columns stay mapped until the drop PR after google.workspace-identities is done.
         builder.Property(e => e.Provider)
             .HasMaxLength(64);
 
@@ -49,13 +50,12 @@ internal sealed class UserEmailConfiguration : IEntityTypeConfiguration<UserEmai
         builder.Property(e => e.IsGoogle)
             .IsRequired();
 
-        // Per-address Google sync status. Mirrors the legacy User.GoogleEmailStatus
-        // column mapping: string-converted enum, Unknown default/sentinel.
+        // Frozen per-address Google sync status: string-converted enum, Unknown default/sentinel.
         builder.Property(e => e.GoogleEmailStatus)
             .HasConversion<string>()
             .HasMaxLength(50)
-            .HasDefaultValue(GoogleEmailStatus.Unknown)
-            .HasSentinel(GoogleEmailStatus.Unknown)
+            .HasDefaultValue(LegacyGoogleEmailStatus.Unknown)
+            .HasSentinel(LegacyGoogleEmailStatus.Unknown)
             .IsRequired();
 
         builder.HasOne<User>()

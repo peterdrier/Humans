@@ -34,12 +34,6 @@ internal interface IUserInfoSliceRefresher
         [CallerMemberName] string memberName = "",
         [CallerFilePath] string filePath = "");
 
-    Task RefreshEventParticipationsAsync(
-        Guid userId,
-        CancellationToken ct = default,
-        [CallerMemberName] string memberName = "",
-        [CallerFilePath] string filePath = "");
-
     Task RefreshExternalLoginsAsync(
         Guid userId,
         CancellationToken ct = default,

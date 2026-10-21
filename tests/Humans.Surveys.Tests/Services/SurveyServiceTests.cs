@@ -1,3 +1,5 @@
+using Humans.Consent.Contracts;
+using Humans.Governance.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
@@ -36,6 +38,10 @@ public class SurveyServiceTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 6, 4, 12, 0));
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IGovernanceService _governance = Substitute.For<IGovernanceService>();
+    private readonly Dictionary<Guid, MembershipTier> _tiers = [];
+    private readonly IConsentService _consent = Substitute.For<IConsentService>();
+    private readonly HashSet<Guid> _approved = [];
     private readonly ITicketService _ticketService = Substitute.For<ITicketService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
@@ -49,6 +55,14 @@ public class SurveyServiceTests
 
     public SurveyServiceTests()
     {
+        _governance.GetMembershipTierAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => _tiers.GetValueOrDefault(call.Arg<Guid>(), MembershipTier.Volunteer));
+        _governance.GetMembershipTiersAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => new Dictionary<Guid, MembershipTier>(_tiers));
+        _consent.GetConsentReviewAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => Review(call.Arg<Guid>()));
+        _consent.GetConsentReviewsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => _approved.ToDictionary(id => id, Review));
         _repo.GetInvitationsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<SurveyInvitation>());
         _repo.GetInvitationsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -57,8 +71,13 @@ public class SurveyServiceTests
 
     private SurveyService CreateService(ILogger<SurveyService>? logger = null, ISurveyRepository? repository = null) => new(
         repository ?? _repo, _audit, _clock, logger ?? NullLogger<SurveyService>.Instance,
-        _teamService, _userService, _ticketService, _shiftView,
+        _teamService, _userService, _governance, _consent, _ticketService, _shiftView,
         _userEmailService, _emailService, _emailMessages, _tokenProvider, _translation, _fileStorage);
+
+    /// <summary>The Consent Coordinator review: cleared for ids in <see cref="_approved"/>.</summary>
+    private ConsentReviewInfo Review(Guid id) => _approved.Contains(id)
+        ? ConsentReviewInfo.None(id) with { Status = ConsentCheckStatus.Cleared, IsApproved = true }
+        : ConsentReviewInfo.None(id);
 
     private SurveyReminderSender CreateReminderSender() => new(
         _repo, _audit, _clock, _userService, _userEmailService, _emailService,
@@ -1209,14 +1228,14 @@ public class SurveyServiceTests
             new User { Id = id, PreferredLanguage = "en", LastLoginAt = lastLogin, State = state },
             [], [], [], null, []);
 
-    private static UserInfo Asociado(Guid id, MembershipTier tier = MembershipTier.Asociado)
+    private UserInfo Asociado(Guid id, MembershipTier tier = MembershipTier.Asociado)
     {
+        _tiers[id] = tier;
+        _approved.Add(id);
         var profile = UserFixtures.Profile(
             burnerName: "Voter",
             firstName: "Eligible",
-            lastName: "Human",
-            isApproved: true,
-            membershipTier: tier);
+            lastName: "Human");
         return new UserInfo(
             Id: id,
             BurnerName: profile.BurnerName,
@@ -1229,8 +1248,6 @@ public class SurveyServiceTests
             DeletionRequestedAt: null,
             DeletionScheduledFor: null,
             DeletionEligibleAfter: null,
-            UnsubscribedFromCampaigns: false,
-            SuppressScheduleChangeEmails: false,
             ContactSource: null,
             ExternalSourceId: null,
             MergedToUserId: null,
@@ -1653,7 +1670,7 @@ public class SurveyServiceTests
                 if (fail) throw new InvalidOperationException("outbox unavailable");
             });
         var service = new SurveyService(repo, _audit, _clock, NullLogger<SurveyService>.Instance,
-            _teamService, _userService, _ticketService, _shiftView, _userEmailService,
+            _teamService, _userService, _governance, _consent, _ticketService, _shiftView, _userEmailService,
             _emailService, _emailMessages, _tokenProvider, _translation, _fileStorage);
 
         var first = await service.SendInvitesAsync(survey.Id, Guid.NewGuid(), ct);
@@ -2151,7 +2168,7 @@ public class SurveyServiceTests
 
     private static UserInfo UserInfoWithName(Guid id, string burnerName, string culture = "en") => new(
         id, burnerName, false, culture, null, Instant.MinValue, null, null, null, null, null,
-        false, false, null, null, null, null, null,
+        null, null, null, null, null,
         [], [], [], null, []);
 
     // ── Answering (wizard entry) ───────────────────────────────────────────────
@@ -3277,6 +3294,67 @@ public class SurveyServiceTests
 
         result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
         result.MissingRequired.Concat(result.InvalidAnswers ?? []).Should().Contain(id);
+        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
+            Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(SurveyQuestionType.ShortText, false, 4000)]
+    [InlineData(SurveyQuestionType.ShortText, false, 4001)]
+    [InlineData(SurveyQuestionType.ShortText, true, 4000)]
+    [InlineData(SurveyQuestionType.ShortText, true, 4001)]
+    [InlineData(SurveyQuestionType.LongText, false, 4000)]
+    [InlineData(SurveyQuestionType.LongText, false, 4001)]
+    [InlineData(SurveyQuestionType.LongText, true, 4000)]
+    [InlineData(SurveyQuestionType.LongText, true, 4001)]
+    public async Task AdvanceWizardAsync_bounds_text_before_autosave_and_preserves_input(
+        SurveyQuestionType type, bool supplementaryCharacters, int characterCount)
+    {
+        var survey = SurveyForWizard(out var questionId, out _);
+        survey.Questions.Single(q => q.Id == questionId).Type = type;
+        var state = WizardState(survey.Id);
+        state.Anonymity = ResponseAnonymity.Identified;
+        state.DraftResponseId = Guid.NewGuid();
+        var text = string.Concat(Enumerable.Repeat(supplementaryCharacters ? "😀" : "x", characterCount));
+
+        var result = await CreateService().AdvanceWizardAsync(
+            state, 1, back: false, [TextAns(questionId, text)], ct: TestContext.Current.CancellationToken);
+
+        state.Answers[questionId.ToString()].TextValue.Should().Be(text);
+        if (characterCount > 4000)
+        {
+            result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
+            result.InvalidAnswers.Should().ContainSingle().Which.Should().Be(questionId);
+            state.CurrentPage.Should().Be(1);
+            await _repo.DidNotReceive().SaveDraftAnswersAsync(
+                Arg.Any<Guid>(), Arg.Any<IReadOnlyList<SurveyAnswer>>(),
+                Arg.Any<SurveyInputMethod>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            result.Outcome.Should().Be(SurveyWizardOutcome.Navigated);
+            await _repo.Received(1).SaveDraftAnswersAsync(
+                state.DraftResponseId.Value,
+                Arg.Is<IReadOnlyList<SurveyAnswer>>(answers => answers.Single().TextValue == text),
+                state.InputMethod, state.Culture, Arg.Any<CancellationToken>());
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(SurveyQuestionType.ShortText)]
+    [InlineData(SurveyQuestionType.LongText)]
+    public async Task SubmitResponseAsync_rejects_overlong_text_before_persistence(SurveyQuestionType type)
+    {
+        var survey = SurveyForWizard(out var questionId, out _);
+        survey.Questions.Single(q => q.Id == questionId).Type = type;
+        var submission = new SurveySubmission(
+            survey.Id, null, null, null,
+            ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, "en",
+            [TextAns(questionId, new string('x', 4001))]);
+
+        var act = async () => await CreateService().SubmitResponseAsync(submission, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Survey answers are invalid.");
         await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }

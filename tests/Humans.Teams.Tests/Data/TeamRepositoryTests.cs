@@ -43,8 +43,8 @@ public sealed class TeamRepositoryTests : IDisposable
         var member = new TeamMember { Id = Guid.NewGuid(), TeamId = Guid.NewGuid(), UserId = Guid.NewGuid() };
         var request = new TeamJoinRequest { Id = Guid.NewGuid(), TeamId = member.TeamId, UserId = member.UserId };
         Func<Task<bool>> insert = () => approveRequest
-            ? repo.ApproveRequestWithMemberAsync(request, member, TestContext.Current.CancellationToken)
-            : repo.TryAddMemberAsync(member, TestContext.Current.CancellationToken);
+            ? repo.ApproveRequestWithMemberAsync(request, member, Xunit.TestContext.Current.CancellationToken)
+            : repo.TryAddMemberAsync(member, Xunit.TestContext.Current.CancellationToken);
 
         if (duplicate)
             (await insert()).Should().BeFalse();
@@ -68,7 +68,7 @@ public sealed class TeamRepositoryTests : IDisposable
         var repo = new TeamRepository(new TestDbContextFactory<TeamsDbContext>(options));
         var team = new Team { Id = Guid.NewGuid(), Name = "Design", Slug = "design" };
         Func<Task<bool>> insert = () => repo.AddTeamWithRequiresApprovalOverrideAsync(
-            team, requiresApproval: true, TestContext.Current.CancellationToken);
+            team, requiresApproval: true, Xunit.TestContext.Current.CancellationToken);
 
         if (retry)
             (await insert()).Should().BeFalse();
@@ -94,7 +94,7 @@ public sealed class TeamRepositoryTests : IDisposable
             .AddInterceptors(new FailedInsert(failure)).Options;
         var repo = new TeamRepository(new TestDbContextFactory<TeamsDbContext>(options));
         var team = new Team { Id = Guid.NewGuid(), Name = "Design", Slug = "design" };
-        Func<Task<TeamUpdateConflict>> update = () => repo.UpdateTeamAsync(team, TestContext.Current.CancellationToken);
+        Func<Task<TeamUpdateConflict>> update = () => repo.UpdateTeamAsync(team, Xunit.TestContext.Current.CancellationToken);
 
         if (expected != TeamUpdateConflict.None)
             (await update()).Should().Be(expected);
@@ -154,9 +154,9 @@ public sealed class TeamRepositoryTests : IDisposable
         };
 
         (await repo.AddTeamWithRequiresApprovalOverrideAsync(
-            team, requiresApproval, TestContext.Current.CancellationToken)).Should().BeTrue();
+            team, requiresApproval, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
 
-        var stored = await repo.GetByIdAsync(team.Id, TestContext.Current.CancellationToken);
+        var stored = await repo.GetByIdAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
         stored!.RequiresApproval.Should().Be(requiresApproval);
         counter.Saves.Should().Be(1);
     }
@@ -170,11 +170,11 @@ public sealed class TeamRepositoryTests : IDisposable
         var team = await SeedTeamAsync("Page");
         var action = new CallToAction { Text = "Join", Url = "/join", Style = CallToActionStyle.Secondary };
         team.CallsToAction = [action];
-        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         _dbContext.ChangeTracker.DetectChanges();
         _dbContext.Entry(team).Property(t => t.CallsToAction).IsModified.Should().BeFalse();
-        (await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
 
         switch (changedField)
         {
@@ -185,8 +185,8 @@ public sealed class TeamRepositoryTests : IDisposable
 
         _dbContext.ChangeTracker.DetectChanges();
         _dbContext.Entry(team).Property(t => t.CallsToAction).IsModified.Should().BeTrue();
-        (await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken)).Should().Be(1);
-        var stored = await _repo.GetByIdAsync(team.Id, TestContext.Current.CancellationToken);
+        (await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+        var stored = await _repo.GetByIdAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
         stored!.CallsToAction.Should().ContainSingle().Which.Should().BeEquivalentTo(action);
     }
 
@@ -194,9 +194,9 @@ public sealed class TeamRepositoryTests : IDisposable
     public async Task GetAllForAdminAsync_LargePageDoesNotWrapToEarlierTeams()
     {
         await SeedTeamAsync("Team");
-        var first = await _repo.GetAllForAdminAsync(1, 50, TestContext.Current.CancellationToken);
+        var first = await _repo.GetAllForAdminAsync(1, 50, Xunit.TestContext.Current.CancellationToken);
         first.Items.Should().ContainSingle();
-        var result = await _repo.GetAllForAdminAsync(int.MaxValue, 50, TestContext.Current.CancellationToken);
+        var result = await _repo.GetAllForAdminAsync(int.MaxValue, 50, Xunit.TestContext.Current.CancellationToken);
         result.Items.Should().BeEmpty();
         result.TotalCount.Should().Be(1);
     }
@@ -206,7 +206,7 @@ public sealed class TeamRepositoryTests : IDisposable
     {
         var team = await SeedTeamAsync("Test");
 
-        var result = await _repo.GetByIdAsync(team.Id, TestContext.Current.CancellationToken);
+        var result = await _repo.GetByIdAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Id.Should().Be(team.Id);
@@ -216,7 +216,7 @@ public sealed class TeamRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetByIdAsync_ReturnsNull_WhenMissing()
     {
-        var result = await _repo.GetByIdAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var result = await _repo.GetByIdAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -229,7 +229,7 @@ public sealed class TeamRepositoryTests : IDisposable
         await SeedActiveMemberAsync(team, user);
         await SeedTeamAsync("Sub", parentTeamId: team.Id);
 
-        var result = await _repo.GetByIdWithRelationsAsync(team.Id, TestContext.Current.CancellationToken);
+        var result = await _repo.GetByIdWithRelationsAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Members.Should().HaveCount(1);
@@ -241,7 +241,7 @@ public sealed class TeamRepositoryTests : IDisposable
     {
         await SeedTeamAsync("Test", slug: "test");
 
-        var exists = await _repo.SlugExistsAsync("test", excludingTeamId: null, ct: TestContext.Current.CancellationToken);
+        var exists = await _repo.SlugExistsAsync("test", excludingTeamId: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         exists.Should().BeTrue();
     }
@@ -251,7 +251,7 @@ public sealed class TeamRepositoryTests : IDisposable
     {
         var team = await SeedTeamAsync("Test", slug: "test");
 
-        var exists = await _repo.SlugExistsAsync("test", excludingTeamId: team.Id, ct: TestContext.Current.CancellationToken);
+        var exists = await _repo.SlugExistsAsync("test", excludingTeamId: team.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
         exists.Should().BeFalse();
     }
@@ -262,7 +262,7 @@ public sealed class TeamRepositoryTests : IDisposable
         await SeedTeamAsync("Active", isActive: true);
         await SeedTeamAsync("Inactive", isActive: false);
 
-        var all = await _repo.GetAllActiveAsync(TestContext.Current.CancellationToken);
+        var all = await _repo.GetAllActiveAsync(Xunit.TestContext.Current.CancellationToken);
 
         all.Should().ContainSingle(t => t.Name == "Active");
     }
@@ -285,10 +285,74 @@ public sealed class TeamRepositoryTests : IDisposable
             Role = TeamMemberRole.Member,
             JoinedAt = _clock.GetCurrentInstant()
         };
-        var ok = await _repo.TryAddMemberAsync(member, TestContext.Current.CancellationToken);
+        var ok = await _repo.TryAddMemberAsync(member, Xunit.TestContext.Current.CancellationToken);
 
         ok.Should().BeTrue();
-        (await _dbContext.TeamMembers.CountAsync(TestContext.Current.CancellationToken)).Should().Be(1);
+        (await _dbContext.TeamMembers.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+    }
+
+    [HumansTheory]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    [InlineData(false, false, true)]
+    [InlineData(false, true, false)]
+    public async Task MarkMemberLeftAsync_MergePreservesRolesSlotsAndProvenance(
+        bool duplicate, bool coordinator, bool assigned)
+    {
+        var team = await SeedTeamAsync("Merge roles");
+        var source = await SeedActiveMemberAsync(team, await SeedUserAsync(),
+            coordinator ? TeamMemberRole.Coordinator : TeamMemberRole.Member);
+        var target = await SeedActiveMemberAsync(team, await SeedUserAsync(),
+            duplicate && coordinator ? TeamMemberRole.Coordinator : TeamMemberRole.Member);
+        var definition = await SeedRoleDefinitionAsync(team, isManagement: coordinator);
+        definition.SlotCount = duplicate ? 2 : 1;
+        definition.Priorities = Enumerable.Repeat(SlotPriority.Critical, definition.SlotCount).ToList();
+        TeamRoleAssignment? expected = null;
+        if (assigned)
+        {
+            await SeedRoleAssignmentAsync(definition, source);
+            expected = await _dbContext.Set<TeamRoleAssignment>().SingleAsync(
+                a => a.TeamMemberId == source.Id, Xunit.TestContext.Current.CancellationToken);
+        }
+        if (duplicate)
+        {
+            expected = new TeamRoleAssignment
+            {
+                Id = Guid.NewGuid(),
+                TeamRoleDefinitionId = definition.Id,
+                TeamMemberId = target.Id,
+                SlotIndex = 1,
+                AssignedAt = _clock.GetCurrentInstant() - Duration.FromDays(2),
+                AssignedByUserId = target.UserId
+            };
+            _dbContext.Set<TeamRoleAssignment>().Add(expected);
+        }
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _dbContext.ChangeTracker.Clear();
+        var now = _clock.GetCurrentInstant();
+
+        await _repo.MarkMemberLeftAsync(source.Id, now, target.Id, Xunit.TestContext.Current.CancellationToken);
+
+        var sourceAfter = await _dbContext.TeamMembers.AsNoTracking().SingleAsync(
+            m => m.Id == source.Id, Xunit.TestContext.Current.CancellationToken);
+        var targetAfter = await _dbContext.TeamMembers.AsNoTracking().SingleAsync(
+            m => m.Id == target.Id, Xunit.TestContext.Current.CancellationToken);
+        sourceAfter.LeftAt.Should().Be(now);
+        targetAfter.LeftAt.Should().BeNull();
+        targetAfter.Role.Should().Be(coordinator ? TeamMemberRole.Coordinator : TeamMemberRole.Member);
+        var assignments = await _dbContext.Set<TeamRoleAssignment>().AsNoTracking()
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        if (expected is null)
+            assignments.Should().BeEmpty();
+        else
+        {
+            var actual = assignments.Should().ContainSingle().Subject;
+            actual.Id.Should().Be(expected.Id);
+            actual.TeamMemberId.Should().Be(target.Id);
+            actual.SlotIndex.Should().Be(expected.SlotIndex);
+            actual.AssignedAt.Should().Be(expected.AssignedAt);
+            actual.AssignedByUserId.Should().Be(expected.AssignedByUserId);
+        }
     }
 
     [HumansFact]
@@ -301,13 +365,13 @@ public sealed class TeamRepositoryTests : IDisposable
         await SeedRoleAssignmentAsync(role, member);
 
         var now = _clock.GetCurrentInstant();
-        var removed = await _repo.MarkMemberLeftAsync(member.Id, now, TestContext.Current.CancellationToken);
+        var removed = await _repo.MarkMemberLeftAsync(member.Id, now, ct: Xunit.TestContext.Current.CancellationToken);
 
         removed.Should().HaveCount(1);
         _dbContext.ChangeTracker.Clear();
-        var reloaded = await _dbContext.TeamMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, TestContext.Current.CancellationToken);
+        var reloaded = await _dbContext.TeamMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.LeftAt.Should().Be(now);
-        (await _dbContext.Set<TeamRoleAssignment>().CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await _dbContext.Set<TeamRoleAssignment>().CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansFact]
@@ -319,9 +383,9 @@ public sealed class TeamRepositoryTests : IDisposable
         var activeMember = await SeedActiveMemberAsync(team, user);
         var inactiveMember = await SeedActiveMemberAsync(inactiveTeam, user);
         inactiveMember.LeftAt = _clock.GetCurrentInstant();
-        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var memberships = await _repo.GetActiveMembershipsForGoogleResyncAsync(user.Id, TestContext.Current.CancellationToken);
+        var memberships = await _repo.GetActiveMembershipsForGoogleResyncAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
 
         memberships.Should().ContainSingle()
             .Which.Should().Be((activeMember.Id, team.Id));
@@ -335,7 +399,7 @@ public sealed class TeamRepositoryTests : IDisposable
     public async Task ReassignActiveJoinRequestsAsync_CollapsesOnlyPendingSourceRequests(
         TeamJoinRequestStatus sourceStatus, bool shouldCollapse)
     {
-        var ct = TestContext.Current.CancellationToken;
+        var ct = Xunit.TestContext.Current.CancellationToken;
         var team = await SeedTeamAsync("Merge requests");
         var source = Guid.NewGuid();
         var target = Guid.NewGuid();
@@ -405,9 +469,9 @@ public sealed class TeamRepositoryTests : IDisposable
             RequestedAt = _clock.GetCurrentInstant()
         };
         _dbContext.TeamJoinRequests.Add(request);
-        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var withdrew = await _repo.WithdrawRequestAsync(request.Id, user.Id, _clock.GetCurrentInstant(), TestContext.Current.CancellationToken);
+        var withdrew = await _repo.WithdrawRequestAsync(request.Id, user.Id, _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
 
         withdrew.Should().BeFalse();
     }
@@ -426,14 +490,14 @@ public sealed class TeamRepositoryTests : IDisposable
             RequestedAt = _clock.GetCurrentInstant()
         };
         _dbContext.TeamJoinRequests.Add(request);
-        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var now = _clock.GetCurrentInstant();
-        var withdrew = await _repo.WithdrawRequestAsync(request.Id, user.Id, now, TestContext.Current.CancellationToken);
+        var withdrew = await _repo.WithdrawRequestAsync(request.Id, user.Id, now, Xunit.TestContext.Current.CancellationToken);
 
         withdrew.Should().BeTrue();
         _dbContext.ChangeTracker.Clear();
-        var reloaded = await _dbContext.TeamJoinRequests.AsNoTracking().FirstAsync(r => r.Id == request.Id, TestContext.Current.CancellationToken);
+        var reloaded = await _dbContext.TeamJoinRequests.AsNoTracking().FirstAsync(r => r.Id == request.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.Status.Should().Be(TeamJoinRequestStatus.Withdrawn);
         reloaded.ResolvedAt.Should().Be(now);
     }
@@ -446,13 +510,13 @@ public sealed class TeamRepositoryTests : IDisposable
         var member = await SeedActiveMemberAsync(team, user);
 
         var now = _clock.GetCurrentInstant();
-        var closedUsers = await _repo.DeactivateTeamAsync(team.Id, now, TestContext.Current.CancellationToken);
+        var closedUsers = await _repo.DeactivateTeamAsync(team.Id, now, Xunit.TestContext.Current.CancellationToken);
 
         closedUsers.Should().BeEquivalentTo([user.Id]);
         _dbContext.ChangeTracker.Clear();
-        var t = await _dbContext.Teams.AsNoTracking().FirstAsync(x => x.Id == team.Id, TestContext.Current.CancellationToken);
+        var t = await _dbContext.Teams.AsNoTracking().FirstAsync(x => x.Id == team.Id, Xunit.TestContext.Current.CancellationToken);
         t.IsActive.Should().BeFalse();
-        var m = await _dbContext.TeamMembers.AsNoTracking().FirstAsync(x => x.Id == member.Id, TestContext.Current.CancellationToken);
+        var m = await _dbContext.TeamMembers.AsNoTracking().FirstAsync(x => x.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
         m.LeftAt.Should().Be(now);
     }
 
@@ -471,9 +535,9 @@ public sealed class TeamRepositoryTests : IDisposable
                 UserId = Guid.NewGuid(),
                 ProjectName = "P",
             });
-        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var grants = await _repo.GetEarlyEntryGrantsForEnabledTeamsAsync(TestContext.Current.CancellationToken);
+        var grants = await _repo.GetEarlyEntryGrantsForEnabledTeamsAsync(Xunit.TestContext.Current.CancellationToken);
 
         grants.Should().ContainSingle().Which.TeamId.Should().Be(active.Id);
     }
@@ -490,12 +554,12 @@ public sealed class TeamRepositoryTests : IDisposable
         await SeedRoleAssignmentAsync(role, m1);
 
         var now = _clock.GetCurrentInstant();
-        var count = await _repo.RevokeAllMembershipsAsync(user.Id, now, TestContext.Current.CancellationToken);
+        var count = await _repo.RevokeAllMembershipsAsync(user.Id, now, Xunit.TestContext.Current.CancellationToken);
 
         count.Should().Be(2);
         _dbContext.ChangeTracker.Clear();
-        (await _dbContext.TeamMembers.AsNoTracking().CountAsync(m => m.UserId == user.Id && m.LeftAt == null, TestContext.Current.CancellationToken)).Should().Be(0);
-        (await _dbContext.Set<TeamRoleAssignment>().AsNoTracking().CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await _dbContext.TeamMembers.AsNoTracking().CountAsync(m => m.UserId == user.Id && m.LeftAt == null, Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await _dbContext.Set<TeamRoleAssignment>().AsNoTracking().CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     // ==========================================================================
@@ -520,7 +584,7 @@ public sealed class TeamRepositoryTests : IDisposable
             UpdatedAt = _clock.GetCurrentInstant()
         };
         _dbContext.Teams.Add(team);
-        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return team;
     }
 
@@ -550,7 +614,7 @@ public sealed class TeamRepositoryTests : IDisposable
             JoinedAt = _clock.GetCurrentInstant()
         };
         _dbContext.TeamMembers.Add(member);
-        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return member;
     }
 
@@ -571,7 +635,7 @@ public sealed class TeamRepositoryTests : IDisposable
             UpdatedAt = _clock.GetCurrentInstant()
         };
         _dbContext.Set<TeamRoleDefinition>().Add(def);
-        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return def;
     }
 
@@ -599,6 +663,6 @@ public sealed class TeamRepositoryTests : IDisposable
             AssignedByUserId = member.UserId
         };
         _dbContext.Set<TeamRoleAssignment>().Add(assignment);
-        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 }

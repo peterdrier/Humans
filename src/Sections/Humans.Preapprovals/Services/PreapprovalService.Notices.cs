@@ -2,7 +2,9 @@ using System.Globalization;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Preapprovals.Contracts;
+using Humans.Preapprovals.Domain;
 using Humans.Notifications.Contracts;
+using Humans.Users.Contracts;
 
 namespace Humans.Preapprovals.Services;
 
@@ -25,14 +27,14 @@ internal sealed partial class PreapprovalService
     // ── Audit ─────────────────────────────────────────────────────────────
 
     private Task AuditGrantAsync(
-        AuditAction action, PreapprovalGrant grant, string description, Guid actorUserId,
+        AuditAction action, Domain.PreapprovalGrant grant, string description, Guid actorUserId,
         Guid? expenseReportId = null) =>
         auditLog.LogAsync(action, AuditEntityTypes.Grant, grant.Id, description, actorUserId,
             relatedEntityId: expenseReportId ?? grant.ProgramId,
             relatedEntityType: expenseReportId is null ? AuditEntityTypes.Program : AuditEntityTypes.ExpenseReport);
 
     private Task AuditProgramAsync(
-        AuditAction action, PreapprovalProgram program, string description, Guid actorUserId,
+        AuditAction action, Domain.PreapprovalProgram program, string description, Guid actorUserId,
         Guid? relatedUserId = null) =>
         auditLog.LogAsync(action, AuditEntityTypes.Program, program.Id, description, actorUserId,
             relatedEntityId: relatedUserId,

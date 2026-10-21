@@ -23,15 +23,7 @@ internal sealed class HumanLifecycleService(
     public async Task<OnboardingResult> SuspendAsync(
         Guid userId, Guid adminId, string? notes, CancellationToken ct = default)
     {
-        var result = await userService.ApplyProfileOnboardingMutationAsync(
-            userId,
-            new UserProfileOnboardingCommand(
-                UserProfileOnboardingMutation.SetSuspension,
-                ActorUserId: adminId,
-                Notes: notes,
-                Suspended: true,
-                AdminSuspension: true),
-            ct);
+        var result = await userService.SetSuspensionAsync(userId, suspended: true, adminSuspension: true, ct);
         if (!result.Success)
             return result;
 
@@ -76,13 +68,7 @@ internal sealed class HumanLifecycleService(
     public async Task<OnboardingResult> UnsuspendAsync(
         Guid userId, Guid adminId, CancellationToken ct = default)
     {
-        var result = await userService.ApplyProfileOnboardingMutationAsync(
-            userId,
-            new UserProfileOnboardingCommand(
-                UserProfileOnboardingMutation.SetSuspension,
-                ActorUserId: adminId,
-                Suspended: false),
-            ct);
+        var result = await userService.SetSuspensionAsync(userId, suspended: false, ct: ct);
         if (!result.Success)
             return result;
 
@@ -113,12 +99,7 @@ internal sealed class HumanLifecycleService(
             return new OnboardingResult(true);
         userId = info.Id; // the suspension read is the survivor's; so are the write and the audit
 
-        var result = await userService.ApplyProfileOnboardingMutationAsync(
-            userId,
-            new UserProfileOnboardingCommand(
-                UserProfileOnboardingMutation.SetSuspension,
-                Suspended: false),
-            ct);
+        var result = await userService.SetSuspensionAsync(userId, suspended: false, ct: ct);
         if (!result.Success)
             return result;
 

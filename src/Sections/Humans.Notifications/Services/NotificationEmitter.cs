@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base.Caching;
 using Humans.Notifications.Data;
@@ -60,14 +61,15 @@ internal sealed class NotificationEmitter(
         var now = clock.GetCurrentInstant();
         var category = source.ToMessageCategory();
 
-        var inboxDisabled = await preferenceService.GetUsersWithInboxDisabledAsync(
-            recipientUserIds, category, cancellationToken);
+        var inboxDisabled = notificationClass == NotificationClass.Informational
+            ? await preferenceService.GetUsersWithInboxDisabledAsync(recipientUserIds, category, cancellationToken)
+            : null;
 
         (title, body) = FitCopyToStorage(title, body);
         var notifications = new List<Notification>(recipientUserIds.Count);
         foreach (var userId in recipientUserIds)
         {
-            if (notificationClass == NotificationClass.Informational && inboxDisabled.Contains(userId))
+            if (inboxDisabled?.Contains(userId) == true)
             {
                 logger.LogDebug(
                     "Skipping informational notification for user {UserId} — InboxEnabled=false for {Category}",

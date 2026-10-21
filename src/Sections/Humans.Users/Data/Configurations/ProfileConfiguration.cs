@@ -49,7 +49,7 @@ internal sealed class ProfileConfiguration : IEntityTypeConfiguration<Profile>
 
         builder.Property(p => p.MembershipTier)
             .IsRequired()
-            .HasDefaultValue(MembershipTier.Volunteer)
+            .HasDefaultValue(LegacyMembershipTier.Volunteer)
             .HasConversion<string>();
 
         builder.Property(p => p.ConsentCheckStatus)

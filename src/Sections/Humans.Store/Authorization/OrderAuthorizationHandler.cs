@@ -16,7 +16,8 @@ namespace Humans.Store.Authorization;
 /// Authorization logic (applies to both <see cref="OrderDto"/> resources for
 /// View/AddLine/RemoveLine/EditCounterparty and <see cref="OrderCreateContext"/>
 /// resources for Create):
-/// - Admin or FinanceAdmin: allow any operation regardless of order state.
+/// - Store admins (Admin, FinanceAdmin, StoreAdmin): allow any operation regardless of order state,
+///   except billing operations on team orders, Refund (Admin/FinanceAdmin only) and DeletePayment (Admin only).
 /// - TeamsAdmin: View any order (camp or team); manage (Create/AddLine/RemoveLine/Delete)
 ///   team orders only, for any department, not only the ones they coordinate. Camp orders
 ///   are view-only. Departments buy from the collective too, and a TeamsAdmin opening the

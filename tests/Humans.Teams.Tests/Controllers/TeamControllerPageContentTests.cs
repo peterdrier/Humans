@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Xunit;
 using System.Globalization;
 using System.Security.Claims;
@@ -55,7 +56,7 @@ public class TeamControllerPageContentTests
             .ToDictionary(team => team.Id));
         var controller = new TeamController(
             teams, pages, Substitute.For<IUserService>(),
-            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
             services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
             new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)
@@ -132,7 +133,7 @@ public class TeamControllerPageContentTests
         };
         var controller = new TeamController(
             teams, Substitute.For<ITeamPageService>(), users,
-            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
             services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
             new ConfigurationRegistry(), SystemClock.Instance, auth, logger)
         {
@@ -253,7 +254,7 @@ public class TeamControllerPageContentTests
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, viewer.ToString()) };
         if (role is not null) claims.Add(new Claim(ClaimTypes.Role, role));
         var controller = new TeamController(
-            teams, pages, Substitute.For<IUserService>(), Substitute.For<ITeamResourceService>(),
+            teams, pages, Substitute.For<IUserService>(), Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(),
             Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<IStringLocalizer<SharedResource>>(),
             new ConfigurationBuilder().Build(), new ConfigurationRegistry(), SystemClock.Instance,
             Substitute.For<IAuthorizationService>(), NullLogger<TeamController>.Instance)
@@ -316,7 +317,7 @@ public class TeamControllerPageContentTests
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, userId.ToString()) };
         if (role is not null) claims.Add(new Claim(ClaimTypes.Role, role));
         var controller = new TeamController(
-            teams, pages, users, Substitute.For<ITeamResourceService>(),
+            teams, pages, users, Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(),
             Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<IStringLocalizer<SharedResource>>(),
             new ConfigurationBuilder().Build(), new ConfigurationRegistry(), SystemClock.Instance,
             Substitute.For<IAuthorizationService>(), NullLogger<TeamController>.Instance)
@@ -343,8 +344,7 @@ public class TeamControllerPageContentTests
     [Xunit.InlineData("my", "viewer")]
     [Xunit.InlineData("my", "requests")]
     [Xunit.InlineData("join", "viewer")]
-    [Xunit.InlineData("join", "entity")]
-    [Xunit.InlineData("join", "info")]
+    [Xunit.InlineData("join", "team")]
     [Xunit.InlineData("join", "pending")]
     public async Task Member_gets_cancel_at_each_read_boundary(string action, string boundary)
     {
@@ -353,7 +353,8 @@ public class TeamControllerPageContentTests
         var userId = Guid.NewGuid();
         var users = Substitute.For<IUserService>();
         var teams = Substitute.For<ITeamManagementService>();
-        var team = new Team { Id = Guid.NewGuid(), Name = "Alpha", Slug = "alpha", IsActive = true };
+        var team = new TeamInfo(Guid.NewGuid(), "Alpha", null, "alpha", true, false, SystemTeamType.None,
+            false, false, false, false, Instant.MinValue, []);
         void CheckCancellation(string read, CancellationToken ct)
         {
             if (string.Equals(boundary, read, StringComparison.Ordinal))
@@ -364,15 +365,10 @@ public class TeamControllerPageContentTests
             CheckCancellation("viewer", call.Arg<CancellationToken>());
             return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
         });
-        teams.GetTeamEntityBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(call =>
+        teams.GetTeamBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(call =>
         {
-            CheckCancellation("entity", call.Arg<CancellationToken>());
-            return Task.FromResult<Team?>(team);
-        });
-        teams.GetTeamAsync(team.Id, Arg.Any<CancellationToken>()).Returns(call =>
-        {
-            CheckCancellation("info", call.Arg<CancellationToken>());
-            return Task.FromResult<TeamInfo?>(null);
+            CheckCancellation("team", call.Arg<CancellationToken>());
+            return Task.FromResult<TeamInfo?>(team);
         });
         teams.GetUserPendingRequestAsync(team.Id, userId, Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -405,7 +401,7 @@ public class TeamControllerPageContentTests
         };
         var controller = new TeamController(
             teams, pages, users,
-            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
             services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
             new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)
@@ -455,9 +451,10 @@ public class TeamControllerPageContentTests
             var users = Substitute.For<IUserService>();
             users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
                 .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
-            var team = new Team { Id = Guid.NewGuid(), Name = "Alpha", Slug = "alpha" };
+            var team = new TeamInfo(Guid.NewGuid(), "Alpha", null, "alpha", true, false, SystemTeamType.None,
+                false, false, false, false, Instant.MinValue, []);
             var teams = Substitute.For<ITeamManagementService>();
-            teams.GetTeamEntityBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(team);
+            teams.GetTeamBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(team);
             var key = unknown ? "Teams_NotMember" : action switch
             {
                 "Join" => "Teams_Team_AlreadyPendingRequest",
@@ -484,7 +481,7 @@ public class TeamControllerPageContentTests
             };
             var controller = new TeamController(
                 teams, Substitute.For<ITeamPageService>(), users,
-                Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+                Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
                 services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
                 new ConfigurationRegistry(), Substitute.For<IClock>(), Substitute.For<IAuthorizationService>(),
                 NullLogger<TeamController>.Instance)
@@ -535,9 +532,10 @@ public class TeamControllerPageContentTests
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
-        var team = new Team { Id = Guid.NewGuid(), Name = "Alpha", Slug = "alpha", RequiresApproval = true };
+        var team = new TeamInfo(Guid.NewGuid(), "Alpha", null, "alpha", true, false, SystemTeamType.None,
+            true, false, false, false, Instant.MinValue, []);
         var teams = Substitute.For<ITeamManagementService>();
-        teams.GetTeamEntityBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(team);
+        teams.GetTeamBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(_ => team);
         var http = new DefaultHttpContext
         {
             RequestServices = services,
@@ -546,7 +544,7 @@ public class TeamControllerPageContentTests
         };
         var controller = new TeamController(
             teams, Substitute.For<ITeamPageService>(), users,
-            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
             services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
             new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)
@@ -590,19 +588,17 @@ public class TeamControllerPageContentTests
         await teams.Received(1).JoinTeamAsync(team.Id, userId, model.Message, Arg.Any<CancellationToken>());
 
         controller.ModelState.AddModelError(nameof(model.Message), "invalid");
-        team.SystemTeamType = SystemTeamType.Volunteers;
+        team = team with { IsSystemTeam = true, SystemTeamType = SystemTeamType.Volunteers };
         (await controller.Join(team.Slug, model)).Should().BeOfType<RedirectToActionResult>();
         controller.TempData[TempDataKeys.ErrorMessage].Should().Be(
             services.GetRequiredService<IStringLocalizer<TeamsResource>>()["Teams_Team_CannotJoinSystem"].Value);
-        team.SystemTeamType = SystemTeamType.None;
-        team.IsHidden = true;
+        team = team with { IsSystemTeam = false, SystemTeamType = SystemTeamType.None, IsHidden = true };
         (await controller.Join(team.Slug, model)).Should().BeOfType<NotFoundResult>();
         model.TeamId = Guid.NewGuid();
         (await controller.Join(team.Slug, model)).Should().BeOfType<BadRequestResult>();
         await teams.Received(1).JoinTeamAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
 
-        team.IsHidden = false;
-        team.IsActive = false;
+        team = team with { IsHidden = false, IsActive = false };
         model.TeamId = team.Id;
         controller.ModelState.Clear();
         (await controller.Join(team.Slug)).Should().BeOfType<NotFoundResult>();
@@ -631,7 +627,7 @@ public class TeamControllerPageContentTests
         pages.GetTeamPageDetailAsync("test", null, false, Arg.Any<CancellationToken>()).Returns(page);
         var controller = new TeamController(
             Substitute.For<ITeamManagementService>(), pages, Substitute.For<IUserService>(),
-            Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>(),
             Substitute.For<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
             new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)

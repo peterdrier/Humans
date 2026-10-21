@@ -343,7 +343,7 @@ internal sealed partial class WorkgroupService(
         var workgroupResult = await RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (ValidateRegisterFields(edit.Name, edit.Purpose, edit.Deliverable) is { } fieldsRefusal) return new(Refusal: fieldsRefusal);
+        if (ValidateRegisterFields(edit.Name, edit.Purpose, edit.Deliverable, edit.DiscordChannelUrl) is { } fieldsRefusal) return new(Refusal: fieldsRefusal);
 
         var now = clock.GetCurrentInstant();
         // The deliverable sentence is the group's promise; changing any part of it is a
