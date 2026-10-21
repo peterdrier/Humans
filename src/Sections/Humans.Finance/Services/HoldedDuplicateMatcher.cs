@@ -30,15 +30,27 @@ internal static class HoldedDuplicateMatcher
         string.Equals(doc.Description, booking.Description, StringComparison.Ordinal)
         && doc.Total == booking.BookedAmount;
 
-    /// <summary>Every line with at least one duplicate. <paramref name="contactsByUser"/> widens
-    /// the search from the line's own contact to every contact the member holds (the race also
-    /// created a second contact for three members); a member with no entry is searched on the
-    /// contacts their bookings name. Lines whose kept document is not in <paramref name="docs"/>
-    /// are skipped: with nothing to keep, nothing can be called a duplicate.</summary>
+    /// <summary>Every line with at least one duplicate under the list-level rule
+    /// (<see cref="Matches"/>). <paramref name="contactsByUser"/> widens the search from the
+    /// line's own contact to every contact the member holds (the race also created a second
+    /// contact for three members); a member with no entry is searched on the contacts their
+    /// bookings name. Lines whose kept document is not in <paramref name="docs"/> are skipped:
+    /// with nothing to keep, nothing can be called a duplicate.</summary>
     internal static IReadOnlyList<Match> Find(
         IReadOnlyList<ExpenseHoldedBooking> bookings,
         IReadOnlyList<HoldedPurchaseDocListItemDto> docs,
-        IReadOnlyDictionary<Guid, IReadOnlySet<string>> contactsByUser)
+        IReadOnlyDictionary<Guid, IReadOnlySet<string>> contactsByUser) =>
+        Find(bookings, docs, contactsByUser, Matches);
+
+    /// <summary><see cref="Find(IReadOnlyList{ExpenseHoldedBooking}, IReadOnlyList{HoldedPurchaseDocListItemDto}, IReadOnlyDictionary{Guid, IReadOnlySet{string}})"/>
+    /// under <paramref name="isDuplicate"/> instead of the list-level rule: once notes are known from
+    /// the single GET, a candidate must go to the line whose notes it carries, not to the first
+    /// line with the same description and total.</summary>
+    internal static IReadOnlyList<Match> Find(
+        IReadOnlyList<ExpenseHoldedBooking> bookings,
+        IReadOnlyList<HoldedPurchaseDocListItemDto> docs,
+        IReadOnlyDictionary<Guid, IReadOnlySet<string>> contactsByUser,
+        Func<ExpenseHoldedBooking, HoldedPurchaseDocListItemDto, bool> isDuplicate)
     {
         var docById = docs.GroupBy(d => d.Id, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
@@ -63,7 +75,7 @@ internal static class HoldedDuplicateMatcher
 
             var duplicates = contacts
                 .SelectMany(c => docsByContact[c])
-                .Where(d => !keptIds.Contains(d.Id) && !claimed.Contains(d.Id) && Matches(booking, d))
+                .Where(d => !keptIds.Contains(d.Id) && !claimed.Contains(d.Id) && isDuplicate(booking, d))
                 .DistinctBy(d => d.Id, StringComparer.Ordinal)
                 .OrderBy(d => d.Id, StringComparer.Ordinal)
                 .ToList();

@@ -86,8 +86,9 @@ public class HoldedDuplicateTests
     };
 
     private static ExpenseHoldedBooking Booking(
-        string docId, decimal amount = 120m, string description = "ER: Train to Madrid", Guid? user = null, string contactId = "c1") =>
-        new(ReportId, Guid.NewGuid(), user ?? UserId, contactId, docId, description, $"Expense report {ReportId}", amount);
+        string docId, decimal amount = 120m, string description = "ER: Train to Madrid", Guid? user = null, string contactId = "c1",
+        Guid? report = null) =>
+        new(report ?? ReportId, Guid.NewGuid(), user ?? UserId, contactId, docId, description, $"Expense report {report ?? ReportId}", amount);
 
     /// <summary>A list item, as the v2 purchase list returns it: never any notes.</summary>
     private static HoldedPurchaseDocListItemDto Doc(
@@ -258,6 +259,29 @@ public class HoldedDuplicateTests
     }
 
     [HumansFact]
+    public async Task DryRun_TwoReportsWithIdenticalLines_TheDuplicateGoesToTheLineWhoseNotesItCarries()
+    {
+        // Repeated commute lines across reports: report 1's line is first in the list and would claim
+        // doc-b2 on description + total alone, but doc-b2 carries report 2's notes, so it is report
+        // 2's duplicate — deletable there, not refused under report 1.
+        var report2 = Guid.NewGuid();
+        var line2 = Booking("doc-b", report: report2);
+        _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a"), line2]);
+        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns([Doc("doc-a"), Doc("doc-b"), Doc("doc-b2")]);
+        _client.GetPurchaseDocumentAsync("doc-b2", Arg.Any<CancellationToken>())
+            .Returns(FullDoc("doc-b2", $"Expense report {report2}"));
+
+        var vm = await MakeService().GetHoldedDuplicatesAsync(TestContext.Current.CancellationToken);
+
+        var line = vm.Members.Single().Lines.Should().ContainSingle().Subject;
+        line.LineId.Should().Be(line2.LineId);
+        line.KeptDocId.Should().Be("doc-b");
+        line.DeletableDocIds.Should().Equal("doc-b2");
+        line.Refused.Should().BeEmpty();
+        vm.RefusedCount.Should().Be(0);
+    }
+
+    [HumansFact]
     public async Task DryRun_APaidOrDraftCandidate_IsRefusedWithoutTheGet()
     {
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
@@ -411,6 +435,23 @@ public class HoldedDuplicateTests
         });
         await _client.DidNotReceive().DeletePurchaseDocumentAsync("doc-other", Arg.Any<CancellationToken>());
         await _client.DidNotReceive().DeletePurchaseDocumentAsync("doc-a", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Apply_TwoReportsWithIdenticalLines_DeletesTheDuplicateUnderTheRightLine()
+    {
+        var report2 = Guid.NewGuid();
+        var line2 = Booking("doc-b", report: report2);
+        _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a"), line2]);
+        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns([Doc("doc-a"), Doc("doc-b"), Doc("doc-b2")]);
+        _client.GetPurchaseDocumentAsync("doc-b2", Arg.Any<CancellationToken>())
+            .Returns(FullDoc("doc-b2", $"Expense report {report2}"));
+
+        var result = await MakeService().RemoveHoldedDuplicatesAsync(Actor);
+
+        result.Members.Single().DeletedDocIds.Should().Equal("doc-b2");
+        await _audit.Received(1).LogAsync(AuditAction.HoldedDuplicateRemoved, "ExpenseLine", line2.LineId,
+            Arg.Is<string>(d => d.Contains("doc-b2") && d.Contains("kept doc-b")), Actor, UserId, nameof(User));
     }
 
     [HumansFact]
