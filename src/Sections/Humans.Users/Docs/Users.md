@@ -63,7 +63,7 @@ Extends `IdentityUser<Guid>` with project-specific columns.
 | LastConsentReminderSentAt | Instant? | Rate-limit anchor for the re-consent reminder email |
 | SuppressScheduleChangeEmails | bool | **Dead.** No reader or writer (readers removed in Users decomposition commit 16, except the Art. 15 export); `[Obsolete]`, column kept until its drop PR (`Docs/debt.yml` USERS-13). |
 | UnsubscribedFromCampaigns | bool | **Dead.** Email's per-category preferences are the source of truth; no reader or writer (readers removed in commit 16, except the Art. 15 export); `[Obsolete]`, column kept until its drop PR (`Docs/debt.yml` USERS-12). |
-| GoogleEmailStatus | LegacyGoogleEmailStatus | **Dead.** Google sync status lives on GoogleIntegration's `google_workspace_identities` (commit 15); no reader or writer; `[Obsolete]`, column kept until its drop PR (`Docs/debt.yml` USERS-14). |
+| GoogleEmailStatus | LegacyGoogleEmailStatus | **Dead.** Google sync status lives on GoogleIntegration's `google_workspace_identities` (commit 15); no reader or writer; shadow column with no CLR property, kept until its drop PR (`Docs/debt.yml` USERS-14). |
 | ContactSource | ContactSource? | Where imported from (`Manual`, `MailerLite`, `TicketTailor`); null for self-registered users. |
 | ExternalSourceId | string? (256) | ID in the external source system (e.g., MailerLite subscriber ID). |
 | DeletionRequestedAt | Instant? | When the user requested account deletion |
@@ -356,7 +356,7 @@ A contact is identified by `ContactSource != null && LastLoginAt == null`. When 
 
 #### Dead columns
 
-`UnsubscribedFromCampaigns`, `SuppressScheduleChangeEmails` and `GoogleEmailStatus` (see the Part 1 field table) have no writer and no reader beyond the Art. 15 export, which keeps the first two flags while the columns exist; `UserInfo` and the cache interceptor do not carry them. `GoogleEmailStatus` has no reader at all. EF still maps them, `[Obsolete]` guards against a new reader, and `Docs/debt.yml` USERS-12 to USERS-14 track their drop.
+`UnsubscribedFromCampaigns`, `SuppressScheduleChangeEmails` and `GoogleEmailStatus` (see the Part 1 field table) have no writer and no reader beyond the Art. 15 export, which keeps the first two flags while the columns exist; `UserInfo` and the cache interceptor do not carry them. `GoogleEmailStatus` has no reader at all. EF still maps them (`GoogleEmailStatus` as a shadow column, so no code can reach it; `[Obsolete]` guards the other two), and `Docs/debt.yml` USERS-12 to USERS-14 track their drop.
 
 ### Profile
 
