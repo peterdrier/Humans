@@ -172,6 +172,7 @@ public sealed class IssuesServiceTests
     private UserInfo? Info(Guid id)
     {
         var user = Db.Users.FirstOrDefault(u => u.Id == id);
+        // Seeded users are active members (have a profile) unless a test rejects them.
         return user is null
             ? null
             : UserInfo.Create(
@@ -179,7 +180,7 @@ public sealed class IssuesServiceTests
                 userEmails: [],
                 eventParticipations: [],
                 externalLogins: [],
-                profile: null,
+                profile: UserFixtures.Profile(burnerName: user.BurnerName ?? "", firstName: "Test", lastName: "User"),
                 communicationPreferences: []);
     }
 
@@ -1194,11 +1195,13 @@ public sealed class IssuesServiceTests
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
             Cache, Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
         var ct = TestContext.Current.CancellationToken;
+        var assignee = SeedUser();
+        await Db.SaveChangesAsync(ct);
 
         var result = field switch
         {
             "Status" => await service.UpdateStatusAsync(issue.Id, Admin, IssueStatus.Resolved, Admin.UserId, ct),
-            "Assignee" => await service.UpdateAssigneeAsync(issue.Id, Admin, Guid.NewGuid(), Admin.UserId, ct),
+            "Assignee" => await service.UpdateAssigneeAsync(issue.Id, Admin, assignee.Id, Admin.UserId, ct),
             "Section" => await service.UpdateSectionAsync(issue.Id, Admin, "Teams", Admin.UserId, ct),
             _ => await service.SetGitHubIssueNumberAsync(issue.Id, Admin, 1234, Admin.UserId, ct),
         };
@@ -2422,6 +2425,26 @@ public sealed class IssuesServiceTests
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData("rejected")]
+    [InlineData("unknown")]
+    public async Task UpdateAssigneeAsync_refuses_a_user_who_is_not_an_active_member(string who)
+    {
+        var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
+        var assigneeId = Guid.NewGuid();
+        if (string.Equals(who, "rejected", StringComparison.Ordinal))
+            SeedUser(assigneeId, "Rejected").State = UserState.Rejected;
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.UpdateAssigneeAsync(issueId, Admin, assigneeId, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Rejected.Should().BeTrue();
+        var stored = await _issuesDb.Issues.AsNoTracking().SingleAsync(i => i.Id == issueId, TestContext.Current.CancellationToken);
+        stored.AssigneeUserId.Should().BeNull();
+        AuditLog.ReceivedCalls().Should().NotContain(call => call.GetArguments().Contains(AuditAction.IssueAssigneeChanged));
     }
 
     [HumansFact]
