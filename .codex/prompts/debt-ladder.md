@@ -339,6 +339,6 @@ future run doesn't re-derive it:
 - **`HUM0010`/`HUM0011`** in `WarningsNotAsErrors`. The `[ExpiresOn]` staged
   escalation depends on these staying warnings pre-deadline — do not remove
   alongside rung 2's ids.
-- **`HUM0031`** and anything under a `parked:` key in `debt-ledger.yml`.
-  Peter froze `grandfathered-hum0031-controller-logic` 2026-08-07 pending
-  the per-section assembly split; don't lower thresholds or de-grandfather.
+- **`HUM0031`'s thresholds** and anything under a `parked:` key in
+  `debt-ledger.yml`. The 40/15 numbers are fixed permanently (Peter,
+  2026-10-21); controller intent is section-doctor's call. Never move them.

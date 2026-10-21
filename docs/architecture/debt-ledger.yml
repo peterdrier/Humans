@@ -27,27 +27,18 @@ next_id: 96
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0031-controller-logic
-    title: Controller business logic over ratchet thresholds (HUM0031)
+    title: Controller business logic over the fixed thresholds (HUM0031)
     detect: "build:HUM0031"
     review: panel
     last_swept: 2026-06-12
     remaining: 0
-    parked: "Peter 2026-08-07 — frozen until the per-section assembly split (nobodies-collective/Humans#866) lands. Do not lower the thresholds; do not burn down any HUM0031 grandfather that reappears before then."
     notes: >-
-      PARKED — Peter 2026-08-07: BOTH dials are off. Do not lower the
-      thresholds in ControllerBusinessLogicAnalyzer, and do not burn down any
-      [Grandfathered("HUM0031", …)] method that appears before the freeze
-      lifts. Rotation skips this theme until
-      the per-section assembly split (nobodies-collective/Humans#866) lands —
-      the controllers relocate then, so the work is churn against code that is
-      about to move, and in the meantime it is a distraction. The burn-down
-      issue nobodies-collective/Humans#857 is closed for the same reason.
-      Re-open this theme only when #866 has shipped. The analyzer stays live at
-      Error for NEW breaches — that is not parked.
-      remaining: 0 since peterdrier/Humans#1156 burned down all 15
-      grandfathers; the entry stays because it IS the park — retiring it at
-      zero would let the Phase 2 staleness check re-create the theme unparked
-      the moment a HUM0031 grandfather reappears.
+      Not parked (Peter 2026-10-21). The thresholds are fixed at 40/15 as a
+      backstop and never ratchet (memory/architecture/hum0031-fixed-at-40-15.md);
+      controller intent is judged by section-doctor's regular runs. A
+      [Grandfathered("HUM0031", …)] method that appears is ordinary debt and
+      may be worked down. remaining: 0 since peterdrier/Humans#1156 burned
+      down all 15 grandfathers.
       Prior sweep findings from 2026-06-12, kept for whenever this restarts:
       12 distinct warning sites, all grandfathered (14 grandfathers total —
       AccountController.ExternalLoginCallback and
