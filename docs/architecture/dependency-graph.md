@@ -87,7 +87,6 @@ graph LR
     CF[ContactFieldService]:::users
     AcctProv[AccountProvisioningService]:::users
     AcctDel[AccountDeletionService]:::users
-    UserParticipationBackfill[UserParticipationBackfillService]:::users
     Merge[AccountMergeService]:::users
     DupAcct[DuplicateAccountService]:::users
     ExtLogin[ExternalLoginService]:::users
@@ -135,6 +134,8 @@ graph LR
     TicketTransfer[TicketTransferService]:::tickets
     AttendeeImport[AttendeeContactImportService]:::tickets
     OnsiteRoster[OnsiteRosterService]:::tickets
+    EventPart[EventParticipationService]:::tickets
+    UserParticipationBackfill[UserParticipationBackfillService]:::tickets
     TicketVendor[TicketVendorGateway]:::tickets
 
     TicketTailor[TicketTailorService]:::tickets
@@ -259,7 +260,6 @@ graph LR
     AcctDel --> ShiftView
     AcctDel --> Audit
     AcctDel --> Email
-    UserParticipationBackfill --> SettingsSvc
     Merge --> Audit
     Merge --> Team
     Merge --> Role
@@ -305,6 +305,7 @@ graph LR
     Camp --> EarlyEntry
     Camp --> User
     Camp --> SettingsSvc
+    Camp --> TicketQ
     CampContact --> Email
     CampContact --> Audit
     CampContact --> NotifEmitter
@@ -337,6 +338,7 @@ graph LR
     ShiftSign --> EarlyEntry
     ShiftSign --> User
     VolTrack --> User
+    VolTrack --> TicketQ
     VolTrack --> Audit
     VolTrackExport --> User
     VolTrackExport --> Audit
@@ -407,11 +409,13 @@ graph LR
     AttendeeImport --> User
     AttendeeImport --> SettingsSvc
     AttendeeImport --> Audit
-    OnsiteRoster --> User
     OnsiteRoster --> Camp
     OnsiteRoster --> Team
     OnsiteRoster --> Role
     TicketVendor --> TicketTailor
+    EventPart --> User
+    EventPart --> Audit
+    UserParticipationBackfill --> SettingsSvc
 
     %% Campaigns
     Campaign --> Team
@@ -608,11 +612,11 @@ graph LR
 
     %% Gate
     Gate --> TicketQ
+    Gate --> EventPart
     Gate --> EarlyEntry
     Gate --> SettingsSvc
     Gate --> ShiftMgmt
     Gate --> Role
-    Gate --> User
     Gate --> Audit
 
     %% Surveys

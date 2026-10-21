@@ -19,10 +19,8 @@ using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Users.Models;
 using Microsoft.Extensions.Options;
-using NodaTime;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
@@ -48,7 +46,6 @@ internal sealed class ProfileController(
     IContactFieldService contactFieldService,
     ICommunicationPreferenceService commPrefService,
     IOnboardingIntake onboardingService,
-    ISettingsService settingsService,
     IConfiguration configuration,
     ConfigurationRegistry configRegistry,
     ILogger<ProfileController> logger,
@@ -109,10 +106,6 @@ internal sealed class ProfileController(
             IsApproved = profile is not null && review.IsApproved,
             IsOwnProfile = true,
             DisplayName = info.BurnerName,
-            // Onsite chip — own profile, always visible. Issue
-            // nobodies-collective/Humans#736.
-            OnsiteSince = await ResolveOnsiteSinceAsync(info, ct),
-            CanViewOnsiteChip = true,
         };
 
         // Tier app status (skip Withdrawn).
@@ -124,19 +117,6 @@ internal sealed class ProfileController(
         }
 
         return View("Index", viewModel);
-    }
-
-    /// <summary>
-    /// Returns the user's "onsite since" instant for the active event year, or
-    /// null if they are not yet checked in (or there is no active event). Reads
-    /// from the cached <see cref="UserInfo"/> snapshot — no extra DB hit. Issue
-    /// nobodies-collective/Humans#736.
-    /// </summary>
-    private async Task<Instant?> ResolveOnsiteSinceAsync(UserInfo info, CancellationToken ct)
-    {
-        var active = await settingsService.GetActiveEventSettingsAsync(ct);
-        if (active is null || active.Year == 0) return null;
-        return info.OnsiteSinceForYear(active.Year);
     }
 
     [HttpGet("Me/Edit")]
@@ -405,83 +385,6 @@ internal sealed class ProfileController(
         }
 
         return (true, result.Value.Data, result.Value.ContentType);
-    }
-
-    [HttpPost("Me/DeclareNotAttending")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeclareNotAttending()
-    {
-        var (errorResult, user) = await RequireCurrentUserAsync();
-        if (errorResult is not null) return errorResult;
-
-        try
-        {
-            var eventYear = await GetActiveEventYearOrSetErrorAsync();
-            if (eventYear is null)
-            {
-                return Redirect("/");
-            }
-
-            await _userService.DeclareNotAttendingAsync(user.Id, eventYear.Value);
-            SetSuccess(localizer["Profile_NotAttending_Declared"].Value);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to declare not attending for user {UserId}", user.Id);
-            SetError(localizer["Profile_NotAttending_Failed"].Value);
-        }
-
-        return Redirect("/");
-    }
-
-    [HttpPost("Me/UndoNotAttending")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UndoNotAttending()
-    {
-        var (errorResult, user) = await RequireCurrentUserAsync();
-        if (errorResult is not null) return errorResult;
-
-        try
-        {
-            var eventYear = await GetActiveEventYearOrSetErrorAsync();
-            if (eventYear is null)
-            {
-                return Redirect("/");
-            }
-
-            var undone = await _userService.UndoNotAttendingAsync(user.Id, eventYear.Value);
-            SetUndoNotAttendingResult(undone);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to undo not attending for user {UserId}", user.Id);
-            SetError(localizer["Profile_NotAttending_Failed"].Value);
-        }
-
-        return Redirect("/");
-    }
-
-    private async Task<int?> GetActiveEventYearOrSetErrorAsync()
-    {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync();
-        if (activeEvent is not null && activeEvent.Year > 0)
-        {
-            return activeEvent.Year;
-        }
-
-        SetError(localizer["Profile_NotAttending_NoActiveEvent"].Value);
-        return null;
-    }
-
-    private void SetUndoNotAttendingResult(bool undone)
-    {
-        if (undone)
-        {
-            SetSuccess(localizer["Profile_NotAttending_Undone"].Value);
-            return;
-        }
-
-        SetError(localizer["Profile_NotAttending_UndoFailed"].Value);
     }
 
     // Medical conditions are GDPR Art. 9 data: owner-only here (every action acts on the signed-in

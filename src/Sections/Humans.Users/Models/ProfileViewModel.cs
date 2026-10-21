@@ -216,22 +216,6 @@ internal sealed class ProfileViewModel
     public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
 
     /// <summary>
-    /// When the human was first checked in at the active event's gate, or null
-    /// if not yet onsite. Drives the "Onsite since {time}" chip per issue
-    /// nobodies-collective/Humans#736. Visibility is policy-gated on
-    /// <see cref="CanViewOnsiteChip"/>.
-    /// </summary>
-    public Instant? OnsiteSince { get; set; }
-
-    /// <summary>
-    /// Whether the viewer is permitted to see the onsite chip. True for the
-    /// human themselves and for users matching the same admin/coordinator
-    /// policy that gates <c>/Tickets/Admin/Onsite</c>
-    /// (<c>PolicyNames.TicketAdminBoardOrAdmin</c>).
-    /// </summary>
-    public bool CanViewOnsiteChip { get; set; }
-
-    /// <summary>
     /// Whether the viewer can see the "Sent messages" panel.
     /// True when the viewer is a coordinator or has a privileged shift-management role.
     /// </summary>

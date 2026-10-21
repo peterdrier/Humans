@@ -87,11 +87,6 @@ internal sealed class UserInfoSaveChangesInterceptor(
             await RunAsync("RefreshUserEmails", userId, () => refresher.RefreshUserEmailsAsync(userId, ct));
         }
 
-        foreach (var userId in affected.EventParticipationUserIds.Except(affected.DeletedUserIds))
-        {
-            await RunAsync("RefreshEventParticipations", userId, () => refresher.RefreshEventParticipationsAsync(userId, ct));
-        }
-
         foreach (var userId in affected.ExternalLoginUserIds.Except(affected.DeletedUserIds))
         {
             await RunAsync("RefreshExternalLogins", userId, () => refresher.RefreshExternalLoginsAsync(userId, ct));
@@ -141,9 +136,6 @@ internal sealed class UserInfoSaveChangesInterceptor(
                 case UserEmail ue:
                     affected.UserEmailUserIds.Add(ue.UserId);
                     break;
-                case EventParticipation ep:
-                    affected.EventParticipationUserIds.Add(ep.UserId);
-                    break;
                 case IdentityUserLogin<Guid> uil:
                     affected.ExternalLoginUserIds.Add(uil.UserId);
                     break;
@@ -190,7 +182,6 @@ internal sealed class UserInfoSaveChangesInterceptor(
         public Dictionary<Guid, User> Users { get; } = new();
         public HashSet<Guid> DeletedUserIds { get; } = [];
         public HashSet<Guid> UserEmailUserIds { get; } = [];
-        public HashSet<Guid> EventParticipationUserIds { get; } = [];
         public HashSet<Guid> ExternalLoginUserIds { get; } = [];
         public HashSet<Guid> CommunicationPreferenceUserIds { get; } = [];
 
@@ -198,7 +189,6 @@ internal sealed class UserInfoSaveChangesInterceptor(
             Users.Count > 0 ||
             DeletedUserIds.Count > 0 ||
             UserEmailUserIds.Count > 0 ||
-            EventParticipationUserIds.Count > 0 ||
             ExternalLoginUserIds.Count > 0 ||
             CommunicationPreferenceUserIds.Count > 0;
     }

@@ -49,12 +49,13 @@ public sealed record CommunicationPreferenceInfo(
     string UpdateSource,
     Instant? SubscribedAt);
 
-/// <summary>Compact projection of <see cref="EventParticipation"/>.</summary>
-public sealed record EventParticipationInfo(
+/// <summary>Compact projection of the frozen legacy <see cref="EventParticipation"/> row
+/// (Users decomposition commit 13; the live record is Tickets' <c>EventParticipationInfo</c>).</summary>
+public sealed record LegacyEventParticipationInfo(
     Guid Id,
     int Year,
-    ParticipationStatus Status,
-    ParticipationSource Source,
+    LegacyParticipationStatus Status,
+    LegacyParticipationSource Source,
     Instant? DeclaredAt,
     Instant? CheckedInAt);
 
@@ -164,7 +165,8 @@ public sealed record UserInfo(
     Instant? MergedAt,
     string? IdentityEmailColumn,
     IReadOnlyList<UserEmailInfo> UserEmails,
-    IReadOnlyList<EventParticipationInfo> EventParticipations,
+    [property: Obsolete("Moved to Tickets' tickets_event_participations (Users decomposition commit 13). Read ITicketService.GetParticipationsAsync / GetAllParticipationsAsync; the one reader left is Tickets' legacy fallback and the tickets.event-participations copy.", DiagnosticId = "HUM_USER_PARTICIPATIONS")]
+    IReadOnlyList<LegacyEventParticipationInfo> EventParticipations,
     IReadOnlyList<UserExternalLoginInfo> ExternalLogins,
     ProfileInfo? Profile,
     IReadOnlyList<CommunicationPreferenceInfo> CommunicationPreferences)
@@ -316,30 +318,6 @@ public sealed record UserInfo(
         .Select(c => (bool?)c.OptedOut)
         .FirstOrDefault();
 
-    /// <summary>Any-year Ticketed/Attended participation — diagnostic only. Use <see cref="HasTicketForYear"/> for year-scoped counts.</summary>
-    public bool HasTicket => EventParticipations.Any(p =>
-        p.Status == ParticipationStatus.Ticketed ||
-        p.Status == ParticipationStatus.Attended);
-
-    /// <summary>Ticketed/Attended participation for the given <paramref name="year"/> — canonical "current ticket holder" predicate.</summary>
-    public bool HasTicketForYear(int year) => EventParticipations.Any(p =>
-        p.Year == year &&
-        (p.Status == ParticipationStatus.Ticketed ||
-         p.Status == ParticipationStatus.Attended));
-
-    /// <summary>
-    /// On-site for the given <paramref name="year"/> when an Attended row with
-    /// a non-null <see cref="EventParticipationInfo.CheckedInAt"/> exists.
-    /// Returns the gate-arrival instant or null. Drives the profile "Onsite
-    /// since {time}" chip (issue nobodies-collective/Humans#736).
-    /// </summary>
-    public Instant? OnsiteSinceForYear(int year) => EventParticipations
-        .Where(p => p.Year == year
-            && p.Status == ParticipationStatus.Attended
-            && p.CheckedInAt is not null)
-        .Select(p => p.CheckedInAt)
-        .FirstOrDefault();
-
     /// <summary>Stub: hasn't entered their name yet (<see cref="UserState.Bare"/>) — no profile row
     /// or blank required names. Callers writing consents must block on this.</summary>
     public bool IsStub => State == UserState.Bare;
@@ -410,7 +388,7 @@ public sealed record UserInfo(
 
         var participationInfos = eventParticipations
             .OrderBy(p => p.Year)
-            .Select(p => new EventParticipationInfo(
+            .Select(p => new LegacyEventParticipationInfo(
                 p.Id, p.Year, p.Status, p.Source, p.DeclaredAt, p.CheckedInAt))
             .ToList();
 

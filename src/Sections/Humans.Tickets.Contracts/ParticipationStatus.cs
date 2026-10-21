@@ -1,4 +1,4 @@
-namespace Humans.Users.Contracts;
+namespace Humans.Tickets.Contracts;
 
 /// <summary>
 /// Status of a user's participation in a yearly event.

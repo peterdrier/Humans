@@ -35,7 +35,7 @@ internal sealed class UserService(
     internal const string VolunteerHistory = "VolunteerHistory";
     internal const string Languages = "Languages";
     internal const string CommunicationPreferences = "CommunicationPreferences";
-    internal const string EventParticipations = "EventParticipations";
+    internal const string LegacyEventParticipations = "LegacyEventParticipations";
 
     private static readonly TrackedLock EmailAdditionLock = new("UserService.EmailAddition");
 
@@ -785,99 +785,6 @@ internal sealed class UserService(
         Guid userId, Instant sentAt, CancellationToken ct = default) =>
         repo.SetLastConsentReminderSentAsync(userId, sentAt, ct);
 
-    // --- EventParticipation reads ---
-
-    public Task<IReadOnlyList<UserParticipationRow>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default) =>
-        throw new NotSupportedException(
-            "GetAllParticipationsForYearAsync is only meaningful through CachingUserService — " +
-            "projects the year's participations from the cached UserInfo snapshot. If this is " +
-            "being called on the inner UserService it indicates a DI registration mistake.");
-
-    // --- EventParticipation writes ---
-
-    public async Task DeclareNotAttendingAsync(Guid userId, int year, CancellationToken ct = default)
-    {
-        var now = clock.GetCurrentInstant();
-        var persisted = await repo.UpsertParticipationAsync(
-            userId, year, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared,
-            declaredAt: now, checkedInAt: null, ct);
-
-        if (persisted is null)
-        {
-            // Blocked by Attended.
-            logger.LogWarning(
-                "Cannot declare NotAttending for user {UserId} year {Year} — already Attended",
-                userId, year);
-            return;
-        }
-
-        logger.LogInformation(
-            "User {UserId} declared NotAttending for year {Year}",
-            userId, year);
-    }
-
-    public async Task<bool> UndoNotAttendingAsync(Guid userId, int year, CancellationToken ct = default)
-    {
-        var existing = await repo.GetParticipationAsync(userId, year, ct);
-        if (existing is null)
-            return false;
-
-        if (existing.Status != ParticipationStatus.NotAttending ||
-            existing.Source != ParticipationSource.UserDeclared)
-        {
-            logger.LogWarning(
-                "Cannot undo NotAttending for user {UserId} year {Year} — status is {Status} from {Source}",
-                userId, year, existing.Status, existing.Source);
-            return false;
-        }
-
-        var removed = await repo.RemoveParticipationAsync(
-            userId, year, ParticipationSource.UserDeclared, ct);
-
-        if (removed)
-        {
-            logger.LogInformation(
-                "User {UserId} undid NotAttending declaration for year {Year}",
-                userId, year);
-        }
-
-        return removed;
-    }
-
-    public Task SetParticipationFromTicketSyncAsync(
-        Guid userId, int year, ParticipationStatus status, Instant? checkedInAt, CancellationToken ct = default) =>
-        // Attended-is-permanent, source-override and CheckedInAt-never-overwrite
-        // semantics live in repo upsert.
-        repo.UpsertParticipationAsync(
-            userId, year, status, ParticipationSource.TicketSync,
-            declaredAt: null, checkedInAt: checkedInAt, ct);
-
-    public Task<IReadOnlyList<OnsiteUserRow>> GetOnsiteUsersAsync(int year, CancellationToken ct = default) =>
-        throw new NotSupportedException(
-            "GetOnsiteUsersAsync is only meaningful through CachingUserService — it projects " +
-            "Attended+CheckedInAt rows from the cached UserInfo snapshot. Hitting the inner " +
-            "UserService indicates a DI registration mistake.");
-
-    public Task RemoveTicketSyncParticipationAsync(Guid userId, int year, CancellationToken ct = default) =>
-        repo.RemoveParticipationAsync(userId, year, ParticipationSource.TicketSync, ct);
-
-    public async Task<int> BackfillParticipationsAsync(
-        int year,
-        List<(Guid UserId, ParticipationStatus Status)> entries,
-        Guid actorUserId,
-        CancellationToken ct = default)
-    {
-        var changed = await repo.BackfillParticipationsAsync(year, entries, ct);
-        foreach (var (userId, status) in changed)
-            await audit.LogAsync(AuditAction.ParticipationBackfilled, nameof(User), userId,
-                $"Recorded {status} participation for {year} from admin backfill.", actorUserId);
-        var count = changed.Count;
-        logger.LogInformation(
-            "Backfilled {Count} participation records for year {Year}",
-            count, year);
-        return count;
-    }
-
     // --- IUserDataContributor — GDPR export ---
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
@@ -929,18 +836,6 @@ internal sealed class UserService(
             LastLoginAt = user.LastLoginAt.ToIso8601()
         };
 
-        var participations = await repo.GetEventParticipationsByUserIdAsync(userId, ct);
-        var participationsShaped = participations
-            .Select(ep => new
-            {
-                ep.Year,
-                Status = ep.Status.ToString(),
-                Source = ep.Source.ToString(),
-                DeclaredAt = ep.DeclaredAt.ToIso8601(),
-                CheckedInAt = ep.CheckedInAt.ToIso8601()
-            })
-            .ToList();
-
         var profile = await repo.GetByUserIdReadOnlyAsync(userId, ct);
 
         var contactFields = profile is not null
@@ -979,6 +874,23 @@ internal sealed class UserService(
             }
         }
         mergedIds.Remove(userId);
+
+        // The frozen legacy table (Users decomposition commit 13; Tickets exports the live
+        // participation). Rows stay keyed to archived ids since merges stopped folding this table.
+        var participationsByUser = await repo.GetEventParticipationsByUserIdsAsync([userId, .. mergedIds], ct);
+        var participationsShaped = participationsByUser.Values
+            .SelectMany(rows => rows)
+            .OrderBy(ep => ep.Year)
+            .Select(ep => new
+            {
+                ep.UserId,
+                ep.Year,
+                Status = ep.Status.ToString(),
+                Source = ep.Source.ToString(),
+                DeclaredAt = ep.DeclaredAt.ToIso8601(),
+                CheckedInAt = ep.CheckedInAt.ToIso8601()
+            })
+            .ToList();
         var mergedProfiles = mergedIds.Count == 0 ? [] : await repo.GetAllProfilesAsync(ct);
         var mergedProfileSlice = new UserDataSlice(MergedProfiles, mergedProfiles
             .Where(p => mergedIds.Contains(p.UserId))
@@ -1039,7 +951,7 @@ internal sealed class UserService(
         return
         [
             new UserDataSlice(Account, shaped),
-            new UserDataSlice(EventParticipations, participationsShaped),
+            new UserDataSlice(LegacyEventParticipations, participationsShaped),
             profileSlice,
             mergedProfileSlice,
             contactFieldSlice,
@@ -1107,7 +1019,7 @@ internal sealed class UserService(
                 "section's user-id reference stays resolvable and the erasure itself remains " +
                 "provable — GDPR Art. 5(2) accountability. Every identity field on it is " +
                 "overwritten and the account is locked out permanently.",
-            [EventParticipations] =
+            [LegacyEventParticipations] =
                 "Retained: the year and status of each participation, keyed to the tombstoned " +
                 "user id, is the association's register of who was a member in which year — " +
                 "Ley Orgánica 1/2002 Art. 14, GDPR Art. 17(3)(b). It carries no identity fields.",
@@ -1298,7 +1210,6 @@ internal sealed class UserService(
         // `actorUserId` unused — kept for IUserMerge contract.
         _ = actorUserId;
         await repo.ReassignLoginsToUserAsync(mergedFromUserId, mergedToUserId, ct);
-        await repo.ReassignEventParticipationToUserAsync(mergedFromUserId, mergedToUserId, ct);
         var previousPicture = await repo.ReassignSubAggregatesToUserAsync(mergedFromUserId, mergedToUserId, now, ct);
         if (previousPicture is { } picture &&
             ProfilePictureKeys.Resolve(picture.ProfileId, picture.ContentType, picture.StorageKey) is { } key)

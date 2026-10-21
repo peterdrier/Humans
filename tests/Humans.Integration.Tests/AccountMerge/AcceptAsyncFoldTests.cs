@@ -8,6 +8,8 @@ using Humans.Budget.Data;
 using Humans.Campaigns.Data;
 using Humans.Feedback.Data;
 using Humans.Governance.Data;
+using Humans.Tickets.Contracts;
+using Humans.Tickets.Data;
 using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.Integration.Tests.Infrastructure;
@@ -388,15 +390,15 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             // Year 2024 — source Attended (highest precedence) beats target NotAttending.
-            b.WithSourceEventParticipation(2024, ParticipationStatus.Attended);
-            b.WithTargetEventParticipation(2024, ParticipationStatus.NotAttending);
+            b.WithSourceEventParticipation(2024, LegacyParticipationStatus.Attended);
+            b.WithTargetEventParticipation(2024, LegacyParticipationStatus.NotAttending);
 
             // Year 2025 — source NotAttending loses to target Ticketed.
-            b.WithSourceEventParticipation(2025, ParticipationStatus.NotAttending);
-            b.WithTargetEventParticipation(2025, ParticipationStatus.Ticketed);
+            b.WithSourceEventParticipation(2025, LegacyParticipationStatus.NotAttending);
+            b.WithTargetEventParticipation(2025, LegacyParticipationStatus.Ticketed);
 
             // Year 2023 — source-only, re-FKs to target.
-            b.WithSourceEventParticipation(2023, ParticipationStatus.Attended);
+            b.WithSourceEventParticipation(2023, LegacyParticipationStatus.Attended);
         });
         var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
@@ -404,7 +406,9 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
+        // Tickets owns the fold (Users decomposition commit 13): the legacy rows of both
+        // users are materialized into tickets_event_participations and folded there.
+        var db = assertScope.ServiceProvider.GetRequiredService<TicketsDbContext>();
 
         var targetEvents = await db.EventParticipations
             .AsNoTracking()
@@ -420,7 +424,9 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
             .AsNoTracking()
             .Where(ep => ep.UserId == sourceId)
             .ToListAsync(TestContext.Current.CancellationToken);
-        sourceEvents.Should().BeEmpty();
+        // The source's legacy rows stay frozen in Users; its Tickets rows are cleared so the
+        // legacy fallback cannot bring them back.
+        sourceEvents.Should().OnlyContain(ep => ep.Status == null);
     }
 
     // ==================================================================

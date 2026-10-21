@@ -56,7 +56,7 @@ public sealed class TicketSyncService_ReassignCacheTests
             invalidator,
             Substitute.For<ITicketVendorCacheInvalidator>(),
             Substitute.For<IUserService>(),
-            Substitute.For<IUserWrite>(),
+            Substitute.For<IEventParticipationManagement>(),
             Substitute.For<ICampaignWrite>(),
             Substitute.For<ISettingsService>());
 

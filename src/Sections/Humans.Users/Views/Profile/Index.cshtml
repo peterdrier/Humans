@@ -17,14 +17,6 @@
             </div>
         </div>
 
-        @if (Model.CanViewOnsiteChip && Model.OnsiteSince is not null)
-        {
-            <span class="badge text-bg-success mb-2" title="@Localizer["Profile_OnsiteTitle"].Value">
-                <i class="fa-solid fa-circle-check"></i>
-                @Localizer["Profile_OnsiteSince", Model.OnsiteSince.Value.ToDateTime()]
-            </span>
-        }
-
         @if (Model.IsOwnProfile)
         {
         }
@@ -77,7 +69,7 @@
             <vc:my-camps />
         }
 
-        @* Section-contributed parts (IUserPart), e.g. the Events card; each auto-hides when empty *@
+        @* Section-contributed parts (IUserPart), e.g. Tickets' onsite chip; each auto-hides when empty *@
         <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.Profile" user-id="@Model.UserId" view-mode="@cardViewMode" />
 
         @if (!Model.IsOwnProfile && Model.CanViewShiftSignups)

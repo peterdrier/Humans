@@ -22,17 +22,16 @@ using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Users.Models;
 using Microsoft.Extensions.Options;
-using NodaTime;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Email.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
+using NodaTime;
 using Humans.Base;
 using Humans.Base.Authorization;
 
@@ -47,7 +46,6 @@ internal sealed class ProfileViewController(
     IUserManagement userService,
     IProfilePictureService profilePictureService,
     IShiftSignups shiftSignupService,
-    ISettingsService settingsService,
     IShiftManagementService shiftMgmt,
     IStringLocalizer<SharedResource> sharedLocalizer,
     ITeamService teamService,
@@ -102,11 +100,6 @@ internal sealed class ProfileViewController(
 
         var noShowContext = await BuildNoShowHistoryContextAsync(id, viewer.Id, isOwnProfile, ct);
 
-        // Onsite chip: self always, plus the admin/board policy gating /Tickets/Admin/Onsite.
-        var canViewOnsiteChip = isOwnProfile
-            || (await authorizationService.AuthorizeAsync(
-                User, PolicyNames.TicketAdminBoardOrAdmin)).Succeeded;
-
         var canViewSentMessages = await CanViewSentMessagesAsync(viewer.Id, isOwnProfile, ct);
 
         var viewModel = new ProfileViewModel
@@ -118,10 +111,6 @@ internal sealed class ProfileViewController(
             IsApproved = (await consentService.GetConsentReviewAsync(id, ct)).IsApproved,
             NoShowHistory = noShowContext.History,
             CanViewShiftSignups = noShowContext.CanView,
-            OnsiteSince = canViewOnsiteChip
-                ? await ResolveOnsiteSinceAsync(profileInfo, ct)
-                : null,
-            CanViewOnsiteChip = canViewOnsiteChip,
             CanViewSentMessages = canViewSentMessages,
         };
 
@@ -295,20 +284,5 @@ internal sealed class ProfileViewController(
             .ToList();
 
         return View(viewModel);
-    }
-
-
-    /// <summary>
-    /// The user's "onsite since" instant for the active event year, or null if they are
-    /// not yet checked in (or there is no active event). Reads from the cached
-    /// <see cref="UserInfo"/> snapshot — no extra DB hit. Same helper as
-    /// <c>ProfileController.Me</c> uses for the own-profile chip. Issue
-    /// nobodies-collective/Humans#736.
-    /// </summary>
-    private async Task<Instant?> ResolveOnsiteSinceAsync(UserInfo info, CancellationToken ct)
-    {
-        var active = await settingsService.GetActiveEventSettingsAsync(ct);
-        if (active is null || active.Year == 0) return null;
-        return info.OnsiteSinceForYear(active.Year);
     }
 }

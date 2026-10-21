@@ -19,7 +19,7 @@ DB access; its one write is the `DuplicateAccountFlagged` audit entry through
 
 Per-user persistence is a single `IUserRepository`, which owns `Users`,
 `Profiles`, `UserEmails`, `ContactFields`, `ProfileLanguages`,
-`VolunteerHistoryEntries`, `EventParticipations`, and the ASP.NET-Identity
+`VolunteerHistoryEntries`, the frozen legacy `EventParticipations` (read-only; Tickets owns participation since Users decomposition commit 13), and the ASP.NET-Identity
 `IdentityUserLogins` bridge. `ProfileService` exposes only
 `IProfilePictureService`; the unified User+Profile read-model lives behind
 `IUserService.GetUserInfoAsync`. Repositories are **Singletons**
@@ -168,7 +168,7 @@ Folder: `src/Sections/Humans.Users/Services/`; repository under
 `Data/Repositories/`. **DbContext:** `UsersDbContext` — the merged
 Users+Profiles context (`Users` is the Identity-backed `users` table via
 `IdentityDbContext<User, …>`, which the context carries directly). Owns
-`Users`, `UserEmails` cross-bridge (read-through), `EventParticipations`,
+`Users`, `UserEmails` cross-bridge (read-through), the frozen legacy `EventParticipations` (read-only),
 ASP.NET `IdentityUserLogins`, and `AccountMergeRequests` — the
 account-merge surface (`AccountMergeService`, `DuplicateAccountService`,
 `AccountMergeRepository`) lives here. The inner `IUserService` registration is wrapped
@@ -191,7 +191,7 @@ Repositories: `IUserRepository`, `ICommunicationPreferenceRepository`.
 |-------|-----|------|
 | Users | R/W | IUserRepository |
 | UserEmails | R | IUserRepository |
-| EventParticipations | R/W | IUserRepository |
+| EventParticipations | R (frozen legacy rows: `UserInfo.EventParticipations` for Tickets' fallback, and the `LegacyEventParticipations` export slice) | IUserRepository |
 | IdentityUserLogins | R | IUserRepository |
 | Profiles | R/W | IUserRepository |
 | ContactFields | R | IUserRepository |
@@ -205,7 +205,7 @@ a single cached read-model fanning out over the User + Profile section's
 unified persistence layer. Implements `IUserDataContributor`,
 `IUserMerge`.
 
-Cross-section calls via `IAdminAuthorizationService` and `IAuditLogService` (per-member historical participation import and admin stub-profile creation after save). No direct
+Cross-section calls via `IAdminAuthorizationService` and `IAuditLogService` (admin stub-profile creation after save). No direct
 `IMemoryCache` — caching is in the Singleton decorator.
 
 ### CachingUserService (Singleton, `Humans.Users.Data`)
@@ -285,11 +285,6 @@ validation. Also injects `IUserService` to resolve the user's
 `BurnerName` for the unsubscribe-confirm display (reads from the
 `CachingUserService` TrackedCache — no extra DB round-trip on hit).
 No cache on the service itself.
-
-### UserParticipationBackfillService (Scoped)
-
-No repository. Fan-out over `IUserManagement` and `ISettingsService`
-(active event settings) to preview valid CSV rows and, only after operator confirmation, backfill `EventParticipations` with the acting admin. No direct DB access, no cache.
 
 ### AccountMergeService (Scoped)
 

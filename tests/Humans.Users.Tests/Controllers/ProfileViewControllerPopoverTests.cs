@@ -51,7 +51,6 @@ public class ProfileViewControllerPopoverTests
     private readonly IShiftManagementService _shiftManagement = Substitute.For<IShiftManagementService>();
     private readonly IAuthorizationService _authorizationService = Substitute.For<IAuthorizationService>();
     private readonly ICampService _campService = Substitute.For<ICampService>();
-    private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
     private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
     private readonly ProfileViewController _controller;
     private readonly Guid _viewerId = Guid.NewGuid();
@@ -79,7 +78,6 @@ public class ProfileViewControllerPopoverTests
             _userService,
             _profilePictureService,
             _shiftSignups,
-            _settings,
             _shiftManagement,
             _sharedLocalizer,
             _teamService,
@@ -125,23 +123,6 @@ public class ProfileViewControllerPopoverTests
         model.CanViewSentMessages.Should().BeTrue();
         await _shiftManagement.Received(2).GetCoordinatorTeamIdsAsync(_viewerId, source.Token);
         await _shiftSignups.Received(1).GetNoShowHistoryAsync(targetId, source.Token);
-    }
-
-    [HumansFact]
-    public async Task ViewProfile_AbandonedRequest_CancelsOnsiteYearRead()
-    {
-        using var aborted = new CancellationTokenSource();
-        await aborted.CancelAsync();
-        _userService.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>())
-            .Returns(BuildActiveUserInfo(_viewerId, "Viewer", "viewer@example.com"));
-        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns((EventSettingsInfo?)null);
-        _settings.GetActiveEventSettingsAsync(aborted.Token)
-            .Returns(Task.FromCanceled<EventSettingsInfo?>(aborted.Token));
-
-        var act = () => _controller.ViewProfile(_viewerId, aborted.Token);
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [HumansFact]

@@ -270,16 +270,17 @@ public sealed class MergeFixtureBuilder
     }
 
     // ------------------------------------------------------------------
-    // EventParticipation (Camps / Participation)
+    // EventParticipation — the frozen legacy Users table (Users decomposition
+    // commit 13). Tickets' merge fold materializes these into tickets_event_participations.
     // ------------------------------------------------------------------
 
-    public MergeFixtureBuilder WithSourceEventParticipation(int year, ParticipationStatus status)
+    public MergeFixtureBuilder WithSourceEventParticipation(int year, LegacyParticipationStatus status)
         => AddEventParticipation(SourceUserId, year, status);
 
-    public MergeFixtureBuilder WithTargetEventParticipation(int year, ParticipationStatus status)
+    public MergeFixtureBuilder WithTargetEventParticipation(int year, LegacyParticipationStatus status)
         => AddEventParticipation(TargetUserId, year, status);
 
-    private MergeFixtureBuilder AddEventParticipation(Guid userId, int year, ParticipationStatus status)
+    private MergeFixtureBuilder AddEventParticipation(Guid userId, int year, LegacyParticipationStatus status)
     {
         _pending.Add(db => db.EventParticipations.Add(new EventParticipation
         {
@@ -287,8 +288,8 @@ public sealed class MergeFixtureBuilder
             UserId = userId,
             Year = year,
             Status = status,
-            Source = ParticipationSource.UserDeclared,
-            DeclaredAt = status == ParticipationStatus.NotAttending ? _now : null,
+            Source = LegacyParticipationSource.UserDeclared,
+            DeclaredAt = status == LegacyParticipationStatus.NotAttending ? _now : null,
         }));
         return this;
     }

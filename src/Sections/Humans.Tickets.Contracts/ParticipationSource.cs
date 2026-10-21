@@ -1,4 +1,4 @@
-namespace Humans.Users.Contracts;
+namespace Humans.Tickets.Contracts;
 
 /// <summary>
 /// How an EventParticipation status was set.

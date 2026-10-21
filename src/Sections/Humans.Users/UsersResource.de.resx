@@ -212,8 +212,6 @@
   <data name="Profile_MyEmails" xml:space="preserve"><value>Meine E-Mails</value></data>
   <data name="Profile_NoSentMessages" xml:space="preserve"><value>Keine plattforminternen Nachrichten vorhanden.</value></data>
   <data name="Profile_NoShowHistory" xml:space="preserve"><value>No-Show-Verlauf ({0})</value></data>
-  <data name="Profile_OnsiteSince" xml:space="preserve"><value>Vor Ort seit {0}</value></data>
-  <data name="Profile_OnsiteTitle" xml:space="preserve"><value>Am Tor eingecheckt</value></data>
   <data name="Profile_SentMessages" xml:space="preserve"><value>Gesendete Nachrichten</value></data>
   <data name="Profile_ShiftInfo" xml:space="preserve"><value>Schichtinfo</value></data>
 
@@ -811,11 +809,6 @@
   <data name="Enum_LanguageProficiency_Conversational" xml:space="preserve"><value>Konversationssicher</value></data>
   <data name="Enum_LanguageProficiency_Fluent" xml:space="preserve"><value>Fließend</value></data>
   <data name="Enum_LanguageProficiency_Native" xml:space="preserve"><value>Muttersprache</value></data>
-  <data name="Profile_NotAttending_Declared" xml:space="preserve"><value>Du wurdest für dieses Jahr als nicht teilnehmend markiert.</value></data>
-  <data name="Profile_NotAttending_Failed" xml:space="preserve"><value>Etwas ist schiefgelaufen. Bitte versuche es erneut.</value></data>
-  <data name="Profile_NotAttending_NoActiveEvent" xml:space="preserve"><value>Es ist keine aktive Veranstaltung konfiguriert.</value></data>
-  <data name="Profile_NotAttending_Undone" xml:space="preserve"><value>Deine Erklärung wurde entfernt.</value></data>
-  <data name="Profile_NotAttending_UndoFailed" xml:space="preserve"><value>Die Erklärung konnte nicht rückgängig gemacht werden; möglicherweise hat die Ticketsynchronisierung deinen Status aktualisiert.</value></data>
   <data name="Users_Email_AccessSuspended_Subject" xml:space="preserve">
     <value>Ihr Mitgliedschaftszugang wurde gesperrt</value>
   </data>

@@ -153,7 +153,7 @@ archived account and the survivor.
 | Section | Contributor | Shape |
 |---------|-------------|-------|
 | `Account` | `UserService` | Single object with user identity, display name, preferred language, Google email, lifecycle state, deletion request/scheduled/post-event-hold instants, created/last-login instants. |
-| `EventParticipations` | `UserService` | Array of `{ Year, Status, Source, DeclaredAt, CheckedInAt }` covering every event-year the user has a participation row for (Ticketed / Attended / NoShow / NotAttending). |
+| `LegacyEventParticipations` | `UserService` | Array of `{ UserId, Year, Status, Source, DeclaredAt, CheckedInAt }` — the frozen Users `event_participations` rows for every id in the merge chain (live record: the `EventParticipations` slice). Retained on erasure. |
 | `UserEmails` | `UserService` | Array of `{ Email, IsVerified, IsOAuth, IsNotificationTarget, IsGoogle, GoogleEmailStatus, VerificationSentAt, CreatedAt, UpdatedAt, Visibility }` (`IsOAuth` is true when a provider is linked; key names are pinned for export stability). |
 | `Profile` | `UserService` | Single object with burner name, legal name, birthday (month/day only), city/country, lat/lng, bio, pronouns, contribution interests, board notes, the legacy membership tier (live tier: the `MembershipTier` slice), the legacy approval and consent check state (live review: the `ConsentReview` slice), suspension state, emergency contact, medical conditions, the legacy food columns (meal preference, allergies, intolerances — still held until the `cantina.profile-dietary` retirement drops them), created/updated instants. |
 | `MergedProfiles` | `UserService` | Array of `{ UserId, Profile }` for archived profiles in the transitive merge chain. Reuses the current profile shape, including retained dietary and medical data; requests under an archived ID resolve to the survivor first. |
@@ -161,6 +161,7 @@ archived account and the survivor.
 | `VolunteerHistory` | `UserService` | Array of `{ Date, EventName, Description, CreatedAt }`. |
 | `Languages` | `UserService` | Array of `{ LanguageCode, Proficiency }`. |
 | `CommunicationPreferences` | `UserService` | Array of `{ Category, OptedOut, InboxEnabled, SubscribedAt, UpdatedAt, UpdateSource }`. |
+| `EventParticipations` | `EventParticipationService` (Tickets) | Array of `{ Year, Status, Source, DeclaredAt, CheckedInAt }` covering every event-year the user has a participation record for (Ticketed / Attended / NoShow / NotAttending), the legacy Users row answering until the `tickets.event-participations` copy has run; requests under an archived ID resolve to the survivor. Retained on erasure. |
 | `Applications` | `ApplicationDecisionService` | Array of tier application records with `StateHistory` inline. |
 | `MembershipTier` | `MembershipTierService` | Single object `{ Tier, GrantedAt, ExpiresAt, GrantedByApplicationId }`, or `{ Tier }` for a not-yet-copied legacy profile tier; null for a Volunteer. Retained on erasure (register of members). |
 | `Consents` | `ConsentService` | Array of `{ DocumentName, DocumentVersion, ExplicitConsent, ConsentedAt, IpAddress, UserAgent }`. |

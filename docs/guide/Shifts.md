@@ -16,7 +16,7 @@
   src/Sections/Humans.Shifts/Domain/ShiftSignup.cs
   src/Sections/Humans.Shifts/Domain/ShiftTag.cs
   src/Sections/Humans.Shifts/Domain/EventSettings.cs
-  src/Sections/Humans.Users.Contracts/EventParticipation.cs
+  src/Sections/Humans.Tickets.Contracts/EventParticipationInfo.cs
   src/Sections/Humans.Shifts/Domain/VolunteerEventProfile.cs
   src/Sections/Humans.Shifts/Domain/VolunteerTagPreference.cs
   src/Sections/Humans.Shifts/Domain/GeneralAvailability.cs

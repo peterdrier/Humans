@@ -11,33 +11,6 @@ namespace Humans.Users.Contracts;
 // No marker interface — see Humans.Users.Contracts.csproj.
 public interface IUserWrite
 {
-    /// <summary>
-    /// Set participation status from ticket sync. Handles the lifecycle rules:
-    /// - Valid ticket → Ticketed (<paramref name="checkedInAt"/> ignored)
-    /// - Checked in → Attended (permanent)
-    /// - Ticket purchase overrides NotAttending
-    /// <para>
-    /// <paramref name="checkedInAt"/> is the vendor-reported gate-arrival
-    /// instant. Stored on <see cref="EventParticipation.CheckedInAt"/> when an
-    /// Attended row is created, upgraded, or has no arrival timestamp yet. Never overwritten once
-    /// non-null — matches the "Attended is permanent" invariant (issue
-    /// nobodies-collective/Humans#736).
-    /// </para>
-    /// </summary>
-    Task SetParticipationFromTicketSyncAsync(
-        Guid userId,
-        int year,
-        ParticipationStatus status,
-        Instant? checkedInAt,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Remove a TicketSync-sourced participation record when a user no longer has valid tickets.
-    /// Does not remove UserDeclared or AdminBackfill records.
-    /// Does not remove Attended records (permanent).
-    /// </summary>
-    Task RemoveTicketSyncParticipationAsync(Guid userId, int year, CancellationToken ct = default);
-
     // ---- User storage commands ----
 
     /// <summary>

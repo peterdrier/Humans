@@ -32,8 +32,15 @@ internal sealed class TicketQueryService(
     ISettingsService settingsService,
     ITicketCacheInvalidator cacheInvalidator,
     IAuditLogService auditLog,
-    IClock clock) : ITicketManagement, IUserDataContributor
+    IClock clock,
+    IEventParticipationManagement participations) : ITicketManagement, IUserDataContributor
 {
+    public Task<IReadOnlyList<EventParticipationInfo>> GetParticipationsAsync(Guid userId, CancellationToken ct = default) =>
+        participations.GetParticipationsAsync(userId, ct);
+
+    public Task<IReadOnlyList<EventParticipationInfo>> GetAllParticipationsAsync(CancellationToken ct = default) =>
+        participations.GetAllParticipationsAsync(ct);
+
     private async Task<int> ComputeUserTicketCountAsync(Guid userId, CancellationToken ct)
     {
         // Attendees only — buyers don't count for themselves.
@@ -578,9 +585,8 @@ internal sealed class TicketQueryService(
         HashSet<Guid> notAttendingSet = [];
         if (activeEvent is not null && activeEvent.Year > 0)
         {
-            var participations = await userService.GetAllParticipationsForYearAsync(activeEvent.Year, ct);
-            notAttendingSet = participations
-                .Where(ep => ep.Status == ParticipationStatus.NotAttending)
+            notAttendingSet = (await participations.GetAllParticipationsAsync(ct))
+                .Where(ep => ep.Year == activeEvent.Year && ep.Status == ParticipationStatus.NotAttending)
                 .Select(ep => ep.UserId)
                 .ToHashSet();
         }

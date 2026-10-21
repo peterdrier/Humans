@@ -1,14 +1,16 @@
-using Humans.Users.Services;
 using CsvHelper;
 using Humans.Base.Csv;
 using Humans.Settings.Contracts;
+using Humans.Tickets.Contracts;
 using NodaTime;
-using Humans.Users.Contracts;
 
-namespace Humans.Application.Services.Users;
+namespace Humans.Tickets.Services;
 
+/// <summary>The admin participation backfill behind <c>/Tickets/Participation/Backfill</c>: parses pasted
+/// <c>UserId,Status</c> rows, previews them, and on apply writes and audits through
+/// <see cref="IEventParticipationManagement"/>.</summary>
 internal sealed class UserParticipationBackfillService(
-    IUserManagement userService,
+    IEventParticipationManagement participations,
     ISettingsService settingsService,
     IClock clock) : IUserParticipationBackfillService
 {
@@ -39,7 +41,7 @@ internal sealed class UserParticipationBackfillService(
                 $"Review {entries.Count} valid participation row(s) for {year} before importing.", entries.Count, previewCsv);
         }
 
-        var count = await userService.BackfillParticipationsAsync(year, entries, actorUserId, ct);
+        var count = await participations.BackfillParticipationsAsync(year, entries, actorUserId, ct);
         return ParticipationBackfillResult.Success(count, year);
     }
 

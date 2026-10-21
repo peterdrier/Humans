@@ -1,29 +1,28 @@
-using Humans.Users.Services;
 using AwesomeAssertions;
 using Humans.Settings.Contracts;
-using Humans.Application.Services.Users;
+using Humans.Tickets.Contracts;
+using Humans.Tickets.Services;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Users.Contracts;
 
-namespace Humans.Users.Tests.Services;
+namespace Humans.Tickets.Tests.Services;
 
 public sealed class UserParticipationBackfillServiceTests
 {
-    private readonly IUserManagement _users = Substitute.For<IUserManagement>();
+    private readonly IEventParticipationManagement _users = Substitute.For<IEventParticipationManagement>();
     private readonly ISettingsService _shifts = Substitute.For<ISettingsService>();
     private readonly Guid _actorId = Guid.NewGuid();
-    private List<(Guid UserId, ParticipationStatus Status)>? _captured;
+    private IReadOnlyList<(Guid UserId, ParticipationStatus Status)>? _captured;
 
     private UserParticipationBackfillService CreateService()
     {
         _users.BackfillParticipationsAsync(
                 Arg.Any<int>(),
-                Arg.Do<List<(Guid UserId, ParticipationStatus Status)>>(e => _captured = e),
+                Arg.Do<IReadOnlyList<(Guid UserId, ParticipationStatus Status)>>(e => _captured = e),
                 _actorId,
                 Arg.Any<CancellationToken>())
-            .Returns(ci => ((List<(Guid UserId, ParticipationStatus Status)>)ci[1]).Count);
+            .Returns(ci => ((IReadOnlyList<(Guid UserId, ParticipationStatus Status)>)ci[1]).Count);
 
         return new UserParticipationBackfillService(
             _users, _shifts, new FakeClock(Instant.FromUtc(2026, 6, 11, 0, 0)));

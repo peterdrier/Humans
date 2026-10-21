@@ -1,14 +1,16 @@
-namespace Humans.Users.Contracts;
+using Humans.Base.Interfaces;
 
-// No marker interface — see Humans.Users.Contracts.csproj.
-public interface IUserParticipationBackfillService
+namespace Humans.Tickets.Services;
+
+/// <summary>The admin participation backfill (moved from Users in decomposition commit 13).</summary>
+internal interface IUserParticipationBackfillService : IApplicationService
 {
     Task<int> GetDefaultYearAsync(CancellationToken ct = default);
     /// <summary>Previews parsed rows by default; an explicit apply writes and audits changed records.</summary>
     Task<ParticipationBackfillResult> BackfillFromCsvAsync(int year, string? csvData, Guid actorUserId, CancellationToken ct = default, bool apply = false);
 }
 
-public sealed record ParticipationBackfillResult(bool Succeeded, string Message, int Count = 0, string? PreviewCsv = null)
+internal sealed record ParticipationBackfillResult(bool Succeeded, string Message, int Count = 0, string? PreviewCsv = null)
 {
     public static ParticipationBackfillResult Success(int count, int year) =>
         new(true, $"Successfully backfilled {count} participation records for {year}.", count);

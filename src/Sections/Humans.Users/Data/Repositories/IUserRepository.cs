@@ -137,19 +137,6 @@ internal partial interface IUserRepository : IRepository
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Migrates every <c>event_participations</c> row from
-    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
-    /// On (Year, UserId) collision, keeps the row with the highest
-    /// <see cref="ParticipationStatus"/> per the precedence
-    /// <c>Attended &gt; Ticketed &gt; NoShow &gt; NotAttending</c>.
-    /// Fills a missing target arrival from the source; a known target arrival is retained.
-    /// Used by
-    /// <c>AccountMergeService.AcceptAsync</c>.
-    /// </summary>
-    Task ReassignEventParticipationToUserAsync(
-        Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
-
-    /// <summary>
     /// Sets <see cref="User.ContactSource"/> if and only if it is currently
     /// <c>null</c>. No-op if the user already has a <c>ContactSource</c> set
     /// or the user does not exist. Returns true when the source was set.
@@ -188,20 +175,14 @@ internal partial interface IUserRepository : IRepository
         Guid userId, CancellationToken ct = default);
 
     // ==========================================================================
-    // Reads — EventParticipation
+    // Reads — EventParticipation (frozen legacy; Tickets owns participation since
+    // Users decomposition commit 13 and reads these through UserInfo)
     // ==========================================================================
-
-    /// <summary>
-    /// Returns the participation record for a user/year, or null if none.
-    /// Read-only (AsNoTracking).
-    /// </summary>
-    Task<EventParticipation?> GetParticipationAsync(
-        Guid userId, int year, CancellationToken ct = default);
 
     /// <summary>
     /// Returns all participation records for a given user (across all years),
     /// ordered by year ascending. Read-only (AsNoTracking). Used by the GDPR
-    /// export contributor under the <c>EventParticipations</c> key.
+    /// export contributor under the <c>LegacyEventParticipations</c> key.
     /// </summary>
     Task<IReadOnlyList<EventParticipation>> GetEventParticipationsByUserIdAsync(
         Guid userId, CancellationToken ct = default);
@@ -216,62 +197,4 @@ internal partial interface IUserRepository : IRepository
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<EventParticipation>>>
         GetEventParticipationsByUserIdsAsync(
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
-
-    // ==========================================================================
-    // Writes — EventParticipation
-    // ==========================================================================
-
-    /// <summary>
-    /// Upserts a participation record. If a record exists for (userId, year):
-    /// <list type="bullet">
-    ///   <item>if its <see cref="ParticipationStatus"/> is <see cref="ParticipationStatus.Attended"/>,
-    ///     only a missing arrival may be filled by an incoming Attended scan;
-    ///     otherwise the call is a no-op and returns null;</item>
-    ///   <item>otherwise, the status, source, and declaredAt are overwritten with
-    ///     the provided values — returns the updated row.</item>
-    /// </list>
-    /// If no record exists, a new one is created with the provided values and
-    /// persisted — returns the new row. The returned entity is detached
-    /// (AsNoTracking semantics; the owning context is disposed before return).
-    /// <para>
-    /// <paramref name="checkedInAt"/> is the vendor-reported gate-arrival
-    /// instant carried from <see cref="ParticipationSource.TicketSync"/>. Set
-    /// on row creation or filled by an incoming Attended scan when missing. Never
-    /// overwritten once non-null — Attended-permanence applies to the
-    /// timestamp as well (issue nobodies-collective/Humans#736).
-    /// </para>
-    /// </summary>
-    Task<EventParticipation?> UpsertParticipationAsync(
-        Guid userId,
-        int year,
-        ParticipationStatus status,
-        ParticipationSource source,
-        Instant? declaredAt,
-        Instant? checkedInAt,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Removes the participation record for (userId, year) if and only if its
-    /// source matches <paramref name="requiredSource"/> and its status is not
-    /// <see cref="ParticipationStatus.Attended"/>. Returns true if a row was
-    /// deleted.
-    /// </summary>
-    Task<bool> RemoveParticipationAsync(
-        Guid userId,
-        int year,
-        ParticipationSource requiredSource,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Bulk import historical participation data (admin backfill). For each
-    /// (userId, status) entry: if an existing Attended record exists for the
-    /// year, skip it (Attended is permanent); otherwise upsert with
-    /// <see cref="ParticipationSource.AdminBackfill"/> and <c>DeclaredAt = null</c>.
-    /// Returns each changed member and final status after save; excludes protected and unchanged rows.
-    /// </summary>
-    Task<IReadOnlyList<(Guid UserId, ParticipationStatus Status)>> BackfillParticipationsAsync(
-        int year,
-        IReadOnlyList<(Guid UserId, ParticipationStatus Status)> entries,
-        CancellationToken ct = default);
-
 }

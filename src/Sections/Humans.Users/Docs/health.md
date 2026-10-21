@@ -27,7 +27,7 @@ People manage themselves under `/Profile/Me/*`; member admins manage people unde
 | **Profile mutation** | save the edit form; save medical conditions; set picture; set tier; stub a profile; replace languages / history | `IProfileEditorService` (validation + file) → `IUserManagement` (row) → repository |
 | **Contact handles** | what can this viewer see of that owner; save the owner's list | `IContactFieldService` |
 | **Mail consent** | is Y opted out of category C; flip it; mint / validate an unsubscribe token | `ICommunicationPreferenceService`, `IUnsubscribeService`, `IUnsubscribeTokenProvider` |
-| **Presence** | for year N: declare not attending, undo, ticket-sync upsert/remove, admin backfill; who was on site | `IUserService` participation methods, `IUserService.GetOnsiteUsersAsync`, `IUserParticipationBackfillService` |
+| **Presence** | moved to Tickets (Users decomposition commit 13); Users only carries the frozen `event_participations` rows on `UserInfo` for Tickets' fallback and copy | `UserInfo.EventParticipations` (`[Obsolete(HUM_USER_PARTICIPATIONS)]`) |
 | **Account life** | create (OAuth callback, magic link, import), suspend / unsuspend / reject / restore, request and cancel deletion, anonymize on expiry, purge (non-prod), merge two accounts | `IExternalLoginService`, `IAccountProvisioningService`, `IHumanLifecycleService`, `IAccountDeletionService`, `IAccountMergeService` + `IDuplicateAccountService`, `INonCompliantMemberSuspension` |
 | **Cache signal** | "this person changed" from a write the service did not see | `IUserInfoInvalidator`, `IUserInfoSliceRefresher` + `UserInfoSaveChangesInterceptor` |
 | **Repair** | email-invariant violations; profile-less accounts; unsynced names; picture migration | `IEmailProblemsService`, the `/Profile/Admin/*` backfill controllers |
@@ -76,7 +76,7 @@ The shapes imply one register with one cache and one write funnel:
   reconcile blocks or displaces before it writes.
 - An address is rewritten by exactly one path: the OAuth reconcile, matched on
   `(Provider, ProviderKey)`.
-- `Attended` is permanent; a `NotAttending` self-declaration is undone only by its author.
+- `event_participations` is frozen: nothing in Users writes it, and the merge leaves its rows where they are.
 - Birthday carries month and day only.
 - `MedicalConditions` is Art. 9 data and is gated at every render by `MedicalDataViewer`.
 - A merge is ordered, not transactional; every `IUserMerge.ReassignAsync` is idempotent; the

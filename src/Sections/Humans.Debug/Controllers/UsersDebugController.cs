@@ -6,16 +6,18 @@ using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Debug.Controllers;
 
 // Diagnostic surface for UserInfo cache — flat sortable table from GetAllRawUserInfosAsync
 // (tombstones included: this is the cache diagnostic, it shows what is in the cache), plus Consent's
-// review map for the consent-check column.
+// review map for the consent-check column and Tickets' participations for the ticket column.
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Users/Admin/Debug")]
-internal sealed class UsersDebugController(IUserService userService, IConsentService consentService)
+internal sealed class UsersDebugController(
+    IUserService userService, IConsentService consentService, ITicketService tickets)
     : HumansControllerBase(userService)
 {
     private const int MinPageSize = 10;
@@ -34,7 +36,12 @@ internal sealed class UsersDebugController(IUserService userService, IConsentSer
 
         var snapshot = await _userService.GetAllRawUserInfosAsync(ct);
         var reviews = await consentService.GetConsentReviewsAsync(ct);
-        var allRows = snapshot.Select(u => UserDebugRow.From(u, reviews.GetValueOrDefault(u.Id))).ToList();
+        // Any-year Ticketed/Attended participation — diagnostic only.
+        var ticketHolders = (await tickets.GetAllParticipationsAsync(ct))
+            .Where(p => p.HasTicket).Select(p => p.UserId).ToHashSet();
+        var allRows = snapshot
+            .Select(u => UserDebugRow.From(u, reviews.GetValueOrDefault(u.Id), ticketHolders.Contains(u.Id)))
+            .ToList();
 
         var sorted = ApplySort(allRows, sort, dir);
         var total = sorted.Count;

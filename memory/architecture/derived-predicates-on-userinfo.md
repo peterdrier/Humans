@@ -19,11 +19,10 @@ description: Derived user predicates (IsActive, IsStub, IsRejected, etc.) go on 
 **Examples already on `UserInfo`:**
 - `BurnerName`, `Email`, `EmailConfirmed`, `IsDeletionPending`
 - `PrimaryEmail`, `GoogleEmail`, `AllVerifiedEmails`, `MarketingOptedOut`
-- `HasTicket`, `HasTicketForYear(year)`
 - `IsStub`, `IsActive`, `HasRequiredNameFields`, `IsRejected`
 - `FullName` lives on `ProfileInfo` as a trivial concatenation — that's a **field formatter**, not a predicate; keep it where it is.
 
-**Exception — the predicate needs another section's data.** `NeedsConsentReview` / `IsConsentCheckFlagged` read the Consent Coordinator review, which Consent owns (`consent_reviews`), so they are extension methods `ConsentReviewPredicates.X(this UserInfo, ConsentReviewInfo)` in Consent's contracts, not `UserInfo` properties: `Users.Contracts` cannot see Consent's types.
+**Exception — the predicate needs another section's data.** `NeedsConsentReview` / `IsConsentCheckFlagged` read the Consent Coordinator review, which Consent owns (`consent_reviews`), so they are extension methods `ConsentReviewPredicates.X(this UserInfo, ConsentReviewInfo)` in Consent's contracts, not `UserInfo` properties: `Users.Contracts` cannot see Consent's types. Likewise `HasTicket` / `OnsiteSince` moved off `UserInfo` onto Tickets' `EventParticipationInfo` when Tickets took event participation (Users decomposition commit 13).
 
 **Counter-example (don't do):**
 - ❌ `ProfileInfo.IsStub` (was briefly considered, rejected — moved to `UserInfo`).

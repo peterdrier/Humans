@@ -14,19 +14,20 @@ plus a contracts leaf**: `src/Sections/Humans.Tickets` (orders, attendees,
 transfers, sync orchestration, the admin surface — everything `internal
 sealed`), `src/Sections/Humans.Tickets.Contracts` (the leaf:
 `ITicketService`, `ITicketSync`, `ITicketDiscountCodes`,
-`ITicketVendorMirror`), and
+`ITicketVendorMirror`, `ITicketWrite`), and
 `src/Sections/Humans.TicketTailor` (the vendor adapter — the sole
 implementation of the vendor port; owns no tables, publishes nothing, and
 references `Humans.Tickets` directly to name the port).
 `ITicketVendorService` (the vendor port itself) lives in
 `src/Sections/Humans.Tickets/Contracts/`. **DbContext:** `TicketsDbContext`.
-`TicketRepository` and `TicketTransferRepository` both inject
+`TicketRepository`, `TicketTransferRepository` and `EventParticipationRepository` inject
 `IDbContextFactory<TicketsDbContext>` directly. Owns `TicketOrders`,
-`TicketAttendees`, `TicketSyncStates`, `TicketTransferRequests`.
+`TicketAttendees`, `TicketSyncStates`, `TicketTransferRequests`,
+`EventParticipations` (`tickets_event_participations`, Users decomposition commit 13).
 
-The section's public surface is small: `ITicketService` (2 members,
-no `SurfaceBudget` pinned), `ITicketSync` (2), `ITicketDiscountCodes` (1),
-`ITicketVendorMirror` (1). `TicketDashboardDtos` (24 public types), the
+The section's public surface is small: `ITicketService` (no `SurfaceBudget` pinned; adds
+`GetParticipationsAsync` / `GetAllParticipationsAsync`), `ITicketSync` (2), `ITicketDiscountCodes` (1),
+`ITicketVendorMirror` (1), `ITicketWrite` (1: `SetParticipationFromTicketSyncAsync`, Gate's admit). `TicketDashboardDtos` (24 public types), the
 transfer wizard (including the `ITicketTransferQueue` badge count), and the
 admin decision DTOs are `internal`. Campaigns' grant waves call `ITicketDiscountCodes.GenerateAsync`
 (in the application's own `TicketDiscountCodeRequest`/`TicketDiscountKind`
@@ -147,8 +148,9 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 | `Tickets.Orders` / `Tickets.UserHoldings` tracked slices (via `ITicketCacheInvalidator`) | per-process | | | yes |
 
 Cross-section calls via `ITicketVendorService`, `IStripeService`,
-`IUserService`, `IUserWrite`, `ICampaignWrite`,
-`ISettingsService`, `ITicketCacheInvalidator`. Implements
+`IUserService`, `ICampaignWrite`,
+`ISettingsService`, `ITicketCacheInvalidator`, and the section's own
+`IEventParticipationManagement` for participation derivation. Implements
 `ITicketSyncService`, `IUserMerge`. `BuildEmailLookupAsync` builds the
 verified-email → user-id map by fanning out over `IUserService.GetAllUserInfosAsync`.
 
@@ -208,10 +210,33 @@ Cross-section calls via `IUserEmailService`, `IAccountProvisioningService`,
 `IAuditLogService`. Imports attendee contact data into the system; clears
 ticket caches via `InvalidateAfterContactImport`. No `IMemoryCache` directly.
 
+### EventParticipationService (Scoped)
+
+Repository: `IEventParticipationRepository` (Singleton, `IDbContextFactory<TicketsDbContext>`).
+
+| Table | R/W |
+|-------|-----|
+| EventParticipations (`tickets_event_participations`) | R/W (W: member declaration, ticket sync, Gate admit via `ITicketWrite`, admin backfill, merge fold, `tickets.event-participations` copy; a `null` `Status` is a cleared record) |
+
+Implements the internal `IEventParticipationManagement` (and so `ITicketWrite`),
+`IUserDataContributor` (slice `EventParticipations`, retained on erasure) and
+`IUserMerge`. `TicketQueryService` forwards `ITicketService.GetParticipationsAsync` /
+`GetAllParticipationsAsync` to it. Cross-section calls via `IUserService`
+(`GetUserInfoAsync` to forward-resolve a merged id; `GetRawUserInfoAsync` /
+`GetAllRawUserInfosAsync` for the frozen legacy rows — the one suppressed
+`HUM_USER_PARTICIPATIONS` reader, `LegacyRows`) and `IAuditLogService`
+(`ParticipationBackfilled`). No cache.
+
+### UserParticipationBackfillService (Scoped)
+
+No repository. Parses the `/Tickets/Participation/Backfill` CSV and calls
+`IEventParticipationManagement.BackfillParticipationsAsync`. No cache.
+
 ### OnsiteRosterService (Scoped)
 
 No repository. "Who's onsite" roster orchestrator. Pure read
-orchestration over `IUserService`, `ICampService`, `ITeamService`,
+orchestration over `IEventParticipationManagement` (this year's onsite
+participations), `IUserService`, `ICampService`, `ITeamService`,
 `IRoleAssignmentService` (the controller resolves the active year via
 `ISettingsService`). Implements
 `IOnsiteRosterService`, `IApplicationService`. No direct DB access, no cache.

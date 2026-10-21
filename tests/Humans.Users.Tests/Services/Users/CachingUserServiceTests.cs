@@ -82,8 +82,8 @@ public class CachingUserServiceTests
             Id = Guid.NewGuid(),
             UserId = user.Id,
             Year = 2026,
-            Status = ParticipationStatus.Ticketed,
-            Source = ParticipationSource.TicketSync,
+            Status = LegacyParticipationStatus.Ticketed,
+            Source = LegacyParticipationSource.TicketSync,
         };
         var original = UserInfoFactory.Create(user, [], [participation], [], profile, [], [], [], []);
         var options = new DbContextOptionsBuilder<UsersDbContext>()
@@ -119,7 +119,9 @@ public class CachingUserServiceTests
         refreshed.BurnerName.Should().Be("After");
         refreshed.PreferredLanguage.Should().Be("es");
         refreshed.Profile.Should().BeEquivalentTo(original.Profile);
+#pragma warning disable HUM_USER_PARTICIPATIONS // the frozen legacy slice must survive a user-row refresh: Tickets' fallback reads it
         refreshed.EventParticipations.Should().BeEquivalentTo(original.EventParticipations);
+#pragma warning restore HUM_USER_PARTICIPATIONS
     }
 
     [HumansFact]
@@ -519,8 +521,8 @@ public class CachingUserServiceTests
             Id = participationId,
             UserId = userId,
             Year = 2026,
-            Status = ParticipationStatus.Ticketed,
-            Source = ParticipationSource.TicketSync,
+            Status = LegacyParticipationStatus.Ticketed,
+            Source = LegacyParticipationSource.TicketSync,
         };
         var profile = new Profile
         {
@@ -585,8 +587,10 @@ public class CachingUserServiceTests
         result.GoogleEmailStatus.Should().Be(GoogleEmailStatus.Valid);
         result.UserEmails.Should().ContainSingle(e =>
             e.Id == emailId && e.IsPrimary && e.IsGoogle && e.IsVerified);
+#pragma warning disable HUM_USER_PARTICIPATIONS // the legacy table still flows into UserInfo for Tickets' fallback
         result.EventParticipations.Should().ContainSingle(p =>
-            p.Id == participationId && p.Year == 2026 && p.Status == ParticipationStatus.Ticketed);
+            p.Id == participationId && p.Year == 2026 && p.Status == LegacyParticipationStatus.Ticketed);
+#pragma warning restore HUM_USER_PARTICIPATIONS
         result.ExternalLogins.Should().ContainSingle(l =>
             l.Provider == "Google" && l.ProviderKey == "ext-key-1");
         result.Profile.Should().NotBeNull();
@@ -699,83 +703,6 @@ public class CachingUserServiceTests
             .Returns(new ValueTask<UserInfo?>((UserInfo?)null));
         (await sut.GetUserInfoAsync(u1, Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
         (await sut.GetUserInfoAsync(u2, Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task SetParticipationFromTicketSyncAsync_DelegatesAndRefreshesParticipationSlice()
-    {
-        // Decorator forwards unconditionally — idempotency lives in the inner
-        // service / repository (Attended is terminal, identical TicketSync row
-        // is a no-op upsert). The decorator's only job is to delegate, then
-        // refresh the participation slice in the dict.
-        var userId = Guid.NewGuid();
-        var stale = new EventParticipation
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Year = 2026,
-            Status = ParticipationStatus.NotAttending,
-            Source = ParticipationSource.UserDeclared,
-            DeclaredAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        };
-        var fresh = new EventParticipation
-        {
-            Id = stale.Id,
-            UserId = userId,
-            Year = 2026,
-            Status = ParticipationStatus.Ticketed,
-            Source = ParticipationSource.TicketSync,
-            DeclaredAt = null,
-        };
-
-        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(
-                new ValueTask<UserInfo?>(SampleUserInfo(userId, eventParticipations: [stale])),
-                new ValueTask<UserInfo?>(SampleUserInfo(userId, eventParticipations: [fresh])));
-
-        var sut = CreateSut();
-        await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
-
-        await sut.SetParticipationFromTicketSyncAsync(userId, 2026, ParticipationStatus.Ticketed, checkedInAt: null, ct: Xunit.TestContext.Current.CancellationToken);
-
-        await _inner.Received(1).SetParticipationFromTicketSyncAsync(
-            userId, 2026, ParticipationStatus.Ticketed, null, Arg.Any<CancellationToken>());
-        await _inner.Received(2).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
-        // Slice refresh — sibling slices and repos are not touched.
-        var info = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
-        info!.EventParticipations.Should().ContainSingle(p =>
-            p.Year == 2026 && p.Status == ParticipationStatus.Ticketed && p.Source == ParticipationSource.TicketSync);
-    }
-
-    [HumansFact]
-    public async Task RemoveTicketSyncParticipationAsync_DelegatesAndRefreshesParticipationSlice()
-    {
-        var userId = Guid.NewGuid();
-        var existing = new EventParticipation
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Year = 2026,
-            Status = ParticipationStatus.Ticketed,
-            Source = ParticipationSource.TicketSync,
-            DeclaredAt = null,
-        };
-
-        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(
-                new ValueTask<UserInfo?>(SampleUserInfo(userId, eventParticipations: [existing])),
-                new ValueTask<UserInfo?>(SampleUserInfo(userId, eventParticipations: [])));
-
-        var sut = CreateSut();
-        await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
-
-        await sut.RemoveTicketSyncParticipationAsync(userId, 2026, Xunit.TestContext.Current.CancellationToken);
-
-        await _inner.Received(1).RemoveTicketSyncParticipationAsync(userId, 2026, Arg.Any<CancellationToken>());
-        await _inner.Received(2).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
-
-        var info = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
-        info!.EventParticipations.Should().BeEmpty();
     }
 
     // ==========================================================================

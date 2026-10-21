@@ -1,5 +1,6 @@
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
+using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Debug.Services;
@@ -10,7 +11,7 @@ namespace Humans.Debug.Services;
 /// bitmask over four boolean dimensions:
 /// <list type="bullet">
 ///   <item><description>bit 0 — <c>Profile</c>: <c>UserInfo.HasRequiredNameFields</c></description></item>
-///   <item><description>bit 1 — <c>Ticket</c>: <c>UserInfo.HasTicketForYear(activeYear)</c></description></item>
+///   <item><description>bit 1 — <c>Ticket</c>: Ticketed/Attended participation for the active year (<c>ITicketService</c>)</description></item>
 ///   <item><description>bit 2 — <c>Shift</c>: active signup (Pending/Confirmed) in the active event</description></item>
 ///   <item><description>bit 3 — <c>Marketing</c>: explicit marketing opt-in (<c>MarketingOptedOut == false</c>)</description></item>
 /// </list>
@@ -23,10 +24,15 @@ internal static class UserSetMembershipCalculator
         IReadOnlyCollection<UserInfo> snapshot,
         ISettingsService settingsService,
         IShiftView shiftView,
+        ITicketService tickets,
         CancellationToken ct)
     {
         var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
         var activeYear = activeEvent?.Year ?? 0;
+        var ticketHolders = activeYear > 0
+            ? (await tickets.GetAllParticipationsAsync(ct))
+                .Where(p => p.Year == activeYear && p.HasTicket).Select(p => p.UserId).ToHashSet()
+            : [];
         var shiftViews = await shiftView.GetUsersAsync(snapshot.Select(u => u.Id), ct);
 
         var counts = new Dictionary<int, int>(capacity: 16);
@@ -34,7 +40,7 @@ internal static class UserSetMembershipCalculator
         {
             var mask = 0;
             if (u.HasRequiredNameFields) mask |= UserSetMembership.ProfileBit;
-            if (activeYear > 0 && u.HasTicketForYear(activeYear)) mask |= UserSetMembership.TicketBit;
+            if (ticketHolders.Contains(u.Id)) mask |= UserSetMembership.TicketBit;
             if (shiftViews[u.Id].HasShift) mask |= UserSetMembership.ShiftBit;
             // Explicit opt-in only: tri-state MarketingOptedOut == false (not null, not true).
             if (u.MarketingOptedOut == false) mask |= UserSetMembership.MarketingBit;

@@ -46,7 +46,7 @@ public sealed class Section : ISection, IIssueQueueOwner
         // Catches Identity-machinery writes (UpdateAsync, LastLoginAt, OAuth UserEmail).
         // Singleton, resolved onto every section's DbContext and DbContextFactory pipelines via
         // IEnumerable<IInterceptor> — the interceptor pattern-matches
-        // User/UserEmail/EventParticipation/CommunicationPreference wherever they are saved.
+        // User/UserEmail/CommunicationPreference wherever they are saved.
         // A section owns its own interceptors; Base names none of them.
         services.AddSingleton<UserInfoSaveChangesInterceptor>();
         services.AddSingleton<IInterceptor>(sp => sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
@@ -142,7 +142,6 @@ public sealed class Section : ISection, IIssueQueueOwner
         // HUM0005 names it as the sole legal caller of ReconcileOAuthIdentityAsync by full name.
         services.AddScoped<IAccountDeletionService, AccountDeletionService>();
         services.AddScoped<IExternalLoginService, ExternalLoginService>();
-        services.AddScoped<IUserParticipationBackfillService, UserParticipationBackfillService>();
 
         services.AddScoped<ProcessAccountDeletionsJob>();
         services.AddScoped<SuspendNonCompliantMembersJob>();

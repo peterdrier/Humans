@@ -450,19 +450,6 @@ internal sealed class CachingUserService(
         await ReplaceAsync(userId, ct).ConfigureAwait(false);
     }
 
-    public async Task RefreshEventParticipationsAsync(
-        Guid userId,
-        CancellationToken ct = default,
-        [CallerMemberName] string memberName = "",
-        [CallerFilePath] string filePath = "")
-    {
-        logger.LogDebug(
-            "UserInfo refresh event-participations userId={UserId} caller={CallerMember} file={CallerFile}",
-            userId, memberName, Path.GetFileName(filePath));
-
-        await ReplaceAsync(userId, ct).ConfigureAwait(false);
-    }
-
     public async Task RefreshExternalLoginsAsync(
         Guid userId,
         CancellationToken ct = default,
@@ -493,7 +480,9 @@ internal sealed class CachingUserService(
         UserInfo.Create(user, [], [], [], current.Profile, []) with
         {
             UserEmails = current.UserEmails,
+#pragma warning disable HUM_USER_PARTICIPATIONS // carrying the frozen legacy slice across a user-row refresh, not reading it
             EventParticipations = current.EventParticipations,
+#pragma warning restore HUM_USER_PARTICIPATIONS
             ExternalLogins = current.ExternalLogins,
             CommunicationPreferences = current.CommunicationPreferences,
             MergedUserIds = current.MergedUserIds,
@@ -516,36 +505,6 @@ internal sealed class CachingUserService(
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserManagement>(InnerServiceKey);
         await work(inner);
-    }
-
-    public async Task<IReadOnlyList<UserParticipationRow>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default)
-    {
-        await EnsureWarmedAsync(ct).ConfigureAwait(false);
-        var snapshot = Values;
-        var result = new List<UserParticipationRow>();
-        foreach (var u in snapshot)
-        {
-            foreach (var p in u.EventParticipations)
-            {
-                if (p.Year != year) continue;
-                result.Add(new UserParticipationRow(u.Id, p.Status, p.Source, p.CheckedInAt));
-            }
-        }
-        return result;
-    }
-
-    public async Task<IReadOnlyList<OnsiteUserRow>> GetOnsiteUsersAsync(
-        int year, CancellationToken ct = default)
-    {
-        await EnsureWarmedAsync(ct).ConfigureAwait(false);
-        var result = new List<OnsiteUserRow>();
-        foreach (var u in Values)
-        {
-            var onsiteSince = u.OnsiteSinceForYear(year);
-            if (onsiteSince is null) continue;
-            result.Add(new OnsiteUserRow(u.Id, u.BurnerName, onsiteSince));
-        }
-        return result;
     }
 
     public async Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default)
@@ -759,46 +718,6 @@ internal sealed class CachingUserService(
             await inner.SetLastConsentReminderSentAsync(userId, sentAt, ct);
             await RefreshEntryAsync(userId);
         });
-
-    public async Task DeclareNotAttendingAsync(
-        Guid userId, int year, CancellationToken ct = default)
-    {
-        await WithInnerAsync(inner => inner.DeclareNotAttendingAsync(userId, year, ct));
-        await RefreshEntryAsync(userId);
-    }
-
-    public async Task<bool> UndoNotAttendingAsync(Guid userId, int year, CancellationToken ct = default)
-    {
-        var result = await WithInnerAsync(inner => inner.UndoNotAttendingAsync(userId, year, ct));
-        if (result) await RefreshEntryAsync(userId);
-        return result;
-    }
-
-    public async Task SetParticipationFromTicketSyncAsync(
-        Guid userId, int year, ParticipationStatus status, Instant? checkedInAt, CancellationToken ct = default)
-    {
-        await WithInnerAsync(inner =>
-            inner.SetParticipationFromTicketSyncAsync(userId, year, status, checkedInAt, ct));
-        await RefreshEventParticipationsAsync(userId, ct);
-    }
-
-    public async Task RemoveTicketSyncParticipationAsync(Guid userId, int year, CancellationToken ct = default)
-    {
-        await WithInnerAsync(inner => inner.RemoveTicketSyncParticipationAsync(userId, year, ct));
-        await RefreshEventParticipationsAsync(userId, ct);
-    }
-
-    public async Task<int> BackfillParticipationsAsync(
-        int year,
-        List<(Guid UserId, ParticipationStatus Status)> entries,
-        Guid actorUserId,
-        CancellationToken ct = default)
-    {
-        var count = await WithInnerAsync(inner => inner.BackfillParticipationsAsync(year, entries, actorUserId, ct));
-        foreach (var userId in entries.Select(e => e.UserId).Distinct())
-            await RefreshEventParticipationsAsync(userId, ct);
-        return count;
-    }
 
     public async Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
         Guid userId, CancellationToken ct = default)

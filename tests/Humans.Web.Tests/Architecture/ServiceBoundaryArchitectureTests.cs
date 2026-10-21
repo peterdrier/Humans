@@ -49,7 +49,6 @@ public class ServiceBoundaryArchitectureTests
         "Humans.Users.Contracts.IHumanLifecycleService",
         "Humans.Users.Contracts.IProfileEditorService",
         "Humans.Users.Contracts.IUserEmailService",
-        "Humans.Users.Contracts.IUserParticipationBackfillService",
         "Humans.Users.Contracts.IUserService",
     ];
 

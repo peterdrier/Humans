@@ -23,24 +23,6 @@ internal interface IUserManagement : IUserService, IUserWrite, IUserMerge
         Instant now, CancellationToken ct = default);
 
     /// <summary>
-    /// Declare that the user is not attending this year's event. Upserts a
-    /// UserDeclared NotAttending row unless the user is already Attended (in
-    /// which case the declaration is logged and ignored).
-    /// </summary>
-    Task DeclareNotAttendingAsync(Guid userId, int year, CancellationToken ct = default);
-
-    /// <summary>
-    /// Undo a "not attending" declaration. Removes the record.
-    /// Only works if the current status is NotAttending with Source=UserDeclared.
-    /// </summary>
-    Task<bool> UndoNotAttendingAsync(Guid userId, int year, CancellationToken ct = default);
-
-    /// <summary>
-    /// Bulk import historical participation data after admin confirmation; counts and audits changed records.
-    /// </summary>
-    Task<int> BackfillParticipationsAsync(int year, List<(Guid UserId, ParticipationStatus Status)> entries, Guid actorUserId, CancellationToken ct = default);
-
-    /// <summary>
     /// Applies the identity-level fields of the GDPR expiry anonymization
     /// on the User aggregate — removes <c>UserEmail</c> rows through
     /// <c>IUserRepository</c>, renames to <c>Deleted User</c>, clears

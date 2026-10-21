@@ -59,7 +59,6 @@ public class ProfileControllerEditTests
     private readonly IOnboardingIntake _onboardingService = Substitute.For<IOnboardingIntake>();
     private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
-    private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly ProfileController _controller;
     private readonly Guid _userId = Guid.NewGuid();
@@ -92,7 +91,6 @@ public class ProfileControllerEditTests
             _contactFields,
             _commPrefService,
             _onboardingService,
-            _settings,
             _configuration,
             new ConfigurationRegistry(),
             NullLogger<ProfileController>.Instance,
@@ -341,23 +339,6 @@ public class ProfileControllerEditTests
         Assert.IsType<OkResult>(await _controller.UpdatePreference(MessageCategory.Marketing, false, false));
         await _commPrefService.Received(1).UpdatePreferenceAsync(_userId, MessageCategory.Marketing,
             true, false, "Profile", actorUserId: _userId, cancellationToken: Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task Me_AbandonedRequest_CancelsOnsiteYearRead()
-    {
-        using var aborted = new CancellationTokenSource();
-        await aborted.CancelAsync();
-        _membershipCalculator.GetMembershipSnapshotAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(new MembershipSnapshot(MembershipStatus.Active, true, 0, 0, []));
-        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns((EventSettingsInfo?)null);
-        _settings.GetActiveEventSettingsAsync(aborted.Token)
-            .Returns(Task.FromCanceled<EventSettingsInfo?>(aborted.Token));
-
-        var act = () => _controller.Me(aborted.Token);
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [HumansTheory]

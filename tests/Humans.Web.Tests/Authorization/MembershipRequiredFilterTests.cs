@@ -52,6 +52,7 @@ public class MembershipRequiredFilterTests
     private static readonly Type MyDataControllerType = SectionControllerType("Humans.Consent", "MyDataController");
     // CantinaProfileController is internal to Humans.Cantina: the dietary form at /Profile/Me/Dietary.
     private static readonly Type CantinaProfileControllerType = SectionControllerType("Humans.Cantina", "CantinaProfileController");
+    private static readonly Type TicketParticipationControllerType = SectionControllerType("Humans.Tickets", "TicketParticipationController");
 
     private static Type GdprControllerType(string name) => SectionControllerType("Humans.Gdpr", name);
 
@@ -155,8 +156,8 @@ public class MembershipRequiredFilterTests
             (typeof(ProfileController), nameof(ProfileController.Index)),
             (typeof(ProfileController), nameof(ProfileController.Me)),
             (typeof(ProfileController), nameof(ProfileController.Edit)),
-            (typeof(ProfileController), nameof(ProfileController.DeclareNotAttending)),
-            (typeof(ProfileController), nameof(ProfileController.UndoNotAttending)),
+            (TicketParticipationControllerType, "DeclareNotAttending"),
+            (TicketParticipationControllerType, "UndoNotAttending"),
             (MemberOutboxControllerType, "MyOutbox"),
             (MyDataControllerType, "Index"),
             (typeof(ProfileController), nameof(ProfileController.Medical)),

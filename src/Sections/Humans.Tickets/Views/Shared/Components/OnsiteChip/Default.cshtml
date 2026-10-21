@@ -1,0 +1,6 @@
+@model NodaTime.Instant
+
+<span class="badge text-bg-success mb-2" title="@Localizer["Tickets_Onsite_Title"].Value">
+    <i class="fa-solid fa-circle-check"></i>
+    @Localizer["Tickets_Onsite_Since", Model.ToDateTime()]
+</span>

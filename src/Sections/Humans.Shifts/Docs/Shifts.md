@@ -3,7 +3,7 @@
   src/Sections/Humans.Shifts.Contracts/**
   src/Humans.Base/Authorization/ShiftRoleChecks.cs
   src/Humans.Base/Authorization/PolicyNames.cs
-  src/Sections/Humans.Users.Contracts/ParticipationStatus.cs
+  src/Sections/Humans.Tickets.Contracts/ParticipationStatus.cs
   src/Sections/Humans.Teams.Contracts/ITeamService.cs
   src/Sections/Humans.Users.Contracts/IUserMerge.cs
 -->
@@ -26,7 +26,7 @@ Event shifts, rotas, signups, range blocks, event settings, general availability
 - **Volunteer Event Profile** stores per-user shift-matching data: skills, quirks (working-style toggles like Sober Shift, Work In Shade, plus a single time preference), and languages. One-to-one with `User`. Dietary preference, allergies and intolerances live in Cantina (`cantina_dietary_profiles`, read via `ICantinaService`); medical conditions live on `Profile` (Users section, read via `IUserService`); the unused VEP columns for them await a post-prod-soak drop.
 - **Rota Tags** (`shift_tags`) are labels applied to rotas (e.g., "Heavy lifting"). Volunteers save preferred tags via `VolunteerTagPreference`; matching rotas are starred on the browse page.
 - **Voluntelling** is when an Admin, NoInfoAdmin, VolunteerCoordinator, or department coordinator signs up a human for a shift on their behalf. Voluntold signups are auto-confirmed and recorded with `Enrolled = true` and `EnrolledByUserId`.
-- **Event Participation** is a per-user, per-year record tracking declared event participation status, used cross-section (e.g., to gate "who hasn't bought a ticket" lists). Owned by Users (see [`Users.md`](../../Humans.Users/Docs/Users.md)); Shifts may surface it as a derived view but does not write to it.
+- **Event Participation** is a per-user, per-year record tracking declared event participation status, used cross-section (e.g., to gate "who hasn't bought a ticket" lists). Owned by Tickets since Users decomposition commit 13 (see [`Tickets.md`](../../Humans.Tickets/Docs/Tickets.md)); Shifts reads it through `ITicketService.GetAllParticipationsAsync` and does not write to it.
 - **Shift Summary by Camp** is a read-only roll-up of confirmed-shift totals (hours + count) per human and pivoted per camp, viewable at three scopes (global / team-set / single rota). Pure read view over confirmed signups — no new tables, no writes. Built by `IShiftManagement.BuildSummaryAsync` (`ShiftSummary` DTO); gated by the `ShiftDepartmentManager` policy. Department expansion and rota metadata reads retain caller cancellation.
 
 ## Data Model
@@ -120,9 +120,9 @@ Per-user shift-matching profile (1:1 with User) capturing `Skills`, `Quirks`, `L
 
 `UserId` is a bare Guid column with no navigation property and no FK constraint, so no DB-level cascade delete applies; account deletion goes through `CancelActiveSignupsForUserAsync` and the GDPR path.
 
-### EventParticipation (owned by Users)
+### EventParticipation (owned by Tickets)
 
-The `event_participations` entity is owned by Users — the natural key is User + Year. See [`Users.md`](../../Humans.Users/Docs/Users.md) for field-level detail. Shifts consumes it as a read-only cross-section reference and does not write to the table directly.
+Event participation (`tickets_event_participations`) is owned by Tickets — see [`Tickets.md`](../../Humans.Tickets/Docs/Tickets.md) for field-level detail. Shifts reads it through `ITicketService.GetAllParticipationsAsync` (volunteer tracking's ticketed/attended cohort) and never writes it.
 
 ### Shift tag tables
 
@@ -400,7 +400,7 @@ section and is not on the leaf.
 - **Teams:** `ITeamService` — rotas belong to a department or sub-team. Used for `GetTeamsAsync`, `GetTeamAsync`, `GetTeamBySlugAsync`, `GetUserCoordinatedTeamIdsAsync`. Coordinator status determines shift management access.
 - **Users:** `IUserService` — `GetUserInfosAsync` resolves display data (name, profile picture) for signup rows now that `ShiftSignup.User` nav is stripped. Also used by the dashboard activity computation and the volunteer search builder.
 - **Auth:** `IRoleAssignmentService` (lazy-resolved) — role checks for `Admin`, `NoInfoAdmin`, `VolunteerCoordinator` from `HasActiveRoleAsync`.
-- **Tickets:** `ITicketService` — used by the coordinator dashboard to compute ticket-buyer cross-references from `TicketOrderInfo`; `EventParticipation` is consumed by Tickets to gate "who hasn't bought" lists.
+- **Tickets:** `ITicketService` — used by the coordinator dashboard to compute ticket-buyer cross-references from `TicketOrderInfo`; `GetAllParticipationsAsync` gives volunteer tracking each living user's participation status for the active year.
 - **Audit Log:** `IAuditLogService` — every signup state change and rota move emits an audit entry.
 - **Notifications:** `INotificationEmitter` — coordinator notifications for signup changes, voluntell assignments, and coverage gaps. No direct email-outbox dependency from this section.
 - **GDPR:** `ShiftSignupService` implements `IUserDataContributor` (export of signups, volunteer event profile, general availability, tag preferences) and `CancelActiveSignupsForUserAsync` (deletion).
