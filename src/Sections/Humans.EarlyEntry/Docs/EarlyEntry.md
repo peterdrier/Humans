@@ -63,10 +63,10 @@ verbatim; the nav entry is the section's own "Early Entry" group. The route is n
   the provider fan-out (`EarlyEntryArchitectureTests.OrchestratorInjectsOnlyTheProviderFanout`).
 - The fan-out is sequential — a simplicity choice, not a thread-safety requirement
   (design-rules §8b); each provider reads through its own section.
-- **Nothing is cached.** `GetRosterAsync` and `GetForUserAsync` both fan out over the providers
-  on every call, so a grant written in any contributing section shows on the next read and no
-  section has to tell this one about its writes
-  (`EarlyEntryServiceTests.GetForUserAsync_ReadsTheProvidersOnEveryCall`,
+- **Nothing outlives the request.** The scoped service fans out over the providers once per
+  request scope (the home page asks twice), so a grant written in any contributing section shows
+  on the next request and no section has to tell this one about its writes
+  (`EarlyEntryServiceTests.GetForUserAsync_GathersOncePerScope_AndFreshInTheNext`,
   `EarlyEntryArchitectureTests.SectionRegistersOnlyTheUncachedOrchestrator`).
 - Per human: earliest date wins, sources are distinct and ordinal-compared in provider order,
   and `HasMultiple` is `Sources.Count > 1`.

@@ -128,22 +128,26 @@ public class EarlyEntryServiceTests
     }
 
     [HumansFact]
-    public async Task GetForUserAsync_ReadsTheProvidersOnEveryCall()
+    public async Task GetForUserAsync_GathersOncePerScope_AndFreshInTheNext()
     {
-        // Nothing is cached, so a grant written or revoked between two reads shows on the
-        // next one without the writing section telling this one.
+        // Nothing outlives the request scope, so a grant written or revoked shows on the
+        // next request without the writing section telling this one; within one request
+        // (the home page asks twice) the providers are read once.
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
         var grant = new EarlyEntryGrant(userId, new LocalDate(2026, 7, 1), "Camp: Flags");
         var provider = Substitute.For<IEarlyEntryProvider>();
         provider.GetEarlyEntriesAsync(Arg.Any<CancellationToken>()).Returns(
             Task.FromResult<IReadOnlyList<EarlyEntryGrant>>([]),
-            Task.FromResult<IReadOnlyList<EarlyEntryGrant>>([grant]),
-            Task.FromResult<IReadOnlyList<EarlyEntryGrant>>([]));
-        var sut = new EarlyEntryService([provider]);
+            Task.FromResult<IReadOnlyList<EarlyEntryGrant>>([grant]));
 
-        (await sut.GetForUserAsync(userId, ct)).Should().BeNull();
-        (await sut.GetForUserAsync(userId, ct))!.EarliestEntryDate.Should().Be(new LocalDate(2026, 7, 1));
-        (await sut.GetForUserAsync(userId, ct)).Should().BeNull();
+        var firstRequest = new EarlyEntryService([provider]);
+        (await firstRequest.GetForUserAsync(userId, ct)).Should().BeNull();
+        (await firstRequest.GetRosterAsync(ct)).Should().BeEmpty();
+
+        var nextRequest = new EarlyEntryService([provider]);
+        (await nextRequest.GetForUserAsync(userId, ct))!.EarliestEntryDate.Should().Be(new LocalDate(2026, 7, 1));
+
+        await provider.Received(2).GetEarlyEntriesAsync(Arg.Any<CancellationToken>());
     }
 }
