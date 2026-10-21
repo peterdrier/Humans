@@ -26,41 +26,6 @@ version: 1
 next_id: 97
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
-  - id: grandfathered-hum0031-controller-logic
-    title: Controller business logic over the fixed thresholds (HUM0031)
-    detect: "build:HUM0031"
-    review: panel
-    last_swept: 2026-06-12
-    remaining: 0
-    notes: >-
-      Not parked (Peter 2026-10-21). The thresholds are fixed at 40/15 as a
-      backstop and never ratchet (memory/architecture/hum0031-fixed-at-40-15.md);
-      controller intent is judged by section-doctor's regular runs. A
-      [Grandfathered("HUM0031", …)] method that appears is ordinary debt and
-      may be worked down. remaining: 0 since peterdrier/Humans#1156 burned
-      down all 15 grandfathers.
-      Prior sweep findings from 2026-06-12, kept for whenever this restarts:
-      12 distinct warning sites, all grandfathered (14 grandfathers total —
-      AccountController.ExternalLoginCallback and
-      EventsController.BulkUploadTemplate no longer fire; their justification
-      counts disagree with the analyzer's current counting).
-      EventsModerationController.ProcessActionAsync fixed + de-grandfathered
-      2026-06-12 (audit E7). Raw grep of a
-      full-solution build log double-counts each site (26 lines = 13 sites);
-      detect means DISTINCT sites. The rule is "no business
-      logic in controllers"; the cc/statement metric is only a proxy
-      detector. Exactly two valid fixes: (a) move the domain decisions into
-      the section's application service — new/changed interface surface
-      needs per-item Peter approval (skip-and-ask); (b) the method is
-      genuinely presentation (sorting/filtering/paging/VM mapping) over a
-      low threshold — grandfather stays, record it as a
-      threshold-calibration finding. FORBIDDEN: splitting the method into
-      controller-local private helpers / VM factories to satisfy the metric
-      — tried 2026-06-12 on 12 methods, rejected and reverted (dodged the
-      metric, moved zero domain decisions). The line: a controller may change
-      how a fact looks, never what the fact is. Facts → service.
-      Form-apply model: DietaryMedicalViewModel.ToCommand() →
-      profileEditorService.SaveDietaryMedicalAsync(userId, command).
   - id: grandfathered-hum0028-invalidators
     title: Invalidator interface ratchet (HUM0028)
     detect: "build:HUM0028"

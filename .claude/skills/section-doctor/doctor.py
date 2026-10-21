@@ -262,8 +262,8 @@ def cmd_dispatch_log(a):
 
 
 GENERATED_RE = re.compile(r"(\.Designer\.cs|DbContextModelSnapshot\.cs)$")
-THREADS = ("Shape", "Behavior & bugs", "Freshness", "Conformance", "Tests", "Prose & surface",
-           "History", "Comments", "Inbox")
+THREADS = ("Shape", "Behavior & bugs", "Controller intent", "Freshness", "Conformance", "Tests",
+           "Prose & surface", "History", "Comments", "Inbox")
 RUN_FILE_BLOCKS = ("## Assessment summary", "## Findings", "## Debt verified", "## Worked", "## Skipped",
                    "## Retro", "## Needs Peter",
                    "## File coverage", "## Threads")  # "## Ranked findings" is accepted for Findings
