@@ -1,10 +1,12 @@
 using AwesomeAssertions;
 using Xunit;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using Humans.Auth.Tests.Infrastructure;
 using Humans.Base.Interfaces.Caching;
+using Humans.Auth.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
 using Humans.Auth.Services;
@@ -26,7 +28,7 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
     private readonly IRoleAssignmentRepository _repository;
     private readonly IUserService _userService;
     private readonly IRoleAssignmentClaimsCacheInvalidator _claimsInvalidator;
-    private readonly IRoleAssignmentCacheInvalidator _rowCache;
+    private readonly CachingRoleAssignmentService _rowCache;
     private readonly ISystemTeamSync _systemTeamSync;
     private readonly RoleAssignmentService _service;
 
@@ -38,8 +40,17 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
         _userService = NewStubUserService();
 
         _claimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
-        _rowCache = Substitute.For<IRoleAssignmentCacheInvalidator>();
         _systemTeamSync = Substitute.For<ISystemTeamSync>();
+
+        // The real row cache, wrapping the service under test the way Section.cs wires it,
+        // so eviction is asserted on what a cached read returns, not on a call count.
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<IRoleAssignmentManagement>(
+            CachingRoleAssignmentService.InnerServiceKey, (_, _) => _service!);
+        _rowCache = new CachingRoleAssignmentService(
+            services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            Clock,
+            NullLogger<CachingRoleAssignmentService>.Instance);
 
         _service = new RoleAssignmentService(
             _repository,
@@ -89,19 +100,22 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
     }
 
     [HumansFact]
-    public async Task AssignRoleAsync_InvalidatesRowCache_AndWritesAudit()
+    public async Task AssignRoleAsync_EvictsRowCache_AndWritesAudit()
     {
         // The row cache is a Singleton holding every role_assignments row; a write
-        // that skips InvalidateAll leaves every reader on stale roles until restart.
+        // that skips the eviction leaves every reader on stale roles until restart.
         var userId = Guid.NewGuid();
         var assignerId = Guid.NewGuid();
         await SeedUserAsync(userId, "Target User");
         await SeedUserAsync(assignerId, "Admin User");
+        (await _rowCache.GetActiveForUserAsync(userId, TestContext.Current.CancellationToken))
+            .Should().BeEmpty();
 
         await _service.AssignRoleAsync(
             userId, RoleNames.Board, assignerId, null, TestContext.Current.CancellationToken);
 
-        _rowCache.Received(1).InvalidateAll();
+        (await _rowCache.GetActiveForUserAsync(userId, TestContext.Current.CancellationToken))
+            .Select(r => r.RoleName).Should().Equal(RoleNames.Board);
         await AuditLog.Received(1).LogAsync(
             AuditAction.RoleAssigned, nameof(User), userId,
             Arg.Is<string>(d => d.Contains(RoleNames.Board, StringComparison.Ordinal)),
@@ -109,7 +123,7 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
     }
 
     [HumansFact]
-    public async Task EndRoleAsync_InvalidatesRowCache_AndWritesAudit()
+    public async Task EndRoleAsync_EvictsRowCache_AndWritesAudit()
     {
         var userId = Guid.NewGuid();
         var enderId = Guid.NewGuid();
@@ -117,11 +131,14 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
         await SeedUserAsync(enderId, "Admin User");
         var assignment = await AddAssignmentAsync(
             userId, RoleNames.Board, Clock.GetCurrentInstant() - Duration.FromDays(1), null);
+        (await _rowCache.GetActiveForUserAsync(userId, TestContext.Current.CancellationToken))
+            .Select(r => r.RoleName).Should().Equal(RoleNames.Board);
 
         await _service.EndRoleAsync(
             assignment.Id, enderId, null, TestContext.Current.CancellationToken);
 
-        _rowCache.Received(1).InvalidateAll();
+        (await _rowCache.GetActiveForUserAsync(userId, TestContext.Current.CancellationToken))
+            .Should().BeEmpty();
         await AuditLog.Received(1).LogAsync(
             AuditAction.RoleEnded, nameof(User), userId,
             Arg.Is<string>(d => d.Contains(RoleNames.Board, StringComparison.Ordinal)),
@@ -167,6 +184,55 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
 
         await _service.EndRoleAsync(boardRow.Id, enderId, null, TestContext.Current.CancellationToken);
         await _systemTeamSync.Received(1).SyncBoardTeamAsync();
+    }
+
+    [HumansFact]
+    public async Task AssignRoleAsync_Board_RowCacheShowsTheNewHolderWhenBoardTeamSyncRuns()
+    {
+        // Ordering pin: the row cache is evicted right after the repository write and
+        // BEFORE SyncBoardTeamAsync, so a read through the cached service during the
+        // Board sync already sees the new holder. Moving the eviction to after the
+        // write method returns would hand the sync a stale row set.
+        var ct = TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var assignerId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Board Member");
+        await SeedUserAsync(assignerId, "Assigner");
+        (await _rowCache.GetActiveForUserAsync(userId, ct)).Should().BeEmpty();
+        IReadOnlyList<RoleAssignmentSnapshot>? seenBySync = null;
+        IReadOnlyDictionary<string, int>? countsSeenBySync = null;
+        _systemTeamSync.SyncBoardTeamAsync(Arg.Any<SyncReport?>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                seenBySync = await _rowCache.GetActiveForUserAsync(userId, ct);
+                countsSeenBySync = await _rowCache.GetActiveCountsByRoleAsync(ct);
+            });
+
+        await _service.AssignRoleAsync(userId, RoleNames.Board, assignerId, null, ct);
+
+        seenBySync.Should().NotBeNull();
+        seenBySync!.Select(r => r.RoleName).Should().Equal(RoleNames.Board);
+        countsSeenBySync![RoleNames.Board].Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task EndRoleAsync_Board_RowCacheDropsTheHolderBeforeBoardTeamSyncRuns()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var enderId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Board Member");
+        await SeedUserAsync(enderId, "Ender");
+        var row = await AddAssignmentAsync(
+            userId, RoleNames.Board, Clock.GetCurrentInstant() - Duration.FromDays(1), null);
+        (await _rowCache.GetActiveForUserAsync(userId, ct)).Should().ContainSingle();
+        IReadOnlyList<RoleAssignmentSnapshot>? seenBySync = null;
+        _systemTeamSync.SyncBoardTeamAsync(Arg.Any<SyncReport?>(), Arg.Any<CancellationToken>())
+            .Returns(async _ => { seenBySync = await _rowCache.GetActiveForUserAsync(userId, ct); });
+
+        await _service.EndRoleAsync(row.Id, enderId, null, ct);
+
+        seenBySync.Should().NotBeNull().And.BeEmpty();
     }
 
     [HumansFact]
@@ -291,9 +357,13 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
         await AddAssignmentAsync(userId, RoleNames.Board, Clock.GetCurrentInstant() - Duration.FromDays(10), null);
         await AddAssignmentAsync(userId, RoleNames.Admin, Clock.GetCurrentInstant() - Duration.FromDays(5), null);
 
+        (await _rowCache.GetActiveForUserAsync(userId, TestContext.Current.CancellationToken))
+            .Should().HaveCount(2);
+
         await _service.RevokeAllActiveAsync(userId, TestContext.Current.CancellationToken);
 
-        _rowCache.Received(1).InvalidateAll();
+        (await _rowCache.GetActiveForUserAsync(userId, TestContext.Current.CancellationToken))
+            .Should().BeEmpty();
         await Notifier.DidNotReceive().SendAsync(
             Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(),
             Arg.Any<NotificationPriority>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(),
