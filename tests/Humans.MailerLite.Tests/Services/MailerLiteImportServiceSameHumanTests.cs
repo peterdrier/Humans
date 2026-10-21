@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
+using Humans.Email.Contracts;
 using Humans.MailerLite.Services;
 using Humans.MailerLite.Services.Dtos;
 using Humans.MailerLite.Tests.Infrastructure;
@@ -47,9 +48,9 @@ public class MailerLiteImportServiceSameHumanTests
         result.PrefsFlippedToOptOut.Should().Be(1);
         result.PrefsFlippedToOptIn.Should().Be(0);
         h.Pref!.OptedOut.Should().BeTrue();
-        await h.Prefs.Received(1).UpdatePreferenceAsync(
+        await h.PrefWrite.Received(1).UpdatePreferenceAsync(
             h.UserId, MessageCategory.Marketing, true, "MailerLiteSync", Arg.Any<CancellationToken>());
-        await h.Prefs.DidNotReceive().UpdatePreferenceAsync(
+        await h.PrefWrite.DidNotReceive().UpdatePreferenceAsync(
             Arg.Any<Guid>(), Arg.Any<MessageCategory>(), false, Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
@@ -62,7 +63,7 @@ public class MailerLiteImportServiceSameHumanTests
         var ct = Xunit.TestContext.Current.CancellationToken;
 
         await h.Service.ApplyAsync(await h.Service.BuildPlanAsync(ct), Guid.NewGuid(), ct: ct);
-        h.Prefs.ClearReceivedCalls();
+        h.PrefWrite.ClearReceivedCalls();
 
         var plan2 = await h.Service.BuildPlanAsync(ct);
         plan2.Decisions.Should().OnlyContain(d => d.Outcome == SubscriberOutcome.VerifiedPrefsAlreadyMatch);
@@ -71,7 +72,7 @@ public class MailerLiteImportServiceSameHumanTests
 
         result2.PrefsFlippedToOptIn.Should().Be(0);
         result2.PrefsFlippedToOptOut.Should().Be(0);
-        await h.Prefs.DidNotReceive().UpdatePreferenceAsync(
+        await h.PrefWrite.DidNotReceive().UpdatePreferenceAsync(
             Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
@@ -91,7 +92,7 @@ public class MailerLiteImportServiceSameHumanTests
 
         result.PrefsFlippedToOptIn.Should().Be(0);
         h.Pref!.OptedOut.Should().BeTrue();
-        await h.Prefs.DidNotReceive().UpdatePreferenceAsync(
+        await h.PrefWrite.DidNotReceive().UpdatePreferenceAsync(
             Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
@@ -113,6 +114,7 @@ public class MailerLiteImportServiceSameHumanTests
     {
         public Guid UserId { get; } = Guid.NewGuid();
         public ICommunicationPreferenceService Prefs { get; } = Substitute.For<ICommunicationPreferenceService>();
+        public ICommunicationPreferenceWrite PrefWrite { get; } = Substitute.For<ICommunicationPreferenceWrite>();
         public CommunicationPreferenceSnapshot? Pref { get; private set; }
         public MailerLiteImportService Service { get; }
 
@@ -141,7 +143,7 @@ public class MailerLiteImportServiceSameHumanTests
                 initialSource, Instant.FromUtc(2026, 3, 1, 0, 0));
             Prefs.GetPreferenceOrNullAsync(UserId, MessageCategory.Marketing, Arg.Any<CancellationToken>())
                 .Returns(_ => Task.FromResult<CommunicationPreferenceSnapshot?>(Pref));
-            Prefs.UpdatePreferenceAsync(UserId, MessageCategory.Marketing, Arg.Any<bool>(),
+            PrefWrite.UpdatePreferenceAsync(UserId, MessageCategory.Marketing, Arg.Any<bool>(),
                     Arg.Any<string>(), Arg.Any<CancellationToken>())
                 .Returns(ci =>
                 {
@@ -155,6 +157,7 @@ public class MailerLiteImportServiceSameHumanTests
                 ml, userEmails, users,
                 Substitute.For<IAccountProvisioningService>(),
                 Prefs,
+                PrefWrite,
                 Substitute.For<IAuditLogService>(),
                 InMemoryMailerLiteRepository.New(),
                 clock,

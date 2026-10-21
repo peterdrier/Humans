@@ -264,6 +264,9 @@ internal sealed class MailerLiteImportService(
 
                     case SubscriberOutcome.ReplaceUnverifiedEmail:
                         {
+                            // Not grouped with TargetUserId's verified addresses: replacement deletes
+                            // that user's unverified row and provisions a separate contact (provUser),
+                            // whose Marketing pref this write targets.
                             var (provUser, provCreated) = await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
                                 d.TargetUserId!.Value, d.UnverifiedEmailIdToDelete!.Value,
                                 subscriber.Email, displayName: null, ContactSource.MailerLite, ct);
