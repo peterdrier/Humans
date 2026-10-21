@@ -204,7 +204,7 @@ public class GuestAccountControllerTests
             _commPrefService.ValidateUnsubscribeToken("valid-token")
                 .Returns((TokenValidationStatus.Valid, user.Id, MessageCategory.Marketing));
         }
-        async ValueTask<UserInfo?> ReadUser(CancellationToken ct)
+        async ValueTask<UserInfo?> ReadUserAsync(CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
             if (abandon && string.Equals(boundary, "Preferences", StringComparison.Ordinal))
@@ -212,8 +212,8 @@ public class GuestAccountControllerTests
             return UserInfo.Create(user, [], [], [], null, []);
         }
         _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
-            .Returns(call => ReadUser(call.Arg<CancellationToken>()));
-        async Task<IReadOnlyList<CommunicationPreferenceSnapshot>> ReadPreferences(CancellationToken ct)
+            .Returns(call => ReadUserAsync(call.Arg<CancellationToken>()));
+        async Task<IReadOnlyList<CommunicationPreferenceSnapshot>> ReadPreferencesAsync(CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
             if (abandon && string.Equals(boundary, "Tickets", StringComparison.Ordinal))
@@ -221,7 +221,7 @@ public class GuestAccountControllerTests
             return [];
         }
         _commPrefService.GetPreferencesReadOnlyAsync(user.Id, Arg.Any<CancellationToken>())
-            .Returns(call => ReadPreferences(call.Arg<CancellationToken>()));
+            .Returns(call => ReadPreferencesAsync(call.Arg<CancellationToken>()));
         _ticketQueryService.GetUserTicketHoldingsAsync(user.Id, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();

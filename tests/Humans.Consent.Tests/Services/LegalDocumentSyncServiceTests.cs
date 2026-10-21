@@ -642,8 +642,8 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
             Arg.Any<string>(), nameof(LegalDocumentSyncService), version.Id, "DocumentVersion");
         await _gitHub.Received(1).GetFileContentAsync("privacy/doc.md", Arg.Any<CancellationToken>());
 
-        await AssertFanout(NotificationSource.LegalDocumentPublished, received: true);
-        await AssertFanout(NotificationSource.ReConsentRequired, received: false);
+        await AssertFanoutAsync(NotificationSource.LegalDocumentPublished, received: true);
+        await AssertFanoutAsync(NotificationSource.ReConsentRequired, received: false);
     }
 
     [HumansFact]
@@ -676,8 +676,8 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         newVersion.RequiresReConsent.Should().BeTrue(
             because: "every non-initial version invalidates prior consent");
 
-        await AssertFanout(NotificationSource.ReConsentRequired, received: true);
-        await AssertFanout(NotificationSource.LegalDocumentPublished, received: false);
+        await AssertFanoutAsync(NotificationSource.ReConsentRequired, received: true);
+        await AssertFanoutAsync(NotificationSource.LegalDocumentPublished, received: false);
     }
 
     [HumansFact]
@@ -722,7 +722,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         Notifier.ReceivedCalls().Should().BeEmpty();
     }
 
-    private Task AssertFanout(NotificationSource source, bool received)
+    private Task AssertFanoutAsync(NotificationSource source, bool received)
     {
         var call = received ? Notifier.Received(1) : Notifier.DidNotReceive();
         return call.SendAsync(

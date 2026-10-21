@@ -102,11 +102,11 @@ public sealed class SearchServiceTests
     {
         foreach (var onlyType in Enum.GetValues<SearchResultType>())
         {
-            await AssertOnlyTypeQueriesOneSection(onlyType);
+            await AssertOnlyTypeQueriesOneSectionAsync(onlyType);
         }
     }
 
-    private async Task AssertOnlyTypeQueriesOneSection(SearchResultType onlyType)
+    private async Task AssertOnlyTypeQueriesOneSectionAsync(SearchResultType onlyType)
     {
         _users.ClearReceivedCalls();
         _teams.ClearReceivedCalls();

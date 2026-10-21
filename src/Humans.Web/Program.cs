@@ -786,7 +786,7 @@ app.UseRequestLocalization();
 
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
-    ResponseWriter = WriteDetailedHealthResponse
+    ResponseWriter = WriteDetailedHealthResponseAsync
 });
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions
@@ -925,7 +925,7 @@ static T? FindException<T>(Exception? ex) where T : Exception
     return null;
 }
 
-static async Task WriteDetailedHealthResponse(HttpContext context, HealthReport report)
+static async Task WriteDetailedHealthResponseAsync(HttpContext context, HealthReport report)
 {
     context.Response.ContentType = "application/json";
 

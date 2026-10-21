@@ -389,13 +389,13 @@ public class ProfileControllerEditTests
     {
         using var request = new CancellationTokenSource();
         _controller.HttpContext.RequestAborted = request.Token;
-        async ValueTask<UserInfo?> ReadViewer(CancellationToken ct)
+        async ValueTask<UserInfo?> ReadViewerAsync(CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
             return new User { Id = _userId, PreferredLanguage = "en" }.ToUserInfo();
         }
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(call => ReadViewer(call.Arg<CancellationToken>()));
+            .Returns(call => ReadViewerAsync(call.Arg<CancellationToken>()));
         Func<Task<IActionResult>> load = () => _controller.Medical(request.Token);
         (await load()).Should().BeOfType<ViewResult>();
         await request.CancelAsync();

@@ -150,7 +150,7 @@ internal sealed class CachingCalendarService(
 
     public async Task DeleteEventAsync(Guid id, Guid deletedByUserId, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.DeleteEventAsync(id, deletedByUserId, ct));
+        await WithInnerAsync(inner => inner.DeleteEventAsync(id, deletedByUserId, ct));
         await ReplaceAsync(id, CancellationToken.None);
     }
 
@@ -168,7 +168,7 @@ internal sealed class CachingCalendarService(
         var completed = false;
         try
         {
-            var saved = await WithInner(action);
+            var saved = await WithInnerAsync(action);
             if (saved) await ReplaceAsync(eventId, CancellationToken.None);
             completed = saved;
             return saved;
@@ -181,7 +181,7 @@ internal sealed class CachingCalendarService(
 
     protected override async Task WarmAllAsync(CancellationToken ct)
     {
-        var events = await WithInner(inner => inner.GetAllEventInfosAsync(ct));
+        var events = await WithInnerAsync(inner => inner.GetAllEventInfosAsync(ct));
         foreach (var ev in events)
         {
             if (ContainsKey(ev.Id)) continue;
@@ -190,7 +190,7 @@ internal sealed class CachingCalendarService(
     }
 
     protected override async ValueTask<CalendarEventInfo?> LoadRowAsync(Guid key, CancellationToken ct) =>
-        await WithInner(inner => inner.GetEventInfoAsync(key, ct));
+        await WithInnerAsync(inner => inner.GetEventInfoAsync(key, ct));
 
     private async Task<IReadOnlyDictionary<Guid, string>> ResolveTeamNamesAsync(
         IReadOnlyList<CalendarEventInfo> events, CancellationToken ct)
@@ -215,7 +215,7 @@ internal sealed class CachingCalendarService(
         var clear = true;
         try
         {
-            var result = await WithInner(action);
+            var result = await WithInnerAsync(action);
             clear = !result.Succeeded;
             return result;
         }
@@ -225,7 +225,7 @@ internal sealed class CachingCalendarService(
         }
     }
 
-    private async Task<TResult> WithInner<TResult>(Func<ICalendarService, Task<TResult>> action)
+    private async Task<TResult> WithInnerAsync<TResult>(Func<ICalendarService, Task<TResult>> action)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ICalendarService>(InnerServiceKey);
@@ -233,7 +233,7 @@ internal sealed class CachingCalendarService(
     }
 
     // This overload is used by the delete mutation path.
-    private async Task WithInner(Func<ICalendarService, Task> action)
+    private async Task WithInnerAsync(Func<ICalendarService, Task> action)
     {
         var clear = true;
         try

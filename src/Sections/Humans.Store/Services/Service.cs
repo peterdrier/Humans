@@ -552,7 +552,7 @@ internal sealed class Service(
 
         // OrderableUntil is gated by OrderAuthorizationHandler (Store admins exempt,
         // everyone else denied) — the auth-free service only annotates the audit entry.
-        var today = await TodayInEventZoneAsync();
+        var today = await settingsService.TodayInEventZoneAsync(clock);
         var deadlinePassed = today > product.OrderableUntil;
 
         var line = new OrderLine
@@ -591,7 +591,7 @@ internal sealed class Service(
 
         // OrderableUntil is gated by OrderAuthorizationHandler (Store admins exempt,
         // everyone else denied) — the auth-free service only annotates the audit entry.
-        var today = await TodayInEventZoneAsync();
+        var today = await settingsService.TodayInEventZoneAsync(clock);
         var deadlinePassed = today > ctx.ProductOrderableUntil;
 
         await repo.RemoveLineAsync(lineId, ct);
@@ -636,15 +636,6 @@ internal sealed class Service(
         logger.LogWarning("Store mutation rejected for order {OrderId}, line {LineId}, actor {ActorUserId}: {ErrorKey}",
             orderId, lineId, actorUserId, errorKey);
         return MutationResult.Failure(errorKey);
-    }
-
-    private async Task<LocalDate> TodayInEventZoneAsync()
-    {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync();
-        var tz = activeEvent is null
-            ? DateTimeZone.Utc
-            : DateTimeZoneProviders.Tzdb.GetZoneOrNull(activeEvent.TimeZoneId) ?? DateTimeZone.Utc;
-        return clock.GetCurrentInstant().InZone(tz).Date;
     }
 
     /// <summary>Returns the active event's catalog year, falling back to the current UTC year before it exists.</summary>

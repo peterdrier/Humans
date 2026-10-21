@@ -149,7 +149,7 @@ public class GateServiceTests
             .Returns(new List<TicketOrderInfo> { order });
     }
 
-    private Task<GateDecisionResult> Record(bool idConfirmed, bool child = false, Guid? overrideBy = null) =>
+    private Task<GateDecisionResult> RecordAsync(bool idConfirmed, bool child = false, Guid? overrideBy = null) =>
         _svc.RecordDecisionAsync(
             new GateDecisionInput(Barcode, idConfirmed, child, LaneId: "L1", ClientScanAt: null, Note: null,
                 OverrideByUserId: overrideBy),
@@ -198,10 +198,10 @@ public class GateServiceTests
     {
         StubTicket();
 
-        var first = await Record(idConfirmed: true);
+        var first = await RecordAsync(idConfirmed: true);
         first.Verdict.Should().Be(GateVerdict.Admitted);
 
-        var second = await Record(idConfirmed: true);
+        var second = await RecordAsync(idConfirmed: true);
         second.Verdict.Should().Be(GateVerdict.RejectedDuplicate);
         second.PreviousAdmitByUserId.Should().Be(AgentId);
     }
@@ -211,7 +211,7 @@ public class GateServiceTests
     {
         StubTicket();
 
-        var r = await Record(idConfirmed: false);
+        var r = await RecordAsync(idConfirmed: false);
         r.Verdict.Should().Be(GateVerdict.RejectedNameMismatch);
 
         // Ticket not burned: a corrected re-scan can still be admitted.
@@ -225,7 +225,7 @@ public class GateServiceTests
 
         // The child-without-ID waiver is now a supervisor override — it admits only when an
         // authorizing supervisor was recorded (the controller sets this after AuthorizeOverrideAsync).
-        (await Record(idConfirmed: false, child: true, overrideBy: Guid.NewGuid()))
+        (await RecordAsync(idConfirmed: false, child: true, overrideBy: Guid.NewGuid()))
             .Verdict.Should().Be(GateVerdict.AdmittedChildWithAdult);
     }
 
@@ -235,7 +235,7 @@ public class GateServiceTests
         StubTicket();
 
         // No authorizing supervisor → the waiver is not granted (a forged child flag can't admit).
-        (await Record(idConfirmed: false, child: true))
+        (await RecordAsync(idConfirmed: false, child: true))
             .Verdict.Should().Be(GateVerdict.RejectedNameMismatch);
     }
 
@@ -253,7 +253,7 @@ public class GateServiceTests
         StubTicket(matchedUserId: GuestId);
         StubActiveEvent(year: 2026);
 
-        var r = await Record(idConfirmed: true);
+        var r = await RecordAsync(idConfirmed: true);
 
         r.Verdict.Should().Be(GateVerdict.Admitted);
         // CancellationToken.None pinned: the admit is durable, so a kiosk disconnect
@@ -274,7 +274,7 @@ public class GateServiceTests
                 default, default, default, default)
             .ThrowsAsyncForAnyArgs(new InvalidOperationException("unique index collision"));
 
-        (await Record(idConfirmed: true)).Verdict.Should().Be(GateVerdict.Admitted);
+        (await RecordAsync(idConfirmed: true)).Verdict.Should().Be(GateVerdict.Admitted);
     }
 
     [HumansFact]
@@ -283,7 +283,7 @@ public class GateServiceTests
         StubTicket(matchedUserId: GuestId);
         StubActiveEvent();
 
-        (await Record(idConfirmed: false)).Verdict.Should().Be(GateVerdict.RejectedNameMismatch);
+        (await RecordAsync(idConfirmed: false)).Verdict.Should().Be(GateVerdict.RejectedNameMismatch);
 
         await _users.DidNotReceiveWithAnyArgs()
             .SetParticipationFromTicketSyncAsync(default, default, default, default);
@@ -296,7 +296,7 @@ public class GateServiceTests
         StubTicket(matchedUserId: null);
         StubActiveEvent();
 
-        (await Record(idConfirmed: true)).Verdict.Should().Be(GateVerdict.Admitted);
+        (await RecordAsync(idConfirmed: true)).Verdict.Should().Be(GateVerdict.Admitted);
 
         await _users.DidNotReceiveWithAnyArgs()
             .SetParticipationFromTicketSyncAsync(default, default, default, default);
@@ -308,7 +308,7 @@ public class GateServiceTests
         // No active event → no year to record against; the admit itself must not fail.
         StubTicket(matchedUserId: GuestId);
 
-        (await Record(idConfirmed: true)).Verdict.Should().Be(GateVerdict.Admitted);
+        (await RecordAsync(idConfirmed: true)).Verdict.Should().Be(GateVerdict.Admitted);
 
         await _users.DidNotReceiveWithAnyArgs()
             .SetParticipationFromTicketSyncAsync(default, default, default, default);
@@ -324,7 +324,7 @@ public class GateServiceTests
         (await _svc.EvaluateAsync(Barcode)).Outcome.Should().Be(GatePreCheckOutcome.CutoffNotConfigured);
 
         // Even with the agent confirming the ID, an unset cutoff escalates — no admit.
-        (await Record(idConfirmed: true)).Verdict.Should().Be(GateVerdict.Unresolved);
+        (await RecordAsync(idConfirmed: true)).Verdict.Should().Be(GateVerdict.Unresolved);
     }
 
     [HumansFact]
@@ -345,7 +345,7 @@ public class GateServiceTests
 
         (await _svc.EvaluateAsync(Barcode)).Outcome.Should().Be(GatePreCheckOutcome.TooEarly);
 
-        (await Record(idConfirmed: true))
+        (await RecordAsync(idConfirmed: true))
             .Verdict.Should().Be(GateVerdict.RejectedTooEarly);
     }
 
@@ -359,7 +359,7 @@ public class GateServiceTests
         (await _svc.EvaluateAsync(Barcode)).Outcome.Should().Be(GatePreCheckOutcome.TooEarly);
 
         // A recorded supervisor override turns the too-early STOP into an attributable early admit.
-        (await Record(idConfirmed: false, overrideBy: Guid.NewGuid()))
+        (await RecordAsync(idConfirmed: false, overrideBy: Guid.NewGuid()))
             .Verdict.Should().Be(GateVerdict.AdmittedEarlyOverride);
     }
 
@@ -400,7 +400,7 @@ public class GateServiceTests
             Clock.GetCurrentInstant().Plus(Duration.FromHours(6)), 16));
 
         // Even a client-asserted "ID confirmed" never turns the unconfirmed-EE amber into an admit.
-        (await Record(idConfirmed: true))
+        (await RecordAsync(idConfirmed: true))
             .Verdict.Should().Be(GateVerdict.Unresolved);
     }
 
@@ -412,7 +412,7 @@ public class GateServiceTests
             Clock.GetCurrentInstant().Plus(Duration.FromHours(6)), 16));
 
         // A recorded supervisor override admits an unconfirmed-EE scan, mirroring the too-early case.
-        (await Record(idConfirmed: false, overrideBy: Guid.NewGuid()))
+        (await RecordAsync(idConfirmed: false, overrideBy: Guid.NewGuid()))
             .Verdict.Should().Be(GateVerdict.AdmittedEarlyOverride);
     }
 
@@ -425,7 +425,7 @@ public class GateServiceTests
         _earlyEntry.GetForUserAsync(GuestId, Arg.Any<CancellationToken>())
             .Returns(new EarlyEntryRosterRow(GuestId, Clock.GetCurrentInstant().InUtc().Date, new[] { "Build crew" }, false));
 
-        (await Record(idConfirmed: true))
+        (await RecordAsync(idConfirmed: true))
             .Verdict.Should().Be(GateVerdict.AdmittedEarly);
     }
 
@@ -433,8 +433,8 @@ public class GateServiceTests
     public async Task Leaderboard_TalliesAdmitsAndRejects()
     {
         StubTicket();
-        await Record(idConfirmed: true);   // admit
-        await Record(idConfirmed: true);   // duplicate reject
+        await RecordAsync(idConfirmed: true);   // admit
+        await RecordAsync(idConfirmed: true);   // duplicate reject
 
         var board = await _svc.GetLeaderboardAsync(Instant.MinValue);
 
@@ -450,7 +450,7 @@ public class GateServiceTests
     public async Task Gdpr_ContributesScansForGuestAndScanner()
     {
         StubTicket(matchedUserId: GuestId);
-        await Record(idConfirmed: true);   // GuestUserId = GuestId, ScannedByUserId = AgentId
+        await RecordAsync(idConfirmed: true);   // GuestUserId = GuestId, ScannedByUserId = AgentId
 
         var guestExport = await _svc.ContributeForUserAsync(GuestId, default);
         var scannerExport = await _svc.ContributeForUserAsync(AgentId, default);
@@ -465,7 +465,7 @@ public class GateServiceTests
     public async Task Merge_ReassignsScansToSurvivor()
     {
         StubTicket(matchedUserId: GuestId);
-        await Record(idConfirmed: true);
+        await RecordAsync(idConfirmed: true);
         var survivor = Guid.NewGuid();
 
         await _svc.ReassignAsync(GuestId, survivor, actorUserId: Guid.NewGuid(), Clock.GetCurrentInstant(), default);
@@ -479,7 +479,7 @@ public class GateServiceTests
     {
         var supervisor = Guid.NewGuid();
         StubTicket(matchedUserId: GuestId);
-        await Record(idConfirmed: true, overrideBy: supervisor);
+        await RecordAsync(idConfirmed: true, overrideBy: supervisor);
         await _svc.SetOwnPinAsync(GuestId, "2580");
 
         // Erase the guest: admission links and their PIN row go.
@@ -501,7 +501,7 @@ public class GateServiceTests
     public async Task Merge_RepointsScannerAndOverride_AndCarriesThePinToAPinlessSurvivor()
     {
         StubTicket(matchedUserId: GuestId);
-        await Record(idConfirmed: true, overrideBy: AgentId);
+        await RecordAsync(idConfirmed: true, overrideBy: AgentId);
         await _svc.AdminSetPinAsync(AgentId, "2580", Guid.NewGuid()); // AdminEnrolled = true
         var survivor = Guid.NewGuid();
 
@@ -534,7 +534,7 @@ public class GateServiceTests
     public async Task Retention_PurgesScansBeforeCutoff()
     {
         StubTicket(matchedUserId: GuestId);
-        await Record(idConfirmed: true);
+        await RecordAsync(idConfirmed: true);
 
         var removed = await _svc.PurgeScansBeforeAsync(Clock.GetCurrentInstant().Plus(Duration.FromMinutes(1)));
 
@@ -693,7 +693,7 @@ public class GateServiceTests
     public async Task VendorBackfill_AdmitNotCheckedInAtVendor_IsPending()
     {
         StubTicket();
-        await Record(idConfirmed: true);
+        await RecordAsync(idConfirmed: true);
 
         var snapshot = await _svc.GetVendorCheckInBackfillAsync();
 
@@ -710,7 +710,7 @@ public class GateServiceTests
     {
         var attendeeId = Guid.NewGuid();
         StubTicket(attendeeId: attendeeId);
-        await Record(idConfirmed: true);
+        await RecordAsync(idConfirmed: true);
         // The next /check_ins sync stamps CheckedInAt — the issued ticket's Status stays
         // Valid (vendor semantics), so CheckedInAt alone must drop the row out of pending.
         StubTicket(attendeeId: attendeeId, checkedInAt: Clock.GetCurrentInstant());
@@ -728,7 +728,7 @@ public class GateServiceTests
     {
         var attendeeId = Guid.NewGuid();
         StubTicket(attendeeId: attendeeId);
-        await Record(idConfirmed: true);
+        await RecordAsync(idConfirmed: true);
         StubTicket(status: TicketAttendeeStatus.CheckedIn, attendeeId: attendeeId);
 
         var snapshot = await _svc.GetVendorCheckInBackfillAsync();
@@ -741,7 +741,7 @@ public class GateServiceTests
     public async Task VendorBackfill_AttendeeNoLongerInOrders_IsUnmirrorable()
     {
         StubTicket();
-        await Record(idConfirmed: true);
+        await RecordAsync(idConfirmed: true);
         _tickets.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
             .Returns(new List<TicketOrderInfo>());
 
@@ -756,7 +756,7 @@ public class GateServiceTests
     public async Task VendorBackfill_IgnoresAdmitsOlderThanTheWindow()
     {
         StubTicket();
-        await Record(idConfirmed: true);
+        await RecordAsync(idConfirmed: true);
         // Prior-edition admits (retention is 365 days) must not pollute the diff.
         Clock.Advance(Duration.FromDays(31));
 
@@ -771,7 +771,7 @@ public class GateServiceTests
     public async Task VendorBackfill_RejectedScansAreNotCounted()
     {
         StubTicket();
-        await Record(idConfirmed: false); // ID says no → rejected, nothing to mirror
+        await RecordAsync(idConfirmed: false); // ID says no → rejected, nothing to mirror
 
         var snapshot = await _svc.GetVendorCheckInBackfillAsync();
 

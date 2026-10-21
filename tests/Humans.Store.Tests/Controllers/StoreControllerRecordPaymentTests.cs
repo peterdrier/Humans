@@ -110,12 +110,12 @@ public sealed class StoreControllerRecordPaymentTests
         using var request = new CancellationTokenSource();
         var controller = BuildController(RoleNames.Admin);
         controller.HttpContext.RequestAborted = request.Token;
-        Task<IActionResult> ReadPage() => detail
+        Task<IActionResult> ReadPageAsync() => detail
             ? controller.Order(_order.Id, request.Token)
             : controller.Index(request.Token);
-        (await ReadPage()).Should().BeOfType<ViewResult>();
+        (await ReadPageAsync()).Should().BeOfType<ViewResult>();
         await request.CancelAsync();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(ReadPage);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(ReadPageAsync);
     }
 
     [HumansTheory]

@@ -455,13 +455,13 @@ public class ServiceTeamOrdersTests
 
     [HumansFact]
     public Task DeleteOrderAsync_rejects_an_order_holding_only_a_pending_payment() =>
-        AssertDeleteRefusedWithOnlyPayment(PaymentStatus.Pending);
+        AssertDeleteRefusedWithOnlyPaymentAsync(PaymentStatus.Pending);
 
     [HumansFact]
     public Task DeleteOrderAsync_rejects_an_order_holding_only_a_failed_payment() =>
-        AssertDeleteRefusedWithOnlyPayment(PaymentStatus.Failed);
+        AssertDeleteRefusedWithOnlyPaymentAsync(PaymentStatus.Failed);
 
-    private async Task AssertDeleteRefusedWithOnlyPayment(PaymentStatus status)
+    private async Task AssertDeleteRefusedWithOnlyPaymentAsync(PaymentStatus status)
     {
         // Only Paid counts toward the balance, so an order holding only a Pending or Failed row
         // reads zero — the row itself still has to survive.

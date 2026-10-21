@@ -29,10 +29,10 @@ internal sealed class CachingTicketQueryService : ITicketManagement, ITicketCach
     {
         _scopeFactory = scopeFactory;
         _orders = new OrdersCache(
-            async ct => await WithInner(inner => inner.GetTicketOrdersAsync(ct)),
+            async ct => await WithInnerAsync(inner => inner.GetTicketOrdersAsync(ct)),
             logger);
         _userHoldings = new UserHoldingsCache(
-            (userId, ct) => WithInner(inner => inner.GetUserTicketHoldingsAsync(userId, ct)),
+            (userId, ct) => WithInnerAsync(inner => inner.GetUserTicketHoldingsAsync(userId, ct)),
             clock, UserHoldingsCacheTtl, logger);
     }
 
@@ -61,34 +61,34 @@ internal sealed class CachingTicketQueryService : ITicketManagement, ITicketCach
 
     // Participation is not cached here: one keyed query plus the Users snapshot per read.
     public Task<IReadOnlyList<EventParticipationInfo>> GetParticipationsAsync(Guid userId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetParticipationsAsync(userId, ct));
+        WithInnerAsync(inner => inner.GetParticipationsAsync(userId, ct));
 
     public Task<IReadOnlyList<EventParticipationInfo>> GetAllParticipationsAsync(CancellationToken ct = default) =>
-        WithInner(inner => inner.GetAllParticipationsAsync(ct));
+        WithInnerAsync(inner => inner.GetAllParticipationsAsync(ct));
 
     public Task<List<string>> GetAvailableTicketTypesAsync(CancellationToken ct = default) =>
-        WithInner(inner => inner.GetAvailableTicketTypesAsync(ct));
+        WithInnerAsync(inner => inner.GetAvailableTicketTypesAsync(ct));
 
     public Task<TicketDashboardStats> GetDashboardStatsAsync() =>
-        WithInner(inner => inner.GetDashboardStatsAsync());
+        WithInnerAsync(inner => inner.GetDashboardStatsAsync());
 
     public Task<BreakEvenResult> CalculateBreakEvenAsync(
         int ticketsSold, decimal grossRevenue, string currency,
         bool canAccessFinance, int fallbackTarget) =>
-        WithInner(inner => inner.CalculateBreakEvenAsync(
+        WithInnerAsync(inner => inner.CalculateBreakEvenAsync(
             ticketsSold, grossRevenue, currency, canAccessFinance, fallbackTarget));
 
     public Task<TicketSalesAggregates> GetSalesAggregatesAsync(CancellationToken ct = default) =>
-        WithInner(inner => inner.GetSalesAggregatesAsync(ct));
+        WithInnerAsync(inner => inner.GetSalesAggregatesAsync(ct));
 
     public Task<CodeTrackingData> GetCodeTrackingDataAsync(string? search, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetCodeTrackingDataAsync(search, ct));
+        WithInnerAsync(inner => inner.GetCodeTrackingDataAsync(search, ct));
 
     public Task<OrdersPageResult> GetOrdersPageAsync(
         string? search, string sortBy, bool sortDesc,
         int page, int pageSize,
         string? filterPaymentStatus, string? filterTicketType, bool? filterMatched, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetOrdersPageAsync(
+        WithInnerAsync(inner => inner.GetOrdersPageAsync(
             search, sortBy, sortDesc, page, pageSize,
             filterPaymentStatus, filterTicketType, filterMatched, ct));
 
@@ -97,27 +97,27 @@ internal sealed class CachingTicketQueryService : ITicketManagement, ITicketCach
         int page, int pageSize,
         string? filterTicketType, string? filterStatus, bool? filterMatched, string? filterOrderId,
         bool filterMultipleTickets = false, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetAttendeesPageAsync(
+        WithInnerAsync(inner => inner.GetAttendeesPageAsync(
             search, sortBy, sortDesc, page, pageSize,
             filterTicketType, filterStatus, filterMatched, filterOrderId, filterMultipleTickets, ct));
 
     public Task<WhoHasntBoughtResult> GetWhoHasntBoughtAsync(
         string? search, string? filterTeam, string? filterTier, string? filterTicketStatus,
         int page, int pageSize, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetWhoHasntBoughtAsync(
+        WithInnerAsync(inner => inner.GetWhoHasntBoughtAsync(
             search, filterTeam, filterTier, filterTicketStatus, page, pageSize, ct));
 
     public Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync(Guid actorUserId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetAttendeeExportDataAsync(actorUserId, ct));
+        WithInnerAsync(inner => inner.GetAttendeeExportDataAsync(actorUserId, ct));
 
     public Task<List<OrderExportRow>> GetOrderExportDataAsync(Guid actorUserId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetOrderExportDataAsync(actorUserId, ct));
+        WithInnerAsync(inner => inner.GetOrderExportDataAsync(actorUserId, ct));
 
     public Task<List<DonationExportRow>> GetDonationExportDataAsync(Guid actorUserId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetDonationExportDataAsync(actorUserId, ct));
+        WithInnerAsync(inner => inner.GetDonationExportDataAsync(actorUserId, ct));
 
     public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
-        WithInner(inner => inner.GetOrderDriftAsync(ct));
+        WithInnerAsync(inner => inner.GetOrderDriftAsync(ct));
 
     public void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId)
     {
@@ -156,7 +156,7 @@ internal sealed class CachingTicketQueryService : ITicketManagement, ITicketCach
 
     Task IHostedService.StopAsync(CancellationToken ct) => Task.CompletedTask;
 
-    private async Task<TResult> WithInner<TResult>(Func<ITicketManagement, Task<TResult>> action)
+    private async Task<TResult> WithInnerAsync<TResult>(Func<ITicketManagement, Task<TResult>> action)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ITicketManagement>(InnerServiceKey);

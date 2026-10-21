@@ -20,14 +20,14 @@ internal sealed class SectionAdminNav : ISectionAdminNav
             // Self-service approval gate (Workgroups design §11): any active human may author a
             // Draft survey; this is where Board/Admin approve-and-send or reject a submission.
             new("Approvals", "SurveyAdmin", "Queue", null, null, "fa-solid fa-square-poll-vertical", PolicyNames.BoardOrAdmin,
-                PillCount: PillCounts.PendingApprovalQueue)
+                PillCount: PillCounts.PendingApprovalQueueAsync)
         ])
     ];
 }
 
 internal static class PillCounts
 {
-    public static async ValueTask<int?> PendingApprovalQueue(IServiceProvider sp)
+    public static async ValueTask<int?> PendingApprovalQueueAsync(IServiceProvider sp)
     {
         var surveys = sp.GetRequiredService<ISurveyService>();
         var count = (await surveys.GetPendingApprovalQueueAsync(CancellationToken.None)).Count;

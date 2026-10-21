@@ -628,7 +628,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         Exception failure = cancelled
             ? new OperationCanceledException(ct)
             : new InvalidOperationException("Post-write dependency failed");
-        async Task PersistThenFail()
+        async Task PersistThenFailAsync()
         {
             if (member is null)
                 SeedTeamMember(team.Id, user.Id, TeamMemberRole.Coordinator);
@@ -642,13 +642,13 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         if (joining)
         {
             _innerTeamService.JoinTeamAsync(team.Id, user.Id, null, ct)
-                .Returns(async _ => { await PersistThenFail(); return default!; });
+                .Returns(async _ => { await PersistThenFailAsync(); return default!; });
             write = () => _service.JoinTeamAsync(team.Id, user.Id, null, ct);
         }
         else
         {
             _innerTeamService.SetMemberRoleAsync(team.Id, user.Id, TeamMemberRole.Coordinator, user.Id, ct)
-                .Returns(_ => PersistThenFail());
+                .Returns(_ => PersistThenFailAsync());
             write = () => _service.SetMemberRoleAsync(team.Id, user.Id, TeamMemberRole.Coordinator, user.Id, ct);
         }
 

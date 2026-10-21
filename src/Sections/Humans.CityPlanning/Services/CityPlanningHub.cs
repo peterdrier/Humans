@@ -31,7 +31,9 @@ internal sealed class CityPlanningHub(IUserService userService, UserManager<User
         await base.OnConnectedAsync();
     }
 
-    public async Task UpdateCursor(double lat, double lng)
+    // The JS client invokes the wire name 'UpdateCursor'; keep it stable across the C# rename.
+    [HubMethodName("UpdateCursor")]
+    public async Task UpdateCursorAsync(double lat, double lng)
     {
         var displayName = _displayNames.GetValueOrDefault(Context.ConnectionId, Context.User?.Identity?.Name ?? "Unknown");
         await Clients.Others.SendAsync("CursorMoved", Context.ConnectionId, displayName, lat, lng);

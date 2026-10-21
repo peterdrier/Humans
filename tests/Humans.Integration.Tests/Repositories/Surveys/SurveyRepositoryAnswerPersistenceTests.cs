@@ -67,13 +67,13 @@ public class SurveyRepositoryAnswerPersistenceTests(HumansTestDatabase database)
         var first = Answer(draftId, questionId, "first");
         await repo.SaveDraftAnswersAsync(
             draftId, [first], SurveyInputMethod.UserSpecificLink, "en", ct);
-        (await StoredAnswers(db, draftId, ct)).Should().ContainSingle()
+        (await StoredAnswersAsync(db, draftId, ct)).Should().ContainSingle()
             .Which.Id.Should().Be(first.Id);
 
         var second = Answer(draftId, questionId, "second");
         await repo.SaveDraftAnswersAsync(
             draftId, [second], SurveyInputMethod.Slug, "es", ct);
-        (await StoredAnswers(db, draftId, ct)).Should().ContainSingle()
+        (await StoredAnswersAsync(db, draftId, ct)).Should().ContainSingle()
             .Which.Id.Should().Be(second.Id);
 
         var final = Answer(draftId, questionId, "final");
@@ -81,7 +81,7 @@ public class SurveyRepositoryAnswerPersistenceTests(HumansTestDatabase database)
             invitationId, draftId, [final], now + Duration.FromMinutes(1),
             SurveyInputMethod.Slug, "es", ct);
 
-        (await StoredAnswers(db, draftId, ct)).Should().ContainSingle()
+        (await StoredAnswersAsync(db, draftId, ct)).Should().ContainSingle()
             .Which.Id.Should().Be(final.Id);
         (await db.SurveyResponses.AsNoTracking().SingleAsync(r => r.Id == draftId, ct))
             .SubmittedAt.Should().NotBeNull();
@@ -97,7 +97,7 @@ public class SurveyRepositoryAnswerPersistenceTests(HumansTestDatabase database)
         TextValue = text,
     };
 
-    private static async Task<List<SurveyAnswer>> StoredAnswers(
+    private static async Task<List<SurveyAnswer>> StoredAnswersAsync(
         SurveysDbContext db, Guid responseId, CancellationToken ct)
     {
         db.ChangeTracker.Clear();

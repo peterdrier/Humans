@@ -39,7 +39,7 @@ internal sealed class CachingRideshareService(
     // ── Reads ─────────────────────────────────────────────────────────────
 
     public Task<int> GetActiveYearAsync(CancellationToken ct = default) =>
-        WithInner(inner => inner.GetActiveYearAsync(ct));
+        WithInnerAsync(inner => inner.GetActiveYearAsync(ct));
 
     public async Task<RideshareSnapshot> GetSnapshotAsync(int year, CancellationToken ct = default)
     {
@@ -51,7 +51,7 @@ internal sealed class CachingRideshareService(
             generation = _cacheGeneration;
         }
 
-        var snapshot = await WithInner(inner => inner.GetSnapshotAsync(year, ct));
+        var snapshot = await WithInnerAsync(inner => inner.GetSnapshotAsync(year, ct));
         lock (_cacheGate)
         {
             // A write may have cleared the cache while this snapshot was loading.
@@ -118,7 +118,7 @@ internal sealed class CachingRideshareService(
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
     public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
-        WithInner(inner => inner.ContributeForUserAsync(userId, ct));
+        WithInnerAsync(inner => inner.ContributeForUserAsync(userId, ct));
 
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         MutateAsync(inner => inner.EraseForUserAsync(userId, ct));
@@ -143,7 +143,7 @@ internal sealed class CachingRideshareService(
     {
         try
         {
-            return await WithInner(work);
+            return await WithInnerAsync(work);
         }
         finally
         {
@@ -160,7 +160,7 @@ internal sealed class CachingRideshareService(
         }
     }
 
-    private async Task<T> WithInner<T>(Func<IRideshareService, Task<T>> work)
+    private async Task<T> WithInnerAsync<T>(Func<IRideshareService, Task<T>> work)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IRideshareService>(InnerServiceKey);
