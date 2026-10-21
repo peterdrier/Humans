@@ -272,6 +272,7 @@ internal sealed class ShiftSignupService(
         if (IsStatusReasonTooLong(reason, signup.Id, actorUserId))
             return SignupResult.Fail(localizer["Shifts_StatusReasonTooLong"]);
 
+        var wasConfirmed = signup.Status == SignupStatus.Confirmed;
         signup.Bail(actorUserId, clock, reason);
 
         await repo.SaveChangesAsync();
@@ -290,7 +291,8 @@ internal sealed class ShiftSignupService(
         await DispatchSignupChangeNotificationAsync(signup, signup.Shift,
             $"Volunteer bailed from '{signup.Shift.Rota.Name}' on day {signup.Shift.DayOffset}.");
 
-        await CheckAndNotifyCoverageGapAsync(signup, signup.Shift);
+        if (wasConfirmed)
+            await CheckAndNotifyCoverageGapAsync(signup, signup.Shift);
 
         return SignupResult.Ok(signup.Id);
     }
@@ -1057,6 +1059,9 @@ internal sealed class ShiftSignupService(
         if (IsStatusReasonTooLong(reason, firstSignup.Id, actorUserId))
             return new("Shifts_StatusReasonTooLong");
 
+        // Only withdrawing confirmed signups reduces staffing. Capture them before
+        // Bail replaces both Pending and Confirmed with the same terminal status.
+        var confirmedSignups = signups.Where(s => s.Status == SignupStatus.Confirmed).ToList();
         foreach (var signup in signups)
         {
             signup.Bail(actorUserId, clock, reason);
@@ -1088,7 +1093,7 @@ internal sealed class ShiftSignupService(
         await DispatchSignupChangeNotificationAsync(firstSignup, firstSignup.Shift,
             $"Range bail from '{firstSignup.Shift.Rota.Name}' ({signups.Count} shifts).");
 
-        foreach (var signup in signups)
+        foreach (var signup in confirmedSignups)
         {
             await CheckAndNotifyCoverageGapAsync(signup, signup.Shift);
         }
