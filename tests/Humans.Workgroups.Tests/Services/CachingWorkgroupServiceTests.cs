@@ -9,7 +9,7 @@ namespace Humans.Workgroups.Tests.Services;
 
 public sealed class CachingWorkgroupServiceTests
 {
-    private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
+    private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private readonly IWorkgroupService _inner = Substitute.For<IWorkgroupService>();
     private readonly CachingWorkgroupService _service;
@@ -41,8 +41,8 @@ public sealed class CachingWorkgroupServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task GetRegister_LoadStartedBeforeWrite_DoesNotRepopulateCache(bool returnsId)
     {
         var pending = new TaskCompletionSource<IReadOnlyList<WorkgroupInfo>>(

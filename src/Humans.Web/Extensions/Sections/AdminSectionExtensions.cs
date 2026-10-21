@@ -1,5 +1,3 @@
-using Humans.Base.Hosting;
-
 namespace Humans.Web.Extensions.Sections;
 
 internal static class AdminSectionExtensions

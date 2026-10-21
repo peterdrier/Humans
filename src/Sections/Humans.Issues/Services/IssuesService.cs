@@ -685,7 +685,7 @@ internal sealed class IssuesService(
 
             await LogAuditAsync(
                 AuditAction.IssueGitHubLinked, issueId, actorUserId,
-                $"GitHub link: {(githubIssueNumber.HasValue ? githubIssueNumber.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : "(cleared)")}");
+                $"GitHub link: {(githubIssueNumber.HasValue ? githubIssueNumber.Value.ToString(CultureInfo.InvariantCulture) : "(cleared)")}");
 
             return IssueMutationResult.Success();
         }, ct);

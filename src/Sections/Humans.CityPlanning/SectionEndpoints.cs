@@ -1,7 +1,6 @@
 using Humans.Base.Interfaces;
 using Humans.CityPlanning.Services;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Routing;
 
 namespace Humans.CityPlanning;
 

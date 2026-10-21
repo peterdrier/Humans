@@ -61,7 +61,7 @@ A camp's order against a season.
 | CampSeasonId | Guid? | FK only — no nav. Set for camp orders; null for team orders. |
 | TeamId | Guid? | FK only — no nav. Set for team orders; null for camp orders. |
 | Year | int | Event year the catalog draws from. Always set on write; resolved from `CampSeason.Year` for legacy camp rows. |
-| Label | string(100)? | `[Obsolete]` — still mapped; nothing reads or writes it (nobodies-collective/Humans#816) |
+| Label | string(100)? | Shadow column, no CLR property; nothing reads or writes it (nobodies-collective/Humans#816) |
 | State | OrderState (int) | Open or InvoiceIssued; team orders stay Open |
 | CounterpartyName / CounterpartyVatId / CounterpartyAddress / CounterpartyCountryCode / CounterpartyEmail | string? | Editable by Camp Lead while Open; Store admins (StoreAdmin, FinanceAdmin, Admin) always. Never populated on team orders. |
 | IssuedInvoiceId | Guid? | Set when invoice is issued (camp orders only) |

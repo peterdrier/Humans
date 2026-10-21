@@ -96,7 +96,7 @@ internal sealed class OnboardingWidgetController(
         // data when its name is fixed here.
         var request = BuildNameSaveRequest(vm, info?.Profile);
 
-        var save = await profileEditorService.SaveProfileAsync(userId, vm.BurnerName, request, ct);
+        var save = await profileEditorService.SaveProfileAsync(userId, request, ct);
         if (!save.Succeeded)
         {
             ModelState.AddModelError(string.Empty, localizer["Onboarding_ProfileSaveFailed"]);

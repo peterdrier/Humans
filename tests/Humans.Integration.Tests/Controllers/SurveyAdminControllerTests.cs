@@ -38,7 +38,7 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
         // OpensAt uses the browser's seconds-less wire format; ClosesAt includes
         // seconds (some pickers do). Both must bind.
         var saveResp = await Client.PostAsync("/Survey/Admin/Save", BuildForm(
-            ("__RequestVerificationToken", token!),
+            ("__RequestVerificationToken", token),
             ("Title[en]", $"Integration test survey {Guid.NewGuid():N}"),
             ("OpensAt", "2026-07-14T10:30"),
             ("ClosesAt", "2026-08-01T18:45:30")), Xunit.TestContext.Current.CancellationToken);
@@ -124,7 +124,7 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
         sendToken.Should().NotBeNullOrEmpty();
 
         var openResp = await Client.PostAsync($"/Survey/Admin/Open/{surveyId}", BuildForm(
-            ("__RequestVerificationToken", sendToken!),
+            ("__RequestVerificationToken", sendToken),
             ("continueToSend", "true")), Xunit.TestContext.Current.CancellationToken);
 
         ((int)openResp.StatusCode).Should().BeOneOf(
@@ -607,7 +607,7 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
         var token = ExtractAntiForgeryToken(
             await createResp.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken));
         token.Should().NotBeNullOrEmpty();
-        return token!;
+        return token;
     }
 
     private static string? ExtractAntiForgeryToken(string html)

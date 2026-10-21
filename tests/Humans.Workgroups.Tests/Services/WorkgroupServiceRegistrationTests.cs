@@ -2,7 +2,6 @@ using Xunit;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Finance.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Base.Constants;
 using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;
@@ -21,12 +20,12 @@ namespace Humans.Workgroups.Tests.Services;
 public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
 {
     [HumansTheory]
-    [Xunit.InlineData("apply-second", false)]
-    [Xunit.InlineData("apply-second", true)]
-    [Xunit.InlineData("existing-primary", false)]
-    [Xunit.InlineData("existing-primary", true)]
-    [Xunit.InlineData("existing-second", false)]
-    [Xunit.InlineData("existing-second", true)]
+    [InlineData("apply-second", false)]
+    [InlineData("apply-second", true)]
+    [InlineData("existing-primary", false)]
+    [InlineData("existing-primary", true)]
+    [InlineData("existing-second", false)]
+    [InlineData("existing-second", true)]
     public async Task Registration_InvalidCoordinator_RefusesBeforeWrites(string path, bool terminal)
     {
         var actor = SeedUser();
@@ -56,10 +55,10 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     }
 
     [HumansTheory]
-    [Xunit.InlineData("apply-second")]
-    [Xunit.InlineData("apply-self-alias")]
-    [Xunit.InlineData("existing-primary")]
-    [Xunit.InlineData("existing-second")]
+    [InlineData("apply-second")]
+    [InlineData("apply-self-alias")]
+    [InlineData("existing-primary")]
+    [InlineData("existing-second")]
     public async Task Registration_MergeAlias_UsesCanonicalCoordinator(string path)
     {
         var actor = SeedUser();
@@ -84,8 +83,8 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     }
 
     [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task Registration_CompletesWhenTheRequestDisconnectsDuringFolderCreation(bool existing)
     {
         using var request = new CancellationTokenSource();
@@ -200,10 +199,10 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     }
 
     [HumansTheory]
-    [Xunit.InlineData("https://drive.google.com/drive/folders/0AFLHTK5u0wymUk9PVA")]
-    [Xunit.InlineData("https://drive.google.com/drive/u/1/folders/0AFLHTK5u0wymUk9PVA?usp=sharing")]
-    [Xunit.InlineData("https://drive.google.com/open?id=0AFLHTK5u0wymUk9PVA")]
-    [Xunit.InlineData(" 0AFLHTK5u0wymUk9PVA ")]
+    [InlineData("https://drive.google.com/drive/folders/0AFLHTK5u0wymUk9PVA")]
+    [InlineData("https://drive.google.com/drive/u/1/folders/0AFLHTK5u0wymUk9PVA?usp=sharing")]
+    [InlineData("https://drive.google.com/open?id=0AFLHTK5u0wymUk9PVA")]
+    [InlineData(" 0AFLHTK5u0wymUk9PVA ")]
     public async Task SetRootDriveFolderId_PastedUrl_StoresBareId(string input)
     {
         await NewService().SetRootDriveFolderIdAsync(input, SeedUser(), Ct);
@@ -220,9 +219,9 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     }
 
     [HumansTheory]
-    [Xunit.InlineData("role")]
-    [Xunit.InlineData("address")]
-    [Xunit.InlineData("member")]
+    [InlineData("role")]
+    [InlineData("address")]
+    [InlineData("member")]
     public async Task Apply_EmailRecipientLookupFailureDoesNotFailTheSavedApplication(string failure)
     {
         var boardMember = SeedUser();

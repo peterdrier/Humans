@@ -1,4 +1,3 @@
-using Humans.Rideshare.Domain;
 using Humans.Rideshare.Services;
 
 namespace Humans.Rideshare.Models;

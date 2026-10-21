@@ -79,7 +79,7 @@ public sealed class PrivateUploadMiddlewareTests
         var (context, served, issues) = await RunAsync($"/uploads/issues/{IssueId}/screenshot.png", null, issueAllowed: true);
         served.Should().BeFalse();
         context.Response.StatusCode.Should().Be(404);
-        await issues.DidNotReceiveWithAnyArgs().GetIssueByIdAsync(default, default!, default);
+        await issues.DidNotReceiveWithAnyArgs().GetIssueByIdAsync(default, default!);
     }
 
     private static async Task<(HttpContext Context, bool Served, IIssueTriage Issues)> RunAsync(

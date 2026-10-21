@@ -74,7 +74,7 @@ public class BackdoorIssuesControllerTests
     public BackdoorIssuesControllerTests()
     {
         // GetUserInfosAsync never returns null; an unstubbed ValueTask would.
-        _users.GetUserInfosAsync(default!, default)
+        _users.GetUserInfosAsync(default!)
             .ReturnsForAnyArgs(new Dictionary<Guid, UserInfo>());
         _sut = new BackdoorIssuesController(_issues, _users, NullLogger<BackdoorIssuesController>.Instance)
         {
@@ -175,7 +175,7 @@ public class BackdoorIssuesControllerTests
     private void StubList(Action<IssueListFilter>? capture = null) =>
         _issues
             .GetIssueListAsync(
-                capture is null ? Arg.Any<IssueListFilter>() : Arg.Do<IssueListFilter>(capture),
+                capture is null ? Arg.Any<IssueListFilter>() : Arg.Do(capture),
                 Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>([]));
 

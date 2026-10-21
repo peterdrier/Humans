@@ -1,5 +1,4 @@
 using Humans.AuditLog.Contracts;
-using Humans.Base.Enums;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.Email.Contracts;

@@ -1,10 +1,8 @@
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.Users.Contracts;
-using Humans.Issues.Data;
 using Humans.Issues.Services;
 using IssuesService = Humans.Issues.Services.IssuesService;
-using Humans.Issues.Contracts;
 
 namespace Humans.Issues.Tests.Architecture;
 

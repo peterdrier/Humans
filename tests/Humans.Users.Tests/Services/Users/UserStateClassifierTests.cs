@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using NodaTime;
 using Xunit;
 using Humans.Users.Contracts;
-using Humans.Users.Domain;
 
 namespace Humans.Users.Tests.Services.Users;
 

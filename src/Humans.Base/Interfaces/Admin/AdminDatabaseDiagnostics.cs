@@ -1,5 +1,3 @@
-using Humans.Base.Interfaces;
-
 namespace Humans.Base.Interfaces.Admin;
 
 public interface IAdminDatabaseDiagnosticsService : IApplicationService

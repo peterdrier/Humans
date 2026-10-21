@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Finance.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Holded.Services;
-using Humans.Testing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;

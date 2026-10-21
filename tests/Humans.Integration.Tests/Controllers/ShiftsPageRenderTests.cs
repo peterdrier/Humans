@@ -273,6 +273,9 @@ public class ShiftsPageRenderTests(HumansTestDatabase database) : IntegrationTes
                         && string.Equals(m, "ShiftInfo", StringComparison.Ordinal))
             .ToList();
 
+        // Host startup is the slow part this timeout covers; stop here if it used the budget.
+        Xunit.TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
+
         actions.Should().NotBeEmpty(
             "Shifts' ThingsToDo entry addresses (\"ShiftInfo\", \"ShiftProfile\") and Url.Action returns null for an unresolvable pair");
 
@@ -306,6 +309,9 @@ public class ShiftsPageRenderTests(HumansTestDatabase database) : IntegrationTes
                 || line.Contains("Url.Action(\"ShiftInfo\", \"Profile\")", StringComparison.Ordinal)))
             .Select(f => Path.GetRelativePath(root.FullName, f))
             .ToList();
+
+        // The source scan is the slow part this timeout covers; stop here if it used the budget.
+        Xunit.TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
 
         stale.Should().BeEmpty(
             "ShiftInfo lives on ShiftProfileController now; addressing it as (\"ShiftInfo\", \"Profile\") renders a link with no href instead of failing");

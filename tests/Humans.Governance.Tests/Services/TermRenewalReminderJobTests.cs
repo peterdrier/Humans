@@ -9,7 +9,6 @@ using Humans.Governance.Tests.Infrastructure;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
-using Humans.Base.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;

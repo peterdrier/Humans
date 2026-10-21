@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Humans.Users.Contracts;
 using NodaTime;
 
 namespace Humans.Users.Data.Repositories;

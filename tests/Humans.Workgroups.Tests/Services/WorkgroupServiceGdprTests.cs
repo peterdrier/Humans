@@ -96,7 +96,7 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
         var applications = slices.Single(s =>
             string.Equals(s.SectionName, WorkgroupService.WorkgroupApplications, StringComparison.Ordinal));
         applications.Data.Should().NotBeNull();
-        System.Text.Json.JsonSerializer.Serialize(applications.Data).Should().Contain(workgroup.Name);
+        JsonSerializer.Serialize(applications.Data).Should().Contain(workgroup.Name);
         using var json = JsonDocument.Parse(JsonSerializer.Serialize(applications.Data));
         json.RootElement.EnumerateArray().Single().GetProperty("RegisteredAt").ValueKind
             .Should().Be(JsonValueKind.Null);
@@ -133,7 +133,7 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
         var comments = slices.Single(s =>
             string.Equals(s.SectionName, WorkgroupService.WorkgroupComments, StringComparison.Ordinal)).Data;
         comments.Should().NotBeNull();
-        ((System.Collections.IEnumerable)comments!).Cast<object>().Should().ContainSingle();
+        ((System.Collections.IEnumerable)comments).Cast<object>().Should().ContainSingle();
     }
 
     [HumansFact]
@@ -219,8 +219,8 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
         var workgroup = await SeedWorkgroupAsync();
         var source = SeedUser("Old account");
         var target = SeedUser("New account");
-        await AddMemberAsync(workgroup.Id, source, WorkgroupMemberRole.Member);
-        await AddMemberAsync(workgroup.Id, target, WorkgroupMemberRole.Member);
+        await AddMemberAsync(workgroup.Id, source);
+        await AddMemberAsync(workgroup.Id, target);
         var entry = await AddLogEntryAsync(workgroup.Id, WorkgroupLogKind.Update, authorUserId: source);
 
         await NewService().ReassignAsync(source, target, SeedUser("Actor"), Clock.GetCurrentInstant(), Ct);

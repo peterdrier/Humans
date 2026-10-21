@@ -1,8 +1,6 @@
 using System.Diagnostics.Metrics;
 using Humans.Base.Hosting;
-using Humans.GoogleIntegration.Contracts;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace Humans.GoogleIntegration.Services;
 

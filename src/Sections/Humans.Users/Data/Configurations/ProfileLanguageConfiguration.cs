@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Humans.Users.Contracts;
 
 namespace Humans.Users.Data.Configurations;
 

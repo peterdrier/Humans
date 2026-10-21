@@ -4,7 +4,6 @@ using Humans.Store.Domain;
 using Humans.Store.Models;
 using Humans.Store.Services.Dtos;
 using NodaTime;
-using Xunit;
 
 namespace Humans.Store.Tests.Services;
 

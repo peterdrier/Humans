@@ -1,5 +1,4 @@
 using Humans.Issues.Contracts;
-using Humans.Issues.Domain;
 
 namespace Humans.Issues.Models;
 

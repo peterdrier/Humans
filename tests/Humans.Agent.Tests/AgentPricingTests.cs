@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Xunit;
 using Humans.Agent.Services;
-using Humans.Agent.Contracts;
 
 namespace Humans.Agent.Tests;
 

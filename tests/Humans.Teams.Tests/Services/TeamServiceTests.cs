@@ -3372,11 +3372,11 @@ public sealed class TeamServiceTests : TeamsTestHarness
     {
         var settingsService = Substitute.For<ISettingsService>();
         settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(_ =>
+            .Returns(async ci =>
             {
                 var active = ShiftsDb.EventSettings.Local.FirstOrDefault(e => e.IsActive)
-                    ?? ShiftsDb.EventSettings.FirstOrDefault(e => e.IsActive);
-                return Task.FromResult(active is null ? null : ToEventSettingsInfo(active));
+                    ?? await ShiftsDb.EventSettings.FirstOrDefaultAsync(e => e.IsActive, ci.Arg<CancellationToken>());
+                return active is null ? null : ToEventSettingsInfo(active);
             });
         return settingsService;
     }

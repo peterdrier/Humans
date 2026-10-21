@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Agent.Services;
 using Xunit;
-using Humans.Agent.Contracts;
 // ReSharper disable StringLiteralTypo
 
 namespace Humans.Agent.Tests;

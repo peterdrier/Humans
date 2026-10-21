@@ -1,4 +1,3 @@
-using System.Text;
 using Humans.AuditLog.Contracts;
 using System.Globalization;
 using System.Resources;

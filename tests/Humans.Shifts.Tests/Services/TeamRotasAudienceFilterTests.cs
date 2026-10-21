@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Xunit;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Services;
-using Humans.Shifts.Tests.Infrastructure;
 
 namespace Humans.Shifts.Tests.Services;
 

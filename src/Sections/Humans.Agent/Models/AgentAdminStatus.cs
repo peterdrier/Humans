@@ -1,6 +1,5 @@
 using Humans.Agent.Contracts;
 using NodaTime;
-using Humans.Agent.Domain;
 
 namespace Humans.Agent.Models;
 

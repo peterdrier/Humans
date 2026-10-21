@@ -138,16 +138,6 @@ public class User : IdentityUser<Guid>
     [Obsolete("No reader or writer; retained for the DB column until a drop migration (debt ledger USERS-13).")]
     public bool SuppressScheduleChangeEmails { get; set; }
 
-    /// <summary>
-    /// DEPRECATED (nobodies-collective/Humans#687): the Google rejection/validation state is now
-    /// per-address on <see cref="UserEmail.GoogleEmailStatus"/> — the address Google actually
-    /// rejected — instead of stranded on the user. Hanging it here meant switching the canonical
-    /// Google email left the stale rejection in place and kept sync paused. No live reader/writer
-    /// remains; the column is retained only so EF keeps it until a later drop migration.
-    /// </summary>
-    [Obsolete("Moved to UserEmail.GoogleEmailStatus (per-address) — #687. Do not read or write; retained for the DB column until a drop migration.")]
-    public LegacyGoogleEmailStatus GoogleEmailStatus { get; set; } = LegacyGoogleEmailStatus.Unknown;
-
     /// <summary>Source of this user; null for self-registered.</summary>
     public ContactSource? ContactSource { get; set; }
 

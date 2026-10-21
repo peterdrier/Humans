@@ -995,7 +995,7 @@ public sealed class FeedbackServiceTests
 
         (await controller.UpdateStatus(report.Id, model)).Should().BeOfType<RedirectToActionResult>();
 
-        await using var read = FeedbackDbFactory.CreateDbContext();
+        await using var read = await FeedbackDbFactory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
         var stored = await read.FeedbackReports.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         if (postedStatus is null)
         {

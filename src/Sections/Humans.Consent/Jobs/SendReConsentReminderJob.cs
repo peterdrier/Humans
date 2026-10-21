@@ -5,7 +5,6 @@ using NodaTime;
 using Humans.Base.Interfaces;
 using Humans.Base.Configuration;
 using Humans.Consent.Services;
-using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
