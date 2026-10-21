@@ -19,7 +19,7 @@ public static class CacheKeys
     public static string LegalDocument(string slug) => $"Legal:{slug}";
 
     // Magic link sentinel keys (rate limiting and replay prevention)
-    public static string MagicLinkUsed(string tokenHash) => $"magic_link_used:{tokenHash}";
+    public static string MagicLinkUsed(string tokenDigest) => $"magic_link_used:{tokenDigest}";
     public static string MagicLinkSignupRateLimit(string normalizedEmail) => $"magic_link_signup:{normalizedEmail}";
 
     /// <summary>Classification for the Admin Cache Stats page.</summary>
