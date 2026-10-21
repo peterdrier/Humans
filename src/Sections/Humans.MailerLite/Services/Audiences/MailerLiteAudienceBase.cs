@@ -1,5 +1,4 @@
 using Humans.Email.Contracts;
-using Humans.MailerLite.Services;
 using Humans.Users.Contracts;
 
 namespace Humans.MailerLite.Services.Audiences;

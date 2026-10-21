@@ -1,5 +1,4 @@
 using Humans.AuditLog.Contracts;
-using Humans.Base.Helpers;
 using Humans.Gdpr.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data;

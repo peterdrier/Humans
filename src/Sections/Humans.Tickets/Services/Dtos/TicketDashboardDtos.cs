@@ -1,6 +1,5 @@
 using Humans.Governance.Contracts;
 using System.Text.Json.Serialization;
-using Humans.Users.Contracts;
 using NodaTime;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain;

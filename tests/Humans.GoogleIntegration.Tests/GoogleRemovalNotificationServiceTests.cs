@@ -49,7 +49,7 @@ public sealed class GoogleRemovalNotificationServiceTests
             SyncRemovalReason.Reconciliation, Xunit.TestContext.Current.CancellationToken);
 
         // The builder is sealed with no interface, so the sent message is the assertion surface.
-        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
     }
 
     [HumansFact]

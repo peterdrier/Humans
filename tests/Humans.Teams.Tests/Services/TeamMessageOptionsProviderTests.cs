@@ -44,7 +44,7 @@ public class TeamMessageOptionsProviderTests
         var options = await _provider.GetOptionsAsync(_viewerId, Xunit.TestContext.Current.CancellationToken);
 
         options.Should().BeEmpty();
-        await _teamResourceService.DidNotReceiveWithAnyArgs().GetResourcesByTeamIdsAsync(default!, default);
+        await _teamResourceService.DidNotReceiveWithAnyArgs().GetResourcesByTeamIdsAsync(default!);
     }
 
     [HumansFact]

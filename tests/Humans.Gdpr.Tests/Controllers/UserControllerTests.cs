@@ -160,7 +160,7 @@ public class UserControllerTests
         Stub(null);
 
         (await Create(UserState.DeletePending).CancelDeletion()).Should().BeOfType<NotFoundResult>();
-        await _deletion.DidNotReceiveWithAnyArgs().CancelDeletionAsync(default, default);
+        await _deletion.DidNotReceiveWithAnyArgs().CancelDeletionAsync(default);
     }
 
     [HumansFact]

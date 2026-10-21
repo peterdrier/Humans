@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Auth.Contracts;
 using Humans.Email.Contracts;

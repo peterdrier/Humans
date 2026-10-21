@@ -220,7 +220,7 @@ public class NotificationMeterProviderTests : IDisposable
         _applicationDecisionService.GetUnvotedApplicationCountAsync(
             Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(0);
 
-        var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.Board), Xunit.TestContext.Current.CancellationToken);
+        var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.Board), TestContext.Current.CancellationToken);
 
         var onboardingMeter = meters.Single(m =>
             string.Equals(m.Title, "Onboarding profiles pending", StringComparison.Ordinal));
@@ -235,7 +235,7 @@ public class NotificationMeterProviderTests : IDisposable
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
 
-        var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.VolunteerCoordinator), Xunit.TestContext.Current.CancellationToken);
+        var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.VolunteerCoordinator), TestContext.Current.CancellationToken);
 
         meters.Should().ContainSingle(m =>
             string.Equals(m.Title, "Onboarding profiles pending", StringComparison.Ordinal) &&
@@ -256,7 +256,7 @@ public class NotificationMeterProviderTests : IDisposable
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
 
-        var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.ConsentCoordinator), Xunit.TestContext.Current.CancellationToken);
+        var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.ConsentCoordinator), TestContext.Current.CancellationToken);
 
         meters.Should().ContainSingle(m =>
             string.Equals(m.Title, "Consent reviews pending", StringComparison.Ordinal) &&
@@ -271,7 +271,7 @@ public class NotificationMeterProviderTests : IDisposable
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
 
-        var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.ConsentCoordinator), Xunit.TestContext.Current.CancellationToken);
+        var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.ConsentCoordinator), TestContext.Current.CancellationToken);
 
         meters.Should().ContainSingle(m =>
             string.Equals(m.Title, "Consent reviews pending", StringComparison.Ordinal) &&
@@ -302,7 +302,7 @@ public class NotificationMeterProviderTests : IDisposable
             }));
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(true);
 
-        var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.Admin), Xunit.TestContext.Current.CancellationToken);
+        var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.Admin), TestContext.Current.CancellationToken);
 
         meters.Should().Contain(m => m.Title == "Pending account deletions" && m.Count == 2);
         meters.Should().Contain(m => m.Title == "Failed Google sync events" && m.Count == 5);
@@ -323,7 +323,7 @@ public class NotificationMeterProviderTests : IDisposable
             boardUserId, Arg.Any<CancellationToken>()).Returns(4);
 
         var principal = CreatePrincipalWithId(boardUserId, RoleNames.Board);
-        var meters = await _provider.GetMetersForUserAsync(principal, Xunit.TestContext.Current.CancellationToken);
+        var meters = await _provider.GetMetersForUserAsync(principal, TestContext.Current.CancellationToken);
 
         meters.Should().ContainSingle(m =>
             m.Title == "Applications pending your vote" && m.Count == 4);
@@ -344,7 +344,7 @@ public class NotificationMeterProviderTests : IDisposable
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns([MakeCampInfoWithPendingRequest(leadUserId)]);
 
-        var meters = await _provider.GetMetersForUserAsync(CreatePrincipalWithId(leadUserId), Xunit.TestContext.Current.CancellationToken);
+        var meters = await _provider.GetMetersForUserAsync(CreatePrincipalWithId(leadUserId), TestContext.Current.CancellationToken);
 
         meters.Should().ContainSingle(m =>
             m.Title == "1 human wants to join your camp" &&
@@ -369,7 +369,7 @@ public class NotificationMeterProviderTests : IDisposable
         _campService.GetCampsForYearAsync(2027, Arg.Any<CancellationToken>())
             .Returns([MakeCampInfoWithPendingRequest(leadUserId, 2027)]);
 
-        var meters = await _provider.GetMetersForUserAsync(CreatePrincipalWithId(leadUserId), Xunit.TestContext.Current.CancellationToken);
+        var meters = await _provider.GetMetersForUserAsync(CreatePrincipalWithId(leadUserId), TestContext.Current.CancellationToken);
 
         meters.Should().ContainSingle(m =>
             m.Title == "1 human wants to join your camp" &&

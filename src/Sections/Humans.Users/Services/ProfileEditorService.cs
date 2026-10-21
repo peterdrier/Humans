@@ -1,4 +1,3 @@
-using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
 using Humans.Base.Threading;
 

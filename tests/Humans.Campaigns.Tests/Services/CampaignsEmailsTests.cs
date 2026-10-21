@@ -3,7 +3,6 @@ using System.Net;
 using AwesomeAssertions;
 using Humans.Campaigns.Services;
 using Humans.Email.Contracts;
-using Humans.Users.Contracts;
 
 namespace Humans.Campaigns.Tests.Services;
 

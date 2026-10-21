@@ -7,7 +7,6 @@ using Humans.Preapprovals.Contracts;
 using Humans.Preapprovals.Domain;
 using Humans.Preapprovals.Services;
 using Humans.Preapprovals.Tests.Infrastructure;
-using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 

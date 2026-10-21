@@ -38,7 +38,7 @@ public sealed class OnboardingServiceTests
         _consentService.GetConsentReviewAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => _reviews.GetValueOrDefault(call.Arg<Guid>()) ?? ConsentReviewInfo.None(call.Arg<Guid>()));
         _consentService.GetConsentReviewsAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => (IReadOnlyDictionary<Guid, ConsentReviewInfo>)_reviews);
+            .Returns(_ => _reviews);
         _userServiceWrite.SetRejectedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
     }

@@ -29,7 +29,7 @@ public sealed class GoogleControllerSyncAuditTests
     {
         var actorId = Guid.NewGuid();
         var targetId = Guid.NewGuid();
-        var controller = BuildSut(Xunit.TestContext.Current.CancellationToken);
+        var controller = BuildSut(TestContext.Current.CancellationToken);
         controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"));
         _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
@@ -74,7 +74,7 @@ public sealed class GoogleControllerSyncAuditTests
     {
         using var cancellation = new CancellationTokenSource();
         var views = new List<GoogleSyncLogView>();
-        _syncLog.GetRecentAsync(default, default, default, default, default, default, default)
+        _syncLog.GetRecentAsync(default, default, default, default, default, default)
             .ReturnsForAnyArgs(views);
 
         var result = await BuildSut(cancellation.Token).ActivityLog(
@@ -95,7 +95,7 @@ public sealed class GoogleControllerSyncAuditTests
     public async Task UpdateSyncSetting_OnlyValidBindingsReachTheActorAttributedWrite(bool malformed)
     {
         var actorId = Guid.NewGuid();
-        var controller = BuildSut(Xunit.TestContext.Current.CancellationToken);
+        var controller = BuildSut(TestContext.Current.CancellationToken);
         controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"));
         var actor = UserInfo.Create(new User { Id = actorId, BurnerName = "Admin" }, [], [], [], null, []);

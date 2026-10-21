@@ -13,7 +13,6 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Users.Contracts;
-using Humans.Agent.Contracts;
 
 namespace Humans.Agent.Tests;
 

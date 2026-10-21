@@ -573,7 +573,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 
         var actorId = Guid.NewGuid();
         AuditLog.LogAsync(AuditAction.StubProfileBackfilled, nameof(User), userId,
-            Arg.Any<string>(), actorId, null, null).Returns(async _ =>
+            Arg.Any<string>(), actorId).Returns(async _ =>
             {
                 (await Db.Profiles.AsNoTracking().AnyAsync(p => p.UserId == userId,
                     TestContext.Current.CancellationToken)).Should().BeTrue();
@@ -585,7 +585,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var user = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         user.State.Should().Be(UserState.Bare);
         await AuditLog.Received(1).LogAsync(AuditAction.StubProfileBackfilled, nameof(User), userId,
-            Arg.Any<string>(), actorId, null, null);
+            Arg.Any<string>(), actorId);
         (await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken, actorUserId: actorId))
             .Should().BeFalse();
         AuditLog.ReceivedCalls().Should().HaveCount(1);

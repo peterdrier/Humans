@@ -179,7 +179,7 @@ public class FinanceControllerTests
             .Returns(call =>
             {
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-                return (IReadOnlyDictionary<Guid, UserInfo>)new Dictionary<Guid, UserInfo>();
+                return new Dictionary<Guid, UserInfo>();
             });
         var controller = MakeControllerWithHttpContext(Ana);
         (await controller.Creditors(null, null)).Should().BeOfType<ViewResult>();
@@ -328,16 +328,16 @@ public class FinanceControllerTests
     // ─── SEPA generation cap ─────────────────────────────────────────────────────
 
     [HumansTheory]
-    [Xunit.InlineData("not-a-number")]
-    [Xunit.InlineData("0")]
-    [Xunit.InlineData("-5.00")]
+    [InlineData("not-a-number")]
+    [InlineData("0")]
+    [InlineData("-5.00")]
     public async Task GenerateSepa_UnparseableOrNonPositiveCap_RefusesWithoutCallingTheService(string cap)
     {
         var controller = MakeControllerWithHttpContext(Ana);
 
         var result = await controller.GenerateSepa(
             [40000004], new Dictionary<int, string> { [40000004] = "10.00" }, cap,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectToActionResult>().Subject.ActionName
             .Should().Be(nameof(FinanceController.Creditors));
@@ -377,11 +377,11 @@ public class FinanceControllerTests
 
         var result = await controller.GenerateSepa(selected,
             new Dictionary<int, string> { [40000004] = "10.00" }, "100.00",
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         if (hasActor) result.Should().BeOfType<BadRequestObjectResult>();
         else result.Should().BeOfType<ChallengeResult>();
-        await _connector.DidNotReceiveWithAnyArgs().GenerateSepaPayoutAsync(default!, default, default, default);
+        await _connector.DidNotReceiveWithAnyArgs().GenerateSepaPayoutAsync(default!, default, default);
     }
 
     [HumansFact]
@@ -394,7 +394,7 @@ public class FinanceControllerTests
 
         await controller.GenerateSepa(
             [40000004], new Dictionary<int, string> { [40000004] = "10.00" }, "75.00",
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         await _connector.Received(1).GenerateSepaPayoutAsync(
             Arg.Any<IReadOnlyList<SepaPayoutSelection>>(), 75.00m, Ana, Arg.Any<CancellationToken>());
@@ -478,7 +478,7 @@ public class FinanceControllerTests
             new HoldedDocSyncVm(null, "Idle", null, 0, null, IsStale: true), 3, [], [], []);
         _connector.GetConnectorOverviewAsync(Arg.Any<CancellationToken>()).Returns(vm);
 
-        var result = await MakeController().Holded(Xunit.TestContext.Current.CancellationToken);
+        var result = await MakeController().Holded(TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeSameAs(vm);
     }
@@ -501,7 +501,7 @@ public class FinanceControllerTests
             null, [], null));
         NameThem((Ana, "Ada"), (Bo, "Zoe"), (admin, "Treasurer"));
 
-        var page = SepaPageOf(await MakeController().Sepa(Xunit.TestContext.Current.CancellationToken));
+        var page = SepaPageOf(await MakeController().Sepa(TestContext.Current.CancellationToken));
 
         page.Files.Select(f => f.FileName).Should().Equal("new.xml", "old.xml");
         page.Files[0].GeneratedByName.Should().Be("Treasurer");
@@ -534,9 +534,9 @@ public class FinanceControllerTests
     {
         _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns((new List<SepaPayoutTransferRow>(), "Sepa:TreasuryAccountId is not configured.",
-                (IReadOnlyList<SepaBankMovementVm>)[], (string?)null));
+                [], null));
 
-        var page = SepaPageOf(await MakeController().Sepa(Xunit.TestContext.Current.CancellationToken));
+        var page = SepaPageOf(await MakeController().Sepa(TestContext.Current.CancellationToken));
 
         page.UnavailableReason.Should().Be("Sepa:TreasuryAccountId is not configured.");
         page.Files.Should().BeEmpty();
@@ -551,10 +551,10 @@ public class FinanceControllerTests
                 "pending", "its text names no creditor account"),
         };
         _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns((new List<SepaPayoutTransferRow>(), (string?)null,
-                (IReadOnlyList<SepaBankMovementVm>)unmatched, (string?)null));
+            .Returns((new List<SepaPayoutTransferRow>(), null,
+                unmatched, null));
 
-        var page = SepaPageOf(await MakeController().Sepa(Xunit.TestContext.Current.CancellationToken));
+        var page = SepaPageOf(await MakeController().Sepa(TestContext.Current.CancellationToken));
 
         page.UnmatchedMovements.Should().BeSameAs(unmatched);
     }
@@ -564,10 +564,10 @@ public class FinanceControllerTests
     {
         _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns((
             new List<SepaPayoutTransferRow> { Transfer(Guid.NewGuid(), "f.xml", Stamp(1), Ana, Ana, 40000002) },
-            (string?)null, (IReadOnlyList<SepaBankMovementVm>)[], "Holded's bank feed did not answer."));
+            null, [], "Holded's bank feed did not answer."));
         NameThem((Ana, "Ada"));
 
-        var page = SepaPageOf(await MakeController().Sepa(Xunit.TestContext.Current.CancellationToken));
+        var page = SepaPageOf(await MakeController().Sepa(TestContext.Current.CancellationToken));
 
         page.BankFeedError.Should().Be("Holded's bank feed did not answer.");
         page.Files.Should().ContainSingle();
@@ -630,7 +630,7 @@ public class FinanceControllerTests
             .Returns((new List<SepaPayoutTransferRow> { row }, null, [], null));
         NameThem((Ana, "Ada"), (Bo, "Zoe"), (admin, "Treasurer"));
 
-        var page = SepaPageOf(await MakeController().Sepa(Xunit.TestContext.Current.CancellationToken));
+        var page = SepaPageOf(await MakeController().Sepa(TestContext.Current.CancellationToken));
 
         var transfer = page.Files.Single().Transfers.Single();
         transfer.Row.IsWithdrawn.Should().BeTrue();
@@ -646,7 +646,7 @@ public class FinanceControllerTests
         NameThem((Ana, "Ada"));
         var controller = MakeController();
 
-        var result = await controller.HoldedDuplicates(Xunit.TestContext.Current.CancellationToken);
+        var result = await controller.HoldedDuplicates(TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeSameAs(vm);
         ((Dictionary<Guid, string>)controller.ViewBag.MemberNames)[Ana].Should().Be("Ada");
@@ -710,7 +710,7 @@ public class FinanceControllerTests
         _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns((new List<SepaPayoutTransferRow>(), null, new List<SepaBankMovementVm>(), null));
 
-        var page = SepaPageOf(await MakeController().Sepa(Xunit.TestContext.Current.CancellationToken, days: 7));
+        var page = SepaPageOf(await MakeController().Sepa(TestContext.Current.CancellationToken, days: 7));
 
         page.ToleranceDays.Should().Be(7);
         await _connector.Received(1).GetSepaPayoutsAsync(7, Arg.Any<CancellationToken>());

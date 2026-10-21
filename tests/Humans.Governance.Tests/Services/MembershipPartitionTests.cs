@@ -65,7 +65,7 @@ public class MembershipPartitionTests
         _consentService.GetConsentReviewAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(ci => _reviews.GetValueOrDefault(ci.Arg<Guid>()) ?? ConsentReviewInfo.None(ci.Arg<Guid>()));
         _consentService.GetConsentReviewsAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => (IReadOnlyDictionary<Guid, ConsentReviewInfo>)new Dictionary<Guid, ConsentReviewInfo>(_reviews));
+            .Returns(_ => new Dictionary<Guid, ConsentReviewInfo>(_reviews));
         _consentService.GetConsentMapForUsersAsync(
             Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ci =>

@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;
-using Humans.Users.Services;
 
 namespace Humans.Users.Data;
 

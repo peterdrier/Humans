@@ -1,7 +1,5 @@
 using Humans.Base.Controllers;
 using System.Globalization;
-using System.Text.Json;
-using AngleSharp.Dom;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Cantina.Contracts;
@@ -16,7 +14,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using NodaTime;
-using NodaTime.Text;
 using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Controllers;

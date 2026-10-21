@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text;
 using System.Net;
 using Humans.Base.Interfaces;
 using Humans.Email.Contracts;

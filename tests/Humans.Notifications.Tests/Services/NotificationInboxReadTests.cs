@@ -142,7 +142,7 @@ public sealed class NotificationInboxReadTests : IDisposable
         var snapshot = await _sut.GetUnreadInboxAsync(new ClaimsPrincipal(new ClaimsIdentity()), Xunit.TestContext.Current.CancellationToken);
 
         snapshot.Notifications.Should().BeEmpty();
-        await _inbox.DidNotReceiveWithAnyArgs().GetInboxAsync(default, default, default!, default!, default);
+        await _inbox.DidNotReceiveWithAnyArgs().GetInboxAsync(default, default, default!, default!);
     }
 
     private static ClaimsPrincipal Principal(Guid userId, params string[] roles)

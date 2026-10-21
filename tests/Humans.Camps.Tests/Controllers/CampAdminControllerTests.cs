@@ -3,7 +3,6 @@ using Humans.AuditLog.Contracts;
 using Humans.Base.Csv;
 using Humans.Base.Enums;
 using AwesomeAssertions;
-using Humans.Camps.Models;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -165,19 +164,19 @@ public class CampAdminControllerTests
         {
             if (string.Equals(boundary, "camps", StringComparison.Ordinal))
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return (IReadOnlyList<CampInfo>)[];
+            return [];
         });
         users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             if (string.Equals(boundary, "users", StringComparison.Ordinal))
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return (IReadOnlyDictionary<Guid, UserInfo>)new Dictionary<Guid, UserInfo>();
+            return new Dictionary<Guid, UserInfo>();
         });
         roles.GetMissingSpecialRolesAsync(Arg.Any<CancellationToken>()).Returns(call =>
         {
             if (string.Equals(boundary, "roles", StringComparison.Ordinal))
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return (IReadOnlyList<CampSpecialRole>)[];
+            return [];
         });
         var logger = Substitute.For<ILogger<CampAdminController>>();
         var controller = CreateController(camps, roles, users, Guid.NewGuid(), logger);
@@ -278,7 +277,7 @@ public class CampAdminControllerTests
         var logger = Substitute.For<ILogger<CampAdminController>>();
         var controller = CreateController(Substitute.For<ICampManagement>(), roles, users, actorId, logger);
         var form = new CampRoleDefinitionFormViewModel { Name = "Worker", Slug = "worker" };
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
 
         var result = edit ? await controller.EditRole(roleId, form, ct) : await controller.CreateRole(form, ct);
 
@@ -305,7 +304,7 @@ public class CampAdminControllerTests
         var controller = CreateController(Substitute.For<ICampManagement>(), roles, users, actorId, logger);
         var form = new CampRoleDefinitionFormViewModel { Name = "Worker", Slug = "worker" };
 
-        var result = await controller.EditRole(roleId, form, Xunit.TestContext.Current.CancellationToken);
+        var result = await controller.EditRole(roleId, form, TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(form);
         controller.ModelState[string.Empty]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be("Failed to update role definition.");

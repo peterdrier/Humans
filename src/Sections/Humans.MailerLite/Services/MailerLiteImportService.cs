@@ -3,7 +3,6 @@ using Humans.AuditLog.Contracts;
 using Humans.MailerLite.Data;
 using Humans.MailerLite.Domain;
 using Humans.MailerLite.Services.Dtos;
-using Humans.MailerLite.Services;
 using Humans.Users.Contracts;
 using NodaTime;
 

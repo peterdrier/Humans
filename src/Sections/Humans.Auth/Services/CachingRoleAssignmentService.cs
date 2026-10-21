@@ -1,7 +1,6 @@
 using Humans.Auth.Contracts;
 using Humans.Base.Caching;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Auth.Services;

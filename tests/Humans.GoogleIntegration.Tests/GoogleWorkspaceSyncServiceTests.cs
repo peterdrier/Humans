@@ -6,7 +6,6 @@ using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.GoogleIntegration.Services;
 using Humans.Base.Enums;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -212,7 +211,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         if (rejectsTarget)
             await _identities.Received(1).SetStatusFromSyncAsync(
                 TestUserId, "old@example.org", GoogleEmailStatus.Rejected, ct);
-        await _userEmailService.DidNotReceiveWithAnyArgs().GetEntitiesByUserIdAsync(default, default);
+        await _userEmailService.DidNotReceiveWithAnyArgs().GetEntitiesByUserIdAsync(default);
     }
 
     [HumansTheory]
@@ -563,8 +562,8 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         result.Outcome.Should().Be(GoogleResourceGrantOutcome.Failed);
         result.Retryable.Should().BeFalse();
-        await _drivePermissions.DidNotReceiveWithAnyArgs().CreatePermissionAsync(default!, default!, default!, default);
-        await _googleGroupSync.DidNotReceiveWithAnyArgs().RequestSyncAsync(default!, default);
+        await _drivePermissions.DidNotReceiveWithAnyArgs().CreatePermissionAsync(default!, default!, default!);
+        await _googleGroupSync.DidNotReceiveWithAnyArgs().RequestSyncAsync(default!);
     }
 
     [HumansTheory]
@@ -610,7 +609,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         if (groupOnly)
         {
             await _googleGroupSync.Received(1).RequestSyncAsync("team@example.org", ct, GoogleSyncSource.ManualSync);
-            await _drivePermissions.DidNotReceiveWithAnyArgs().CreatePermissionAsync(default!, default!, default!, default);
+            await _drivePermissions.DidNotReceiveWithAnyArgs().CreatePermissionAsync(default!, default!, default!);
         }
     }
 
@@ -636,7 +635,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         var act = () => _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, ct);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
-        await _drivePermissions.DidNotReceiveWithAnyArgs().CreatePermissionAsync(default!, default!, default!, default);
+        await _drivePermissions.DidNotReceiveWithAnyArgs().CreatePermissionAsync(default!, default!, default!);
     }
 
     [HumansFact]
@@ -1289,7 +1288,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         if (string.Equals(scenario, "complete", StringComparison.Ordinal))
             await _resourceRepository.Received(1).UpdateNameAsync(resource.Id, "Shared Drive / Child", ct);
         else
-            await _resourceRepository.DidNotReceiveWithAnyArgs().UpdateNameAsync(default, default!, default);
+            await _resourceRepository.DidNotReceiveWithAnyArgs().UpdateNameAsync(default, default!);
     }
 
     private static Dictionary<Guid, TeamInfo> ExpectedMemberTeam() => new()

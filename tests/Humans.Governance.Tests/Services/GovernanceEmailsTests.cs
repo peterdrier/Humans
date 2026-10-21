@@ -7,7 +7,6 @@ using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Governance.Services;
 using Humans.Governance.Tests.Infrastructure;
-using Humans.Users.Contracts;
 using NodaTime;
 
 namespace Humans.Governance.Tests.Services;

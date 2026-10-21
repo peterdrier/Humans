@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Surveys.Services;
 using Humans.Surveys.Tests.Infrastructure;
-using Humans.Users.Contracts;
 
 namespace Humans.Surveys.Tests.Services;
 
