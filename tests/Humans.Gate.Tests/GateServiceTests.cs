@@ -224,7 +224,7 @@ public class GateServiceTests
         StubTicket();
         _config["Gate:VendorMirrorEnabled"] = mirrorEnabled ? "true" : "false";
 
-        (await Record(idConfirmed: true)).Verdict.Should().Be(GateVerdict.Admitted);
+        (await RecordAsync(idConfirmed: true)).Verdict.Should().Be(GateVerdict.Admitted);
 
         // Flag off: the job still no-ops itself, but a ledger mark would hide exactly the row
         // the backfill page exists to recover.
@@ -240,7 +240,7 @@ public class GateServiceTests
         StubTicket();
         _config["Gate:VendorMirrorEnabled"] = "true";
 
-        (await Record(idConfirmed: false)).Verdict.Should().Be(GateVerdict.RejectedNameMismatch);
+        (await RecordAsync(idConfirmed: false)).Verdict.Should().Be(GateVerdict.RejectedNameMismatch);
 
         _jobs.ReceivedCalls().Should().BeEmpty();
         _ledger.WasSent("v1").Should().BeFalse();
