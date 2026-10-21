@@ -185,7 +185,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     {
         await SeedMapSettingsAsync();
 
-        var result = await _sut.UpdatePlacementDatesAsync("2026-06-01T08:30", "2026-06-02T18:45", TestContext.Current.CancellationToken);
+        var result = await _sut.UpdatePlacementDatesAsync("2026-06-01T08:30", "2026-06-02T18:45", NewUserId(), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
@@ -196,7 +196,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     [HumansFact]
     public async Task UpdatePlacementDatesAsync_InvalidOpenString_ReturnsError()
     {
-        var result = await _sut.UpdatePlacementDatesAsync("not-a-date", null, TestContext.Current.CancellationToken);
+        var result = await _sut.UpdatePlacementDatesAsync("not-a-date", null, NewUserId(), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("InvalidOpensAt");
@@ -379,6 +379,55 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             AuditAction.CityPlanningPlacementClosed,
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), userId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task UpdatePlacementDatesAsync_WritesAuditEntry_NamingTheActorAndTheDates()
+    {
+        var settings = await SeedMapSettingsAsync();
+        var userId = NewUserId();
+
+        await _sut.UpdatePlacementDatesAsync("2026-06-01T08:30", null, userId, TestContext.Current.CancellationToken);
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CityPlanningPlacementDatesUpdated,
+            nameof(CityPlanningSettings),
+            settings.Id,
+            Arg.Is<string>(d => d.Contains("2026-06-01T08:30", StringComparison.Ordinal) && d.Contains("unset", StringComparison.Ordinal)),
+            userId,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task UpdatePlacementDatesAsync_RejectedInput_WritesNoAuditEntry()
+    {
+        await SeedMapSettingsAsync();
+
+        await _sut.UpdatePlacementDatesAsync("not-a-date", null, NewUserId(), TestContext.Current.CancellationToken);
+
+        _auditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task UpdateRegistrationInfoAsync_AuditsAgainstTheOpenSeasonRow()
+    {
+        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new CampSettingsInfo(2026, [2027]));
+        var userId = NewUserId();
+
+        await _sut.UpdateRegistrationInfoAsync("Bring water.", userId, TestContext.Current.CancellationToken);
+
+        var row = await CityPlanningDb.CityPlanningSettings.AsNoTracking()
+            .SingleAsync(s => s.Year == 2027, TestContext.Current.CancellationToken);
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CityPlanningRegistrationInfoUpdated,
+            nameof(CityPlanningSettings),
+            row.Id,
+            Arg.Any<string>(),
+            userId,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -921,7 +970,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         await CityPlanningDb.SaveChangesAsync(TestContext.Current.CancellationToken);
         CityPlanningDb.Entry(seeded).State = EntityState.Detached;
 
-        var result = await _sut.UpdatePlacementDatesAsync(null, null, TestContext.Current.CancellationToken);
+        var result = await _sut.UpdatePlacementDatesAsync(null, null, NewUserId(), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         var updated = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
@@ -968,7 +1017,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(2026, [2026, 2028, 2027]));
 
-        await _sut.UpdateRegistrationInfoAsync("Read this before you register.", TestContext.Current.CancellationToken);
+        await _sut.UpdateRegistrationInfoAsync("Read this before you register.", NewUserId(), TestContext.Current.CancellationToken);
 
         var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking()
             .SingleAsync(TestContext.Current.CancellationToken);
@@ -981,7 +1030,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     {
         SetupCampSettings();
 
-        await _sut.UpdateRegistrationInfoAsync("Blurb", TestContext.Current.CancellationToken);
+        await _sut.UpdateRegistrationInfoAsync("Blurb", NewUserId(), TestContext.Current.CancellationToken);
 
         var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking()
             .SingleAsync(TestContext.Current.CancellationToken);
@@ -993,10 +1042,10 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     {
         SetupCampSettings();
 
-        await _sut.UpdateRegistrationInfoAsync("  padded  ", TestContext.Current.CancellationToken);
+        await _sut.UpdateRegistrationInfoAsync("  padded  ", NewUserId(), TestContext.Current.CancellationToken);
         (await _sut.GetRegistrationInfoAsync(TestContext.Current.CancellationToken)).Should().Be("padded");
 
-        await _sut.UpdateRegistrationInfoAsync("   ", TestContext.Current.CancellationToken);
+        await _sut.UpdateRegistrationInfoAsync("   ", NewUserId(), TestContext.Current.CancellationToken);
         (await _sut.GetRegistrationInfoAsync(TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
@@ -1006,7 +1055,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(2026, [2027]));
 
-        await _sut.UpdateRegistrationInfoAsync("Open-season blurb", TestContext.Current.CancellationToken);
+        await _sut.UpdateRegistrationInfoAsync("Open-season blurb", NewUserId(), TestContext.Current.CancellationToken);
 
         // A row keyed to PublicYear must not shadow the open-season one.
         CityPlanningDb.CityPlanningSettings.Add(new CityPlanningSettings

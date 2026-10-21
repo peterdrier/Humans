@@ -251,6 +251,8 @@
   <data name="Enum_AuditAction_CityPlanningLimitZoneDeleted" xml:space="preserve"><value>City planning limit zone deleted</value></data>
   <data name="Enum_AuditAction_CityPlanningOfficialZonesUpdated" xml:space="preserve"><value>City planning official zones updated</value></data>
   <data name="Enum_AuditAction_CityPlanningOfficialZonesDeleted" xml:space="preserve"><value>City planning official zones deleted</value></data>
+  <data name="Enum_AuditAction_CityPlanningPlacementDatesUpdated" xml:space="preserve"><value>City planning placement dates updated</value></data>
+  <data name="Enum_AuditAction_CityPlanningRegistrationInfoUpdated" xml:space="preserve"><value>City planning registration info updated</value></data>
   <data name="Enum_AuditAction_ExpenseCreatedOnBehalf" xml:space="preserve"><value>Expense created on behalf</value></data>
   <data name="Enum_AuditAction_ExpenseEditedOnBehalf" xml:space="preserve"><value>Expense edited on behalf</value></data>
   <data name="Enum_AuditAction_ExpensePayeeIbanUpdated" xml:space="preserve"><value>Expense payee IBAN updated</value></data>

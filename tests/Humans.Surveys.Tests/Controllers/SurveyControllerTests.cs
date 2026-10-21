@@ -110,6 +110,72 @@ public sealed class SurveyControllerTests
         }
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(null, null)]
+    [Xunit.InlineData("Page", "two")]
+    [Xunit.InlineData("Answers[0].QuestionId", "not-a-guid")]
+    [Xunit.InlineData("Answers[0].RatingValue", "five")]
+    public async Task Public_page_post_binds_the_real_form_and_rejects_only_malformed_values(
+        string? field, string? value)
+    {
+        var surveyId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.ResolvePublicContextAsync("volunteer-survey", null, Arg.Any<CancellationToken>()).Returns(
+            new SurveyPublicContext(surveyId, Detail(surveyId, "Thanks!", publicSlug: "volunteer-survey")));
+        surveys.AdvanceWizardAsync(
+                Arg.Any<SurveyWizardState>(), Arg.Any<int>(), Arg.Any<bool>(),
+                Arg.Any<IReadOnlyList<SurveyAnswerInput>>(), Arg.Any<CancellationToken>())
+            .Returns(new SurveyWizardAdvanceResult(SurveyWizardOutcome.Navigated, []));
+        var sut = CreateController(surveys, out var session);
+        SurveyWizardSession.SaveBySlug(session, "volunteer-survey",
+            new SurveyWizardState { SurveyId = surveyId, Culture = "en", Anonymity = ResponseAnonymity.Anonymous });
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        sut.HttpContext.RequestServices = services;
+        sut.Url = Substitute.For<IUrlHelper>();
+        // What Page.cshtml posts on the public path: no Token, blank grid/ranked values are normal.
+        var fields = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Page"] = "1",
+            ["Answers[0].QuestionId"] = Guid.NewGuid().ToString(),
+            ["Answers[0].RatingValue"] = "",
+            ["Answers[0].GridRows[0].RowValue"] = "",
+            ["Answers[0].RankedOptions[0].OptionValue"] = "",
+            ["Answers[0].RankedOptions[0].Selection"] = "",
+        };
+        if (field is not null) fields[field] = value!;
+        var method = typeof(SurveyController).GetMethod(nameof(SurveyController.PublicSubmitPage))!;
+        var parameter = method.GetParameters().Single(p => string.Equals(p.Name, "model", StringComparison.Ordinal));
+        var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = parameter
+        });
+        var binding = await services.GetRequiredService<ParameterBinder>().BindModelAsync(sut.ControllerContext, binder,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            new ControllerParameterDescriptor { Name = parameter.Name!, ParameterType = parameter.ParameterType, ParameterInfo = parameter },
+            metadata, value: null);
+
+        var result = await sut.PublicSubmitPage(
+            "volunteer-survey", (SurveyPageInputModel)binding.Model!, Xunit.TestContext.Current.CancellationToken);
+
+        if (field is null)
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            await surveys.Received(1).AdvanceWizardAsync(
+                Arg.Any<SurveyWizardState>(), 1, false,
+                Arg.Any<IReadOnlyList<SurveyAnswerInput>>(), Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            result.Should().BeOfType<BadRequestObjectResult>();
+            sut.ModelState.Keys.Should().Contain(field);
+            await surveys.DidNotReceiveWithAnyArgs().AdvanceWizardAsync(default!, default, default, default!, default);
+        }
+    }
+
     [HumansFact]
     public async Task Submitting_leaves_the_thank_you_marker_in_session()
     {

@@ -522,6 +522,12 @@ internal sealed class SurveyController(
     private async Task<IActionResult> ProcessPage(
         SurveyWizardState state, SurveyPageInputModel model, WizardRoute route, CancellationToken ct)
     {
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed survey page form for {SurveyId}", state.SurveyId);
+            return BadRequest(ModelState);
+        }
+
         var posted = (model.Answers ?? [])
             .Select(a => new SurveyAnswerInput(
                 a.QuestionId,
