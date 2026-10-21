@@ -549,7 +549,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             new ServiceLocatorBuilder().With(_teamService).Build(), Cache,
             Substitute.For<IShiftViewInvalidator>(),
             new EventCalendarResolver(Substitute.For<Humans.Settings.Contracts.ISettingsService>()), Clock,
-            EarlyEntryInvalidator, Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         var found = await service.GetShiftByIdAsync(shift.Id, Xunit.TestContext.Current.CancellationToken);
 
