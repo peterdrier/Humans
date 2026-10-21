@@ -1,0 +1,29 @@
+@model GrantsCardViewModel
+
+<div class="card mb-3">
+    <div class="card-header">
+        <h5 class="mb-0">@Localizer["Grants_MyGrants_Title"]</h5>
+    </div>
+    <ul class="list-group list-group-flush">
+        @foreach (var g in Model.Grants)
+        {
+            var state = g.State(Model.Today);
+            <li class="list-group-item">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                        <div class="fw-semibold">@g.ProgramName</div>
+                        <div>@g.Entitles</div>
+                        @if (state == GrantState.Active && g.ExpiresOn is { } expires)
+                        {
+                            <div class="small text-muted">@Localizer["Grants_MyGrants_ExpiresOn", expires.ToDate()]</div>
+                        }
+                    </div>
+                    @if (state != GrantState.Active)
+                    {
+                        <span class="badge @EnumBadgeMap.For(state)">@Localizer[state == GrantState.Expired ? "Grants_MyGrants_Expired" : "Grants_MyGrants_Revoked"]</span>
+                    }
+                </div>
+            </li>
+        }
+    </ul>
+</div>

@@ -135,6 +135,8 @@ All authenticated users can access their own notifications. No role-based restri
 | PreapprovalFileBy | Actionable | The beneficiary | System | Pre-approval issued, released, reminded, or its deadline moved; resolved when the grant leaves Open |
 | PreapprovalApplicationReceived | Actionable | The program's managers | System | Someone applies to a pre-approval program; resolved on approve or decline |
 | PreapprovalGrantDecided | Informational (Actionable when a revoked grant already has an expense report) | The beneficiary | System | Pre-approval declined, revoked, or its amount changed |
+| GrantReceived | Informational | The grant holder | System | A grant issued to the person, or its notice resent |
+| GrantRevoked | Informational | The former holder | System | A grant the person held was revoked |
 
 ## Related Features
 

@@ -1,0 +1,145 @@
+@model ProgramFormViewModel
+@{
+    var isNew = Model.Id is null;
+    ViewData["Title"] = isNew ? "New grant program" : "Edit program";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Grant programs</a></li>
+        @if (!isNew)
+        {
+            <li class="breadcrumb-item"><a asp-action="Program" asp-route-programId="@Model.Id">@Model.Name</a></li>
+        }
+        <li class="breadcrumb-item active" aria-current="page">@ViewData["Title"]</li>
+    </ol>
+</nav>
+
+<h1>@ViewData["Title"]</h1>
+
+<div class="card" style="max-width: 760px;">
+    <div class="card-body">
+        <form method="post" asp-action="@(isNew ? "New" : "Edit")" asp-route-programId="@Model.Id">
+            <div asp-validation-summary="All" class="text-danger"></div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-9">
+                    <label asp-for="Name" class="form-label">Name</label>
+                    <input asp-for="Name" class="form-control" maxlength="200" />
+                    <span asp-validation-for="Name" class="text-danger"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Year" class="form-label">Year</label>
+                    <input asp-for="Year" type="number" min="2000" max="2100" class="form-control" />
+                    <span asp-validation-for="Year" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Entitles" class="form-label">Entitles the person to</label>
+                <input asp-for="Entitles" class="form-control" maxlength="500" placeholder="e.g. a ticket at the build-crew price" />
+                <div class="form-text">Shown to the person in their notice and on their profile, in these words.</div>
+                <span asp-validation-for="Entitles" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label">Description</label>
+                <textarea asp-for="Description" class="form-control" rows="3" maxlength="2000"></textarea>
+                <div class="form-text">For managers and the Board; not shown to members.</div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label asp-for="IssuedBy" class="form-label">Issued by</label>
+                    <select asp-for="IssuedBy" class="form-select" id="grants-issuer">
+                        <option value="@GrantIssuer.Managers">Managers, by hand</option>
+                        <option value="@GrantIssuer.Source">Another section</option>
+                    </select>
+                </div>
+                <div class="col-md-4" id="grants-source">
+                    <label asp-for="SourceKey" class="form-label">Source key</label>
+                    <input asp-for="SourceKey" class="form-control" maxlength="32" placeholder="e.g. low-income" />
+                    <div class="form-text">The key the filling section passes.</div>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="GrantsExpireOn" class="form-label">Grants expire on</label>
+                    <input asp-for="GrantsExpireOn" type="date" class="form-control" />
+                    <div class="form-text">Empty for no expiry. A grant can override it.</div>
+                </div>
+            </div>
+
+            <div class="mb-3" style="max-width: 240px;">
+                <label asp-for="Status" class="form-label">Status</label>
+                <select asp-for="Status" class="form-select">
+                    <option value="@GrantProgramStatus.Open">Open</option>
+                    <option value="@GrantProgramStatus.Closed">Closed</option>
+                </select>
+                <div class="form-text">Closed: no new grants. Existing grants stay.</div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Managers</label>
+                <div class="d-flex gap-2 mb-2">
+                    <vc:human-search field-name="managerPick" scope="Name" placeholder="Search for a person" instance-key="manager" />
+                    <button type="button" class="btn btn-outline-primary" id="grants-add-manager">Add</button>
+                </div>
+                <ul class="list-group" id="grants-managers">
+                    @foreach (var id in Model.ManagerUserIds.Distinct())
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>@(Model.People.TryGetValue(id, out var info) ? info.BurnerName : id.ToString())</span>
+                            <input type="hidden" name="ManagerUserIds" value="@id" />
+                            <button type="button" class="btn btn-sm btn-outline-secondary grants-remove">✕</button>
+                        </li>
+                    }
+                </ul>
+                <div class="form-text">Managers issue, revoke and resend grants under this program. Board and Admin always can.</div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">@(isNew ? "Create program" : "Save")</button>
+                <a asp-action="@(isNew ? "Index" : "Program")" asp-route-programId="@Model.Id" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+(function () {
+    var issuer = document.getElementById('grants-issuer');
+    var source = document.getElementById('grants-source');
+    function toggle() { source.style.display = issuer.value === '@GrantIssuer.Source' ? '' : 'none'; }
+    issuer.addEventListener('change', toggle);
+    toggle();
+
+    var list = document.getElementById('grants-managers');
+    list.querySelectorAll('.grants-remove').forEach(function (b) {
+        b.addEventListener('click', function () { b.closest('li').remove(); });
+    });
+    document.getElementById('grants-add-manager').addEventListener('click', function () {
+        var hidden = document.getElementById('human-search-hidden-manager');
+        var text = document.getElementById('human-search-manager');
+        var id = hidden.value;
+        if (!id || list.querySelector('input[value="' + id + '"]')) return;
+        var item = document.createElement('li');
+        item.className = 'list-group-item d-flex justify-content-between align-items-center';
+        var label = document.createElement('span');
+        label.textContent = text.value;
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'ManagerUserIds';
+        input.value = id;
+        var remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'btn btn-sm btn-outline-secondary';
+        remove.textContent = '✕';
+        remove.addEventListener('click', function () { item.remove(); });
+        item.appendChild(label);
+        item.appendChild(input);
+        item.appendChild(remove);
+        list.appendChild(item);
+        hidden.value = '';
+        text.value = '';
+    });
+})();
+</script>

@@ -1,0 +1,162 @@
+@model AdminProgramViewModel
+@{
+    var p = Model.Program;
+    ViewData["Title"] = p.Name;
+    var byHand = p.IssuedBy == GrantIssuer.Managers;
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Grant programs</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@p.Name</li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="mb-0">@p.Name <span class="badge @EnumBadgeMap.For(p.Status) fs-6 align-middle">@p.Status</span></h1>
+    @if (Model.CanAdminister)
+    {
+        <a asp-action="Edit" asp-route-programId="@p.Id" class="btn btn-outline-secondary"><i class="fa-solid fa-pen me-1"></i>Edit program</a>
+    }
+</div>
+
+<dl class="row small">
+    <dt class="col-sm-2">Entitles to</dt>
+    <dd class="col-sm-10">@p.Entitles</dd>
+    <dt class="col-sm-2">Year</dt>
+    <dd class="col-sm-10">@p.Year</dd>
+    <dt class="col-sm-2">Issued by</dt>
+    <dd class="col-sm-10">@(byHand ? "Managers, by hand" : $"Another section ({p.SourceKey})")</dd>
+    <dt class="col-sm-2">Grants expire</dt>
+    <dd class="col-sm-10">@(p.GrantsExpireOn?.ToDate() ?? "never")</dd>
+    <dt class="col-sm-2">Managers</dt>
+    <dd class="col-sm-10">@(p.ManagerUserIds.Count == 0 ? "none" : string.Join(", ", p.ManagerUserIds.Select(id => Model.NameOf(id))))</dd>
+    <dt class="col-sm-2">Grants</dt>
+    <dd class="col-sm-10">@p.Count(GrantState.Active, Model.Today) active, @p.Count(GrantState.Expired, Model.Today) expired, @p.Count(GrantState.Revoked, Model.Today) revoked</dd>
+</dl>
+
+@if (!string.IsNullOrEmpty(p.Description))
+{
+    <p>@p.Description</p>
+}
+
+@if (p.Status == GrantProgramStatus.Closed)
+{
+    <div class="alert alert-secondary">Closed: nothing more can be issued. Existing grants stay as they are.</div>
+}
+else if (!byHand)
+{
+    <div class="alert alert-info">Filled by another section (@p.SourceKey). Managers can revoke or resend, not issue.</div>
+}
+else
+{
+    <div class="card mb-4" style="max-width: 760px;">
+        <div class="card-body">
+            <h2 class="h5 card-title">Grant to people</h2>
+            <p class="small text-muted">Add people one at a time, then grant. Anyone who already holds this grant is skipped. Each person gets an email and a notice.</p>
+            <div class="d-flex gap-2 mb-2">
+                <vc:human-search field-name="pendingUserId" scope="Name" placeholder="Search for a person" instance-key="issue" />
+                <button type="button" class="btn btn-outline-primary" id="grants-add">Add</button>
+            </div>
+            <form method="post" asp-action="Issue" asp-route-programId="@p.Id">
+                <ul class="list-group mb-2" id="grants-issue-list"></ul>
+                <div class="mb-2" style="max-width: 240px;">
+                    <label class="form-label small" for="grants-expires">Expires on (optional)</label>
+                    <input type="date" name="expiresOn" id="grants-expires" class="form-control form-control-sm" />
+                    <div class="form-text">Overrides the program's date for these grants.</div>
+                </div>
+                <button type="submit" class="btn btn-primary" id="grants-issue-submit" disabled>Grant to <span id="grants-issue-count">0</span> people</button>
+            </form>
+        </div>
+    </div>
+}
+
+<h2 class="h4 mt-4">Grants</h2>
+@if (p.Grants.Count == 0)
+{
+    <p class="text-muted">No grants yet.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead><tr><th>Who</th><th>State</th><th>Expires</th><th>Issued</th><th>Notified</th><th>Revoked</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var g in Model.Grants)
+                {
+                    var state = g.State(Model.Today);
+                    <tr>
+                        <td><vc:human user-id="@g.UserId" layout="AvatarName" size="28" /></td>
+                        <td><span class="badge @EnumBadgeMap.For(state)">@state</span></td>
+                        <td>@(g.ExpiresOn?.ToDate() ?? "—")</td>
+                        <td class="small text-muted">@Model.NameOf(g.IssuedByUserId) @g.IssuedAt.ToDateTime()@(g.SourceRef is null ? "" : $" ({g.SourceRef})")</td>
+                        <td class="small text-muted">@(g.NotifiedAt?.ToDateTime() ?? "—")</td>
+                        <td class="small text-muted">
+                            @if (g.RevokedAt is { } revokedAt)
+                            {
+                                @Model.NameOf(g.RevokedByUserId) @revokedAt.ToDateTime()
+                                @if (!string.IsNullOrEmpty(g.RevokeReason)) { <div>@g.RevokeReason</div> }
+                            }
+                        </td>
+                        <td class="text-end text-nowrap">
+                            @if (g.RevokedAt is null)
+                            {
+                                <form method="post" asp-action="Resend" asp-route-programId="@p.Id" asp-route-grantId="@g.Id" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">Resend notice</button>
+                                </form>
+                                <form method="post" asp-action="Revoke" asp-route-programId="@p.Id" asp-route-grantId="@g.Id" class="d-inline-flex gap-1 align-items-center ms-1"
+                                      onsubmit="return confirm('Revoke this grant? The person is told.');">
+                                    <input type="text" name="reason" class="form-control form-control-sm" style="width: 180px;" placeholder="Reason (optional, they see it)" maxlength="500" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Revoke</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<script>
+(function () {
+    // The picker fills the hidden input; "Add" moves it to the pending list.
+    var add = document.getElementById('grants-add');
+    if (!add) return;
+    var text = document.getElementById('human-search-issue');
+    var hidden = document.getElementById('human-search-hidden-issue');
+    var list = document.getElementById('grants-issue-list');
+    var submit = document.getElementById('grants-issue-submit');
+    var count = document.getElementById('grants-issue-count');
+    function refresh() {
+        var n = list.children.length;
+        count.textContent = n;
+        submit.disabled = n === 0;
+    }
+    add.addEventListener('click', function () {
+        var id = hidden.value;
+        var name = text.value;
+        if (!id || list.querySelector('input[value="' + id + '"]')) return;
+        var item = document.createElement('li');
+        item.className = 'list-group-item d-flex justify-content-between align-items-center';
+        var label = document.createElement('span');
+        label.textContent = name;
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'userIds';
+        input.value = id;
+        var remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'btn btn-sm btn-outline-secondary';
+        remove.textContent = '✕';
+        remove.addEventListener('click', function () { item.remove(); refresh(); });
+        item.appendChild(label);
+        item.appendChild(input);
+        item.appendChild(remove);
+        list.appendChild(item);
+        hidden.value = '';
+        text.value = '';
+        refresh();
+    });
+})();
+</script>

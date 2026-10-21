@@ -143,4 +143,10 @@ public enum NotificationSource
 
     /// <summary>A pre-approval was declined, revoked, or had its amount changed.</summary>
     PreapprovalGrantDecided = 46,
+
+    /// <summary>A grant entitles the person to something: issued, or the notice resent.</summary>
+    GrantReceived = 47,
+
+    /// <summary>A grant the person held was revoked.</summary>
+    GrantRevoked = 48,
 }

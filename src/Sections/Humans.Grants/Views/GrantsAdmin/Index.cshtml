@@ -1,0 +1,49 @@
+@model AdminIndexViewModel
+@{
+    ViewData["Title"] = "Grant programs";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="mb-0"><i class="fa-solid fa-gift me-2"></i>Grant programs</h1>
+    @if (Model.CanAdminister)
+    {
+        <a asp-action="New" class="btn btn-primary"><i class="fa-solid fa-plus me-1"></i>New program</a>
+    }
+</div>
+
+@if (Model.Programs.Count == 0)
+{
+    <p class="text-muted">No programs yet.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Program</th>
+                    <th>Year</th>
+                    <th>Entitles</th>
+                    <th>Issued by</th>
+                    <th class="text-end">Active</th>
+                    <th>Expires</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in Model.Programs)
+                {
+                    <tr>
+                        <td><a asp-action="Program" asp-route-programId="@p.Id" class="text-decoration-none">@p.Name</a></td>
+                        <td>@p.Year</td>
+                        <td class="small">@p.Entitles</td>
+                        <td>@(p.IssuedBy == GrantIssuer.Source ? p.SourceKey : "Managers")</td>
+                        <td class="text-end">@p.Count(GrantState.Active, Model.Today)</td>
+                        <td>@(p.GrantsExpireOn?.ToDate() ?? "—")</td>
+                        <td><span class="badge @EnumBadgeMap.For(p.Status)">@p.Status</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

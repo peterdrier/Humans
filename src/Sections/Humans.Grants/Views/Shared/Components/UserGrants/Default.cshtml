@@ -1,0 +1,19 @@
+@model GrantsCardViewModel
+@* Admin-only card on /Users/Admin/{id}: no localization keys (memory/code/localization-admin-exempt.md). *@
+@{
+    Func<GrantInfo, IHtmlContent> stateCell = @<text><span class="badge @EnumBadgeMap.For(item.State(Model.Today))">@item.State(Model.Today)</span></text>;
+    Func<GrantInfo, IHtmlContent> programCell = @<text><a asp-controller="GrantsAdmin" asp-action="Program" asp-route-programId="@item.ProgramId">@item.ProgramName</a></text>;
+    var grantsTable = TableModel.For(Model.Grants)
+        .Template("Program", programCell)
+        .Column("Year", g => g.Year)
+        .Column("Entitles", g => g.Entitles)
+        .Template("State", stateCell)
+        .Column("Issued", g => g.IssuedAt, c => c.Date())
+        .Build();
+}
+<div class="card mb-4">
+    <div class="card-header"><h6 class="mb-0">Grants</h6></div>
+    <div class="card-body p-0">
+        <partial name="_Table" model="grantsTable" />
+    </div>
+</div>

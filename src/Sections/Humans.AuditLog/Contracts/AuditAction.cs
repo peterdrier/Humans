@@ -429,4 +429,11 @@ public enum AuditAction
     ExpenseLineDeclined,
     ExpenseLineDeclineUndone,
     DataMigrationApplied,
+    GrantProgramCreated,
+    GrantProgramEdited,
+    GrantProgramManagerAdded,
+    GrantProgramManagerRemoved,
+    GrantIssued,
+    GrantRevoked,
+    GrantNoticeResent,
 }

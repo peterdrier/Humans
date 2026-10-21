@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- Enums -->
+    <data name="Grants_Notice_Issued" xml:space="preserve"><value>Dir wurde etwas gewährt</value></data>
+  <data name="Grants_Notice_Revoked" xml:space="preserve"><value>Eine Gewährung wurde widerrufen</value></data>
+  <data name="Grants_Notice_Issued_Body" xml:space="preserve"><value>Sie berechtigt dich zu: {0}.</value></data>
+  <data name="Grants_Notice_Revoked_Body" xml:space="preserve"><value>Sie berechtigte dich zu: {0}.</value></data>
+  <data name="Grants_Notice_ExpiresOn" xml:space="preserve"><value>Gültig bis {0}.</value></data>
+  <data name="Grants_Email_Greeting_Generic" xml:space="preserve"><value>Hallo,</value></data>
+  <data name="Grants_Email_Greeting_Named" xml:space="preserve"><value>Hallo {0},</value></data>
+  <data name="Grants_Email_ExpiresLine" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Gültig bis:&lt;/strong&gt; {0}&lt;/p&gt;</value></data>
+  <data name="Grants_Email_ReasonLine" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Grund:&lt;/strong&gt; {0}&lt;/p&gt;</value></data>
+  <data name="Grants_Email_Issued_Subject" xml:space="preserve"><value>Dir wurde etwas gewährt: {0}</value></data>
+  <data name="Grants_Email_Issued_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Dir wurde im Rahmen von &lt;strong&gt;{1}&lt;/strong&gt; etwas gewährt. Es berechtigt dich zu: {2}.&lt;/p&gt;{3}&lt;p&gt;&lt;a href="{4}"&gt;Deine Gewährungen in deinem Profil ansehen&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Grants_Email_Revoked_Subject" xml:space="preserve"><value>Gewährung widerrufen: {0}</value></data>
+  <data name="Grants_Email_Revoked_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Deine Gewährung im Rahmen von &lt;strong&gt;{1}&lt;/strong&gt; wurde widerrufen. Sie berechtigte dich zu: {2}.&lt;/p&gt;{3}&lt;p&gt;&lt;a href="{4}"&gt;Deine Gewährungen in deinem Profil ansehen&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Grants_MyGrants_Title" xml:space="preserve"><value>Meine Gewährungen</value></data>
+  <data name="Grants_MyGrants_ExpiresOn" xml:space="preserve"><value>Gültig bis {0}</value></data>
+  <data name="Grants_MyGrants_Expired" xml:space="preserve"><value>Abgelaufen</value></data>
+  <data name="Grants_MyGrants_Revoked" xml:space="preserve"><value>Widerrufen</value></data>
+</root>
