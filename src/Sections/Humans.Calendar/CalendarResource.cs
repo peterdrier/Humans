@@ -5,7 +5,7 @@ namespace Humans.Calendar;
 /// on purpose: the SDK derives the manifest name from the adjacent same-named
 /// <c>.cs</c> file's namespace, not from the folder path, so this must stay
 /// <c>namespace Humans.Calendar</c> — <c>Humans.Calendar.Resources</c> would make every
-/// Calendar string fall back to its raw key at runtime (design §3).
+/// Calendar string fall back to its raw key at runtime.
 /// </summary>
 /// <remarks>
 /// Public because the boot localization diagnostic discovers section resource markers

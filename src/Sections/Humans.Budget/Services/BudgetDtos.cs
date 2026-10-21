@@ -7,7 +7,7 @@ namespace Humans.Budget.Services;
 /// <summary>
 /// Budget's section-internal projections. Everything here is consumed only by the
 /// section's own controllers, views and jobs; the shapes other sections read live on
-/// <c>Humans.Budget.Contracts</c> instead (design §15.5b).
+/// <c>Humans.Budget.Contracts</c> instead.
 /// </summary>
 internal sealed record BudgetYearSummarySnapshot(
     Guid Id,

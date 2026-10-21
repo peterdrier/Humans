@@ -16,7 +16,7 @@ namespace Humans.CityPlanning.Tests;
 /// Owned here rather than linked into <c>tests/Directory.Build.props</c>: the harness is
 /// built around <c>UsersDbContext</c>, and sharing it would grant a section test project
 /// <c>InternalsVisibleTo</c> on Base's context and push Humans.Infrastructure into every
-/// test project compiling the shared set (design §15 step 8).
+/// test project compiling the shared set.
 /// Each test gets a fresh instance, so every case gets its own store.
 /// </summary>
 public abstract class CityPlanningTestBase : IDisposable

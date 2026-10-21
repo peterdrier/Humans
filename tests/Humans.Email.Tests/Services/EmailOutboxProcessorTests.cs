@@ -25,7 +25,7 @@ namespace Humans.Email.Tests.Services;
 
 /// <summary>
 /// The outbox drain. It moved out of <c>ProcessEmailOutboxJob</c> and behind
-/// <see cref="IEmailOutboxProcessor"/> at the section's G5 move (design §15 step 6b) —
+/// <see cref="IEmailOutboxProcessor"/> at the section's G5 move —
 /// what is left of the job is one call plus a metric.
 /// </summary>
 public class EmailOutboxProcessorTests : IDisposable

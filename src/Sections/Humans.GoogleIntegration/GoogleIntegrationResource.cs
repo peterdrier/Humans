@@ -5,7 +5,7 @@ namespace Humans.GoogleIntegration;
 /// file on purpose: the SDK derives the manifest name from the adjacent same-named <c>.cs</c>
 /// file's namespace, not from the folder path, so this must stay
 /// <c>namespace Humans.GoogleIntegration</c> — <c>Humans.GoogleIntegration.Resources</c> would
-/// make every string fall back to its raw key at runtime (design §3).
+/// make every string fall back to its raw key at runtime.
 /// </summary>
 /// <remarks>
 /// Public because the boot localization diagnostic discovers section resource markers via

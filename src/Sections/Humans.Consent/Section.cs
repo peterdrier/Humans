@@ -58,7 +58,7 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<ILegalDocumentService, LegalDocumentService>();
 
         // Runner holds the sync + fan-out body; the job keeps only the schedule/metric/failure
-        // boundary (design §15 step 6b).
+        // boundary.
         services.AddScoped<ILegalDocumentSyncRunner, LegalDocumentSyncRunner>();
 
         // ConsentService. consent_records is append-only (design-rules §12).

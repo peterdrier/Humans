@@ -3,8 +3,7 @@ namespace Humans.Auth;
 /// <summary>
 /// Marker type for Auth's resource set. The <c>.resx</c> files sit beside this file on
 /// purpose: the SDK derives the manifest name from the adjacent same-named <c>.cs</c> file's
-/// namespace, not from the folder path, so this must stay <c>namespace Humans.Auth</c>
-/// (design §3).
+/// namespace, not from the folder path, so this must stay <c>namespace Humans.Auth</c>.
 /// </summary>
 /// <remarks>
 /// Public because the boot localization diagnostic discovers section resource markers via

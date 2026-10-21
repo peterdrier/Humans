@@ -12,8 +12,8 @@ namespace Humans.Budget.Services;
 /// </summary>
 /// <remarks>
 /// Kept as an interface rather than injecting the concrete <c>BudgetService</c> because
-/// the ticketing bridge's unit tests substitute it (design §15 step 5, "keep an interface
-/// only where something needs the seam").
+/// the ticketing bridge's unit tests substitute it (keep an interface
+/// only where something needs the seam).
 /// </remarks>
 internal interface IBudgetManagement : IBudgetService, IApplicationService
 {

@@ -17,7 +17,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Gdpr.Tests" />
-    <!-- The one assembly allowed to see many sections (design §5). -->
+    <!-- The one assembly allowed to see many sections. -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 

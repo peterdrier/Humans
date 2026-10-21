@@ -491,8 +491,7 @@ internal sealed class CachingTeamService(
     // ==========================================================================
     // ITeamSeeding — the dev/demo fixture surface. Explicit implementations: the
     // Teams-internal members of the same names return this section's entities, which
-    // cannot leave the assembly, so these overloads differ only in their projection
-    // (design §15 step 5b).
+    // cannot leave the assembly, so these overloads differ only in their projection.
     // ==========================================================================
 
     async Task<TeamInfo> ITeamSeeding.CreateTeamAsync(

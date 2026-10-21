@@ -8,7 +8,7 @@ namespace Humans.Base.Authorization;
 /// <see cref="RoleChecks"/> rather than in Shell because <c>Humans.Teams</c>' team page asks
 /// <see cref="CanManageDepartment"/> before rendering the shifts card and a section cannot
 /// reference <c>Humans.Web</c>; they read role names off a <see cref="ClaimsPrincipal"/> and
-/// name no section vocabulary, which is the test (design §15 step 6).
+/// name no section vocabulary, which is the test.
 /// </summary>
 public static class ShiftRoleChecks
 {

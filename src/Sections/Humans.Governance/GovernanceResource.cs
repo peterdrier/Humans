@@ -5,7 +5,7 @@ namespace Humans.Governance;
 /// purpose: the SDK derives the manifest name from the adjacent same-named <c>.cs</c> file's
 /// namespace, not from the folder path, so this must stay <c>namespace Humans.Governance</c> —
 /// <c>Humans.Governance.Resources</c> would make every governance string fall back to its raw
-/// key at runtime (design §3).
+/// key at runtime.
 /// </summary>
 /// <remarks>
 /// Public because the boot localization diagnostic discovers section resource markers via

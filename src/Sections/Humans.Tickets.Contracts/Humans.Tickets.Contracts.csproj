@@ -7,7 +7,7 @@
     sections (Users, Shifts, Budget, Gate, Scanner, MailerLite, Teams, Surveys, Agent) read
     a human's holdings or the order projection through ITicketService, and Notifications
     reads ITicketSync. A Contracts/ *folder* inside Humans.Tickets would make each of them
-    reference the section itself and cycle (design §15.5b,
+    reference the section itself and cycle (see
     memory/architecture/section-project-cycle-fix.md).
 
     Tickets ships both a .Contracts leaf and a Contracts/ folder: the leaf carries what

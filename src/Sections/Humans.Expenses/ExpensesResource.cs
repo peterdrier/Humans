@@ -5,7 +5,7 @@ namespace Humans.Expenses;
 /// on purpose: the SDK derives the manifest name from the adjacent same-named
 /// <c>.cs</c> file's namespace, not from the folder path, so this must stay
 /// <c>namespace Humans.Expenses</c> — <c>Humans.Expenses.Resources</c> would make every
-/// Expenses string fall back to its raw key at runtime (design §3).
+/// Expenses string fall back to its raw key at runtime.
 /// </summary>
 /// <remarks>
 /// Public because the boot localization diagnostic discovers section resource markers

@@ -6,7 +6,7 @@
     Shifts' cross-section surface, carved into its own leaf project because its consumers
     include sections that Humans.Shifts itself references (Teams, Users, Onboarding,
     Camps): a Contracts/ *folder* inside Humans.Shifts would make each of them reference
-    the section back and cycle (design §15.5b,
+    the section back and cycle (see
     memory/architecture/section-project-cycle-fix.md).
 
     The split is carved from the call sites, not from the interfaces (Notifications'

@@ -1,6 +1,6 @@
 # Humans.Guide — Contracts
 
-Empty on purpose, and a folder rather than a project (design §15 step 5b).
+Empty on purpose, and a folder rather than a project.
 
 Nothing outside the section reads a guide page. `GuideController` is the only consumer of
 `IGuideContentService`, `IGuideRoleResolver`, `GuideFilter` and `GuideFiles`, and it moved in

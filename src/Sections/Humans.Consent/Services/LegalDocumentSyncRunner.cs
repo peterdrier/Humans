@@ -11,8 +11,7 @@ namespace Humans.Consent.Services;
 /// <summary>
 /// The body of <c>SyncLegalDocumentsJob</c>. It names <see cref="LegalDocument"/> and
 /// <see cref="IConsentRepository"/> to decide who still owes a signature, and both are
-/// internal here — so what crosses the boundary is the call, not the rows
-/// (design §15 step 6b).
+/// internal here — so what crosses the boundary is the call, not the rows.
 /// </summary>
 internal sealed class LegalDocumentSyncRunner(
     ILegalDocumentSyncManagement syncService,

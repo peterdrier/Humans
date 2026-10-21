@@ -83,11 +83,10 @@ internal sealed record TeamEarlyEntryGrantInfo(
 /// return the section's entities. Internal because nothing outside the assembly calls any of
 /// it — the cross-section half is <see cref="ITeamService"/> and <see cref="ITeamWrite"/>, which this
 /// inherits via <see cref="ITeamManagement"/> so the section's controllers and its caching
-/// decorator keep one injection
-/// (design §15 step 5b, Notifications' shape).
+/// decorator keep one injection.
 /// </summary>
 /// <remarks>
-/// The interface survives internalisation for the reason step 5 records: the caching decorator
+/// The interface survives internalisation because the caching decorator
 /// needs the seam, and MA0053 seals the concrete <c>TeamService</c> so NSubstitute cannot
 /// stand in for it.
 /// </remarks>

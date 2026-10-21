@@ -11,7 +11,7 @@ namespace Humans.Shifts.Tests.Authorization;
 
 /// <summary>
 /// Unit tests for <see cref="IsAnyTeamManagerOrCoordinatorHandler"/> — lives in this
-/// section with the handler (design §15 step 6's asymmetry); the policy it backs
+/// section with the handler; the policy it backs
 /// (<c>PolicyNames.ShiftDepartmentManager</c>) is still registered by Shell's
 /// AuthorizationPolicyExtensions.
 /// </summary>

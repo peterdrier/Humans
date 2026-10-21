@@ -73,8 +73,8 @@ public static class InfrastructureServiceCollectionExtensions
         // Governance is governance only, never Users machinery).
         // Base's own nav-badge invalidator, sitting beside its siblings in Humans.Base.
         // Its registration lived in CampsSectionExtensions because Camps is the only consumer;
-        // the section that owns the file is not always the section that owns the line
-        // (design §15 step 4), and Section.Register may not register another layer's type.
+        // the section that owns the file is not always the section that owns the line,
+        // and Section.Register may not register another layer's type.
         services.AddScoped<ICampLeadJoinRequestsBadgeCacheInvalidator, CampLeadJoinRequestsBadgeCacheInvalidator>();
         services.AddScoped<INotificationMeterCacheInvalidator, NotificationMeterCacheInvalidator>();
 

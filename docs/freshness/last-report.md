@@ -75,15 +75,18 @@ controller-intent work that landed on origin/main after the anchor. Those change
 
 ## Pruned
 
-1,122 lines removed. Target 2,503 (5% of 50,072), cap 3,505. Under target because the largest
-candidate could not go (see Not pruned).
+Over the 5% target after Peter's answer on the G5 citations; the overage is the one large spec
+whose source citations he called relics.
 
-- `docs/superpowers/specs/2026-07-15-per-section-dbcontext-design.md` (666): the peel programme is
+- `docs/superpowers/specs/2026-07-15-per-section-dbcontext-design.md`: the peel programme is
   done; durable rules moved to design-rules §2b.
-- `docs/superpowers/specs/2026-08-14-g5-endstate-design.md` (236): already in design-rules §1 except
+- `docs/superpowers/specs/2026-08-14-g5-endstate-design.md`: already in design-rules §1 except
   one rule, migrated.
-- `docs/superpowers/specs/2026-08-14-g5-endstate-inventory-application.md` (89) and
-  `...-inventory-infra-ui.md` (131): dated inventories of deleted projects, all chaff.
+- `docs/superpowers/specs/2026-08-14-g5-endstate-inventory-application.md` and
+  `...-inventory-infra-ui.md`: dated inventories of deleted projects, all chaff.
+- `docs/superpowers/specs/2026-08-07-g5-section-project-split-design.md`: its durable content was
+  already in `G5-SECTION-TEMPLATE.md` and design-rules §1/§2b/§8c; the "design §N" comments that
+  cited it were stripped from source.
 
 ### Wheat migrated
 - per-section-dbcontext §4, §12 → design-rules §2b: baselines are fake-applied only with empty history
@@ -100,8 +103,6 @@ candidate could not go (see Not pruned).
 - `2026-08-07-g5-section-project-split-design.md` (3 refs) rewritten as historical.
 
 ### Not pruned
-- `2026-08-07-g5-section-project-split-design.md` (1,441): about 200 "design §N" comments in 142 source
-  files cite it.
 - Too young: `2026-10-19-users-decomposition-plan.md`, `docs/superpowers/plans/2026-09-25-workgroup-budget.md`
   (ages out 2026-10-25). Kept on purpose: the freshness-sweep, debt-sweep and section-doctor designs
   (cited from `.claude/` skills), the Pleo draft, and `fk-cut-inventory.md` (cited by code).
@@ -124,15 +125,18 @@ None. All candidates resolved this sweep.
 
 ## Questions
 
-Asked inline in the sweep's thread:
-1. Rejection decision note: Governance guide, `asociado-applications.md` and `board-voting.md` say it is
-   required; `RejectAsync` and the form accept an empty note. Doc or code?
-2. `membership-tiers.md` US-15.4 "Admin tier downgrade": no admin downgrade exists, only the automatic
-   expiry job. Drop the story, or is it unbuilt?
-3. Expenses guide and the `Expenses_IbanOnBehalf` string say the IBAN is "on your profile"; it now
-   lives in Finance payment details. Reword?
-4. G5 split design: retarget the ~200 source comments so a later sweep can prune it, or keep it?
-5. AGENTS.md says "~40 sections"; there are 46. Bump, or keep as a round figure?
+Asked inline in the sweep's thread; Peter's answers, applied in this PR:
+1. Rejection decision note: docs say required, code accepted an empty one. **Fix the code.**
+   `ApplicationDecisionService.RejectAsync` now refuses a blank note (`DecisionNoteRequired`), and the
+   Board voting page shows a localized error.
+2. `membership-tiers.md` US-15.4 "Admin tier downgrade": tiers end only at term expiry. Story dropped;
+   rule 7 now says downgrades happen only through `MembershipTierExpiryJob`.
+3. Expenses guide "IBAN on your profile": the wording describes where the member sees it in the app,
+   not where the data lives. **No change.**
+4. G5 split design citations in source: historical relics. Comments stripped and the spec deleted.
+5. AGENTS.md section count: we don't count in docs. Number removed, and
+   `memory/process/no-derived-aggregates-in-docs.md` now says any count found is removed on sight.
+   `peters-hard-rules.md` still says "~40 small apps"; that file is Peter's to edit.
 
 ## Skipped (errors)
 

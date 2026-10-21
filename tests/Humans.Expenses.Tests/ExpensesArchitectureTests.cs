@@ -9,7 +9,7 @@ namespace Humans.Expenses.Tests;
 /// </summary>
 /// <remarks>
 /// The section project references EF Core because its repository lives in it; "only the
-/// repository touches the DbSets" is the universal HUM0025 analyzer's job (design §15 step 11).
+/// repository touches the DbSets" is the universal HUM0025 analyzer's job.
 /// </remarks>
 public class ExpensesArchitectureTests
 {

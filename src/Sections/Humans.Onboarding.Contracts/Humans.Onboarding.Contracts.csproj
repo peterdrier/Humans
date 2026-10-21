@@ -12,7 +12,7 @@
     Humans.Onboarding would make the two section projects reference each other. The leaf
     breaks it: Humans.Consent -> Humans.Onboarding.Contracts, and Humans.Onboarding ->
     Humans.Consent, with nothing in this project naming a Consent type
-    (design §15 step 5b, memory/architecture/section-project-cycle-fix.md).
+    (memory/architecture/section-project-cycle-fix.md).
 
     OnboardingResult is here because it is the funnel's result vocabulary and Users
     returns it from three surfaces: IUserService.ApplyProfileOnboardingMutationAsync,

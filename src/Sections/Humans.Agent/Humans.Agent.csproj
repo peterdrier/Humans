@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Agent.Tests" />
-    <!-- The one assembly allowed to see many sections (design §5). -->
+    <!-- The one assembly allowed to see many sections. -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
@@ -36,11 +36,11 @@
     <!-- The agent's user snapshot lists the caller's still-open feedback reports.
          Contracts/ is a folder on Humans.Feedback (its other consumers are all in Shell),
          so the reference is to the section project — acyclic, and the assembly boundary
-         limits it to IFeedbackService (design §15 step 5b). -->
+         limits it to IFeedbackService. -->
     <ProjectReference Include="..\Humans.Feedback\Humans.Feedback.csproj" />
     <!-- route_to_issue's proposal carries the section the user should file under, typed as
          Issues' own IssueCategory. That enum sits in Issues' Contracts/ folder precisely
-         because another section names it (design §15 step 5). -->
+         because another section names it. -->
     <ProjectReference Include="..\Humans.Issues\Humans.Issues.csproj" />
     <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
   </ItemGroup>
@@ -49,7 +49,7 @@
     <!--
       No AspNetCore package here: those ship with no PackageVersion on purpose and would fail
       the build with NU1010 under Central Package Management. They arrive through the framework
-      reference Sdk.Razor already adds (design §15 step 1).
+      reference Sdk.Razor already adds.
       Octokit is here for NotFoundException, which the docs readers branch on; Anthropic is
       the LLM connector, which moved in with the section because IAnthropicClient streams the
       section's own AgentTurnToken and could not stay in Base without dragging that type down.
@@ -64,7 +64,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <!-- The section owns its documentation; keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

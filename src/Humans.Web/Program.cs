@@ -607,8 +607,8 @@ CurrentUserEnricher.StaticAccessor = app.Services.GetRequiredService<IHttpContex
     }
 }
 
-// Same check for every section's own resource set (nobodies-collective/Humans#866
-// design §3). A section's .resx manifest name derives from the adjacent .cs file's
+// Same check for every section's own resource set (nobodies-collective/Humans#866).
+// A section's .resx manifest name derives from the adjacent .cs file's
 // namespace, not its folder path, and getting that wrong is silent — every string in
 // the set renders as its raw key. Checking that the manifest the localizer will look
 // for is actually embedded needs no key-name convention and no culture, so a new

@@ -50,7 +50,7 @@ public class SurveyPageRenderTests(HumansTestDatabase database) : IntegrationTes
         var html = await response.Content.ReadAsStringAsync(ct);
 
         // Resolved copy, not the key: proves SurveysResource.resx is reachable under the
-        // section's manifest prefix (the .cs namespace, not the folder path — design §3).
+        // section's manifest prefix (the .cs namespace, not the folder path).
         html.Should().Contain("Start");
         html.Should().Contain("name=\"Anonymity\"");
         html.Should().Contain("value=\"Anonymous\"");

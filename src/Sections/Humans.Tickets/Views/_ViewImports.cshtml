@@ -1,8 +1,8 @@
 @* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
-   here ships broken markup with a green build and no runtime error — see design §1/§2.
+   here ships broken markup with a green build and no runtime error.
    Guarded by TicketsPageRenderTests (step 12).
 
-   Two localizers by design (design §15 step 3b, Governance's variant): the section owns
+   Two localizers by design: the section owns
    its Tickets_* set, and the transfer wizard also renders Common_Back /
    Common_Cancel, which are genuinely shared vocabulary and stay in SharedResource. *@
 @using Humans.Base.Extensions

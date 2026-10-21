@@ -150,7 +150,7 @@ touching these callers are shaped by them.
 - **No caching decorator.** Admin-facing and low-traffic; a decorator would add a cache-key
   surface for a single settings row.
 - **No internal management interface.** The section's own controllers take the concrete
-  service (design §15 step 5); the only seams worth an interface are the cross-section ones.
+  service; the only seams worth an interface are the cross-section ones.
 - **No SignalR and no MapboxDraw on the container map.** Placement is a single-user workflow
   at this scale, and containers use a custom drag-to-move / drag-handle-to-rotate interaction
   rather than a polygon editor.

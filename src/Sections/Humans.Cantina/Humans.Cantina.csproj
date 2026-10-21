@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Cantina.Tests" />
-    <!-- The one assembly allowed to see many sections (design §5). -->
+    <!-- The one assembly allowed to see many sections. -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
@@ -40,7 +40,7 @@
     <!--
       No AspNetCore package here: those ship with no PackageVersion on purpose and would fail
       the build with NU1010 under Central Package Management. Everything the controllers need
-      arrives through the framework reference Sdk.Razor already adds (design §15 step 1).
+      arrives through the framework reference Sdk.Razor already adds.
     -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="NodaTime" />
@@ -49,7 +49,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <!-- The section owns its documentation; keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

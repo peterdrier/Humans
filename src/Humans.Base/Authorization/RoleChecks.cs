@@ -18,7 +18,7 @@ public static class RoleChecks
     /// stamps it) because a section view reads it: Camps' index page renders the
     /// "register a camp" call to action only for an Active member. A section cannot name a
     /// <c>Humans.Web</c> type, and the predicate carries no section vocabulary — the same
-    /// test as the rest of this class (design §15 step 6, the Shell-resident-helper rule).
+    /// test as the rest of this class.
     /// </remarks>
     public const string UserStateClaimType = "UserState";
 

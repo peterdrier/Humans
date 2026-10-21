@@ -44,8 +44,8 @@ public class AuthorizationPolicyTests : IDisposable
         // lives in Humans.Agent.Tests.
         // Expenses' two resource-based handlers moved into the section with it and are
         // registered by Humans.Expenses' Section.Register, not by
-        // AddHumansAuthorizationPolicies — so this graph no longer needs their collaborators
-        // (design §15 step 6). Their coverage lives in Humans.Expenses.Tests.
+        // AddHumansAuthorizationPolicies — so this graph no longer needs their collaborators.
+        // Their coverage lives in Humans.Expenses.Tests.
         // IsAnyTeamManagerOrCoordinatorHandler reads team-coord ids through this service
         // (cached path); register a single shared substitute so per-test setups stick.
         _shiftManagement = Substitute.For<IShiftService>();

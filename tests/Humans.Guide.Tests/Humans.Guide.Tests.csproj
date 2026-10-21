@@ -10,7 +10,7 @@
     <!--
       GuideController and the role resolver take ASP.NET types (ClaimsPrincipal aside, the
       renderer chain binds IOptions); a plain Microsoft.NET.Sdk test project does not get the
-      shared framework and cannot get there with a PackageReference (design §15 step 1/8).
+      shared framework and cannot get there with a PackageReference.
     -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>

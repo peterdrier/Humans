@@ -20,9 +20,8 @@ namespace Humans.Cantina;
 /// service, which composes over <c>IShiftService</c>, <c>ISettingsService</c>,
 /// <c>IUserService</c> and the dietary profiles. Access is the <c>CantinaAdminOrAdmin</c> policy,
 /// registered by this section's own <see cref="SectionPolicies"/> via <c>ISectionPolicies</c> —
-/// not in the Shell. (The G5 split design's §8 parked policy registration in Shell's
-/// <c>AuthorizationPolicyExtensions</c>; <c>ISectionPolicies</c> superseded that, and the
-/// Shell's own header says so.)
+/// not in the Shell (<c>ISectionPolicies</c> replaced registering it in Shell's
+/// <c>AuthorizationPolicyExtensions</c>, and the Shell's own header says so).
 /// <para>
 /// The line moved here out of <c>ShiftsSectionExtensions.AddShiftsSection</c>, where it had
 /// been parked because the on-site cohort comes from Shifts: the section that owns the

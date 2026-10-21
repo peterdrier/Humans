@@ -162,7 +162,7 @@ public class DebugPageRenderTests(HumansTestDatabase database) : IntegrationTest
         // The section's negative access rule. Worth pinning at the move because the controller
         // is now an internal type in another assembly, routed through
         // SectionControllerFeatureProvider, while AdminOnly stayed in Shell's
-        // AuthorizationPolicyExtensions (design §8's asymmetry).
+        // AuthorizationPolicyExtensions.
         //
         // The shape is a 302 to Program.cs's AccessDeniedPath, not a bare 403: cookie
         // authentication redirects an authenticated-but-unauthorized request, app-wide.

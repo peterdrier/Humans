@@ -304,4 +304,5 @@
   <data name="Governance_Notification_Renew" xml:space="preserve"><value>Renew →</value></data>
   <data name="Governance_BoardVoting_NoteTooLong" xml:space="preserve"><value>The note must be 4,000 characters or fewer. Your vote was not changed.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteTooLong" xml:space="preserve"><value>The decision note must be 4,000 characters or fewer. The application was not finalized.</value></data>
+  <data name="Governance_BoardVoting_DecisionNoteRequired" xml:space="preserve"><value>A decision note is required to reject an application. The application was not finalized.</value></data>
 </root>

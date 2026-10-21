@@ -30,5 +30,4 @@ that fix cascades until the section's whole service layer is public.
 The same silent-failure class as a missing section `Views/_ViewImports.cshtml` — both are caught only
 by actually rendering the page, which is why `docs/sections/G5-SECTION-TEMPLATE.md` step 12
 renders every page in the section. See
-[`sections-are-logical-units`](sections-are-logical-units.md) and
-`docs/superpowers/specs/2026-08-07-g5-section-project-split-design.md` §1, §6.
+[`sections-are-logical-units`](sections-are-logical-units.md).

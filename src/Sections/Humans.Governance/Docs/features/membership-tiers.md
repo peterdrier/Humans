@@ -87,18 +87,6 @@ Volunteer is the default tier for everyone. No badge is displayed for Volunteers
 - If application was rejected, shows notification with reason
 - Term expiry date shown for Colaboradors/Asociados
 
-### US-15.4: Admin Tier Downgrade
-
-**As an** administrator
-**I want to** downgrade a human's tier
-**So that** tier changes can be managed when needed
-
-**Acceptance Criteria:**
-- Admin-initiated only (not self-service)
-- Removes from higher-tier team (Colaboradors or Asociados)
-- Audit log entry created
-- Human retains Volunteer access
-
 ## Data Model
 
 ### MembershipTier Enum
@@ -182,7 +170,7 @@ Application created → Board Voting → Approve/Reject
 4. **Applications use the dedicated route** — profile edit is just profile data
 5. **Asociados are not in Colaboradors team** — separate system teams
 6. **One pending Application per user** — cannot have multiple active tier applications
-7. **Downgrades are admin-only** — no self-service downgrade
+7. **Downgrades happen only at term expiry** — no admin or self-service downgrade; `MembershipTierExpiryJob` removes the tier when the term ends
 8. **Terms are synchronized** — all expire Dec 31 of odd years
 9. **Renewal is a new Application** — same Board voting process
 10. **No Volunteer badge** — only Colaborador/Asociado badges on dashboard

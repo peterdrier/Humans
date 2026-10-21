@@ -540,7 +540,7 @@ internal sealed class VolunteerSearchResult
 // === Shift Signups ViewComponent ===
 //
 // ShiftSignupsViewMode is public beside the component under Contracts/ — it is a
-// parameter of the public InvokeAsync (design §15 step 6).
+// parameter of the public InvokeAsync.
 
 /// <summary>
 /// How a shift table renders its signup affordance.

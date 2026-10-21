@@ -10,8 +10,7 @@ namespace Humans.Onboarding.Tests.Services;
 /// Copied rather than shared through <c>tests/Directory.Build.props</c> because the same
 /// file also carries <c>StubGetUserInfosFromDb</c> overloads built on an in-memory
 /// <c>UsersDbContext</c>: sharing it would push <c>InternalsVisibleTo</c> on
-/// <c>UsersDbContext</c> into every section test project (design §15 step 8,
-/// Governance's "split the helper before deciding").
+/// <c>UsersDbContext</c> into every section test project.
 /// </remarks>
 internal static class UserInfoStubs
 {

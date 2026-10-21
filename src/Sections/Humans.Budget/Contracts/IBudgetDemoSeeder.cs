@@ -4,7 +4,7 @@ namespace Humans.Budget.Contracts;
 /// The seam Development's <c>/dev/seed/budget</c> action uses to fill a non-production
 /// environment with demo budget data. One method, because that is what the caller does —
 /// exposing the section's write methods in the Contracts/ folder to serve a dev
-/// button is what design §15.6b warns against.
+/// button is what the Contracts rule forbids.
 /// </summary>
 public interface IBudgetDemoSeeder
 {
