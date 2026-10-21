@@ -15,7 +15,8 @@ internal sealed class SectionJobs : ISectionJobs
             "sepa-bank-booking", typeof(SepaBankBookingJob), "17 */2 * * *");
 
         // Nightly pull of Holded purchase docs → budget-category actuals. Ahead of Holded's 03:00
-        // ledger sweep so the two never share the API window; neither reads the other's output.
+        // ledger sweep; a shared "holded-api" job lock keeps them apart if this one runs long.
+        // Neither reads the other's output.
         yield return new RecurringJobDescriptor(
             "holded-doc-sync", typeof(HoldedDocSyncJob), "45 2 * * *");
     }

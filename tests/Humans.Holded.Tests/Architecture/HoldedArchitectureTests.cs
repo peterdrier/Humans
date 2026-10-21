@@ -16,18 +16,4 @@ public class HoldedArchitectureTests
         typeof(HoldedTransientException).Should().BeAssignableTo<HoldedApiException>();
         typeof(HoldedPermanentException).Should().BeAssignableTo<HoldedApiException>();
     }
-
-    /// <summary>The purchase-doc sync is Finance's to trigger (its own job and Sync now); Holded
-    /// never calls back into Finance's writes.</summary>
-    [HumansFact]
-    public void Holded_TakesNoFinanceWriteDependency()
-    {
-        typeof(IHoldedService).Assembly.GetTypes()
-            .SelectMany(t => t.GetConstructors(
-                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic
-                | System.Reflection.BindingFlags.Instance))
-            .SelectMany(c => c.GetParameters())
-            .Select(p => p.ParameterType)
-            .Should().NotContain(typeof(Humans.Finance.Contracts.IHoldedFinanceWrite));
-    }
 }

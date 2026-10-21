@@ -8,8 +8,9 @@ namespace Humans.Finance.Jobs;
 
 /// <summary>Nightly pull of Holded purchase docs into Finance's mirror (budget-category actuals,
 /// the unmatched queue). The schedule lives in <c>SectionJobs.cs</c>; the ledger mirror's own
-/// nightly sweep is Holded's <c>HoldedSyncJob</c>, which reads none of this.</summary>
-[DisableConcurrentExecution(timeoutInSeconds: 300)]
+/// nightly sweep is Holded's <c>HoldedSyncJob</c>, which reads none of this. Both jobs lock the
+/// shared "holded-api" resource so they never overlap on the rate-limited Holded API.</summary>
+[DisableConcurrentExecution("holded-api", 300)]
 internal sealed class HoldedDocSyncJob(
     IHoldedFinanceManagement finance,
     IOptions<HoldedClientOptions> holdedOptions,
