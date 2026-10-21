@@ -838,6 +838,22 @@ public sealed class CampServiceTests : CampsTestHarness
         seasonInfo.HasPerformanceSpace.Should().Be(PerformanceSpaceStatus.Yes);
     }
 
+    [HumansTheory]
+    [InlineData(CampSeasonStatus.Pending, false)]
+    [InlineData(CampSeasonStatus.Active, true)]
+    [InlineData(CampSeasonStatus.Full, true)]
+    [InlineData(CampSeasonStatus.Rejected, false)]
+    [InlineData(CampSeasonStatus.Withdrawn, false)]
+    public void CampSeasonInfo_IsPublic_OnlyForActiveOrFullSeasons(CampSeasonStatus status, bool expected)
+    {
+        var season = new CampSeasonInfo(
+            Guid.NewGuid(), Guid.NewGuid(), "camp", 2026, null, "Camp", string.Empty, string.Empty,
+            [], status, YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
+            0, null, null, null, 0, null, null);
+
+        season.IsPublic.Should().Be(expected);
+    }
+
     [HumansFact]
     public async Task CampInfo_GetSeasonForYearWithoutFallback_ReturnsNullWhenSeasonMissing()
     {

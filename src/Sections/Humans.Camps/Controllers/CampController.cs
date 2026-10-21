@@ -62,7 +62,7 @@ internal sealed class CampController(
         var directoryCards = ApplyDirectoryFilters(
             camps
                 .Select(camp => new { Camp = camp, Season = camp.GetSeasonForYear(year) })
-                .Where(row => row.Season is { Status: CampSeasonStatus.Active or CampSeasonStatus.Full })
+                .Where(row => row.Season is { IsPublic: true })
                 .Select(row => MapCampCard(row.Camp, row.Season!, roleSummaries)),
             filters);
 
@@ -77,9 +77,7 @@ internal sealed class CampController(
             myCamps = camps
                 .Where(camp => leadCampIds.Contains(camp.Id))
                 .Select(camp => new { Camp = camp, Season = camp.GetSeasonForYear(year) })
-                .Where(row => row.Season is not null &&
-                    row.Season.Status != CampSeasonStatus.Active &&
-                    row.Season.Status != CampSeasonStatus.Full)
+                .Where(row => row.Season is { IsPublic: false })
                 .Select(row => MapCampCard(row.Camp, row.Season!, roleSummaries))
                 .Where(card => cards.All(publicCard => publicCard.Id != card.Id))
                 .ToList();
@@ -489,7 +487,7 @@ internal sealed class CampController(
 
         // Full is informational only (Peter, 2026-08-20) — it must not disable camp
         // management, so role management stays available on a Full season too.
-        var openSeason = camp.Seasons.FirstOrDefault(s => s.Status is CampSeasonStatus.Active or CampSeasonStatus.Full);
+        var openSeason = camp.Seasons.FirstOrDefault(s => s.IsPublic);
         viewModel.RolesPanel = openSeason is null
             ? null
             : await BuildRolesPanelAsync(camp.Slug, openSeason, canManage: true, ct);
@@ -1040,7 +1038,7 @@ internal sealed class CampController(
         if (errorResult is not null) return errorResult;
 
         var openSeason = camp.Seasons.FirstOrDefault(s => s.Members.Any(member => member.Id == campMemberId)
-            && s.Status is CampSeasonStatus.Active or CampSeasonStatus.Full);
+            && s.IsPublic);
         var outcome = openSeason is null
             ? AssignCampRoleOutcome.SeasonNotFound
             : await campRoleService.AssignAsync(openSeason.Id, roleDefinitionId, campMemberId, user.Id, ct);
