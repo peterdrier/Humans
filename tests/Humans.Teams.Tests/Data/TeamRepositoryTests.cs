@@ -318,8 +318,11 @@ public sealed class TeamRepositoryTests : IDisposable
         {
             expected = new TeamRoleAssignment
             {
-                Id = Guid.NewGuid(), TeamRoleDefinitionId = definition.Id, TeamMemberId = target.Id,
-                SlotIndex = 1, AssignedAt = _clock.GetCurrentInstant() - Duration.FromDays(2),
+                Id = Guid.NewGuid(),
+                TeamRoleDefinitionId = definition.Id,
+                TeamMemberId = target.Id,
+                SlotIndex = 1,
+                AssignedAt = _clock.GetCurrentInstant() - Duration.FromDays(2),
                 AssignedByUserId = target.UserId
             };
             _dbContext.Set<TeamRoleAssignment>().Add(expected);

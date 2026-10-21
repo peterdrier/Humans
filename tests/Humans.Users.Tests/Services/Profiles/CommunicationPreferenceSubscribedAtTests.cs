@@ -67,16 +67,25 @@ public sealed class CommunicationPreferenceSubscribedAtTests : ServiceTestHarnes
         var ct = Xunit.TestContext.Current.CancellationToken;
         await _repository.AddAsync(new CommunicationPreference
         {
-            Id = Guid.NewGuid(), UserId = source, Category = MessageCategory.Marketing,
-            OptedOut = true, InboxEnabled = false, UpdateSource = "Guest",
+            Id = Guid.NewGuid(),
+            UserId = source,
+            Category = MessageCategory.Marketing,
+            OptedOut = true,
+            InboxEnabled = false,
+            UpdateSource = "Guest",
             UpdatedAt = now - Duration.FromDays(sourceIsNewer ? 1 : 3),
             SubscribedAt = sourceSubscribedAt,
         }, ct);
         await _repository.AddAsync(new CommunicationPreference
         {
-            Id = targetRowId, UserId = target, Category = MessageCategory.Marketing,
-            OptedOut = false, InboxEnabled = true, UpdateSource = "Profile",
-            UpdatedAt = now - Duration.FromDays(2), SubscribedAt = targetSubscribedAt,
+            Id = targetRowId,
+            UserId = target,
+            Category = MessageCategory.Marketing,
+            OptedOut = false,
+            InboxEnabled = true,
+            UpdateSource = "Profile",
+            UpdatedAt = now - Duration.FromDays(2),
+            SubscribedAt = targetSubscribedAt,
         }, ct);
 
         await _service.ReassignAsync(source, target, Guid.NewGuid(), now, ct);

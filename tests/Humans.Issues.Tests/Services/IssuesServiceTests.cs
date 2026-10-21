@@ -1778,8 +1778,11 @@ public sealed class IssuesServiceTests
         })
             _issuesDb.IssueComments.Add(new IssueComment
             {
-                Id = Guid.NewGuid(), IssueId = strangerIssueId, SenderUserId = sender,
-                Content = content, CreatedAt = Clock.GetCurrentInstant()
+                Id = Guid.NewGuid(),
+                IssueId = strangerIssueId,
+                SenderUserId = sender,
+                Content = content,
+                CreatedAt = Clock.GetCurrentInstant()
             });
         await _issuesDb.SaveChangesAsync(ct);
 
