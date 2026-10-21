@@ -174,7 +174,7 @@ public class AccountMergeServiceMergeTests
         var src = Guid.NewGuid(); var tgt = Guid.NewGuid(); var admin = Guid.NewGuid();
         SetupUsers(src, tgt);
 
-        await BuildSut().MergeAsync(tgt, src, admin, ct: Xunit.TestContext.Current.CancellationToken);
+        await BuildSut().MergeAsync(tgt, src, admin, ct: TestContext.Current.CancellationToken);
 
         // The team graph stitches members' UserInfo; the tombstone changes what the archived
         // id resolves to, so the eviction must follow it, not ride Teams' own ReassignAsync.
@@ -197,7 +197,7 @@ public class AccountMergeServiceMergeTests
             .Returns(Task.FromException(new InvalidOperationException("boom")));
         _userMerges.Add(merger);
 
-        var act = () => BuildSut().MergeAsync(tgt, src, admin, ct: Xunit.TestContext.Current.CancellationToken);
+        var act = () => BuildSut().MergeAsync(tgt, src, admin, ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         _teams.Received(1).InvalidateActiveTeamsCache();
