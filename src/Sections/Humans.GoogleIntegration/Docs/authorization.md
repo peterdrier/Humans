@@ -35,5 +35,6 @@
 | `WorkspaceIdentityController.Set` (`WorkspaceEmail`) | Action | the signed-in member, on their own rows only | class `[Authorize]`; target is the current user |
 | `WorkspaceIdentityController.AdminSet` (`Admin/{id:guid}/WorkspaceEmail`) | Action | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` |
 | `TeamResourcesController` (`[Route("Google/Teams/{slug}/Resources")]`) | Class | authenticated | `[Authorize]` |
-| `TeamResourcesController` (every action) | In-method | `TeamsAdmin, Board, Admin` on any team (`RoleChecks.IsTeamsAdminBoardOrAdmin`), else `ITeamResourceService.CanManageTeamResourcesAsync` on the team's department (a sub-team checks its parent) | unknown slug → 404; denied → 403; a `{resourceId}` from another team → 404, nothing dispatched |
+| `TeamResourcesController` (the six POST actions) | Action | authenticated | `[Authorize]` on each action |
+| `TeamResourcesController` (every action) | Resource | `TeamsAdmin, Board, Admin` on any team, else `ITeamResourceService.CanManageTeamResourcesAsync` on the team's department (a sub-team checks its parent) | `TeamResourceAuthorizationHandler` via `IAuthorizationService.AuthorizeAsync(User, team, TeamResourceManageRequirement.Instance)`; unknown slug → 404; denied → 403; a `{resourceId}` from another team → 404, nothing dispatched |
 | `WorkspaceIdentityCardViewComponent` (admin detail user part) | Render | admin view only (host page admits HumanAdmin, Board, Admin); Re-run button `Admin` | `ProfileCardViewMode.Admin` + `PolicyNames.AdminOnly` |
