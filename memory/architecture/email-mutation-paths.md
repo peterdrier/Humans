@@ -21,12 +21,12 @@ HARD RULE. The OAuth-callback write path is collapsed to a single service entry 
 2. **Cross-user collision pre-check** — when another user verified-holds the claim email:
    - `claimEmailVerified == false` → block, audit `OAuthRenameCollisionBlocked`, return `CrossUserBlocked` with the mother-of-all diagnostic. No mutation.
    - `claimEmailVerified == true` → Google wins. Delete the other user's row, write paired `OAuthRenameCollision` (signing user) + `UserEmailDisplacedByOAuthRename` (displaced user) audits, proceed with the mutation, return `CrossUserDisplaced`. When the delete leaves the displaced user with zero verified rows, the audit description and `DisplacedUserLeftWithoutVerifiedEmail` flag reflect that.
-3. **Tagged row at a different email + sibling holds claim** → tag-move: move `(Provider, ProviderKey)` onto the matching row, **union** `IsPrimary` and `IsGoogle` (matching row keeps any `true` flag from either side), force `IsVerified = true`, delete the old row. Return `TagMoved`.
+3. **Tagged row at a different email + sibling holds claim** → tag-move: move `(Provider, ProviderKey)` onto the matching row, **union** `IsPrimary` (matching row keeps a `true` flag from either side), force `IsVerified = true`, delete the old row. Return `TagMoved`.
 4. **Tagged row at a different email + no sibling** → rewrite the row's `Email` in place. Return `EmailRewritten`.
 5. **No tagged row + sibling holds claim** → attach the tag onto the sibling. Return `TagMoved`.
 6. **No tagged row + no sibling + no cross-user collision** → insert a verified tagged row. Return `NewRowCreated`.
 
-After the data change, the service runs `EnsurePrimaryInvariantAsync` and `EnsureGoogleInvariantAsync` on every affected user (signing + displaced), invalidates `FullProfile`, and commits.
+After the data change, the service runs `EnsurePrimaryInvariantAsync` on every affected user (signing + displaced), invalidates `FullProfile`, and commits; then it calls GoogleIntegration's `ClearIfAddressAsync` for the address that left (tag-move / rename) and for the displaced user's row.
 
 **Audit ownership:** every audit row for every outcome is written by the service inside the reconcile flow. The controller writes no audit rows on the OAuth path.
 

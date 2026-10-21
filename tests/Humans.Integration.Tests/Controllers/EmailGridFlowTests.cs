@@ -107,11 +107,11 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
 
         var (token, cookie) = await GetAntiforgeryAsync("/Profile/Me/Emails");
 
-        // SetGoogle: route is mapped, but the resource-based auth handler denies
-        // because the actor is neither the target nor in role Admin. Cookie auth
+        // Workspace-identity set (GoogleIntegration): route is mapped, but the
+        // HumanAdminBoardOrAdmin gate denies a plain volunteer. Cookie auth
         // converts the controller's Forbid() into a 302 to AccessDenied.
         var setGoogleResp = await PostFormWithAntiforgeryAsync(
-            $"/Profile/{targetUserId}/Admin/Emails/SetGoogle",
+            $"/Google/Admin/{targetUserId}/WorkspaceEmail",
             token,
             cookie,
             new Dictionary<string, string>(StringComparer.Ordinal)

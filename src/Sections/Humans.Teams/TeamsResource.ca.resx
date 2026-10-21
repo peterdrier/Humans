@@ -585,4 +585,29 @@
   <data name="Teams_RemoveMember_SystemTeam" xml:space="preserve"><value>Els membres d’un equip gestionat pel sistema no es poden eliminar manualment.</value></data>
   <data name="Teams_RemoveMember_Permission" xml:space="preserve"><value>No tens permís per eliminar membres d’aquest equip.</value></data>
   <data name="Teams_RemoveMember_NotMember" xml:space="preserve"><value>Aquesta persona no és membre d’aquest equip.</value></data>
+  <data name="Teams_SendMessage_FromTeam" xml:space="preserve">
+    <value>Envia un missatge a {0} des de {1}</value>
+  </data>
+  <data name="Teams_SendMessage_FromTeamNotice" xml:space="preserve">
+    <value>Estàs enviant en nom de {0}. Les respostes s'enviaran a {1}.</value>
+  </data>
+  <data name="Teams_SendMessage_Breadcrumb" xml:space="preserve">
+    <value>Envia missatge</value>
+  </data>
+  <data name="Teams_SendMessage_MessageLabel" xml:space="preserve">
+    <value>Missatge</value>
+  </data>
+  <data name="Teams_SendMessage_IncludeContactInfo" xml:space="preserve">
+    <value>Inclou la meva informació de contacte</value>
+  </data>
+  <data name="Teams_SendMessage_IncludeContactInfoHelp" xml:space="preserve">
+    <value>El teu nom i correu electrònic s’inclouran perquè et puguin respondre directament.</value>
+  </data>
+  <data name="Teams_SendMessage_Send" xml:space="preserve">
+    <value>Envia missatge</value>
+  </data>
+  <data name="Teams_SendMessage_Success" xml:space="preserve">
+    <value>El teu missatge s’ha enviat a {0}.</value>
+  </data>
+  <data name="Teams_SendMessage_OptedOut" xml:space="preserve"><value>Aquesta persona ha decidit no rebre missatges.</value></data>
 </root>

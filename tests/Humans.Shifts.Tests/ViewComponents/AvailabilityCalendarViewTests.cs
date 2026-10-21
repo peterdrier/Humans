@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Humans.Base.ViewComponents;
+using Humans.Cantina.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Models;
 using Humans.Users.Contracts;
@@ -57,6 +58,7 @@ public class AvailabilityCalendarViewTests
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddSingleton(Substitute.For<IShiftManagementService>());
         builder.Services.AddSingleton(Substitute.For<IUserService>());
+        builder.Services.AddSingleton(Substitute.For<ICantinaService>());
         var url = Substitute.For<IUrlHelper>();
         url.Action(Arg.Any<UrlActionContext>()).Returns("/");
         var urls = Substitute.For<IUrlHelperFactory>();

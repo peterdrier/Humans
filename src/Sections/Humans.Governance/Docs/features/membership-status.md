@@ -24,13 +24,13 @@ Every human in the system falls into exactly one of 6 mutually exclusive status 
 | **Active** | Approved, not suspended, all required consents signed | Green |
 | **Pending Approval** | Profile exists, not yet approved by Consent Coordinator | Yellow |
 | **Missing Consents** | Approved but missing one or more required legal consents | Blue/Info |
-| **Incomplete Signup** | Signed in via Google but no Profile created — or the profile was rejected (`RejectedAt` set) | Gray |
+| **Incomplete Signup** | Signed in via Google but no Profile created — or the signup was rejected (Consent's review `IsRejected`) | Gray |
 | **Suspended** | Manually suspended by admin or auto-suspended for expired consents | Red |
 | **Pending Deletion** | Requested account deletion (30-day window) | Dark |
 
 **Invariant:** All 6 bucket counts sum to total humans. No human appears in more than one bucket.
 
-**Priority order:** PendingDeletion > IncompleteSignup (no profile) > Suspended > PendingApproval > MissingConsents/Active. Rejected profiles (`RejectedAt` set) fall out at the PendingApproval step and land in IncompleteSignup.
+**Priority order:** PendingDeletion > IncompleteSignup (no profile) > Suspended > PendingApproval > MissingConsents/Active. Rejected signups (Consent's review `RejectedAt` set) fall out at the PendingApproval step and land in IncompleteSignup.
 
 ## State Diagram
 
@@ -52,7 +52,7 @@ Pending Deletion → (30 days) → Deleted
 
 - **`PreferredLanguageCardViewComponent`** (`Humans.Users`) — the per-status language breakdown
 
-`SystemTeamSyncJob` does not consume this partition. `SyncVolunteersTeamAsync` computes Volunteers eligibility directly (`HasRequiredNameFields && !IsSuspended && RejectedAt is null`, then `GetUsersWithAllRequiredConsentsForTeamAsync`).
+`SystemTeamSyncJob` does not consume this partition. `SyncVolunteersTeamAsync` computes Volunteers eligibility directly (`HasRequiredNameFields && !IsSuspended && !review.IsRejected`, then `GetUsersWithAllRequiredConsentsForTeamAsync`).
 
 The **Admin /Humans list** also does **not** use this partition. It derives its own status buckets directly from `UserInfo` flat predicates (`AdminHumanListAssembler`) — no consent lookup, so there is no Active/Missing-Consents split. It adds the tombstone buckets **Merged** (`MergedAt`) and **Deleted** (`IsTombstone`) plus a cross-cutting **Has Name** filter (`HasRequiredNameFields`) — the meaningful "active" signal now that every account carries a profile.
 

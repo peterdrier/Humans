@@ -3,6 +3,7 @@ using Humans.Workgroups.Authorization;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Controllers;
+using Humans.Governance.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
@@ -25,6 +26,7 @@ internal sealed class WorkgroupsController(
     IWorkgroupService workgroups,
     IUserService users,
     ITeamService teams,
+    IGovernanceService governance,
     IStringLocalizer<WorkgroupsResource> localizer,
     IClock clock,
     IAuthorizationService authorization,
@@ -82,8 +84,9 @@ internal sealed class WorkgroupsController(
         var people = await PeopleAsync([workgroup], ct);
         var board = await teams.GetTeamAsync(SystemTeamIds.Board, ct);
         var canAdminister = await MayAdministerAsync(workgroup);
+        var tiers = await governance.GetMembershipTiersAsync(ct);
         var canSeeBudget = canAdminister
-            || user.Profile?.MembershipTier is MembershipTier.Colaborador or MembershipTier.Asociado;
+            || tiers.GetValueOrDefault(user.Id) is MembershipTier.Colaborador or MembershipTier.Asociado;
         IReadOnlyList<HoldedExpenseAccountDto> accounts = canAdminister
             ? await workgroups.ListExpenseAccountsAsync(ct)
             : [];
@@ -94,6 +97,7 @@ internal sealed class WorkgroupsController(
             Now = clock.GetCurrentInstant(),
             CurrentUserId = user.Id,
             People = people,
+            Tiers = tiers,
             BoardUserIds = board?.Members.Select(m => m.UserId).ToHashSet() ?? [],
             IsMember = workgroup.IsMember(user.Id),
             IsCoordinator = workgroup.IsCoordinator(user.Id),

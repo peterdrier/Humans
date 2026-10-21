@@ -29,6 +29,7 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
             Substitute.For<IShiftManagementRepository>(),
             NewCalendarResolver(),
             Substitute.For<IUserService>(),
+            Substitute.For<Humans.Tickets.Contracts.ITicketService>(),
             _viewInvalidator,
             Clock,
             AuditLog);

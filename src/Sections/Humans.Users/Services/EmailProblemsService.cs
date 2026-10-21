@@ -1,9 +1,14 @@
+using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
 
 namespace Humans.Users.Services;
 
-internal sealed class EmailProblemsService(IUserEmailService userEmailService, IUserManagement userService, IClock clock)
+internal sealed class EmailProblemsService(
+    IUserEmailService userEmailService,
+    IUserManagement userService,
+    IAuditLogService audit,
+    IClock clock)
     : IEmailProblemsService
 {
     public async Task<EmailProblemsReport> ScanAsync(CancellationToken ct = default)
@@ -28,17 +33,9 @@ internal sealed class EmailProblemsService(IUserEmailService userEmailService, I
                 problems.Add(new EmailProblem(
                     EmailProblemKind.MultipleIsPrimary, p.Id, null, null, null, null));
 
-            if (emails.Count(e => e.IsGoogle) > 1)
-                problems.Add(new EmailProblem(
-                    EmailProblemKind.MultipleIsGoogle, p.Id, null, null, null, null));
-
             if (emails.Any(e => e.IsVerified) && !emails.Any(e => e.IsPrimary))
                 problems.Add(new EmailProblem(
                     EmailProblemKind.ZeroIsPrimary, p.Id, null, null, null, null));
-
-            if (!emails.Any(e => e.IsGoogle))
-                problems.Add(new EmailProblem(
-                    EmailProblemKind.ZeroIsGoogle, p.Id, null, null, null, null));
 
             foreach (var unverified in emails.Where(e => !e.IsVerified))
             {
@@ -88,9 +85,6 @@ internal sealed class EmailProblemsService(IUserEmailService userEmailService, I
     public async Task<IReadOnlyList<(Guid UserId, string Email)>> BackfillLegacyIdentityEmailsAsync(
         Guid actorUserId, CancellationToken ct = default)
     {
-        // actorUserId captured by caller's audit row; per-row audit at controller.
-        _ = actorUserId;
-
         var allInfos = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
         var backfilled = new List<(Guid, string)>();
 
@@ -109,6 +103,10 @@ internal sealed class EmailProblemsService(IUserEmailService userEmailService, I
 
             // see nobodies-collective/Humans#697 — plain verified row; reconcile attaches tag on next OAuth sign-in.
             await userEmailService.AddVerifiedEmailAsync(info.Id, legacy, ct);
+            await audit.LogAsync(
+                AuditAction.LegacyIdentityEmailBackfilled, nameof(User), info.Id,
+                $"Backfilled verified UserEmail row from legacy User.Email column: {legacy}",
+                actorUserId);
             backfilled.Add((info.Id, legacy));
         }
 

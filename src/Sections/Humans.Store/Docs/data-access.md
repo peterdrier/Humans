@@ -1,3 +1,7 @@
+<!-- freshness:triggers
+  src/Sections/Humans.Store/**
+-->
+
 # Store — Data Access
 
 ## Store
@@ -23,7 +27,7 @@ The section's `Service` class (`Services/Service.cs`); its only published contra
 
 Cross-section calls via `IAuditLogService`, `ICampService`,
 `ITeamService` (team-order counterparty surface),
-`ISettingsService`, `IStripeService` (the `Humans.Stripe` connector
+`ISettingsService`, `IUserService` (current-user resolution in the controllers), `IStripeService` (the `Humans.Stripe` connector
 section — creates Checkout sessions, lists sessions for reconciliation, handles
 webhook events including SEPA async-payment transitions), `IHoldedClient` (the
 `Humans.Holded` connector section — contact upsert, sales-document create/approve/read
@@ -37,7 +41,7 @@ transitioned to `Paid` / `Failed` via `async_payment_succeeded` /
 `async_payment_failed` webhooks; a pending payment blocks a second checkout
 to prevent double-charge. `GetStripeReconciliationAsync` pairs live Stripe
 Checkout sessions against recorded `store_payments` and classifies each row
-as Recorded / Pending / Unmatched / Missing / Unpaid;
+as Recorded / RecordedPending / RecordedFailed / Missing / Unmatched / Unpaid;
 `RecordMissingStripePaymentsAsync` back-fills missing `store_payments` rows
 and writes a `StorePaymentsReconciled` audit entry. **Repricing** — Open
 orders reprice live against the single active event-year catalog

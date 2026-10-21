@@ -1,3 +1,4 @@
+using Humans.Cantina.Contracts;
 using Humans.Users.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
@@ -35,6 +36,7 @@ internal sealed record VolunteerSearchBuildResult(
 internal sealed class ShiftVolunteerSearchBuilder(
     IBurnSettingsService burnSettings,
     IUserService userService,
+    ICantinaService cantina,
     IShiftRowView shiftView,
     IShiftSignupService signupService,
     IVolunteerTrackingManagement volunteerTrackingService)
@@ -102,9 +104,10 @@ internal sealed class ShiftVolunteerSearchBuilder(
         var userIds = users.Select(u => u.UserId).ToList();
         var views = await shiftView.GetUsersAsync(userIds, ct);
 
-        // Dietary + medical moved to Profile — read them from the cached UserInfo.
+        // Medical from the cached UserInfo's Profile, dietary from Cantina.
         // (Skills/Quirks/Languages still come from the ShiftUserView's VEP.)
         var userInfos = await userService.GetUserInfosAsync(userIds, ct);
+        var diets = await cantina.GetDietaryProfilesAsync(userIds, ct);
 
         // The cached ShiftUserView.Signups is scoped to the currently active
         // event (ShiftViewService.GetUserAsync). When the target shift belongs
@@ -127,6 +130,7 @@ internal sealed class ShiftVolunteerSearchBuilder(
             var profile = view.Profile;
             userInfos.TryGetValue(user.UserId, out var info);
             var personProfile = info?.Profile;
+            diets.TryGetValue(user.UserId, out var diet);
             var signupsForEvent = targetIsActive
                 ? view.Signups
                 : targetEventSignups![user.UserId];
@@ -149,7 +153,7 @@ internal sealed class ShiftVolunteerSearchBuilder(
                 Skills = profile?.Skills ?? [],
                 Quirks = profile?.Quirks ?? [],
                 Languages = profile?.Languages ?? [],
-                DietaryPreference = personProfile?.DietaryPreference,
+                DietaryPreference = diet?.DietaryPreference,
                 BookedShiftCount = confirmedSignups.Count,
                 HasOverlap = hasOverlap,
                 IsInPool = poolUserIds.Contains(user.UserId),

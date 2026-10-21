@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using System.Security.Claims;
 using System.Text.Json;
 using AwesomeAssertions;

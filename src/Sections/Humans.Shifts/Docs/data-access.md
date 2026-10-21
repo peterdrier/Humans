@@ -10,8 +10,8 @@ similarly-named tables — see `EventGuideDbContext`'s doc comment.
 `IDbContextFactory<ShiftsDbContext>` directly. Owns `Rotas`, `Shifts`,
 `ShiftSignups`, `EventSettings`, `GeneralAvailability`,
 `VolunteerEventProfiles`, `VolunteerBuildStatuses`, `ShiftTags`,
-`VolunteerTagPreferences`. `EventParticipations` lives on `UsersDbContext`
-under the Users section, not here.
+`VolunteerTagPreferences`. Event participation lives on `TicketsDbContext`
+under the Tickets section (read through `ITicketService`), not here.
 
 `IShiftManagementRepository` (declared across `IShiftManagementRepository.cs` and
 `IShiftManagementRepository.Signups.cs`) is backed by one concrete partial class

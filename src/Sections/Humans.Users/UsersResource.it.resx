@@ -103,12 +103,6 @@
   <data name="Profile_NotificationTargetShort" xml:space="preserve">
     <value>Notifiche</value>
   </data>
-  <data name="Profile_Motivation" xml:space="preserve">
-    <value>Motivazione</value>
-  </data>
-  <data name="Profile_AdditionalInfo" xml:space="preserve">
-    <value>Informazioni aggiuntive (facoltativo)</value>
-  </data>
   <data name="Profile_BurnerCV" xml:space="preserve">
     <value>Burner CV</value>
   </data>
@@ -146,19 +140,6 @@
   </data>
   <data name="Profile_NotificationTargetUpdated" xml:space="preserve">
     <value>Indirizzo email per le notifiche aggiornato.</value>
-  </data>
-  <data name="Profile_DeletionAlreadyPending" xml:space="preserve">
-    <value>Una richiesta di eliminazione è già in sospeso.</value>
-  </data>
-  <data name="Profile_DeletionRequested" xml:space="preserve">
-    <value>Eliminazione dell'account richiesta. Il Suo account verrà eliminato il {0}, salvo annullamento.</value>
-    <comment>{0} = deletion date</comment>
-  </data>
-  <data name="Profile_NoDeletionPending" xml:space="preserve">
-    <value>Nessuna richiesta di eliminazione in sospeso.</value>
-  </data>
-  <data name="Profile_DeletionCancelled" xml:space="preserve">
-    <value>L'eliminazione dell'account è stata annullata.</value>
   </data>
   <data name="Profile_ProfilePicture" xml:space="preserve">
     <value>Foto del profilo</value>
@@ -214,47 +195,14 @@
   <data name="Profile_WhatsApp" xml:space="preserve">
     <value>WhatsApp</value>
   </data>
-  <data name="Profile_DietaryMedical_PageTitle" xml:space="preserve"><value>Informazioni alimentari e mediche</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Label" xml:space="preserve"><value>Preferenza alimentare</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Omnivore" xml:space="preserve"><value>Onnivoro/a</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Vegetarian" xml:space="preserve"><value>Vegetariano/a</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Vegan" xml:space="preserve"><value>Vegano/a</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Pescatarian" xml:space="preserve"><value>Pescetariano/a</value></data>
-  <data name="Profile_DietaryMedical_Allergies_Label" xml:space="preserve"><value>Allergie</value></data>
-  <data name="Profile_DietaryMedical_AllergyOther_Label" xml:space="preserve"><value>Altra allergia — descrivila</value></data>
-  <data name="Profile_DietaryMedical_Intolerances_Label" xml:space="preserve"><value>Intolleranze</value></data>
-  <data name="Profile_DietaryMedical_IntoleranceOther_Label" xml:space="preserve"><value>Altra intolleranza — descrivila</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Only visible to you and the No-Info Admins. Anything coordinators should know — diabetes, epilepsy, severe injuries, etc.</value></data>
-  <data name="Profile_DietaryMedical_Saved" xml:space="preserve"><value>Le tue informazioni alimentari e mediche sono state salvate.</value></data>
-  <data name="Profile_DietaryMedical_AllergyOther_Required" xml:space="preserve"><value>Descrivi l’altra allergia.</value></data>
-  <data name="Profile_DietaryMedical_IntoleranceOther_Required" xml:space="preserve"><value>Descrivi l’altra intolleranza.</value></data>
-  <data name="Profile_DietaryMedical_LoadFailed" xml:space="preserve"><value>Impossibile caricare le informazioni alimentari e mediche.</value></data>
-  <data name="Profile_DietaryMedical_SaveFailed" xml:space="preserve"><value>Impossibile salvare le informazioni alimentari e mediche.</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Condizioni di salute</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Only visible to you and No-Info Admins.</value></data>
-  <data name="Profile_Assigned" xml:space="preserve"><value>Assegnato</value></data>
-  <data name="Profile_Campaign" xml:space="preserve"><value>Campagna</value></data>
-  <data name="Profile_Code" xml:space="preserve"><value>Codice</value></data>
-  <data name="Profile_DietaryMedical_Allergy_Dairy" xml:space="preserve"><value>Latticini</value></data>
-  <data name="Profile_DietaryMedical_Allergy_Egg" xml:space="preserve"><value>Uova</value></data>
-  <data name="Profile_DietaryMedical_Allergy_Peanut" xml:space="preserve"><value>Arachidi</value></data>
-  <data name="Profile_DietaryMedical_Allergy_Sesame" xml:space="preserve"><value>Sesamo</value></data>
-  <data name="Profile_DietaryMedical_Allergy_Shellfish" xml:space="preserve"><value>Crostacei</value></data>
-  <data name="Profile_DietaryMedical_Allergy_Soy" xml:space="preserve"><value>Soia</value></data>
-  <data name="Profile_DietaryMedical_Allergy_Treenut" xml:space="preserve"><value>Frutta a guscio</value></data>
-  <data name="Profile_DietaryMedical_Allergy_WheatGluten" xml:space="preserve"><value>Frumento/Glutine</value></data>
-  <data name="Profile_DietaryMedical_Intolerance_Gluten" xml:space="preserve"><value>Glutine</value></data>
-  <data name="Profile_DietaryMedical_Intolerance_Histamine" xml:space="preserve"><value>Istamina</value></data>
-  <data name="Profile_DietaryMedical_Intolerance_Lactose" xml:space="preserve"><value>Lattosio</value></data>
   <data name="Profile_MarkedAt" xml:space="preserve"><value>Segnato il</value></data>
   <data name="Profile_MarkedBy" xml:space="preserve"><value>Segnato da</value></data>
-  <data name="Profile_MyCodes" xml:space="preserve"><value>I miei codici</value></data>
   <data name="Profile_MyEmails" xml:space="preserve"><value>Le mie email</value></data>
   <data name="Profile_NoSentMessages" xml:space="preserve"><value>Nessun messaggio sulla piattaforma registrato.</value></data>
   <data name="Profile_NoShowHistory" xml:space="preserve"><value>Cronologia assenze ({0})</value></data>
-  <data name="Profile_OnsiteSince" xml:space="preserve"><value>Sul posto da {0}</value></data>
-  <data name="Profile_OnsiteTitle" xml:space="preserve"><value>Check-in effettuato al gate</value></data>
-  <data name="Profile_Redeemed" xml:space="preserve"><value>Riscattato</value></data>
   <data name="Profile_SentMessages" xml:space="preserve"><value>Messaggi inviati</value></data>
   <data name="Profile_ShiftInfo" xml:space="preserve"><value>Info turno</value></data>
 
@@ -272,15 +220,6 @@
   </data>
   <data name="ProfileEdit_TierLocked" xml:space="preserve">
     <value>La tua categoria è bloccata perché hai una domanda attiva o in sospeso.</value>
-  </data>
-  <data name="ProfileEdit_ApplicationSection" xml:space="preserve">
-    <value>Domanda</value>
-  </data>
-  <data name="ProfileEdit_ApplicationDescription" xml:space="preserve">
-    <value>Raccontaci della tua motivazione. Questo verrà esaminato dal Consiglio insieme al tuo profilo.</value>
-  </data>
-  <data name="ProfileEdit_MotivationPlaceholder" xml:space="preserve">
-    <value>Perché vuoi diventare Colaborador/Asociado? Cosa speri di contribuire?</value>
   </data>
   <data name="ProfileEdit_MotivationHelp" xml:space="preserve">
     <value>Minimo 50 caratteri. Questo aiuta il Consiglio a comprendere i tuoi obiettivi.</value>
@@ -405,97 +344,6 @@
   <data name="ProfilePrivacy_Title" xml:space="preserve">
     <value>I miei dati</value>
   </data>
-  <data name="ProfilePrivacy_Lead" xml:space="preserve">
-    <value>Gestisca i Suoi dati personali e le impostazioni sulla privacy.</value>
-  </data>
-  <data name="ProfilePrivacy_ExportTitle" xml:space="preserve">
-    <value>Esporta i Suoi dati</value>
-  </data>
-  <data name="ProfilePrivacy_ExportDescription" xml:space="preserve">
-    <value>Scarichi una copia di tutti i Suoi dati personali in formato JSON. Include:</value>
-  </data>
-  <data name="ProfilePrivacy_ExportAccountInfo" xml:space="preserve">
-    <value>Informazioni dell'account</value>
-  </data>
-  <data name="ProfilePrivacy_ExportProfileDetails" xml:space="preserve">
-    <value>Dettagli del profilo</value>
-  </data>
-  <data name="ProfilePrivacy_ExportContactFields" xml:space="preserve">
-    <value>Campi di contatto</value>
-  </data>
-  <data name="ProfilePrivacy_ExportApplications" xml:space="preserve">
-    <value>Domande di iscrizione</value>
-  </data>
-  <data name="ProfilePrivacy_ExportConsents" xml:space="preserve">
-    <value>Registrazioni dei consensi</value>
-  </data>
-  <data name="ProfilePrivacy_ExportTeams" xml:space="preserve">
-    <value>Appartenenza ai team</value>
-  </data>
-  <data name="ProfilePrivacy_ExportRoles" xml:space="preserve">
-    <value>Assegnazione dei ruoli</value>
-  </data>
-  <data name="ProfilePrivacy_DownloadMyData" xml:space="preserve">
-    <value>Scarica i miei dati</value>
-  </data>
-  <data name="ProfilePrivacy_DeleteTitle" xml:space="preserve">
-    <value>Elimina il Suo account</value>
-  </data>
-  <data name="ProfilePrivacy_DeleteDescription" xml:space="preserve">
-    <value>Richieda l'eliminazione del Suo account e dei Suoi dati personali.</value>
-  </data>
-  <data name="ProfilePrivacy_DeleteImmediateRevocation" xml:space="preserve">
-    <value>Le Sue appartenenze ai team, le assegnazioni di ruolo e l'accesso alle risorse condivise (Google Drive, Gruppi) verranno revocati immediatamente</value>
-  </data>
-  <data name="ProfilePrivacy_DeleteGracePeriod" xml:space="preserve">
-    <value>Un periodo di grazia di 30 giorni Le consente di annullare la richiesta</value>
-  </data>
-  <data name="ProfilePrivacy_DeleteAnonymized" xml:space="preserve">
-    <value>Dopo 30 giorni, le Sue informazioni personali verranno anonimizzate e l'accesso bloccato permanentemente</value>
-  </data>
-  <data name="ProfilePrivacy_DeleteRetained" xml:space="preserve">
-    <value>I dati anonimizzati vengono conservati per conformità legale e scopi di audit, ma non possono essere ricondotti alla Sua identità</value>
-  </data>
-  <data name="ProfilePrivacy_RequestDeletion" xml:space="preserve">
-    <value>Richiedi eliminazione account</value>
-  </data>
-  <data name="ProfilePrivacy_DeletionPending" xml:space="preserve">
-    <value>Eliminazione in sospeso</value>
-  </data>
-  <data name="ProfilePrivacy_DeletionScheduledFor" xml:space="preserve">
-    <value>Il Suo account è programmato per l'eliminazione il {0}.</value>
-    <comment>{0} = deletion date</comment>
-  </data>
-  <data name="ProfilePrivacy_DeletionCancelInfo" xml:space="preserve">
-    <value>Può annullare questa richiesta prima della data di eliminazione, se cambia idea.</value>
-  </data>
-  <data name="ProfilePrivacy_CancelDeletion" xml:space="preserve">
-    <value>Annulla richiesta di eliminazione</value>
-  </data>
-  <data name="ProfilePrivacy_DPOContact" xml:space="preserve">
-    <value>Per domande sui Suoi dati o diritti alla privacy, contatti il nostro Responsabile della Protezione dei Dati:</value>
-  </data>
-  <data name="ProfilePrivacy_Email" xml:space="preserve">
-    <value>Email:</value>
-  </data>
-  <data name="ProfilePrivacy_ViewFullPolicy" xml:space="preserve">
-    <value>Visualizza informativa completa sulla privacy</value>
-  </data>
-  <data name="ProfilePrivacy_ConfirmDeletion" xml:space="preserve">
-    <value>Conferma eliminazione account</value>
-  </data>
-  <data name="ProfilePrivacy_ConfirmDeletionQuestion" xml:space="preserve">
-    <value>È sicuro/a di voler richiedere l'eliminazione del Suo account?</value>
-  </data>
-  <data name="ProfilePrivacy_YesDeleteMyAccount" xml:space="preserve">
-    <value>Sì, elimina il mio account</value>
-  </data>
-  <data name="ProfilePrivacy_DeletionAccessRevoked" xml:space="preserve">
-    <value>Le Sue appartenenze ai team e le assegnazioni di ruolo sono state revocate.</value>
-  </data>
-  <data name="ProfilePrivacy_CancelNoRestore" xml:space="preserve">
-    <value>L'annullamento non ripristinerà le Sue precedenti appartenenze ai team. Dovrà riunirsi ai team.</value>
-  </data>
 
   <!-- ======================== -->
   <!-- Communication prefs      -->
@@ -503,43 +351,9 @@
   <data name="CommPrefs_Title" xml:space="preserve">
     <value>Preferenze di comunicazione</value>
   </data>
-  <data name="CommPrefs_Description" xml:space="preserve">
-    <value>Scegli quali comunicazioni ricevere e come.</value>
-  </data>
-  <data name="CommPrefs_Category" xml:space="preserve">
-    <value>Categoria</value>
-  </data>
   <data name="CommPrefs_Email" xml:space="preserve">
     <value>E-mail</value>
   </data>
-  <data name="CommPrefs_Alert" xml:space="preserve">
-    <value>Avviso</value>
-  </data>
-  <data name="CommPrefs_BackToProfile" xml:space="preserve">
-    <value>Torna al profilo</value>
-  </data>
-  <data name="CommPrefs_BackToDashboard" xml:space="preserve">
-    <value>Torna alla dashboard</value>
-  </data>
-  <data name="CommPrefs_OneClick_Prompt" xml:space="preserve">
-    <value>Hai cliccato su un link di disiscrizione dalle email di {0}.</value>
-  </data>
-  <data name="CommPrefs_OneClick_Hint" xml:space="preserve">
-    <value>Disiscriviti con un clic, oppure regola i dettagli nella matrice qui sotto.</value>
-  </data>
-  <data name="CommPrefs_OneClick_Button" xml:space="preserve">
-    <value>Disiscriviti da {0}</value>
-  </data>
-  <data name="CommPrefs_OneClick_Done" xml:space="preserve">
-    <value>Disiscritto. Puoi riattivare qualsiasi categoria qui sotto.</value>
-  </data>
-  <data name="CommPrefs_UpdateSource" xml:space="preserve">
-    <value>Source</value>
-  </data>
-  <data name="CommPrefs_UpdatedAt" xml:space="preserve">
-    <value>Updated</value>
-  </data>
-  <data name="CommPrefs_AlwaysOn" xml:space="preserve"><value>Sempre attivo</value></data>
 
   <!-- ======================== -->
   <!-- Email addresses page     -->
@@ -633,15 +447,6 @@
   <data name="EmailGrid_GoogleColumnTooltip" xml:space="preserve">
     <value>Email usata per la sincronizzazione con Google Workspace.</value>
   </data>
-  <data name="EmailGrid_GoogleProblem" xml:space="preserve">
-    <value>Problema di sincronizzazione Google</value>
-  </data>
-  <data name="EmailGrid_GoogleOk" xml:space="preserve">
-    <value>Google OK</value>
-  </data>
-  <data name="EmailGrid_RetryGoogle" xml:space="preserve">
-    <value>Riprova</value>
-  </data>
   <data name="EmailGrid_WorkspaceLockedHelp" xml:space="preserve">
     <value>Principale e Google sono gestiti da Google Workspace finché il tuo indirizzo @nobodies.team è presente.</value>
   </data>
@@ -650,12 +455,6 @@
   </data>
   <data name="EmailGrid_VerificationPendingBody" xml:space="preserve">
     <value>Controlla la tua casella di posta e fai clic sul link nell’email di verifica per confermare il tuo indirizzo.</value>
-  </data>
-  <data name="EmailGrid_GoogleSyncRejectedTitle" xml:space="preserve">
-    <value>Sincronizzazione Google sospesa per questo indirizzo.</value>
-  </data>
-  <data name="EmailGrid_GoogleSyncRejectedBody" xml:space="preserve">
-    <value>Google ha rifiutato l’indirizzo Google selezionato durante il tentativo di concedere l’accesso a Drive o di aggiungerti a un Gruppo — di solito perché l’indirizzo non è collegato a un account Google. I nuovi tentativi di sincronizzazione sono sospesi finché un amministratore non risolve il problema. Seleziona un altro indirizzo supportato da Google e chiedi a un amministratore di cancellare lo stato rifiutato.</value>
   </data>
   <data name="EmailGrid_Visibility" xml:space="preserve">
     <value>Visibilità</value>
@@ -687,26 +486,11 @@
   <data name="EmailGrid_ConfirmUnlink" xml:space="preserve">
     <value>Scollegare questo account Google?</value>
   </data>
-  <data name="EmailGrid_SetGoogleRejected" xml:space="preserve">
-    <value>Impossibile impostare l'email di servizio Google — riga sconosciuta o non verificata.</value>
-  </data>
   <data name="EmailGrid_UnlinkRejected" xml:space="preserve">
     <value>Impossibile scollegare — riga sconosciuta o senza provider di accesso.</value>
   </data>
-  <data name="EmailGrid_GoogleServiceUpdated" xml:space="preserve">
-    <value>Email di servizio Google aggiornata. La sincronizzazione verrà riprovata con la nuova email.</value>
-  </data>
-  <data name="EmailGrid_GoogleFlagCleared" xml:space="preserve">
-    <value>Indicatore di identità Google cancellato da questa riga.</value>
-  </data>
   <data name="EmailGrid_SetPrimary" xml:space="preserve">
     <value>Imposta come principale</value>
-  </data>
-  <data name="EmailGrid_SetGoogle" xml:space="preserve">
-    <value>Imposta per Google</value>
-  </data>
-  <data name="EmailGrid_ClearGoogleRejected" xml:space="preserve">
-    <value>Impossibile cancellare l'indicatore Google — riga sconosciuta o non attualmente contrassegnata.</value>
   </data>
   <data name="EmailGrid_PrimaryFlagCleared" xml:space="preserve">
     <value>Indicatore principale cancellato da questa riga.</value>
@@ -716,9 +500,6 @@
   </data>
   <data name="EmailGrid_Clear" xml:space="preserve">
     <value>Cancella</value>
-  </data>
-  <data name="EmailGrid_ConfirmClearGoogle" xml:space="preserve">
-    <value>Cancellare l'indicatore di identità Google da questa riga email?</value>
   </data>
   <data name="EmailGrid_ConfirmClearPrimary" xml:space="preserve">
     <value>Cancellare l'indicatore principale da questa riga email?</value>
@@ -756,49 +537,12 @@
   <!-- ======================== -->
   <!-- Sent messages            -->
   <!-- ======================== -->
-  <data name="Outbox_AdminTitle" xml:space="preserve"><value>Email</value></data>
-  <data name="Outbox_BackToAdmin" xml:space="preserve"><value>Torna ad Amministrazione</value></data>
-  <data name="Outbox_BackToProfile" xml:space="preserve"><value>Torna al Profilo</value></data>
-  <data name="Outbox_DescriptionAdmin" xml:space="preserve"><value>Email che il sistema ha inviato a questo human.</value></data>
-  <data name="Outbox_DescriptionSelf" xml:space="preserve"><value>Email che il sistema ti ha inviato (negli ultimi 150 giorni).</value></data>
-  <data name="Outbox_Empty" xml:space="preserve"><value>Nessuna email registrata.</value></data>
-  <data name="Outbox_Subject" xml:space="preserve"><value>Oggetto</value></data>
 
   <!-- ======================== -->
   <!-- Facilitated message      -->
   <!-- ======================== -->
-  <data name="SendMessage_Title" xml:space="preserve">
-    <value>Invia un messaggio a {0}</value>
-  </data>
-  <data name="SendMessage_Breadcrumb" xml:space="preserve">
-    <value>Invia messaggio</value>
-  </data>
-  <data name="SendMessage_Heading" xml:space="preserve">
-    <value>Invia un messaggio a {0}</value>
-  </data>
-  <data name="SendMessage_MessageLabel" xml:space="preserve">
-    <value>Messaggio</value>
-  </data>
-  <data name="SendMessage_IncludeContactInfo" xml:space="preserve">
-    <value>Includi le mie informazioni di contatto</value>
-  </data>
-  <data name="SendMessage_IncludeContactInfoHelp" xml:space="preserve">
-    <value>Il tuo nome e la tua e-mail verranno inclusi in modo che possano risponderti direttamente.</value>
-  </data>
-  <data name="SendMessage_Send" xml:space="preserve">
-    <value>Invia messaggio</value>
-  </data>
-  <data name="SendMessage_Success" xml:space="preserve">
-    <value>Il tuo messaggio è stato inviato a {0}.</value>
-  </data>
   <data name="SendMessage_Button" xml:space="preserve">
     <value>Invia un messaggio a {0}</value>
-  </data>
-  <data name="SendMessage_FromTeamButton" xml:space="preserve">
-    <value>Invia un messaggio a {0} da {1}</value>
-  </data>
-  <data name="SendMessage_FromTeamNotice" xml:space="preserve">
-    <value>Stai inviando per conto di {0}. Le risposte saranno inviate a {1}.</value>
   </data>
 
   <!-- ======================== -->
@@ -831,65 +575,11 @@
   <!-- ======================== -->
   <!-- Unsubscribe              -->
   <!-- ======================== -->
-  <data name="Users_Unsubscribe_Title" xml:space="preserve">
-    <value>Annulla iscrizione e-mail</value>
-  </data>
-  <data name="Users_Unsubscribe_Heading" xml:space="preserve">
-    <value>Annullare l'iscrizione alle e-mail {0}?</value>
-    <comment>{0} = category name</comment>
-  </data>
-  <data name="Users_Unsubscribe_Greeting" xml:space="preserve">
-    <value>Ciao {0},</value>
-    <comment>{0} = display name</comment>
-  </data>
-  <data name="Users_Unsubscribe_ConfirmMessage" xml:space="preserve">
-    <value>Se confermi, non riceverai più e-mail {0} da Humans.</value>
-    <comment>{0} = category name</comment>
-  </data>
-  <data name="Users_Unsubscribe_ConfirmButton" xml:space="preserve">
-    <value>Conferma annullamento</value>
-  </data>
-  <data name="Users_Unsubscribe_DoneTitle" xml:space="preserve">
-    <value>Iscrizione annullata</value>
-  </data>
-  <data name="Users_Unsubscribe_DoneMessage" xml:space="preserve">
-    <value>Non riceverai più e-mail {0} da Humans.</value>
-    <comment>{0} = category name</comment>
-  </data>
-  <data name="Users_Unsubscribe_DoneManage" xml:space="preserve">
-    <value>Puoi gestire le preferenze di comunicazione dalle tue</value>
-  </data>
-  <data name="Users_Unsubscribe_DoneManageLink" xml:space="preserve">
-    <value>preferenze di comunicazione</value>
-  </data>
-  <data name="Users_Unsubscribe_BackHome" xml:space="preserve">
-    <value>Torna alla home</value>
-  </data>
-  <data name="Users_Unsubscribe_ExpiredTitle" xml:space="preserve">
-    <value>Link di annullamento scaduto</value>
-  </data>
-  <data name="Users_Unsubscribe_ExpiredHeading" xml:space="preserve">
-    <value>Questo link di annullamento è scaduto</value>
-  </data>
-  <data name="Users_Unsubscribe_ExpiredMessage" xml:space="preserve">
-    <value>Usa il link da un'e-mail più recente, o</value>
-  </data>
-  <data name="Users_Unsubscribe_ExpiredSignIn" xml:space="preserve">
-    <value>accedi per gestire le preferenze di comunicazione</value>
-  </data>
 
   <!-- ======================== -->
   <!-- Account status page      -->
   <!-- ======================== -->
-  <data name="AccountStatus_Title" xml:space="preserve"><value>Stato dell'account</value></data>
   <data name="AccountStatus_HeadingSuspended" xml:space="preserve"><value>Il tuo account è stato sospeso</value></data>
-  <data name="AccountStatus_HeadingRejected" xml:space="preserve"><value>Il tuo account è stato rifiutato</value></data>
-  <data name="AccountStatus_HeadingDeleted" xml:space="preserve"><value>Il tuo account è stato eliminato</value></data>
-  <data name="AccountStatus_HeadingMerged" xml:space="preserve"><value>Il tuo account è stato unito</value></data>
-  <data name="AccountStatus_HeadingUnavailable" xml:space="preserve"><value>Il tuo account non è disponibile</value></data>
-  <data name="AccountStatus_ContactInfo" xml:space="preserve"><value>Contatta un amministratore per maggiori informazioni:</value></data>
-  <data name="AccountStatus_ReasonLabel" xml:space="preserve"><value>Motivo:</value></data>
-  <data name="AccountStatus_ReferenceId" xml:space="preserve"><value>ID di riferimento:</value></data>
   <data name="AccountStatus_ConsentSuspendedBody" xml:space="preserve"><value>Il Suo accesso è sospeso finché non avrà completato i consensi legali richiesti.</value></data>
   <data name="AccountStatus_HeadingAdminSuspended" xml:space="preserve"><value>Il Suo account è stato sospeso da un amministratore</value></data>
   <data name="AccountStatus_ReviewConsents" xml:space="preserve"><value>Esamini i consensi richiesti</value></data>
@@ -897,11 +587,6 @@
   <!-- ======================== -->
   <!-- Account deletion         -->
   <!-- ======================== -->
-  <data name="AccountDeletion_Title" xml:space="preserve"><value>Eliminazione account in sospeso</value></data>
-  <data name="AccountDeletion_Heading" xml:space="preserve"><value>Il tuo account è programmato per l'eliminazione</value></data>
-  <data name="AccountDeletion_ScheduledFor" xml:space="preserve"><value>Sarà eliminato definitivamente il {0} a meno che tu non annulli.</value></data>
-  <data name="AccountDeletion_Unscheduled" xml:space="preserve"><value>Sarà eliminato definitivamente a meno che tu non annulli.</value></data>
-  <data name="AccountDeletion_CancelButton" xml:space="preserve"><value>Annulla la richiesta di eliminazione</value></data>
 
   <!-- ======================== -->
   <!-- Admin: member list       -->
@@ -940,12 +625,6 @@
   <data name="AdminHuman_Information" xml:space="preserve">
     <value>Informazioni sul membro</value>
   </data>
-  <data name="AdminHuman_ConsentCheck" xml:space="preserve">
-    <value>Verifica del consenso</value>
-  </data>
-  <data name="AdminHuman_NotStarted" xml:space="preserve">
-    <value>Non avviato</value>
-  </data>
   <data name="AdminHuman_UserId" xml:space="preserve">
     <value>ID utente</value>
   </data>
@@ -957,30 +636,6 @@
   </data>
   <data name="AdminHuman_RecentApplications" xml:space="preserve">
     <value>Domande recenti</value>
-  </data>
-  <data name="AdminHuman_RoleAssignments" xml:space="preserve">
-    <value>Assegnazione ruoli</value>
-  </data>
-  <data name="AdminHuman_AddRole" xml:space="preserve">
-    <value>Aggiungi ruolo</value>
-  </data>
-  <data name="AdminHuman_Ended" xml:space="preserve">
-    <value>Terminato</value>
-  </data>
-  <data name="AdminHuman_From" xml:space="preserve">
-    <value>Dal</value>
-  </data>
-  <data name="AdminHuman_To" xml:space="preserve">
-    <value>al</value>
-  </data>
-  <data name="AdminHuman_EndRoleConfirm" xml:space="preserve">
-    <value>Terminare questa assegnazione di ruolo?</value>
-  </data>
-  <data name="AdminHuman_End" xml:space="preserve">
-    <value>Termina</value>
-  </data>
-  <data name="AdminHuman_NoRoleAssignments" xml:space="preserve">
-    <value>Nessuna assegnazione di ruolo.</value>
   </data>
   <data name="AdminHuman_AuditHistory" xml:space="preserve">
     <value>Storico audit</value>
@@ -1015,68 +670,6 @@
   </data>
 
   <!-- ======================== -->
-  <!-- Admin: roles             -->
-  <!-- ======================== -->
-  <data name="AdminRoles_Title" xml:space="preserve">
-    <value>Assegnazione ruoli</value>
-  </data>
-  <data name="AdminRoles_All" xml:space="preserve">
-    <value>Tutti</value>
-  </data>
-  <data name="AdminRoles_HideInactive" xml:space="preserve">
-    <value>Nascondi inattivi</value>
-  </data>
-  <data name="AdminRoles_ShowInactive" xml:space="preserve">
-    <value>Mostra inattivi</value>
-  </data>
-  <data name="AdminRoles_User" xml:space="preserve">
-    <value>Utente</value>
-  </data>
-  <data name="AdminRoles_ValidFrom" xml:space="preserve">
-    <value>Valido dal</value>
-  </data>
-  <data name="AdminRoles_ValidTo" xml:space="preserve">
-    <value>Valido fino al</value>
-  </data>
-
-  <!-- ======================== -->
-  <!-- Admin: add role          -->
-  <!-- ======================== -->
-  <data name="AdminAddRole_Title" xml:space="preserve">
-    <value>Aggiungi ruolo</value>
-  </data>
-  <data name="AdminAddRole_SelectRole" xml:space="preserve">
-    <value>Seleziona un ruolo...</value>
-  </data>
-  <data name="AdminAddRole_AdminDesc" xml:space="preserve">
-    <value>Accesso completo al sistema</value>
-  </data>
-  <data name="AdminAddRole_BoardDesc" xml:space="preserve">
-    <value>Permessi membro del Consiglio</value>
-  </data>
-  <data name="AdminAddRole_TeamsAdminDesc" xml:space="preserve">
-    <value>Gestire tutti i team e le iscrizioni</value>
-  </data>
-  <data name="AdminAddRole_ConsentCoordinatorDesc" xml:space="preserve">
-    <value>Verifiche di sicurezza durante l'onboarding</value>
-  </data>
-  <data name="AdminAddRole_CampAdminDesc" xml:space="preserve">
-    <value>Gestire la mappa del campo e le fasi di posizionamento</value>
-  </data>
-  <data name="AdminAddRole_VolunteerCoordinatorDesc" xml:space="preserve">
-    <value>Facilitazione onboarding, gestione turni globale</value>
-  </data>
-  <data name="AdminAddRole_NoInfoAdminDesc" xml:space="preserve">
-    <value>Approvare iscrizioni ai turni, visualizzare dati medici</value>
-  </data>
-  <data name="AdminAddRole_NotesLabel" xml:space="preserve">
-    <value>Note (facoltative)</value>
-  </data>
-  <data name="AdminAddRole_NotesPlaceholder" xml:space="preserve">
-    <value>Motivo dell'assegnazione</value>
-  </data>
-
-  <!-- ======================== -->
   <!-- Enum display names       -->
   <!-- ======================== -->
   <data name="Enum_ContactFieldType_Email" xml:space="preserve"><value>E-mail</value></data>
@@ -1094,11 +687,6 @@
   <data name="Enum_LanguageProficiency_Conversational" xml:space="preserve"><value>Conversazionale</value></data>
   <data name="Enum_LanguageProficiency_Fluent" xml:space="preserve"><value>Fluente</value></data>
   <data name="Enum_LanguageProficiency_Native" xml:space="preserve"><value>Madrelingua</value></data>
-  <data name="Profile_NotAttending_Declared" xml:space="preserve"><value>Sei stato/a contrassegnato/a come non partecipante quest'anno.</value></data>
-  <data name="Profile_NotAttending_Failed" xml:space="preserve"><value>Si è verificato un problema. Riprova.</value></data>
-  <data name="Profile_NotAttending_NoActiveEvent" xml:space="preserve"><value>Non è configurato alcun evento attivo.</value></data>
-  <data name="Profile_NotAttending_Undone" xml:space="preserve"><value>La tua dichiarazione è stata rimossa.</value></data>
-  <data name="Profile_NotAttending_UndoFailed" xml:space="preserve"><value>Impossibile annullare: la sincronizzazione dei biglietti potrebbe aver aggiornato il tuo stato.</value></data>
   <data name="Users_Email_AccessSuspended_Subject" xml:space="preserve">
     <value>Il Suo accesso come membro è stato sospeso</value>
   </data>
@@ -1140,7 +728,7 @@
 &lt;p&gt;Ciao {0},&lt;/p&gt;
 &lt;p&gt;Abbiamo ricevuto la tua richiesta di eliminazione dell'account. Il tuo account e tutti i dati associati saranno eliminati permanentemente il &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
 &lt;p&gt;Se cambi idea, puoi annullare questa richiesta prima della data di eliminazione:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}/User/Deletion"&gt;Annulla richiesta di eliminazione&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}/Gdpr/Deletion"&gt;Annulla richiesta di eliminazione&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Dopo l'eliminazione, questa azione non può essere annullata e tutti i tuoi dati saranno rimossi permanentemente.&lt;/p&gt;
 &lt;p&gt;Il team di Humans&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = formatted deletion date, {2} = base URL</comment>
@@ -1156,47 +744,13 @@
 &lt;p&gt;Cordiali saluti,&lt;br/&gt;Il team di Humans&lt;/p&gt;</value>
     <comment>{0} = user name</comment>
   </data>
-  <data name="Users_Profile_MessageOptedOut" xml:space="preserve"><value>Questa persona ha scelto di non ricevere messaggi.</value></data>
-  <data name="Users_Profile_CommunicationPreferencesLoadFailed" xml:space="preserve"><value>Impossibile caricare le preferenze di comunicazione.</value></data>
   <data name="Users_Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>Questa email è collegata a un altro account. La verifica richiederà un'unione di account. Controlla la posta in arrivo per il link di verifica.</value></data>
   <data name="Users_Profile_EmailVerifiedMergeRequested" xml:space="preserve"><value>Email verificata. È stata inviata una richiesta di unione per la revisione amministrativa. L'email {0} verrà aggiunta al tuo account una volta approvata.</value><comment>{0} = email address</comment></data>
-  <data name="Users_Guest_DeletionRequestFailed" xml:space="preserve"><value>Impossibile elaborare la richiesta di eliminazione. Riprova.</value></data>
-  <data name="Users_Guest_DeletionRequested" xml:space="preserve"><value>Richiesta di eliminazione registrata. Il tuo account verrà eliminato definitivamente il {0}.</value><comment>{0} = deletion date</comment></data>
-  <data name="Users_Guest_DeletionHeldForTicket" xml:space="preserve"><value>Richiesta di eliminazione registrata. Poiché hai biglietti per un prossimo evento, il tuo account verrà eliminato dopo il {0}.</value><comment>{0} = deletion date</comment></data>
-  <data name="Users_Guest_CancelDeletionFailed" xml:space="preserve"><value>Impossibile annullare la richiesta di eliminazione. Riprova.</value></data>
-  <data name="Users_NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Ha un account email @nobodies.team</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Importato · nessun profilo ancora</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>Questa persona esiste nel sistema ma non ha ancora completato un profilo (per esempio, è stata importata da una mailing list o dal ticketing).</value></data>
-  <data name="Users_Profile_ShiftSignupFailed" xml:space="preserve"><value>Non è stato possibile iscriversi al turno.</value></data>
-  <data name="Users_Profile_ShiftSignupSucceeded" xml:space="preserve"><value>Iscrizione al turno riuscita!</value></data>
-  <data name="Users_Profile_ShiftSignupSucceededWithWarning" xml:space="preserve"><value>Iscrizione al turno riuscita. Nota: {0}</value><comment>{0} = signup warning</comment></data>
-  <data name="Users_Profile_ShiftRangeSignupFailed" xml:space="preserve"><value>Non è stato possibile iscriversi all'intervallo di turni.</value></data>
-  <data name="Users_Profile_ShiftRangeSignupSucceeded" xml:space="preserve"><value>Iscrizione all'intervallo di date riuscita!</value></data>
-  <data name="Users_Profile_ShiftRangeSignupSucceededWithWarning" xml:space="preserve"><value>Iscrizione all'intervallo di date riuscita. Nota: {0}</value><comment>{0} = signup warning</comment></data>
-  <data name="Users_Profile_AlwaysOnCategoryCannotChange" xml:space="preserve"><value>Le categorie sempre attive non possono essere modificate.</value></data>
   <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>Il tuo accesso è stato sospeso: {0}</value></data>
   <data name="Users_Notification_ViewProfile" xml:space="preserve"><value>Visualizza profilo</value></data>
   <data name="Users_Notification_ConsentSuspensionReason" xml:space="preserve"><value>Consenso ai documenti richiesti mancante (periodo di grazia scaduto)</value></data>
-  <data name="CommPrefs_Name_System" xml:space="preserve"><value>Sistema</value></data>
-  <data name="CommPrefs_Name_CampaignCodes" xml:space="preserve"><value>Codici delle campagne</value></data>
-  <data name="CommPrefs_Name_FacilitatedMessages" xml:space="preserve"><value>Messaggi tra persone</value></data>
-  <data name="CommPrefs_Name_Ticketing" xml:space="preserve"><value>Biglietti</value></data>
-  <data name="CommPrefs_Name_VolunteerUpdates" xml:space="preserve"><value>Novità per il volontariato</value></data>
-  <data name="CommPrefs_Name_TeamUpdates" xml:space="preserve"><value>Novità dei team</value></data>
-  <data name="CommPrefs_Name_Governance" xml:space="preserve"><value>Governance</value></data>
-  <data name="CommPrefs_Name_Marketing" xml:space="preserve"><value>Marketing</value></data>
-  <data name="CommPrefs_Description_System" xml:space="preserve"><value>Notifiche importanti su account, consenso e sicurezza. Sempre attive.</value></data>
-  <data name="CommPrefs_Description_CampaignCodes" xml:space="preserve"><value>Codici sconto, contributi e codici da riscattare per le campagne. Sempre attivi.</value></data>
-  <data name="CommPrefs_Description_FacilitatedMessages" xml:space="preserve"><value>Messaggi che altre persone ti inviano tramite Humans.</value></data>
-  <data name="CommPrefs_Description_Ticketing" xml:space="preserve"><value>Conferme di acquisto e informazioni sull’evento.</value></data>
-  <data name="CommPrefs_Description_VolunteerUpdates" xml:space="preserve"><value>Modifiche ai turni, aggiornamenti del programma e notifiche per il volontariato.</value></data>
-  <data name="CommPrefs_Description_TeamUpdates" xml:space="preserve"><value>Permessi di Drive, aggiunte e rimozioni di membri dei team.</value></data>
-  <data name="CommPrefs_Description_Governance" xml:space="preserve"><value>Votazioni del Consiglio, domande di livello associativo, assegnazioni di ruoli e verifiche di iscrizione.</value></data>
-  <data name="CommPrefs_Description_Marketing" xml:space="preserve"><value>Mailing list e promozioni.</value></data>
-  <data name="CommPrefs_TicketingYear" xml:space="preserve"><value>Biglietti — {0}</value></data>
-  <data name="CommPrefs_TicketingLocked" xml:space="preserve"><value>Bloccato — hai un biglietto per quest’anno</value></data>
-  <data name="CommPrefs_Name_EventOperations" xml:space="preserve"><value>Operazioni dell’evento</value></data>
-  <data name="CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Novità della comunità</value></data>
   <data name="Users_Profile_EmailAlreadyAdded" xml:space="preserve">
     <value>Questo indirizzo email è già nel tuo account.</value>
   </data>
@@ -1212,4 +766,8 @@
   <data name="Users_EmailUpdate_UnverifiedTarget" xml:space="preserve">
     <value>Solo gli indirizzi email verificati possono ricevere le notifiche dell’account.</value>
   </data>
+  <data name="Users_Profile_DietaryLink" xml:space="preserve"><value>Informazioni alimentari</value></data>
+  <data name="Users_Medical_Saved" xml:space="preserve"><value>Le tue informazioni mediche sono state salvate.</value></data>
+  <data name="Users_Medical_SaveFailed" xml:space="preserve"><value>Impossibile salvare le informazioni mediche.</value></data>
+  <data name="ProfileEdit_TierApplyLink" xml:space="preserve"><value>Candidati come Colaborador o Asociado</value></data>
 </root>

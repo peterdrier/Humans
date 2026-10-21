@@ -37,8 +37,39 @@ public class MembershipRequiredFilterTests
             .FirstOrDefault(t => t is not null)
         ?? throw new InvalidOperationException(
             "Humans.Onboarding.Controllers.OnboardingWidgetController not found in any section assembly.");
-    private static readonly Type UserControllerType = typeof(ProfileController).Assembly
-        .GetType("Humans.Users.Controllers.UserController", throwOnError: true)!;
+    // MemberOutboxController is internal to Humans.Email and serves /Email/Outbox.
+    private static readonly Type MemberOutboxControllerType =
+        SectionDiscoveryExtensions.SectionAssemblies()
+            .Select(a => a.GetType("Humans.Email.Controllers.MemberOutboxController", throwOnError: false))
+            .FirstOrDefault(t => t is not null)
+        ?? throw new InvalidOperationException(
+            "Humans.Email.Controllers.MemberOutboxController not found in any section assembly.");
+    // CommunicationPreferencesController is internal to Humans.Email and serves
+    // /Email/CommunicationPreferences (Users decomposition commit 14).
+    private static readonly Type CommunicationPreferencesControllerType =
+        SectionDiscoveryExtensions.SectionAssemblies()
+            .Select(a => a.GetType("Humans.Email.Controllers.CommunicationPreferencesController", throwOnError: false))
+            .FirstOrDefault(t => t is not null)
+        ?? throw new InvalidOperationException(
+            "Humans.Email.Controllers.CommunicationPreferencesController not found in any section assembly.");
+    // MemberDataController and UserController are internal to Humans.Gdpr: the member's own
+    // export/deletion-request actions and the account-status wall / pending-deletion landing.
+    private static readonly Type MemberDataControllerType = GdprControllerType("MemberDataController");
+    private static readonly Type UserControllerType = GdprControllerType("UserController");
+    // MyDataController is internal to Humans.Consent: the My Data page shell at /Consent/MyData.
+    private static readonly Type MyDataControllerType = SectionControllerType("Humans.Consent", "MyDataController");
+    // CantinaProfileController is internal to Humans.Cantina: the dietary form at /Cantina/Dietary.
+    private static readonly Type CantinaProfileControllerType = SectionControllerType("Humans.Cantina", "CantinaProfileController");
+    private static readonly Type TicketParticipationControllerType = SectionControllerType("Humans.Tickets", "TicketParticipationController");
+    private static readonly Type WorkspaceIdentityControllerType = SectionControllerType("Humans.GoogleIntegration", "WorkspaceIdentityController");
+
+    private static Type GdprControllerType(string name) => SectionControllerType("Humans.Gdpr", name);
+
+    private static Type SectionControllerType(string ns, string name) =>
+        SectionDiscoveryExtensions.SectionAssemblies()
+            .Select(a => a.GetType($"{ns}.Controllers.{name}", throwOnError: false))
+            .FirstOrDefault(t => t is not null)
+        ?? throw new InvalidOperationException($"{ns}.Controllers.{name} not found in any section assembly.");
     [HumansFact]
     public async Task Active_user_reaches_a_non_exempt_controller()
     {
@@ -128,29 +159,28 @@ public class MembershipRequiredFilterTests
     public async Task Non_active_users_retain_profile_and_email_self_service(UserState state)
     {
         // Resolve the actual extracted actions; their controller identity is what the global
-        // filter sees even though their public URLs still belong to the Profile surface.
+        // filter sees, whichever section's URL serves them.
         foreach (var (type, action) in new[]
         {
             (typeof(ProfileController), nameof(ProfileController.Index)),
             (typeof(ProfileController), nameof(ProfileController.Me)),
             (typeof(ProfileController), nameof(ProfileController.Edit)),
-            (typeof(ProfileController), nameof(ProfileController.DeclareNotAttending)),
-            (typeof(ProfileController), nameof(ProfileController.UndoNotAttending)),
-            (typeof(ProfileController), nameof(ProfileController.MyOutbox)),
-            (typeof(ProfileController), nameof(ProfileController.Privacy)),
-            (typeof(ProfileController), nameof(ProfileController.DietaryMedical)),
-            (typeof(ProfileController), nameof(ProfileController.CommunicationPreferences)),
-            (typeof(ProfileController), nameof(ProfileController.UpdatePreference)),
-            (typeof(ProfileController), nameof(ProfileController.Notifications)),
-            (typeof(ProfileController), nameof(ProfileController.DownloadData)),
-            (typeof(ProfileController), nameof(ProfileController.RequestDeletion)),
+            (TicketParticipationControllerType, "DeclareNotAttending"),
+            (TicketParticipationControllerType, "UndoNotAttending"),
+            (MemberOutboxControllerType, "MyOutbox"),
+            (MyDataControllerType, "Index"),
+            (typeof(ProfileController), nameof(ProfileController.Medical)),
+            (CantinaProfileControllerType, "Dietary"),
+            (CommunicationPreferencesControllerType, "Index"),
+            (CommunicationPreferencesControllerType, "UpdatePreference"),
+            (MemberDataControllerType, "DownloadData"),
+            (MemberDataControllerType, "RequestDeletion"),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.Emails)),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.AddEmail)),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.SetPrimary)),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.SetEmailVisibility)),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.DeleteEmail)),
-            (typeof(ProfileEmailsController), nameof(ProfileEmailsController.SetGoogle)),
-            (typeof(ProfileEmailsController), nameof(ProfileEmailsController.ClearGoogle)),
+            (WorkspaceIdentityControllerType, "Set"),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.ClearPrimary)),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.Link)),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.Unlink)),
@@ -179,7 +209,9 @@ public class MembershipRequiredFilterTests
         foreach (var type in new[]
         {
             typeof(ProfileController), typeof(ProfileEmailsController),
-            OnboardingWidgetControllerType, UserControllerType,
+            OnboardingWidgetControllerType, UserControllerType, MemberOutboxControllerType,
+            MemberDataControllerType, MyDataControllerType, CantinaProfileControllerType,
+            CommunicationPreferencesControllerType,
         })
         {
             var methods = type.GetMethods().Where(m => m.DeclaringType == type
@@ -408,6 +440,7 @@ public class MembershipRequiredFilterTests
             "Account" => typeof(AccountController),
             "Language" => typeof(LanguageController),
             "User" => UserControllerType,
+            "MemberData" => MemberDataControllerType,
             _ => typeof(HomeController),
         };
         var actionDescriptor = new ControllerActionDescriptor

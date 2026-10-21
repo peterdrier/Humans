@@ -1,3 +1,4 @@
+using Humans.Cantina.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Onboarding;
@@ -41,6 +42,7 @@ public class ShiftsControllerDietaryGateTests
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly ICantinaService _cantina = Substitute.For<ICantinaService>();
     private readonly User _user;
     private readonly ShiftsController _controller;
     private readonly ClaimsIdentity _identity;
@@ -54,9 +56,9 @@ public class ShiftsControllerDietaryGateTests
         localizer[Arg.Any<string>(), Arg.Any<object[]>()]
             .Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
-        // The controller resolves the current user via IUserService.GetUserInfoAsync,
-        // and reads DietaryPreference straight off UserInfo.Profile. Default: empty
-        // dietary; tests override via SetDietary.
+        // The controller resolves the current user via IUserService.GetUserInfoAsync
+        // and reads DietaryPreference from ICantinaService. Default: empty dietary;
+        // tests override via SetDietary.
         SetDietary(null);
 
         // Mine() reads shiftView.GetUserAsync(...).Signups (nobodies-collective/Humans#720); return an
@@ -77,6 +79,7 @@ public class ShiftsControllerDietaryGateTests
             _teamService,
             _auditLogService,
             _userService,
+            _cantina,
             localizer,
             Substitute.For<IStringLocalizer<OnboardingResource>>(),
             new FakeClock(Instant.FromUtc(2026, 5, 25, 12, 0)),
@@ -97,8 +100,11 @@ public class ShiftsControllerDietaryGateTests
     }
 
     // Stubs GetUserInfoAsync to return a name-complete profile (so the name gate
-    // passes) with the given DietaryPreference (the dietary gate's input).
-    private void SetDietary(string? dietary) =>
+    // passes), and Cantina's dietary profile with the given DietaryPreference (the gate's input).
+    private void SetDietary(string? dietary)
+    {
+        _cantina.GetDietaryProfileAsync(_user.Id, Arg.Any<CancellationToken>())
+            .Returns(dietary is null ? null : new DietaryProfileInfo(_user.Id, dietary, [], null, [], null));
         _userService.GetUserInfoAsync(_user.Id, Arg.Any<CancellationToken>())
             .Returns(UserInfoFactory.Create(
                 user: _user,
@@ -111,7 +117,6 @@ public class ShiftsControllerDietaryGateTests
                     BurnerName = "Burner",
                     FirstName = "First",
                     LastName = "Last",
-                    DietaryPreference = dietary,
                     CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                     UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 },
@@ -119,6 +124,7 @@ public class ShiftsControllerDietaryGateTests
                 profileLanguages: [],
                 volunteerHistory: [],
                 communicationPreferences: []));
+    }
 
     // ---- Lockout-flag computation on the top-level VM (Task 6.2) ----
     // ComputeSignupsBlockedByMissingDietaryAsync sets the flag the rota-table

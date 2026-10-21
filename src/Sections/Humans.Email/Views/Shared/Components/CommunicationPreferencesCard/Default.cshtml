@@ -1,0 +1,5 @@
+@model Guid
+@* Admin-only card on /Users/Admin/{id}; the heading reuses the member page's title. *@
+
+<h5 class="mt-4 mb-2">@Localizer["Email_CommPrefs_Title"]</h5>
+<vc:communication-preferences-panel user-id="@Model" read-only="true" />

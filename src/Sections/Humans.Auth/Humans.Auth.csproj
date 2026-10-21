@@ -1,18 +1,18 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
-  <!--
-    Plain Microsoft.NET.Sdk, not Sdk.Razor: the section has no controllers and no views.
-    AccountController and its Views/Account/* stayed in Shell — see Section.cs.
-
-    The framework reference is here for Microsoft.AspNetCore.Authorization only:
-    RoleAssignmentAuthorizationHandler is a resource-based handler (template step 6) and
-    CachingRoleAssignmentService is registered as an IHostedService. Central Package
-    Management has no PackageVersion for the AspNetCore packages by design, so the
-    framework reference is the only way to get them (template step 1).
-  -->
+  <PropertyGroup>
+    <!-- MVC views/controllers, not Blazor components. -->
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
 
   <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <!--
+      Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
+      The role-assignment controller, view component and the resource-based handler need them.
+    -->
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
+    <Using Include="Microsoft.Extensions.Logging" />
   </ItemGroup>
 
   <ItemGroup>

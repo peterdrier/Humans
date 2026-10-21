@@ -1,7 +1,9 @@
+using Humans.Email.Contracts;
 using AwesomeAssertions;
 using Humans.Debug.Services;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
+using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
 using NSubstitute;
@@ -13,10 +15,17 @@ public class UserSetMembershipCalculatorTests
 {
     private readonly ISettingsService _burnSettings = Substitute.For<ISettingsService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
+    private readonly ITicketService _tickets = Substitute.For<ITicketService>();
+    private readonly ICommunicationPreferenceService _preferences = Substitute.For<ICommunicationPreferenceService>();
+    private readonly List<EventParticipationInfo> _ticketRows = [];
+    private readonly Dictionary<Guid, CommunicationPreferenceSnapshot> _marketing = [];
 
     public UserSetMembershipCalculatorTests()
     {
         _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(MakeBurnSettings(2026));
+        _tickets.GetAllParticipationsAsync(Arg.Any<CancellationToken>()).Returns(_ => _ticketRows.ToList());
+        _preferences.GetPreferencesForCategoryAsync(MessageCategory.Marketing, Arg.Any<CancellationToken>())
+            .Returns(_ => new Dictionary<Guid, CommunicationPreferenceSnapshot>(_marketing));
     }
 
     [HumansFact]
@@ -31,7 +40,7 @@ public class UserSetMembershipCalculatorTests
         StubShifts(hasShift: [u2.Id]);
 
         var result = await UserSetMembershipCalculator.BuildAsync(
-            snapshot, _burnSettings, _shiftView, Xunit.TestContext.Current.CancellationToken);
+            snapshot, _burnSettings, _shiftView, _tickets, _preferences, Xunit.TestContext.Current.CancellationToken);
 
         result.TotalUsers.Should().Be(3);
         result.CountsByMask[3].Should().Be(1); // Profile | Ticket
@@ -52,7 +61,7 @@ public class UserSetMembershipCalculatorTests
         StubShifts(hasShift: []);
 
         var result = await UserSetMembershipCalculator.BuildAsync(
-            snapshot, _burnSettings, _shiftView, Xunit.TestContext.Current.CancellationToken);
+            snapshot, _burnSettings, _shiftView, _tickets, _preferences, Xunit.TestContext.Current.CancellationToken);
 
         result.MarketingOptInsCount.Should().Be(1);
     }
@@ -67,7 +76,7 @@ public class UserSetMembershipCalculatorTests
         StubShifts(hasShift: [profileTicketShift.Id]);
 
         var result = await UserSetMembershipCalculator.BuildAsync(
-            snapshot, _burnSettings, _shiftView, Xunit.TestContext.Current.CancellationToken);
+            snapshot, _burnSettings, _shiftView, _tickets, _preferences, Xunit.TestContext.Current.CancellationToken);
 
         result.ProfilesCount.Should().Be(2);
         result.TicketsCount.Should().Be(1);
@@ -126,7 +135,7 @@ public class UserSetMembershipCalculatorTests
         BarriosEarlyEntryAllocation: null,
         EarlyEntryClose: null);
 
-    private static UserInfo MakeUserInfo(bool hasProfile, int? ticketYear, bool? marketingOptedOut)
+    private UserInfo MakeUserInfo(bool hasProfile, int? ticketYear, bool? marketingOptedOut)
     {
         var id = Guid.NewGuid();
         var profile = hasProfile
@@ -136,25 +145,18 @@ public class UserSetMembershipCalculatorTests
                 lastName: "Rhoads")
             : null;
 
-        var participations = ticketYear.HasValue
-            ? new List<EventParticipation>
-            {
-                new()
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = id,
-                    Year = ticketYear.Value,
-                    Status = ParticipationStatus.Ticketed,
-                    Source = ParticipationSource.AdminBackfill,
-                },
-            }
-            : [];
+        if (ticketYear.HasValue)
+        {
+            _ticketRows.Add(new EventParticipationInfo(
+                id, ticketYear.Value, ParticipationStatus.Ticketed, ParticipationSource.AdminBackfill, null, null));
+        }
 
-        IReadOnlyList<CommunicationPreferenceInfo> communicationPreferences = marketingOptedOut.HasValue
-            ? [UserFixtures.Preference(
-                category: MessageCategory.Marketing,
-                optedOut: marketingOptedOut.Value)]
-            : [];
+        if (marketingOptedOut.HasValue)
+        {
+            _marketing[id] = new CommunicationPreferenceSnapshot(
+                MessageCategory.Marketing, marketingOptedOut.Value, InboxEnabled: true, "Test",
+                Instant.FromUtc(2026, 1, 1, 0, 0));
+        }
 
         return UserInfo.Create(
             user: new User
@@ -165,9 +167,9 @@ public class UserSetMembershipCalculatorTests
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             },
             userEmails: [],
-            eventParticipations: participations,
+            eventParticipations: [],
             externalLogins: [],
             profile: profile,
-            communicationPreferences: communicationPreferences);
+            communicationPreferences: []);
     }
 }

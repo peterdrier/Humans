@@ -23,6 +23,7 @@ public class MembershipPartitionTests
     private readonly Dictionary<Guid, ProfileInfo> _profilesByUserId = new();
     private readonly Dictionary<Guid, List<RequiredDocumentVersionSnapshot>> _requiredVersionsByTeam = new();
     private readonly Dictionary<Guid, HashSet<Guid>> _consentedVersionsByUser = new();
+    private readonly Dictionary<Guid, ConsentReviewInfo> _reviews = [];
 
     public MembershipPartitionTests()
     {
@@ -61,6 +62,10 @@ public class MembershipPartitionTests
                 return Task.FromResult<IReadOnlyList<RequiredDocumentVersionSnapshot>>(versions);
             });
 
+        _consentService.GetConsentReviewAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ci => _reviews.GetValueOrDefault(ci.Arg<Guid>()) ?? ConsentReviewInfo.None(ci.Arg<Guid>()));
+        _consentService.GetConsentReviewsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => (IReadOnlyDictionary<Guid, ConsentReviewInfo>)new Dictionary<Guid, ConsentReviewInfo>(_reviews));
         _consentService.GetConsentMapForUsersAsync(
             Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
@@ -268,8 +273,12 @@ public class MembershipPartitionTests
             burnerName: "Tester",
             firstName: "Test",
             lastName: "User",
-            isApproved: isApproved,
             createdAt: _clock.GetCurrentInstant());
+        _reviews[userId] = ConsentReviewInfo.None(userId) with
+        {
+            Status = isApproved ? ConsentCheckStatus.Cleared : null,
+            IsApproved = isApproved,
+        };
         var user = _usersById[userId];
         user.State = isSuspended
             ? UserState.Suspended

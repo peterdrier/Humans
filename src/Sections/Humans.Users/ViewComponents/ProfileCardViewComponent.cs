@@ -1,3 +1,5 @@
+using Humans.Email.Contracts;
+using Humans.Consent.Contracts;
 using Humans.Users.Controllers;
 using Humans.Users.Models;
 using Humans.Base.Helpers;
@@ -21,7 +23,8 @@ public sealed class ProfileCardViewComponent(
     ITeamService teamService,
     IRoleAssignmentService roleAssignmentService,
     IMembershipCalculator membershipCalculator,
-    ICommunicationPreferenceService commPrefService) : ViewComponent
+    ICommunicationPreferenceService commPrefService,
+    IConsentService consentService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
     {
@@ -86,6 +89,7 @@ public sealed class ProfileCardViewComponent(
             .ToList();
 
         var membershipSnapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId, ct);
+        var review = await consentService.GetConsentReviewAsync(userId, ct);
 
         var hasCustomPicture = profile?.HasCustomPicture == true;
         var pictureUrl = hasCustomPicture
@@ -102,7 +106,7 @@ public sealed class ProfileCardViewComponent(
             BurnerName = profile?.BurnerName ?? string.Empty,
             Pronouns = profile?.Pronouns,
             MembershipStatus = membershipSnapshot.Status,
-            IsApproved = profile?.IsApproved ?? false,
+            IsApproved = profile is not null && review.IsApproved,
             City = profile?.City,
             CountryCode = profile?.CountryCode,
             BirthdayMonth = profile?.BirthdayMonth,

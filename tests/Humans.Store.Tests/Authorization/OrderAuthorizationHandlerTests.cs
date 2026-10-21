@@ -192,6 +192,55 @@ public class OrderAuthorizationHandlerTests
     public Task CampLead_can_pay_own_camp_order() =>
         AssertLeadOperation(OrderOperationRequirement.Pay, expectAllowed: true);
 
+    [HumansTheory]
+    [MemberData(nameof(LeadOperations))]
+    public async Task Lead_of_another_camp_is_denied_every_operation_on_the_order(string operation)
+    {
+        var requirement = LeadOperationsByName[operation];
+        var order = MakeOrder(team: false);
+        var seasonId = order.CampSeasonId!.Value;
+        var otherCampsLead = Guid.NewGuid();
+        var camp = MakeCampInfo(Guid.NewGuid(), seasonId, leadUserId: otherCampsLead);
+        _campService.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>())
+            .Returns(camp.Seasons[0]);
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([camp]);
+
+        var context = new AuthorizationHandlerContext([requirement], Principal(role: null, Guid.NewGuid()), order);
+
+        await _handler.HandleAsync(context);
+
+        Assert.False(context.HasSucceeded);
+    }
+
+    private static readonly Dictionary<string, OrderOperationRequirement> LeadOperationsByName = new(StringComparer.Ordinal)
+    {
+        [nameof(OrderOperationRequirement.View)] = OrderOperationRequirement.View,
+        [nameof(OrderOperationRequirement.AddLine)] = OrderOperationRequirement.AddLine,
+        [nameof(OrderOperationRequirement.RemoveLine)] = OrderOperationRequirement.RemoveLine,
+        [nameof(OrderOperationRequirement.EditCounterparty)] = OrderOperationRequirement.EditCounterparty,
+        [nameof(OrderOperationRequirement.Pay)] = OrderOperationRequirement.Pay,
+    };
+
+    public static TheoryData<string> LeadOperations => new(LeadOperationsByName.Keys);
+
+    [HumansTheory]
+    [InlineData(nameof(OrderOperationRequirement.AddLine))]
+    [InlineData(nameof(OrderOperationRequirement.RemoveLine))]
+    [InlineData(nameof(OrderOperationRequirement.EditCounterparty))]
+    public Task CampLead_cannot_change_an_issued_camp_order(string operation) =>
+        AssertLeadOperation(LeadOperationsByName[operation], expectAllowed: false, OrderState.InvoiceIssued);
+
+    [HumansFact]
+    public Task CampLead_can_still_pay_an_issued_camp_order() =>
+        AssertLeadOperation(OrderOperationRequirement.Pay, expectAllowed: true, OrderState.InvoiceIssued);
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task TeamsAdmin_cannot_issue_an_invoice(bool teamOrder) =>
+        AssertOutcome(RoleNames.TeamsAdmin, MakeOrder(teamOrder), OrderOperationRequirement.IssueInvoice, expectAllowed: false);
+
     private async Task AssertOutcome(
         string role,
         object resource,
@@ -227,10 +276,11 @@ public class OrderAuthorizationHandlerTests
         Assert.Equal(expectAllowed, context.HasSucceeded);
     }
 
-    private async Task AssertLeadOperation(OrderOperationRequirement requirement, bool expectAllowed)
+    private async Task AssertLeadOperation(
+        OrderOperationRequirement requirement, bool expectAllowed, OrderState state = OrderState.Open)
     {
         var userId = Guid.NewGuid();
-        var order = MakeOrder(team: false);
+        var order = MakeOrder(team: false, state);
         var seasonId = order.CampSeasonId!.Value;
         var camp = MakeCampInfo(Guid.NewGuid(), seasonId, userId);
         _campService.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>())

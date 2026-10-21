@@ -34,8 +34,8 @@ internal sealed class UserService(
     internal const string UserEmails = "UserEmails";
     internal const string VolunteerHistory = "VolunteerHistory";
     internal const string Languages = "Languages";
-    internal const string CommunicationPreferences = "CommunicationPreferences";
-    internal const string EventParticipations = "EventParticipations";
+    internal const string LegacyCommunicationPreferences = "LegacyCommunicationPreferences";
+    internal const string LegacyEventParticipations = "LegacyEventParticipations";
 
     private static readonly TrackedLock EmailAdditionLock = new("UserService.EmailAddition");
 
@@ -228,36 +228,6 @@ internal sealed class UserService(
 
     // --- User writes ---
 
-    public async Task<bool> TrySetGoogleEmailStatusFromSyncAsync(
-        Guid userId, GoogleEmailStatus status, CancellationToken ct = default, Guid? googleEmailId = null)
-    {
-        // Vendor results belong to the row that was attempted, even if the user switched
-        // Google address while the request ran. Legacy callers may still select the current
-        // verified Google/OAuth address by omitting the row id.
-        var emails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
-        var googleRow = googleEmailId is { } targetId
-            ? emails.FirstOrDefault(e => e.Id == targetId && e.IsVerified)
-            : emails.FirstOrDefault(e => e.IsVerified && e.IsGoogle)
-                ?? emails.Where(e => e.IsVerified && e.Provider != null)
-                    .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
-        if (googleRow is null)
-            return false;
-
-        // Rejected is terminal for a given address: a later successful sync MUST NOT silently flip
-        // it back to Valid. The user clears it by selecting a different Google email, which lands on
-        // a different row that starts Unknown — so the rejection never strands sync again.
-        if (status == GoogleEmailStatus.Valid && googleRow.GoogleEmailStatus == GoogleEmailStatus.Rejected)
-            return false;
-
-        if (googleRow.GoogleEmailStatus == status)
-            return false;
-
-        googleRow.GoogleEmailStatus = status;
-        googleRow.UpdatedAt = clock.GetCurrentInstant();
-        await repo.UpdateUserEmailAsync(googleRow, ct);
-        return true;
-    }
-
     public async Task SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default)
     {
         await repo.SetPreferredLanguageAsync(userId, preferredLanguage, ct);
@@ -345,91 +315,26 @@ internal sealed class UserService(
         return true;
     }
 
-    public async Task<bool> SetMembershipTierAsync(
-        Guid userId,
-        MembershipTier tier,
-        CancellationToken ct = default)
+    public async Task<OnboardingResult> SetSuspensionAsync(
+        Guid userId, bool suspended, bool adminSuspension = false, CancellationToken ct = default)
     {
-        var profile = await repo.GetByUserIdAsync(userId, ct);
-        if (profile is null)
-        {
-            logger.LogWarning(
-                "Cannot set membership tier for user {UserId} - no profile exists", userId);
-            return false;
-        }
-
-        profile.MembershipTier = tier;
-        profile.UpdatedAt = clock.GetCurrentInstant();
-        await repo.UpdateAsync(profile, ct);
-        return true;
-    }
-
-    public async Task<OnboardingResult> ApplyProfileOnboardingMutationAsync(
-        Guid userId,
-        UserProfileOnboardingCommand command,
-        CancellationToken ct = default)
-    {
-        switch (command.Mutation)
-        {
-            case UserProfileOnboardingMutation.RecordConsentCheck
-                when command.ConsentCheckStatus is not ConsentCheckStatus.Cleared and not ConsentCheckStatus.Flagged:
-                throw new ArgumentException(
-                    "RecordConsentCheck only accepts Cleared or Flagged; use SetConsentCheckPending for the system-driven Pending transition.",
-                    nameof(command));
-
-            case UserProfileOnboardingMutation.SetSuspension when command.Suspended is null:
-                throw new ArgumentException("SetSuspension requires Suspended.", nameof(command));
-        }
-
-        var profile = await repo.GetByUserIdAsync(userId, ct);
-        if (profile is null)
+        if (await repo.GetByUserIdAsync(userId, ct) is null)
             return new OnboardingResult(false, "NotFound");
 
-        var now = clock.GetCurrentInstant();
-        switch (command.Mutation)
-        {
-            case UserProfileOnboardingMutation.RecordConsentCheck:
-                if (command.ConsentCheckStatus == ConsentCheckStatus.Cleared && profile.RejectedAt is not null)
-                    return new OnboardingResult(false, "AlreadyRejected");
-                var cleared = command.ConsentCheckStatus == ConsentCheckStatus.Cleared;
-                profile.ConsentCheckStatus = command.ConsentCheckStatus;
-                profile.ConsentCheckAt = now;
-                profile.ConsentCheckedByUserId = command.ActorUserId;
-                profile.ConsentCheckNotes = command.Notes;
-                profile.IsApproved = cleared;
-                profile.UpdatedAt = now;
-                break;
+        // Nothing on the profile: suspension is users.State alone. The reason goes to the audit
+        // log and the notification via HumanLifecycleService, not onto the row.
+        await repo.SetSuspensionAsync(userId, suspended, adminSuspension, ct);
+        InvalidateClaims(userId);
+        return new OnboardingResult(true);
+    }
 
-            case UserProfileOnboardingMutation.RejectSignup:
-                if (profile.RejectedAt is not null)
-                    return new OnboardingResult(false, "AlreadyRejected");
-                profile.RejectionReason = command.RejectionReason;
-                profile.RejectedAt = now;
-                profile.RejectedByUserId = command.ActorUserId;
-                profile.IsApproved = false;
-                profile.UpdatedAt = now;
-                break;
+    public async Task<OnboardingResult> SetRejectedAsync(Guid userId, CancellationToken ct = default)
+    {
+        if (await repo.GetByUserIdAsync(userId, ct) is null)
+            return new OnboardingResult(false, "NotFound");
 
-            case UserProfileOnboardingMutation.SetSuspension:
-                // Nothing on the profile: suspension is users.State alone. command.Notes goes to
-                // the audit log and the notification via HumanLifecycleService, not onto the row.
-                break;
-
-            case UserProfileOnboardingMutation.SetConsentCheckPending:
-                profile.ConsentCheckStatus = ConsentCheckStatus.Pending;
-                profile.UpdatedAt = now;
-                break;
-
-            default:
-                throw new ArgumentOutOfRangeException(nameof(command), command.Mutation, "Unknown profile onboarding mutation.");
-        }
-
-        if (command.Mutation == UserProfileOnboardingMutation.SetSuspension)
-            await repo.SetSuspensionAsync(
-                userId, command.Suspended!.Value, command.AdminSuspension, ct);
-        else
-            await repo.UpdateAsync(profile, ct);
-
+        // users.State alone: the reason, time and reviewer are Consent's review.
+        await repo.SetRejectedAsync(userId, ct);
         InvalidateClaims(userId);
         return new OnboardingResult(true);
     }
@@ -477,16 +382,6 @@ internal sealed class UserService(
         profile.EmergencyContactPhone = command.EmergencyContactPhone;
         profile.EmergencyContactRelationship = command.EmergencyContactRelationship;
         profile.NoPriorBurnExperience = command.NoPriorBurnExperience;
-
-        // Edit page owns meal preference + allergies (not intolerances/medical —
-        // those are written via SaveDietaryMedicalAsync). Only touch these when
-        // the command carries them, so a non-dietary save path can't clobber.
-        if (command.DietaryPreference is not null || command.Allergies is not null || command.AllergyOtherText is not null)
-        {
-            profile.DietaryPreference = string.IsNullOrWhiteSpace(command.DietaryPreference) ? null : command.DietaryPreference;
-            profile.Allergies = command.Allergies ?? [];
-            profile.AllergyOtherText = command.AllergyOtherText;
-        }
 
         profile.UpdatedAt = now;
 
@@ -602,9 +497,9 @@ internal sealed class UserService(
         }
     }
 
-    public async Task SaveDietaryMedicalAsync(
+    public async Task SaveMedicalConditionsAsync(
         Guid userId,
-        UserProfileDietaryMedicalCommand command,
+        string? medicalConditions,
         CancellationToken ct = default)
     {
         using var _ = await ProfileStubLockFor(userId).AcquireAsync(logger, ct);
@@ -623,12 +518,7 @@ internal sealed class UserService(
             await repo.AddAsync(profile, ct);
         }
 
-        profile.DietaryPreference = command.DietaryPreference;
-        profile.Allergies = command.Allergies;
-        profile.AllergyOtherText = command.AllergyOtherText;
-        profile.Intolerances = command.Intolerances;
-        profile.IntoleranceOtherText = command.IntoleranceOtherText;
-        profile.MedicalConditions = command.MedicalConditions;
+        profile.MedicalConditions = medicalConditions;
         profile.UpdatedAt = now;
 
         await repo.UpdateAsync(profile, ct);
@@ -671,32 +561,10 @@ internal sealed class UserService(
             ownerUserId);
     }
 
-    public async Task<bool> SetProfileIbanAsync(Guid userId, string? iban, CancellationToken ct = default)
-    {
-        var profile = await repo.GetByUserIdAsync(userId, ct);
-        if (profile is null)
-            return false;
-
-        profile.Iban = string.IsNullOrWhiteSpace(iban) ? null : IbanValidator.Normalize(iban);
-        profile.UpdatedAt = clock.GetCurrentInstant();
-        await repo.UpdateAsync(profile, ct);
-        return true;
-    }
-
     public Task<IReadOnlySet<Guid>> SuspendProfilesForMissingConsentAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken ct = default) =>
         repo.SuspendManyAsync(userIds, ct);
-
-    public Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>>
-        DowngradeMembershipTierForExpiredAsync(
-            MembershipTier currentTier,
-            IReadOnlyCollection<Guid> userIdsToKeep,
-            IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
-            Instant now,
-            CancellationToken ct = default) =>
-        repo.DowngradeTierForExpiredAsync(
-            currentTier, userIdsToKeep, fallbackTierByUser, now, ct);
 
     public async Task<UserEmailAddResult> AddUserEmailAsync(
         Guid userId,
@@ -736,7 +604,6 @@ internal sealed class UserService(
             Email = email,
             IsVerified = command.IsVerified,
             IsPrimary = false,
-            IsGoogle = false,
             Visibility = command.Visibility,
             Provider = command.Provider,
             ProviderKey = command.ProviderKey,
@@ -748,7 +615,6 @@ internal sealed class UserService(
         await repo.AddUserEmailAsync(row, ct);
         // The row has committed; finish its required invariant repairs after a browser disconnect.
         await EnsurePrimaryInvariantAsync(row.UserId, CancellationToken.None);
-        await EnsureGoogleInvariantAsync(row.UserId, CancellationToken.None);
         return new UserEmailAddResult(row.Id, Added: true, isConflict);
     }
 
@@ -771,9 +637,9 @@ internal sealed class UserService(
             email.IsVerified = true;
             email.UpdatedAt = clock.GetCurrentInstant();
             await repo.UpdateUserEmailAsync(email, ct);
-            // Verification has committed; primary / Google repair is part of completing it.
+            // Verification has committed; primary repair is part of completing it. The Google
+            // identity is resolved on read by GoogleIntegration (Users decomposition commit 15).
             await EnsurePrimaryInvariantAsync(userId, CancellationToken.None);
-            await EnsureGoogleInvariantAsync(userId, CancellationToken.None);
             changed = true;
         }
 
@@ -786,18 +652,6 @@ internal sealed class UserService(
         else if (command.Primary == UserEmailPrimaryChange.ClearDuplicatePrimary)
         {
             changed |= await ClearDuplicatePrimaryAsync(userId, emailId, ct);
-        }
-
-        if (command.Google == UserEmailGoogleChange.MakeGoogle)
-        {
-            var row = await repo.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct);
-            if (row is null || !row.IsVerified) return new UpdateEmailResult(false);
-            await repo.SetUserEmailGoogleExclusiveAsync(userId, emailId, clock.GetCurrentInstant(), ct);
-            changed = true;
-        }
-        else if (command.Google == UserEmailGoogleChange.ClearDuplicateGoogle)
-        {
-            changed |= await ClearDuplicateGoogleAsync(userId, emailId, ct);
         }
 
         if (command.ChangeVisibility)
@@ -847,7 +701,6 @@ internal sealed class UserService(
         {
             // Removal has committed; leave the remaining verified addresses usable.
             await EnsurePrimaryInvariantAsync(userId, CancellationToken.None);
-            await EnsureGoogleInvariantAsync(userId, CancellationToken.None);
         }
 
         return true;
@@ -877,7 +730,6 @@ internal sealed class UserService(
         foreach (var mutatedUserId in mutatedUserIds)
         {
             await EnsurePrimaryInvariantAsync(mutatedUserId, ct);
-            await EnsureGoogleInvariantAsync(mutatedUserId, ct);
         }
 
         return new UserEmailReconcilePlanResult(mutatedUserIds);
@@ -886,99 +738,6 @@ internal sealed class UserService(
     public Task SetLastConsentReminderSentAsync(
         Guid userId, Instant sentAt, CancellationToken ct = default) =>
         repo.SetLastConsentReminderSentAsync(userId, sentAt, ct);
-
-    // --- EventParticipation reads ---
-
-    public Task<IReadOnlyList<UserParticipationRow>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default) =>
-        throw new NotSupportedException(
-            "GetAllParticipationsForYearAsync is only meaningful through CachingUserService — " +
-            "projects the year's participations from the cached UserInfo snapshot. If this is " +
-            "being called on the inner UserService it indicates a DI registration mistake.");
-
-    // --- EventParticipation writes ---
-
-    public async Task DeclareNotAttendingAsync(Guid userId, int year, CancellationToken ct = default)
-    {
-        var now = clock.GetCurrentInstant();
-        var persisted = await repo.UpsertParticipationAsync(
-            userId, year, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared,
-            declaredAt: now, checkedInAt: null, ct);
-
-        if (persisted is null)
-        {
-            // Blocked by Attended.
-            logger.LogWarning(
-                "Cannot declare NotAttending for user {UserId} year {Year} — already Attended",
-                userId, year);
-            return;
-        }
-
-        logger.LogInformation(
-            "User {UserId} declared NotAttending for year {Year}",
-            userId, year);
-    }
-
-    public async Task<bool> UndoNotAttendingAsync(Guid userId, int year, CancellationToken ct = default)
-    {
-        var existing = await repo.GetParticipationAsync(userId, year, ct);
-        if (existing is null)
-            return false;
-
-        if (existing.Status != ParticipationStatus.NotAttending ||
-            existing.Source != ParticipationSource.UserDeclared)
-        {
-            logger.LogWarning(
-                "Cannot undo NotAttending for user {UserId} year {Year} — status is {Status} from {Source}",
-                userId, year, existing.Status, existing.Source);
-            return false;
-        }
-
-        var removed = await repo.RemoveParticipationAsync(
-            userId, year, ParticipationSource.UserDeclared, ct);
-
-        if (removed)
-        {
-            logger.LogInformation(
-                "User {UserId} undid NotAttending declaration for year {Year}",
-                userId, year);
-        }
-
-        return removed;
-    }
-
-    public Task SetParticipationFromTicketSyncAsync(
-        Guid userId, int year, ParticipationStatus status, Instant? checkedInAt, CancellationToken ct = default) =>
-        // Attended-is-permanent, source-override and CheckedInAt-never-overwrite
-        // semantics live in repo upsert.
-        repo.UpsertParticipationAsync(
-            userId, year, status, ParticipationSource.TicketSync,
-            declaredAt: null, checkedInAt: checkedInAt, ct);
-
-    public Task<IReadOnlyList<OnsiteUserRow>> GetOnsiteUsersAsync(int year, CancellationToken ct = default) =>
-        throw new NotSupportedException(
-            "GetOnsiteUsersAsync is only meaningful through CachingUserService — it projects " +
-            "Attended+CheckedInAt rows from the cached UserInfo snapshot. Hitting the inner " +
-            "UserService indicates a DI registration mistake.");
-
-    public Task RemoveTicketSyncParticipationAsync(Guid userId, int year, CancellationToken ct = default) =>
-        repo.RemoveParticipationAsync(userId, year, ParticipationSource.TicketSync, ct);
-
-    public async Task<int> BackfillParticipationsAsync(
-        int year,
-        List<(Guid UserId, ParticipationStatus Status)> entries,
-        Guid actorUserId,
-        CancellationToken ct = default)
-    {
-        var changed = await repo.BackfillParticipationsAsync(year, entries, ct);
-        foreach (var (userId, status) in changed)
-            await audit.LogAsync(AuditAction.ParticipationBackfilled, nameof(User), userId,
-                $"Recorded {status} participation for {year} from admin backfill.", actorUserId);
-        var count = changed.Count;
-        logger.LogInformation(
-            "Backfilled {Count} participation records for year {Year}",
-            count, year);
-        return count;
-    }
 
     // --- IUserDataContributor — GDPR export ---
 
@@ -1001,17 +760,21 @@ internal sealed class UserService(
         }
         userId = user.Id;
 
-        // see nobodies-collective/Humans#687 — User.GoogleEmail deprecated, not exported.
+        // The Google Workspace identity is exported by GoogleIntegration's WorkspaceIdentity slice
+        // (Users decomposition commit 15); the legacy per-row flags stay in the UserEmails slice.
         var userEmails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
-        var googleEmail = userEmails
-            .Where(e => e.IsVerified && e.IsGoogle)
-            .Select(e => e.Email)
-            .FirstOrDefault();
         var effectiveEmail = userEmails
             .Where(e => e.IsVerified)
             .OrderByDescending(e => e.IsPrimary)
             .Select(e => e.Email)
             .FirstOrDefault() ?? user.IdentityEmailColumn;
+
+        // The two dead legacy flags stay in the Art. 15 export while the columns exist (debt ledger
+        // USERS-12/13 remove these lines with the drop). Scoped suppression: this is their only reader.
+#pragma warning disable CS0618
+        var unsubscribedFromCampaigns = user.UnsubscribedFromCampaigns;
+        var suppressScheduleChangeEmails = user.SuppressScheduleChangeEmails;
+#pragma warning restore CS0618
 
         var shaped = new
         {
@@ -1019,9 +782,8 @@ internal sealed class UserService(
             Email = effectiveEmail,
             user.DisplayName,
             user.PreferredLanguage,
-            GoogleEmail = googleEmail,
-            user.UnsubscribedFromCampaigns,
-            user.SuppressScheduleChangeEmails,
+            UnsubscribedFromCampaigns = unsubscribedFromCampaigns,
+            SuppressScheduleChangeEmails = suppressScheduleChangeEmails,
             ContactSource = user.ContactSource?.ToString(),
             State = user.State.ToString(),
             DeletionRequestedAt = user.DeletionRequestedAt.ToIso8601(),
@@ -1030,18 +792,6 @@ internal sealed class UserService(
             CreatedAt = user.CreatedAt.ToIso8601(),
             LastLoginAt = user.LastLoginAt.ToIso8601()
         };
-
-        var participations = await repo.GetEventParticipationsByUserIdAsync(userId, ct);
-        var participationsShaped = participations
-            .Select(ep => new
-            {
-                ep.Year,
-                Status = ep.Status.ToString(),
-                Source = ep.Source.ToString(),
-                DeclaredAt = ep.DeclaredAt.ToIso8601(),
-                CheckedInAt = ep.CheckedInAt.ToIso8601()
-            })
-            .ToList();
 
         var profile = await repo.GetByUserIdReadOnlyAsync(userId, ct);
 
@@ -1081,6 +831,23 @@ internal sealed class UserService(
             }
         }
         mergedIds.Remove(userId);
+
+        // The frozen legacy table (Users decomposition commit 13; Tickets exports the live
+        // participation). Rows stay keyed to archived ids since merges stopped folding this table.
+        var participationsByUser = await repo.GetEventParticipationsByUserIdsAsync([userId, .. mergedIds], ct);
+        var participationsShaped = participationsByUser.Values
+            .SelectMany(rows => rows)
+            .OrderBy(ep => ep.Year)
+            .Select(ep => new
+            {
+                ep.UserId,
+                ep.Year,
+                Status = ep.Status.ToString(),
+                Source = ep.Source.ToString(),
+                DeclaredAt = ep.DeclaredAt.ToIso8601(),
+                CheckedInAt = ep.CheckedInAt.ToIso8601()
+            })
+            .ToList();
         var mergedProfiles = mergedIds.Count == 0 ? [] : await repo.GetAllProfilesAsync(ct);
         var mergedProfileSlice = new UserDataSlice(MergedProfiles, mergedProfiles
             .Where(p => mergedIds.Contains(p.UserId))
@@ -1128,7 +895,7 @@ internal sealed class UserService(
             pl.Proficiency
         }).ToList());
 
-        var commPrefsSlice = new UserDataSlice(CommunicationPreferences, communicationPreferences.Select(cp => new
+        var commPrefsSlice = new UserDataSlice(LegacyCommunicationPreferences, communicationPreferences.Select(cp => new
         {
             cp.Category,
             cp.OptedOut,
@@ -1141,7 +908,7 @@ internal sealed class UserService(
         return
         [
             new UserDataSlice(Account, shaped),
-            new UserDataSlice(EventParticipations, participationsShaped),
+            new UserDataSlice(LegacyEventParticipations, participationsShaped),
             profileSlice,
             mergedProfileSlice,
             contactFieldSlice,
@@ -1169,6 +936,8 @@ internal sealed class UserService(
             profile.Pronouns,
             profile.ContributionInterests,
             profile.BoardNotes,
+            // Frozen legacy column, still held here until the governance.profile-tier retirement drops
+            // it; the live tier is Governance's MembershipTier slice (Users decomposition commit 11).
             profile.MembershipTier,
             profile.IsApproved,
             // JSON key pinned per memory/code/no-rename-serialized-fields.md (GDPR export stability).
@@ -1182,8 +951,9 @@ internal sealed class UserService(
             profile.EmergencyContactName,
             profile.EmergencyContactPhone,
             profile.EmergencyContactRelationship,
-            // Dietary + medical (moved here from VolunteerEventProfile). Included in
-            // the data-subject export — this is the owner's own export of their data.
+            // Legacy food columns: still held here (incl. archived merge rows) until the
+            // cantina.profile-dietary retirement drops them, so they stay in the export. The live
+            // answers are Cantina's DietaryProfile slice (Users decomposition commit 10).
             profile.DietaryPreference,
             profile.Allergies,
             profile.AllergyOtherText,
@@ -1206,7 +976,7 @@ internal sealed class UserService(
                 "section's user-id reference stays resolvable and the erasure itself remains " +
                 "provable — GDPR Art. 5(2) accountability. Every identity field on it is " +
                 "overwritten and the account is locked out permanently.",
-            [EventParticipations] =
+            [LegacyEventParticipations] =
                 "Retained: the year and status of each participation, keyed to the tombstoned " +
                 "user id, is the association's register of who was a member in which year — " +
                 "Ley Orgánica 1/2002 Art. 14, GDPR Art. 17(3)(b). It carries no identity fields.",
@@ -1216,7 +986,7 @@ internal sealed class UserService(
             [UserEmails] = null,
             [VolunteerHistory] = null,
             [Languages] = null,
-            [CommunicationPreferences] = null
+            [LegacyCommunicationPreferences] = null
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
@@ -1296,20 +1066,6 @@ internal sealed class UserService(
         return true;
     }
 
-    private async Task<bool> ClearDuplicateGoogleAsync(Guid userId, Guid emailId, CancellationToken ct)
-    {
-        var row = await repo.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct);
-        if (row is null || !row.IsGoogle) return false;
-
-        var allEmails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
-        if (allEmails.Count(e => e.IsGoogle) <= 1) return false;
-
-        row.IsGoogle = false;
-        row.UpdatedAt = clock.GetCurrentInstant();
-        await repo.UpdateUserEmailAsync(row, ct);
-        return true;
-    }
-
     private async Task EnsurePrimaryInvariantAsync(Guid userId, CancellationToken ct)
     {
         var emails = (await repo.GetUserEmailsByUserIdForMutationAsync(userId, ct)).ToList();
@@ -1344,40 +1100,6 @@ internal sealed class UserService(
             await repo.UpdateUserEmailsAsync(changed, ct);
     }
 
-    private async Task EnsureGoogleInvariantAsync(Guid userId, CancellationToken ct)
-    {
-        var emails = (await repo.GetUserEmailsByUserIdForMutationAsync(userId, ct)).ToList();
-        var verified = emails.Where(e => e.IsVerified).ToList();
-        if (verified.Count == 0)
-            return;
-
-        var currentGoogles = verified.Where(e => e.IsGoogle).ToList();
-
-        var winner =
-            verified.FirstOrDefault(e => e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
-            ?? currentGoogles.OrderBy(e => e.Id).FirstOrDefault()
-            ?? verified.OrderByDescending(e => e.UpdatedAt).ThenBy(e => e.Id).First();
-
-        if (currentGoogles.Count == 1 && currentGoogles[0].Id == winner.Id)
-            return;
-
-        var now = clock.GetCurrentInstant();
-        var changed = new List<UserEmail>();
-        foreach (var row in verified)
-        {
-            var shouldBeGoogle = row.Id == winner.Id;
-            if (row.IsGoogle != shouldBeGoogle)
-            {
-                row.IsGoogle = shouldBeGoogle;
-                row.UpdatedAt = now;
-                changed.Add(row);
-            }
-        }
-
-        if (changed.Count > 0)
-            await repo.UpdateUserEmailsAsync(changed, ct);
-    }
-
     // RoleAssignmentClaimsTransformation caches the UserState claim for 60s, so evict after
     // profile transitions that can change the stored state (e.g. Bare after a name submit).
     private void InvalidateClaims(Guid userId) => roleAssignmentClaimsInvalidator.Invalidate(userId);
@@ -1397,7 +1119,6 @@ internal sealed class UserService(
         // `actorUserId` unused — kept for IUserMerge contract.
         _ = actorUserId;
         await repo.ReassignLoginsToUserAsync(mergedFromUserId, mergedToUserId, ct);
-        await repo.ReassignEventParticipationToUserAsync(mergedFromUserId, mergedToUserId, ct);
         var previousPicture = await repo.ReassignSubAggregatesToUserAsync(mergedFromUserId, mergedToUserId, now, ct);
         if (previousPicture is { } picture &&
             ProfilePictureKeys.Resolve(picture.ProfileId, picture.ContentType, picture.StorageKey) is { } key)

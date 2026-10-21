@@ -1,3 +1,5 @@
+using Humans.Users.Tests.Infrastructure;
+using Humans.Consent.Contracts;
 using Humans.Users.Services;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -43,6 +45,7 @@ public class ProfileApiControllerTests
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly IContactFieldService _contactFieldService = Substitute.For<IContactFieldService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
+    private readonly Dictionary<Guid, ConsentReviewInfo> _reviews = [];
     private readonly UserManager<User> _userManager;
 
     public ProfileApiControllerTests()
@@ -62,7 +65,7 @@ public class ProfileApiControllerTests
         }
 
         var ctrl = new ProfileApiController(
-            _userService, _contactFieldService, _userEmailService);
+            _userService, ConsentReviewStubs.Create(_reviews), _contactFieldService, _userEmailService);
 
         var http = new DefaultHttpContext();
         if (currentUser is not null)
@@ -235,10 +238,10 @@ public class ProfileApiControllerTests
                 ContactFieldVisibility.AllActiveProfiles, Arg.Any<CancellationToken>())
             .Returns([
                 new UserEmailDto(Guid.NewGuid(), "alt@example.com",
-                    IsVerified: true, IsGoogle: false, Provider: null, ProviderKey: null,
+                    IsVerified: true, Provider: null, ProviderKey: null,
                     IsPrimary: false, Visibility: ContactFieldVisibility.AllActiveProfiles),
                 new UserEmailDto(Guid.NewGuid(), "primary@example.com",
-                    IsVerified: true, IsGoogle: false, Provider: null, ProviderKey: null,
+                    IsVerified: true, Provider: null, ProviderKey: null,
                     IsPrimary: true, Visibility: ContactFieldVisibility.AllActiveProfiles)
             ]);
 
@@ -477,6 +480,7 @@ public class ProfileApiControllerTests
 
         _userService.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(targetUserId, targetProfileId, isRejected: true)));
+        _reviews[targetUserId] = ConsentReviewStubs.Rejected(targetUserId);
 
         var sut = BuildSut(viewer);
 
@@ -499,7 +503,7 @@ public class ProfileApiControllerTests
         _userEmailService.GetVisibleEmailsAsync(targetUserId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
             .Returns([
                 new UserEmailDto(Guid.NewGuid(), "shared@example.com",
-                    IsVerified: true, IsGoogle: false, Provider: null, ProviderKey: null,
+                    IsVerified: true, Provider: null, ProviderKey: null,
                     IsPrimary: true, Visibility: ContactFieldVisibility.AllActiveProfiles)
             ]);
 

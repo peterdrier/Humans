@@ -55,13 +55,6 @@ internal sealed class ProfileEditorService(
     // Cross-field invariants enforced server-side regardless of caller (P1/P2).
     private static string? ValidateSaveRequest(ProfileSaveRequest request)
     {
-        if (request.Allergies is not null
-            && request.Allergies.Contains(DietaryOptions.OtherOption, StringComparer.Ordinal)
-            && string.IsNullOrWhiteSpace(request.AllergyOtherText))
-        {
-            return "Profile_DietaryMedical_AllergyOther_Required";
-        }
-
         // Burner CV completeness: entries OR "no prior experience". Only checked
         // when the request carries a CV payload — name-only saves leave history
         // untouched and must not be blocked.
@@ -103,36 +96,6 @@ internal sealed class ProfileEditorService(
             EmergencyContactRelationship: request.EmergencyContactRelationship,
             NoPriorBurnExperience: request.NoPriorBurnExperience,
             PictureMutation: pictureMutation,
-            ProfilePictureContentType: request.ProfilePictureContentType,
-            DietaryPreference: request.DietaryPreference,
-            Allergies: request.Allergies,
-            AllergyOtherText: request.AllergyOtherText);
-    }
-
-    public async Task<ProfileEditResult> SaveDietaryMedicalAsync(
-        Guid userId,
-        UserProfileDietaryMedicalCommand command,
-        CancellationToken ct = default)
-    {
-        // "Other" requires accompanying free text, as on the full profile form.
-        string? errorKey = null;
-        if (command.Allergies.Contains(DietaryOptions.OtherOption, StringComparer.Ordinal)
-            && string.IsNullOrWhiteSpace(command.AllergyOtherText))
-        {
-            errorKey = "Profile_DietaryMedical_AllergyOther_Required";
-        }
-        else if (command.Intolerances.Contains(DietaryOptions.OtherOption, StringComparer.Ordinal)
-                 && string.IsNullOrWhiteSpace(command.IntoleranceOtherText))
-        {
-            errorKey = "Profile_DietaryMedical_IntoleranceOther_Required";
-        }
-        if (errorKey is not null)
-        {
-            logger.LogWarning("Dietary/medical save refused for {UserId}: {ErrorKey}", userId, errorKey);
-            return new(false, ErrorKey: errorKey);
-        }
-
-        await userService.SaveDietaryMedicalAsync(userId, command, ct);
-        return new(true);
+            ProfilePictureContentType: request.ProfilePictureContentType);
     }
 }

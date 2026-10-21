@@ -18,6 +18,12 @@ derive at any clock instant without a query. Invalidation is service-level:
 the inner service's writes call `IRoleAssignmentCacheInvalidator.InvalidateAll()`
 directly (single writer, so no EF interceptor needed).
 
+### RoleAssignmentsController / RoleAssignmentsCardViewComponent
+
+No repository, no table. Both read `IRoleAssignmentService` and write only through
+`IRoleAssignmentWrite` (whose service writes the audit entries); display names come
+from `IUserService`.
+
 ### RoleAssignmentService (Scoped — wrapped by CachingRoleAssignmentService Singleton decorator)
 
 Repository: `IRoleAssignmentRepository`.

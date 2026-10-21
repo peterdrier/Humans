@@ -28,8 +28,8 @@ internal sealed class EmailProblemsListViewModel
         {
             switch (p.Kind)
             {
-                case EmailProblemKind.MultipleIsPrimary or EmailProblemKind.MultipleIsGoogle
-                    or EmailProblemKind.ZeroIsPrimary or EmailProblemKind.ZeroIsGoogle
+                case EmailProblemKind.MultipleIsPrimary
+                    or EmailProblemKind.ZeroIsPrimary
                     or EmailProblemKind.Unverified
                     when p.UserId is Guid u:
                     if (!singleUserMap.TryGetValue(u, out var list))
@@ -40,9 +40,7 @@ internal sealed class EmailProblemsListViewModel
                     list.Add(p.Kind switch
                     {
                         EmailProblemKind.MultipleIsPrimary => "multiple IsPrimary",
-                        EmailProblemKind.MultipleIsGoogle => "multiple IsGoogle",
                         EmailProblemKind.ZeroIsPrimary => "zero IsPrimary",
-                        EmailProblemKind.ZeroIsGoogle => "zero IsGoogle",
                         EmailProblemKind.Unverified => $"unverified: {p.Email}",
                         _ => p.Kind.ToString()
                     });

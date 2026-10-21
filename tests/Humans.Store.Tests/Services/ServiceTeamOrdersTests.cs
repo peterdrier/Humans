@@ -242,7 +242,7 @@ public class ServiceTeamOrdersTests
             });
         var orderId = Guid.NewGuid();
         var productId = Guid.NewGuid();
-        _repo.GetOrdersForTeamsWithLinesAsync(
+        _repo.GetOrdersForTeamsWithLinesAndPaymentsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { deptId })),
                 2026, Arg.Any<CancellationToken>())
             .Returns([new Order
@@ -326,7 +326,7 @@ public class ServiceTeamOrdersTests
                 UnitPriceEur = 10m, VatRatePercent = 0m,
                 OrderableUntil = new LocalDate(2026,12,31), IsActive = true }
         ]);
-        _repo.GetOrdersForTeamsWithLinesAsync(
+        _repo.GetOrdersForTeamsWithLinesAndPaymentsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(deptId)),
                 2026, Arg.Any<CancellationToken>())
             .Returns([new Order {

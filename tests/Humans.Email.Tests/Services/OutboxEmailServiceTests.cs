@@ -52,7 +52,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     private readonly OutboxEmailService _service;
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
     private readonly IImmediateOutboxProcessor _immediate = Substitute.For<IImmediateOutboxProcessor>();
-    private readonly ICommunicationPreferenceService _commPrefService = Substitute.For<ICommunicationPreferenceService>();
+    private readonly ICommunicationPreferenceManagement _commPrefService = Substitute.For<ICommunicationPreferenceManagement>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IEmailBodyComposer _bodyComposer = Substitute.For<IEmailBodyComposer>();
     private readonly IEmailTransport _transport = Substitute.For<IEmailTransport>();

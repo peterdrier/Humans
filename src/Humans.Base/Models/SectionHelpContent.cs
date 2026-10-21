@@ -109,7 +109,7 @@ public static class SectionHelpContent
         ## Account & privacy
 
         **Q: How do I delete my account / download my data?**
-        Go to /Profile/Me/Privacy — export your data or delete your account there.
+        Go to /Consent/MyData — export your data or delete your account there.
 
         ## About the assistant / out of scope
 

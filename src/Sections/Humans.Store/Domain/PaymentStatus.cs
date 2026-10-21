@@ -7,10 +7,7 @@ namespace Humans.Store.Domain;
 /// </summary>
 internal enum PaymentStatus
 {
-    // Paid is the zero/default member on purpose: it is the value for every existing row (all
-    // pre-date async support and are settled) and the value sync and manual inserts want. The
-    // column carried a matching default only for the AddStorePaymentStatus migration and no
-    // longer does; Payment.Status's C# initializer is what covers inserts today.
+    // Paid is the zero member on purpose: it is the default for sync and manual inserts.
 
     /// <summary>Stripe confirmed settlement (sync at <c>completed</c>; async at <c>async_payment_succeeded</c>). Money is real; counted toward the order's paid total.</summary>
     Paid,

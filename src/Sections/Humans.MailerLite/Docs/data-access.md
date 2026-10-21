@@ -13,8 +13,8 @@ services.
 `IMailerLiteRepository` for the `import-reconciliation` sync-state row
 (upsert after apply, read for the dashboard). Cross-section calls via
 `IMailerLiteService` (external), `IUserEmailService`, `IUserService`,
-`IAccountProvisioningService`, `ICommunicationPreferenceService`,
-`IAuditLogService`. Inbound import slice — reads MailerLite subscribers
+`IAccountProvisioningService`, `ICommunicationPreferenceService` and
+`ICommunicationPreferenceWrite` (Email), `IAuditLogService`. Inbound import slice — reads MailerLite subscribers
 and provisions matching accounts. No cache.
 
 ### MailerLiteService (Singleton, class `MailerLiteClient`)

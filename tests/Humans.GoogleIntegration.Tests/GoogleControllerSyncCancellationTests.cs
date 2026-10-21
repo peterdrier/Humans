@@ -199,6 +199,7 @@ public class GoogleControllerSyncCancellationTests
             _resources,
             Substitute.For<IEmailProvisioningService>(),
             _admin,
+            Substitute.For<IGoogleIntegrationService>(),
             Substitute.For<IGoogleSyncLogService>(),
             _logger);
 

@@ -1,4 +1,3 @@
-using Humans.Users.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
@@ -48,8 +47,7 @@ public record TeamInfo(
 
 public record TeamMemberInfo(
     Guid TeamMemberId, Guid UserId, string DisplayName,
-    string? Email, string? ProfilePictureUrl, TeamMemberRole Role, Instant JoinedAt,
-    GoogleEmailStatus GoogleEmailStatus = GoogleEmailStatus.Unknown);
+    string? Email, string? ProfilePictureUrl, TeamMemberRole Role, Instant JoinedAt);
 
 public record TeamCoordinatorRef(Guid TeamId, Guid UserId);
 
@@ -68,7 +66,6 @@ public record TeamActiveMemberSnapshot(
     string DisplayName,
     string? Email,
     string? ProfilePictureUrl,
-    GoogleEmailStatus GoogleEmailStatus,
     TeamMemberRole Role,
     Instant JoinedAt);
 

@@ -10,9 +10,10 @@ namespace Humans.Email;
 /// <remarks>
 /// Public because the boot localization diagnostic discovers section resource markers via
 /// <c>GetExportedTypes()</c>; an internal marker is skipped in silence.
-/// The set is the three <c>Email_FacilitatedMessage_*</c> keys. They are *not* the Email
-/// admin pages' copy — those two views carry no localized string at all — they are the copy
-/// of the one template this section still renders, the person-to-person relay. Every other
+/// The set is the three <c>Email_FacilitatedMessage_*</c> keys, which are the copy of the one
+/// template this section still renders (the person-to-person relay), plus the
+/// <c>Email_Outbox_*</c> keys of the member-facing outbox page. The Email admin pages carry no
+/// localized string. Every other
 /// section's transactional text moved into that section's own resx set with its
 /// <c>&lt;Section&gt;Emails</c> builder (peterdrier/Humans#1651).
 /// </remarks>

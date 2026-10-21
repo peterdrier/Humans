@@ -1,8 +1,6 @@
 @model Humans.Users.Models.ProfileViewModel
-@* The shift-preference card below renders two Shifts_ keys, which moved into the section's
-   own set at its G5 move (nobodies-collective/Humans#866). Shell can reference a section, so
-   the call sites rebind here rather than the pair being split off the identical card on
-   /Shifts (design §15 step 3b, Consent's direction). *@
+@* The shift-preference card below links to /Shifts/ShiftInfo and renders two Shifts_ keys
+   from the section's own set. *@
 @inject IStringLocalizer<ShiftsResource> ShiftsLocalizer
 @{
     ViewData["Title"] = Localizer["ProfileEdit_Title"].Value;
@@ -320,62 +318,10 @@
 
                     <hr />
 
-                    @* ===== Dietary preference + allergies =====
-                       Second entry point for the meal-pref + allergy fields on
-                       VolunteerEventProfile (also editable on /Profile/Me/DietaryMedical).
-                       Intolerances + medical conditions stay on that page. *@
-                    <h6>@Localizer["Profile_DietaryMedical_DietaryPreference_Label"]</h6>
+                    @* Dietary preference, allergies and intolerances are Cantina's, edited on
+                       /Cantina/Dietary (Users decomposition commit 10). *@
                     <div class="mb-3">
-                        @foreach (var pref in DietaryMedicalViewModel.DietaryPreferences)
-                        {
-                            var isSelected = string.Equals(Model.DietaryPreference, pref, StringComparison.Ordinal);
-                            <div class="form-check">
-                                <input class="form-check-input"
-                                       type="radio"
-                                       asp-for="DietaryPreference"
-                                       value="@pref"
-                                       id="dp-@pref"
-                                       checked="@(isSelected ? "checked" : null)" />
-                                <label class="form-check-label" for="dp-@pref">
-                                    @Localizer[$"Profile_DietaryMedical_DietaryPreference_{pref}"]
-                                </label>
-                            </div>
-                        }
-                        <span asp-validation-for="DietaryPreference" class="text-danger"></span>
-                    </div>
-
-                    <h6>@Localizer["Profile_DietaryMedical_Allergies_Label"]</h6>
-                    <div class="mb-3">
-                        <div class="d-flex flex-wrap gap-3">
-                            @foreach (var opt in DietaryMedicalViewModel.AllergyOptions.Where(o => o != DietaryMedicalViewModel.OtherOption))
-                            {
-                                var isChecked = Model.Allergies.Contains(opt);
-                                <div class="form-check">
-                                    <input class="form-check-input"
-                                           type="checkbox"
-                                           name="Allergies"
-                                           value="@opt"
-                                           id="al-@opt"
-                                           checked="@(isChecked ? "checked" : null)" />
-                                    <label class="form-check-label" for="al-@opt">@Localizer[$"Profile_DietaryMedical_Allergy_{opt.Replace(" ", "").Replace("/", "")}"]</label>
-                                </div>
-                            }
-                        </div>
-                        @* Other on its own line — visual hint that it opens a free-text field *@
-                        <div class="form-check mt-2 pt-2 border-top">
-                            <input class="form-check-input"
-                                   type="checkbox"
-                                   name="Allergies"
-                                   value="@DietaryMedicalViewModel.OtherOption"
-                                   id="al-@DietaryMedicalViewModel.OtherOption"
-                                   checked="@(Model.Allergies.Contains(DietaryMedicalViewModel.OtherOption) ? "checked" : null)" />
-                            <label class="form-check-label" for="al-@DietaryMedicalViewModel.OtherOption">@SharedLocalizer["Common_Other"]</label>
-                        </div>
-                        <div class="mt-3" id="allergy-other-wrapper" style="display: @(Model.Allergies.Contains(DietaryMedicalViewModel.OtherOption) ? "block" : "none");">
-                            <label asp-for="AllergyOtherText" class="form-label">@Localizer["Profile_DietaryMedical_AllergyOther_Label"]</label>
-                            <input asp-for="AllergyOtherText" class="form-control" maxlength="500" />
-                            <span asp-validation-for="AllergyOtherText" class="text-danger"></span>
-                        </div>
+                        <a asp-controller="CantinaProfile" asp-action="Dietary" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-utensils me-1"></i> @Localizer["Users_Profile_DietaryLink"]</a>
                     </div>
                 </div>
             </div>
@@ -445,130 +391,38 @@
                         <div class="form-text">@Localizer["ProfileEdit_ContributionInterestsHelp"]</div>
                     </div>
 
-                    @if (Model.AllShiftTags.Count > 0)
-                    {
-                        <hr />
-                        <div class="mb-3">
-                            <h6>@ShiftsLocalizer["Shifts_EditPreferences"]</h6>
-                            <p class="text-muted small mb-2">@ShiftsLocalizer["Shifts_PreferencesHelp"] <i class="fa-solid fa-star text-warning"></i></p>
-                            <div class="d-flex flex-wrap gap-3">
-                                @foreach (var tag in Model.AllShiftTags)
-                                {
-                                    var isPreferred = Model.EditableShiftTagIds.Contains(tag.Id);
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="EditableShiftTagIds" value="@tag.Id" id="prof-shift-tag-@tag.Id.ToString("N")"
-                                               @if (isPreferred) { <text>checked</text> } />
-                                        <label class="form-check-label" for="prof-shift-tag-@tag.Id.ToString("N")">@tag.Name</label>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    }
+                    <hr />
+                    <div class="mb-3">
+                        <h6>@ShiftsLocalizer["Shifts_EditPreferences"]</h6>
+                        <p class="text-muted small mb-2">@ShiftsLocalizer["Shifts_PreferencesHelp"] <i class="fa-solid fa-star text-warning"></i></p>
+                        <a asp-controller="ShiftProfile" asp-action="ShiftInfo" class="btn btn-outline-primary btn-sm">@Localizer["Profile_ShiftInfo"]</a>
+                    </div>
                 </div>
             </div>
 
-            @* --- Section 3: Application --- *@
+            @* --- Section 3: Membership tier --- *@
+            @* Tier applications are Governance's: this card explains the tiers and links to
+               /Governance/Applications/Create (Users decomposition commit 11). Volunteer
+               admission never waits on it. *@
             @if (Model.IsInitialSetup)
             {
                 <div class="card mb-4">
                     <div class="card-body">
                         <h3>@SharedLocalizer["Profile_MembershipTier"]</h3>
-                        <p class="text-muted small mb-3">@SharedLocalizer["ProfileEdit_TierDescription"]</p>
-
-                        @{
-                            var isVolunteer = Model.SelectedTier == MembershipTier.Volunteer;
-                            var isColaborador = Model.SelectedTier == MembershipTier.Colaborador;
-                            var isAsociado = Model.SelectedTier == MembershipTier.Asociado;
+                        <ul class="list-unstyled mb-3">
+                            <li class="mb-2"><strong>Volunteer</strong> — <span class="text-muted">@Localizer["ProfileEdit_TierVolunteerDesc"]</span></li>
+                            <li class="mb-2"><strong>Colaborador</strong> — <span class="text-muted">@SharedLocalizer["ProfileEdit_TierColaboradorDesc"]</span></li>
+                            <li class="mb-2"><strong>Asociado</strong> <span class="text-muted">(@SharedLocalizer["ProfileEdit_TierAsociadoSubtitle"])</span> — <span class="text-muted">@SharedLocalizer["ProfileEdit_TierAsociadoDesc"]</span></li>
+                        </ul>
+                        <p class="text-muted small"><em>@Localizer["ProfileEdit_TierChangeNote"]</em></p>
+                        @if (Model.IsTierLocked)
+                        {
+                            <div class="form-text text-warning">@Localizer["ProfileEdit_TierLocked"]</div>
                         }
-                        <div class="mb-3">
-                            @if (Model.IsTierLocked)
-                            {
-                                <input type="hidden" asp-for="SelectedTier" />
-                            }
-                            <div class="form-check mb-3">
-                                @if (Model.IsTierLocked)
-                                {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Volunteer" id="tierVolunteer" checked="@(isVolunteer ? "checked" : null)" disabled />
-                                }
-                                else
-                                {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Volunteer" id="tierVolunteer" checked="@(isVolunteer ? "checked" : null)" />
-                                }
-                                <label class="form-check-label" for="tierVolunteer">
-                                    <strong>Volunteer</strong> — <span class="text-muted">@Localizer["ProfileEdit_TierVolunteerDesc"]</span>
-                                </label>
-                            </div>
-                            <div class="form-check mb-3">
-                                @if (Model.IsTierLocked)
-                                {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Colaborador" id="tierColaborador" checked="@(isColaborador ? "checked" : null)" disabled />
-                                }
-                                else
-                                {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Colaborador" id="tierColaborador" checked="@(isColaborador ? "checked" : null)" />
-                                }
-                                <label class="form-check-label" for="tierColaborador">
-                                    <strong>Colaborador</strong> — <span class="text-muted">@SharedLocalizer["ProfileEdit_TierColaboradorDesc"]</span>
-                                </label>
-                            </div>
-                            <div class="form-check mb-3">
-                                @if (Model.IsTierLocked)
-                                {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Asociado" id="tierAsociado" checked="@(isAsociado ? "checked" : null)" disabled />
-                                }
-                                else
-                                {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Asociado" id="tierAsociado" checked="@(isAsociado ? "checked" : null)" />
-                                }
-                                <label class="form-check-label" for="tierAsociado">
-                                    <strong>Asociado</strong> <span class="text-muted">(@SharedLocalizer["ProfileEdit_TierAsociadoSubtitle"])</span> — <span class="text-muted">@SharedLocalizer["ProfileEdit_TierAsociadoDesc"]</span>
-                                </label>
-                            </div>
-                            <p class="text-muted small mb-0"><em>@Localizer["ProfileEdit_TierChangeNote"]</em></p>
-                            @if (Model.IsTierLocked)
-                            {
-                                <div class="form-text text-warning mt-2">@Localizer["ProfileEdit_TierLocked"]</div>
-                            }
-                        </div>
-
-                        <div id="applicationSection" style="display: @(Model.SelectedTier != MembershipTier.Volunteer ? "block" : "none");">
-                            <div class="card bg-light mb-3">
-                                <div class="card-body">
-                                    <h6>@Localizer["ProfileEdit_ApplicationSection"]</h6>
-                                    <p class="text-muted small mb-3">@Localizer["ProfileEdit_ApplicationDescription"]</p>
-
-                                    <div class="mb-3">
-                                        <label asp-for="ApplicationMotivation" class="form-label">@Localizer["Profile_Motivation"]</label>
-                                        <textarea asp-for="ApplicationMotivation" minlength="50" class="form-control" rows="4" placeholder="@Localizer["ProfileEdit_MotivationPlaceholder"].Value"></textarea>
-                                        <span asp-validation-for="ApplicationMotivation" class="text-danger"></span>
-                                        <div class="form-text">@Localizer["ProfileEdit_MotivationHelp"]</div>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label asp-for="ApplicationAdditionalInfo" class="form-label">@Localizer["Profile_AdditionalInfo"]</label>
-                                        <textarea asp-for="ApplicationAdditionalInfo" class="form-control" rows="3"></textarea>
-                                        <span asp-validation-for="ApplicationAdditionalInfo" class="text-danger"></span>
-                                    </div>
-
-                                    <div id="asociadoQuestionsInline" style="display: @(Model.SelectedTier == MembershipTier.Asociado ? "block" : "none");">
-                                        <hr />
-                                        <h6>@SharedLocalizer["Application_AsociadoQuestionsHeader"]</h6>
-
-                                        <div class="mb-3">
-                                            <label asp-for="ApplicationSignificantContribution" class="form-label">@SharedLocalizer["Application_SignificantContribution"]</label>
-                                            <textarea asp-for="ApplicationSignificantContribution" class="form-control" rows="4" placeholder="@SharedLocalizer["Application_SignificantContributionPlaceholder"].Value"></textarea>
-                                            <span asp-validation-for="ApplicationSignificantContribution" class="text-danger"></span>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label asp-for="ApplicationRoleUnderstanding" class="form-label">@SharedLocalizer["Application_RoleUnderstanding"]</label>
-                                            <textarea asp-for="ApplicationRoleUnderstanding" class="form-control" rows="4" placeholder="@SharedLocalizer["Application_RoleUnderstandingPlaceholder"].Value"></textarea>
-                                            <span asp-validation-for="ApplicationRoleUnderstanding" class="text-danger"></span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        else
+                        {
+                            <a asp-controller="GovernanceApplications" asp-action="Create" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">@Localizer["ProfileEdit_TierApplyLink"]</a>
+                        }
                     </div>
                 </div>
             }
@@ -1058,28 +912,6 @@
         })();
     </script>
     <script nonce="@Context.Items["CspNonce"]">
-        // Tier selection show/hide for application section and Asociado questions
-        (function() {
-            const tierRadios = document.querySelectorAll('input[name="SelectedTier"]');
-            const appSection = document.getElementById('applicationSection');
-            const asociadoQuestions = document.getElementById('asociadoQuestionsInline');
-            if (!appSection || tierRadios.length === 0) return;
-
-            tierRadios.forEach(radio => {
-                radio.addEventListener('change', function() {
-                    appSection.style.display = this.value === 'Volunteer' ? 'none' : 'block';
-                    if (asociadoQuestions) {
-                        asociadoQuestions.style.display = this.value === 'Asociado' ? 'block' : 'none';
-                        // Clear hidden fields so stale values aren't submitted
-                        if (this.value !== 'Asociado') {
-                            asociadoQuestions.querySelectorAll('textarea').forEach(t => t.value = '');
-                        }
-                    }
-                });
-            });
-        })();
-    </script>
-    <script nonce="@Context.Items["CspNonce"]">
         // Client-side CV validation: block submit if no CV rows and checkbox unchecked
         (function() {
             const form = document.querySelector('form[action*="Edit"]');
@@ -1235,21 +1067,6 @@
                     e.preventDefault();
                     e.returnValue = '';
                 }
-            });
-        })();
-    </script>
-
-    @* Toggle the allergy "Other" free-text field based on its checkbox. Server-side
-       validation (ProfileController.Edit POST) still enforces the conditional-required
-       rule, so JS-disabled users get a normal validation error and resubmit. *@
-    <script nonce="@Context.Items["CspNonce"]">
-        (function () {
-            var otherValue = '@DietaryMedicalViewModel.OtherOption';
-            var checkbox = document.getElementById('al-' + otherValue);
-            var wrapper = document.getElementById('allergy-other-wrapper');
-            if (!checkbox || !wrapper) return;
-            checkbox.addEventListener('change', function () {
-                wrapper.style.display = checkbox.checked ? 'block' : 'none';
             });
         })();
     </script>

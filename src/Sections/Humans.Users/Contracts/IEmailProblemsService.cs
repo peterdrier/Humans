@@ -18,8 +18,10 @@ public interface IEmailProblemsService : IApplicationService
     /// (<see cref="EmailProblemKind.LegacyIdentityEmailNotInUserEmails"/>).
     /// Idempotent — relies on
     /// <c>IUserEmailService.AddVerifiedEmailAsync</c>'s existing skip-if-exists
-    /// check. Returns the (userId, email) pairs that received a new row, so
-    /// the caller can audit per row.
+    /// check. Audits <c>LegacyIdentityEmailBackfilled</c> for each created row
+    /// against <paramref name="actorUserId"/>, and returns the (userId, email)
+    /// pairs that received one. Run from the <c>users.legacy-identity-emails</c>
+    /// data migration on <c>/Debug/DataMigrations</c>.
     /// </summary>
     Task<IReadOnlyList<(Guid UserId, string Email)>> BackfillLegacyIdentityEmailsAsync(
         Guid actorUserId, CancellationToken ct = default);

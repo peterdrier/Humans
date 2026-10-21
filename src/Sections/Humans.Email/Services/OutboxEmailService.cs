@@ -32,7 +32,7 @@ internal sealed class OutboxEmailService(
     IEmailTransport transport,
     IHumansMetrics metrics,
     IClock clock,
-    ICommunicationPreferenceService commPrefService,
+    ICommunicationPreferenceManagement commPrefService,
     ILogger<OutboxEmailService> logger) : IEmailService
 {
     public async Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)

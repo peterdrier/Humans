@@ -1,0 +1,43 @@
+@model Humans.Gdpr.Models.AccountStatusViewModel
+@{
+    ViewData["Title"] = Localizer["Gdpr_AccountStatus_Title"].Value;
+    var headingKey = Model.State switch
+    {
+        UserState.Suspended => "Gdpr_AccountStatus_HeadingSuspended",
+        UserState.AdminSuspended => "Gdpr_AccountStatus_HeadingAdminSuspended",
+        UserState.Rejected => "Gdpr_AccountStatus_HeadingRejected",
+        UserState.Deleted => "Gdpr_AccountStatus_HeadingDeleted",
+        UserState.Merged => "Gdpr_AccountStatus_HeadingMerged",
+        _ => "Gdpr_AccountStatus_HeadingUnavailable",
+    };
+}
+
+<div class="container py-5" style="max-width: 640px;">
+    <div class="card shadow-sm">
+        <div class="card-body text-center p-5">
+            <i class="fa-solid fa-circle-exclamation fa-2x text-warning mb-3"></i>
+            <h1 class="h4 mb-3">@Localizer[headingKey]</h1>
+            @if (Model.State == UserState.Suspended)
+            {
+                <p class="text-muted mb-3">@Localizer["Gdpr_AccountStatus_ConsentSuspendedBody"]</p>
+                <a asp-controller="OnboardingWidget" asp-action="Consents" class="btn btn-primary mb-3">
+                    @Localizer["Gdpr_AccountStatus_ReviewConsents"]
+                </a>
+            }
+            else
+            {
+                <p class="text-muted mb-2">
+                    @Localizer["Gdpr_AccountStatus_ContactInfo"]
+                    <a href="mailto:@Model.ContactEmail">@Model.ContactEmail</a>
+                </p>
+            }
+            @if (Model.State == UserState.Rejected)
+            {
+                <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.AccountStatus" user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Self" />
+            }
+            <p class="text-muted small mt-4 mb-0">
+                @Localizer["Gdpr_AccountStatus_ReferenceId"] <code>@Model.UserId</code>
+            </p>
+        </div>
+    </div>
+</div>

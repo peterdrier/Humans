@@ -86,7 +86,7 @@ Members sign in using their Google account, which provides their primary email a
 **Acceptance Criteria:**
 - Only verified emails can be selected
 - If user has a verified @nobodies.team email, it's auto-selected and locked
-- Default is the OAuth-linked Google email (the `UserEmail` row flagged `IsGoogle`)
+- Default is the workspace identity's read-time resolution (@nobodies.team, else the designated address, else the primary)
 - Change takes effect on next Google sync cycle; admins can apply it sooner via the per-human **Re-run Google Sync** action (`POST /Google/Human/{id}/RerunSync`) or by requeueing failed sync-outbox events from `/Google/SyncOutbox`
 - Profile/Emails page shows "Google Services Email" card
 
@@ -111,7 +111,7 @@ Members sign in using their Google account, which provides their primary email a
 
 **Acceptance Criteria:**
 - Admin can search for humans by name on the @nobodies.team Accounts page
-- Linking creates a verified UserEmail flagged `IsGoogle`
+- Linking creates a verified UserEmail (a verified @nobodies.team address is the Google identity at read time)
 - Audit trail recorded with WorkspaceAccountLinked action
 
 ## Data Model
@@ -123,7 +123,7 @@ UserEmail
 ├── UserId: Guid (FK → User)
 ├── Email: string (256)
 ├── IsVerified: bool
-├── IsGoogle: bool (user-controlled; Google sync target)
+├── IsGoogle: bool (frozen; the Google identity is GoogleIntegration's)
 ├── GoogleEmailStatus: GoogleEmailStatus (per-address sync status; default Unknown)
 ├── IsPrimary: bool (exactly one per user; DB column keeps the legacy name IsNotificationTarget per no-drops-until-prod-verified)
 ├── Visibility: ContactFieldVisibility? (null = hidden)
@@ -136,7 +136,7 @@ UserEmail
 
 `User` carries no Google-email property or helper (analyzer `HUM0001` enforces it). The canonical read path is:
 
-- `UserInfo.GoogleEmail` — the `UserEmail` row flagged `IsGoogle = true`; used by Google sync for Groups/Drive access.
+- The Google sync target is GoogleIntegration's `IGoogleIntegrationService.GetWorkspaceIdentityAsync` (Users decomposition commit 15; `UserInfo.GoogleEmail` and the `IsGoogle` flag are retired/frozen).
 - `UserInfo.PrimaryEmail` — the `UserEmail` row flagged `IsPrimary = true`; used for system notification emails.
 
 The `GoogleEmail` column is retained on disk as an EF shadow property pending a deferred column-drop PR per `memory/architecture/no-drops-until-prod-verified.md`.
@@ -188,7 +188,7 @@ Uses ASP.NET Identity's built-in token providers:
 ## Service Integration
 
 ### Google Sync
-`GoogleWorkspaceSyncService` uses `UserInfo.GoogleEmail` (the `UserEmail` row with `IsGoogle = true`) for:
+`GoogleWorkspaceSyncService` uses the member's workspace identity (`IGoogleIntegrationService.GetWorkspaceIdentityAsync`, GoogleIntegration's `google_workspace_identities`) for:
 - Adding/removing users from Google Groups
 - Adding/removing users from Shared Drive folders
 - Drift detection for membership sync

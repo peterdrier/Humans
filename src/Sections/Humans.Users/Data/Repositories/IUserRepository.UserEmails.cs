@@ -147,15 +147,6 @@ internal partial interface IUserRepository
         UserEmail? rowToInsert,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Single-transaction flip: sets <see cref="UserEmail.IsGoogle"/> = true
-    /// on the target row, and IsGoogle = false on every sibling row for the
-    /// same user. Stamps <c>UpdatedAt</c> with <paramref name="updatedAt"/>
-    /// on every row whose <c>IsGoogle</c> value changes. Owner-gate
-    /// (userId match) is performed by the caller.
-    /// </summary>
-    Task SetUserEmailGoogleExclusiveAsync(Guid userId, Guid userEmailId, Instant updatedAt, CancellationToken cancellationToken = default);
-
     Task AddUserEmailAsync(UserEmail email, CancellationToken ct = default);
     Task RemoveUserEmailAsync(UserEmail email, CancellationToken ct = default);
 

@@ -28,7 +28,7 @@ internal sealed class OrderViewModel
     public bool CanPay { get; init; }
     /// <summary>False when STRIPE_STORE_KEY is unset; suppresses the Pay button + shows a disabled tooltip.</summary>
     public bool IsStripeConfigured { get; init; }
-    /// <summary>True when the current user is a Store admin AND the order's balance is zero. Surfaces the Delete button.</summary>
+    /// <summary>True when the current user may delete the order (Store admin, or TeamsAdmin on a team order), it is Open, its balance is zero and it has no payment rows. Surfaces the Delete button.</summary>
     public bool CanDelete { get; init; }
 
     /// <summary>True when the current user may issue this camp order's Holded factura — Store
@@ -38,6 +38,12 @@ internal sealed class OrderViewModel
     /// <summary>True when the current user is a Store admin on a camp order. Surfaces the
     /// deposit-return / refund form.</summary>
     public bool CanRecordPayment { get; init; }
+
+    /// <summary>True when the current user may also record a refund (FinanceAdmin or Admin on a camp order).</summary>
+    public bool CanRefund { get; init; }
+
+    /// <summary>True when the current user may delete a payment row (Admin only). Surfaces the per-row Delete buttons.</summary>
+    public bool CanDeletePayment { get; init; }
 
     /// <summary>Paid deposit returns credited to the order (the "Deposits returned" box).</summary>
     public decimal DepositsReturnedEur => Order.Payments
@@ -61,11 +67,15 @@ internal sealed class OrderViewModel
         bool canDelete,
         bool canIssueInvoice,
         bool canRecordPayment,
+        bool canRefund,
+        bool canDeletePayment,
         IReadOnlyList<ProductDto> catalog,
         IReadOnlyCollection<Guid> removableLineIds) => new()
         {
             CanIssueInvoice = canIssueInvoice,
             CanRecordPayment = canRecordPayment,
+            CanRefund = canRefund,
+            CanDeletePayment = canDeletePayment,
             Order = pageData.Order,
             Catalog = catalog,
             CounterpartyDisplayName = pageData.CounterpartyDisplayName,

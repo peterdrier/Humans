@@ -1,4 +1,3 @@
-using Humans.Campaigns.Contracts;
 using Humans.Base.Models;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
@@ -38,42 +37,25 @@ internal sealed class AdminHumanDetailViewModel
 
     public string? AdminNotes { get; set; }
     public MembershipTier MembershipTier { get; set; }
-    public ConsentCheckStatus? ConsentCheckStatus { get; set; }
     public string? EmergencyContactName { get; set; }
     public string? EmergencyContactPhone { get; set; }
     public string? EmergencyContactRelationship { get; set; }
     public string? PreferredLanguage { get; set; }
 
-    public string? RejectionReason { get; set; }
-    public DateTime? RejectedAt { get; set; }
-    public string? RejectedByName { get; set; }
-
     public string? NobodiesTeamEmail { get; set; }
 
     public string? OAuthEmail { get; set; }
-    public string? GoogleServiceEmail { get; set; }
-    public GoogleEmailStatus GoogleEmailStatus { get; set; }
     public List<AdminUserEmailViewModel> UserEmails { get; set; } = [];
 
     public int ApplicationCount { get; set; }
     public int ConsentCount { get; set; }
-    public IReadOnlyList<CampaignGrantSummary> CampaignGrants { get; set; } = [];
-    public int OutboxCount { get; set; }
     public List<AdminHumanApplicationViewModel> Applications { get; set; } = [];
-    public List<AdminRoleAssignmentViewModel> RoleAssignments { get; set; } = [];
     public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
-
-    public string? MaskedIban { get; set; }
-    /// <summary>
-    /// Set by the RevealIban action via TempData. Survives exactly one page load after reveal.
-    /// </summary>
-    public string? RevealedIban { get; set; }
 }
 
 internal sealed class AdminUserEmailViewModel
 {
     public string Email { get; set; } = string.Empty;
-    public bool IsGoogle { get; set; }
     public bool IsVerified { get; set; }
     public bool IsPrimary { get; set; }
     public ContactFieldVisibility? Visibility { get; set; }
@@ -84,35 +66,6 @@ internal sealed class AdminHumanApplicationViewModel
     public Guid Id { get; set; }
     public ApplicationStatus Status { get; set; }
     public DateTime SubmittedAt { get; set; }
-}
-
-internal sealed class AdminRoleAssignmentListViewModel() : PagedListViewModel(50)
-{
-    public List<AdminRoleAssignmentViewModel> RoleAssignments { get; set; } = [];
-    public string? RoleFilter { get; set; }
-    public bool ShowInactive { get; set; }
-}
-
-internal sealed class AdminRoleAssignmentViewModel
-{
-    public Guid Id { get; set; }
-    public Guid UserId { get; set; }
-    public string UserEmail { get; set; } = string.Empty;
-    public string RoleName { get; set; } = string.Empty;
-    public DateTime ValidFrom { get; set; }
-    public DateTime? ValidTo { get; set; }
-    public string? Notes { get; set; }
-    public bool IsActive { get; set; }
-    public string? CreatedByName { get; set; }
-    public DateTime CreatedAt { get; set; }
-}
-
-internal sealed class CreateRoleAssignmentViewModel
-{
-    public Guid UserId { get; set; }
-    public string RoleName { get; set; } = string.Empty;
-    public string? Notes { get; set; }
-    public List<string> AvailableRoles { get; set; } = [];
 }
 
 internal sealed class AccountMergeQueueViewModel

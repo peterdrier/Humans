@@ -6,7 +6,6 @@
     <ProjectReference Include="..\..\src\Humans.Web\Humans.Web.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Auth\Humans.Auth.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.Campaigns\Humans.Campaigns.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />

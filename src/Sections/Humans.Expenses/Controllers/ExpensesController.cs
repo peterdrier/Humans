@@ -25,6 +25,7 @@ internal sealed class ExpensesController(
     IExpenseReportManagement service,
     IBudgetService budgetService,
     IHoldedFinanceService holdedFinance,
+    IFinanceService finance,
     IPreapprovalService preapprovals,
     IAuthorizationService authService,
     IClock clock,
@@ -49,7 +50,6 @@ internal sealed class ExpensesController(
             var reports = (await service.GetForSubmitterAsync(user.Id, HttpContext.RequestAborted))
                 .OrderByDescending(r => r.CreatedAt).ToList();
             var activeYear = await budgetService.GetActiveYearAsync(HttpContext.RequestAborted);
-            var info = await _userService.GetUserInfoAsync(user.Id, HttpContext.RequestAborted);
 
             var bookingLabels = await ResolveBookingLabelsAsync(reports, HttpContext.RequestAborted);
 
@@ -83,7 +83,7 @@ internal sealed class ExpensesController(
             {
                 Reports = reports,
                 HasActiveYear = activeYear is not null,
-                HasIban = !string.IsNullOrEmpty(info?.Profile?.Iban),
+                HasIban = (await GetIbanViewAsync(user.Id, HttpContext.RequestAborted)).HasIban,
                 BookingLabels = bookingLabels,
                 OpenGrants = openGrants,
                 Today = Today,
@@ -1053,7 +1053,7 @@ internal sealed class ExpensesController(
 
     private async Task<(bool HasIban, string? MaskedIban)> GetIbanViewAsync(Guid userId, CancellationToken ct = default)
     {
-        var iban = (await _userService.GetUserInfoAsync(userId, ct))?.Profile?.Iban;
+        var iban = await finance.GetIbanAsync(userId, ct);
         var hasIban = !string.IsNullOrEmpty(iban);
         return (hasIban, hasIban ? IbanFormatter.Mask(iban!) : null);
     }
