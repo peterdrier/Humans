@@ -8,7 +8,6 @@ using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Humans.Base.Constants;
-using Humans.Base.Enums;
 using Humans.Base.Interfaces;
 using Humans.GoogleIntegration.Tests.Infrastructure;
 using Humans.Notifications.Contracts;

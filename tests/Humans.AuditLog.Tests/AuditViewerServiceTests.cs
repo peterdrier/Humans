@@ -1,7 +1,6 @@
 using Humans.AuditLog.Services;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
-using Humans.AuditLog.Tests.Infrastructure;
 using Humans.Base.Interfaces;
 using NodaTime;
 using NSubstitute;

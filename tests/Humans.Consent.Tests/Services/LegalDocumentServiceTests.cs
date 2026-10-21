@@ -171,7 +171,7 @@ public sealed class LegalDocumentServiceTests : IDisposable
             .SetValue(connector, client);
 
         var content = await connector.GetFolderContentByPrefixAsync(
-            "Estatutos", "ESTATUTOS", Xunit.TestContext.Current.CancellationToken);
+            "Estatutos", "ESTATUTOS", TestContext.Current.CancellationToken);
 
         content.Should().ContainKey("es").WhoseValue.Should().Be("hola");
         handler.Requests.Should().HaveCount(2);

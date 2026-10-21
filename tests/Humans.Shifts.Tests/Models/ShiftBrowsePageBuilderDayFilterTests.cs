@@ -6,7 +6,6 @@ using Humans.Shifts.Models;
 using NodaTime;
 using NodaTime.Text;
 using NSubstitute;
-using Humans.Testing;
 
 namespace Humans.Shifts.Tests.Models;
 

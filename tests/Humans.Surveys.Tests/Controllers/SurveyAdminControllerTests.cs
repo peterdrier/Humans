@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Resources;
 using AwesomeAssertions;
-using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Surveys.Authorization;
@@ -22,7 +21,6 @@ using NodaTime;
 using NSubstitute;
 using Humans.Surveys.Contracts;
 using System.Reflection;
-using Humans.Testing;
 using System.Security.Claims;
 
 namespace Humans.Surveys.Tests.Controllers;

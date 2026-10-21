@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.GoogleIntegration.Contracts;
-using Humans.Teams.Contracts;
 using Humans.Teams.Services;
 using TeamPageService = Humans.Teams.Services.TeamPageService;
 

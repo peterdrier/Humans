@@ -3,7 +3,6 @@ using Humans.Base.Configuration;
 using Humans.Base.Data;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Admin;
-using Humans.Base.Interfaces.Caching;
 using Humans.Base.Logging;
 using Humans.Debug.Controllers;
 using Humans.Debug.Models;

@@ -3,7 +3,6 @@ using Humans.Web.Localization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.Primitives;
-using Xunit;
 
 namespace Humans.Web.Tests.Infrastructure;
 

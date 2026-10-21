@@ -33,7 +33,7 @@ public class RepositoryTests
         public FinanceDbContext CreateDbContext() => new(options);
     }
 
-    private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
+    private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     // ─── Expense docs ────────────────────────────────────────────────────────────
 
@@ -360,7 +360,7 @@ public class RepositoryTests
             }], Ct);
         await repo.SaveSepaTransferBookingAsync(transferId, Now, actor, "mv-1", null, null, Ct);
 
-        var reconciledAt = Now.Plus(NodaTime.Duration.FromHours(3));
+        var reconciledAt = Now.Plus(Duration.FromHours(3));
         await repo.MarkSepaTransferReconciledAsync(transferId, reconciledAt, Ct);
 
         var row = (await repo.GetSepaPayoutTransferRowsAsync(Ct)).Should().ContainSingle().Subject;
@@ -400,7 +400,7 @@ public class RepositoryTests
         unbooked.HoldedBankMovementId.Should().BeNull();
         unbooked.ReconciledAt.Should().BeNull();
 
-        var reconciledAt = Now.Plus(NodaTime.Duration.FromHours(1));
+        var reconciledAt = Now.Plus(Duration.FromHours(1));
         await repo.SaveSepaTransferBookingAsync(transferId, Now, actor, "mv-2", reconciledAt, null, Ct);
 
         var booked = (await repo.GetSepaPayoutTransferRowsAsync(Ct)).Should().ContainSingle().Subject;

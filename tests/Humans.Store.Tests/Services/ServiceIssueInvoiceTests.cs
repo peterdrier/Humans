@@ -10,7 +10,6 @@ using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Enums;
 using Humans.Camps.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Settings.Contracts;

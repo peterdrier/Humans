@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Testing;
 using Humans.Users.Helpers;
 using ImageMagick;
 

@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Humans.Base.Authorization;
 using Humans.Governance.Controllers;
 using Microsoft.AspNetCore.Authorization;
-using Xunit;
 
 namespace Humans.Governance.Tests.Controllers;
 

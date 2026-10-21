@@ -10,14 +10,12 @@ using AwesomeAssertions;
 using AwesomeAssertions.Execution;
 using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
-using Humans.Finance;
 using Humans.Finance.Data;
 using Humans.Finance.Services;
 using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Finance.Domain;
 using Humans.Finance.Models;
-using Humans.Gdpr.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
@@ -174,7 +172,7 @@ public class HoldedFinanceServiceTests
             new() { HoldedDocId = "d5", BudgetCategoryId = null, Total = 77m, IsApproved = true },
         });
 
-        var rows = await MakeService().GetActualsForYearAsync(2026, Xunit.TestContext.Current.CancellationToken);
+        var rows = await MakeService().GetActualsForYearAsync(2026, TestContext.Current.CancellationToken);
 
         var row = rows.Should().ContainSingle().Which;
         row.BudgetCategoryId.Should().Be(cat);
@@ -195,7 +193,7 @@ public class HoldedFinanceServiceTests
                     Date = new LocalDate(2026, 6, 1), Total = 999m, IsApproved = false },
         }.Select(d => { d.BudgetCategoryId = cat; return d; }).ToList());
 
-        var row = (await MakeService().GetActualsForYearAsync(2026, Xunit.TestContext.Current.CancellationToken))
+        var row = (await MakeService().GetActualsForYearAsync(2026, TestContext.Current.CancellationToken))
             .Should().ContainSingle().Which;
 
         // Only what the total is made of — the draft is excluded from both.
@@ -208,10 +206,10 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("provisioning")]
-    [Xunit.InlineData("expense-accounts")]
-    [Xunit.InlineData("category-map")]
-    [Xunit.InlineData("overview")]
+    [InlineData("provisioning")]
+    [InlineData("expense-accounts")]
+    [InlineData("category-map")]
+    [InlineData("overview")]
     public async Task BudgetEnrichedReads_PropagateRequestCancellation(string read)
     {
         SeedConnector();
@@ -282,7 +280,7 @@ public class HoldedFinanceServiceTests
             });
 
         var svc = MakeService();
-        var plan = await svc.GetProvisioningPlanAsync(blockStart: 6290010, ct: Xunit.TestContext.Current.CancellationToken);
+        var plan = await svc.GetProvisioningPlanAsync(blockStart: 6290010, ct: TestContext.Current.CancellationToken);
 
         var mapped = plan.Rows.Where(r => string.Equals(r.State, "Mapped", StringComparison.Ordinal)).ToList();
         var toAdd = plan.Rows.Where(r => string.Equals(r.State, "ToAdd", StringComparison.Ordinal)).ToList();
@@ -337,7 +335,7 @@ public class HoldedFinanceServiceTests
             });
 
         var svc = MakeService();
-        var plan = await svc.GetProvisioningPlanAsync(blockStart: 6290010, ct: Xunit.TestContext.Current.CancellationToken);
+        var plan = await svc.GetProvisioningPlanAsync(blockStart: 6290010, ct: TestContext.Current.CancellationToken);
 
         var toAdd = plan.Rows.Single(r => string.Equals(r.State, "ToAdd", StringComparison.Ordinal));
         toAdd.ProposedAccountNum.Should().Be(6290011); // 6290010 is taken in Holded → skipped
@@ -404,7 +402,7 @@ public class HoldedFinanceServiceTests
             Arg.Any<CancellationToken>());
 
         var svc = MakeService();
-        var result = await svc.SyncAsync(Xunit.TestContext.Current.CancellationToken);
+        var result = await svc.SyncAsync(TestContext.Current.CancellationToken);
 
         result.DocCount.Should().Be(3);
         result.Matched.Should().Be(2);
@@ -454,7 +452,7 @@ public class HoldedFinanceServiceTests
             Arg.Do<IReadOnlyList<HoldedExpenseDoc>>(d => capturedDocs = d),
             Arg.Any<Instant>(), Arg.Any<CancellationToken>());
 
-        await MakeService().SyncAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().SyncAsync(TestContext.Current.CancellationToken);
 
         capturedDocs.Should().ContainSingle().Which.IsApproved.Should().BeFalse();
     }
@@ -479,7 +477,7 @@ public class HoldedFinanceServiceTests
         List<HoldedExpenseDoc>? saved = null;
         await _repo.ReplaceDocsAsync(Arg.Do<IReadOnlyList<HoldedExpenseDoc>>(d => saved = d.ToList()), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
 
-        var result = await MakeService().SyncAsync(Xunit.TestContext.Current.CancellationToken);
+        var result = await MakeService().SyncAsync(TestContext.Current.CancellationToken);
 
         result.Matched.Should().Be(1);
         result.Unmatched.Should().Be(0);
@@ -505,7 +503,7 @@ public class HoldedFinanceServiceTests
             Arg.Do<IReadOnlyList<HoldedExpenseDoc>>(d => capturedDocs = d),
             Arg.Any<Instant>(), Arg.Any<CancellationToken>());
 
-        await MakeService().SyncAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().SyncAsync(TestContext.Current.CancellationToken);
 
         capturedDocs!.Select(d => d.Description).Should().Equal("ER: Tent pegs", null);
 
@@ -573,7 +571,7 @@ public class HoldedFinanceServiceTests
             Arg.Any<CancellationToken>());
 
         var svc = MakeService();
-        var act = () => svc.SyncAsync(Xunit.TestContext.Current.CancellationToken);
+        var act = () => svc.SyncAsync(TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         await _repo.DidNotReceive().ReplaceDocsAsync(
@@ -605,7 +603,7 @@ public class HoldedFinanceServiceTests
             Line(5, 0, 40000001, Instant.FromUtc(2026, 4, 25, 0, 0), credit: 0m, debit: 0m, type: "purchase"),
         });
 
-        var status = await MakeService().GetCreditorStatusAsync(40000001, Xunit.TestContext.Current.CancellationToken);
+        var status = await MakeService().GetCreditorStatusAsync(40000001, TestContext.Current.CancellationToken);
 
         status.Should().NotBeNull();
         status!.Balance.Should().Be(-3180m);
@@ -620,7 +618,7 @@ public class HoldedFinanceServiceTests
         _holded.GetLedgerLinesAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<HoldedLedgerLineInfo>());
 
-        var status = await MakeService().GetCreditorStatusAsync(40000099, Xunit.TestContext.Current.CancellationToken);
+        var status = await MakeService().GetCreditorStatusAsync(40000099, TestContext.Current.CancellationToken);
 
         status.Should().BeNull();
     }
@@ -628,7 +626,7 @@ public class HoldedFinanceServiceTests
     [HumansFact]
     public async Task GetCreditorStatus_returns_null_when_account_num_null()
     {
-        var status = await MakeService().GetCreditorStatusAsync(null, Xunit.TestContext.Current.CancellationToken);
+        var status = await MakeService().GetCreditorStatusAsync(null, TestContext.Current.CancellationToken);
 
         status.Should().BeNull();
     }
@@ -648,7 +646,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = second, HoldedContactId = "c2", SupplierAccountNum = 40000004, Source = CreditorContactSource.Auto },
         });
 
-        var (rows, _) = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+        var (rows, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
         var row = rows.Should().ContainSingle(r => r.SupplierAccountNum == 40000004).Subject;
         row.Balance.Should().Be(-10m);
@@ -675,7 +673,7 @@ public class HoldedFinanceServiceTests
             new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = 40000004 },
         });
 
-        var (rows, _) = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+        var (rows, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
         var row = rows.Should().ContainSingle().Subject;
         row.SupplierAccountNum.Should().Be(40000004);
@@ -703,7 +701,7 @@ public class HoldedFinanceServiceTests
             new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = 40000004 },
         });
 
-        var (rows, _) = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+        var (rows, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
         // Holded says c1 is 40000004, so that is the row — and 40000007 was only ever a stale guess,
         // with no ledger lines and no contact of its own to keep it alive.
@@ -730,7 +728,7 @@ public class HoldedFinanceServiceTests
         });
 
         var (_, unresolved) = await MakeService()
-            .ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+            .ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
         unresolved.Should().ContainSingle().Which.UserId.Should().Be(userId);
     }
@@ -752,7 +750,7 @@ public class HoldedFinanceServiceTests
         });
 
         var (_, unresolved) = await MakeService()
-            .ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+            .ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
         unresolved.Should().BeEmpty();
     }
@@ -767,7 +765,7 @@ public class HoldedFinanceServiceTests
         _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>());
 
         var (_, unresolved) = await MakeService()
-            .ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+            .ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
         unresolved.Should().BeEmpty();
     }
@@ -780,7 +778,7 @@ public class HoldedFinanceServiceTests
             Line(1, 0, 40000004, FixedNow, credit: 50m),
         });
 
-        var ledger = await MakeService().GetCreditorLedgerAsync(40000004, Xunit.TestContext.Current.CancellationToken);
+        var ledger = await MakeService().GetCreditorLedgerAsync(40000004, TestContext.Current.CancellationToken);
 
         ledger.Should().NotBeNull();
         ledger.Balance.Should().Be(-50m);
@@ -806,7 +804,7 @@ public class HoldedFinanceServiceTests
             new() { Id = "c2", Name = "Someone Else", SupplierAccountNum = 40000007 },
         });
 
-        var ledger = await MakeService().GetCreditorLedgerAsync(40000004, Xunit.TestContext.Current.CancellationToken);
+        var ledger = await MakeService().GetCreditorLedgerAsync(40000004, TestContext.Current.CancellationToken);
 
         ledger.Should().NotBeNull();
         ledger.Contact.Should().NotBeNull();
@@ -834,7 +832,7 @@ public class HoldedFinanceServiceTests
             new() { Id = "c2", Name = "Someone Else", SupplierAccountNum = 40000007 },
         });
 
-        var ledger = await MakeService().GetCreditorLedgerAsync(40000004, Xunit.TestContext.Current.CancellationToken);
+        var ledger = await MakeService().GetCreditorLedgerAsync(40000004, TestContext.Current.CancellationToken);
 
         ledger.Should().NotBeNull();
         ledger.Contact.Should().BeNull();
@@ -847,7 +845,7 @@ public class HoldedFinanceServiceTests
         _holded.GetLedgerLinesAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<HoldedLedgerLineInfo>());
 
-        var ledger = await MakeService().GetCreditorLedgerAsync(40000004, Xunit.TestContext.Current.CancellationToken);
+        var ledger = await MakeService().GetCreditorLedgerAsync(40000004, TestContext.Current.CancellationToken);
 
         ledger.Should().BeNull();
     }
@@ -870,7 +868,7 @@ public class HoldedFinanceServiceTests
         // Production: two outbox drains both read "no binding", both POSTed a contact. Run 1 is parked
         // inside its POST while run 2 completes and binds; run 1 then must delete its own contact.
         var userId = Guid.NewGuid();
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var posts = 0;
         _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>())
@@ -914,7 +912,7 @@ public class HoldedFinanceServiceTests
         _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("contact-A");
 
         var id = await MakeService().EnsureCreditorContactAsync(
-            userId, "Maria Garcia", null, null, null, null, Xunit.TestContext.Current.CancellationToken);
+            userId, "Maria Garcia", null, null, null, null, TestContext.Current.CancellationToken);
 
         id.Should().Be("contact-B");
         await _client.Received(1).DeleteContactAsync("contact-A", Arg.Any<CancellationToken>());
@@ -933,7 +931,7 @@ public class HoldedFinanceServiceTests
             .Returns(false);
 
         var id = await MakeService().EnsureCreditorContactAsync(
-            userId, "Maria Garcia", null, null, null, null, Xunit.TestContext.Current.CancellationToken);
+            userId, "Maria Garcia", null, null, null, null, TestContext.Current.CancellationToken);
 
         id.Should().Be("contact-B");
         await _client.Received(1).DeleteContactAsync("contact-A", Arg.Any<CancellationToken>());
@@ -948,7 +946,7 @@ public class HoldedFinanceServiceTests
         _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("contact-A");
 
         var id = await MakeService().EnsureCreditorContactAsync(
-            userId, "Maria Garcia", null, null, null, null, Xunit.TestContext.Current.CancellationToken);
+            userId, "Maria Garcia", null, null, null, null, TestContext.Current.CancellationToken);
 
         id.Should().Be("contact-A");
         await _client.DidNotReceiveWithAnyArgs().DeleteContactAsync(default!, default);
@@ -963,7 +961,7 @@ public class HoldedFinanceServiceTests
 
         var id = await MakeService().EnsureCreditorContactAsync(
             userId, "Maria Garcia", "Meri", "ES9121000418450200051332", null, null,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         id.Should().Be("new-contact");
         // No binding/seed -> POST create (ExistingContactId null); legal->Name, burner->TradeName, userId->CustomId.
@@ -991,7 +989,7 @@ public class HoldedFinanceServiceTests
 
         await MakeService().EnsureCreditorContactAsync(
             userId, "Maria Garcia", "Maria Garcia", null, null, null,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         await _client.Received(1).UpsertContactAsync(
             Arg.Is<HoldedContactInput>(i => i.TradeName == null), Arg.Any<CancellationToken>());
@@ -1016,7 +1014,7 @@ public class HoldedFinanceServiceTests
 
         var id = await MakeService().EnsureCreditorContactAsync(
             userId, "Peter Drier", null, "ES9121000418450200051332", null, null,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         id.Should().Be("existing-c");
         await _client.DidNotReceive().UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
@@ -1030,7 +1028,7 @@ public class HoldedFinanceServiceTests
 
         var id = await MakeService().EnsureCreditorContactAsync(
             userId, "Peter Drier", null, null, "seed-c", 40000004,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         // Lazy-seed from a prior pushed report -> the seeded contact as is: no create, no update.
         id.Should().Be("seed-c");
@@ -1059,7 +1057,7 @@ public class HoldedFinanceServiceTests
 
         await MakeService().EnsureCreditorContactAsync(
             userId, "Daniela Marquez", null, null, null, 40000001,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         await _repo.Received(1).UpsertCreditorContactAsync(
             Arg.Is<HoldedCreditorContact>(c => c.Source == CreditorContactSource.Manual),
@@ -1087,7 +1085,7 @@ public class HoldedFinanceServiceTests
 
         var id = await MakeService().EnsureCreditorContactAsync(
             userId, "Peter Drier", null, null, null, null,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         id.Should().Be("c1");
         await _client.DidNotReceive().UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
@@ -1114,7 +1112,7 @@ public class HoldedFinanceServiceTests
 
         await MakeService().EnsureCreditorContactAsync(
             userId, "Peter Drier", null, null, null, 40000004,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         await _repo.Received(1).UpsertCreditorContactAsync(
             Arg.Is<HoldedCreditorContact>(c => c.SupplierAccountNum == 40000004),
@@ -1142,7 +1140,7 @@ public class HoldedFinanceServiceTests
 
         var id = await MakeService().EnsureCreditorContactAsync(
             userId, "Peter Drier", null, null, null, 40000004,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         // Holded itself was still updated — only the local binding write is skipped.
         id.Should().Be("c1");
@@ -1183,7 +1181,7 @@ public class HoldedFinanceServiceTests
         var id = await MakeService(logger)
             .EnsureCreditorContactAsync(
                 userId, "Peter Drier", null, null, null, 40000004,
-                Xunit.TestContext.Current.CancellationToken);
+                TestContext.Current.CancellationToken);
 
         id.Should().Be("c1");
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
@@ -1217,7 +1215,7 @@ public class HoldedFinanceServiceTests
         var id = await MakeService(logger)
             .EnsureCreditorContactAsync(
                 userId, "Peter Drier", null, null, null, null,
-                Xunit.TestContext.Current.CancellationToken);
+                TestContext.Current.CancellationToken);
 
         // The admin's bind stands; the contact this push minted is retracted, not left as a second one.
         id.Should().Be("c-admin");
@@ -1244,7 +1242,7 @@ public class HoldedFinanceServiceTests
             });
 
         await MakeService().SetCreditorAccountNumAsync(
-            userId, 40000012, Xunit.TestContext.Current.CancellationToken);
+            userId, 40000012, TestContext.Current.CancellationToken);
 
         await _repo.Received(1).UpsertCreditorContactAsync(
             Arg.Is<HoldedCreditorContact>(c =>
@@ -1273,7 +1271,7 @@ public class HoldedFinanceServiceTests
             (HoldedCreditorContact?)null); // re-check right before the write: admin unbound in between
 
         await MakeService().SetCreditorAccountNumAsync(
-            userId, 40000012, Xunit.TestContext.Current.CancellationToken);
+            userId, 40000012, TestContext.Current.CancellationToken);
 
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
             Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
@@ -1306,7 +1304,7 @@ public class HoldedFinanceServiceTests
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
 
         await MakeService(logger)
-            .SetCreditorAccountNumAsync(userId, 40000012, Xunit.TestContext.Current.CancellationToken);
+            .SetCreditorAccountNumAsync(userId, 40000012, TestContext.Current.CancellationToken);
 
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
             Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
@@ -1330,7 +1328,7 @@ public class HoldedFinanceServiceTests
             new() { Id = "c4", Name = "Acme Supplies SL", SupplierAccountNum = 42000000 }, // vendor, outside the block
         });
 
-        var (rows, _) = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+        var (rows, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
         // Ordinary org vendors carry supplier numbers too — only the 40000000–41999999 member-creditor
         // block counts, or an admin could bind a member onto a vendor's account.
@@ -1380,7 +1378,7 @@ public class HoldedFinanceServiceTests
             OpenDoc("v1", null, 9m),                      // no contact
         });
 
-        var (rows, _) = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+        var (rows, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
         rows.Single(r => r.SupplierAccountNum == 40000004).OpenDocumentCount.Should().Be(2);
         rows.Single(r => r.SupplierAccountNum == 40000005).OpenDocumentCount.Should().Be(1);
@@ -1419,7 +1417,7 @@ public class HoldedFinanceServiceTests
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<HoldedPurchaseDocListItemDto>>(_ => throw new HoldedTransientException("down"));
 
-        var (rows, _) = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+        var (rows, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.OpenDocumentCount.Should().BeNull();
     }
@@ -1434,7 +1432,7 @@ public class HoldedFinanceServiceTests
         _client.ListContactsAsync(Arg.Any<CancellationToken>())
             .Throws(new HoldedTransientException("Holded is down"));
 
-        var (rows, _) = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+        var (rows, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
         var row = rows.Should().ContainSingle().Subject;
         row.SupplierAccountNum.Should().Be(40000004);
@@ -1453,7 +1451,7 @@ public class HoldedFinanceServiceTests
             .Throws(new NullReferenceException("mapping bug"));
 
         var act = async () => await MakeService()
-            .ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+            .ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<NullReferenceException>();
     }
@@ -1469,7 +1467,7 @@ public class HoldedFinanceServiceTests
         _client.ListContactsAsync(Arg.Any<CancellationToken>())
             .Throws(new JsonException("unexpected token"));
 
-        var (rows, _) = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+        var (rows, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.Name.Should().BeEmpty();
     }
@@ -1486,7 +1484,7 @@ public class HoldedFinanceServiceTests
         });
         _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>());
 
-        var (rows, _) = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+        var (rows, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
         // The binding keeps the row visible; there is simply no name to show for it.
         var row = rows.Should().ContainSingle().Subject;
@@ -1504,7 +1502,7 @@ public class HoldedFinanceServiceTests
         });
 
         var result = await MakeService().SetCreditorContactAsync(
-            Guid.NewGuid(), 40000004, Admin, Xunit.TestContext.Current.CancellationToken);
+            Guid.NewGuid(), 40000004, Admin, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("already bound to a different member");
@@ -1528,7 +1526,7 @@ public class HoldedFinanceServiceTests
         });
 
         var result = await MakeService().SetCreditorContactAsync(
-            Guid.NewGuid(), 40000004, Admin, Xunit.TestContext.Current.CancellationToken);
+            Guid.NewGuid(), 40000004, Admin, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("Daniela Marquez");
@@ -1543,7 +1541,7 @@ public class HoldedFinanceServiceTests
         _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>());
 
         var result = await MakeService().SetCreditorContactAsync(
-            Guid.NewGuid(), 40000004, Admin, Xunit.TestContext.Current.CancellationToken);
+            Guid.NewGuid(), 40000004, Admin, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("No Holded contact");
@@ -1568,7 +1566,7 @@ public class HoldedFinanceServiceTests
         });
 
         var result = await MakeService().SetCreditorContactAsync(
-            userId, 40000004, Admin, Xunit.TestContext.Current.CancellationToken);
+            userId, 40000004, Admin, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         await _repo.Received(1).UpsertCreditorContactAsync(
@@ -1608,7 +1606,7 @@ public class HoldedFinanceServiceTests
         });
 
         await MakeService(logger)
-            .SetCreditorAccountNumAsync(userId, 40000012, Xunit.TestContext.Current.CancellationToken);
+            .SetCreditorAccountNumAsync(userId, 40000012, TestContext.Current.CancellationToken);
 
         await _repo.Received(1).UpsertCreditorContactAsync(
             Arg.Is<HoldedCreditorContact>(c => c.UserId == userId && c.SupplierAccountNum == 40000012),
@@ -1638,7 +1636,7 @@ public class HoldedFinanceServiceTests
         });
 
         await MakeService(logger)
-            .SetCreditorAccountNumAsync(userId, 40000012, Xunit.TestContext.Current.CancellationToken);
+            .SetCreditorAccountNumAsync(userId, 40000012, TestContext.Current.CancellationToken);
 
         await _repo.Received(1).UpsertCreditorContactAsync(
             Arg.Any<HoldedCreditorContact>(), FixedNow, Arg.Any<CancellationToken>());
@@ -1663,7 +1661,7 @@ public class HoldedFinanceServiceTests
         await MakeService(logger)
             .EnsureCreditorContactAsync(
                 userId, "Ana Ruiz", null, null, seedContactId: "c-theirs", seedAccountNum: 40000012,
-                Xunit.TestContext.Current.CancellationToken);
+                TestContext.Current.CancellationToken);
 
         // No ExistingContactId => Holded POSTs a new contact, splitting the two members apart.
         await _client.Received(1).UpsertContactAsync(
@@ -1694,7 +1692,7 @@ public class HoldedFinanceServiceTests
         await MakeService(logger)
             .EnsureCreditorContactAsync(
                 userId, "Ana Ruiz", null, null, seedContactId: "c-shared", seedAccountNum: null,
-                Xunit.TestContext.Current.CancellationToken);
+                TestContext.Current.CancellationToken);
 
         await _client.Received(1).UpsertContactAsync(
             Arg.Is<HoldedContactInput>(i => i.ExistingContactId == null), Arg.Any<CancellationToken>());
@@ -1719,7 +1717,7 @@ public class HoldedFinanceServiceTests
 
         await MakeService().EnsureCreditorContactAsync(
             userId, "Ana Ruiz", null, null, seedContactId: "c-theirs", seedAccountNum: 40000012,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
             Arg.Is<HoldedCreditorContact>(c => c.HoldedContactId == "c-theirs" || c.SupplierAccountNum == 40000012),
@@ -1739,7 +1737,7 @@ public class HoldedFinanceServiceTests
 
         var id = await MakeService().EnsureCreditorContactAsync(
             userId, "Ana Ruiz", null, null, seedContactId: "c-mine", seedAccountNum: 40000012,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         id.Should().Be("c-mine");
         await _client.DidNotReceive().UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
@@ -1761,7 +1759,7 @@ public class HoldedFinanceServiceTests
             new HoldedCreditorContact { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = 40000004 });
 
         var removed = await MakeService().ClearCreditorContactAsync(
-            userId, Admin, Xunit.TestContext.Current.CancellationToken);
+            userId, Admin, TestContext.Current.CancellationToken);
 
         removed.Should().BeTrue();
         await _repo.Received(1).DeleteCreditorContactAsync(userId, Arg.Any<CancellationToken>());
@@ -1776,7 +1774,7 @@ public class HoldedFinanceServiceTests
         _repo.DeleteCreditorContactAsync(userId, Arg.Any<CancellationToken>()).Returns((HoldedCreditorContact?)null);
 
         var removed = await MakeService().ClearCreditorContactAsync(
-            userId, Admin, Xunit.TestContext.Current.CancellationToken);
+            userId, Admin, TestContext.Current.CancellationToken);
 
         removed.Should().BeFalse();
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(
@@ -1797,7 +1795,7 @@ public class HoldedFinanceServiceTests
             UnmatchedDoc("tags-only", account: null, tagsJson: """["ops"]"""),
         ]);
 
-        var rows = await MakeService().GetUnmatchedAsync(Xunit.TestContext.Current.CancellationToken);
+        var rows = await MakeService().GetUnmatchedAsync(TestContext.Current.CancellationToken);
 
         rows.Select(r => (r.DocNumber, r.Reason)).Should().Equal(
             ("neither", "No account, no tag"),
@@ -1862,7 +1860,7 @@ public class HoldedFinanceServiceTests
             });
 
         var plan = await MakeService().GetProvisioningPlanAsync(
-            blockStart: 6290010, ct: Xunit.TestContext.Current.CancellationToken);
+            blockStart: 6290010, ct: TestContext.Current.CancellationToken);
 
         var proposed = plan.Rows.Single(r => r.BudgetCategoryId == toAddCat);
         proposed.State.Should().Be("ToAdd");
@@ -1880,7 +1878,7 @@ public class HoldedFinanceServiceTests
             .Returns(ci => $"acc-{ci.ArgAt<int>(0)}");
 
         var created = await MakeService().ProvisionAsync(
-            blockStart: 6290010, addAll: false, actorUserId: Admin, ct: Xunit.TestContext.Current.CancellationToken);
+            blockStart: 6290010, addAll: false, actorUserId: Admin, ct: TestContext.Current.CancellationToken);
 
         created.Should().Be(1);
         await _client.Received(1).CreateExpenseAccountAsync(
@@ -1907,7 +1905,7 @@ public class HoldedFinanceServiceTests
             .Returns(ci => $"acc-{ci.ArgAt<int>(0)}");
 
         var created = await MakeService().ProvisionAsync(
-            blockStart: 6290010, addAll: true, actorUserId: Admin, ct: Xunit.TestContext.Current.CancellationToken);
+            blockStart: 6290010, addAll: true, actorUserId: Admin, ct: TestContext.Current.CancellationToken);
 
         created.Should().Be(2);
         var numbers = _repo.ReceivedCalls()
@@ -1931,7 +1929,7 @@ public class HoldedFinanceServiceTests
             .ThrowsAsync(new InvalidOperationException("holded said no"));
 
         var act = async () => await MakeService().ProvisionAsync(
-            blockStart: 6290010, addAll: true, actorUserId: Admin, ct: Xunit.TestContext.Current.CancellationToken);
+            blockStart: 6290010, addAll: true, actorUserId: Admin, ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         await _repo.Received(1).AddCategoryMapAsync(
@@ -1948,7 +1946,7 @@ public class HoldedFinanceServiceTests
             .ThrowsAsync(new InvalidOperationException("db down"));
 
         var act = async () => await MakeService().ProvisionAsync(
-            blockStart: 6290010, addAll: false, actorUserId: Admin, ct: Xunit.TestContext.Current.CancellationToken);
+            blockStart: 6290010, addAll: false, actorUserId: Admin, ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         await _audit.Received(1).LogAsync(AuditAction.HoldedCategoryAccountProvisioned, Arg.Any<string>(), catA,
@@ -2004,7 +2002,7 @@ public class HoldedFinanceServiceTests
             new() { Id = "hi-out", Name = "Vendor", SupplierAccountNum = 42000000 },
         });
 
-        var (rows, _) = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+        var (rows, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
         rows.Select(r => r.SupplierAccountNum).Should().BeEquivalentTo([40000000, 41999999]);
         // Name comes from the contact filter and Balance from the mirror filter; assert both, or a row
@@ -2024,7 +2022,7 @@ public class HoldedFinanceServiceTests
     {
         // The number arrives on a POST; the filtered dropdown is not a server-side gate.
         var result = await MakeService().SetCreditorContactAsync(
-            Guid.NewGuid(), accountNum, Admin, Xunit.TestContext.Current.CancellationToken);
+            Guid.NewGuid(), accountNum, Admin, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("outside the member creditor block");
@@ -2045,7 +2043,7 @@ public class HoldedFinanceServiceTests
         });
 
         var result = await MakeService().SetCreditorContactAsync(
-            Guid.NewGuid(), accountNum, Admin, Xunit.TestContext.Current.CancellationToken);
+            Guid.NewGuid(), accountNum, Admin, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
     }
@@ -2077,9 +2075,9 @@ public class HoldedFinanceServiceTests
             });
 
         var svc = MakeService();
-        (await svc.GetHoldedAccountIdForCategoryAsync(mapped, Xunit.TestContext.Current.CancellationToken))
+        (await svc.GetHoldedAccountIdForCategoryAsync(mapped, TestContext.Current.CancellationToken))
             .Should().Be("acc-live");
-        (await svc.GetHoldedAccountIdForCategoryAsync(unmapped, Xunit.TestContext.Current.CancellationToken))
+        (await svc.GetHoldedAccountIdForCategoryAsync(unmapped, TestContext.Current.CancellationToken))
             .Should().BeNull();
     }
 
@@ -2104,7 +2102,7 @@ public class HoldedFinanceServiceTests
             });
 
         var slices = await MakeService().ContributeForUserAsync(
-            userId, Xunit.TestContext.Current.CancellationToken);
+            userId, TestContext.Current.CancellationToken);
 
         var slice = slices.Should()
             .ContainSingle(s => s.SectionName == Service.HoldedCreditorAccount).Subject;
@@ -2139,7 +2137,7 @@ public class HoldedFinanceServiceTests
                 });
         }
 
-        var slices = await MakeService().ContributeForUserAsync(requestedId, Xunit.TestContext.Current.CancellationToken);
+        var slices = await MakeService().ContributeForUserAsync(requestedId, TestContext.Current.CancellationToken);
 
         var bindings = JsonSerializer.SerializeToElement(slices.Single(s => string.Equals(s.SectionName, Service.HoldedCreditorAccount, StringComparison.Ordinal)).Data);
         bindings.ValueKind.Should().Be(JsonValueKind.Object);
@@ -2166,7 +2164,7 @@ public class HoldedFinanceServiceTests
             new HoldedCreditorContact { UserId = sourceId, HoldedContactId = "source-only", SupplierAccountNum = 40000004 });
 
         var service = MakeService();
-        var slices = await service.ContributeForUserAsync(survivorId, Xunit.TestContext.Current.CancellationToken);
+        var slices = await service.ContributeForUserAsync(survivorId, TestContext.Current.CancellationToken);
 
         slices.Single(s => string.Equals(s.SectionName, "HoldedCreditorAccount", StringComparison.Ordinal)).Data.Should().BeNull();
         var additional = JsonSerializer.SerializeToElement(slices.Single(s => string.Equals(s.SectionName,
@@ -2185,7 +2183,7 @@ public class HoldedFinanceServiceTests
             .Returns((HoldedCreditorContact?)null);
 
         var slices = await MakeService().ContributeForUserAsync(
-            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         var slice = slices.Should()
             .ContainSingle(s => s.SectionName == Service.HoldedCreditorAccount).Subject;
@@ -2207,7 +2205,7 @@ public class HoldedFinanceServiceTests
             });
 
         var slices = await MakeService().ContributeForUserAsync(
-            userId, Xunit.TestContext.Current.CancellationToken);
+            userId, TestContext.Current.CancellationToken);
 
         var slice = slices.Should()
             .ContainSingle(s => s.SectionName == Service.SepaPayouts).Subject;
@@ -2242,7 +2240,7 @@ public class HoldedFinanceServiceTests
             new HoldedCreditorContact { UserId = userId, HoldedContactId = "c1" });
         var svc = MakeService();
 
-        await svc.EraseForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await svc.EraseForUserAsync(userId, TestContext.Current.CancellationToken);
 
         await _repo.Received(1).DeleteCreditorContactAsync(userId, Arg.Any<CancellationToken>());
         svc.ErasureDeclaration.Should().ContainKey(Service.HoldedCreditorAccount)
@@ -2272,7 +2270,7 @@ public class HoldedFinanceServiceTests
             new() { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), HoldedContactId = "c2" },
         });
 
-        var info = await MakeService().GetDocSyncInfoAsync(Xunit.TestContext.Current.CancellationToken);
+        var info = await MakeService().GetDocSyncInfoAsync(TestContext.Current.CancellationToken);
 
         info.LastSyncAt.Should().Be(FixedNow);
         info.Status.Should().Be("Error");
@@ -2287,7 +2285,7 @@ public class HoldedFinanceServiceTests
         _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new HoldedDocSyncState());
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
 
-        var info = await MakeService().GetDocSyncInfoAsync(Xunit.TestContext.Current.CancellationToken);
+        var info = await MakeService().GetDocSyncInfoAsync(TestContext.Current.CancellationToken);
 
         info.Status.Should().Be("Idle");
         info.LastSyncAt.Should().BeNull();
@@ -2348,7 +2346,7 @@ public class HoldedFinanceServiceTests
         ActiveYearWith();
         SeedConnector();
 
-        await MakeService().GetConnectorOverviewAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().GetConnectorOverviewAsync(TestContext.Current.CancellationToken);
 
         Assert.Empty(_client.ReceivedCalls());
     }
@@ -2364,7 +2362,7 @@ public class HoldedFinanceServiceTests
             LastSyncedDocCount = 7,
         });
 
-        var vm = await MakeService().GetConnectorOverviewAsync(Xunit.TestContext.Current.CancellationToken);
+        var vm = await MakeService().GetConnectorOverviewAsync(TestContext.Current.CancellationToken);
 
         vm.DocSync.IsStale.Should().BeFalse();
         vm.DocSync.SinceLastSync.Should().Be(Duration.FromHours(5));
@@ -2377,7 +2375,7 @@ public class HoldedFinanceServiceTests
         ActiveYearWith();
         SeedConnector(new HoldedDocSyncState { LastSyncAt = FixedNow - Duration.FromHours(40) });
 
-        var vm = await MakeService().GetConnectorOverviewAsync(Xunit.TestContext.Current.CancellationToken);
+        var vm = await MakeService().GetConnectorOverviewAsync(TestContext.Current.CancellationToken);
 
         vm.DocSync.IsStale.Should().BeTrue();
     }
@@ -2390,7 +2388,7 @@ public class HoldedFinanceServiceTests
         ActiveYearWith();
         SeedConnector(new HoldedDocSyncState());
 
-        var vm = await MakeService().GetConnectorOverviewAsync(Xunit.TestContext.Current.CancellationToken);
+        var vm = await MakeService().GetConnectorOverviewAsync(TestContext.Current.CancellationToken);
 
         vm.DocSync.IsStale.Should().BeTrue();
         vm.DocSync.SinceLastSync.Should().BeNull();
@@ -2415,7 +2413,7 @@ public class HoldedFinanceServiceTests
             LastSyncedDocCount = 12,
         });
 
-        var vm = await MakeService().GetConnectorOverviewAsync(Xunit.TestContext.Current.CancellationToken);
+        var vm = await MakeService().GetConnectorOverviewAsync(TestContext.Current.CancellationToken);
 
         vm.DocSync.LastSyncAt.Should().Be(succeeded);
         vm.DocSync.StatusChangedAt.Should().Be(failed);
@@ -2436,7 +2434,7 @@ public class HoldedFinanceServiceTests
             new() { BudgetCategoryId = gone, HoldedAccountNumber = 62900102, Tag = "gone", IsActive = false },
         ]);
 
-        var vm = await MakeService().GetConnectorOverviewAsync(Xunit.TestContext.Current.CancellationToken);
+        var vm = await MakeService().GetConnectorOverviewAsync(TestContext.Current.CancellationToken);
 
         vm.CategoryMap.Should().HaveCount(2);
         vm.ActiveMappings.Should().Be(1);
@@ -2459,7 +2457,7 @@ public class HoldedFinanceServiceTests
             new() { BudgetCategoryId = live, HoldedAccountNumber = 62900101, Tag = "staff", IsActive = true },
         ]);
 
-        var rows = await MakeService().GetCategoryMapAsync(Xunit.TestContext.Current.CancellationToken);
+        var rows = await MakeService().GetCategoryMapAsync(TestContext.Current.CancellationToken);
 
         var row = rows.Should().ContainSingle().Subject;
         row.BudgetCategoryId.Should().Be(live);
@@ -2490,7 +2488,7 @@ public class HoldedFinanceServiceTests
             },
         ]);
 
-        var vm = await MakeService().GetConnectorOverviewAsync(Xunit.TestContext.Current.CancellationToken);
+        var vm = await MakeService().GetConnectorOverviewAsync(TestContext.Current.CancellationToken);
 
         vm.Docs.Should().HaveCount(2);
         vm.MatchedDocs.Should().Be(1);
@@ -2512,7 +2510,7 @@ public class HoldedFinanceServiceTests
         _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns((BudgetYearDetail?)null);
         SeedConnector(map: [new() { BudgetCategoryId = Guid.NewGuid(), HoldedAccountNumber = 62900101, IsActive = true }]);
 
-        var vm = await MakeService().GetConnectorOverviewAsync(Xunit.TestContext.Current.CancellationToken);
+        var vm = await MakeService().GetConnectorOverviewAsync(TestContext.Current.CancellationToken);
 
         vm.CategoryMap.Should().ContainSingle().Which.CategoryName.Should().BeNull();
     }
@@ -2527,7 +2525,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = Guid.NewGuid(), HoldedContactId = "c2" },
         ]);
 
-        var vm = await MakeService().GetConnectorOverviewAsync(Xunit.TestContext.Current.CancellationToken);
+        var vm = await MakeService().GetConnectorOverviewAsync(TestContext.Current.CancellationToken);
 
         vm.CreditorBindingCount.Should().Be(2);
     }
@@ -2580,7 +2578,7 @@ public class HoldedFinanceServiceTests
 
         var result = await MakeService().GenerateSepaPayoutAsync(
             [new SepaPayoutSelection(40000004, 10m)], 50m, Guid.NewGuid(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.Xml.Should().BeNull();
@@ -2597,7 +2595,7 @@ public class HoldedFinanceServiceTests
         var actor = Guid.NewGuid();
         var result = await MakeService().GenerateSepaPayoutAsync(
             [new SepaPayoutSelection(40000004, 12.34m)], 50m, actor,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.FileName.Should().StartWith("nobodies-collective-").And.EndWith(".xml");
@@ -2636,7 +2634,7 @@ public class HoldedFinanceServiceTests
 
         var result = await MakeService().GenerateSepaPayoutAsync(
             [new SepaPayoutSelection(40000004, 12.34m)], 50m, Guid.NewGuid(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         await _emailService.Received(1).SendAsync(
@@ -2725,7 +2723,7 @@ public class HoldedFinanceServiceTests
 
         var result = await MakeService().GenerateSepaPayoutAsync(
             [new SepaPayoutSelection(40000004, 12.34m)], 50m, Guid.NewGuid(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         await _repo.Received(1).AddSepaPayoutAsync(
@@ -2775,7 +2773,7 @@ public class HoldedFinanceServiceTests
 
         var result = await MakeService().GenerateSepaPayoutAsync(
             [new SepaPayoutSelection(40000004, 10m), new SepaPayoutSelection(40000005, 10m)],
-            50m, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            50m, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         await _emailService.Received(1).SendAsync(
@@ -2791,7 +2789,7 @@ public class HoldedFinanceServiceTests
 
         var result = await MakeService().GenerateSepaPayoutAsync(
             [new SepaPayoutSelection(40000004, 12.34m)], 50m, Guid.NewGuid(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
@@ -2821,7 +2819,7 @@ public class HoldedFinanceServiceTests
 
         await MakeService().GenerateSepaPayoutAsync(
             [new SepaPayoutSelection(40000004, 12.34m)], 50m, Guid.NewGuid(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         await _repo.Received(1).AddSepaPayoutAsync(
             Arg.Any<SepaPayoutFile>(),
@@ -2843,7 +2841,7 @@ public class HoldedFinanceServiceTests
 
         var result = await MakeService().GenerateSepaPayoutAsync(
             [new SepaPayoutSelection(40000004, 12.34m)], 50m, Guid.NewGuid(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         stored.Should().NotBeNull();
@@ -2864,10 +2862,10 @@ public class HoldedFinanceServiceTests
 
         var first = await service.GenerateSepaPayoutAsync(
             [new SepaPayoutSelection(40000004, 10m)], 50m, Guid.NewGuid(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
         var second = await service.GenerateSepaPayoutAsync(
             [new SepaPayoutSelection(40000004, 10m)], 50m, Guid.NewGuid(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         first.Succeeded.Should().BeTrue();
         second.Succeeded.Should().BeTrue();
@@ -2882,7 +2880,7 @@ public class HoldedFinanceServiceTests
 
         var result = await MakeService().GenerateSepaPayoutAsync(
             [new SepaPayoutSelection(40000004, 30.01m)], 50m, Guid.NewGuid(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("more than the 30.00 EUR owed");
@@ -2898,7 +2896,7 @@ public class HoldedFinanceServiceTests
 
         var result = await MakeService().GenerateSepaPayoutAsync(
             [new SepaPayoutSelection(40000004, 60m)], 50m, Guid.NewGuid(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("cap");
@@ -2916,7 +2914,7 @@ public class HoldedFinanceServiceTests
 
         var result = await MakeService().GenerateSepaPayoutAsync(
             [new SepaPayoutSelection(40000004, 25m)], 20m, Guid.NewGuid(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("cap");
@@ -2931,7 +2929,7 @@ public class HoldedFinanceServiceTests
 
         var result = await MakeService().GenerateSepaPayoutAsync(
             [new SepaPayoutSelection(40000004, 60m)], 100m, Guid.NewGuid(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
     }
@@ -2944,7 +2942,7 @@ public class HoldedFinanceServiceTests
 
         var result = await MakeService().GenerateSepaPayoutAsync(
             [new SepaPayoutSelection(40000004, 10m)], 50m, Guid.NewGuid(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.Xml.Should().Contain("<CtrlSum>10.00</CtrlSum>");
@@ -2958,7 +2956,7 @@ public class HoldedFinanceServiceTests
 
         var result = await MakeService().GenerateSepaPayoutAsync(
             [new SepaPayoutSelection(40000004, 10m)], 50m, Guid.NewGuid(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("no IBAN");
@@ -2969,7 +2967,7 @@ public class HoldedFinanceServiceTests
     {
         SeedPayableCreditor();
 
-        var (rows, _) = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+        var (rows, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.IbanMasked.Should().Be("ES79****789");
     }
@@ -3003,7 +3001,7 @@ public class HoldedFinanceServiceTests
 
         var result = await MakeService().GenerateSepaPayoutAsync(
             [new SepaPayoutSelection(40000004, 10m)], 50m, Guid.NewGuid(),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.Xml.Should().Contain(AnaIban).And.Contain("Ana Ruiz");
@@ -3015,7 +3013,7 @@ public class HoldedFinanceServiceTests
     {
         SeedTwoContactsOnOneAccount();
 
-        var (rows, _) = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+        var (rows, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
         var row = rows.Should().ContainSingle().Subject;
         row.Name.Should().Be("Ana Ruiz");
@@ -3527,7 +3525,7 @@ public class HoldedFinanceServiceTests
         _sepa.TreasuryAccountId = "";
         SeedTransferRows();
 
-        var (rows, unavailable, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, unavailable, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         unavailable.Should().Contain("Sepa:TreasuryAccountId");
         rows.Should().ContainSingle().Which.NotBookableReason.Should().BeNull();
@@ -3547,7 +3545,7 @@ public class HoldedFinanceServiceTests
         SeedTransferRows();
 
         var (transfers, unavailable) = await MakeService().GetSepaTransfersAsync(
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         transfers.Should().ContainSingle();
         unavailable.Should().BeNull();
@@ -3562,7 +3560,7 @@ public class HoldedFinanceServiceTests
         _sepa.TreasuryLedgerAccount = null;
         SeedTransferRows();
 
-        var (rows, unavailable, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, unavailable, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         unavailable.Should().Contain("Sepa:TreasuryLedgerAccount");
         rows.Should().ContainSingle().Which.NotBookableReason.Should().BeNull();
@@ -3576,7 +3574,7 @@ public class HoldedFinanceServiceTests
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>())
             .Returns(new List<HoldedCreditorContact>());
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.NotBookableReason.Should().Contain("no Holded contact binding");
     }
@@ -3591,7 +3589,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = userId, HoldedContactId = "c2", SupplierAccountNum = 40000099 },
         });
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         var row = rows.Should().ContainSingle().Subject;
         row.CanBook.Should().BeFalse();
@@ -3611,7 +3609,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = userId, HoldedContactId = "c2", SupplierAccountNum = 40000004 },
         });
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         var row = rows.Should().ContainSingle().Subject;
         row.CanBook.Should().BeFalse();
@@ -3630,7 +3628,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = userId, HoldedContactId = "c2", SupplierAccountNum = 40000004 },
         });
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         // CanBook also needs a matched bank line now (nobodies-collective/Humans#1185 T3/T4 wire
         // it); this test only covers the account/contact guard, so it checks the guard directly.
@@ -3649,7 +3647,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = 40000004 },
         });
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         // CanBook also needs a matched bank line now (nobodies-collective/Humans#1185 T3/T4 wire
         // it); this test only covers the account/contact guard, so it checks the guard directly.
@@ -3701,7 +3699,7 @@ public class HoldedFinanceServiceTests
         LiveChart((62900100, "cat-0", "Departments / Geeks"), (62900101, "manual-1", "Something by hand"));
         _client.CreateExpenseAccountAsync(62900102, "Workgroups / ALM 2027", Arg.Any<CancellationToken>()).Returns("new-1");
 
-        var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / ALM 2027", null, Xunit.TestContext.Current.CancellationToken);
+        var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / ALM 2027", null, TestContext.Current.CancellationToken);
 
         result.Should().Be(new HoldedExpenseAccountRef(62900102, "new-1", "Workgroups / ALM 2027", Created: true));
         await _repo.Received(1).UpsertManagedAccountAsync(
@@ -3719,7 +3717,7 @@ public class HoldedFinanceServiceTests
         NoCategoryMap();
         LiveChart((62900150, "acc-150", "workgroups /  alm 2027"));
 
-        var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / ALM 2027", null, Xunit.TestContext.Current.CancellationToken);
+        var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / ALM 2027", null, TestContext.Current.CancellationToken);
 
         result.Should().Be(new HoldedExpenseAccountRef(62900150, "acc-150", "workgroups /  alm 2027", Created: false));
         await _client.DidNotReceive().CreateExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -3737,7 +3735,7 @@ public class HoldedFinanceServiceTests
         NoCategoryMap();
         LiveChart((62900150, "acc-150", "Anything"), (62900151, "acc-151", "Other"));
 
-        var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / ALM 2027", 62900151, Xunit.TestContext.Current.CancellationToken);
+        var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / ALM 2027", 62900151, TestContext.Current.CancellationToken);
 
         result.Should().Be(new HoldedExpenseAccountRef(62900151, "acc-151", "Other", Created: false));
         await _client.DidNotReceive().CreateExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -3750,7 +3748,7 @@ public class HoldedFinanceServiceTests
         NoCategoryMap();
         LiveChart((62900150, "acc-150", "Anything"));
 
-        var act = () => MakeService().CreateOrLinkExpenseAccountAsync("X", 62900199, Xunit.TestContext.Current.CancellationToken);
+        var act = () => MakeService().CreateOrLinkExpenseAccountAsync("X", 62900199, TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*62900199*");
         await _repo.DidNotReceive().UpsertManagedAccountAsync(Arg.Any<HoldedManagedAccount>(), Arg.Any<CancellationToken>());
@@ -3766,7 +3764,7 @@ public class HoldedFinanceServiceTests
         });
         LiveChart((62900100, "cat-0", "Departments / Geeks"));
 
-        var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / Geeks", 62900100, Xunit.TestContext.Current.CancellationToken);
+        var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / Geeks", 62900100, TestContext.Current.CancellationToken);
 
         result.AccountId.Should().Be("cat-0");
         await _repo.DidNotReceive().UpsertManagedAccountAsync(Arg.Any<HoldedManagedAccount>(), Arg.Any<CancellationToken>());
@@ -3783,7 +3781,7 @@ public class HoldedFinanceServiceTests
         LiveChart();
         _client.CreateExpenseAccountAsync(62900101, "Workgroups / New", Arg.Any<CancellationToken>()).Returns("new-2");
 
-        var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / New", null, Xunit.TestContext.Current.CancellationToken);
+        var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / New", null, TestContext.Current.CancellationToken);
 
         result.AccountNum.Should().Be(62900101);
     }
@@ -3791,7 +3789,7 @@ public class HoldedFinanceServiceTests
     [HumansFact]
     public async Task CreateOrLink_BlankName_Throws()
     {
-        var act = () => MakeService().CreateOrLinkExpenseAccountAsync("   ", null, Xunit.TestContext.Current.CancellationToken);
+        var act = () => MakeService().CreateOrLinkExpenseAccountAsync("   ", null, TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<ArgumentException>();
     }
 
@@ -3805,7 +3803,7 @@ public class HoldedFinanceServiceTests
             new() { Id = Guid.NewGuid(), HoldedAccountNumber = 62900150, HoldedAccountId = "m", Label = "Workgroups / ALM 2027", IsActive = true, CreatedAt = FixedNow },
         });
 
-        await MakeService().SetExpenseAccountActiveAsync(62900150, false, Xunit.TestContext.Current.CancellationToken);
+        await MakeService().SetExpenseAccountActiveAsync(62900150, false, TestContext.Current.CancellationToken);
 
         await _repo.Received(1).UpsertManagedAccountAsync(
             Arg.Is<HoldedManagedAccount>(a => a.HoldedAccountNumber == 62900150 && !a.IsActive && a.UpdatedAt == FixedNow),
@@ -3819,7 +3817,7 @@ public class HoldedFinanceServiceTests
     {
         NoManagedAccounts();
 
-        await MakeService().SetExpenseAccountActiveAsync(1, false, Xunit.TestContext.Current.CancellationToken);
+        await MakeService().SetExpenseAccountActiveAsync(1, false, TestContext.Current.CancellationToken);
 
         await _repo.DidNotReceive().UpsertManagedAccountAsync(Arg.Any<HoldedManagedAccount>(), Arg.Any<CancellationToken>());
         await _audit.DidNotReceive().LogAsync(AuditAction.HoldedExpenseAccountActiveChanged, Arg.Any<string>(), Arg.Any<Guid>(),
@@ -3849,8 +3847,8 @@ public class HoldedFinanceServiceTests
             ]),
         ]));
 
-        var all = await MakeService().ListExpenseAccountsAsync(activeOnly: false, Xunit.TestContext.Current.CancellationToken);
-        var active = await MakeService().ListExpenseAccountsAsync(activeOnly: true, Xunit.TestContext.Current.CancellationToken);
+        var all = await MakeService().ListExpenseAccountsAsync(activeOnly: false, TestContext.Current.CancellationToken);
+        var active = await MakeService().ListExpenseAccountsAsync(activeOnly: true, TestContext.Current.CancellationToken);
 
         all.Select(o => (o.AccountNum, o.Label, o.IsBudgetCategory, o.IsActive)).Should().BeEquivalentTo(
         [

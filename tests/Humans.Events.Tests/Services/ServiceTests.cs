@@ -193,12 +193,12 @@ public sealed class EventServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("categories")]
-    [Xunit.InlineData("create-category")]
-    [Xunit.InlineData("edit-category")]
-    [Xunit.InlineData("venues")]
-    [Xunit.InlineData("create-venue")]
-    [Xunit.InlineData("edit-venue")]
+    [InlineData("categories")]
+    [InlineData("create-category")]
+    [InlineData("edit-category")]
+    [InlineData("venues")]
+    [InlineData("create-venue")]
+    [InlineData("edit-venue")]
     public async Task AdminReads_AbortWhenTheRequestIsCancelled(string page)
     {
         var guide = Substitute.For<IEventManagement>();
@@ -233,8 +233,8 @@ public sealed class EventServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task GuideSettingsForm_DistinguishesMissingEditionFromDependencyFailure(bool dependencyFailure)
     {
         var guide = Substitute.For<IEventManagement>();
@@ -250,7 +250,7 @@ public sealed class EventServiceTests
 
         if (dependencyFailure)
         {
-            var thrown = await Xunit.Assert.ThrowsAsync<InvalidOperationException>(() => controller.SaveSettings(model));
+            var thrown = await Assert.ThrowsAsync<InvalidOperationException>(() => controller.SaveSettings(model));
             thrown.Should().BeSameAs(failure);
             controller.ModelState.IsValid.Should().BeTrue();
         }
@@ -271,7 +271,7 @@ public sealed class EventServiceTests
         _burnSettings.GetEventSettingsByIdAsync(edition, Arg.Any<CancellationToken>())
             .Returns(Task.FromException<EventSettingsInfo?>(failure));
 
-        var thrown = await Xunit.Assert.ThrowsAsync<InvalidOperationException>(() => _service.SaveGuideSettingsAsync(
+        var thrown = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.SaveGuideSettingsAsync(
             null, edition, default, default, default, 10, TestContext.Current.CancellationToken));
 
         thrown.Should().BeSameAs(failure);

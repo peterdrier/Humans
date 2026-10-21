@@ -3,7 +3,6 @@ using Humans.Auth.Contracts;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
 using AwesomeAssertions;
-using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;

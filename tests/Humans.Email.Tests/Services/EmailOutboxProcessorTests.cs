@@ -80,7 +80,7 @@ public class EmailOutboxProcessorTests : IDisposable
     {
         var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
 
-        await _job.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+        await _job.ProcessQueuedAsync(TestContext.Current.CancellationToken);
 
         await _transport.Received(1).SendAsync(
             message.RecipientEmail,
@@ -92,7 +92,7 @@ public class EmailOutboxProcessorTests : IDisposable
             Arg.Any<IDictionary<string, string>?>(),
             Arg.Any<CancellationToken>());
 
-        var updated = await FreshQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var updated = await FreshQuery().SingleAsync(TestContext.Current.CancellationToken);
         updated.Status.Should().Be(EmailOutboxStatus.Sent);
         updated.SentAt.Should().Be(_clock.GetCurrentInstant());
         updated.PickedUpAt.Should().BeNull();
@@ -110,9 +110,9 @@ public class EmailOutboxProcessorTests : IDisposable
             Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("SMTP timeout"));
 
-        await _job.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+        await _job.ProcessQueuedAsync(TestContext.Current.CancellationToken);
 
-        var updated = await FreshQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var updated = await FreshQuery().SingleAsync(TestContext.Current.CancellationToken);
         updated.Status.Should().Be(EmailOutboxStatus.Failed);
         updated.RetryCount.Should().Be(1);
         updated.LastError.Should().Contain("SMTP timeout");
@@ -133,7 +133,7 @@ public class EmailOutboxProcessorTests : IDisposable
         var batchSettings = Options.Create(new EmailSettings { OutboxBatchSize = 10, OutboxMaxRetries = 10 });
         var job = NewProcessor(batchSettings);
 
-        await job.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+        await job.ProcessQueuedAsync(TestContext.Current.CancellationToken);
 
         await _transport.Received(10).SendAsync(
             Arg.Any<string>(), Arg.Any<string?>(),
@@ -151,7 +151,7 @@ public class EmailOutboxProcessorTests : IDisposable
 
         await SeedMessageAsync(EmailOutboxStatus.Queued);
 
-        await _job.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+        await _job.ProcessQueuedAsync(TestContext.Current.CancellationToken);
 
         await _transport.DidNotReceive().SendAsync(
             Arg.Any<string>(), Arg.Any<string?>(),
@@ -166,9 +166,9 @@ public class EmailOutboxProcessorTests : IDisposable
         // Message picked up 6 minutes ago but never completed (simulates crash)
         var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
         message.PickedUpAt = _clock.GetCurrentInstant() - Duration.FromMinutes(6);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await _job.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+        await _job.ProcessQueuedAsync(TestContext.Current.CancellationToken);
 
         await _transport.Received(1).SendAsync(
             message.RecipientEmail,
@@ -177,7 +177,7 @@ public class EmailOutboxProcessorTests : IDisposable
             Arg.Any<string?>(), Arg.Any<IDictionary<string, string>?>(),
             Arg.Any<CancellationToken>());
 
-        var updated = await FreshQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var updated = await FreshQuery().SingleAsync(TestContext.Current.CancellationToken);
         updated.Status.Should().Be(EmailOutboxStatus.Sent);
         updated.SentAt.Should().Be(_clock.GetCurrentInstant());
     }
@@ -188,9 +188,9 @@ public class EmailOutboxProcessorTests : IDisposable
         // Message picked up 2 minutes ago — still within the 5 minute window
         var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
         message.PickedUpAt = _clock.GetCurrentInstant() - Duration.FromMinutes(2);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await _job.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+        await _job.ProcessQueuedAsync(TestContext.Current.CancellationToken);
 
         await _transport.DidNotReceive().SendAsync(
             Arg.Any<string>(), Arg.Any<string?>(),
@@ -207,9 +207,9 @@ public class EmailOutboxProcessorTests : IDisposable
         message.RetryCount = 3;
         message.NextRetryAt = _clock.GetCurrentInstant() - Duration.FromMinutes(1);
         message.LastError = "previous error";
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await _job.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+        await _job.ProcessQueuedAsync(TestContext.Current.CancellationToken);
 
         await _transport.Received(1).SendAsync(
             message.RecipientEmail,
@@ -218,7 +218,7 @@ public class EmailOutboxProcessorTests : IDisposable
             Arg.Any<string?>(), Arg.Any<IDictionary<string, string>?>(),
             Arg.Any<CancellationToken>());
 
-        var updated = await FreshQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var updated = await FreshQuery().SingleAsync(TestContext.Current.CancellationToken);
         updated.Status.Should().Be(EmailOutboxStatus.Sent);
         updated.SentAt.Should().Be(_clock.GetCurrentInstant());
     }
@@ -228,9 +228,9 @@ public class EmailOutboxProcessorTests : IDisposable
     {
         var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
 
-        await _job.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+        await _job.ProcessQueuedAsync(TestContext.Current.CancellationToken);
 
-        var row = await FreshCountsQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var row = await FreshCountsQuery().SingleAsync(TestContext.Current.CancellationToken);
         row.Date.Should().Be(_clock.GetCurrentInstant().InUtc().Date);
         row.TemplateName.Should().Be(message.TemplateName);
         row.SentCount.Should().Be(1);
@@ -242,20 +242,20 @@ public class EmailOutboxProcessorTests : IDisposable
     {
         var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
         message.CampaignGrantId = Guid.NewGuid();
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         _campaignService.UpdateGrantEmailStatusAsync(
             message.CampaignGrantId.Value, EmailOutboxStatus.Sent, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("grant update failed"));
 
-        await _job.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+        await _job.ProcessQueuedAsync(TestContext.Current.CancellationToken);
 
         // Transport delivered — the message stays Sent, not re-tallied as Failed
         // just because the post-delivery grant mirror threw.
-        var updated = await FreshQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var updated = await FreshQuery().SingleAsync(TestContext.Current.CancellationToken);
         updated.Status.Should().Be(EmailOutboxStatus.Sent);
 
-        var row = await FreshCountsQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var row = await FreshCountsQuery().SingleAsync(TestContext.Current.CancellationToken);
         row.SentCount.Should().Be(1);
         row.FailedCount.Should().Be(0);
     }
@@ -269,7 +269,7 @@ public class EmailOutboxProcessorTests : IDisposable
         // the batch stamped PickedUp until the stale window releases it.
         var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
         message.CampaignGrantId = Guid.NewGuid();
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         _transport.SendAsync(
             Arg.Any<string>(), Arg.Any<string?>(),
@@ -282,12 +282,12 @@ public class EmailOutboxProcessorTests : IDisposable
             message.CampaignGrantId.Value, EmailOutboxStatus.Failed, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("grant update failed"));
 
-        await _job.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+        await _job.ProcessQueuedAsync(TestContext.Current.CancellationToken);
 
-        var updated = await FreshQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var updated = await FreshQuery().SingleAsync(TestContext.Current.CancellationToken);
         updated.Status.Should().Be(EmailOutboxStatus.Failed);
 
-        var row = await FreshCountsQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var row = await FreshCountsQuery().SingleAsync(TestContext.Current.CancellationToken);
         row.SentCount.Should().Be(0);
         row.FailedCount.Should().Be(1);
     }
@@ -303,9 +303,9 @@ public class EmailOutboxProcessorTests : IDisposable
             Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("SMTP timeout"));
 
-        await _job.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+        await _job.ProcessQueuedAsync(TestContext.Current.CancellationToken);
 
-        var row = await FreshCountsQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var row = await FreshCountsQuery().SingleAsync(TestContext.Current.CancellationToken);
         row.SentCount.Should().Be(0);
         row.FailedCount.Should().Be(1);
     }
@@ -386,7 +386,7 @@ public class EmailOutboxProcessorTests : IDisposable
             repo, _outboxService, _campaignService, _transport, _metrics, _meters, _clock, _settings,
             NullLogger<EmailOutboxProcessor>.Instance));
 
-        await processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+        await processor.ProcessQueuedAsync(TestContext.Current.CancellationToken);
 
         await repo.Received(1).MarkSentAsync(message.Id, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         await repo.DidNotReceive().MarkFailedAsync(
@@ -430,12 +430,12 @@ public class EmailOutboxProcessorTests : IDisposable
             CreatedAt = Instant.FromUtc(2026, 3, 14, 23, 0, 0)
         };
         await _dbContext.EmailOutboxMessages.AddRangeAsync(
-            [message1, message2], Xunit.TestContext.Current.CancellationToken);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+            [message1, message2], TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+        await processor.ProcessQueuedAsync(TestContext.Current.CancellationToken);
 
-        var rows = await FreshCountsQuery().OrderBy(r => r.Date).ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var rows = await FreshCountsQuery().OrderBy(r => r.Date).ToListAsync(TestContext.Current.CancellationToken);
         rows.Should().HaveCount(2);
         rows[0].Date.Should().Be(new LocalDate(2026, 3, 14));
         rows[1].Date.Should().Be(new LocalDate(2026, 3, 15));
@@ -452,17 +452,17 @@ public class EmailOutboxProcessorTests : IDisposable
         // good (never retried) and stays out of the tally, which counts real mail.
         var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
         message.RecipientEmail = testAddress;
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await _job.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+        await _job.ProcessQueuedAsync(TestContext.Current.CancellationToken);
 
-        var updated = await FreshQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var updated = await FreshQuery().SingleAsync(TestContext.Current.CancellationToken);
         updated.Status.Should().Be(EmailOutboxStatus.Sent);
 
         await _transport.DidNotReceiveWithAnyArgs().SendAsync(
             default!, default, default!, default!, default, default, default, default);
 
-        var counts = await FreshCountsQuery().ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var counts = await FreshCountsQuery().ToListAsync(TestContext.Current.CancellationToken);
         counts.Should().BeEmpty();
     }
 
@@ -473,9 +473,9 @@ public class EmailOutboxProcessorTests : IDisposable
         var message = await SeedMessageAsync(EmailOutboxStatus.Failed);
         message.RetryCount = 2;
         message.NextRetryAt = _clock.GetCurrentInstant() + Duration.FromMinutes(10);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await _job.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
+        await _job.ProcessQueuedAsync(TestContext.Current.CancellationToken);
 
         await _transport.DidNotReceive().SendAsync(
             Arg.Any<string>(), Arg.Any<string?>(),
@@ -529,7 +529,7 @@ public class EmailOutboxProcessorTests : IDisposable
         };
 
         _dbContext.EmailOutboxMessages.Add(message);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
         return message;
     }
 }

@@ -58,7 +58,7 @@ public class HoldedClientSalesDocumentTests
         });
 
         var id = await Make(handler).CreateSalesDocumentAsync(
-            kind, Input(), Xunit.TestContext.Current.CancellationToken);
+            kind, Input(), TestContext.Current.CancellationToken);
 
         id.Should().Be("doc-9");
         body.Should().Contain("\"contact_id\":\"contact-1\"");
@@ -96,7 +96,7 @@ public class HoldedClientSalesDocumentTests
         });
 
         var ids = await Make(handler).FindSalesDocumentIdsByTagAsync(
-            kind, "humans-order-2", Xunit.TestContext.Current.CancellationToken);
+            kind, "humans-order-2", TestContext.Current.CancellationToken);
 
         ids.Should().Equal("doc-2", "doc-4");
     }
@@ -111,7 +111,7 @@ public class HoldedClientSalesDocumentTests
             """{"items":[{"tags":["humans-order-1"]}],"has_more":false}"""));
 
         var act = async () => await Make(handler).FindSalesDocumentIdsByTagAsync(
-            HoldedSalesDocumentKind.Invoice, "humans-order-1", Xunit.TestContext.Current.CancellationToken);
+            HoldedSalesDocumentKind.Invoice, "humans-order-1", TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<HoldedPermanentException>();
     }
@@ -130,7 +130,7 @@ public class HoldedClientSalesDocumentTests
         });
 
         await Make(handler).ApproveSalesDocumentAsync(
-            kind, "doc-9", Xunit.TestContext.Current.CancellationToken);
+            kind, "doc-9", TestContext.Current.CancellationToken);
     }
 
     [HumansFact]
@@ -148,7 +148,7 @@ public class HoldedClientSalesDocumentTests
         });
 
         var doc = await Make(handler).GetSalesDocumentAsync(
-            HoldedSalesDocumentKind.Invoice, "doc-9", Xunit.TestContext.Current.CancellationToken);
+            HoldedSalesDocumentKind.Invoice, "doc-9", TestContext.Current.CancellationToken);
 
         doc.Id.Should().Be("doc-9");
         doc.DocNumber.Should().Be("2026-0007");
@@ -202,7 +202,7 @@ public class HoldedClientSalesDocumentTests
         await Make(handler).CreateSalesDocumentAsync(
             HoldedSalesDocumentKind.SalesReceipt,
             Input() with { ContactId = null },
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         body.Should().NotContain("contact_id");
         body.Should().Contain("\"contact_name\":\"Camp Frio SL\"");

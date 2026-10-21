@@ -1,4 +1,3 @@
-using AwesomeAssertions;
 using Humans.Gate.Contracts;
 using Humans.Gate.Jobs;
 using Microsoft.Extensions.Configuration;

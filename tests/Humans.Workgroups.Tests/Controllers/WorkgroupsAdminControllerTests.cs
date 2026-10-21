@@ -6,7 +6,6 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.Holded.Contracts;
-using Humans.Testing;
 using Humans.Workgroups.Controllers;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Models;

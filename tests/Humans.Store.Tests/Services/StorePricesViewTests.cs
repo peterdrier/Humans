@@ -4,7 +4,6 @@ using Humans.Base.ViewComponents;
 using Humans.Base.Extensions;
 using Humans.Store.Models;
 using Humans.Store.Contracts;
-using Humans.Store.Domain;
 using Humans.Store.Services.Dtos;
 using Humans.AuditLog.Contracts;
 using Humans.AuditLog.ViewComponents;

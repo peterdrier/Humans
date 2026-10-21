@@ -7,7 +7,6 @@ using Humans.Integration.Tests.Infrastructure;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Base.Authorization;
-using Humans.Web.ViewComponents;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 

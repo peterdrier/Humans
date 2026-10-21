@@ -121,7 +121,7 @@ public sealed class CachingCalendarServiceTests
     }
 
     private static Task WarmAsync(CachingCalendarService sut) =>
-        ((IHostedService)sut).StartAsync(Xunit.TestContext.Current.CancellationToken);
+        ((IHostedService)sut).StartAsync(TestContext.Current.CancellationToken);
 
     [HumansFact]
     public async Task DateOccurrenceCancellation_RefreshesDatesAndForwardsDateIdentity()
@@ -147,14 +147,14 @@ public sealed class CachingCalendarServiceTests
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         var sut = CreateSut();
         await WarmAsync(sut);
-        var detail = await sut.GetEventByIdAsync(before.Id, Xunit.TestContext.Current.CancellationToken);
+        var detail = await sut.GetEventByIdAsync(before.Id, TestContext.Current.CancellationToken);
         detail!.StartDate.Should().Be(day);
         detail.EndDateExclusive.Should().Be(day.PlusDays(1));
         detail.StartUtc.Should().BeNull();
-        await sut.CancelOccurrenceAsync(before.Id, null, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken, day);
+        await sut.CancelOccurrenceAsync(before.Id, null, Guid.NewGuid(), TestContext.Current.CancellationToken, day);
         await _inner.Received(1).CancelOccurrenceAsync(before.Id, null, Arg.Any<Guid>(), Arg.Any<CancellationToken>(), day);
         var occurrences = await sut.GetOccurrencesInWindowAsync(Instant.FromUtc(2026, 3, 28, 0, 0),
-            Instant.FromUtc(2026, 3, 30, 0, 0), DateTimeZoneProviders.Tzdb["Europe/Madrid"], ct: Xunit.TestContext.Current.CancellationToken);
+            Instant.FromUtc(2026, 3, 30, 0, 0), DateTimeZoneProviders.Tzdb["Europe/Madrid"], ct: TestContext.Current.CancellationToken);
         occurrences.Should().BeEmpty();
     }
 
@@ -183,7 +183,7 @@ public sealed class CachingCalendarServiceTests
         var sut = CreateSut();
         await WarmAsync(sut);
 
-        var detail = await sut.GetEventByIdAsync(info.Id, Xunit.TestContext.Current.CancellationToken);
+        var detail = await sut.GetEventByIdAsync(info.Id, TestContext.Current.CancellationToken);
 
         detail.Should().NotBeNull();
         detail.Id.Should().Be(info.Id);
@@ -213,7 +213,7 @@ public sealed class CachingCalendarServiceTests
 
         var results = await sut.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 6, 1, 0, 0),
-            Instant.FromUtc(2026, 6, 30, 0, 0), DateTimeZoneProviders.Tzdb["Europe/Madrid"], ct: Xunit.TestContext.Current.CancellationToken);
+            Instant.FromUtc(2026, 6, 30, 0, 0), DateTimeZoneProviders.Tzdb["Europe/Madrid"], ct: TestContext.Current.CancellationToken);
 
         results.Should().ContainSingle();
         results[0].EventId.Should().Be(inWindow.Id);
@@ -230,7 +230,7 @@ public sealed class CachingCalendarServiceTests
 
         var results = await sut.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 6, 1, 0, 0), Instant.FromUtc(2026, 6, 30, 0, 0), DateTimeZoneProviders.Tzdb["Europe/Madrid"],
-            ct: Xunit.TestContext.Current.CancellationToken);
+            ct: TestContext.Current.CancellationToken);
 
         results.Should().HaveCount(2);
         var contributed = results.Single(r => r.IsCommunityContribution());
@@ -258,7 +258,7 @@ public sealed class CachingCalendarServiceTests
 
         var results = await sut.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 6, 1, 0, 0), Instant.FromUtc(2026, 6, 30, 0, 0), DateTimeZoneProviders.Tzdb["Europe/Madrid"],
-            ct: Xunit.TestContext.Current.CancellationToken);
+            ct: TestContext.Current.CancellationToken);
 
         results.Select(r => r.Title).Should().Equal(item.Summary, "All-day");
     }
@@ -284,7 +284,7 @@ public sealed class CachingCalendarServiceTests
 
         var results = await sut.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 6, 1, 0, 0), Instant.FromUtc(2026, 6, 30, 0, 0),
-            DateTimeZoneProviders.Tzdb[timezone], ct: Xunit.TestContext.Current.CancellationToken);
+            DateTimeZoneProviders.Tzdb[timezone], ct: TestContext.Current.CancellationToken);
 
         results.Select(r => r.Title).Should().Equal(contributionFirst
             ? [item.Summary, "All-day"] : ["All-day", item.Summary]);
@@ -310,7 +310,7 @@ public sealed class CachingCalendarServiceTests
 
         var results = await sut.GetOccurrencesInWindowAsync(day.AtMidnight().InZoneLeniently(zone).ToInstant(),
             day.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant(), zone,
-            ct: Xunit.TestContext.Current.CancellationToken);
+            ct: TestContext.Current.CancellationToken);
 
         results.Should().ContainSingle().Which.EventId.Should().Be(first.Id);
     }
@@ -336,7 +336,7 @@ public sealed class CachingCalendarServiceTests
         var from = day.At(new LocalTime(23, 0)).InZoneLeniently(zone).ToInstant();
 
         var results = await sut.GetOccurrencesInWindowAsync(from, from.Plus(Duration.FromHours(1)), zone,
-            ct: Xunit.TestContext.Current.CancellationToken);
+            ct: TestContext.Current.CancellationToken);
 
         results.Should().ContainSingle().Which.EventId.Should().Be(last.Id);
     }
@@ -352,7 +352,7 @@ public sealed class CachingCalendarServiceTests
 
         var from = Instant.FromUtc(2026, 6, 1, 0, 0);
         var to = Instant.FromUtc(2026, 6, 30, 0, 0);
-        await sut.GetOccurrencesInWindowAsync(from, to, DateTimeZoneProviders.Tzdb["Europe/Madrid"], ct: Xunit.TestContext.Current.CancellationToken);
+        await sut.GetOccurrencesInWindowAsync(from, to, DateTimeZoneProviders.Tzdb["Europe/Madrid"], ct: TestContext.Current.CancellationToken);
 
         await contributor.Received(1).GetPublicItemsForWindowAsync(from, to, Arg.Any<CancellationToken>());
     }
@@ -367,7 +367,7 @@ public sealed class CachingCalendarServiceTests
 
         var results = await sut.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 6, 1, 0, 0), Instant.FromUtc(2026, 6, 30, 0, 0), DateTimeZoneProviders.Tzdb["Europe/Madrid"],
-            ct: Xunit.TestContext.Current.CancellationToken);
+            ct: TestContext.Current.CancellationToken);
 
         results.Should().ContainSingle();
         results[0].EventId.Should().Be(ownEvent.Id);
@@ -407,7 +407,7 @@ public sealed class CachingCalendarServiceTests
 
         var results = await sut.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 6, 1, 0, 0), Instant.FromUtc(2026, 6, 30, 0, 0), DateTimeZoneProviders.Tzdb["Europe/Madrid"], teamId,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         results.Should().BeEmpty();
         await contributor.DidNotReceive().GetPublicItemsForWindowAsync(
@@ -542,7 +542,7 @@ public sealed class CachingCalendarServiceTests
 
         await _inner.Received(1).CancelOccurrenceAsync(
             before.Id, occurrence, Arg.Any<Guid>(), cancellation.Token);
-        var reloaded = await sut.GetEventByIdAsync(before.Id, Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await sut.GetEventByIdAsync(before.Id, TestContext.Current.CancellationToken);
         reloaded!.Title.Should().Be(after.Title, because: "the parent entry is reloaded after a per-occurrence write");
     }
 
@@ -571,7 +571,7 @@ public sealed class CachingCalendarServiceTests
 
         await _inner.Received(1).OverrideOccurrenceAsync(
             before.Id, occurrence, dto, Arg.Any<Guid>(), cancellation.Token);
-        var reloaded = await sut.GetEventByIdAsync(before.Id, Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await sut.GetEventByIdAsync(before.Id, TestContext.Current.CancellationToken);
         reloaded!.Title.Should().Be(after.Title, because: "the parent entry is reloaded after a per-occurrence write");
     }
 

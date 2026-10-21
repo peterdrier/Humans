@@ -32,7 +32,7 @@ public sealed class MissingDatabaseStartupTests(HumansTestDatabase database)
         // attached exception, not the rendered message — this assertion fails against that
         // text.
         var logWaitDeadline = DateTimeOffset.UtcNow.AddSeconds(3);
-        IReadOnlyList<Serilog.Events.LogEvent> fatalEvents = [];
+        IReadOnlyList<LogEvent> fatalEvents = [];
         while (DateTimeOffset.UtcNow < logWaitDeadline)
         {
             fatalEvents = factory.LogSink.GetEvents(minLevel: LogEventLevel.Fatal);

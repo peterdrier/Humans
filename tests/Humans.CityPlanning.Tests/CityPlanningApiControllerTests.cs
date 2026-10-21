@@ -199,7 +199,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     [HumansFact]
     public async Task RestoreCampPolygon_UserWhoIsNotMapAdmin_IsForbiddenAndWritesNothing()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         await _service.SaveCampPolygonAsync(_campSeasonId, Square, 10, Guid.NewGuid(), cancellationToken: ct);
         var historyId = (await CityPlanningDb.CampPolygonHistories.SingleAsync(ct)).Id;
 
@@ -212,7 +212,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     [HumansFact]
     public async Task RestoreCampPolygon_CityPlanningTeamMemberWithNoRole_Restores()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var teamId = Guid.NewGuid();
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
         {
@@ -235,7 +235,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     [HumansFact]
     public async Task RestoreCampPolygon_HistoryIdFromAnotherSeason_IsNotFoundAndWritesNothing()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
         {
             [Guid.NewGuid()] = new(
@@ -257,7 +257,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     [HumansFact]
     public async Task ExportGeoJson_UserWhoIsNotMapAdmin_IsForbidden()
     {
-        var result = await CreateController().ExportGeoJson(null, Xunit.TestContext.Current.CancellationToken);
+        var result = await CreateController().ExportGeoJson(null, TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<ForbidResult>();
     }
@@ -265,7 +265,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     [HumansFact]
     public async Task SaveCampPolygon_BroadcastsTheSavedShapeToEveryConnectedMap()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
 
         var result = await CreateController(RoleNames.CampAdmin).SaveCampPolygon(
             _campSeasonId, new SaveCampPolygonRequest(Square, 10), ct);
@@ -285,11 +285,11 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     {
         var result = await CreateController(RoleNames.CampAdmin).SaveCampPolygon(
             _campSeasonId, new SaveCampPolygonRequest(geoJson, 10),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<BadRequestResult>();
-        (await CityPlanningDb.CampPolygons.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
-        (await CityPlanningDb.CampPolygonHistories.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await CityPlanningDb.CampPolygons.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await CityPlanningDb.CampPolygonHistories.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
         _allClients.ReceivedCalls().Should().BeEmpty();
         var warning = _logger.ReceivedCalls().Single(c => string.Equals(c.GetMethodInfo().Name, "Log", StringComparison.Ordinal));
         warning.GetArguments()[0].Should().Be(LogLevel.Warning);
@@ -302,18 +302,18 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     {
         var result = await CreateController(RoleNames.CampAdmin).SaveCampPolygon(
             _campSeasonId, new SaveCampPolygonRequest(Square, -1),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<BadRequestResult>();
-        (await CityPlanningDb.CampPolygons.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
-        (await CityPlanningDb.CampPolygonHistories.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await CityPlanningDb.CampPolygons.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await CityPlanningDb.CampPolygonHistories.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
         _allClients.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
     public async Task RestoreCampPolygon_NegativeHistoricArea_ReturnsBadRequestWithoutWritingOrBroadcasting()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var history = new Humans.CityPlanning.Domain.CampPolygonHistory
         {
             CampSeasonId = _campSeasonId,
@@ -336,7 +336,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     [HumansFact]
     public async Task SaveCampPolygon_BroadcastFails_TheSaveStandsAndTheCallerGetsOk()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         _allClients.SendCoreAsync(default!, default!, default)
             .ThrowsAsyncForAnyArgs(new InvalidOperationException("hub down"));
 
@@ -348,11 +348,11 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     }
 
     [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task PolygonWrite_BroadcastPreparationFailure_ReturnsSavedResult(bool restore)
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         Guid historyId = default;
         if (restore)
         {
@@ -385,7 +385,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
             _campSeasonId, new SaveCampPolygonRequest(Square, 10), cancellation.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
-        (await CityPlanningDb.CampPolygons.SingleAsync(Xunit.TestContext.Current.CancellationToken)).GeoJson.Should().Be(Square);
+        (await CityPlanningDb.CampPolygons.SingleAsync(TestContext.Current.CancellationToken)).GeoJson.Should().Be(Square);
     }
 
     private static async Task CancelBroadcastAsync(CancellationTokenSource cancellation)

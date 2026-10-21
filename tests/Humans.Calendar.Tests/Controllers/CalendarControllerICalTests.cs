@@ -769,7 +769,7 @@ public class CalendarControllerICalTests
             _teams,
             new FakeClock(_now),
             localizer,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<CalendarController>.Instance)
+            NullLogger<CalendarController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),

@@ -701,7 +701,7 @@ public class CampControllerTests
         StubCampReadModel([matching, filteredOut, pending]);
         var controller = BuildController();
 
-        var result = await controller.Index(new CampFilterViewModel { KidsFriendly = true }, Xunit.TestContext.Current.CancellationToken);
+        var result = await controller.Index(new CampFilterViewModel { KidsFriendly = true }, TestContext.Current.CancellationToken);
 
         var vm = result.Should().BeOfType<ViewResult>().Subject
             .Model.Should().BeOfType<CampIndexViewModel>().Subject;
@@ -723,11 +723,11 @@ public class CampControllerTests
         var controller = BuildController();
         const string garbage = "test\")))EXTRACTVALUE(7966,...)";
         controller.ModelState.SetModelValue(
-            "ShowLeadPositions", new Microsoft.AspNetCore.Mvc.ModelBinding.ValueProviderResult(garbage));
+            "ShowLeadPositions", new ValueProviderResult(garbage));
         controller.ModelState.AddModelError(
             "ShowLeadPositions", $"The value '{garbage}' is not valid for ShowLeadPositions.");
 
-        var result = await controller.Index(new CampFilterViewModel(), Xunit.TestContext.Current.CancellationToken);
+        var result = await controller.Index(new CampFilterViewModel(), TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<ViewResult>();
         controller.ModelState.Should().BeEmpty(
@@ -744,7 +744,7 @@ public class CampControllerTests
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId)));
         var controller = BuildController(userId);
 
-        var result = await controller.Index(null, Xunit.TestContext.Current.CancellationToken);
+        var result = await controller.Index(null, TestContext.Current.CancellationToken);
 
         var vm = result.Should().BeOfType<ViewResult>().Subject
             .Model.Should().BeOfType<CampIndexViewModel>().Subject;
@@ -955,7 +955,7 @@ public class CampControllerTests
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId)));
         var controller = BuildController(userId);
 
-        var result = await controller.Index(null, Xunit.TestContext.Current.CancellationToken);
+        var result = await controller.Index(null, TestContext.Current.CancellationToken);
 
         var vm = result.Should().BeOfType<ViewResult>().Subject
             .Model.Should().BeOfType<CampIndexViewModel>().Subject;
@@ -1013,7 +1013,7 @@ public class CampControllerTests
 
         var controller = BuildController(leadUserId);
 
-        var result = await controller.Members(camp.Slug, null, Xunit.TestContext.Current.CancellationToken);
+        var result = await controller.Members(camp.Slug, null, TestContext.Current.CancellationToken);
 
         var vm = result.Should().BeOfType<ViewResult>().Subject
             .Model.Should().BeOfType<CampEditViewModel>().Subject;
@@ -1040,7 +1040,7 @@ public class CampControllerTests
                 Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Failed());
 
-        var result = await BuildController().Details(pending.Slug, Xunit.TestContext.Current.CancellationToken);
+        var result = await BuildController().Details(pending.Slug, TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<NotFoundResult>();
     }
@@ -1057,7 +1057,7 @@ public class CampControllerTests
                 Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Failed());
 
-        var result = await BuildController().SeasonDetails(withdrawn.Slug, 2026, Xunit.TestContext.Current.CancellationToken);
+        var result = await BuildController().SeasonDetails(withdrawn.Slug, 2026, TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<NotFoundResult>();
     }
@@ -1085,7 +1085,7 @@ public class CampControllerTests
                 Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
 
-        var result = await BuildController(leadUserId).Details(pending.Slug, Xunit.TestContext.Current.CancellationToken);
+        var result = await BuildController(leadUserId).Details(pending.Slug, TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<ViewResult>();
     }
@@ -1124,7 +1124,7 @@ public class CampControllerTests
                 Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
 
-        var result = await BuildController(leadUserId).Details(future.Slug, Xunit.TestContext.Current.CancellationToken);
+        var result = await BuildController(leadUserId).Details(future.Slug, TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<ViewResult>(
             because: "the lead of a not-yet-public camp must reach their own camp page");
@@ -1173,7 +1173,7 @@ public class CampControllerTests
             .Returns(AuthorizationResult.Success());
 
         var result = await BuildController(leadUserId)
-            .SeasonDetails(renewal.Slug, 2027, Xunit.TestContext.Current.CancellationToken);
+            .SeasonDetails(renewal.Slug, 2027, TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<ViewResult>(
             because: "a lead must reach their camp's not-yet-approved renewal season");
@@ -1200,7 +1200,7 @@ public class CampControllerTests
                 Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Failed());
 
-        var result = await BuildController().Details(camp.Slug, Xunit.TestContext.Current.CancellationToken);
+        var result = await BuildController().Details(camp.Slug, TestContext.Current.CancellationToken);
 
         var vm = result.Should().BeOfType<ViewResult>().Subject.Model!;
         var leaves = new List<(string Path, object? Value)>();

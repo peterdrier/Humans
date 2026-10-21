@@ -76,7 +76,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var (settings, rota) = await SeedRotaAsync(RotaPeriod.Event);
-        var calendar = Humans.Testing.BurnFixtures.Burn(id: settings.Id,
+        var calendar = BurnFixtures.Burn(id: settings.Id,
             gateOpeningDate: settings.GateOpeningDate, timeZoneId: settings.TimeZoneId);
         var shift = NewShift(rota, dayOffset: 0);
         shift.IsAllDay = false;

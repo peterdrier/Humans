@@ -9,7 +9,6 @@ using Humans.Consent.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using System.Text;
 using Humans.AuditLog.Contracts;
 using AwesomeAssertions;
 using Humans.Notifications.Contracts;

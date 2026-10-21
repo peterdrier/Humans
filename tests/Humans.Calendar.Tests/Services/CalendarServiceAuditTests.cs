@@ -4,7 +4,6 @@ using Humans.Calendar.Data;
 using Humans.Calendar.Domain;
 using Humans.Calendar.Services;
 using Humans.Calendar.Services.Dtos;
-using Humans.Teams.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;

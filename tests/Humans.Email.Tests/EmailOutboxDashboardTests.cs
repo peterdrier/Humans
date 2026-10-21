@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Http;
 using Xunit;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Configuration;
-using Humans.Email.Contracts;
 using Humans.Email.Controllers;
 using Humans.Email.Models;
 using Humans.Email.Services;

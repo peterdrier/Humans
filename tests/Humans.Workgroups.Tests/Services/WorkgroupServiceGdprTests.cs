@@ -96,7 +96,7 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
         var applications = slices.Single(s =>
             string.Equals(s.SectionName, WorkgroupService.WorkgroupApplications, StringComparison.Ordinal));
         applications.Data.Should().NotBeNull();
-        System.Text.Json.JsonSerializer.Serialize(applications.Data).Should().Contain(workgroup.Name);
+        JsonSerializer.Serialize(applications.Data).Should().Contain(workgroup.Name);
         using var json = JsonDocument.Parse(JsonSerializer.Serialize(applications.Data));
         json.RootElement.EnumerateArray().Single().GetProperty("RegisteredAt").ValueKind
             .Should().Be(JsonValueKind.Null);

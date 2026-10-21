@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
 using AwesomeAssertions;
-using Humans.Auth.Contracts;
 using Humans.Backdoor.Contracts;
 using Humans.Backdoor.Controllers;
 using Humans.Backdoor.Filters;

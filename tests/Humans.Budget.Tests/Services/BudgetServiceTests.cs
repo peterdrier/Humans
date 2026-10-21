@@ -600,7 +600,7 @@ public sealed class BudgetServiceTests
         var auth = Substitute.For<IAuthorizationService>();
         auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), category, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(allowed ? AuthorizationResult.Success() : AuthorizationResult.Failed());
-        var localizer = Substitute.For<IStringLocalizer<Humans.Budget.BudgetResource>>();
+        var localizer = Substitute.For<IStringLocalizer<BudgetResource>>();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         localizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var controller = new BudgetController(budget, auth, users, localizer, NullLogger<BudgetController>.Instance)
@@ -1442,7 +1442,7 @@ public sealed class BudgetServiceTests
     public async Task RefreshTicketingProjectionsAsync_materializes_projected_weeks_when_projection_is_valid(string culture)
     {
         using var scope = new Humans.Base.Extensions.CultureScope(culture);
-        System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("en");
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en");
         var (groupId, _, revenueCatId, _) = await SeedTicketingYearAsync();
         await ConfigureProjectionAsync(groupId,
             startDate: new LocalDate(2026, 3, 15),
@@ -1462,8 +1462,8 @@ public sealed class BudgetServiceTests
         projectedRevenueItems.Should().NotBeEmpty();
         projectedRevenueItems.Should().AllSatisfy(item => item.Description.Should().MatchRegex(
             "^Projected: Week of (Mon|Tue|Wed|Thu|Fri|Sat|Sun) (Mar|Apr) [0-9]+–(Mon|Tue|Wed|Thu|Fri|Sat|Sun) (Mar|Apr) [0-9]+$"));
-        System.Globalization.CultureInfo.CurrentCulture.Name.Should().Be("en");
-        System.Globalization.CultureInfo.CurrentUICulture.Name.Should().Be(culture);
+        CultureInfo.CurrentCulture.Name.Should().Be("en");
+        CultureInfo.CurrentUICulture.Name.Should().Be(culture);
     }
 
     [HumansTheory]
@@ -1587,7 +1587,7 @@ public sealed class BudgetServiceTests
             spaceIdx.Should().BeGreaterThan(0);
             var ticketCount = int.Parse(
                 notesClean[..spaceIdx],
-                System.Globalization.CultureInfo.InvariantCulture);
+                CultureInfo.InvariantCulture);
 
             item.Amount.Should().Be(
                 ticketCount * 50m,

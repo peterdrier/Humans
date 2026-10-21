@@ -2,7 +2,6 @@ using Humans.Users.Services;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base;
-using Humans.Base.Interfaces;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
