@@ -52,4 +52,82 @@
   <data name="Auth_Email_MagicLinkSignup_Body" xml:space="preserve">
     <value>&lt;p&gt;Benvenuto su Nobodies!&lt;/p&gt;&lt;p&gt;Fai clic sul link qui sotto per creare il tuo account:&lt;/p&gt;&lt;p&gt;&lt;a href="{0}"&gt;Crea il tuo account&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Questo link scade tra 15 minuti e può essere utilizzato solo una volta.&lt;/p&gt;&lt;p&gt;Se non hai richiesto questo, puoi ignorare questa e-mail.&lt;/p&gt;</value>
   </data>
+  <data name="Auth_Roles_Title" xml:space="preserve">
+    <value>Assegnazione ruoli</value>
+  </data>
+  <data name="Auth_Roles_All" xml:space="preserve">
+    <value>Tutti</value>
+  </data>
+  <data name="Auth_Roles_HideInactive" xml:space="preserve">
+    <value>Nascondi inattivi</value>
+  </data>
+  <data name="Auth_Roles_ShowInactive" xml:space="preserve">
+    <value>Mostra inattivi</value>
+  </data>
+  <data name="Auth_Roles_User" xml:space="preserve">
+    <value>Utente</value>
+  </data>
+  <data name="Auth_Roles_ValidFrom" xml:space="preserve">
+    <value>Valido dal</value>
+  </data>
+  <data name="Auth_Roles_ValidTo" xml:space="preserve">
+    <value>Valido fino al</value>
+  </data>
+  <data name="Auth_Roles_Assignments" xml:space="preserve">
+    <value>Assegnazione ruoli</value>
+  </data>
+  <data name="Auth_Roles_AddRole" xml:space="preserve">
+    <value>Aggiungi ruolo</value>
+  </data>
+  <data name="Auth_Roles_Ended" xml:space="preserve">
+    <value>Terminato</value>
+  </data>
+  <data name="Auth_Roles_From" xml:space="preserve">
+    <value>Dal</value>
+  </data>
+  <data name="Auth_Roles_To" xml:space="preserve">
+    <value>al</value>
+  </data>
+  <data name="Auth_Roles_EndConfirm" xml:space="preserve">
+    <value>Terminare questa assegnazione di ruolo?</value>
+  </data>
+  <data name="Auth_Roles_End" xml:space="preserve">
+    <value>Termina</value>
+  </data>
+  <data name="Auth_Roles_NoAssignments" xml:space="preserve">
+    <value>Nessuna assegnazione di ruolo.</value>
+  </data>
+  <data name="Auth_AddRole_Title" xml:space="preserve">
+    <value>Aggiungi ruolo</value>
+  </data>
+  <data name="Auth_AddRole_SelectRole" xml:space="preserve">
+    <value>Seleziona un ruolo...</value>
+  </data>
+  <data name="Auth_AddRole_AdminDesc" xml:space="preserve">
+    <value>Accesso completo al sistema</value>
+  </data>
+  <data name="Auth_AddRole_BoardDesc" xml:space="preserve">
+    <value>Permessi membro del Consiglio</value>
+  </data>
+  <data name="Auth_AddRole_TeamsAdminDesc" xml:space="preserve">
+    <value>Gestire tutti i team e le iscrizioni</value>
+  </data>
+  <data name="Auth_AddRole_ConsentCoordinatorDesc" xml:space="preserve">
+    <value>Verifiche di sicurezza durante l'onboarding</value>
+  </data>
+  <data name="Auth_AddRole_CampAdminDesc" xml:space="preserve">
+    <value>Gestire la mappa del campo e le fasi di posizionamento</value>
+  </data>
+  <data name="Auth_AddRole_VolunteerCoordinatorDesc" xml:space="preserve">
+    <value>Facilitazione onboarding, gestione turni globale</value>
+  </data>
+  <data name="Auth_AddRole_NoInfoAdminDesc" xml:space="preserve">
+    <value>Approvare iscrizioni ai turni, visualizzare dati medici</value>
+  </data>
+  <data name="Auth_AddRole_NotesLabel" xml:space="preserve">
+    <value>Note (facoltative)</value>
+  </data>
+  <data name="Auth_AddRole_NotesPlaceholder" xml:space="preserve">
+    <value>Motivo dell'assegnazione</value>
+  </data>
 </root>

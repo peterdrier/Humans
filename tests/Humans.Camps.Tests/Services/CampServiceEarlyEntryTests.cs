@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
+using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Humans.AuditLog.Contracts;
 
@@ -21,6 +22,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
     private readonly InMemoryFileStorage _fileStorage;
     private readonly ICampRoleService _campRoleService;
     private readonly IUserService _userService;
+    private readonly ITicketService _tickets = Substitute.For<ITicketService>();
 
     public CampServiceEarlyEntryTests()
         : base(Instant.FromUtc(2026, 3, 13, 12, 0))
@@ -51,6 +53,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
             Substitute.For<IEarlyEntryInvalidator>(),
             Substitute.For<ICampInfoInvalidator>(),
             _userService,
+            _tickets,
             settingsService,
             Clock,
             NullLogger<CampService>.Instance);
@@ -365,27 +368,9 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
     // gate; it can no longer be revoked or freed by removal/leave.
     // ==========================================================================
 
-    private void SetUserParticipation(Guid userId, int year, ParticipationStatus status)
-    {
-        var user = new User
-        {
-            Id = userId,
-            DisplayName = "Test",
-            PreferredLanguage = "en",
-            CreatedAt = Clock.GetCurrentInstant(),
-        };
-        var participation = new EventParticipation
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Year = year,
-            Status = status,
-            Source = ParticipationSource.TicketSync,
-        };
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
-                user, [], [participation], [], null, [])));
-    }
+    private void SetUserParticipation(Guid userId, int year, ParticipationStatus status) =>
+        _tickets.GetParticipationsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns([new EventParticipationInfo(userId, year, status, ParticipationSource.TicketSync, null, null)]);
 
     [HumansFact]
     public async Task SetEarlyEntryAsync_Revoke_ReturnsMemberAlreadyEntered_WhenHolderAttendedSeasonYear()

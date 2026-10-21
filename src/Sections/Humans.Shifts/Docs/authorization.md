@@ -16,7 +16,7 @@
 | `ShiftWorkloadAdminController` | Class | `Admin, NoInfoAdmin, VolunteerCoordinator` | `PolicyNames.ShiftDashboardAccess` |
 | `VolunteerTrackingController` | Class | `Admin, NoInfoAdmin, VolunteerCoordinator` | `PolicyNames.ShiftDashboardAccess` |
 | `VolunteerTrackingController.SetCampSetup` / `ClearCampSetup` / `SetDayOff` / `ClearDayOff` / `SetAvailabilityDay` / `ClearAvailabilityDay` | Action | `Admin, VolunteerCoordinator` | `PolicyNames.VolunteerTrackingWrite` |
-| `ShiftProfileController` (`[Route("Profile")]`) | Class | `[Authorize]` (authenticated) | — (`Me/ShiftInfo` GET/POST, the self-service shift-info panel embedded on the profile page) |
+| `ShiftProfileController` (`[Route("Shifts")]`) | Class | `[Authorize]` (authenticated) | — (`ShiftInfo` GET/POST, the self-service shift-info panel embedded on the profile page) |
 
 `EarlyEntryRosterController` lives in `Humans.EarlyEntry` — see that section's authorization doc.
 

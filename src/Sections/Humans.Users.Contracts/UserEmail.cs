@@ -54,24 +54,20 @@ public class UserEmail
     public string? ProviderKey { get; set; }
 
     /// <summary>
-    /// True when this is the user's canonical Google Workspace identity (used by
-    /// Google sync and Workspace admin operations). User-controlled in the
-    /// Profile email grid (PR 4); never auto-derived. At-most-one-true-per-UserId
-    /// is service-enforced inside <c>UserEmailService</c> per
-    /// <c>feedback_db_enforcement_minimal</c>.
+    /// FROZEN (Users decomposition commit 15): the Google Workspace identity now lives in
+    /// GoogleIntegration's <c>google_workspace_identities</c>. Users no longer writes this flag
+    /// except to clear it on rows an account merge moves; it is read only through the obsolete
+    /// <see cref="UserEmailInfo.IsGoogle"/> by the <c>google.workspace-identities</c> copy and
+    /// fallback, and the column is dropped once that copy is done in production.
     /// </summary>
     public bool IsGoogle { get; set; }
 
     /// <summary>
-    /// Google Workspace sync status for THIS address. <see cref="GoogleEmailStatus.Rejected"/>
-    /// is set when Google permanently rejects this email (HTTP 400/403, "no Google account")
-    /// while granting Drive/Group access; sync is then suppressed for the address until it
-    /// changes. Because the status lives on the address Google actually rejected — not on the
-    /// user — selecting a different <see cref="IsGoogle"/> address (a fresh row, status
-    /// <see cref="GoogleEmailStatus.Unknown"/>) naturally resumes sync. Replaces the deprecated
-    /// user-level <c>User.GoogleEmailStatus</c> (nobodies-collective/Humans#687).
+    /// FROZEN (Users decomposition commit 15): the per-address Google sync verdict, now
+    /// GoogleIntegration's status on <c>google_workspace_identities</c>. Read only by the
+    /// <c>google.workspace-identities</c> copy and fallback; no longer written.
     /// </summary>
-    public GoogleEmailStatus GoogleEmailStatus { get; set; } = GoogleEmailStatus.Unknown;
+    public LegacyGoogleEmailStatus GoogleEmailStatus { get; set; } = LegacyGoogleEmailStatus.Unknown;
 
     /// <summary>
     /// True when this row is the canonical recipient for system notifications

@@ -36,4 +36,9 @@
   <data name="Campaigns_Notification_ReceivedTitle" xml:space="preserve"><value>Has rebut un codi de la campanya: {0}</value></data>
   <data name="Campaigns_Notification_ReceivedBody" xml:space="preserve"><value>El teu codi de campanya està disponible a Els meus codis del teu perfil.</value></data>
   <data name="Campaigns_Notification_MyCodes" xml:space="preserve"><value>Els meus codis</value></data>
+  <data name="Campaigns_MyCodes_Title" xml:space="preserve"><value>Els meus codis</value></data>
+  <data name="Campaigns_MyCodes_Campaign" xml:space="preserve"><value>Campanya</value></data>
+  <data name="Campaigns_MyCodes_Code" xml:space="preserve"><value>Codi</value></data>
+  <data name="Campaigns_MyCodes_Assigned" xml:space="preserve"><value>Assignat</value></data>
+  <data name="Campaigns_MyCodes_Redeemed" xml:space="preserve"><value>Bescanviat</value></data>
 </root>

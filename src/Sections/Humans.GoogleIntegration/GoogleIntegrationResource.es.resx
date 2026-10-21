@@ -93,4 +93,36 @@
   <data name="GoogleIntegration_Notification_WorkspaceReadyBody" xml:space="preserve"><value>Se ha creado tu correo de Workspace {0}. Revisa tu correo personal para obtener las credenciales de acceso.</value></data>
   <data name="GoogleIntegration_Notification_ViewProfile" xml:space="preserve"><value>Ver perfil</value></data>
   <data name="GoogleIntegration_Notification_WorkspaceReadyWithoutCredentialsBody" xml:space="preserve"><value>Se ha creado tu correo de Workspace {0}. Contacta con un administrador para obtener las credenciales de acceso.</value></data>
+  <data name="GoogleIntegration_NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Tiene una cuenta de correo @nobodies.team</value></data>
+  <data name="GoogleIntegration_Identity_SyncRejectedTitle" xml:space="preserve">
+    <value>Sincronización de Google pausada para esta dirección.</value>
+  </data>
+  <data name="GoogleIntegration_Identity_SyncRejectedBody" xml:space="preserve">
+    <value>Google rechazó el correo de Google seleccionado al intentar conceder acceso a Drive o añadirte a un grupo — normalmente porque la dirección no está vinculada a una cuenta de Google. Los nuevos intentos de sincronización se suprimen hasta que un administrador lo resuelva. Selecciona otro correo respaldado por Google y pide a un administrador que borre el estado rechazado.</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Problem" xml:space="preserve">
+    <value>Problema de sincronización con Google</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Ok" xml:space="preserve">
+    <value>Google correcto</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Retry" xml:space="preserve">
+    <value>Reintentar</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Set" xml:space="preserve">
+    <value>Set Google</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Updated" xml:space="preserve">
+    <value>Correo de servicio de Google actualizado. La sincronización se reintentará con el nuevo correo.</value>
+  </data>
+  <data name="GoogleIntegration_Identity_SetRejected" xml:space="preserve">
+    <value>No se pudo establecer el correo de servicio de Google: la fila es desconocida o no está verificada.</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Google" xml:space="preserve">
+    <value>Google</value>
+  </data>
+  <data name="GoogleIntegration_Identity_VerifyFirst" xml:space="preserve">
+    <value>Verifica primero</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Locked" xml:space="preserve"><value>Bloqueado por la fila de correo de Workspace</value></data>
 </root>

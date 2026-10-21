@@ -93,4 +93,36 @@
   <data name="GoogleIntegration_Notification_WorkspaceReadyBody" xml:space="preserve"><value>La tua email Workspace {0} è stata creata. Controlla la tua email personale per le credenziali di accesso.</value></data>
   <data name="GoogleIntegration_Notification_ViewProfile" xml:space="preserve"><value>Visualizza profilo</value></data>
   <data name="GoogleIntegration_Notification_WorkspaceReadyWithoutCredentialsBody" xml:space="preserve"><value>La tua email Workspace {0} è stata creata. Contatta un amministratore per le credenziali di accesso.</value></data>
+  <data name="GoogleIntegration_NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Ha un account email @nobodies.team</value></data>
+  <data name="GoogleIntegration_Identity_SyncRejectedTitle" xml:space="preserve">
+    <value>Sincronizzazione Google sospesa per questo indirizzo.</value>
+  </data>
+  <data name="GoogleIntegration_Identity_SyncRejectedBody" xml:space="preserve">
+    <value>Google ha rifiutato l’indirizzo Google selezionato durante il tentativo di concedere l’accesso a Drive o di aggiungerti a un Gruppo — di solito perché l’indirizzo non è collegato a un account Google. I nuovi tentativi di sincronizzazione sono sospesi finché un amministratore non risolve il problema. Seleziona un altro indirizzo supportato da Google e chiedi a un amministratore di cancellare lo stato rifiutato.</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Problem" xml:space="preserve">
+    <value>Problema di sincronizzazione Google</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Ok" xml:space="preserve">
+    <value>Google OK</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Retry" xml:space="preserve">
+    <value>Riprova</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Set" xml:space="preserve">
+    <value>Imposta per Google</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Updated" xml:space="preserve">
+    <value>Email di servizio Google aggiornata. La sincronizzazione verrà riprovata con la nuova email.</value>
+  </data>
+  <data name="GoogleIntegration_Identity_SetRejected" xml:space="preserve">
+    <value>Impossibile impostare l'email di servizio Google — riga sconosciuta o non verificata.</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Google" xml:space="preserve">
+    <value>Google</value>
+  </data>
+  <data name="GoogleIntegration_Identity_VerifyFirst" xml:space="preserve">
+    <value>Verifica prima</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Locked" xml:space="preserve"><value>Bloccata dalla riga email Workspace</value></data>
 </root>

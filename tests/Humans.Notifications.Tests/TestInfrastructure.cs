@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 using NSubstitute;
 
@@ -5,13 +6,13 @@ namespace Humans.Notifications.Tests;
 
 /// <summary>
 /// Fixtures owned here rather than shared: a section test project cannot see
-/// <c>UsersDbContext</c>, and the preference lookup the emitter calls is a substituted
+/// <c>EmailDbContext</c>, and the preference lookup the emitter calls is a substituted
 /// interface either way.
 /// </summary>
 internal static class NotificationTestFixtures
 {
     /// <summary>
-    /// Holds the <c>communication_preferences</c> rows the emitter tests seed, behind
+    /// Holds the <c>email_communication_preferences</c> rows the emitter tests seed, behind
     /// <c>.CommunicationPreferences.Add(…)</c> and <c>.SaveChangesAsync(ct)</c>.
     /// </summary>
     internal sealed class PreferenceRegistry
@@ -22,8 +23,8 @@ internal static class NotificationTestFixtures
     }
 
     /// <summary>
-    /// The columns of a <c>communication_preferences</c> row these tests seed. Owned here
-    /// rather than the section's entity, which is internal to <c>Humans.Users</c>
+    /// The columns of an <c>email_communication_preferences</c> row these tests seed. Owned
+    /// here rather than the section's entity, which is internal to <c>Humans.Email</c>
     /// (nobodies-collective/Humans#1051).
     /// </summary>
     internal sealed class PreferenceRow

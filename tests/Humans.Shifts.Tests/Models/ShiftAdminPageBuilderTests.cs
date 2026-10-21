@@ -1,3 +1,4 @@
+using Humans.Cantina.Contracts;
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
 using Humans.Governance.Contracts;
@@ -31,6 +32,7 @@ public sealed class ShiftAdminPageBuilderTests
     private readonly IShiftManagement _shiftManagement = Substitute.For<IShiftManagement>();
     private readonly IMembershipCalculator _membership = Substitute.For<IMembershipCalculator>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly ICantinaService _cantina = Substitute.For<ICantinaService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
 
     private static readonly TeamInfo Department = new(
@@ -70,6 +72,8 @@ public sealed class ShiftAdminPageBuilderTests
 
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
+        _cantina.GetDietaryProfilesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, DietaryProfileInfo>());
 
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
@@ -85,7 +89,7 @@ public sealed class ShiftAdminPageBuilderTests
         _membership.GetUsersWithAllRequiredConsentsForTeamAsync(
                 Arg.Any<IEnumerable<Guid>>(), SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid>());
-        var builder = new ShiftAdminPageBuilder(_shiftManagement, _membership, _userService, _teamService);
+        var builder = new ShiftAdminPageBuilder(_shiftManagement, _membership, _userService, _cantina, _teamService);
 
         await builder.BuildAsync(new ShiftAdminPageRequest(
             Department, Event, true, true, false, true, TestNow), cancellation.Token);
@@ -94,6 +98,7 @@ public sealed class ShiftAdminPageBuilderTests
         await _membership.Received(1).GetUsersWithAllRequiredConsentsForTeamAsync(
             Arg.Any<IEnumerable<Guid>>(), SystemTeamIds.Volunteers, cancellation.Token);
         await _userService.Received(2).GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), cancellation.Token);
+        await _cantina.Received(1).GetDietaryProfilesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), cancellation.Token);
         await _shiftManagement.Received(1).GetShiftProfileAsync(userId, cancellation.Token);
         await _teamService.Received(1).GetTeamsAsync(cancellation.Token);
         await _shiftManagement.Received(1).GetTagsAsync(ct: cancellation.Token);
@@ -203,7 +208,7 @@ public sealed class ShiftAdminPageBuilderTests
 
     private Task<ShiftAdminViewModel> BuildAsync()
     {
-        var builder = new ShiftAdminPageBuilder(_shiftManagement, _membership, _userService, _teamService);
+        var builder = new ShiftAdminPageBuilder(_shiftManagement, _membership, _userService, _cantina, _teamService);
         return builder.BuildAsync(new ShiftAdminPageRequest(
             Department,
             Event,

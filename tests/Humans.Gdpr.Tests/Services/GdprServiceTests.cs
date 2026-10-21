@@ -57,8 +57,6 @@ public class GdprServiceTests
         DeletionRequestedAt: null,
         DeletionScheduledFor: null,
         DeletionEligibleAfter: null,
-        UnsubscribedFromCampaigns: false,
-        SuppressScheduleChangeEmails: false,
         ContactSource: null,
         ExternalSourceId: null,
         MergedToUserId: null,

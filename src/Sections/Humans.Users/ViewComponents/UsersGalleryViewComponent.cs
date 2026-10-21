@@ -10,9 +10,8 @@ namespace Humans.Users.ViewComponents;
 /// <see cref="Humans.Base.Interfaces.ChromeSlots.WidgetGallery"/> via <see cref="SectionChrome"/>:
 /// the two <see cref="ProfileSummaryViewModel"/> cards (<c>_ProfileCard</c>, <c>_HumanPopover</c>,
 /// whose sample type is internal to this section) plus &lt;vc:profile-card&gt;,
-/// &lt;vc:human-summary&gt;, &lt;vc:communication-preferences-panel&gt;,
-/// &lt;vc:nobodies-email-badge&gt; and &lt;vc:membership-tier-badge&gt; rendered against the
-/// signed-in admin.
+/// &lt;vc:human-summary&gt;, &lt;vc:communication-preferences-panel&gt;
+/// and &lt;vc:nobodies-email-badge&gt; rendered against the signed-in admin.
 /// </summary>
 /// <remarks>
 /// A chrome-slot contribution takes no arguments (<c>ISectionChrome</c>'s

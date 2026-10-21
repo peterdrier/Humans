@@ -5,6 +5,7 @@ using Humans.Email.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Holded.Contracts;
 using Humans.GoogleIntegration.Contracts;
+using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
@@ -30,6 +31,7 @@ namespace Humans.Workgroups.Tests.Infrastructure;
 public abstract class WorkgroupsTestHarness : IDisposable
 {
     private readonly Dictionary<Guid, UserInfo> _users = [];
+    private readonly Dictionary<Guid, MembershipTier> _tiers = [];
     private readonly Dictionary<Guid, SurveySummary> _surveys = [];
     private bool _disposed;
 
@@ -81,6 +83,11 @@ public abstract class WorkgroupsTestHarness : IDisposable
         Roles.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
+        Governance = Substitute.For<IGovernanceService>();
+        Governance.GetMembershipTiersAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult<IReadOnlyDictionary<Guid, MembershipTier>>(
+                new Dictionary<Guid, MembershipTier>(_tiers)));
+
         Teams = Substitute.For<ITeamService>();
         Teams.GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((TeamInfo?)null);
 
@@ -124,6 +131,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
     private protected IUserEmailService UserEmails { get; }
     private protected IRoleAssignmentService Roles { get; }
     private protected ITeamService Teams { get; }
+    private protected IGovernanceService Governance { get; }
     private protected ISettingsService Settings { get; }
     private protected IGoogleSyncService GoogleSyncRead { get; }
     private protected IGoogleSyncWrite GoogleSync { get; }
@@ -161,7 +169,8 @@ public abstract class WorkgroupsTestHarness : IDisposable
         MembershipTier tier = MembershipTier.Volunteer)
     {
         var userId = id ?? Guid.NewGuid();
-        _users[userId] = UserInfoFor(userId, burnerName, profile, language, tier);
+        _users[userId] = UserInfoFor(userId, burnerName, profile, language);
+        if (tier != MembershipTier.Volunteer) _tiers[userId] = tier;
         return userId;
     }
 
@@ -332,11 +341,11 @@ public abstract class WorkgroupsTestHarness : IDisposable
     // ── UserInfo construction ────────────────────────────────────────────
 
     private static UserInfo UserInfoFor(
-        Guid id, string burnerName, ProfileInfo? profile, string language, MembershipTier tier) => new(
+        Guid id, string burnerName, ProfileInfo? profile, string language) => new(
         id, burnerName, false, language, null, Instant.FromUtc(2026, 1, 1, 0, 0),
-        null, null, null, null, null, false, false, null, null,
+        null, null, null, null, null, null, null,
         null, null, null, [], [], [],
-        profile ?? UserFixtures.Profile(burnerName: burnerName, membershipTier: tier), []);
+        profile ?? UserFixtures.Profile(burnerName: burnerName), []);
 
     public void Dispose()
     {

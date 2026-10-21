@@ -44,8 +44,8 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.GoogleEmailStatus)
             .HasConversion<string>()
             .HasMaxLength(50)
-            .HasDefaultValue(GoogleEmailStatus.Unknown)
-            .HasSentinel(GoogleEmailStatus.Unknown)
+            .HasDefaultValue(LegacyGoogleEmailStatus.Unknown)
+            .HasSentinel(LegacyGoogleEmailStatus.Unknown)
             .IsRequired();
 #pragma warning restore CS0618
 

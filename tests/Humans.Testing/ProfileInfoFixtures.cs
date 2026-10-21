@@ -29,7 +29,9 @@ public static class UserFixtures
     public static UserState StateFor(ProfileInfo? profile) =>
         profile switch
         {
+#pragma warning disable HUM_PROFILE_REVIEW // a legacy-rejected fixture profile still classifies as Rejected
             { RejectedAt: not null } => UserState.Rejected,
+#pragma warning restore HUM_PROFILE_REVIEW
             not null when !string.IsNullOrWhiteSpace(profile.BurnerName)
                 && !string.IsNullOrWhiteSpace(profile.FirstName)
                 && !string.IsNullOrWhiteSpace(profile.LastName) => UserState.Active,
@@ -67,8 +69,8 @@ public static class UserFixtures
         string? boardNotes = null,
         string? iban = null,
         bool isApproved = false,
-        MembershipTier membershipTier = MembershipTier.Volunteer,
-        ConsentCheckStatus? consentCheckStatus = null,
+        LegacyMembershipTier membershipTier = LegacyMembershipTier.Volunteer,
+        LegacyConsentCheckStatus? consentCheckStatus = null,
         Instant? consentCheckAt = null,
         Guid? consentCheckedByUserId = null,
         string? consentCheckNotes = null,
@@ -148,8 +150,9 @@ public static class UserFixtures
         Guid? id = null) =>
         new(id ?? Guid.NewGuid(), date ?? new LocalDate(2026, 1, 1), eventName, description);
 
-    public static CommunicationPreferenceInfo Preference(
-        MessageCategory category = MessageCategory.System,
+    /// <summary>A frozen legacy Users preference row (Email owns the live ones since Users decomposition commit 14).</summary>
+    public static LegacyCommunicationPreferenceInfo Preference(
+        LegacyMessageCategory category = LegacyMessageCategory.System,
         bool optedOut = false,
         bool inboxEnabled = true,
         Instant? updatedAt = null,

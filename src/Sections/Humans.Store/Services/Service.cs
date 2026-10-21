@@ -79,7 +79,7 @@ internal sealed class Service(
             .ToList();
         var campOrders = await repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
             campSeasons.Select(s => s.Id).ToList(), ct);
-        var teamOrders = await repo.GetOrdersForTeamsWithLinesAsync(
+        var teamOrders = await repo.GetOrdersForTeamsWithLinesAndPaymentsAsync(
             teams.Select(t => t.Id).ToList(), year, ct);
         var productIds = campOrders.Concat(teamOrders)
             .SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList();
@@ -237,7 +237,7 @@ internal sealed class Service(
             $"Updated store product '{product.Name}'",
             actorUserId);
 
-        // Dedicated, queryable price-change event for the order-page audit view (#816).
+        // Dedicated, queryable price-change event for the order-page audit view (nobodies-collective/Humans#816).
         if (oldPrice != draft.UnitPriceEur)
             await audit.LogAsync(
                 AuditAction.StoreProductPriceChanged, AuditEntityTypes.Product, product.Id,
@@ -321,18 +321,6 @@ internal sealed class Service(
         if (draft.HoldedRevenueAccountNum is { } account and (< 10_000_000 or > 99_999_999))
             return "Holded revenue account must be an 8-digit chart number";
         return null;
-    }
-
-    public async Task<IReadOnlyList<OrderDto>> GetOrdersForCampSeasonAsync(Guid campSeasonId, CancellationToken ct = default)
-    {
-        var orders = await repo.GetOrdersForCampSeasonAsync(campSeasonId, ct);
-        var productIds = orders.SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList();
-        var productNames = await LoadProductNamesAsync(productIds, ct);
-        var currentPrices = await LoadCurrentPricesAsync(ct);
-        var result = new List<OrderDto>(orders.Count);
-        foreach (var o in orders)
-            result.Add(await MapOrderAsync(o, productNames, currentPrices, ct));
-        return result;
     }
 
     public async Task<OrderDto?> GetOrderAsync(Guid orderId, CancellationToken ct = default)
@@ -1180,8 +1168,7 @@ internal sealed class Service(
             .ToDictionary(season => season.Id);
         var products = await repo.GetAllProductsForYearAsync(year, ct);
 
-        // Departments — every top-level team on the platform (no user filter here: admin
-        // views reflect all departments). Filter to ParentTeamId is null.
+        // Departments: every top-level team, unfiltered by user (admin views show all).
         var allTeams = await teamService.GetTeamsAsync(ct);
         var departmentIds = allTeams.Values
             .Where(t => t.ParentTeamId is null)
@@ -1189,9 +1176,7 @@ internal sealed class Service(
             .ToList();
         var teamNames = allTeams.Values.ToDictionary(t => t.Id, t => t.Name);
 
-        // Reprice Open orders to the live catalog, exactly like the order page
-        // (MapOrderAsync) — summing raw snapshots here made summary totals drift
-        // from order totals whenever a catalog price changed after lines were added.
+        // Reprice Open orders to the live catalog, exactly like the order page (MapOrderAsync).
         // Priced from the requested year's products (already loaded above), not the
         // active event's catalog — historical summaries must not reprice against a
         // later year's prices.
@@ -1219,7 +1204,7 @@ internal sealed class Service(
         var campOrdersInYear = campOrders
             .Where(o => o.CampSeasonId is { } sid && seasonsForYear.ContainsKey(sid))
             .ToList();
-        var teamOrders = await repo.GetOrdersForTeamsWithLinesAsync(departmentIds, year, ct);
+        var teamOrders = await repo.GetOrdersForTeamsWithLinesAndPaymentsAsync(departmentIds, year, ct);
         var totalsByOrder = PriceAll(campOrdersInYear.Concat(teamOrders), context);
         var productNames = products.ToDictionary(p => p.Id, p => p.Name);
 
@@ -1228,7 +1213,6 @@ internal sealed class Service(
         foreach (var o in campOrdersInYear)
         {
             var totals = totalsByOrder[o.Id];
-            var totalDue = totals.LinesSubtotalEur + totals.VatTotalEur + totals.DepositTotalEur;
             var sid = o.CampSeasonId!.Value;
             var campName = seasonsForYear[sid].Name;
             byCounterparty.Add(new OrderSummaryDto(
@@ -1237,7 +1221,7 @@ internal sealed class Service(
                 sid,
                 campName,
                 o.State,
-                totalDue,
+                totals.TotalDueEur,
                 totals.PaymentsTotalEur,
                 totals.BalanceEur));
         }
@@ -1252,7 +1236,7 @@ internal sealed class Service(
                 tid,
                 teamName,
                 o.State,
-                totals.LinesSubtotalEur + totals.VatTotalEur + totals.DepositTotalEur,
+                totals.TotalDueEur,
                 0m, // team orders never have payments
                 0m));
         }

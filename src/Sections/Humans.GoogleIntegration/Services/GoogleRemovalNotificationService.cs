@@ -12,6 +12,7 @@ namespace Humans.GoogleIntegration.Services;
 internal sealed class GoogleRemovalNotificationService(
     IUserEmailService userEmailService,
     IUserService userService,
+    IGoogleIntegrationService workspaceIdentities,
     IEmailService emailService,
     GoogleIntegrationEmails emailMessages,
     ILogger<GoogleRemovalNotificationService> logger) : IGoogleRemovalNotificationService
@@ -64,11 +65,11 @@ internal sealed class GoogleRemovalNotificationService(
             ? user.PreferredLanguage
             : CultureCatalog.DefaultCultureCode;
 
-        var otherGoogleEmail = user.UserEmails
-            .FirstOrDefault(ue => ue.IsVerified
-                && ue.IsGoogle
-                && !string.Equals(ue.Email, removedEmail, StringComparison.OrdinalIgnoreCase))
-            ?.Email;
+        var identity = await workspaceIdentities.GetWorkspaceIdentityAsync(user.Id, cancellationToken);
+        var otherGoogleEmail = identity is not null
+            && !string.Equals(identity.Email, removedEmail, StringComparison.OrdinalIgnoreCase)
+                ? identity.Email
+                : null;
 
         if (otherGoogleEmail is not null)
         {

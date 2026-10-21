@@ -90,4 +90,11 @@
   <data name="Tickets_TicketTransfer_Email_Cancelled_Subject" xml:space="preserve"><value>Transfert de billet annulé</value></data>
   <data name="Tickets_TicketTransfer_Email_Cancelled_Body" xml:space="preserve"><value>&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;Le transfert demandé du billet &lt;strong&gt;{1}&lt;/strong&gt; à &lt;strong&gt;{2}&lt;/strong&gt; n'a pas été effectué.&lt;/p&gt;{3}&lt;p&gt;Si vous avez des questions, répondez à cet e-mail et notre équipe billetterie vous aidera.&lt;/p&gt;</value></data>
   <data name="Tickets_TicketTransfer_Email_Cancelled_Reason" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Motif :&lt;/strong&gt; {0}&lt;/p&gt;</value></data>
+  <data name="Tickets_Onsite_Since" xml:space="preserve"><value>Sur place depuis {0}</value></data>
+  <data name="Tickets_Onsite_Title" xml:space="preserve"><value>Enregistré à l'entrée</value></data>
+  <data name="Tickets_NotAttending_Declared" xml:space="preserve"><value>Vous avez été marqué·e comme ne participant pas cette année.</value></data>
+  <data name="Tickets_NotAttending_Failed" xml:space="preserve"><value>Une erreur s'est produite. Veuillez réessayer.</value></data>
+  <data name="Tickets_NotAttending_NoActiveEvent" xml:space="preserve"><value>Aucun événement actif n'est configuré.</value></data>
+  <data name="Tickets_NotAttending_Undone" xml:space="preserve"><value>Votre déclaration a été supprimée.</value></data>
+  <data name="Tickets_NotAttending_UndoFailed" xml:space="preserve"><value>Impossible d'annuler : la synchronisation des billets a peut-être mis à jour votre statut.</value></data>
 </root>

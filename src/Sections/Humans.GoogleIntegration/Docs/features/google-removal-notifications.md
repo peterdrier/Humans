@@ -44,7 +44,7 @@ Tracked in: peterdrier/Humans#639. Initial implementation: peterdrier/Humans#404
 **So that** I have a record of which address was tidied up and can verify my primary access is unchanged
 
 **Acceptance Criteria:**
-- Sent when the removed address resolves to a User who has another verified `IsGoogle` `UserEmail` row not also being removed
+- Sent when the removed address resolves to a User whose Google Workspace identity (`IGoogleIntegrationService.GetWorkspaceIdentityAsync`) is another address
 - One template covers both Group and Drive removals (the message is reassurance, not resource-specific)
 - Body mentions the removed address, confirms the user's current primary Google address, and confirms access through the primary is unchanged
 - Body directs the user to contact their team coordinator if the removed address should still have had access
@@ -74,7 +74,7 @@ on removal of address E (from group G or folder F):
     user = lookup user by E (via UserEmail.Email, verified rows only)
     if user is null
         → no email (orphan / deleted / OAuth-rename-in-place)
-    elif user has another verified UserEmail with IsGoogle=true that is NOT also being removed
+    elif the user's workspace identity is a different address
         → Variant 2 — secondary-email cleanup
     else
         → Variant 1 — loss of access (Group sub-template or Drive sub-template by resource type)
@@ -127,7 +127,7 @@ The notification is **always** post-delete, never pre-delete — we don't tell u
 
 - [`google-integration.md`](google-integration.md) — sync architecture, group orchestrator, Drive gateway methods, sync modes
 - [`email-outbox.md`](../../../Humans.Email/Docs/features/email-outbox.md) — outbox infrastructure, `MessageCategory`, branded-template composition
-- [`profiles.md`](../../../Humans.Users/Docs/features/profiles.md) — `UserEmail` rows, `IsGoogle` flag, email rotation flows
+- [`profiles.md`](../../../Humans.Users/Docs/features/profiles.md) — `UserEmail` rows, email rotation flows (the Google identity is GoogleIntegration's `google_workspace_identities`)
 - [`src/Sections/Humans.GoogleIntegration/Docs/GoogleIntegration.md`](../GoogleIntegration.md) — section invariants, cross-section dependencies
 
 ## Open Follow-ups

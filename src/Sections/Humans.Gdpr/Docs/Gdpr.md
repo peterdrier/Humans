@@ -15,8 +15,10 @@
   repository. Its entire substance is two fan-outs over the same contributor
   roster: ask every section that holds personal data for its slice and merge
   the slices into one document (export), or run every section's erasure in turn
-  (erasure). Its one controller, `GuestDataController`, exists to host the
-  `/Guest/DownloadData` route and computes nothing.
+  (erasure). Its controllers host the member-facing subject-rights surface — the
+  data-export downloads, the deletion request and the pending-deletion and
+  account-status landing pages — and compute nothing: the export is `IGdprService`,
+  the deletion work is Users' `IAccountDeletionService`.
 - **`IUserDataContributor`** is the fan-out contract (an `IFanout`, per
   `memory/architecture/orchestrator-marker.md`). Every service that owns
   user-scoped tables implements it and returns the personal data it — and only
@@ -45,20 +47,32 @@
 
 ## Routing
 
-One controller, no views — the project is still plain `Microsoft.NET.Sdk`
-rather than `Microsoft.NET.Sdk.Razor` because `GuestDataController` only ever
-returns `File()` or a redirect.
+Three controllers and two views (`Views/User/Status`, `Views/User/Deletion`), so the project is
+`Microsoft.NET.Sdk.Razor`. Every route here is under `/Gdpr/*`; the account-deletion confirmation
+email links `/Gdpr/Deletion`.
 
 | Route | Controller action | Notes |
 |-------|------------------|-------|
-| `GET /Profile/Me/DownloadData` | `ProfileController` (Humans.Users) | For a human who has completed onboarding |
-| `GET /Guest/DownloadData` | `GuestDataController` (Humans.Gdpr) | For an authenticated account with no profile yet |
+| `GET /Gdpr/DownloadData` | `MemberDataController.DownloadData` | For a human who has completed onboarding; own data only |
+| `POST /Gdpr/RequestDeletion` | `MemberDataController.RequestDeletion` | Starts the deletion countdown via `IAccountDeletionService.RequestDeletionAsync`; redirects back to `/Consent/MyData` |
+| `GET /Gdpr/Guest/DownloadData` | `GuestDataController` | For an authenticated account with no profile yet |
+| `POST /Gdpr/Guest/RequestDeletion` | `GuestDataController.RequestDeletion` | Profileless deletion request via `IAccountDeletionService.RequestDeletionAsync` (ticket hold shown in the flash); redirects to `/Guest`. Moved from Users' `GuestAccountController` in Users decomposition commit 14 (was `/Guest/RequestDeletion`) |
+| `POST /Gdpr/Guest/CancelDeletion` | `GuestDataController.CancelDeletion` | `IAccountDeletionService.CancelDeletionAsync`; redirects to `/Guest` |
+| `GET /Gdpr/Status` | `UserController.Status` | Account-status wall for Suspended/AdminSuspended/Rejected/Deleted/Merged |
+| `GET /Gdpr/Deletion` | `UserController.Deletion` | Pending-deletion landing; redirects home when nothing is pending |
+| `POST /Gdpr/Deletion/Cancel` | `UserController.CancelDeletion` | `IAccountDeletionService.CancelDeletionAsync` |
 
-Both resolve `IGdprService` from the `Contracts/` folder and use its shared
+The views' copy lives in `GdprResource` (six cultures; keys `Gdpr_AccountStatus_*`, `Gdpr_AccountDeletion_*`, `Gdpr_Deletion_*`, and the guest deletion flashes `Gdpr_Guest_*`). For a Rejected account the wall renders the `UserPartSlots.AccountStatus` slot (Base), where Consent contributes the rejection reason — Gdpr cannot reference Consent, which owns the record (Users decomposition commit 12). Users keeps its own copies of the suspension keys its notification text reads; its deletion flash copies went with the guest deletion actions (Users decomposition commit 14).
+
+The `/Consent/MyData` page itself is Consent's (`MyDataController`) and links to the two
+`MemberData` actions. The `User` controller and the two `MemberData` actions are exempt from
+`MembershipRequiredFilter` — they are its redirect targets and the recovery actions a non-Active
+account keeps (terminal states are denied everything but `Status`).
+
+The export actions resolve `IGdprService` from the `Contracts/` folder and use its shared
 `GdprExportSerializer` for the file download. The serializer writes the envelope
 fields first, then section slices in contributor order, as indented UTF-8 JSON
-with string enums and null object properties omitted. `/Profile/Me/DownloadData` stays on Users: moving it
-would change a URL. Erasure has no route of its own — `AccountDeletionService`
+with string enums and null object properties omitted. Erasure has no route of its own — `AccountDeletionService`
 calls `EraseForUserAsync` per merge-chain id from the deletion paths.
 
 ## Actors & Roles
@@ -147,8 +161,10 @@ calls `EraseForUserAsync` per merge-chain id from the deletion paths.
 injects `IUserService` and calls `GetUserInfoAsync` once per export to
 stamp the envelope with the surviving account id and the merged-away ids,
 and pass that surviving id to every export contributor;
-`GuestDataController`'s base class `HumansControllerBase` also takes
-`IUserService`.
+the controllers' base class `HumansControllerBase` also takes
+`IUserService`, and `MemberDataController`/`UserController` inject Users.Contracts'
+`IAccountDeletionService` (the deletion work stays in Users; the deletion timestamps stay on
+`users` behind `IUserWrite`).
 
 **Inbound:** wide, and all of it through the public `Contracts/` folder. Every section owning
 user-scoped tables references `Humans.Gdpr` to implement

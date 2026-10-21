@@ -46,7 +46,7 @@ public sealed class Section : ISection, IIssueQueueOwner
         // Catches Identity-machinery writes (UpdateAsync, LastLoginAt, OAuth UserEmail).
         // Singleton, resolved onto every section's DbContext and DbContextFactory pipelines via
         // IEnumerable<IInterceptor> — the interceptor pattern-matches
-        // User/UserEmail/EventParticipation/CommunicationPreference wherever they are saved.
+        // User/UserEmail/CommunicationPreference wherever they are saved.
         // A section owns its own interceptors; Base names none of them.
         services.AddSingleton<UserInfoSaveChangesInterceptor>();
         services.AddSingleton<IInterceptor>(sp => sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
@@ -92,16 +92,10 @@ public sealed class Section : ISection, IIssueQueueOwner
         // Hosted service for TrackedCache StartAsync → WarmAllAsync.
         services.AddHostedService(sp => sp.GetRequiredService<CachingUserService>());
 
-        // Singleton repos so CachingUserService injects directly without a scope factory.
+        // Singleton repos so CachingUserService injects directly without a scope factory. The frozen
+        // legacy communication_preferences rows (Email owns the live table since Users decomposition
+        // commit 14) are only read into UserInfo and deleted on erasure.
         services.AddSingleton<ICommunicationPreferenceRepository, CommunicationPreferenceRepository>();
-
-        services.AddScoped<IUnsubscribeTokenProvider, UnsubscribeTokenProvider>();
-
-        services.AddScoped<CommunicationPreferenceService>();
-        services.AddScoped<ICommunicationPreferenceService>(sp => sp.GetRequiredService<CommunicationPreferenceService>());
-        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CommunicationPreferenceService>());
-
-        services.AddScoped<IUnsubscribeService, UnsubscribeService>();
 
         services.AddScoped<ContactFieldService>();
         services.AddScoped<IContactFieldService>(sp => sp.GetRequiredService<ContactFieldService>());
@@ -142,9 +136,6 @@ public sealed class Section : ISection, IIssueQueueOwner
         // HUM0005 names it as the sole legal caller of ReconcileOAuthIdentityAsync by full name.
         services.AddScoped<IAccountDeletionService, AccountDeletionService>();
         services.AddScoped<IExternalLoginService, ExternalLoginService>();
-        services.AddScoped<IUserParticipationBackfillService, UserParticipationBackfillService>();
-        // Which teams a coordinator may send a facilitated message for (Teams + GoogleIntegration).
-        services.AddScoped<ITeamMessageOptionsProvider, TeamMessageOptionsProvider>();
 
         services.AddScoped<ProcessAccountDeletionsJob>();
         services.AddScoped<SuspendNonCompliantMembersJob>();

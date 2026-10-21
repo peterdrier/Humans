@@ -114,7 +114,7 @@ public class AccountingReadTests
             State = OrderState.Open,
             Lines = { new OrderLine { Id = Guid.NewGuid(), OrderId = TeamOrderId, ProductId = IceId, Qty = 5, UnitPriceSnapshot = 3m, VatRateSnapshot = 10m } },
         };
-        _repo.GetOrdersForTeamsWithLinesAsync(
+        _repo.GetOrdersForTeamsWithLinesAndPaymentsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(DeptId)), 2026, Arg.Any<CancellationToken>())
             .Returns([teamOrder]);
 

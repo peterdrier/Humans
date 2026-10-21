@@ -140,7 +140,7 @@ public interface IUserEmailService
     /// (<c>AccountProvisioningService</c>): on a freshly created User the row
     /// is added through <c>UserEmailService</c> rather than the
     /// repository directly so it goes through the same orchestrator
-    /// (Primary + Google invariants, UserInfo invalidation) as every
+    /// (Primary invariant, UserInfo invalidation) as every
     /// other UserEmail-add path. Issue nobodies-collective/Humans#687.
     /// Skips if the email already exists for this user (idempotent).
     /// </summary>
@@ -223,7 +223,7 @@ public interface IUserEmailService
     /// <summary>
     /// Returns every <see cref="UserEmail"/> entity belonging to
     /// <paramref name="userId"/>, including the per-row metadata
-    /// (<c>IsVerified</c>, <c>IsPrimary</c>, <c>IsGoogle</c>,
+    /// (<c>IsVerified</c>, <c>IsPrimary</c>,
     /// <c>Provider</c>, etc.). Used by cross-section callers
     /// (GoogleAdmin / GoogleWorkspaceSync) that need the row-level metadata
     /// to compute Google-rename detection or sync flags. Returns an empty
@@ -268,36 +268,6 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Sets the user's canonical Google Workspace identity to the given verified
-    /// email row. Single-transaction exclusive flip via
-    /// <c>IUserRepository.SetUserEmailGoogleExclusiveAsync</c>: the target row's
-    /// <see cref="UserEmail.IsGoogle"/> goes to true, every sibling row for the
-    /// same user is cleared. Owner-gated via
-    /// <c>IUserRepository.GetUserEmailByIdAndUserIdAsync</c>; returns
-    /// <c>false</c> if the row is not found for this user or is not verified.
-    /// Service-auth-free per the design rules: the controller authorizes against
-    /// <paramref name="userId"/>, which is the <b>target</b> user (not the actor).
-    /// <paramref name="actorUserId"/> is captured on the audit log entry so the
-    /// admin self/admin grid distinguishes who flipped the flag.
-    /// </summary>
-    Task<bool> SetGoogleAsync(
-        Guid userId, Guid userEmailId, Guid actorUserId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Clears <see cref="UserEmail.IsGoogle"/> on a single row without promoting
-    /// any sibling — admin recovery path for the data-corruption case where
-    /// multiple rows have <c>IsGoogle = true</c> for the same user (an
-    /// invariant violation that bypasses <see cref="SetGoogleAsync"/>).
-    /// Returns <c>false</c> when the row is not found for this user or is
-    /// already cleared. Owner-gated via
-    /// <c>IUserRepository.GetUserEmailByIdAndUserIdAsync</c>.
-    /// </summary>
-    Task<bool> ClearGoogleAsync(
-        Guid userId, Guid userEmailId, Guid actorUserId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Clears <see cref="UserEmail.IsPrimary"/> on a single row without
     /// promoting any sibling — admin recovery path for cases where multiple
     /// rows are flagged primary or where the admin needs to deliberately
@@ -316,10 +286,11 @@ public interface IUserEmailService
     /// Returns one entry per user whose UserEmail rows currently violate the
     /// admin-visible flag invariants:
     /// <list type="bullet">
-    /// <item>more than one row with <c>IsGoogle = true</c>; or</item>
     /// <item>verified rows present but the count of <c>IsPrimary = true</c>
     /// verified rows is not exactly 1.</item>
     /// </list>
+    /// The Google identity is no longer a per-row flag (GoogleIntegration's
+    /// <c>google_workspace_identities</c>, one row per user), so it has no violations here.
     /// Used by the Google admin "email flag violations" remediation screen.
     /// </summary>
     Task<IReadOnlyList<UserEmailFlagViolation>> GetEmailFlagViolationsAsync(
@@ -364,7 +335,7 @@ public interface IUserEmailService
     /// <list type="number">
     /// <item>Tagged row at <paramref name="claimEmail"/> → <see cref="ReconcileOutcome.NoChange"/>.</item>
     /// <item>Tagged row at a different email + another row of this user holds
-    /// the claim email → tag-move (union <c>IsGoogle</c>/<c>IsPrimary</c>,
+    /// the claim email → tag-move (union <c>IsPrimary</c>,
     /// force verify, delete old) → <see cref="ReconcileOutcome.TagMoved"/>.</item>
     /// <item>Tagged row at a different email + no other row of this user holds
     /// the claim email → rewrite → <see cref="ReconcileOutcome.EmailRewritten"/>.</item>
@@ -491,26 +462,16 @@ public record UserEmailMatch(
 /// admin remediation screen.
 /// </summary>
 /// <param name="UserId">The user with the violation.</param>
-/// <param name="IsGoogleCount">How many rows have <c>IsGoogle = true</c>.
-/// A healthy value is 1 (when verified rows exist); 0 with verified rows is
-/// a violation, as are values &gt; 1.</param>
 /// <param name="VerifiedCount">How many rows are verified.</param>
 /// <param name="VerifiedPrimaryCount">How many verified rows have
 /// <c>IsPrimary = true</c>. A healthy value is 1 (when verified rows exist)
 /// or 0 (when no verified rows exist).</param>
-/// <param name="HasMultipleGoogle">Convenience flag — true when
-/// <see cref="IsGoogleCount"/> &gt; 1.</param>
-/// <param name="HasZeroGoogle">Convenience flag — true when verified rows
-/// exist and <see cref="IsGoogleCount"/> is 0.</param>
 /// <param name="HasPrimaryProblem">Convenience flag — true when verified
 /// rows exist and <see cref="VerifiedPrimaryCount"/> is not exactly 1.</param>
 public record UserEmailFlagViolation(
     Guid UserId,
-    int IsGoogleCount,
     int VerifiedCount,
     int VerifiedPrimaryCount,
-    bool HasMultipleGoogle,
-    bool HasZeroGoogle,
     bool HasPrimaryProblem);
 
 public record UserEmailOrphan(
@@ -525,7 +486,6 @@ public sealed record UserEmailRowSnapshot(
     bool IsVerified,
     string? Provider,
     string? ProviderKey,
-    bool IsGoogle,
     bool IsPrimary,
     ContactFieldVisibility? Visibility,
     Instant? VerificationSentAt,

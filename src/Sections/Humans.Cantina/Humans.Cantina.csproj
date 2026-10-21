@@ -23,14 +23,14 @@
 
   <ItemGroup>
     <!--
-      Cantina owns no tables, so there is no DbContext, no repository and no
-      AddSectionDbContext call (G5-SECTION-TEMPLATE.md step 1 / the Data-and-DbContext steps
-      are skipped wholesale). The roster service composes over IShiftManagementService /
-      IBurnSettingsService / IUserService, all of which sit in their owners' public
-      contracts, and the CSV writers use Humans.Base.Csv.HumansCsv.
+      Cantina owns cantina_dietary_profiles (its own CantinaDbContext). The roster service
+      composes over IShiftManagementService / ISettingsService / IUserService, all in their
+      owners' public contracts, and the CSV writers use Humans.Base.Csv.HumansCsv. Gdpr for
+      IUserDataContributor (export/erase of the dietary profile).
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
+    <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
@@ -39,11 +39,13 @@
   <ItemGroup>
     <!--
       No AspNetCore package here: those ship with no PackageVersion on purpose and would fail
-      the build with NU1010 under Central Package Management. Everything the controller needs
+      the build with NU1010 under Central Package Management. Everything the controllers need
       arrives through the framework reference Sdk.Razor already adds (design §15 step 1).
-      No EF Core either — the section owns no tables.
     -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="NodaTime" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
   </ItemGroup>
 
   <ItemGroup>

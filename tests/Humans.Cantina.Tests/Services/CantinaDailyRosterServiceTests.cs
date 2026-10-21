@@ -3,6 +3,8 @@ using System.Text.Json;
 using AwesomeAssertions;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
+using Humans.Cantina.Contracts;
+using Humans.Cantina.Domain;
 using Humans.Cantina.Services;
 using NodaTime;
 using NodaTime.Testing;
@@ -23,6 +25,7 @@ public class CantinaDailyRosterServiceTests
     private readonly IShiftManagementService _shiftMgmt;
     private readonly ISettingsService _burnSettings;
     private readonly IUserService _userRead;
+    private readonly ICantinaService _dietary = Substitute.For<ICantinaService>();
     private readonly IClock _clock;
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly CantinaRosterService _service;
@@ -41,16 +44,18 @@ public class CantinaDailyRosterServiceTests
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>()));
+        _dietary.GetDietaryProfilesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, DietaryProfileInfo>());
 
         _shiftMgmt.GetOnSiteUserIdsForDayAsync(
                 Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>()));
 
-        _service = new CantinaRosterService(_shiftMgmt, _burnSettings, _userRead, _clock, _audit);
+        _service = new CantinaRosterService(_shiftMgmt, _burnSettings, _userRead, _dietary, _clock, _audit);
     }
 
     /// <summary>Builds a profile carrying burner name + dietary (dietary lives on the profile).</summary>
-    private static (Guid UserId, ProfileInfo Profile) Human(
+    private static (Guid UserId, ProfileInfo Profile, DietaryProfileInfo? Diet) Human(
         Guid userId,
         string burner,
         string? dietary = null,
@@ -59,13 +64,10 @@ public class CantinaDailyRosterServiceTests
         IReadOnlyList<string>? intolerances = null,
         string? intoleranceOther = null) => (
         userId,
-        UserFixtures.Profile(
-            burnerName: burner,
-            dietaryPreference: dietary,
-            allergies: allergies,
-            allergyOtherText: allergyOther,
-            intolerances: intolerances,
-            intoleranceOtherText: intoleranceOther));
+        UserFixtures.Profile(burnerName: burner),
+        dietary is null && allergies is null && intolerances is null
+            ? null
+            : new DietaryProfileInfo(userId, dietary, allergies ?? [], allergyOther, intolerances ?? [], intoleranceOther));
 
     private static EventSettingsInfo ActiveEvent() => new(
         Id: Guid.NewGuid(),
@@ -277,8 +279,8 @@ public class CantinaDailyRosterServiceTests
         SetupDay(0, userId);
         SetupHumans((userId, UserFixtures.Profile(
             burnerName: "Sensitive",
-            dietaryPreference: "Omnivore",
-            medicalConditions: "Severe peanut allergy")));
+            medicalConditions: "Severe peanut allergy"),
+            new DietaryProfileInfo(userId, "Omnivore", [], null, [], null)));
 
         var result = await _service.GetDailyRosterAsync(dayOffset: 0, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -353,7 +355,7 @@ public class CantinaDailyRosterServiceTests
         // not from UTC. With clock pinned to 23:30 UTC on day 0, Europe/Madrid
         // is already day 1 (CET = UTC+2 in July).
         var fakeClock = new FakeClock(Instant.FromUtc(2026, 7, 7, 23, 30));
-        var service = new CantinaRosterService(_shiftMgmt, _burnSettings, _userRead, fakeClock, _audit);
+        var service = new CantinaRosterService(_shiftMgmt, _burnSettings, _userRead, _dietary, fakeClock, _audit);
         var es = ActiveEvent();
         _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
 
@@ -370,7 +372,7 @@ public class CantinaDailyRosterServiceTests
                 Arg.Any<Guid>(), dayOffset, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(onSiteIds));
 
-    private void SetupHumans(params (Guid UserId, ProfileInfo Profile)[] profiles)
+    private void SetupHumans(params (Guid UserId, ProfileInfo Profile, DietaryProfileInfo? Diet)[] profiles)
     {
         var dict = profiles.ToDictionary(
             p => p.UserId,
@@ -386,5 +388,10 @@ public class CantinaDailyRosterServiceTests
         _userRead.GetUserInfosAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict));
+        IReadOnlyDictionary<Guid, DietaryProfileInfo> diets = profiles
+            .Where(p => p.Diet is not null)
+            .ToDictionary(p => p.UserId, p => p.Diet!);
+        _dietary.GetDietaryProfilesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(diets);
     }
 }

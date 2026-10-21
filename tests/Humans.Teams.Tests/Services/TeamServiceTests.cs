@@ -55,6 +55,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     private readonly RoleAssignmentService _roleAssignmentService;
     private readonly ITeamResourceManagement _teamResourceService;
     private readonly IGoogleSyncWrite _googleSyncService = Substitute.For<IGoogleSyncWrite>();
+    private readonly IGoogleIntegrationService _googleIdentities = Substitute.For<IGoogleIntegrationService>();
     private readonly ISystemTeamSync _systemTeamSync = Substitute.For<ISystemTeamSync>();
 
     public TeamServiceTests()
@@ -88,6 +89,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             .With(_systemTeamSync)
             .With(_googleSyncService)
             .With<IGoogleSyncOutboxService>(googleOutboxService)
+            .With(_googleIdentities)
             .With<ITeamResourceService>(_teamResourceService)
             .With(userService)
             .With<IUserService>(userService)
@@ -2924,6 +2926,24 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var memberInDb = await TeamsDb.TeamMembers
             .FirstOrDefaultAsync(tm => tm.TeamId == team.Id && tm.UserId == target.Id && tm.LeftAt == null, Xunit.TestContext.Current.CancellationToken);
         memberInDb.Should().NotBeNull();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(GoogleEmailStatus.Valid, 1)]
+    [Xunit.InlineData(GoogleEmailStatus.Rejected, 0)]
+    public async Task AddMemberToTeamAsync_RejectedGoogleIdentity_SkipsTheOutboxEvent(GoogleEmailStatus status, int events)
+    {
+        var actor = SeedUser(displayName: "Actor");
+        var target = SeedUser(displayName: "Target");
+        var team = SeedTeam("Alpha");
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        _googleIdentities.GetWorkspaceIdentityAsync(target.Id, Arg.Any<CancellationToken>())
+            .Returns(new WorkspaceIdentity(target.Id, "target@example.org", status));
+
+        await _service.AddMemberToTeamAsync(team.Id, target.Id, actor.Id, Xunit.TestContext.Current.CancellationToken);
+
+        (await GoogleIntegrationDb.GoogleSyncOutboxEvents.CountAsync(Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(events);
     }
 
     [HumansFact]

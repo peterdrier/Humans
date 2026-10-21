@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
+using Humans.GoogleIntegration.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Humans.Base.Helpers;
@@ -24,6 +25,7 @@ public class UserEmailServiceTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 21, 12, 0));
     private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
+    private readonly IGoogleIntegrationWrite _googleIdentity = Substitute.For<IGoogleIntegrationWrite>();
     private readonly IServiceProvider _serviceProvider;
     private readonly UserEmailService _service;
 
@@ -39,6 +41,7 @@ public class UserEmailServiceTests
         _serviceProvider = new ServiceLocatorBuilder()
             .With(_mergeService)
             .With(_ticketService)
+            .With(_googleIdentity)
             .Build();
 
         _service = new UserEmailService(
@@ -174,7 +177,6 @@ public class UserEmailServiceTests
             Email = email,
             IsVerified = command.IsVerified,
             IsPrimary = false,
-            IsGoogle = false,
             Visibility = command.Visibility,
             Provider = command.Provider,
             ProviderKey = command.ProviderKey,
@@ -185,7 +187,6 @@ public class UserEmailServiceTests
 
         await _repository.AddUserEmailAsync(row, ct);
         await EnsurePrimaryInvariantForTestAsync(userId, ct);
-        await EnsureGoogleInvariantForTestAsync(userId, ct);
         await _userInfoInvalidator.InvalidateAsync(userId, ct);
         return new UserEmailAddResult(row.Id, Added: true, IsConflict: false);
     }
@@ -209,7 +210,6 @@ public class UserEmailServiceTests
             row.UpdatedAt = _clock.GetCurrentInstant();
             await _repository.UpdateUserEmailAsync(row, ct);
             await EnsurePrimaryInvariantForTestAsync(userId, ct);
-            await EnsureGoogleInvariantForTestAsync(userId, ct);
             changed = true;
         }
 
@@ -239,25 +239,6 @@ public class UserEmailServiceTests
             var rows = await _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
             if (rows.Count(e => e.IsPrimary && e.IsVerified) <= 1) return new UpdateEmailResult(false);
             row.IsPrimary = false;
-            row.UpdatedAt = _clock.GetCurrentInstant();
-            await _repository.UpdateUserEmailAsync(row, ct);
-            changed = true;
-        }
-
-        if (command.Google == UserEmailGoogleChange.MakeGoogle)
-        {
-            var row = await _repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct);
-            if (row is null || !row.IsVerified) return new UpdateEmailResult(false);
-            await _repository.SetUserEmailGoogleExclusiveAsync(userId, emailId, _clock.GetCurrentInstant(), ct);
-            changed = true;
-        }
-        else if (command.Google == UserEmailGoogleChange.ClearDuplicateGoogle)
-        {
-            var row = await _repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct);
-            if (row is null || !row.IsGoogle) return new UpdateEmailResult(false);
-            var rows = await _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
-            if (rows.Count(e => e.IsGoogle) <= 1) return new UpdateEmailResult(false);
-            row.IsGoogle = false;
             row.UpdatedAt = _clock.GetCurrentInstant();
             await _repository.UpdateUserEmailAsync(row, ct);
             changed = true;
@@ -302,7 +283,6 @@ public class UserEmailServiceTests
         if (command.RepairInvariants)
         {
             await EnsurePrimaryInvariantForTestAsync(userId, ct);
-            await EnsureGoogleInvariantForTestAsync(userId, ct);
         }
         await _userInfoInvalidator.InvalidateAsync(userId, ct);
         return true;
@@ -323,27 +303,6 @@ public class UserEmailServiceTests
         foreach (var row in changed)
         {
             row.IsPrimary = row.Id == winner.Id;
-            row.UpdatedAt = now;
-        }
-        if (changed.Count > 0)
-            await _repository.UpdateUserEmailsAsync(changed, ct);
-    }
-
-    private async Task EnsureGoogleInvariantForTestAsync(Guid userId, CancellationToken ct)
-    {
-        var rows = (await _repository.GetUserEmailsByUserIdForMutationAsync(userId, ct)).ToList();
-        var verified = rows.Where(e => e.IsVerified).ToList();
-        if (verified.Count == 0) return;
-        var current = verified.Where(e => e.IsGoogle).ToList();
-        var winner = verified.FirstOrDefault(e => e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
-            ?? current.OrderBy(e => e.Id).FirstOrDefault()
-            ?? verified.OrderByDescending(e => e.UpdatedAt).ThenBy(e => e.Id).First();
-        if (current.Count == 1 && current[0].Id == winner.Id) return;
-        var now = _clock.GetCurrentInstant();
-        var changed = verified.Where(e => e.IsGoogle != (e.Id == winner.Id)).ToList();
-        foreach (var row in changed)
-        {
-            row.IsGoogle = row.Id == winner.Id;
             row.UpdatedAt = now;
         }
         if (changed.Count > 0)
@@ -454,9 +413,6 @@ public class UserEmailServiceTests
             Email = "secondary@example.com",
             IsVerified = true,
             IsPrimary = false,
-            // IsGoogle on the row being deleted so EnsureGoogleInvariantAsync
-            // has work to do after the delete (re-stamping the surviving row).
-            IsGoogle = false,
         };
         var keeping = new UserEmail
         {
@@ -465,9 +421,6 @@ public class UserEmailServiceTests
             Email = "primary@example.com",
             IsVerified = true,
             IsPrimary = true,
-            // Already-stamped IsGoogle so the post-delete EnsureGoogleInvariantAsync
-            // is a no-op and only DeleteEmailAsync's own invalidation runs.
-            IsGoogle = true,
         };
         _repository.GetUserEmailByIdAndUserIdAsync(deletingId, userId, Arg.Any<CancellationToken>())
             .Returns(deleting);
@@ -480,6 +433,8 @@ public class UserEmailServiceTests
 
         await _repository.Received(1).RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         await _userInfoInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
+        // A deleted address stops being the member's Google Workspace identity.
+        await _googleIdentity.Received(1).ClearIfAddressAsync(userId, "secondary@example.com", Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -699,232 +654,6 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task SetGoogleAsync_FlipsExclusively()
-    {
-        var userId = Guid.NewGuid();
-        var rowAId = Guid.NewGuid();
-        var rowBId = Guid.NewGuid();
-        var rowA = new UserEmail
-        {
-            Id = rowAId,
-            UserId = userId,
-            Email = "a@x.test",
-            IsVerified = true,
-            IsGoogle = true,
-        };
-        var rowB = new UserEmail
-        {
-            Id = rowBId,
-            UserId = userId,
-            Email = "b@x.test",
-            IsVerified = true,
-            IsGoogle = false,
-        };
-        _repository.GetUserEmailByIdAndUserIdAsync(rowBId, userId, Arg.Any<CancellationToken>())
-            .Returns(rowB);
-        _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<UserEmail> { rowA, rowB });
-        _repository.SetUserEmailGoogleExclusiveAsync(
-            userId, rowBId, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
-            .Returns(Task.CompletedTask)
-            .AndDoes(_ =>
-            {
-                rowA.IsGoogle = false;
-                rowB.IsGoogle = true;
-            });
-
-        var result = await _service.SetGoogleAsync(userId, rowBId, userId, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeTrue();
-        rowA.IsGoogle.Should().BeFalse();
-        rowB.IsGoogle.Should().BeTrue();
-        await _repository.Received(1).SetUserEmailGoogleExclusiveAsync(
-            userId, rowBId, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task SetGoogleAsync_RejectsOtherUser()
-    {
-        var otherId = Guid.NewGuid();
-        var rowId = Guid.NewGuid();
-        // Owner-gate: GetUserEmailByIdAndUserIdAsync(rowId, otherId) returns null because
-        // the row is owned by ownerId, not otherId.
-        _repository.GetUserEmailByIdAndUserIdAsync(rowId, otherId, Arg.Any<CancellationToken>())
-            .Returns((UserEmail?)null);
-
-        var result = await _service.SetGoogleAsync(otherId, rowId, otherId, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeFalse();
-        await _repository.DidNotReceive().SetUserEmailGoogleExclusiveAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
-        await _userInfoInvalidator.DidNotReceive().InvalidateAsync(
-            Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
-    }
-
-    [HumansFact]
-    public async Task SetGoogleAsync_RejectsUnverified()
-    {
-        var userId = Guid.NewGuid();
-        var rowId = Guid.NewGuid();
-        var row = new UserEmail
-        {
-            Id = rowId,
-            UserId = userId,
-            Email = "a@x.test",
-            IsVerified = false,
-            IsGoogle = false,
-        };
-        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
-            .Returns(row);
-
-        var result = await _service.SetGoogleAsync(userId, rowId, userId, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeFalse();
-        row.IsGoogle.Should().BeFalse();
-        await _repository.DidNotReceive().SetUserEmailGoogleExclusiveAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
-        await _userInfoInvalidator.DidNotReceive().InvalidateAsync(
-            Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
-    }
-
-    [HumansFact]
-    public async Task ClearGoogleAsync_FlaggedRow_ClearsAndAudits()
-    {
-        // Issue 650: admin can clear IsGoogle from a row when the user is in
-        // the duplicate-IsGoogle invariant-violation state. Two rows carry
-        // IsGoogle, so the sole-row guard (issue 686) is satisfied.
-        var userId = Guid.NewGuid();
-        var actorId = Guid.NewGuid();
-        var rowId = Guid.NewGuid();
-        var row = new UserEmail
-        {
-            Id = rowId,
-            UserId = userId,
-            Email = "a@x.test",
-            IsVerified = true,
-            IsGoogle = true,
-        };
-        var sibling = new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Email = "b@x.test",
-            IsVerified = true,
-            IsGoogle = true,
-        };
-        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
-            .Returns(row);
-        _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<UserEmail> { row, sibling });
-
-        var result = await _service.ClearGoogleAsync(userId, rowId, actorId, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeTrue();
-        row.IsGoogle.Should().BeFalse();
-        await _repository.Received(1).UpdateUserEmailAsync(row, Arg.Any<CancellationToken>());
-        await _userInfoInvalidator.Received(1).InvalidateAsync(
-            userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
-        await _auditLogService.Received(1).LogAsync(
-            AuditAction.UserEmailGoogleCleared,
-            nameof(User), userId,
-            Arg.Any<string>(),
-            actorId,
-            Arg.Any<Guid?>(), Arg.Any<string?>());
-    }
-
-    [HumansFact]
-    public async Task ClearGoogleAsync_NotFlagged_ReturnsFalse()
-    {
-        var userId = Guid.NewGuid();
-        var rowId = Guid.NewGuid();
-        var row = new UserEmail
-        {
-            Id = rowId,
-            UserId = userId,
-            Email = "a@x.test",
-            IsVerified = true,
-            IsGoogle = false,
-        };
-        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
-            .Returns(row);
-
-        var result = await _service.ClearGoogleAsync(userId, rowId, userId, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeFalse();
-        await _repository.DidNotReceive().UpdateUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task ClearGoogleAsync_SoleIsGoogleRow_ReturnsFalse()
-    {
-        // Issue 686: clearing the only IsGoogle row would leave the user in
-        // the ZeroIsGoogle state /Profile/Admin/EmailProblems flags as a bug.
-        // Reject the call so admins can't reach that state via direct form
-        // replay even after the view hides the button.
-        var userId = Guid.NewGuid();
-        var rowId = Guid.NewGuid();
-        var row = new UserEmail
-        {
-            Id = rowId,
-            UserId = userId,
-            Email = "a@x.test",
-            IsVerified = true,
-            IsGoogle = true,
-        };
-        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
-            .Returns(row);
-        _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<UserEmail> { row });
-
-        var result = await _service.ClearGoogleAsync(userId, rowId, userId, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeFalse();
-        row.IsGoogle.Should().BeTrue();
-        await _repository.DidNotReceive().UpdateUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
-        await _userInfoInvalidator.DidNotReceive().InvalidateAsync(
-            Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
-    }
-
-    [HumansFact]
-    public async Task ClearGoogleAsync_OnlyClearsTargetRow_LeavesOtherFlagAlone()
-    {
-        // Critical for the duplicate-IsGoogle remediation: clearing one row
-        // must NOT touch the sibling row's flag, otherwise an admin trying
-        // to fix "two flagged" would zero both out instead of resolving.
-        var userId = Guid.NewGuid();
-        var rowAId = Guid.NewGuid();
-        var rowA = new UserEmail
-        {
-            Id = rowAId,
-            UserId = userId,
-            Email = "a@x.test",
-            IsVerified = true,
-            IsGoogle = true,
-        };
-        var rowB = new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Email = "b@x.test",
-            IsVerified = true,
-            IsGoogle = true,
-        };
-        _repository.GetUserEmailByIdAndUserIdAsync(rowAId, userId, Arg.Any<CancellationToken>())
-            .Returns(rowA);
-        _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<UserEmail> { rowA, rowB });
-
-        var result = await _service.ClearGoogleAsync(userId, rowAId, userId, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeTrue();
-        // Only the targeted row should have flowed through UpdateAsync —
-        // SetUserEmailGoogleExclusiveAsync (which would touch siblings) must not fire.
-        await _repository.DidNotReceive().SetUserEmailGoogleExclusiveAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
-        await _repository.Received(1).UpdateUserEmailAsync(rowA, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
     public async Task ClearPrimaryAsync_FlaggedRow_ClearsAndAudits()
     {
         // Two rows carry IsPrimary (the duplicate-flag recovery scenario);
@@ -1075,50 +804,40 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task GetEmailFlagViolationsAsync_FlagsMultipleGoogleAndBadPrimaryCounts()
+    public async Task GetEmailFlagViolationsAsync_FlagsBadPrimaryCounts()
     {
         // Two flagged scenarios + one healthy user. Healthy user must not
-        // appear in the result; the violations list must include both
-        // problem types with the right convenience flags set.
-        var userMultipleGoogle = Guid.NewGuid();
+        // appear in the result. (The Google identity is GoogleIntegration's since Users
+        // decomposition commit 15, so it is no longer a flag invariant here.)
         var userNoPrimary = Guid.NewGuid();
         var userMultiplePrimary = Guid.NewGuid();
         var userHealthy = Guid.NewGuid();
 
         var rows = new List<UserEmail>
         {
-            // userMultipleGoogle: 2 verified rows, both IsGoogle=true, one IsPrimary=true.
-            new() { Id = Guid.NewGuid(), UserId = userMultipleGoogle, Email = "a@x.test", IsVerified = true, IsGoogle = true,  IsPrimary = true  },
-            new() { Id = Guid.NewGuid(), UserId = userMultipleGoogle, Email = "b@x.test", IsVerified = true, IsGoogle = true,  IsPrimary = false },
-
             // userNoPrimary: verified rows but none flagged primary.
-            new() { Id = Guid.NewGuid(), UserId = userNoPrimary, Email = "c@x.test", IsVerified = true, IsGoogle = false, IsPrimary = false },
-            new() { Id = Guid.NewGuid(), UserId = userNoPrimary, Email = "d@x.test", IsVerified = true, IsGoogle = false, IsPrimary = false },
+            new() { Id = Guid.NewGuid(), UserId = userNoPrimary, Email = "c@x.test", IsVerified = true, IsPrimary = false },
+            new() { Id = Guid.NewGuid(), UserId = userNoPrimary, Email = "d@x.test", IsVerified = true, IsPrimary = false },
 
             // userMultiplePrimary: two IsPrimary=true verified rows.
-            new() { Id = Guid.NewGuid(), UserId = userMultiplePrimary, Email = "e@x.test", IsVerified = true, IsGoogle = false, IsPrimary = true },
-            new() { Id = Guid.NewGuid(), UserId = userMultiplePrimary, Email = "f@x.test", IsVerified = true, IsGoogle = false, IsPrimary = true },
+            new() { Id = Guid.NewGuid(), UserId = userMultiplePrimary, Email = "e@x.test", IsVerified = true, IsPrimary = true },
+            new() { Id = Guid.NewGuid(), UserId = userMultiplePrimary, Email = "f@x.test", IsVerified = true, IsPrimary = true },
 
-            // userHealthy: exactly one primary, no extra Google rows.
-            new() { Id = Guid.NewGuid(), UserId = userHealthy, Email = "g@x.test", IsVerified = true, IsGoogle = true, IsPrimary = true },
-            new() { Id = Guid.NewGuid(), UserId = userHealthy, Email = "h@x.test", IsVerified = true, IsGoogle = false, IsPrimary = false },
+            // userHealthy: exactly one primary.
+            new() { Id = Guid.NewGuid(), UserId = userHealthy, Email = "g@x.test", IsVerified = true, IsPrimary = true },
+            new() { Id = Guid.NewGuid(), UserId = userHealthy, Email = "h@x.test", IsVerified = true, IsPrimary = false },
         };
 
         StubAllUserInfosFromRows(rows);
 
         var violations = await _service.GetEmailFlagViolationsAsync(Xunit.TestContext.Current.CancellationToken);
 
-        violations.Should().HaveCount(3);
+        violations.Should().HaveCount(2);
         violations.Should().NotContain(v => v.UserId == userHealthy);
-
-        var multipleGoogle = violations.Single(v => v.UserId == userMultipleGoogle);
-        multipleGoogle.IsGoogleCount.Should().Be(2);
-        multipleGoogle.HasMultipleGoogle.Should().BeTrue();
 
         var noPrimary = violations.Single(v => v.UserId == userNoPrimary);
         noPrimary.VerifiedPrimaryCount.Should().Be(0);
         noPrimary.HasPrimaryProblem.Should().BeTrue();
-        noPrimary.HasMultipleGoogle.Should().BeFalse();
 
         var multiplePrimary = violations.Single(v => v.UserId == userMultiplePrimary);
         multiplePrimary.VerifiedPrimaryCount.Should().Be(2);
@@ -1134,7 +853,7 @@ public class UserEmailServiceTests
         var userId = Guid.NewGuid();
         var rows = new List<UserEmail>
         {
-            new() { Id = Guid.NewGuid(), UserId = userId, Email = "a@x.test", IsVerified = false, IsGoogle = false, IsPrimary = false },
+            new() { Id = Guid.NewGuid(), UserId = userId, Email = "a@x.test", IsVerified = false, IsPrimary = false },
         };
         StubAllUserInfosFromRows(rows);
 
@@ -1201,6 +920,7 @@ public class UserEmailServiceTests
         await _userManager.Received(1).RemoveLoginAsync(user, "Google", "sub-Z");
         await _repository.Received(1).RemoveUserEmailAsync(row, Arg.Any<CancellationToken>());
         await _userInfoInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
+        await _googleIdentity.Received(1).ClearIfAddressAsync(userId, "linked@example.com", CancellationToken.None);
         await _auditLogService.Received(1).LogAsync(
             AuditAction.UserEmailUnlinked,
             Arg.Any<string>(), userId,
@@ -1340,29 +1060,6 @@ public class UserEmailServiceTests
             Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
-    }
-
-    [HumansFact]
-    public async Task SetGoogleAsync_InvalidatesFullProfileCache()
-    {
-        var userId = Guid.NewGuid();
-        var rowId = Guid.NewGuid();
-        var row = new UserEmail
-        {
-            Id = rowId,
-            UserId = userId,
-            Email = "a@x.test",
-            IsVerified = true,
-            IsGoogle = false,
-        };
-        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
-            .Returns(row);
-        _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<UserEmail> { row });
-
-        await _service.SetGoogleAsync(userId, rowId, userId, Xunit.TestContext.Current.CancellationToken);
-
-        await _userInfoInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
     // -------------------------------------------------------------------------
@@ -1992,60 +1689,20 @@ public class UserEmailServiceTests
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Issue nobodies-collective/Humans#687: UserEmail.IsGoogle is sole source
-    // of truth. Tests for the orchestrator + EnsureGoogleInvariantAsync.
+    // Provisioned rows. The Google Workspace identity (formerly the IsGoogle stamp) is
+    // GoogleIntegration's since Users decomposition commit 15; its tests live there.
     // ─────────────────────────────────────────────────────────────────────────
 
-    // Coverage of the OAuth-signup IsGoogle / IsPrimary stamp moved to
+    // Coverage of the OAuth-signup IsPrimary stamp moved to
     // `UserEmailServiceReconcileOAuthTests` along with the rest of the
     // OAuth-callback flow (issue nobodies-collective/Humans#697).
 
     [HumansFact]
-    public async Task AddVerifiedEmailAsync_NobodiesTeamRow_BecomesIsGooglePromotedOverExistingPersonalRow()
-    {
-        // When a personal Google row exists (IsGoogle=true) and a @nobodies.team
-        // row is added, EnsureGoogleInvariantAsync's @nobodies.team-wins
-        // precedence flips IsGoogle to the new Workspace row.
-        var userId = Guid.NewGuid();
-        var personalRow = new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Email = "alice@gmail.com",
-            IsVerified = true,
-            IsPrimary = true,
-            IsGoogle = true,
-            UpdatedAt = Instant.FromUtc(2026, 4, 10, 0, 0),
-        };
-
-        _repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns([]);
-
-        UserEmail? added = null;
-        _repository.AddUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                added = call.Arg<UserEmail>();
-                return Task.CompletedTask;
-            });
-
-        // After AddAsync, repository returns both rows.
-        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(_ => new List<UserEmail> { personalRow, added! });
-
-        await _service.AddVerifiedEmailAsync(userId, "alice@nobodies.team", Xunit.TestContext.Current.CancellationToken);
-
-        added.Should().NotBeNull();
-        added!.IsGoogle.Should().BeTrue("@nobodies.team row wins Google precedence");
-        personalRow.IsGoogle.Should().BeFalse("EnsureGoogleInvariantAsync demoted the personal row");
-    }
-
-    [HumansFact]
-    public async Task AddProvisionedEmailAsync_NewUser_StampsIsGoogleOnFirstRow()
+    public async Task AddProvisionedEmailAsync_NewUser_StampsIsPrimaryOnFirstRow()
     {
         // Spec acceptance criterion: AccountProvisioningService path enforces
         // the invariant — the first UserEmail row added for a brand-new user
-        // becomes IsGoogle (it's the only verified row).
+        // becomes IsPrimary (it's the only verified row).
         var userId = Guid.NewGuid();
         UserEmail? added = null;
 
@@ -2064,7 +1721,6 @@ public class UserEmailServiceTests
 
         added.Should().NotBeNull();
         added!.IsPrimary.Should().BeTrue("the only verified row wins Primary");
-        added.IsGoogle.Should().BeTrue("the only verified row wins Google");
     }
 
     [HumansFact]

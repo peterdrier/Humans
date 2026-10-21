@@ -1,0 +1,150 @@
+@model Humans.Consent.Models.MyDataViewModel
+@{
+    ViewData["Title"] = Localizer["Consent_MyData_Title"].Value;
+}
+
+<nav aria-label="@Localizer["Consent_BreadcrumbNavigation"]">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Profile" asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Consent_MyData_Title"]</li>
+    </ol>
+</nav>
+
+<h1>@Localizer["Consent_MyData_Title"]</h1>
+
+<p class="lead">@Localizer["Consent_MyData_Lead"]</p>
+
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">@Localizer["Consent_MyData_ExportTitle"]</h5>
+            </div>
+            <div class="card-body">
+                <p>@Localizer["Consent_MyData_ExportDescription"]</p>
+                <ul>
+                    <li>@Localizer["Consent_MyData_ExportAccountInfo"]</li>
+                    <li>@Localizer["Consent_MyData_ExportProfileDetails"]</li>
+                    <li>@Localizer["Consent_MyData_ExportContactFields"]</li>
+                    <li>@Localizer["Consent_MyData_ExportApplications"]</li>
+                    <li>@Localizer["Consent_MyData_ExportConsents"]</li>
+                    <li>@Localizer["Consent_MyData_ExportTeams"]</li>
+                    <li>@Localizer["Consent_MyData_ExportRoles"]</li>
+                </ul>
+                <a asp-controller="MemberData" asp-action="DownloadData" class="btn btn-primary">
+                    @Localizer["Consent_MyData_DownloadMyData"]
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4 @(Model.IsDeletionPending ? "border-warning" : "")">
+            <div class="card-header @(Model.IsDeletionPending ? "bg-warning text-dark" : "")">
+                <h5 class="mb-0">@Localizer["Consent_MyData_DeleteTitle"]</h5>
+            </div>
+            <div class="card-body">
+                @if (Model.IsDeletionPending)
+                {
+                    <div class="alert alert-warning">
+                        <strong>@Localizer["Consent_MyData_DeletionPending"]</strong><br />
+                        @string.Format(Localizer["Consent_MyData_DeletionScheduledFor"].Value, Model.DeletionScheduledFor.ToDate())
+                    </div>
+                    <p>@Localizer["Consent_MyData_DeletionAccessRevoked"]</p>
+                    <p>@Localizer["Consent_MyData_DeletionCancelInfo"]</p>
+                    <p class="text-muted"><small>@Localizer["Consent_MyData_CancelNoRestore"]</small></p>
+                    <form asp-controller="User" asp-action="CancelDeletion" method="post">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-success">
+                            @Localizer["Consent_MyData_CancelDeletion"]
+                        </button>
+                    </form>
+                }
+                else
+                {
+                    <p>@Localizer["Consent_MyData_DeleteDescription"]</p>
+                    <ul>
+                        <li><strong>@Localizer["Consent_MyData_DeleteImmediateRevocation"]</strong></li>
+                        <li>@Localizer["Consent_MyData_DeleteGracePeriod"]</li>
+                        <li>@Localizer["Consent_MyData_DeleteAnonymized"]</li>
+                        <li>@Localizer["Consent_MyData_DeleteRetained"]</li>
+                    </ul>
+                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        @Localizer["Consent_MyData_RequestDeletion"]
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">@Localizer["Consent_History"]</h5>
+    </div>
+    <div class="card-body">
+        @if (Model.SignedDocuments.Count == 0)
+        {
+            <p class="text-muted">@Localizer["Consent_NoRecords"]</p>
+        }
+        else
+        {
+            <ul class="list-unstyled">
+                @foreach (var signed in Model.SignedDocuments)
+                {
+                    <li class="mb-2">
+                        <a asp-controller="Consent" asp-action="Review" asp-route-id="@signed.DocumentVersionId">
+                            <strong>@signed.DocumentName</strong> (@signed.VersionNumber)
+                        </a>
+                        <br />
+                        <small class="text-muted">@signed.ConsentedAt.ToDateTimeUtc().ToDate()</small>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">@SharedLocalizer["Privacy_Title"]</h5>
+    </div>
+    <div class="card-body">
+        <p>@Localizer["Consent_MyData_DPOContact"]</p>
+        <p><strong>@Localizer["Consent_MyData_Email"]</strong> <a href="mailto:@(ViewData["DpoEmail"])">@ViewData["DpoEmail"]</a></p>
+        <p>
+            <a asp-controller="Home" asp-action="Privacy">@Localizer["Consent_MyData_ViewFullPolicy"]</a>
+        </p>
+    </div>
+</div>
+
+@if (!Model.IsDeletionPending)
+{
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="deleteModalLabel">@Localizer["Consent_MyData_ConfirmDeletion"]</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="@SharedLocalizer["Common_Close"].Value"></button>
+                </div>
+                <div class="modal-body">
+                    <p>@Localizer["Consent_MyData_ConfirmDeletionQuestion"]</p>
+                    <ul>
+                        <li><strong>@Localizer["Consent_MyData_DeleteImmediateRevocation"]</strong></li>
+                        <li>@Localizer["Consent_MyData_DeleteGracePeriod"]</li>
+                        <li>@Localizer["Consent_MyData_DeleteAnonymized"]</li>
+                        <li>@Localizer["Consent_MyData_DeleteRetained"]</li>
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@SharedLocalizer["Common_Cancel"]</button>
+                    <form asp-controller="MemberData" asp-action="RequestDeletion" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-danger">@Localizer["Consent_MyData_YesDeleteMyAccount"]</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}

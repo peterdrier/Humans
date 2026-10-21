@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Extensions;
 using Humans.GoogleIntegration.Contracts;
@@ -55,12 +56,17 @@ public class SystemTeamSyncJobBarrioLeadsTests
         var services = new ServiceCollection();
         services.AddSingleton(membershipCalculator ?? Substitute.For<IMembershipCalculator>());
         services.AddSingleton(resources ?? Substitute.For<ITeamResourceService>());
+        var consent = Substitute.For<IConsentService>();
+        consent.GetConsentReviewAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => ConsentReviewInfo.None(call.Arg<Guid>()));
+        consent.GetConsentReviewsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, ConsentReviewInfo>());
+        services.AddSingleton(consent);
         var provider = services.BuildServiceProvider();
 
         return new SystemTeamSyncJob(
             _teamService,
             _userService,
-            Substitute.For<IUserWrite>(),
             _campRepository,
             provider,
             _googleSyncService,
@@ -118,7 +124,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
             BoardNotes: null,
             Iban: null,
             IsApproved: false,
-            MembershipTier: MembershipTier.Volunteer,
+            MembershipTier: LegacyMembershipTier.Volunteer,
             ConsentCheckStatus: null,
             ConsentCheckAt: null,
             ConsentCheckedByUserId: null,

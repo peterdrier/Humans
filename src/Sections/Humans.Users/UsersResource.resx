@@ -54,8 +54,6 @@
   <data name="Profile_AddSome" xml:space="preserve"><value>Add some</value></data>
   <data name="Profile_NotificationTarget" xml:space="preserve"><value>System notifications are sent to this address</value></data>
   <data name="Profile_NotificationTargetShort" xml:space="preserve"><value>Notifications</value></data>
-  <data name="Profile_Motivation" xml:space="preserve"><value>Motivation</value></data>
-  <data name="Profile_AdditionalInfo" xml:space="preserve"><value>Additional Information (optional)</value></data>
   <data name="Profile_BurnerCV" xml:space="preserve"><value>Burner CV</value></data>
   <data name="Profile_NoCVEntries" xml:space="preserve"><value>No entries yet.</value></data>
   <data name="Profile_AddFirstEntry" xml:space="preserve"><value>Add your first entry</value></data>
@@ -68,10 +66,6 @@
   <data name="Profile_EmailDeleted" xml:space="preserve"><value>Email address deleted.</value></data>
   <data name="Profile_EmailVisibilityUpdated" xml:space="preserve"><value>Email address visibility updated.</value></data>
   <data name="Profile_NotificationTargetUpdated" xml:space="preserve"><value>Notification email address updated.</value></data>
-  <data name="Profile_DeletionAlreadyPending" xml:space="preserve"><value>A deletion request is already pending.</value></data>
-  <data name="Profile_DeletionRequested" xml:space="preserve"><value>Account deletion requested. Your account will be deleted on {0} unless you cancel.</value><comment>{0} = deletion date</comment></data>
-  <data name="Profile_NoDeletionPending" xml:space="preserve"><value>No deletion request is pending.</value></data>
-  <data name="Profile_DeletionCancelled" xml:space="preserve"><value>Account deletion has been cancelled.</value></data>
   <data name="Profile_ProfilePicture" xml:space="preserve"><value>Profile Picture</value></data>
   <data name="Profile_DateOfBirth" xml:space="preserve"><value>Birthday</value></data>
   <data name="Profile_PictureTooLarge" xml:space="preserve"><value>Profile picture must be under 20MB.</value></data>
@@ -90,47 +84,14 @@
   <data name="Profile_BoardNotes" xml:space="preserve"><value>Notes for the Board</value></data>
   <data name="Profile_BoardInformation" xml:space="preserve"><value>Board &amp; Private Information</value></data>
   <data name="Profile_WhatsApp" xml:space="preserve"><value>WhatsApp</value></data>
-  <data name="Profile_DietaryMedical_PageTitle" xml:space="preserve"><value>Dietary &amp; medical info</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Label" xml:space="preserve"><value>Dietary preference</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Omnivore" xml:space="preserve"><value>Omnivore</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Vegetarian" xml:space="preserve"><value>Vegetarian</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Vegan" xml:space="preserve"><value>Vegan</value></data>
-  <data name="Profile_DietaryMedical_DietaryPreference_Pescatarian" xml:space="preserve"><value>Pescatarian</value></data>
-  <data name="Profile_DietaryMedical_Allergies_Label" xml:space="preserve"><value>Allergies</value></data>
-  <data name="Profile_DietaryMedical_AllergyOther_Label" xml:space="preserve"><value>Other allergy — please describe</value></data>
-  <data name="Profile_DietaryMedical_Intolerances_Label" xml:space="preserve"><value>Intolerances</value></data>
-  <data name="Profile_DietaryMedical_IntoleranceOther_Label" xml:space="preserve"><value>Other intolerance — please describe</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Only visible to you and the No-Info Admins. Anything coordinators should know — diabetes, epilepsy, severe injuries, etc.</value></data>
-  <data name="Profile_DietaryMedical_Saved" xml:space="preserve"><value>Your dietary and medical info has been saved.</value></data>
-  <data name="Profile_DietaryMedical_AllergyOther_Required" xml:space="preserve"><value>Please describe your "Other" allergy.</value></data>
-  <data name="Profile_DietaryMedical_IntoleranceOther_Required" xml:space="preserve"><value>Please describe your "Other" intolerance.</value></data>
-  <data name="Profile_DietaryMedical_LoadFailed" xml:space="preserve"><value>Failed to load dietary and medical info.</value></data>
-  <data name="Profile_DietaryMedical_SaveFailed" xml:space="preserve"><value>Failed to save dietary and medical info.</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Medical conditions</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Only visible to you and No-Info Admins.</value></data>
-  <data name="Profile_Assigned" xml:space="preserve"><value>Assigned</value></data>
-  <data name="Profile_Campaign" xml:space="preserve"><value>Campaign</value></data>
-  <data name="Profile_Code" xml:space="preserve"><value>Code</value></data>
-  <data name="Profile_DietaryMedical_Allergy_Dairy" xml:space="preserve"><value>Dairy</value></data>
-  <data name="Profile_DietaryMedical_Allergy_Egg" xml:space="preserve"><value>Egg</value></data>
-  <data name="Profile_DietaryMedical_Allergy_Peanut" xml:space="preserve"><value>Peanut</value></data>
-  <data name="Profile_DietaryMedical_Allergy_Sesame" xml:space="preserve"><value>Sesame</value></data>
-  <data name="Profile_DietaryMedical_Allergy_Shellfish" xml:space="preserve"><value>Shellfish</value></data>
-  <data name="Profile_DietaryMedical_Allergy_Soy" xml:space="preserve"><value>Soy</value></data>
-  <data name="Profile_DietaryMedical_Allergy_Treenut" xml:space="preserve"><value>Tree nut</value></data>
-  <data name="Profile_DietaryMedical_Allergy_WheatGluten" xml:space="preserve"><value>Wheat/Gluten</value></data>
-  <data name="Profile_DietaryMedical_Intolerance_Gluten" xml:space="preserve"><value>Gluten</value></data>
-  <data name="Profile_DietaryMedical_Intolerance_Histamine" xml:space="preserve"><value>Histamine</value></data>
-  <data name="Profile_DietaryMedical_Intolerance_Lactose" xml:space="preserve"><value>Lactose</value></data>
   <data name="Profile_MarkedAt" xml:space="preserve"><value>Marked At</value></data>
   <data name="Profile_MarkedBy" xml:space="preserve"><value>Marked By</value></data>
-  <data name="Profile_MyCodes" xml:space="preserve"><value>My Codes</value></data>
   <data name="Profile_MyEmails" xml:space="preserve"><value>My Emails</value></data>
   <data name="Profile_NoSentMessages" xml:space="preserve"><value>No in-platform messages on record.</value></data>
   <data name="Profile_NoShowHistory" xml:space="preserve"><value>No-Show History ({0})</value></data>
-  <data name="Profile_OnsiteSince" xml:space="preserve"><value>Onsite since {0}</value></data>
-  <data name="Profile_OnsiteTitle" xml:space="preserve"><value>Checked in at the gate</value></data>
-  <data name="Profile_Redeemed" xml:space="preserve"><value>Redeemed</value></data>
   <data name="Profile_SentMessages" xml:space="preserve"><value>Sent messages</value></data>
   <data name="Profile_ShiftInfo" xml:space="preserve"><value>Shift Info</value></data>
 
@@ -141,9 +102,6 @@
   <data name="ProfileEdit_TierVolunteerDesc" xml:space="preserve"><value>You want to come to the event, contribute your energy, work a shift or join a team. No formal commitment to the association's governance. Most people fall here and that's completely valid.</value></data>
   <data name="ProfileEdit_TierChangeNote" xml:space="preserve"><value>Note: You can always apply to change this later on.</value></data>
   <data name="ProfileEdit_TierLocked" xml:space="preserve"><value>Your tier is locked because you have an active or pending application.</value></data>
-  <data name="ProfileEdit_ApplicationSection" xml:space="preserve"><value>Application</value></data>
-  <data name="ProfileEdit_ApplicationDescription" xml:space="preserve"><value>Tell us about your motivation. This will be reviewed by the Board alongside your profile.</value></data>
-  <data name="ProfileEdit_MotivationPlaceholder" xml:space="preserve"><value>Why do you want to become a Colaborador/Asociado? What do you hope to contribute?</value></data>
   <data name="ProfileEdit_MotivationHelp" xml:space="preserve"><value>Minimum 50 characters. This helps the Board understand your goals.</value></data>
   <data name="ProfileEdit_BurnerNamePlaceholder" xml:space="preserve"><value>The name you go by</value></data>
   <data name="ProfileEdit_BurnerNameHelp" xml:space="preserve"><value>This is your public display name, visible to everyone.</value></data>
@@ -201,54 +159,12 @@
   <!-- Privacy / My Data        -->
   <!-- ======================== -->
   <data name="ProfilePrivacy_Title" xml:space="preserve"><value>My Data</value></data>
-  <data name="ProfilePrivacy_Lead" xml:space="preserve"><value>Manage your personal data and privacy settings.</value></data>
-  <data name="ProfilePrivacy_ExportTitle" xml:space="preserve"><value>Export Your Data</value></data>
-  <data name="ProfilePrivacy_ExportDescription" xml:space="preserve"><value>Download a copy of all your personal data in JSON format. This includes:</value></data>
-  <data name="ProfilePrivacy_ExportAccountInfo" xml:space="preserve"><value>Account information</value></data>
-  <data name="ProfilePrivacy_ExportProfileDetails" xml:space="preserve"><value>Profile details</value></data>
-  <data name="ProfilePrivacy_ExportContactFields" xml:space="preserve"><value>Contact fields</value></data>
-  <data name="ProfilePrivacy_ExportApplications" xml:space="preserve"><value>Membership applications</value></data>
-  <data name="ProfilePrivacy_ExportConsents" xml:space="preserve"><value>Consent records</value></data>
-  <data name="ProfilePrivacy_ExportTeams" xml:space="preserve"><value>Team memberships</value></data>
-  <data name="ProfilePrivacy_ExportRoles" xml:space="preserve"><value>Role assignments</value></data>
-  <data name="ProfilePrivacy_DownloadMyData" xml:space="preserve"><value>Download My Data</value></data>
-  <data name="ProfilePrivacy_DeleteTitle" xml:space="preserve"><value>Delete Your Account</value></data>
-  <data name="ProfilePrivacy_DeleteDescription" xml:space="preserve"><value>Request deletion of your account and personal data.</value></data>
-  <data name="ProfilePrivacy_DeleteImmediateRevocation" xml:space="preserve"><value>Your team memberships, role assignments, and access to shared resources (Google Drive, Groups) will be revoked immediately</value></data>
-  <data name="ProfilePrivacy_DeleteGracePeriod" xml:space="preserve"><value>A 30-day grace period allows you to cancel the request</value></data>
-  <data name="ProfilePrivacy_DeleteAnonymized" xml:space="preserve"><value>After 30 days, your personal information will be anonymized and access permanently blocked</value></data>
-  <data name="ProfilePrivacy_DeleteRetained" xml:space="preserve"><value>Anonymized records are retained for legal compliance and audit purposes but cannot be linked to your identity</value></data>
-  <data name="ProfilePrivacy_RequestDeletion" xml:space="preserve"><value>Request Account Deletion</value></data>
-  <data name="ProfilePrivacy_DeletionPending" xml:space="preserve"><value>Deletion Pending</value></data>
-  <data name="ProfilePrivacy_DeletionScheduledFor" xml:space="preserve"><value>Your account is scheduled for deletion on {0}.</value><comment>{0} = deletion date</comment></data>
-  <data name="ProfilePrivacy_DeletionCancelInfo" xml:space="preserve"><value>You can cancel this request before the deletion date if you change your mind.</value></data>
-  <data name="ProfilePrivacy_CancelDeletion" xml:space="preserve"><value>Cancel Deletion Request</value></data>
-  <data name="ProfilePrivacy_DPOContact" xml:space="preserve"><value>For questions about your data or privacy rights, contact our Data Protection Officer:</value></data>
-  <data name="ProfilePrivacy_Email" xml:space="preserve"><value>Email:</value></data>
-  <data name="ProfilePrivacy_ViewFullPolicy" xml:space="preserve"><value>View Full Privacy Policy</value></data>
-  <data name="ProfilePrivacy_ConfirmDeletion" xml:space="preserve"><value>Confirm Account Deletion</value></data>
-  <data name="ProfilePrivacy_ConfirmDeletionQuestion" xml:space="preserve"><value>Are you sure you want to request deletion of your account?</value></data>
-  <data name="ProfilePrivacy_YesDeleteMyAccount" xml:space="preserve"><value>Yes, Delete My Account</value></data>
-  <data name="ProfilePrivacy_DeletionAccessRevoked" xml:space="preserve"><value>Your team memberships and role assignments have been revoked.</value></data>
-  <data name="ProfilePrivacy_CancelNoRestore" xml:space="preserve"><value>Cancelling will not restore your previous team memberships. You will need to rejoin teams.</value></data>
 
   <!-- ======================== -->
   <!-- Communication prefs      -->
   <!-- ======================== -->
   <data name="CommPrefs_Title" xml:space="preserve"><value>Communication Preferences</value></data>
-  <data name="CommPrefs_Description" xml:space="preserve"><value>Choose which communications you receive and how.</value></data>
-  <data name="CommPrefs_Category" xml:space="preserve"><value>Category</value></data>
   <data name="CommPrefs_Email" xml:space="preserve"><value>Email</value></data>
-  <data name="CommPrefs_Alert" xml:space="preserve"><value>Alert</value></data>
-  <data name="CommPrefs_BackToProfile" xml:space="preserve"><value>Back to Profile</value></data>
-  <data name="CommPrefs_BackToDashboard" xml:space="preserve"><value>Back to Dashboard</value></data>
-  <data name="CommPrefs_OneClick_Prompt" xml:space="preserve"><value>You clicked an unsubscribe link from {0} emails.</value></data>
-  <data name="CommPrefs_OneClick_Hint" xml:space="preserve"><value>One-click unsubscribe, or fine-tune the matrix below.</value></data>
-  <data name="CommPrefs_OneClick_Button" xml:space="preserve"><value>Unsubscribe from {0}</value></data>
-  <data name="CommPrefs_OneClick_Done" xml:space="preserve"><value>Unsubscribed. You can re-enable any category below.</value></data>
-  <data name="CommPrefs_UpdateSource" xml:space="preserve"><value>Source</value></data>
-  <data name="CommPrefs_UpdatedAt" xml:space="preserve"><value>Updated</value></data>
-  <data name="CommPrefs_AlwaysOn" xml:space="preserve"><value>Always on</value></data>
 
   <!-- ======================== -->
   <!-- Email addresses page     -->
@@ -285,14 +201,9 @@
   <data name="EmailGrid_Primary" xml:space="preserve"><value>Primary</value></data>
   <data name="EmailGrid_Google" xml:space="preserve"><value>Google</value></data>
   <data name="EmailGrid_GoogleColumnTooltip" xml:space="preserve"><value>Email used for Google Workspace sync.</value></data>
-  <data name="EmailGrid_GoogleProblem" xml:space="preserve"><value>Google sync problem</value></data>
-  <data name="EmailGrid_GoogleOk" xml:space="preserve"><value>Google OK</value></data>
-  <data name="EmailGrid_RetryGoogle" xml:space="preserve"><value>Retry</value></data>
   <data name="EmailGrid_WorkspaceLockedHelp" xml:space="preserve"><value>Primary and Google are managed by Google Workspace while your @nobodies.team address is present.</value></data>
   <data name="EmailGrid_VerificationPendingTitle" xml:space="preserve"><value>Email verification pending</value></data>
   <data name="EmailGrid_VerificationPendingBody" xml:space="preserve"><value>Check your inbox for the verification email and click the link to confirm your address.</value></data>
-  <data name="EmailGrid_GoogleSyncRejectedTitle" xml:space="preserve"><value>Google sync paused for this address.</value></data>
-  <data name="EmailGrid_GoogleSyncRejectedBody" xml:space="preserve"><value>Google rejected your selected Google email when trying to grant access to Drive or add you to a Group — typically because the address is not backed by a Google account. New sync attempts are suppressed until an administrator resolves this. Select a different Google-backed email and ask an admin to clear the rejected state.</value></data>
   <data name="EmailGrid_Visibility" xml:space="preserve"><value>Visibility</value></data>
   <data name="EmailGrid_Actions" xml:space="preserve"><value>Actions</value></data>
   <data name="EmailGrid_StatusMergePending" xml:space="preserve"><value>Merge pending</value></data>
@@ -303,17 +214,11 @@
   <data name="EmailGrid_BackToAdminDetail" xml:space="preserve"><value>Back to user detail</value></data>
   <data name="EmailGrid_Unlink" xml:space="preserve"><value>Unlink</value></data>
   <data name="EmailGrid_ConfirmUnlink" xml:space="preserve"><value>Unlink this Google account?</value></data>
-  <data name="EmailGrid_SetGoogleRejected" xml:space="preserve"><value>Could not set Google service email — the row is unknown or not verified.</value></data>
   <data name="EmailGrid_UnlinkRejected" xml:space="preserve"><value>Could not unlink — the row is unknown or has no sign-in provider.</value></data>
-  <data name="EmailGrid_GoogleServiceUpdated" xml:space="preserve"><value>Google service email updated. Sync will be retried with the new email.</value></data>
-  <data name="EmailGrid_GoogleFlagCleared" xml:space="preserve"><value>Google identity flag cleared from that row.</value></data>
   <data name="EmailGrid_SetPrimary" xml:space="preserve"><value>Set primary</value></data>
-  <data name="EmailGrid_SetGoogle" xml:space="preserve"><value>Set Google</value></data>
-  <data name="EmailGrid_ClearGoogleRejected" xml:space="preserve"><value>Could not clear Google flag — the row is unknown or not currently flagged.</value></data>
   <data name="EmailGrid_PrimaryFlagCleared" xml:space="preserve"><value>Primary flag cleared from that row.</value></data>
   <data name="EmailGrid_ClearPrimaryRejected" xml:space="preserve"><value>Could not clear primary flag — the row is unknown or not currently flagged.</value></data>
   <data name="EmailGrid_Clear" xml:space="preserve"><value>Clear</value></data>
-  <data name="EmailGrid_ConfirmClearGoogle" xml:space="preserve"><value>Clear the Google identity flag from this email row?</value></data>
   <data name="EmailGrid_ConfirmClearPrimary" xml:space="preserve"><value>Clear the primary flag from this email row?</value></data>
   <data name="EmailGrid_UnlinkSuccess" xml:space="preserve"><value>Sign-in provider unlinked.</value></data>
   <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve"><value>This email is linked to a sign-in provider. Use Unlink instead.</value></data>
@@ -330,28 +235,11 @@
   <!-- ======================== -->
   <!-- Sent messages            -->
   <!-- ======================== -->
-  <data name="Outbox_AdminTitle" xml:space="preserve"><value>Emails</value></data>
-  <data name="Outbox_BackToAdmin" xml:space="preserve"><value>Back to Admin</value></data>
-  <data name="Outbox_BackToProfile" xml:space="preserve"><value>Back to Profile</value></data>
-  <data name="Outbox_DescriptionAdmin" xml:space="preserve"><value>Emails the system has sent to this human.</value></data>
-  <data name="Outbox_DescriptionSelf" xml:space="preserve"><value>Emails the system has sent to you (within the last 150 days).</value></data>
-  <data name="Outbox_Empty" xml:space="preserve"><value>No emails on record.</value></data>
-  <data name="Outbox_Subject" xml:space="preserve"><value>Subject</value></data>
 
   <!-- ======================== -->
   <!-- Facilitated message      -->
   <!-- ======================== -->
-  <data name="SendMessage_Title" xml:space="preserve"><value>Send {0} a message</value><comment>{0} = recipient name</comment></data>
-  <data name="SendMessage_Breadcrumb" xml:space="preserve"><value>Send Message</value></data>
-  <data name="SendMessage_Heading" xml:space="preserve"><value>Send {0} a message</value><comment>{0} = recipient name</comment></data>
-  <data name="SendMessage_MessageLabel" xml:space="preserve"><value>Message</value></data>
-  <data name="SendMessage_IncludeContactInfo" xml:space="preserve"><value>Include my contact info</value></data>
-  <data name="SendMessage_IncludeContactInfoHelp" xml:space="preserve"><value>Your name and email will be included so they can reply to you directly.</value></data>
-  <data name="SendMessage_Send" xml:space="preserve"><value>Send Message</value></data>
-  <data name="SendMessage_Success" xml:space="preserve"><value>Your message has been sent to {0}.</value><comment>{0} = recipient name</comment></data>
   <data name="SendMessage_Button" xml:space="preserve"><value>Send {0} a message</value><comment>{0} = display name</comment></data>
-  <data name="SendMessage_FromTeamButton" xml:space="preserve"><value>Send {0} a message from {1}</value><comment>{0} = recipient name; {1} = team name</comment></data>
-  <data name="SendMessage_FromTeamNotice" xml:space="preserve"><value>You are sending on behalf of {0}. Replies will go to {1}.</value><comment>{0} = team name; {1} = team email</comment></data>
 
   <!-- ======================== -->
   <!-- Email verification       -->
@@ -377,45 +265,18 @@
   <!-- ======================== -->
   <!-- Unsubscribe              -->
   <!-- ======================== -->
-  <data name="Users_Unsubscribe_Title" xml:space="preserve"><value>Unsubscribe from Emails</value></data>
-  <data name="Users_Unsubscribe_Heading" xml:space="preserve"><value>Unsubscribe from {0} emails?</value><comment>{0} = category name</comment></data>
-  <data name="Users_Unsubscribe_Greeting" xml:space="preserve"><value>Hi {0},</value><comment>{0} = display name</comment></data>
-  <data name="Users_Unsubscribe_ConfirmMessage" xml:space="preserve"><value>If you confirm, you will no longer receive {0} emails from Humans.</value><comment>{0} = category name</comment></data>
-  <data name="Users_Unsubscribe_ConfirmButton" xml:space="preserve"><value>Confirm Unsubscribe</value></data>
-  <data name="Users_Unsubscribe_DoneTitle" xml:space="preserve"><value>You've been unsubscribed</value></data>
-  <data name="Users_Unsubscribe_DoneMessage" xml:space="preserve"><value>You will no longer receive {0} emails from Humans.</value><comment>{0} = category name</comment></data>
-  <data name="Users_Unsubscribe_DoneManage" xml:space="preserve"><value>You can manage all your communication preferences from your</value></data>
-  <data name="Users_Unsubscribe_DoneManageLink" xml:space="preserve"><value>communication preferences</value></data>
-  <data name="Users_Unsubscribe_BackHome" xml:space="preserve"><value>Back to home</value></data>
-  <data name="Users_Unsubscribe_ExpiredTitle" xml:space="preserve"><value>Unsubscribe link expired</value></data>
-  <data name="Users_Unsubscribe_ExpiredHeading" xml:space="preserve"><value>This unsubscribe link has expired</value></data>
-  <data name="Users_Unsubscribe_ExpiredMessage" xml:space="preserve"><value>Please use the link from a more recent email, or</value></data>
-  <data name="Users_Unsubscribe_ExpiredSignIn" xml:space="preserve"><value>sign in to manage your communication preferences</value></data>
 
   <!-- ======================== -->
   <!-- Account status page      -->
   <!-- ======================== -->
-  <data name="AccountStatus_Title" xml:space="preserve"><value>Account status</value></data>
   <data name="AccountStatus_HeadingSuspended" xml:space="preserve"><value>Your account has been suspended</value></data>
   <data name="AccountStatus_HeadingAdminSuspended" xml:space="preserve"><value>Your account has been suspended by an administrator</value></data>
-  <data name="AccountStatus_HeadingRejected" xml:space="preserve"><value>Your account has been rejected</value></data>
-  <data name="AccountStatus_HeadingDeleted" xml:space="preserve"><value>Your account has been deleted</value></data>
-  <data name="AccountStatus_HeadingMerged" xml:space="preserve"><value>Your account has been merged</value></data>
-  <data name="AccountStatus_HeadingUnavailable" xml:space="preserve"><value>Your account is unavailable</value></data>
   <data name="AccountStatus_ConsentSuspendedBody" xml:space="preserve"><value>Your access is suspended until you complete the required legal consents.</value></data>
   <data name="AccountStatus_ReviewConsents" xml:space="preserve"><value>Review required consents</value></data>
-  <data name="AccountStatus_ContactInfo" xml:space="preserve"><value>Contact an admin for more information:</value></data>
-  <data name="AccountStatus_ReasonLabel" xml:space="preserve"><value>Reason:</value></data>
-  <data name="AccountStatus_ReferenceId" xml:space="preserve"><value>Reference ID:</value></data>
 
   <!-- ======================== -->
   <!-- Account deletion         -->
   <!-- ======================== -->
-  <data name="AccountDeletion_Title" xml:space="preserve"><value>Pending account deletion</value></data>
-  <data name="AccountDeletion_Heading" xml:space="preserve"><value>Your account is scheduled for deletion</value></data>
-  <data name="AccountDeletion_ScheduledFor" xml:space="preserve"><value>It will be permanently deleted on {0} unless you cancel.</value></data>
-  <data name="AccountDeletion_Unscheduled" xml:space="preserve"><value>It will be permanently deleted unless you cancel.</value></data>
-  <data name="AccountDeletion_CancelButton" xml:space="preserve"><value>Cancel deletion request</value></data>
 
   <!-- ======================== -->
   <!-- Admin: member list       -->
@@ -434,20 +295,10 @@
   <!-- Admin: member detail     -->
   <!-- ======================== -->
   <data name="AdminHuman_Information" xml:space="preserve"><value>Member Information</value></data>
-  <data name="AdminHuman_ConsentCheck" xml:space="preserve"><value>Consent Check</value></data>
-  <data name="AdminHuman_NotStarted" xml:space="preserve"><value>Not started</value></data>
   <data name="AdminHuman_UserId" xml:space="preserve"><value>User ID</value></data>
   <data name="AdminHuman_AdminNotes" xml:space="preserve"><value>Board Notes</value></data>
   <data name="AdminHuman_AdminNotesGdprHint" xml:space="preserve"><value>This member can request to see these notes under GDPR.</value></data>
   <data name="AdminHuman_RecentApplications" xml:space="preserve"><value>Recent Applications</value></data>
-  <data name="AdminHuman_RoleAssignments" xml:space="preserve"><value>Role Assignments</value></data>
-  <data name="AdminHuman_AddRole" xml:space="preserve"><value>Add Role</value></data>
-  <data name="AdminHuman_Ended" xml:space="preserve"><value>Ended</value></data>
-  <data name="AdminHuman_From" xml:space="preserve"><value>From</value></data>
-  <data name="AdminHuman_To" xml:space="preserve"><value>to</value></data>
-  <data name="AdminHuman_EndRoleConfirm" xml:space="preserve"><value>End this role assignment?</value></data>
-  <data name="AdminHuman_End" xml:space="preserve"><value>End</value></data>
-  <data name="AdminHuman_NoRoleAssignments" xml:space="preserve"><value>No role assignments.</value></data>
   <data name="AdminHuman_AuditHistory" xml:space="preserve"><value>Audit History</value></data>
   <data name="AdminHuman_Statistics" xml:space="preserve"><value>Statistics</value></data>
   <data name="AdminHuman_ApplicationCount" xml:space="preserve"><value>Applications</value></data>
@@ -458,32 +309,6 @@
   <data name="AdminHuman_SuspendMember" xml:space="preserve"><value>Suspend Human</value></data>
   <data name="AdminHumanDetail_Title" xml:space="preserve"><value>Member: {0}</value><comment>{0} = display name</comment></data>
   <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>Manage emails</value></data>
-
-  <!-- ======================== -->
-  <!-- Admin: roles             -->
-  <!-- ======================== -->
-  <data name="AdminRoles_Title" xml:space="preserve"><value>Role Assignments</value></data>
-  <data name="AdminRoles_All" xml:space="preserve"><value>All</value></data>
-  <data name="AdminRoles_HideInactive" xml:space="preserve"><value>Hide Inactive</value></data>
-  <data name="AdminRoles_ShowInactive" xml:space="preserve"><value>Show Inactive</value></data>
-  <data name="AdminRoles_User" xml:space="preserve"><value>User</value></data>
-  <data name="AdminRoles_ValidFrom" xml:space="preserve"><value>Valid From</value></data>
-  <data name="AdminRoles_ValidTo" xml:space="preserve"><value>Valid To</value></data>
-
-  <!-- ======================== -->
-  <!-- Admin: add role          -->
-  <!-- ======================== -->
-  <data name="AdminAddRole_Title" xml:space="preserve"><value>Add Role</value></data>
-  <data name="AdminAddRole_SelectRole" xml:space="preserve"><value>Select a role...</value></data>
-  <data name="AdminAddRole_AdminDesc" xml:space="preserve"><value>Full system access</value></data>
-  <data name="AdminAddRole_BoardDesc" xml:space="preserve"><value>Board member permissions</value></data>
-  <data name="AdminAddRole_TeamsAdminDesc" xml:space="preserve"><value>Manage all teams and memberships</value></data>
-  <data name="AdminAddRole_ConsentCoordinatorDesc" xml:space="preserve"><value>Safety checks during onboarding</value></data>
-  <data name="AdminAddRole_CampAdminDesc" xml:space="preserve"><value>Manage camp map and placement phases</value></data>
-  <data name="AdminAddRole_VolunteerCoordinatorDesc" xml:space="preserve"><value>Onboarding facilitation, system-wide shift management</value></data>
-  <data name="AdminAddRole_NoInfoAdminDesc" xml:space="preserve"><value>Approve shift signups, view volunteer medical data</value></data>
-  <data name="AdminAddRole_NotesLabel" xml:space="preserve"><value>Notes (optional)</value></data>
-  <data name="AdminAddRole_NotesPlaceholder" xml:space="preserve"><value>Reason for assignment</value></data>
 
   <!-- ======================== -->
   <!-- Enum display names       -->
@@ -503,11 +328,6 @@
   <data name="Enum_LanguageProficiency_Conversational" xml:space="preserve"><value>Conversational</value></data>
   <data name="Enum_LanguageProficiency_Fluent" xml:space="preserve"><value>Fluent</value></data>
   <data name="Enum_LanguageProficiency_Native" xml:space="preserve"><value>Native</value></data>
-  <data name="Profile_NotAttending_Declared" xml:space="preserve"><value>You've been marked as not attending this year.</value></data>
-  <data name="Profile_NotAttending_Failed" xml:space="preserve"><value>Something went wrong. Please try again.</value></data>
-  <data name="Profile_NotAttending_NoActiveEvent" xml:space="preserve"><value>No active event configured.</value></data>
-  <data name="Profile_NotAttending_Undone" xml:space="preserve"><value>Your declaration has been removed.</value></data>
-  <data name="Profile_NotAttending_UndoFailed" xml:space="preserve"><value>Could not undo — your status may have been updated by ticket sync.</value></data>
   <data name="Users_Email_AccessSuspended_Subject" xml:space="preserve"><value>Your Membership Access Has Been Suspended</value></data>
   <data name="Users_Email_AccessSuspended_Body" xml:space="preserve"><value>&lt;h2&gt;Access Suspended&lt;/h2&gt;
 &lt;p&gt;Dear {0},&lt;/p&gt;
@@ -542,7 +362,7 @@
 &lt;p&gt;Dear {0},&lt;/p&gt;
 &lt;p&gt;We have received your request to delete your account. Your account and all associated data will be permanently deleted on &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
 &lt;p&gt;If you change your mind, you can cancel this request before the deletion date by visiting:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}/User/Deletion"&gt;Cancel Deletion Request&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}/Gdpr/Deletion"&gt;Cancel Deletion Request&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;After deletion, this action cannot be undone and all your data will be permanently removed.&lt;/p&gt;
 &lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = formatted deletion date, {2} = base URL</comment></data>
   <data name="Users_Email_AccountDeleted_Subject" xml:space="preserve"><value>Your Account Has Been Deleted</value></data>
@@ -551,47 +371,13 @@
 &lt;p&gt;As requested, your Humans account has been permanently deleted. All your personal data has been removed from our systems.&lt;/p&gt;
 &lt;p&gt;Thank you for being part of our community. If you ever wish to rejoin, you're welcome to create a new account.&lt;/p&gt;
 &lt;p&gt;Best wishes,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name</comment></data>
-  <data name="Users_Profile_MessageOptedOut" xml:space="preserve"><value>This human has opted out of receiving messages.</value></data>
-  <data name="Users_Profile_CommunicationPreferencesLoadFailed" xml:space="preserve"><value>Failed to load communication preferences.</value></data>
   <data name="Users_Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>This email is linked to another account. Verifying it will request an account merge. Check your inbox for the verification link.</value></data>
   <data name="Users_Profile_EmailVerifiedMergeRequested" xml:space="preserve"><value>Email verified. A merge request has been submitted for admin review. The email {0} will be added to your account once approved.</value><comment>{0} = email address</comment></data>
-  <data name="Users_Guest_DeletionRequestFailed" xml:space="preserve"><value>Failed to process deletion request. Please try again.</value></data>
-  <data name="Users_Guest_DeletionRequested" xml:space="preserve"><value>Deletion request recorded. Your account will be permanently deleted on {0}.</value><comment>{0} = deletion date</comment></data>
-  <data name="Users_Guest_DeletionHeldForTicket" xml:space="preserve"><value>Deletion request recorded. Because you have tickets for an upcoming event, your account will be deleted after {0}.</value><comment>{0} = deletion date</comment></data>
-  <data name="Users_Guest_CancelDeletionFailed" xml:space="preserve"><value>Failed to cancel deletion request. Please try again.</value></data>
-  <data name="Users_NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Has a @nobodies.team email account</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Imported · no profile yet</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>This human exists in the system but has not completed a profile (for example, they were imported from a mailing list or ticketing).</value></data>
-  <data name="Users_Profile_ShiftSignupFailed" xml:space="preserve"><value>Shift signup failed.</value></data>
-  <data name="Users_Profile_ShiftSignupSucceeded" xml:space="preserve"><value>Signed up successfully!</value></data>
-  <data name="Users_Profile_ShiftSignupSucceededWithWarning" xml:space="preserve"><value>Signed up successfully. Note: {0}</value><comment>{0} = signup warning</comment></data>
-  <data name="Users_Profile_ShiftRangeSignupFailed" xml:space="preserve"><value>Shift range signup failed.</value></data>
-  <data name="Users_Profile_ShiftRangeSignupSucceeded" xml:space="preserve"><value>Signed up for date range!</value></data>
-  <data name="Users_Profile_ShiftRangeSignupSucceededWithWarning" xml:space="preserve"><value>Signed up for date range. Note: {0}</value><comment>{0} = signup warning</comment></data>
-  <data name="Users_Profile_AlwaysOnCategoryCannotChange" xml:space="preserve"><value>Cannot change always-on categories.</value></data>
   <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>Your access has been suspended: {0}</value></data>
   <data name="Users_Notification_ViewProfile" xml:space="preserve"><value>View profile</value></data>
   <data name="Users_Notification_ConsentSuspensionReason" xml:space="preserve"><value>Missing required document consent (grace period expired)</value></data>
-  <data name="CommPrefs_Name_System" xml:space="preserve"><value>System</value></data>
-  <data name="CommPrefs_Name_CampaignCodes" xml:space="preserve"><value>Campaign Codes</value></data>
-  <data name="CommPrefs_Name_FacilitatedMessages" xml:space="preserve"><value>Facilitated Messages</value></data>
-  <data name="CommPrefs_Name_Ticketing" xml:space="preserve"><value>Ticketing</value></data>
-  <data name="CommPrefs_Name_VolunteerUpdates" xml:space="preserve"><value>Volunteer Updates</value></data>
-  <data name="CommPrefs_Name_TeamUpdates" xml:space="preserve"><value>Team Updates</value></data>
-  <data name="CommPrefs_Name_Governance" xml:space="preserve"><value>Governance</value></data>
-  <data name="CommPrefs_Name_Marketing" xml:space="preserve"><value>Marketing</value></data>
-  <data name="CommPrefs_Description_System" xml:space="preserve"><value>Critical account, consent, and security notifications. Always on.</value></data>
-  <data name="CommPrefs_Description_CampaignCodes" xml:space="preserve"><value>Discount codes, grants, and campaign redemption codes. Always on.</value></data>
-  <data name="CommPrefs_Description_FacilitatedMessages" xml:space="preserve"><value>Messages sent to you by other humans via Humans.</value></data>
-  <data name="CommPrefs_Description_Ticketing" xml:space="preserve"><value>Purchase confirmations and event information.</value></data>
-  <data name="CommPrefs_Description_VolunteerUpdates" xml:space="preserve"><value>Shift changes, schedule updates, and volunteer notifications.</value></data>
-  <data name="CommPrefs_Description_TeamUpdates" xml:space="preserve"><value>Drive permissions, team member additions, and removals.</value></data>
-  <data name="CommPrefs_Description_Governance" xml:space="preserve"><value>Board voting, tier applications, role assignments, and onboarding reviews.</value></data>
-  <data name="CommPrefs_Description_Marketing" xml:space="preserve"><value>Mailing list and promotions.</value></data>
-  <data name="CommPrefs_TicketingYear" xml:space="preserve"><value>Ticketing — {0}</value></data>
-  <data name="CommPrefs_TicketingLocked" xml:space="preserve"><value>Locked — you have a ticket for this year</value></data>
-  <data name="CommPrefs_Name_EventOperations" xml:space="preserve"><value>Event Operations</value></data>
-  <data name="CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Community Updates</value></data>
   <data name="Users_Profile_EmailAlreadyAdded" xml:space="preserve">
     <value>This email address is already in your account.</value>
   </data>
@@ -607,4 +393,8 @@
   <data name="Users_EmailUpdate_UnverifiedTarget" xml:space="preserve">
     <value>Only verified email addresses can receive account notifications.</value>
   </data>
+  <data name="Users_Profile_DietaryLink" xml:space="preserve"><value>Dietary info</value></data>
+  <data name="Users_Medical_Saved" xml:space="preserve"><value>Your medical info has been saved.</value></data>
+  <data name="Users_Medical_SaveFailed" xml:space="preserve"><value>Failed to save medical info.</value></data>
+  <data name="ProfileEdit_TierApplyLink" xml:space="preserve"><value>Apply for Colaborador or Asociado</value></data>
 </root>

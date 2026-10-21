@@ -37,4 +37,16 @@ public interface ITicketService : IApplicationService
     /// current owner.
     /// </summary>
     Task<UserTicketHoldings> GetUserTicketHoldingsAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Every event-participation record of one member, all years. An id merged away resolves to
+    /// the surviving account, whose records it returns.
+    /// </summary>
+    Task<IReadOnlyList<EventParticipationInfo>> GetParticipationsAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Every event-participation record, all members and years. Callers filter by year and status
+    /// (the dataset fits in memory).
+    /// </summary>
+    Task<IReadOnlyList<EventParticipationInfo>> GetAllParticipationsAsync(CancellationToken ct = default);
 }

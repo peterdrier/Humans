@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Humans.Teams.Data;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Base.Extensions;
@@ -26,6 +27,7 @@ internal sealed class TeamController(
     ITeamManagementService teamService,
     ITeamPageService teamPageService,
     IUserService userService,
+    IConsentService consentService,
     ITeamResourceService teamResourceService,
     IStringLocalizer<TeamsResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer,
@@ -233,8 +235,9 @@ internal sealed class TeamController(
         if (currentMonth < 1 || currentMonth > 12)
             currentMonth = clock.GetCurrentInstant().InZone(currentZone).Month;
 
+        var approved = await ApprovedUserIdsAsync(ct);
         var profilesWithBirthdays = (await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
-            .Where(u => u.Profile is { IsApproved: true } && !u.IsSuspended
+            .Where(u => u.Profile is not null && approved.Contains(u.Id) && !u.IsSuspended
                         && u.Profile.BirthdayMonth == currentMonth
                         && u.Profile.BirthdayDay.HasValue)
             .OrderBy(u => u.Profile!.BirthdayDay)
@@ -332,8 +335,9 @@ internal sealed class TeamController(
     [HttpGet("Map")]
     public async Task<IActionResult> Map(CancellationToken ct)
     {
+        var approved = await ApprovedUserIdsAsync(ct);
         var profiles = (await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
-            .Where(u => u.Profile is { IsApproved: true, Latitude: not null, Longitude: not null } && !u.IsSuspended)
+            .Where(u => u.Profile is { Latitude: not null, Longitude: not null } && approved.Contains(u.Id) && !u.IsSuspended)
             .Select(u => new LocationProfileInfo(
                 u.Id,
                 u.BurnerName,
@@ -846,4 +850,10 @@ internal sealed class TeamController(
         model.EligibleParents = await GetEligibleParentTeamsAsync(excludeTeamId, CancellationToken.None);
     }
 
+    // Birthdays and the map list members the Consent Coordinator cleared.
+    private async Task<HashSet<Guid>> ApprovedUserIdsAsync(CancellationToken ct) =>
+        (await consentService.GetConsentReviewsAsync(ct)).Values
+            .Where(r => r.IsApproved)
+            .Select(r => r.UserId)
+            .ToHashSet();
 }

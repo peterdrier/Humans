@@ -10,7 +10,7 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
     {
         b.ToTable("store_orders");
         b.HasKey(x => x.Id);
-#pragma warning disable CS0618 // Label is [Obsolete] (#816); the column stays mapped so no migration is needed.
+#pragma warning disable CS0618 // Label is [Obsolete] (nobodies-collective/Humans#816); the column stays mapped so no migration is needed.
         b.Property(x => x.Label).HasMaxLength(100);
 #pragma warning restore CS0618
         b.Property(x => x.CounterpartyName).HasMaxLength(200);

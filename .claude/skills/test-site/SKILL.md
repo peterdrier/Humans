@@ -94,7 +94,7 @@ Requires Admin or Board role.
 
 ### gdpr
 
-1. `/Profile/Me/Privacy` → page loads
+1. `/Consent/MyData` → page loads
 2. "Export My Data" button exists; click it → JSON file downloads with profile data
 3. "Request Account Deletion" button exists — do NOT click it
 

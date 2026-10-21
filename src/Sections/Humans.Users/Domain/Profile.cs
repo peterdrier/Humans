@@ -60,6 +60,11 @@ internal sealed class Profile
     [PersonalData]
     public string? EmergencyContactRelationship { get; set; }
 
+    // Legacy food columns: the answers live in Cantina's cantina_dietary_profiles (Users
+    // decomposition commit 10). Read only through the obsolete ProfileInfo fields by Cantina's
+    // fallback and the cantina.profile-dietary copy; still exported and erased here until the
+    // retirement PR drops them.
+
     /// <summary>Dietary preference (e.g., "Vegan", "Vegetarian", "Omnivore", "Pescatarian").</summary>
     [PersonalData]
     public string? DietaryPreference { get; set; }
@@ -116,14 +121,23 @@ internal sealed class Profile
     [PersonalData]
     public string? Iban { get; set; }
 
-    /// <summary>Auto-set when consent check clears.</summary>
+    /// <summary>
+    /// Frozen legacy column, like the review columns below: no longer written. The live Consent
+    /// Coordinator review is Consent's <c>consent_reviews</c> (Users decomposition commit 12); kept
+    /// until the <c>consent.profile-review</c> copy reports done in production and a drop PR removes
+    /// them. <see cref="RejectedAt"/> still feeds the state classifier's legacy arm until then.
+    /// </summary>
     public bool IsApproved { get; set; }
 
-    /// <summary>Default Volunteer; updated to Colaborador/Asociado on approved tier application.</summary>
-    public MembershipTier MembershipTier { get; set; }
+    /// <summary>
+    /// Frozen legacy column: no longer written. The live tier is Governance's
+    /// <c>governance_membership_tiers</c> (Users decomposition commit 11); kept until the
+    /// <c>governance.profile-tier</c> copy reports done in production and a drop PR removes it.
+    /// </summary>
+    public LegacyMembershipTier MembershipTier { get; set; }
 
-    /// <summary>Null until all required consents are signed; cleared triggers auto-approve.</summary>
-    public ConsentCheckStatus? ConsentCheckStatus { get; set; }
+    /// <summary>Frozen legacy column (see <see cref="IsApproved"/>).</summary>
+    public LegacyConsentCheckStatus? ConsentCheckStatus { get; set; }
 
     public Instant? ConsentCheckAt { get; set; }
 

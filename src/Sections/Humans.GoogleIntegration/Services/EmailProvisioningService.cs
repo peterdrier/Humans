@@ -18,6 +18,7 @@ internal sealed class EmailProvisioningService(
     IUserService userService,
     IGoogleWorkspaceUserService workspaceUserService,
     IUserEmailService userEmailService,
+    IWorkspaceIdentityManagement workspaceIdentities,
     ITeamService teamService,
     IEmailService emailService,
     GoogleIntegrationEmails emailMessages,
@@ -100,10 +101,10 @@ internal sealed class EmailProvisioningService(
                 fullEmail, firstName, lastName, tempPassword,
                 recoveryEmail);
 
-            // Link the email — flips notification target; orchestrator stamps IsGoogle (#687). Do NOT move above the recovery-email capture.
+            // Link the email — flips notification target; a verified @nobodies.team address is the Google identity (#687). Do NOT move above the recovery-email capture.
             await userEmailService.AddVerifiedEmailAsync(userId, fullEmail);
 
-            // Half-completed-prior-provisioning recovery: if an unverified row predated this call, verify + stamp IsGoogle explicitly.
+            // Half-completed-prior-provisioning recovery: if an unverified row predated this call, verify it, and designate it explicitly if it is not the identity.
             var rows = await userEmailService.GetUserEmailsAsync(userId);
             var workspaceRow = rows.FirstOrDefault(r =>
                 string.Equals(r.Email, fullEmail, StringComparison.OrdinalIgnoreCase));
@@ -115,9 +116,11 @@ internal sealed class EmailProvisioningService(
                 workspaceRow = rows.FirstOrDefault(r =>
                     string.Equals(r.Email, fullEmail, StringComparison.OrdinalIgnoreCase));
             }
-            if (workspaceRow is not null && !workspaceRow.IsGoogle)
+            if (workspaceRow is not null
+                && !string.Equals((await workspaceIdentities.GetWorkspaceIdentityAsync(userId))?.Email, workspaceRow.Email,
+                    StringComparison.OrdinalIgnoreCase))
             {
-                await userEmailService.SetGoogleAsync(userId, workspaceRow.Id, provisionedByUserId);
+                await workspaceIdentities.SetAsync(userId, workspaceRow.Email, provisionedByUserId);
             }
 
             await auditLogService.LogAsync(

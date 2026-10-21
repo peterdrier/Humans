@@ -92,4 +92,36 @@
   <data name="Consent_Notification_PublishedBody" xml:space="preserve"><value>A new required legal document has been published. Please review and sign it.</value></data>
   <data name="Consent_Notification_ReConsentRequired" xml:space="preserve"><value>{0} has been updated — re-consent required</value></data>
   <data name="Consent_Notification_ReConsentRequiredBody" xml:space="preserve"><value>A required legal document has been updated. Please review and sign the new version.</value></data>
+  <data name="Consent_MyData_Title" xml:space="preserve"><value>My Data</value></data>
+  <data name="Consent_MyData_Lead" xml:space="preserve"><value>Manage your personal data and privacy settings.</value></data>
+  <data name="Consent_MyData_ExportTitle" xml:space="preserve"><value>Export Your Data</value></data>
+  <data name="Consent_MyData_ExportDescription" xml:space="preserve"><value>Download a copy of all your personal data in JSON format. This includes:</value></data>
+  <data name="Consent_MyData_ExportAccountInfo" xml:space="preserve"><value>Account information</value></data>
+  <data name="Consent_MyData_ExportProfileDetails" xml:space="preserve"><value>Profile details</value></data>
+  <data name="Consent_MyData_ExportContactFields" xml:space="preserve"><value>Contact fields</value></data>
+  <data name="Consent_MyData_ExportApplications" xml:space="preserve"><value>Membership applications</value></data>
+  <data name="Consent_MyData_ExportConsents" xml:space="preserve"><value>Consent records</value></data>
+  <data name="Consent_MyData_ExportTeams" xml:space="preserve"><value>Team memberships</value></data>
+  <data name="Consent_MyData_ExportRoles" xml:space="preserve"><value>Role assignments</value></data>
+  <data name="Consent_MyData_DownloadMyData" xml:space="preserve"><value>Download My Data</value></data>
+  <data name="Consent_MyData_DeleteTitle" xml:space="preserve"><value>Delete Your Account</value></data>
+  <data name="Consent_MyData_DeleteDescription" xml:space="preserve"><value>Request deletion of your account and personal data.</value></data>
+  <data name="Consent_MyData_DeleteImmediateRevocation" xml:space="preserve"><value>Your team memberships, role assignments, and access to shared resources (Google Drive, Groups) will be revoked immediately</value></data>
+  <data name="Consent_MyData_DeleteGracePeriod" xml:space="preserve"><value>A 30-day grace period allows you to cancel the request</value></data>
+  <data name="Consent_MyData_DeleteAnonymized" xml:space="preserve"><value>After 30 days, your personal information will be anonymized and access permanently blocked</value></data>
+  <data name="Consent_MyData_DeleteRetained" xml:space="preserve"><value>Anonymized records are retained for legal compliance and audit purposes but cannot be linked to your identity</value></data>
+  <data name="Consent_MyData_RequestDeletion" xml:space="preserve"><value>Request Account Deletion</value></data>
+  <data name="Consent_MyData_DeletionPending" xml:space="preserve"><value>Deletion Pending</value></data>
+  <data name="Consent_MyData_DeletionScheduledFor" xml:space="preserve"><value>Your account is scheduled for deletion on {0}.</value><comment>{0} = deletion date</comment></data>
+  <data name="Consent_MyData_DeletionCancelInfo" xml:space="preserve"><value>You can cancel this request before the deletion date if you change your mind.</value></data>
+  <data name="Consent_MyData_CancelDeletion" xml:space="preserve"><value>Cancel Deletion Request</value></data>
+  <data name="Consent_MyData_DPOContact" xml:space="preserve"><value>For questions about your data or privacy rights, contact our Data Protection Officer:</value></data>
+  <data name="Consent_MyData_Email" xml:space="preserve"><value>Email:</value></data>
+  <data name="Consent_MyData_ViewFullPolicy" xml:space="preserve"><value>View Full Privacy Policy</value></data>
+  <data name="Consent_MyData_ConfirmDeletion" xml:space="preserve"><value>Confirm Account Deletion</value></data>
+  <data name="Consent_MyData_ConfirmDeletionQuestion" xml:space="preserve"><value>Are you sure you want to request deletion of your account?</value></data>
+  <data name="Consent_MyData_YesDeleteMyAccount" xml:space="preserve"><value>Yes, Delete My Account</value></data>
+  <data name="Consent_MyData_DeletionAccessRevoked" xml:space="preserve"><value>Your team memberships and role assignments have been revoked.</value></data>
+  <data name="Consent_MyData_CancelNoRestore" xml:space="preserve"><value>Cancelling will not restore your previous team memberships. You will need to rejoin teams.</value></data>
+  <data name="Consent_AccountStatus_ReasonLabel" xml:space="preserve"><value>Reason:</value></data>
 </root>

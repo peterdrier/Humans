@@ -43,7 +43,7 @@ internal sealed class MembershipCalculator(
             return MembershipStatus.Suspended;
         }
 
-        if (!info.Profile.IsApproved)
+        if (!(await ConsentService.GetConsentReviewAsync(info.Id, cancellationToken)).IsApproved)
         {
             return MembershipStatus.Pending;
         }
@@ -320,13 +320,16 @@ internal sealed class MembershipCalculator(
         remaining = remaining.Where(id => !suspended.Contains(id)).ToList();
 
         // Rejected → IncompleteSignup.
+        var reviews = remaining.Count == 0
+            ? new Dictionary<Guid, ConsentReviewInfo>()
+            : await ConsentService.GetConsentReviewsAsync(ct);
         var pendingApproval = new HashSet<Guid>();
         foreach (var id in remaining)
         {
-            var profile = usersById[id].Profile!;
-            if (!profile.IsApproved)
+            var review = reviews.GetValueOrDefault(usersById[id].Id) ?? ConsentReviewInfo.None(id);
+            if (!review.IsApproved)
             {
-                if (profile.RejectedAt is not null)
+                if (review.IsRejected)
                 {
                     incompleteSignup.Add(id);
                 }

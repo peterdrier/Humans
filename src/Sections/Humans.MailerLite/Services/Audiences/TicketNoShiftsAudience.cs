@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
@@ -19,7 +20,8 @@ namespace Humans.MailerLite.Services.Audiences;
 internal sealed class TicketNoShiftsAudience(
     ITicketService tickets,
     IShiftView shiftView,
-    IUserService users) : MailerLiteAudienceBase(users)
+    IUserService users,
+    ICommunicationPreferenceService prefs) : MailerLiteAudienceBase(users, prefs)
 {
     public override string Key => "ticket-no-shifts";
     public override string DisplayName => "Ticket holders without a shift";

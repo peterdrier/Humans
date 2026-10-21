@@ -35,7 +35,7 @@ Nobodies Collective uses Google Workspace for organizational email (@nobodies.te
 - Creates the Google Workspace account with `ChangePasswordAtNextLogin = true`
 - Sets the human's personal email as the Google recovery email
 - Auto-links the new email as a verified `UserEmail` with `IsNotificationTarget = true`
-- Flags the new `UserEmail` row `IsGoogle`
+- Designates the new address as the member's Google Workspace identity (`IWorkspaceIdentityManagement.SetAsync`) when it is not already
 - Audit trail recorded (`WorkspaceAccountProvisioned`)
 
 ### US-32.2: Credentials Email
@@ -58,7 +58,7 @@ Nobodies Collective uses Google Workspace for organizational email (@nobodies.te
 
 **Acceptance Criteria:**
 - Admin can search for humans by name on the @nobodies.team Accounts page
-- Linking creates a verified `UserEmail` flagged `IsGoogle` and resets the user's `GoogleEmailStatus` to `Unknown`
+- Linking creates a verified `UserEmail`; a verified @nobodies.team address is the member's Google identity at read time, and a status recorded against another address reads `Unknown`
 - Audit trail recorded (`WorkspaceAccountLinked`)
 - No credentials email sent (user already has access)
 
@@ -154,7 +154,7 @@ Nobodies Collective uses Google Workspace for organizational email (@nobodies.te
 │         @nobodies.team — GetEffectiveEmail() now returns    │
 │         the new address. Step 1 MUST be complete first.     │
 ├──────────────────────────────────────────────────────────────┤
-│ Step 4: Flag row IsGoogle, audit log                        │
+│ Step 4: Set workspace identity, audit log                   │
 ├──────────────────────────────────────────────────────────────┤
 │ Step 5: Send credentials email to recovery email from       │
 │         Step 1 (personal address, NOT current effective     │

@@ -232,6 +232,7 @@
   <data name="Enum_AuditAction_ExpenseHoldedRequeued" xml:space="preserve"><value>Übertragung der Ausgabe an Holded erneut eingereiht</value></data>
   <data name="Enum_AuditAction_ExpenseLineDeclined" xml:space="preserve"><value>Spesenposition abgelehnt</value></data>
   <data name="Enum_AuditAction_ExpenseLineDeclineUndone" xml:space="preserve"><value>Ablehnung der Spesenposition rückgängig gemacht</value></data>
+  <data name="Enum_AuditAction_DataMigrationApplied" xml:space="preserve"><value>Datenmigration angewendet</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountCreated" xml:space="preserve"><value>Holded-Ausgabenkonto erstellt</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountLinked" xml:space="preserve"><value>Holded-Ausgabenkonto verknüpft</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountActiveChanged" xml:space="preserve"><value>Aktivstatus des Holded-Ausgabenkontos geändert</value></data>

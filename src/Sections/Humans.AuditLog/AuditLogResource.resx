@@ -232,6 +232,7 @@
   <data name="Enum_AuditAction_ExpenseHoldedRequeued" xml:space="preserve"><value>Expense holded requeued</value></data>
   <data name="Enum_AuditAction_ExpenseLineDeclined" xml:space="preserve"><value>Expense line declined</value></data>
   <data name="Enum_AuditAction_ExpenseLineDeclineUndone" xml:space="preserve"><value>Expense line decline undone</value></data>
+  <data name="Enum_AuditAction_DataMigrationApplied" xml:space="preserve"><value>Data migration applied</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountCreated" xml:space="preserve"><value>Holded expense account created</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountLinked" xml:space="preserve"><value>Holded expense account linked</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountActiveChanged" xml:space="preserve"><value>Holded expense account active changed</value></data>

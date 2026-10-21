@@ -78,18 +78,19 @@ Presentation the section does *not* own: the rota tables on the shifts step are 
 
 ## 4. Invariants
 
-- **Admission is name + consents.** `HasRequiredNameFields && !IsSuspended && RejectedAt is
-  null && HasAllRequiredConsentsForTeam(Volunteers)`, reconciled by `SystemTeamSyncJob`.
-  `ConsentCheckStatus` and `IsApproved` are never consulted.
-  (`src/Sections/Humans.Users.Contracts/UserInfo.cs:323`, `:331`.)
+- **Admission is name + consents.** `HasRequiredNameFields && !IsSuspended && !review.IsRejected
+  && HasAllRequiredConsentsForTeam(Volunteers)`, reconciled by `SystemTeamSyncJob`.
+  The review's `Status` and `IsApproved` are never consulted. (The review is Consent's
+  `ConsentReviewInfo`; `Humans.Consent/Contracts/ConsentReviewInfo.cs`.)
 - **Clear and Flag change nothing but the record *for a Volunteer*.** No team sync, no email,
   no access change — admission ignores `IsApproved` (above). They are *not* inert for a
-  Colaborador/Asociado: `RecordConsentCheck` sets `Profile.IsApproved = (status == Cleared)`
-  (`Humans.Users` `UserService`) and `SystemTeamSyncJob` gates the two tier teams on that flag,
+  Colaborador/Asociado: `RecordConsentCheck` sets the review's `IsApproved = (status == Cleared)`
+  (Consent's `ConsentReviewService`) and `SystemTeamSyncJob` gates the two tier teams on that flag,
   so `Cleared → Flagged` drops a tier member from their tier team on the next hourly sync.
   That is why the detail view still withholds Flag from a cleared human — see §5.
   (`Services/OnboardingService.cs` `RecordConsentCheckAsync`.)
-- **Reject is the only coordinator action with consequences.** It sets `RejectedAt`,
+- **Reject is the only coordinator action with consequences.** It records the rejection
+  (Consent) and `UserState.Rejected` (Users),
   de-provisions the approval-gated system teams (Volunteers, Colaboradors, Asociados), and
   notifies the person. (`Services/OnboardingService.cs` `RejectSignupAsync`,
   `DeprovisionApprovalGatedSystemTeamsAsync`; pinned on the success path by
@@ -103,8 +104,8 @@ Presentation the section does *not* own: the rota tables on the shifts step are 
   `Humans.Notifications/Services/NotificationInboxService.cs:202`.)
 - **A flagged, unresolved person stays in the queue** even if an override set `IsApproved`.
   A rejected person leaves it — Clear is refused on them, so the row would be unresolvable.
-  (`UserInfo.cs:341`; `Services/OnboardingService.cs` `GetReviewQueueAsync`.)
-- **A merged tombstone never appears in the queue.** (`UserInfo.cs:331`, `:341`.)
+  (`ConsentReviewPredicates.IsConsentCheckFlagged`; `Services/OnboardingService.cs` `GetReviewQueueAsync`.)
+- **A merged tombstone never appears in the queue.** (`ConsentReviewPredicates`.)
 - **The name save is never gated on cross-section state.** Gating it on a step or consent
   computation loops a bare account on the Names form forever.
   (`Controllers/OnboardingWidgetController.cs:87`.)
@@ -125,13 +126,13 @@ Presentation the section does *not* own: the rota tables on the shifts step are 
 ## 5. Seams
 
 - **Guest dashboard cards are other sections' contributions.** Comms preferences, GDPR export
-  and deletion are rendered here but owned by Users; Tickets contributes through the
+  and deletion are rendered here but owned by Email and Gdpr; Tickets contributes through the
   `guest-page` chrome slot. Anything added to that page belongs to the section that owns the
   data, not here. **Every inbound path to the page dead-ends for the audience it is built for.**
   `NameRequiredFilter` does not exempt `Guest`, so a profileless account asking for `/Guest` is
-  sent to the name form. It can still reach Users' `Guest/CommunicationPreferences`, which is
+  sent to the name form. It can still reach Email's `Email/Guest/CommunicationPreferences`, which is
   `[AllowAnonymous]` — and that page's breadcrumb and back button, `GuestAccountController`'s
-  error and success redirects, and Gdpr's `Guest/DownloadData` all send it to `/Guest`, which
+  error and success redirects, and Gdpr's `Gdpr/Guest/DownloadData` all send it to `/Guest`, which
   bounces it again. Finding 1; the fix is Needs Peter.
 - **A cleared human can still be rejected; Flag stays withheld until a cross-section fix.**
   Settled by Peter on 2026-08-23: cause can surface after the fact, so the coordinator needs
@@ -142,12 +143,12 @@ Presentation the section does *not* own: the rota tables on the shifts step are 
   service-side refusal for it.
 
   Flag is the exception, and not because the view is the rule: `Cleared → Flagged` clears
-  `Profile.IsApproved`, which `SystemTeamSyncJob` reads as tier-team eligibility (§4), so
+  the review's `IsApproved`, which `SystemTeamSyncJob` reads as tier-team eligibility (§4), so
   exposing it would make an audit annotation silently kick a Colaborador/Asociado out of their
   tier team. Volunteers admission was already carved out of `IsApproved` for exactly this
   reason; the tier path never was. Expose Flag once that is settled — either `Flagged` stops
   writing `IsApproved`, or tier eligibility stops reading it. Both changes live in
-  `Humans.Users`/`Humans.Teams`, not here.
+  `Humans.Consent`/`Humans.Teams`, not here.
 
 ## 6. Deliberately not done
 

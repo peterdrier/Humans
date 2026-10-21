@@ -19,7 +19,7 @@ namespace Humans.GoogleIntegration.Services;
 internal sealed class GoogleSyncOutboxProcessor(
     IGoogleSyncOutboxRepository outboxRepository,
     IUserService userService,
-    IUserWrite userWrite,
+    IWorkspaceIdentityManagement workspaceIdentities,
     ITeamService teamService,
     IGoogleSyncManagement googleSyncService,
     IGoogleDriveActivityClient googleClient,
@@ -106,14 +106,14 @@ internal sealed class GoogleSyncOutboxProcessor(
                     logger.LogWarning("Google provisioning refused outbox event {OutboxId}: {Error}", outboxEvent.Id, error);
                     continue;
                 }
-                // Acceptance identifies the row Google saw, rather than whichever address
+                // Acceptance identifies the address Google saw, rather than whichever address
                 // happens to be selected after the asynchronous call completes.
                 if (grant.Outcome == GoogleResourceGrantOutcome.Accepted)
                 {
-                    if (grant.GoogleEmailId is not { } emailId)
-                        throw new InvalidOperationException("Accepted Google grant omitted its target email row");
-                    await userWrite.TrySetGoogleEmailStatusFromSyncAsync(
-                        grant.UserId, GoogleEmailStatus.Valid, cancellationToken, emailId);
+                    if (grant.GoogleEmail is not { } attempted)
+                        throw new InvalidOperationException("Accepted Google grant omitted its target address");
+                    await workspaceIdentities.SetStatusFromSyncAsync(
+                        grant.UserId, attempted, GoogleEmailStatus.Valid, cancellationToken);
                 }
 
                 // Finish the status tail before closing the event: its failure

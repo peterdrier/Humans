@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,6 +30,10 @@ internal sealed class UserEmailService(
     private Humans.Tickets.Contracts.ITicketService TicketService =>
         serviceProvider.GetRequiredService<Humans.Tickets.Contracts.ITicketService>();
 
+    // Lazy: GoogleIntegration's identity service reads IUserService. The Google Workspace identity
+    // is GoogleIntegration's (Users decomposition commit 15); Users only reports addresses that leave.
+    private IGoogleIntegrationWrite GoogleIdentity => serviceProvider.GetRequiredService<IGoogleIntegrationWrite>();
+
     public async Task<IReadOnlyList<UserEmailEditDto>> GetUserEmailsAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
@@ -42,13 +47,11 @@ internal sealed class UserEmailService(
             e.Id,
             e.Email,
             e.IsVerified,
-            IsGoogle: e.IsGoogle,
             e.Provider,
             e.ProviderKey,
             e.IsPrimary,
             e.Visibility,
             IsPendingVerification: !e.IsVerified && e.VerificationSentAt.HasValue,
-            GoogleEmailStatus: e.GoogleEmailStatus,
             IsMergePending: mergePendingSet.Contains(e.Id)
         )).ToList();
     }
@@ -88,7 +91,6 @@ internal sealed class UserEmailService(
                 e.Id,
                 e.Email,
                 e.IsVerified,
-                IsGoogle: e.IsGoogle,
                 e.Provider,
                 e.ProviderKey,
                 e.IsPrimary,
@@ -169,7 +171,7 @@ internal sealed class UserEmailService(
         if (await RequestMergeForVerificationConflictAsync(userId, pendingEmail, cancellationToken))
             return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: true);
 
-        // see nobodies-collective/Humans#687 — flipping unverified→verified may newly satisfy the Google invariant.
+        // Flipping unverified→verified may newly satisfy the primary invariant.
         var update = await userService.UpdateUserEmailAsync(
             userId,
             pendingEmail.Id,
@@ -285,6 +287,8 @@ internal sealed class UserEmailService(
             emailId,
             new UserEmailRemoveCommand(UserEmailRemovalMode.PlainEmail),
             cancellationToken);
+        if (removed)
+            await GoogleIdentity.ClearIfAddressAsync(userId, email.Email, CancellationToken.None);
         return new DeleteEmailResult(removed);
     }
 
@@ -422,7 +426,6 @@ internal sealed class UserEmailService(
             email.IsVerified,
             email.Provider,
             email.ProviderKey,
-            email.IsGoogle,
             email.IsPrimary,
             email.Visibility,
             email.VerificationSentAt,
@@ -537,68 +540,6 @@ internal sealed class UserEmailService(
     }
 
     /// <inheritdoc />
-    public async Task<bool> SetGoogleAsync(
-        Guid userId, Guid userEmailId, Guid actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        var row = await repository.GetUserEmailByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
-        if (row is null || !row.IsVerified) return false;
-
-        // Capture previous Google email for audit description.
-        var allEmails = await repository.GetUserEmailsByUserIdReadOnlyAsync(userId, cancellationToken);
-        var previousGoogle = allEmails.FirstOrDefault(e => e.IsGoogle && e.Id != row.Id);
-
-        var updated = await userService.UpdateUserEmailAsync(
-            userId,
-            row.Id,
-            new UserEmailUpdateCommand(Google: UserEmailGoogleChange.MakeGoogle),
-            cancellationToken);
-        if (!updated.Succeeded) return false;
-
-        var description = previousGoogle is null
-            ? $"Set Google identity to {row.Email}"
-            : $"Set Google identity to {row.Email} (was {previousGoogle.Email})";
-
-        await auditLogService.LogAsync(
-            AuditAction.UserEmailGoogleSet,
-            nameof(User), userId,
-            description,
-            actorUserId,
-            relatedEntityId: row.Id, relatedEntityType: nameof(UserEmail));
-
-        return true;
-    }
-
-    /// <inheritdoc />
-    public async Task<bool> ClearGoogleAsync(
-        Guid userId, Guid userEmailId, Guid actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        var row = await repository.GetUserEmailByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
-        if (row is null || !row.IsGoogle) return false;
-
-        // Only allow clearing IsGoogle on a duplicate — clearing the sole IsGoogle row → ZeroIsGoogle violation.
-        var allEmails = await repository.GetUserEmailsByUserIdReadOnlyAsync(userId, cancellationToken);
-        if (allEmails.Count(e => e.IsGoogle) <= 1) return false;
-
-        var updated = await userService.UpdateUserEmailAsync(
-            userId,
-            row.Id,
-            new UserEmailUpdateCommand(Google: UserEmailGoogleChange.ClearDuplicateGoogle),
-            cancellationToken);
-        if (!updated.Succeeded) return false;
-
-        await auditLogService.LogAsync(
-            AuditAction.UserEmailGoogleCleared,
-            nameof(User), userId,
-            $"Cleared Google identity flag from {row.Email}",
-            actorUserId,
-            relatedEntityId: row.Id, relatedEntityType: nameof(UserEmail));
-
-        return true;
-    }
-
-    /// <inheritdoc />
     public async Task<bool> ClearPrimaryAsync(
         Guid userId, Guid userEmailId, Guid actorUserId,
         CancellationToken cancellationToken = default)
@@ -639,23 +580,15 @@ internal sealed class UserEmailService(
             if (info.UserEmails.Count == 0) continue;
 
             var verified = info.UserEmails.Where(e => e.IsVerified).ToList();
-            var isGoogleCount = info.UserEmails.Count(e => e.IsGoogle);
-            var verifiedIsGoogleCount = verified.Count(e => e.IsGoogle);
             var verifiedPrimaryCount = verified.Count(e => e.IsPrimary);
-            var hasMultipleGoogle = isGoogleCount > 1;
-            // Zero-check filters to verified rows — an unverified IsGoogle row is itself a violation.
-            var hasZeroGoogle = verified.Count > 0 && verifiedIsGoogleCount == 0;
             var hasPrimaryProblem = verified.Count > 0 && verifiedPrimaryCount != 1;
 
-            if (!hasMultipleGoogle && !hasZeroGoogle && !hasPrimaryProblem) continue;
+            if (!hasPrimaryProblem) continue;
 
             violations.Add(new UserEmailFlagViolation(
                 info.Id,
-                isGoogleCount,
                 verified.Count,
                 verifiedPrimaryCount,
-                hasMultipleGoogle,
-                hasZeroGoogle,
                 hasPrimaryProblem));
         }
 
@@ -685,13 +618,16 @@ internal sealed class UserEmailService(
         var row = await repository.GetUserEmailByIdReadOnlyAsync(emailId, ct);
         if (row is null) return false;
 
-        return await userService.RemoveUserEmailAsync(
+        var removed = await userService.RemoveUserEmailAsync(
             row.UserId,
             emailId,
             new UserEmailRemoveCommand(
                 UserEmailRemovalMode.AnyEmail,
                 PreserveLastVerifiedEmail: false),
             ct);
+        if (removed)
+            await GoogleIdentity.ClearIfAddressAsync(row.UserId, row.Email, CancellationToken.None);
+        return removed;
     }
 
     /// <inheritdoc />
@@ -754,6 +690,7 @@ internal sealed class UserEmailService(
                 PreserveLastVerifiedEmail: false),
             cancellationToken);
         if (!removed) return new(false);
+        await GoogleIdentity.ClearIfAddressAsync(userId, email, cancellationToken);
 
         await auditLogService.LogAsync(
             AuditAction.UserEmailUnlinked,
@@ -894,10 +831,8 @@ internal sealed class UserEmailService(
             siblingAtClaim.ProviderKey = providerKey;
             siblingAtClaim.IsVerified = true;
             siblingAtClaim.IsPrimary = siblingAtClaim.IsPrimary || tagged.IsPrimary;
-            siblingAtClaim.IsGoogle = siblingAtClaim.IsGoogle || tagged.IsGoogle;
             siblingAtClaim.UpdatedAt = now;
             tagged.IsPrimary = false;
-            tagged.IsGoogle = false;
 
             rowToUpdate = siblingAtClaim;
             rowToDelete = tagged;
@@ -975,6 +910,14 @@ internal sealed class UserEmailService(
                 RowToUpdate: rowToUpdate,
                 RowToInsert: rowToInsert),
             cancellationToken);
+
+        // Addresses that left an account: a tag-move deletes the old row, a rewrite renames it in
+        // place, a displacement deletes the other user's row. Each stops being a Google identity.
+        if (previousEmail is not null && outcome is ReconcileOutcome.TagMoved or ReconcileOutcome.EmailRewritten
+            && !string.Equals(previousEmail, claimEmail, StringComparison.OrdinalIgnoreCase))
+            await GoogleIdentity.ClearIfAddressAsync(userId, previousEmail, cancellationToken);
+        if (displaced)
+            await GoogleIdentity.ClearIfAddressAsync(blocker!.UserId, blocker.Email, cancellationToken);
 
         // 6. Audit. Displaced path writes the OAuthRenameCollision pair instead of GoogleEmailRenamed/UserEmailLinked.
         if (displaced)
@@ -1070,7 +1013,7 @@ internal sealed class UserEmailService(
         return sb.ToString();
 
         static string FormatRow(UserEmail r) =>
-            $"{{Id={r.Id} Email={r.Email} V={r.IsVerified} P={r.IsPrimary} G={r.IsGoogle} " +
+            $"{{Id={r.Id} Email={r.Email} V={r.IsVerified} P={r.IsPrimary} " +
             $"Provider={r.Provider ?? "(none)"} Key={r.ProviderKey ?? "(none)"}}}";
     }
 }

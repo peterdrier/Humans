@@ -56,9 +56,9 @@ export async function liveLoginAndSave(context: BrowserContext, slug: string): P
   await page.waitForSelector(NAV_SELECTOR, { timeout: 90_000 });
   // A non-Active persona still logs in and still renders the nav — it just lands on
   // the account-status wall (or the onboarding name gate) instead of the app. Fail the
-  // run HERE with the persona named, instead of ~30 scattered /User/Status redirects
+  // run HERE with the persona named, instead of ~30 scattered /Gdpr/Status redirects
   // in the feature specs (#867).
-  if (/\/User\/Status|\/OnboardingWidget/.test(page.url())) {
+  if (/\/Gdpr\/Status|\/OnboardingWidget/.test(page.url())) {
     throw new Error(`persona ${slug} is not Active — landed on ${page.url()}`);
   }
   await context.storageState({ path: authFile(slug) });

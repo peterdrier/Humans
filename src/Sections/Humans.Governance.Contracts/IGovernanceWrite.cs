@@ -1,17 +1,14 @@
 using Humans.Base.Interfaces;
-using Humans.Users.Contracts;
 using NodaTime;
 
 namespace Humans.Governance.Contracts;
 
 /// <summary>
-/// The write half of the tier-application lifecycle with a consumer outside the section:
-/// Users' <c>ProfileController</c> submit path, alongside the read-only
-/// <see cref="IGovernanceService"/>. <c>TermRenewalReminderJob</c> drives the renewal members
-/// from inside the section.
+/// Governance writes with a consumer outside the section: the membership-tier term expiry that
+/// Teams' <c>SystemTeamSyncJob</c> runs before it syncs the Colaboradors and Asociados teams.
 /// </summary>
 /// <remarks>
-/// Approve, reject, withdraw, board voting and the admin reads have no consumer outside the
+/// Submit, approve, reject, withdraw, board voting and the admin reads have no consumer outside the
 /// section and stay on the internal <c>ApplicationDecisionService</c>, which the section's own
 /// controllers inject by concrete type. Carve the leaf from the *call sites*, not from the
 /// interface.
@@ -19,37 +16,13 @@ namespace Humans.Governance.Contracts;
 public interface IGovernanceWrite : IApplicationService
 {
     /// <summary>
-    /// The tier-application field rules, evaluated without touching storage: a Colaborador or Asociado
-    /// tier needs a 50–2000-character motivation, and Asociado additionally needs a significant
-    /// contribution and a role understanding (each at most 2000 characters). Additional info
-    /// is optional and limited to 1000 characters. <see cref="SubmitAsync"/> runs this first, so the two can't drift.
-    /// <para>
-    /// Exposed separately so a caller that must decide <em>before</em> writing anything — the
-    /// profile edit form, which validates the whole submit up front so a bad post can't
-    /// half-save — gets the same answer the submit would give. Returns the same
-    /// <c>ErrorKey</c>s (<c>InvalidTier</c>, <c>MotivationRequired</c>,
-    /// <c>SignificantContributionRequired</c>, <c>RoleUnderstandingRequired</c>,
-    /// <c>MotivationLength</c>, <c>AdditionalInfoTooLong</c>,
-    /// <c>SignificantContributionTooLong</c>, <c>RoleUnderstandingTooLong</c>) for callers
-    /// to map onto their own localized, field-targeted messages.
-    /// </para>
+    /// Term expiry for <paramref name="tier"/>: every member holding it without an Approved
+    /// application for it still in term on <paramref name="today"/> drops to their other in-term
+    /// tier, or to Volunteer. Returns each member with the tier written, for the caller's
+    /// <c>TierDowngraded</c> audit entries.
     /// </summary>
-    ApplicationDecisionResult ValidateSubmission(
-        MembershipTier tier, string? motivation,
-        string? significantContribution, string? roleUnderstanding, string? additionalInfo = null);
-
-    Task<ApplicationDecisionResult> SubmitAsync(
-        Guid userId, MembershipTier tier, string motivation,
-        string? additionalInfo, string? significantContribution, string? roleUnderstanding,
-        string language, CancellationToken ct = default);
-
-    /// <summary>
-    /// Only allowed on <see cref="ApplicationStatus.Submitted"/> applications.
-    /// </summary>
-    Task UpdateDraftApplicationAsync(
-        Guid applicationId, MembershipTier tier, string motivation,
-        string? additionalInfo, string? significantContribution, string? roleUnderstanding,
-        CancellationToken ct = default);
+    Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>> ExpireMembershipTiersAsync(
+        MembershipTier tier, LocalDate today, CancellationToken ct = default);
 }
 
 public record ApplicationDecisionResult(bool Success, string? ErrorKey = null, Guid? ApplicationId = null);

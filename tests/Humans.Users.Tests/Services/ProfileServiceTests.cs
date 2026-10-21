@@ -645,28 +645,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     // --- SaveProfileAsync workflow (audit P1-P4) ---
 
     [HumansFact]
-    public async Task SaveProfileAsync_AllergyOtherWithoutText_ReturnsRefusalWithoutWrites()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserAsync(userId);
-        var request = MakeRequest() with
-        {
-            Allergies = [DietaryOptions.OtherOption],
-            AllergyOtherText = "   ",
-        };
-
-        var act = () => _editor.SaveProfileAsync(userId, "Test", request, ct: Xunit.TestContext.Current.CancellationToken);
-
-        var result = await act();
-
-        result.Succeeded.Should().BeFalse();
-        result.ProfileId.Should().BeNull();
-        result.ErrorKey.Should().Be("Profile_DietaryMedical_AllergyOther_Required");
-        await _userService.DidNotReceiveWithAnyArgs().SaveProfileAsync(default, default!, default, default);
-        (await Db.Profiles.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
-    }
-
-    [HumansFact]
     public async Task SaveProfileAsync_EmptyCvWithoutNoPriorExperienceFlag_ReturnsRefusalWithoutWrites()
     {
         var userId = Guid.NewGuid();
@@ -712,13 +690,13 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SaveProfileAsync_NameOnlySavePreservesIncompleteDietaryData()
+    public async Task SaveProfileAsync_LeavesTheLegacyFoodColumnsUntouched()
     {
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId);
         var existing = await Db.Profiles.FirstAsync(profile => profile.Id == profileId, Xunit.TestContext.Current.CancellationToken);
         existing.DietaryPreference = "Vegan";
-        existing.Allergies = [DietaryOptions.OtherOption];
+        existing.Allergies = ["Other"];
         existing.AllergyOtherText = null;
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -728,7 +706,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var saved = await Db.Profiles.AsNoTracking().FirstAsync(profile => profile.Id == profileId, Xunit.TestContext.Current.CancellationToken);
         saved.BurnerName.Should().Be("Named");
         saved.DietaryPreference.Should().Be("Vegan");
-        saved.Allergies.Should().Equal(DietaryOptions.OtherOption);
+        saved.Allergies.Should().Equal("Other");
         saved.AllergyOtherText.Should().BeNull();
     }
 
@@ -854,23 +832,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             Arg.Is<IReadOnlyList<CVEntry>>(l => l.Count == 1 && l[0].EventName == "Nowhere"));
         (await Db.VolunteerHistoryEntries.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken))
             .EventName.Should().Be("Nowhere");
-    }
-
-    [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
-    public async Task SaveDietaryMedicalAsync_returns_other_description_refusals_without_writes(bool intolerance)
-    {
-        var command = new UserProfileDietaryMedicalCommand(null,
-            intolerance ? [] : [DietaryOptions.OtherOption], " ",
-            intolerance ? [DietaryOptions.OtherOption] : [], " ", "Existing medical details");
-
-        var result = await _editor.SaveDietaryMedicalAsync(Guid.NewGuid(), command, Xunit.TestContext.Current.CancellationToken);
-
-        result.Succeeded.Should().BeFalse();
-        result.ErrorKey.Should().Be(intolerance
-            ? "Profile_DietaryMedical_IntoleranceOther_Required" : "Profile_DietaryMedical_AllergyOther_Required");
-        await _userService.DidNotReceiveWithAnyArgs().SaveDietaryMedicalAsync(default, default!, default);
     }
 
     private async Task SeedUserAsync(Guid userId,
