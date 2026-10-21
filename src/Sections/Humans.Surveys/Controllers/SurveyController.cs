@@ -67,17 +67,11 @@ internal sealed class SurveyController(
         {
             // Preserve answers from a pre-change Identified Asociado draft while switching its
             // eventual submission to CompletionTracked. Finalisation removes the old linked draft.
-            var resumeAnonymity = editable.IsAsociadoVote
-                ? ResponseAnonymity.CompletionTracked
-                : ResponseAnonymity.Identified;
+            var resumeAnonymity = SurveyWizardFlow.ResolveInvitedAnonymity(editable, ResponseAnonymity.Identified);
             var resumeState = BuildState(ctx, resumeAnonymity, culture);
             resumeState.Started = true;
             if (resumeAnonymity == ResponseAnonymity.Identified)
-            {
-                resumeState.DraftResponseId = await surveyService.StartIdentifiedDraftAsync(
-                    ctx.SurveyId, ctx.InvitationId, ctx.UserId,
-                    SurveyInputMethod.UserSpecificLink, culture, ct);
-            }
+                resumeState.DraftResponseId = ctx.DraftResponseId;
             foreach (var a in ctx.DraftAnswers)
             {
                 resumeState.Answers[a.QuestionId.ToString()] = new SurveyWizardAnswer
@@ -138,11 +132,7 @@ internal sealed class SurveyController(
 
         // Asociado votes use the participation ledger to enforce eligibility and one vote per
         // person, while storing the submitted ballot without a user/invitation link.
-        var anonymity = editable.IsAsociadoVote
-            ? ResponseAnonymity.CompletionTracked
-            : editable.AllowAnonymous
-                ? model.Anonymity
-                : ResponseAnonymity.Identified;
+        var anonymity = SurveyWizardFlow.ResolveInvitedAnonymity(editable, model.Anonymity);
         var culture = SurveyPageViewModelFactory.ResolveCulture(model.Culture, editable.DefaultCulture);
 
         var state = BuildState(ctx, anonymity, culture);

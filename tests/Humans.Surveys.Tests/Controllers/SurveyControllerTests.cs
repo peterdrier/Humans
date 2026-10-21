@@ -182,7 +182,7 @@ public sealed class SurveyControllerTests
                 Guid.NewGuid(),
                 Detail(surveyId, thankYou: "Thanks — see you at the gate."),
                 [],
-                HasResumableDraft: false));
+                DraftResponseId: null));
         var sut = CreateController(surveys, out _);
 
         var result = await sut.ThankYou(Token, Xunit.TestContext.Current.CancellationToken);
@@ -340,7 +340,7 @@ public sealed class SurveyControllerTests
                 userId,
                 Detail(surveyId, "Thanks!", allowAnonymous: false, isAsociadoVote: true),
                 [],
-                HasResumableDraft: false));
+                DraftResponseId: null));
         var sut = CreateController(surveys, out var session);
 
         var result = await sut.Start(
@@ -383,7 +383,7 @@ public sealed class SurveyControllerTests
                 userId,
                 Detail(surveyId, "Thanks!", allowAnonymous: false, isAsociadoVote: true),
                 [new SurveyDraftAnswer(questionId, ["yes"], null, null)],
-                HasResumableDraft: true));
+                DraftResponseId: Guid.NewGuid()));
         var sut = CreateController(surveys, out var session);
 
         var result = await sut.Answer(Token, Xunit.TestContext.Current.CancellationToken);
@@ -394,6 +394,37 @@ public sealed class SurveyControllerTests
         state.Anonymity.Should().Be(ResponseAnonymity.CompletionTracked);
         state.DraftResponseId.Should().BeNull();
         state.Answers[questionId.ToString()].SelectedOptionValues.Should().ContainSingle("yes");
+        await surveys.DidNotReceive().StartIdentifiedDraftAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<Guid>(),
+            Arg.Any<SurveyInputMethod>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Identified_invite_resume_reuses_the_existing_draft_without_a_write()
+    {
+        var surveyId = Guid.NewGuid();
+        var draftId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.ResolveAnswerContextAsync(Token, Arg.Any<CancellationToken>())
+            .Returns(new SurveyAnswerContext(
+                surveyId,
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                Detail(surveyId, "Thanks!", allowAnonymous: true),
+                [],
+                DraftResponseId: draftId));
+        var sut = CreateController(surveys, out var session);
+
+        var result = await sut.Answer(Token, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<RedirectToActionResult>().Subject.ActionName.Should().Be("Page");
+        var state = SurveyWizardSession.Load(session, Token);
+        state!.Anonymity.Should().Be(ResponseAnonymity.Identified);
+        state.DraftResponseId.Should().Be(draftId);
         await surveys.DidNotReceive().StartIdentifiedDraftAsync(
             Arg.Any<Guid>(),
             Arg.Any<Guid>(),
