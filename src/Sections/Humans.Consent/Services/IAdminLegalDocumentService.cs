@@ -61,6 +61,7 @@ internal sealed record AdminLegalDocumentEditDetail(
     int GracePeriodDays,
     string? GitHubFolderPath,
     Instant LastSyncedAt,
+    string? CurrentVersion,
     IReadOnlyList<AdminLegalDocumentVersionDetail> Versions);
 
 internal sealed record AdminLegalDocumentVersionDetail(

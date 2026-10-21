@@ -126,6 +126,37 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         versions.Should().ContainSingle().Which.Id.Should().Be(currentId);
     }
 
+    [HumansFact]
+    public async Task GetLegalDocumentWithVersionsAsync_CurrentVersionIsLatestAlreadyEffective()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var document = await SeedDocumentAsync("Privacy");
+        var now = Clock.GetCurrentInstant();
+        foreach (var (number, effectiveFrom) in new[]
+        {
+            ("v1", now.Minus(Duration.FromDays(2))),
+            ("v2", now.Minus(Duration.FromDays(1))),
+            ("v3", now.Plus(Duration.FromDays(1)))
+        })
+        {
+            LegalDb.DocumentVersions.Add(new DocumentVersion
+            {
+                Id = Guid.NewGuid(),
+                LegalDocumentId = document.Id,
+                VersionNumber = number,
+                CommitSha = number,
+                EffectiveFrom = effectiveFrom,
+                CreatedAt = now
+            });
+        }
+        await SaveAllAsync(ct);
+
+        var detail = await _service.GetLegalDocumentWithVersionsAsync(document.Id, ct);
+
+        detail!.CurrentVersion.Should().Be("v2");
+        detail.Versions.Should().HaveCount(3);
+    }
+
     // ── NormalizeGitHubFolderPath ────────────────────────────────────────────
 
     [HumansFact]
@@ -172,7 +203,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, _actorUserId.ToString())], "test"))
         };
-        var controller = new AdminLegalDocumentsController(_userService, _service, _teamService, Clock,
+        var controller = new AdminLegalDocumentsController(_userService, _service, _teamService,
             NullLogger<AdminLegalDocumentsController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -251,7 +282,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, _actorUserId.ToString())], "test"))
         };
-        var controller = new AdminLegalDocumentsController(_userService, _service, _teamService, Clock,
+        var controller = new AdminLegalDocumentsController(_userService, _service, _teamService,
             NullLogger<AdminLegalDocumentsController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
