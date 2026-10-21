@@ -186,9 +186,8 @@ internal sealed class ConsentService(
             "User {UserId} consented to document {DocumentName} version {Version}",
             userId, version.LegalDocumentName, version.VersionNumber);
 
-        // Name-only access switch: signing a consent no longer provisions system-team membership.
-        // SystemTeamSyncJob reconciles Volunteers/Coordinators on name + consents, decoupled from
-        // the consent write (access never depended on it).
+        // No team sync here: SystemTeamSyncJob admits Volunteers/Coordinators on name + consents,
+        // decoupled from the consent write.
 
         // Consent is committed; finish suspension cleanup even if the signing request ends.
         // Auto-resolve AccessSuspended notifications only after ALL required consents complete.

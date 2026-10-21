@@ -317,15 +317,6 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         new UTF8Encoding(false, true).GetBytes(record.UserAgent).Should().NotBeEmpty();
     }
 
-    // Threshold check (formerly SubmitConsentAsync_CallsSetConsentCheckPending)
-    // moved out of ConsentService entirely — it's a director method on
-    // IOnboardingService now, invoked by controllers as a peer call after
-    // SubmitConsentAsync. ConsentService has no dep on Onboarding or Profile.
-
-    // SubmitConsentAsync no longer provisions system-team membership (name-only access switch):
-    // SystemTeamSyncJob reconciles Volunteers/Coordinators on name + consents, decoupled from the
-    // consent write. ConsentService no longer depends on ISystemTeamSync.
-
     private static ActiveRequiredLegalDocumentSnapshot ToActiveRequiredDocumentSnapshot(
         LegalDocument document,
         IReadOnlyDictionary<Guid, string> teamNamesById) =>
