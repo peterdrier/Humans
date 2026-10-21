@@ -36,7 +36,7 @@ public class HomeController(
             DisplayName = user.BurnerName,
             ProfilePictureUrl = user.ProfilePictureUrl,
             HasProfile = user.Profile is not null,
-            ProfileComplete = !string.IsNullOrEmpty(user.Profile?.FirstName),
+            ProfileComplete = user.HasRequiredNameFields,
             IsRejected = user.Profile is not null && review.IsRejected,
             RejectionReason = user.Profile is null ? null : review.RejectionReason,
             MemberSince = user.CreatedAt.ToDateTimeUtc(),

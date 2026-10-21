@@ -611,6 +611,7 @@ internal sealed class BudgetService(
             TotalIncome = totalIncome,
             TotalExpenses = totalExpenses,
             NetBalance = netBalance,
+            TotalLineItems = budgetLineItems.Sum(li => li.Amount),
             IncomeSlices = incomeSlices,
             ExpenseSlices = expenseSlices
         };
@@ -649,6 +650,7 @@ internal sealed class BudgetService(
             TotalIncome = summary.TotalIncome,
             TotalExpenses = summary.TotalExpenses,
             NetBalance = summary.NetBalance,
+            TotalLineItems = summary.TotalLineItems,
             IncomeSlices = allIncomeEntries
                 .Select(s => new BudgetSliceResult
                 {

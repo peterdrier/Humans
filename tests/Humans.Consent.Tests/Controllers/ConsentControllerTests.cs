@@ -200,7 +200,7 @@ public sealed class ConsentControllerTests
         _http.RequestAborted = request.Token;
         var abandon = false;
         var reads = 0;
-        async ValueTask<UserInfo?> ReadUser(CancellationToken ct)
+        async ValueTask<UserInfo?> ReadUserAsync(CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
             reads++;
@@ -211,7 +211,7 @@ public sealed class ConsentControllerTests
             return WrapInUserInfo(userId, ActiveProfile());
         }
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(call => ReadUser(call.Arg<CancellationToken>()));
+            .Returns(call => ReadUserAsync(call.Arg<CancellationToken>()));
         _consentService.GetConsentDashboardAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();

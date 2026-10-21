@@ -83,10 +83,10 @@ internal sealed class CachingEventService(
         GetSettingsViewAsync(ct);
 
     public Task<IReadOnlyList<EventSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default) =>
-        WithInner(inner => inner.GetEventSettingsOptionsAsync(ct));
+        WithInnerAsync(inner => inner.GetEventSettingsOptionsAsync(ct));
 
     public Task<EventSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetEventSettingsByIdAsync(id, ct));
+        WithInnerAsync(inner => inner.GetEventSettingsByIdAsync(id, ct));
 
     public Task<bool> SaveGuideSettingsAsync(
         Guid? existingId, Guid eventSettingsId,
@@ -94,7 +94,7 @@ internal sealed class CachingEventService(
         int maxPrintSlots, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
-            var saved = await WithInner(inner => inner.SaveGuideSettingsAsync(
+            var saved = await WithInnerAsync(inner => inner.SaveGuideSettingsAsync(
                 existingId, eventSettingsId, submissionOpenAt, submissionCloseAt, guidePublishAt,
                 maxPrintSlots, ct));
             if (saved) await RefreshSettingsAsync(ct);
@@ -116,7 +116,7 @@ internal sealed class CachingEventService(
     {
         // Inner method includes .Events for management UI counts — the cache
         // doesn't carry that, so pass through.
-        return await WithInner(inner => inner.GetAllCategoriesAsync(ct));
+        return await WithInnerAsync(inner => inner.GetAllCategoriesAsync(ct));
     }
 
     public async Task<EventCategoryView?> GetCategoryAsync(Guid id, CancellationToken ct = default)
@@ -142,14 +142,14 @@ internal sealed class CachingEventService(
     public Task CreateCategoryAsync(EventCategory category, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.CreateCategoryAsync(category, ct));
+            await WithInnerAsync(inner => inner.CreateCategoryAsync(category, ct));
             await RefreshCategoriesAsync(ct);
         });
 
     public Task UpdateCategoryAsync(EventCategory category, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.UpdateCategoryAsync(category, ct));
+            await WithInnerAsync(inner => inner.UpdateCategoryAsync(category, ct));
             await RefreshCategoriesAsync(ct);
             // A category rename/sensitive-flip changes flattened fields on every
             // approved event projection — refresh the event cache too.
@@ -159,7 +159,7 @@ internal sealed class CachingEventService(
     public Task<(bool deleted, int linkedCount)> DeleteCategoryAsync(Guid id, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
-            var result = await WithInner(inner => inner.DeleteCategoryAsync(id, ct));
+            var result = await WithInnerAsync(inner => inner.DeleteCategoryAsync(id, ct));
             if (result.deleted)
                 await RefreshCategoriesAsync(ct);
             return result;
@@ -168,7 +168,7 @@ internal sealed class CachingEventService(
     public Task MoveCategoryAsync(Guid id, int direction, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.MoveCategoryAsync(id, direction, ct));
+            await WithInnerAsync(inner => inner.MoveCategoryAsync(id, direction, ct));
             await RefreshCategoriesAsync(ct);
         });
 
@@ -186,7 +186,7 @@ internal sealed class CachingEventService(
     public async Task<IReadOnlyList<EventVenueManageInfo>> GetAllVenuesAsync(CancellationToken ct = default)
     {
         // Inner method includes .Events for management UI counts — pass through.
-        return await WithInner(inner => inner.GetAllVenuesAsync(ct));
+        return await WithInnerAsync(inner => inner.GetAllVenuesAsync(ct));
     }
 
     public async Task<EventVenueView?> GetVenueAsync(Guid id, CancellationToken ct = default)
@@ -204,14 +204,14 @@ internal sealed class CachingEventService(
     public Task CreateVenueAsync(EventVenue venue, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.CreateVenueAsync(venue, ct));
+            await WithInnerAsync(inner => inner.CreateVenueAsync(venue, ct));
             await RefreshVenuesAsync(ct);
         });
 
     public Task UpdateVenueAsync(EventVenue venue, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.UpdateVenueAsync(venue, ct));
+            await WithInnerAsync(inner => inner.UpdateVenueAsync(venue, ct));
             await RefreshVenuesAsync(ct);
             // Venue rename → refresh approved events to update flattened VenueName.
             await RefreshAllEventsAsync(ct);
@@ -220,7 +220,7 @@ internal sealed class CachingEventService(
     public Task<(bool deleted, int linkedCount)> DeleteVenueAsync(Guid id, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
-            var result = await WithInner(inner => inner.DeleteVenueAsync(id, ct));
+            var result = await WithInnerAsync(inner => inner.DeleteVenueAsync(id, ct));
             if (result.deleted)
                 await RefreshVenuesAsync(ct);
             return result;
@@ -229,40 +229,40 @@ internal sealed class CachingEventService(
     public Task MoveVenueAsync(Guid id, int direction, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.MoveVenueAsync(id, direction, ct));
+            await WithInnerAsync(inner => inner.MoveVenueAsync(id, direction, ct));
             await RefreshVenuesAsync(ct);
         });
 
     // ── Submissions — pass-through (submitter scope, infrequent) ──
 
     public Task<IReadOnlyList<EventInfo>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetUserSubmissionsAsync(userId, ct));
+        WithInnerAsync(inner => inner.GetUserSubmissionsAsync(userId, ct));
 
     public Task<EventInfo?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetUserEventAsync(eventId, userId, ct));
+        WithInnerAsync(inner => inner.GetUserEventAsync(eventId, userId, ct));
 
     public Task<IReadOnlyList<EventInfo>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetCampSubmissionsAsync(campId, ct));
+        WithInnerAsync(inner => inner.GetCampSubmissionsAsync(campId, ct));
 
     public Task<EventInfo?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetCampEventAsync(eventId, campId, ct));
+        WithInnerAsync(inner => inner.GetCampEventAsync(eventId, campId, ct));
 
     public Task<CampSubmissionsSummary> GetCampSubmissionsSummaryAsync(Guid campId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetCampSubmissionsSummaryAsync(campId, ct));
+        WithInnerAsync(inner => inner.GetCampSubmissionsSummaryAsync(campId, ct));
 
     public Task<byte[]> BuildBulkUploadTemplateAsync(Guid campId, string campName, CancellationToken ct = default) =>
-        WithInner(inner => inner.BuildBulkUploadTemplateAsync(campId, campName, ct));
+        WithInnerAsync(inner => inner.BuildBulkUploadTemplateAsync(campId, campName, ct));
 
     public async Task SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.SubmitEventAsync(guideEvent, lifecycleActionUrl, ct));
+        await WithInnerAsync(inner => inner.SubmitEventAsync(guideEvent, lifecycleActionUrl, ct));
         // Submission is Pending, not Approved — no approved-event cache change.
     }
 
     public Task UpdateAndResubmitAsync(Guid eventId, EventEdit edit, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.UpdateAndResubmitAsync(eventId, edit, ct));
+            await WithInnerAsync(inner => inner.UpdateAndResubmitAsync(eventId, edit, ct));
             // Resubmit never leaves the event Approved → drop any cache entry
             // (no-op when it was not approved).
             _eventCache.Invalidate(eventId);
@@ -271,21 +271,21 @@ internal sealed class CachingEventService(
     public Task WithdrawEventAsync(Guid eventId, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.WithdrawEventAsync(eventId, ct));
+            await WithInnerAsync(inner => inner.WithdrawEventAsync(eventId, ct));
             _eventCache.Invalidate(eventId);
         });
 
     public Task ModeratorWithdrawAsync(Guid eventId, Guid actorUserId, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.ModeratorWithdrawAsync(eventId, actorUserId, ct));
+            await WithInnerAsync(inner => inner.ModeratorWithdrawAsync(eventId, actorUserId, ct));
             _eventCache.Invalidate(eventId);
         });
 
     public Task AdminUpdateAsync(Guid eventId, EventEdit edit, Guid actorUserId, string? note, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.AdminUpdateAsync(eventId, edit, actorUserId, note, ct));
+            await WithInnerAsync(inner => inner.AdminUpdateAsync(eventId, edit, actorUserId, note, ct));
             // Status is preserved, so an edited Approved event stays approved but its
             // flattened fields changed — re-project the single entry (sets the fresh
             // view if still approved, no-op for any non-approved status). Mirrors the
@@ -299,7 +299,7 @@ internal sealed class CachingEventService(
         CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
-            var result = await WithInner(inner => inner.BulkImportAsync(
+            var result = await WithInnerAsync(inner => inner.BulkImportAsync(
                 campId, submitterUserId, rows, gateOpeningDate, eventEndOffset, timeZone, ct));
             // Updates can transition Approved events away from Approved; rebuild the
             // approved-event projection wholesale. New events are Pending and never
@@ -394,45 +394,45 @@ internal sealed class CachingEventService(
     // ── Favourites — per-user, pass-through (not in projection scope) ──
 
     public Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetFavouriteEventIdsAsync(userId, ct));
+        WithInnerAsync(inner => inner.GetFavouriteEventIdsAsync(userId, ct));
 
     public Task<IReadOnlyList<EventFavouriteInfo>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetFavouritesWithEventsAsync(userId, ct));
+        WithInnerAsync(inner => inner.GetFavouritesWithEventsAsync(userId, ct));
 
     public Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default) =>
-        WithInner(inner => inner.AddFavouriteAsync(userId, eventId, dayOffset, ct));
+        WithInnerAsync(inner => inner.AddFavouriteAsync(userId, eventId, dayOffset, ct));
 
     public Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default) =>
-        WithInner(inner => inner.RemoveFavouriteAsync(userId, eventId, dayOffset, ct));
+        WithInnerAsync(inner => inner.RemoveFavouriteAsync(userId, eventId, dayOffset, ct));
 
     // ── Preferences — per-user, pass-through (not in projection scope) ──
 
     public Task<List<string>> GetExcludedCategorySlugsAsync(Guid userId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetExcludedCategorySlugsAsync(userId, ct));
+        WithInnerAsync(inner => inner.GetExcludedCategorySlugsAsync(userId, ct));
 
     public Task SavePreferenceAsync(Guid userId, List<string> slugs, CancellationToken ct = default) =>
-        WithInner(inner => inner.SavePreferenceAsync(userId, slugs, ct));
+        WithInnerAsync(inner => inner.SavePreferenceAsync(userId, slugs, ct));
 
     // ── Moderation — fresh-count critical, route past cache ──
 
     public Task<Dictionary<EventStatus, int>> GetEventStatusCountsAsync(CancellationToken ct = default) =>
-        WithInner(inner => inner.GetEventStatusCountsAsync(ct));
+        WithInnerAsync(inner => inner.GetEventStatusCountsAsync(ct));
 
     public Task<IReadOnlyList<EventInfo>> GetEventsByStatusAsync(EventStatus status, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetEventsByStatusAsync(status, ct));
+        WithInnerAsync(inner => inner.GetEventsByStatusAsync(status, ct));
 
     public Task<EventInfo?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetEventForModerationAsync(eventId, ct));
+        WithInnerAsync(inner => inner.GetEventForModerationAsync(eventId, ct));
 
     public Task<IReadOnlyList<CampEventOverlap>> GetCampEventsForOverlapAsync(CancellationToken ct = default) =>
-        WithInner(inner => inner.GetCampEventsForOverlapAsync(ct));
+        WithInnerAsync(inner => inner.GetCampEventsForOverlapAsync(ct));
 
     public Task ApplyModerationAsync(
         Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason,
         string? submitterEditUrl = null, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.ApplyModerationAsync(eventId, actorUserId, actionType, reason, submitterEditUrl, ct));
+            await WithInnerAsync(inner => inner.ApplyModerationAsync(eventId, actorUserId, actionType, reason, submitterEditUrl, ct));
             // Approve / reject / resubmit-request all transition the event's
             // approved-ness — re-load the single entry against the DB so the
             // cache reflects the post-moderation state (add for new approval,
@@ -445,11 +445,11 @@ internal sealed class CachingEventService(
     public Task<IReadOnlyList<EventInfo>> GetAllEventsForDashboardAsync(CancellationToken ct = default) =>
         // STAYS DIRECT DB — moderation dashboard needs current pending/rejected
         // counts that the approved-only cache cannot answer.
-        WithInner(inner => inner.GetAllEventsForDashboardAsync(ct));
+        WithInnerAsync(inner => inner.GetAllEventsForDashboardAsync(ct));
 
     public Task<byte[]> GetApprovedEventsForExportAsync(Guid actorUserId, CancellationToken ct = default) =>
         // Every CSV disclosure must audit, including repeated downloads of unchanged data.
-        WithInner(inner => inner.GetApprovedEventsForExportAsync(actorUserId, ct));
+        WithInnerAsync(inner => inner.GetApprovedEventsForExportAsync(actorUserId, ct));
 
     // ── IEventSettingsChangeListener: Settings-side fan-out ──
 
@@ -470,12 +470,12 @@ internal sealed class CachingEventService(
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => EventService.Erasure;
 
     public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
-        WithInner(inner => inner.ContributeForUserAsync(userId, ct));
+        WithInnerAsync(inner => inner.ContributeForUserAsync(userId, ct));
 
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.EraseForUserAsync(userId, ct));
+            await WithInnerAsync(inner => inner.EraseForUserAsync(userId, ct));
             await RefreshAllEventsAsync(ct);
         });
 
@@ -485,7 +485,7 @@ internal sealed class CachingEventService(
     public Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.ReassignAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct));
+            await WithInnerAsync(inner => inner.ReassignAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct));
             await RefreshAllEventsAsync(ct);
         });
 
@@ -532,9 +532,9 @@ internal sealed class CachingEventService(
         // and slug-uniqueness must see inactive rows, matching the DB.
         // Active-only filtering happens at projection time in
         // GetActiveCategoriesAsync / GetActiveVenuesAsync.
-        var categories = await WithInner(inner => inner.GetAllCategoriesAsync(ct));
-        var venues = await WithInner(inner => inner.GetAllVenuesAsync(ct));
-        var approved = await WithInner(inner => inner.GetApprovedEventsAsync(null, null, null, null, [], ct));
+        var categories = await WithInnerAsync(inner => inner.GetAllCategoriesAsync(ct));
+        var venues = await WithInnerAsync(inner => inner.GetAllVenuesAsync(ct));
+        var approved = await WithInnerAsync(inner => inner.GetApprovedEventsAsync(null, null, null, null, [], ct));
 
         _categories = categories.Select(ManageInfoToCategoryView).ToList();
         _venues = venues.Select(ManageInfoToVenueView).ToList();
@@ -572,7 +572,7 @@ internal sealed class CachingEventService(
         _settingsStale = false;
         try
         {
-            _settings = await WithInner(inner => inner.GetGuideSettingsAsync(ct));
+            _settings = await WithInnerAsync(inner => inner.GetGuideSettingsAsync(ct));
         }
         catch
         {
@@ -583,19 +583,19 @@ internal sealed class CachingEventService(
 
     private async Task RefreshCategoriesAsync(CancellationToken ct)
     {
-        var categories = await WithInner(inner => inner.GetAllCategoriesAsync(ct));
+        var categories = await WithInnerAsync(inner => inner.GetAllCategoriesAsync(ct));
         _categories = categories.Select(ManageInfoToCategoryView).ToList();
     }
 
     private async Task RefreshVenuesAsync(CancellationToken ct)
     {
-        var venues = await WithInner(inner => inner.GetAllVenuesAsync(ct));
+        var venues = await WithInnerAsync(inner => inner.GetAllVenuesAsync(ct));
         _venues = venues.Select(ManageInfoToVenueView).ToList();
     }
 
     private async Task RefreshEventEntryAsync(Guid eventId, CancellationToken ct)
     {
-        var ev = await WithInner(inner => inner.GetApprovedEventByIdAsync(eventId, ct));
+        var ev = await WithInnerAsync(inner => inner.GetApprovedEventByIdAsync(eventId, ct));
         if (ev is null)
         {
             _eventCache.Invalidate(eventId);
@@ -618,7 +618,7 @@ internal sealed class CachingEventService(
             return;
         }
 
-        var approved = await WithInner(inner => inner.GetApprovedEventsAsync(null, null, null, null, [], ct));
+        var approved = await WithInnerAsync(inner => inner.GetApprovedEventsAsync(null, null, null, null, [], ct));
 
         // Rebuild the whole approved set — category / venue renames touch
         // every event row's flattened fields.
@@ -681,14 +681,14 @@ internal sealed class CachingEventService(
         }
     }
 
-    private async Task<T> WithInner<T>(Func<IEventManagement, Task<T>> work)
+    private async Task<T> WithInnerAsync<T>(Func<IEventManagement, Task<T>> work)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IEventManagement>(InnerServiceKey);
         return await work(inner);
     }
 
-    private async Task WithInner(Func<IEventManagement, Task> work)
+    private async Task WithInnerAsync(Func<IEventManagement, Task> work)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IEventManagement>(InnerServiceKey);

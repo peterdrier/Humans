@@ -64,11 +64,11 @@ public sealed class RoleAssignmentsControllerTests
 
     private void GivenKnownUsers()
     {
-        _users.GetUserInfoAsync(ActorId, Arg.Any<CancellationToken>()).Returns(User(ActorId));
-        _users.GetRawUserInfoAsync(TargetId, Arg.Any<CancellationToken>()).Returns(User(TargetId));
+        _users.GetUserInfoAsync(ActorId, Arg.Any<CancellationToken>()).Returns(UserAsync(ActorId));
+        _users.GetRawUserInfoAsync(TargetId, Arg.Any<CancellationToken>()).Returns(UserAsync(TargetId));
     }
 
-    private static ValueTask<UserInfo?> User(Guid id) => new(new UserInfo(
+    private static ValueTask<UserInfo?> UserAsync(Guid id) => new(new UserInfo(
         id, "Member", false, "en", null, Instant.FromUnixTimeSeconds(0),
         null, null, null, null, null, null, null,
         null, null, null, [], [], [], null, []));

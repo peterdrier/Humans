@@ -60,15 +60,15 @@ dates, or ones whose `what:` describes a "stale comment"/"doc says X" pattern
 — those flip fastest as code moves).
 
 **Seed (verify each, then delete the row / fix the note):**
-- `src/Sections/Humans.Teams/Docs/debt.yml` — the `IShiftManagementService`
-  data-access.md row: already reads `IShiftManagementService`, both sites.
+- `src/Sections/Humans.Teams/Docs/debt.yml` — the `IShiftService`
+  data-access.md row: already reads `IShiftService`, both sites.
 - `src/Sections/Humans.Users/Docs/debt.yml` — the `AccountDeletionService`
   "false thread-safety rationale" row: `grep -i thread` now returns nothing.
 - `src/Sections/Humans.Email/Docs/debt.yml` — the `ISystemSettingsService`
   data-access.md row: doc already says `ISettingsService` throughout.
 - `src/Sections/Humans.Calendar/Docs/debt.yml` — the `ICalFeedService.cs`
   stale thread-safety comment row: comment already rewritten.
-- `src/Sections/Humans.Search/Docs/debt.yml` — the `IShiftManagementService`
+- `src/Sections/Humans.Search/Docs/debt.yml` — the `IShiftService`
   doc/csproj row: `SearchService.cs` already injects the `Read` leaf.
 - `docs/architecture/debt-ledger.yml` `inbox:` — close: the
   `burnername-is-the-display-name.md` stale-atom row (already rewritten

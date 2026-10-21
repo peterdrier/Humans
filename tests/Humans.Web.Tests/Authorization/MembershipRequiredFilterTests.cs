@@ -344,7 +344,7 @@ public class MembershipRequiredFilterTests
         var ctx = BuildExecutingContext(controllerName, actionName, authenticated, state, role, authenticationType, actionMethod);
         var nextCalled = false;
 
-        Task<ActionExecutedContext> ExecuteAction()
+        Task<ActionExecutedContext> ExecuteActionAsync()
         {
             nextCalled = true;
             return Task.FromResult<ActionExecutedContext>(null!);
@@ -362,13 +362,13 @@ public class MembershipRequiredFilterTests
             var nameFilter = new NameRequiredFilter(users);
             await nameFilter.OnActionExecutionAsync(ctx, async () =>
             {
-                await sut.OnActionExecutionAsync(ctx, ExecuteAction);
+                await sut.OnActionExecutionAsync(ctx, ExecuteActionAsync);
                 return null!;
             });
         }
         else
         {
-            await sut.OnActionExecutionAsync(ctx, ExecuteAction);
+            await sut.OnActionExecutionAsync(ctx, ExecuteActionAsync);
         }
 
         return (ctx.Result, nextCalled);

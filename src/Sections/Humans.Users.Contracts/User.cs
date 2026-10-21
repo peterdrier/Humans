@@ -103,7 +103,13 @@ public class User : IdentityUser<Guid>
         set => base.NormalizedUserName = value;
     }
 
-    /// <summary>When the last re-consent reminder email was sent (rate limiting).</summary>
+    /// <summary>
+    /// FROZEN: the re-consent reminder cooldown stamp now lives in Consent's
+    /// <c>consent_reminders</c>. Users no longer writes this column except to clear it on GDPR erasure; it is read only through the
+    /// obsolete <see cref="UserInfo.LastConsentReminderSentAt"/> by the
+    /// <c>consent.reminder-stamps</c> copy and fallback, and the column is dropped once that copy
+    /// is done in production.
+    /// </summary>
     public Instant? LastConsentReminderSentAt { get; set; }
 
     /// <summary>When the user requested account deletion; null if none pending.</summary>

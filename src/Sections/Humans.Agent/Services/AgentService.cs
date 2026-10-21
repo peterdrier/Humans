@@ -114,14 +114,14 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
             usage.MessagesThisHour >= settings.HourlyMessageCap)
         {
             // Invariant 6 (Agent.md): every refused turn writes an AgentMessage with RefusalReason.
-            await PersistRefusal(request, existing, "rate_limited", cancellationToken);
+            await PersistRefusalAsync(request, existing, "rate_limited", cancellationToken);
             yield return Finalizer(stopReason: "rate_limited");
             yield break;
         }
 
         if (_abuse.IsFlagged(request.Message, out var abuseReason))
         {
-            await PersistRefusal(request, existing, abuseReason!, cancellationToken);
+            await PersistRefusalAsync(request, existing, abuseReason!, cancellationToken);
             yield return new AgentTurnToken(LocalizedReply("Agent_AbuseRefusal", request.Locale), null, null);
             yield return Finalizer(stopReason: "abuse_flag");
             yield break;
@@ -200,7 +200,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
                             "Agent turn failed before completion for conversation {ConversationId}", conversation.Id);
                     }
                     // Bill the failed turn's real usage, not zeros — the same totals
-                    // AppendFailureMessage/_rateLimit.Record use below, so this streamed
+                    // AppendFailureMessageAsync/_rateLimit.Record use below, so this streamed
                     // frame agrees with what got persisted and billed instead of telling
                     // /Agent/Ask consumers the turn cost nothing (nobodies-collective/Humans#990).
                     yield return new AgentTurnToken(null, null,
@@ -235,7 +235,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
                         conversation.Id);
                 // CancellationToken.None: the turn may be failing BECAUSE cancellationToken
                 // fired (client disconnect), and the whole point is to still leave a trace.
-                await AppendFailureMessage(conversation.Id, "error", settings.Model, turnUsage, CancellationToken.None);
+                await AppendFailureMessageAsync(conversation.Id, "error", settings.Model, turnUsage, CancellationToken.None);
                 // Bill it. The provider already charged us for whatever the turn consumed
                 // before it broke, so leaving those tokens out understates admin spend and the
                 // DailyTokenCap; and a turn that fails deterministically must still cost a
@@ -818,18 +818,18 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
 
     // existing: the caller's own conversation, already ownership-checked by AskAsync;
     // null starts a fresh one.
-    private async Task PersistRefusal(
+    private async Task PersistRefusalAsync(
         AgentTurnRequest req, AgentConversation? existing, string reason, CancellationToken ct)
     {
         // Refusal must be persisted (Agent.md invariant 6).
         var conv = existing ?? await _repo.CreateConversationAsync(req.UserId, req.Locale, ct);
 
         // usage: null — a refused turn is rejected before any provider call, so it cost nothing.
-        await AppendFailureMessage(conv.Id, reason, _settings.Current.Model, usage: null, ct);
+        await AppendFailureMessageAsync(conv.Id, reason, _settings.Current.Model, usage: null, ct);
     }
 
     /// <summary>Appends an empty-content assistant message carrying a machine-readable
-    /// <c>RefusalReason</c> — the same "no real answer, here's why" shape <see cref="PersistRefusal"/>
+    /// <c>RefusalReason</c> — the same "no real answer, here's why" shape <see cref="PersistRefusalAsync"/>
     /// already writes for rate-limit/abuse turns (Agent.md invariant 6). Reused for the
     /// turn-exception path (nobodies-collective/Humans#963) so a failed turn shows up through the
     /// same admin refusals filter and "top refusal reasons" panel instead of a new surface.</summary>
@@ -843,7 +843,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
     /// <see cref="AgentMessage.PromptTokens"/>/<see cref="AgentMessage.OutputTokens"/> — leaving
     /// zeros here would hide billable turns from the admin panel even though the rate-limit
     /// store counted them.</param>
-    private async Task AppendFailureMessage(
+    private async Task AppendFailureMessageAsync(
         Guid conversationId, string reason, string model, TurnUsage? usage, CancellationToken ct)
     {
         await _repo.AppendMessageAsync(new AgentMessage

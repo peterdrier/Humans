@@ -23,7 +23,7 @@ public interface IShiftAuthorizationInvalidator : IInvalidator
 {
     /// <summary>
     /// Drops the cached coordinator-team-id list for a single user. The next
-    /// call to <c>IShiftManagementService.GetCoordinatorTeamIdsAsync</c>
+    /// call to <c>IShiftService.GetCoordinatorTeamIdsAsync</c>
     /// for that user re-queries via <c>ITeamService</c>.
     /// </summary>
     void Invalidate(Guid userId);

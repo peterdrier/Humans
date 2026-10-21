@@ -16,6 +16,7 @@ using Humans.Application.Services.Users.AccountLifecycle;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
+using Microsoft.Extensions.Hosting;
 using NSubstitute;
 
 namespace Humans.Users.Tests.Services;
@@ -43,6 +44,7 @@ public class AccountDeletionServiceTests
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly UsersEmails _emailMessages = TestUsersEmails.Create();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
+    private readonly IHostEnvironment _environment = Substitute.For<IHostEnvironment>();
     private readonly AccountDeletionService _service;
 
     public AccountDeletionServiceTests()
@@ -66,6 +68,7 @@ public class AccountDeletionServiceTests
             _emailService,
             _emailMessages,
             _clock,
+            _environment,
             NullLogger<AccountDeletionService>.Instance);
     }
 
@@ -301,6 +304,35 @@ public class AccountDeletionServiceTests
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
         _teamService.DidNotReceive().InvalidateActiveTeamsCache();
+        await _gdprService.DidNotReceiveWithAnyArgs()
+            .EraseForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task PurgeAsync_InProduction_RefusesWithoutErasing()
+    {
+        var userId = Guid.NewGuid();
+        _environment.EnvironmentName.Returns(Environments.Production);
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
+
+        var result = await _service.PurgeAsync(userId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be(AccountDeletionService.PurgeRefusedInProduction);
+        await _gdprService.DidNotReceiveWithAnyArgs()
+            .EraseForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task PurgeAsync_ActorIsTarget_RefusesWithoutErasing()
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
+
+        var result = await _service.PurgeAsync(userId, userId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be(AccountDeletionService.PurgeRefusedSelf);
         await _gdprService.DidNotReceiveWithAnyArgs()
             .EraseForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }

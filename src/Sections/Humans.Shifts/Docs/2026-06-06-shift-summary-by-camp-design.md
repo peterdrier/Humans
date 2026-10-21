@@ -110,7 +110,7 @@ coupling to the preferred direction (Shifts → Camps).
 Controller (ShiftsController)              parse route, authorize, sort/format, render
    │  3 actions: Summary(), Summary(teamSlug), Summary(teamSlug, rotaGuid)
    ▼
-Service  (IShiftManagementService or a     resolve active event; get aggregated hours/count
+Service  (IShiftService or a     resolve active event; get aggregated hours/count
    │      small ShiftSummaryService)        from own repo for the requested scope; resolve
    │                                         names (IUserServiceRead); resolve each human's
    │                                         camp + roster (ICampServiceRead); build flat +

@@ -59,7 +59,7 @@ public class EventsApiControllerTests
     public async Task Read_AbandonedRequest_CancelsAtLookup(string route, string boundary)
     {
         using var request = new CancellationTokenSource();
-        async Task<T> Read<T>(T value, string current, CancellationToken ct)
+        async Task<T> ReadAsync<T>(T value, string current, CancellationToken ct)
         {
             if (string.Equals(current, boundary, StringComparison.Ordinal))
                 await request.CancelAsync();
@@ -76,29 +76,29 @@ public class EventsApiControllerTests
             Instant.MaxValue, Instant.MaxValue, 100, "Europe/Madrid", Instant.MinValue, Instant.MinValue);
         var approved = MakeEvent(null, Guid.NewGuid(), null);
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
-            Read<EventGuideSettingsView?>(settings, "Guide", call.Arg<CancellationToken>()));
+            ReadAsync<EventGuideSettingsView?>(settings, "Guide", call.Arg<CancellationToken>()));
         _guide.GetEventSettingsByIdAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(call =>
-            Read<EventSettingsInfo?>(burn, "Burn", call.Arg<CancellationToken>()));
+            ReadAsync<EventSettingsInfo?>(burn, "Burn", call.Arg<CancellationToken>()));
         _guide.GetExcludedCategorySlugsAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
-            Read<List<string>>([], "Excluded", call.Arg<CancellationToken>()));
+            ReadAsync<List<string>>([], "Excluded", call.Arg<CancellationToken>()));
         _guide.GetApprovedEventsAsync(Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
             Arg.Any<string?>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>()).Returns(call =>
-            Read<IReadOnlyList<ApprovedEventView>>([approved], "Approved", call.Arg<CancellationToken>()));
+            ReadAsync<IReadOnlyList<ApprovedEventView>>([approved], "Approved", call.Arg<CancellationToken>()));
         _guide.GetApprovedEventByIdAsync(approved.Id, Arg.Any<CancellationToken>()).Returns(call =>
-            Read<ApprovedEventView?>(approved, "Event", call.Arg<CancellationToken>()));
+            ReadAsync<ApprovedEventView?>(approved, "Event", call.Arg<CancellationToken>()));
         _camps.GetCampsForYearAsync(burn.GateOpeningDate.Year, Arg.Any<CancellationToken>()).Returns(call =>
-            Read<IReadOnlyList<CampInfo>>([], "Camps", call.Arg<CancellationToken>()));
+            ReadAsync<IReadOnlyList<CampInfo>>([], "Camps", call.Arg<CancellationToken>()));
         _users.GetUserInfoAsync(approved.SubmitterUserId, Arg.Any<CancellationToken>()).Returns(call =>
-            new ValueTask<UserInfo?>(Read<UserInfo?>(MakeUserInfo(approved.SubmitterUserId, "Host"),
+            new ValueTask<UserInfo?>(ReadAsync<UserInfo?>(MakeUserInfo(approved.SubmitterUserId, "Host"),
                 "Submitter", call.Arg<CancellationToken>())));
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
-            new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(Read<IReadOnlyDictionary<Guid, UserInfo>>(
+            new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(ReadAsync<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [approved.SubmitterUserId] = MakeUserInfo(approved.SubmitterUserId, "Host") },
                 "Submitter", call.Arg<CancellationToken>())));
         _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>()).Returns(call =>
-            Read<IReadOnlyList<EventCategoryView>>([], "Categories", call.Arg<CancellationToken>()));
+            ReadAsync<IReadOnlyList<EventCategoryView>>([], "Categories", call.Arg<CancellationToken>()));
         _guide.GetFavouritesWithEventsAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
-            Read<IReadOnlyList<EventFavouriteInfo>>([], "Favourites", call.Arg<CancellationToken>()));
+            ReadAsync<IReadOnlyList<EventFavouriteInfo>>([], "Favourites", call.Arg<CancellationToken>()));
         Func<Task<IActionResult>> act = route switch
         {
             "Events" => () => controller.GetEvents(null, null, null, null),

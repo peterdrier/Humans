@@ -185,9 +185,8 @@ sealed`) behind the public `IGdprService` in `Contracts/`, exposing both
   `Humans.Gdpr.Contracts`). Every section owning user-scoped tables implements
   `IUserDataContributor` from it, so each references `Humans.Gdpr`; the
   orchestrator and controller stay `internal`.
-- No `Resources/` folder and no `GdprResource`: the section has no page copy at
-  all, so no type here takes `IStringLocalizer<T>` for any `T` — documentation,
-  not a pinned assertion ([`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md)).
+- `GdprResource` (section root, six cultures) holds the section's page copy and
+  flash messages; its controllers take `IStringLocalizer<GdprResource>`.
 - The contributor forwarding factories deliberately do **not** live in
   `Section.Register`: each
   `AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<X>())` belongs to

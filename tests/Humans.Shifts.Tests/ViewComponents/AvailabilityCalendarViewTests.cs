@@ -56,7 +56,7 @@ public class AvailabilityCalendarViewTests
         });
         builder.Services.AddLocalization();
         builder.Services.AddHttpContextAccessor();
-        builder.Services.AddSingleton(Substitute.For<IShiftManagementService>());
+        builder.Services.AddSingleton(Substitute.For<IShiftService>());
         builder.Services.AddSingleton(Substitute.For<IUserService>());
         builder.Services.AddSingleton(Substitute.For<ICantinaService>());
         var url = Substitute.For<IUrlHelper>();

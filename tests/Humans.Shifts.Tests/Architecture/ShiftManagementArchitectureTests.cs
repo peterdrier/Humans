@@ -35,7 +35,7 @@ public class ShiftManagementArchitectureTests
     }
 
     /// <summary>
-    /// Asserts that <see cref="IShiftManagement"/> and <see cref="IShiftManagementService"/> resolve to the same
+    /// Asserts that <see cref="IShiftManagement"/> and <see cref="IShiftService"/> resolve to the same
     /// scoped instance from the production DI registration — <c>Section.Register</c>
     /// itself, not a test-built mirror of it.
     /// </summary>
@@ -46,7 +46,7 @@ public class ShiftManagementArchitectureTests
         using var scope = provider.CreateScope();
 
         var fromManagement = scope.ServiceProvider.GetRequiredService<IShiftManagement>();
-        var fromPublic = scope.ServiceProvider.GetRequiredService<IShiftManagementService>();
+        var fromPublic = scope.ServiceProvider.GetRequiredService<IShiftService>();
 
         ReferenceEquals(fromManagement, fromPublic).Should().BeTrue(
             because: "both interfaces must forward to the one ShiftManagementService per scope");

@@ -78,7 +78,7 @@ None — this section is a pure rendering surface with no DB writes and no side 
 None directly — since nobodies-collective/Humans#1091, the shell names no section. Nav groups (`ISectionAdminNav`), dashboard tiles (`ISectionAdminTiles`) and dashboard cards (`ISectionChrome`, `admin-dashboard` slot) are section-contributed and merged by Shell's composition/rendering code, which reaches no section service directly. The tiles and cards are owned by (and call the service interfaces of) their contributing sections:
 
 - **Users:** `users.total` / `users.profiles` / `users.tickets` tiles (`IUserService`); the "Preferred language" card.
-- **Shifts:** `shifts.coverage` tile and the "Staffing by department" card (`IShiftManagementService`).
+- **Shifts:** `shifts.coverage` tile and the "Staffing by department" card (`IShiftService`).
 - **Feedback:** `feedback.open` tile, AdminOnly (`FeedbackService`, section-internal).
 - **Teams:** `teams.total` tile (`ITeamService`).
 - **Workgroups:** `workgroups.queue` tile, `BoardOrAdmin`.

@@ -388,7 +388,7 @@
                         </a>
                         @if (Model.CanCurrentUserEditTeam)
                         {
-                            <a asp-controller="TeamAdmin" asp-action="Resources" asp-route-slug="@Model.Slug" class="list-group-item list-group-item-action">
+                            <a asp-controller="TeamResources" asp-action="Index" asp-route-slug="@Model.Slug" class="list-group-item list-group-item-action">
                                 @Localizer["Teams_TeamDetail_ManageResources"]
                             </a>
                             <a asp-controller="AdminLegalDocuments" asp-action="LegalDocuments" asp-route-teamId="@Model.Id" class="list-group-item list-group-item-action">

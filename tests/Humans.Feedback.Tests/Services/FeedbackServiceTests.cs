@@ -197,7 +197,7 @@ public sealed class FeedbackServiceTests
     public async Task UpdateStatusAsync_UndefinedStatus_PreservesStoredState(int status)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
-        var report = await CreateTestReport();
+        var report = await CreateTestReportAsync();
         var result = await _service.UpdateStatusAsync(report.Id, (FeedbackStatus)status, Guid.NewGuid(), ct);
 
         result.Succeeded.Should().BeFalse();
@@ -211,7 +211,7 @@ public sealed class FeedbackServiceTests
     [InlineData(FeedbackStatus.WontFix)]
     public async Task UpdateStatusAsync_SetsResolvedFields_WhenTerminal(FeedbackStatus terminal)
     {
-        var report = await CreateTestReport();
+        var report = await CreateTestReportAsync();
 
         await _service.UpdateStatusAsync(report.Id, terminal, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
@@ -227,7 +227,7 @@ public sealed class FeedbackServiceTests
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var actorId = Guid.NewGuid();
-        var report = await CreateTestReport();
+        var report = await CreateTestReportAsync();
 
         await _service.UpdateStatusAsync(report.Id, FeedbackStatus.Acknowledged, actorId, ct);
         await _auditLog.Received(1).LogAsync(
@@ -244,7 +244,7 @@ public sealed class FeedbackServiceTests
     public async Task UpdateStatusAsync_ClearsResolvedFields_WhenReopened()
     {
         var actorId = Guid.NewGuid();
-        var report = await CreateTestReport();
+        var report = await CreateTestReportAsync();
         await _service.UpdateStatusAsync(report.Id, FeedbackStatus.Resolved, actorId, Xunit.TestContext.Current.CancellationToken);
         await _service.UpdateStatusAsync(report.Id, FeedbackStatus.Open, actorId, Xunit.TestContext.Current.CancellationToken);
 
@@ -258,9 +258,9 @@ public sealed class FeedbackServiceTests
     [HumansFact]
     public async Task GetFeedbackListAsync_FiltersByStatus()
     {
-        await CreateTestReport();
-        await CreateTestReport();
-        await CreateTestReport(FeedbackStatus.Resolved);
+        await CreateTestReportAsync();
+        await CreateTestReportAsync();
+        await CreateTestReportAsync(FeedbackStatus.Resolved);
 
         var results = await _service.GetFeedbackListAsync(status: FeedbackStatus.Open, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
@@ -516,7 +516,7 @@ public sealed class FeedbackServiceTests
         var assigneeId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
         SeedUser(assigneeId, "Assignee");
-        var report = await CreateTestReport();
+        var report = await CreateTestReportAsync();
 
         await _service.UpdateAssignmentAsync(report.Id, assigneeId, teamId, actorId, ct);
 
@@ -533,7 +533,7 @@ public sealed class FeedbackServiceTests
     public async Task UpdateAssignmentAsync_NoChange_WritesNoAudit()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
-        var report = await CreateTestReport();
+        var report = await CreateTestReportAsync();
 
         await _service.UpdateAssignmentAsync(report.Id, null, null, Guid.NewGuid(), ct);
 
@@ -548,7 +548,7 @@ public sealed class FeedbackServiceTests
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var actorId = Guid.NewGuid();
-        var report = await CreateTestReport();
+        var report = await CreateTestReportAsync();
 
         await _service.SetGitHubIssueNumberAsync(report.Id, 123, actorId, ct);
         (await FeedbackDb.FeedbackReports.AsNoTracking().FirstAsync(r => r.Id == report.Id, ct))
@@ -572,7 +572,7 @@ public sealed class FeedbackServiceTests
     public async Task SetGitHubIssueNumberAsync_RejectsNonpositiveNumbersWithoutChangingLink(int number)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
-        var report = await CreateTestReport();
+        var report = await CreateTestReportAsync();
         await _service.SetGitHubIssueNumberAsync(report.Id, 123, Guid.NewGuid(), ct);
         _auditLog.ClearReceivedCalls();
 
@@ -906,10 +906,10 @@ public sealed class FeedbackServiceTests
                 }
             },
         };
-        Task<IActionResult> ReadPage() => controller.Index(null, null, null, null, null, false, null, request.Token);
-        (await ReadPage()).Should().BeOfType<ViewResult>();
+        Task<IActionResult> ReadPageAsync() => controller.Index(null, null, null, null, null, false, null, request.Token);
+        (await ReadPageAsync()).Should().BeOfType<ViewResult>();
         await request.CancelAsync();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(ReadPage);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(ReadPageAsync);
         cancelledAtViewer.Should().BeTrue();
     }
 
@@ -957,7 +957,7 @@ public sealed class FeedbackServiceTests
     [InlineData("0")]
     public async Task Triage_requires_posted_status_before_reopening_report(string? postedStatus)
     {
-        var report = await CreateTestReport(FeedbackStatus.Resolved);
+        var report = await CreateTestReportAsync(FeedbackStatus.Resolved);
         var actor = Guid.NewGuid();
         SeedUser(actor, "Admin", "admin@example.org");
         var users = Substitute.For<IUserService>();
@@ -1016,7 +1016,7 @@ public sealed class FeedbackServiceTests
         }
     }
 
-    private async Task<FeedbackReport> CreateTestReport(FeedbackStatus status = FeedbackStatus.Open)
+    private async Task<FeedbackReport> CreateTestReportAsync(FeedbackStatus status = FeedbackStatus.Open)
     {
         var userId = Guid.NewGuid();
         SeedUser(userId, "Test", $"{userId}@test.com");

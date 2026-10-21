@@ -56,14 +56,14 @@ public class BackdoorControllerTests
         var goodKey = Guid.NewGuid();
         var strandedKey = Guid.NewGuid();
         _keys.ListAsync(Arg.Any<CancellationToken>()).Returns([
-            Row(goodKey, _activeAdmin),
-            Row(strandedKey, _suspendedAdmin),
+            Row(goodKey, _activeAdmin, ownerEligible: true),
+            Row(strandedKey, _suspendedAdmin, ownerEligible: false),
         ]);
 
         var model = await IndexModelAsync();
 
-        // Neither row is revoked, but ResolveOwnerAsync refuses the suspended owner's key on
-        // every request — the page has to say so rather than badge it green and offer Rotate.
+        // Neither row is revoked, but the service flags the suspended owner's key as one
+        // ResolveOwnerAsync refuses — the page has to say so rather than badge it green.
         model.Keys.Single(k => k.Id == goodKey).IsUsable.Should().BeTrue();
         var stranded = model.Keys.Single(k => k.Id == strandedKey);
         stranded.IsRevoked.Should().BeFalse();
@@ -89,8 +89,8 @@ public class BackdoorControllerTests
             .Which.Model.Should().BeOfType<BackdoorKeysViewModel>().Subject;
     }
 
-    private static BackdoorKeyRow Row(Guid id, Guid ownerId) => new(
-        id, ownerId, "laptop", "hum_abcd", Instant.FromUnixTimeSeconds(0), null, null);
+    private static BackdoorKeyRow Row(Guid id, Guid ownerId, bool ownerEligible) => new(
+        id, ownerId, "laptop", "hum_abcd", Instant.FromUnixTimeSeconds(0), null, null, ownerEligible);
 
     private static UserInfo Info(Guid id, UserState state) => UserInfo.Create(
         new User { Id = id, State = state, PreferredLanguage = "en" },

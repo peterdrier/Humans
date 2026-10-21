@@ -11,7 +11,7 @@ namespace Humans.Teams.Services;
 internal sealed class TeamPageService(
     ITeamManagementService teamService,
     ITeamResourceService teamResourceService,
-    IShiftManagementService shiftManagementService,
+    IShiftService shiftManagementService,
     ISettingsService settingsService,
     IUserService userService,
     IRoleAssignmentService roleAssignmentService) : ITeamPageService

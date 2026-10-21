@@ -114,8 +114,6 @@ public class AccountProvisioningServiceTests
         public Task ReassignLoginsToUserAsync(
             Guid sourceUserId, Guid targetUserId, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task SetLastConsentReminderSentAsync(Guid userId, Instant sentAt, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(Instant now, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(Guid userId, CancellationToken ct = default) =>
@@ -260,7 +258,7 @@ public class AccountProvisioningServiceTests
         public void Seed(UserEmail email) => _emails[email.Id] = email;
         public IReadOnlyCollection<UserEmail> All => _emails.Values;
 
-        public Task<IReadOnlyList<UserEmailRowSnapshot>> FindByAddress(string email, bool verifiedOnly)
+        public Task<IReadOnlyList<UserEmailRowSnapshot>> FindByAddressAsync(string email, bool verifiedOnly)
         {
             var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
             var alternateEmail = GetAlternateEmail(normalizedEmail);
@@ -277,14 +275,14 @@ public class AccountProvisioningServiceTests
             return Task.FromResult<IReadOnlyList<UserEmailRowSnapshot>>(rows);
         }
 
-        public Task<bool> Delete(Guid userId, Guid emailId)
+        public Task<bool> DeleteAsync(Guid userId, Guid emailId)
         {
             if (!_emails.TryGetValue(emailId, out var row) || row.UserId != userId) return Task.FromResult(false);
             EnlistRollback(() => _emails[row.Id] = row);
             return Task.FromResult(_emails.Remove(emailId));
         }
 
-        public Task AddProvisioned(Guid userId, string email, Instant now)
+        public Task AddProvisionedAsync(Guid userId, string email, Instant now)
         {
             if (ThrowOnAddProvisioned) throw new InvalidOperationException("Email creation failed");
             var normalized = EmailNormalization.NormalizeForComparison(email);
@@ -317,7 +315,7 @@ public class AccountProvisioningServiceTests
             return Task.CompletedTask;
         }
 
-        public Task<bool> AddVerified(Guid userId, string email, Instant now)
+        public Task<bool> AddVerifiedAsync(Guid userId, string email, Instant now)
         {
             if (ThrowOnAddVerified)
                 throw new InvalidOperationException("boom");
@@ -383,16 +381,16 @@ public class AccountProvisioningServiceTests
         _userEmailService = Substitute.For<IUserEmailService>();
         _userEmailService.FindByAddressAsync(
                 Arg.Any<string>(), true, Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(call => _userEmailFake.FindByAddress(call.ArgAt<string>(0), call.ArgAt<bool>(2)));
+            .Returns(call => _userEmailFake.FindByAddressAsync(call.ArgAt<string>(0), call.ArgAt<bool>(2)));
         _userEmailService.DeleteEmailAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(async call => new DeleteEmailResult(await _userEmailFake.Delete(call.ArgAt<Guid>(0), call.ArgAt<Guid>(1))));
+            .Returns(async call => new DeleteEmailResult(await _userEmailFake.DeleteAsync(call.ArgAt<Guid>(0), call.ArgAt<Guid>(1))));
         _userEmailService.AddProvisionedEmailAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(call => _userEmailFake.AddProvisioned(
+            .Returns(call => _userEmailFake.AddProvisionedAsync(
                 call.ArgAt<Guid>(0), call.ArgAt<string>(1), _clock.GetCurrentInstant()));
         _userEmailService.AddVerifiedEmailAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(call => _userEmailFake.AddVerified(
+            .Returns(call => _userEmailFake.AddVerifiedAsync(
                 call.ArgAt<Guid>(0), call.ArgAt<string>(1), _clock.GetCurrentInstant()));
 
         // Mock CreateAsync to persist the user into the fake repo and return success.

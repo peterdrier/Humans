@@ -25,7 +25,7 @@ public class ExpenseRepositoryTests
     public async Task GetByIdAsync_ReturnsRecord_WhenExists()
     {
         var id = Guid.NewGuid();
-        await Seed(new ExpenseReport
+        await SeedAsync(new ExpenseReport
         {
             Id = id,
             SubmitterUserId = Guid.NewGuid(),
@@ -46,7 +46,7 @@ public class ExpenseRepositoryTests
     {
         var meId = Guid.NewGuid();
         var otherId = Guid.NewGuid();
-        await Seed(MakeReport(submitter: meId), MakeReport(submitter: otherId));
+        await SeedAsync(MakeReport(submitter: meId), MakeReport(submitter: otherId));
 
         var mine = await _sut.GetForSubmitterAsync(meId, Xunit.TestContext.Current.CancellationToken);
         mine.Should().HaveCount(1);
@@ -269,7 +269,7 @@ public class ExpenseRepositoryTests
         var ct = Xunit.TestContext.Current.CancellationToken;
         var r = MakeReport(status: ExpenseReportStatus.Submitted);
         r.MaxAmount = 50m;
-        await Seed(r);
+        await SeedAsync(r);
 
         (await _sut.CoordinatorEndorseAsync(r.Id, Guid.NewGuid(), null, Instant.FromUtc(2026, 5, 3, 12, 0), ct))
             .Should().BeTrue();
@@ -283,7 +283,7 @@ public class ExpenseRepositoryTests
         var ct = Xunit.TestContext.Current.CancellationToken;
         var r = MakeReport(status: ExpenseReportStatus.Submitted);
         r.MaxAmount = 50m;
-        await Seed(r);
+        await SeedAsync(r);
 
         (await _sut.CoordinatorRejectAsync(r.Id, Guid.NewGuid(), "no", Instant.FromUtc(2026, 5, 3, 12, 0), ct))
             .Should().BeTrue();
@@ -302,7 +302,7 @@ public class ExpenseRepositoryTests
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var r = MakeReport(status: status);
-        await Seed(r);
+        await SeedAsync(r);
 
         (await _sut.CoordinatorRejectAsync(r.Id, Guid.NewGuid(), "no", Instant.FromUtc(2026, 5, 3, 12, 0), ct))
             .Should().BeFalse();
@@ -317,7 +317,7 @@ public class ExpenseRepositoryTests
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var r = MakeReport(status: status);
-        await Seed(r);
+        await SeedAsync(r);
 
         (await _sut.FinanceRejectAsync(r.Id, Guid.NewGuid(), "no", Instant.FromUtc(2026, 5, 3, 12, 0), ct))
             .Should().BeFalse();
@@ -328,7 +328,7 @@ public class ExpenseRepositoryTests
     public async Task ApproveAsync_StampsApproval_AndInsertsOutboxRow()
     {
         var r = MakeReport(status: ExpenseReportStatus.Submitted);
-        await Seed(r);
+        await SeedAsync(r);
         var outboxId = Guid.NewGuid();
 
         var ok = await _sut.ApproveAsync(r.Id, Guid.NewGuid(), null, null,
@@ -352,7 +352,7 @@ public class ExpenseRepositoryTests
         var ev2 = NewOutbox(processedAt: Instant.FromUtc(2026, 5, 5, 0, 0));
         var ev3 = NewOutbox(failedPermanently: true);
         var ev4 = NewOutbox();
-        await SeedOutbox(ev1, ev2, ev3, ev4);
+        await SeedOutboxAsync(ev1, ev2, ev3, ev4);
 
         var got = await _sut.GetUnprocessedOutboxAsync(Instant.FromUtc(2026, 5, 10, 0, 0), limit: 10, ct: Xunit.TestContext.Current.CancellationToken);
         got.Should().HaveCount(2);
@@ -366,7 +366,7 @@ public class ExpenseRepositoryTests
         var due = NewOutbox(nextRetryAt: now - Duration.FromMinutes(1), retryCount: 2);
         var notDue = NewOutbox(nextRetryAt: now + Duration.FromMinutes(1), retryCount: 2);
         var fresh = NewOutbox();
-        await SeedOutbox(due, notDue, fresh);
+        await SeedOutboxAsync(due, notDue, fresh);
 
         var got = await _sut.GetUnprocessedOutboxAsync(now, limit: 10, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -384,7 +384,7 @@ public class ExpenseRepositoryTests
         var tag = NewOutbox(reportId, processedAt: Instant.FromUtc(2026, 5, 2, 0, 0),
             eventType: HoldedExpenseOutboxEventType.UpdateIncomingDocTag,
             occurredAt: Instant.FromUtc(2026, 5, 2, 0, 0));
-        await SeedOutbox(create, tag);
+        await SeedOutboxAsync(create, tag);
 
         var got = await _sut.GetLatestOutboxForReportAsync(reportId, Xunit.TestContext.Current.CancellationToken);
 
@@ -397,7 +397,7 @@ public class ExpenseRepositoryTests
         var reportId = Guid.NewGuid();
         var writtenOff = NewOutbox(reportId, failedPermanently: true, retryCount: 10,
             lastError: "gave up", processedAt: Instant.FromUtc(2026, 5, 5, 0, 0));
-        await SeedOutbox(writtenOff);
+        await SeedOutboxAsync(writtenOff);
 
         var ok = await _sut.RequeueOutboxForReportAsync(reportId, Xunit.TestContext.Current.CancellationToken);
 
@@ -414,7 +414,7 @@ public class ExpenseRepositoryTests
     public async Task RequeueOutboxForReportAsync_AlsoClearsAnEventMerelyWaitingOutABackoff()
     {
         var reportId = Guid.NewGuid();
-        await SeedOutbox(NewOutbox(reportId, retryCount: 3, lastError: "timeout",
+        await SeedOutboxAsync(NewOutbox(reportId, retryCount: 3, lastError: "timeout",
             nextRetryAt: Instant.FromUtc(2026, 5, 20, 0, 0)));
 
         var ok = await _sut.RequeueOutboxForReportAsync(reportId, Xunit.TestContext.Current.CancellationToken);
@@ -429,7 +429,7 @@ public class ExpenseRepositoryTests
     public async Task RequeueOutboxForReportAsync_ReturnsFalse_WhenNothingIsStuck()
     {
         var reportId = Guid.NewGuid();
-        await SeedOutbox(NewOutbox(reportId, processedAt: Instant.FromUtc(2026, 5, 5, 0, 0)));
+        await SeedOutboxAsync(NewOutbox(reportId, processedAt: Instant.FromUtc(2026, 5, 5, 0, 0)));
 
         var ok = await _sut.RequeueOutboxForReportAsync(reportId, Xunit.TestContext.Current.CancellationToken);
 
@@ -443,8 +443,8 @@ public class ExpenseRepositoryTests
         var b = MakeReport(status: ExpenseReportStatus.Approved);
         var c = MakeReport(status: ExpenseReportStatus.Approved);
         var d = MakeReport(status: ExpenseReportStatus.Approved);
-        await Seed(a, b, c, d);
-        await SeedOutbox(
+        await SeedAsync(a, b, c, d);
+        await SeedOutboxAsync(
             NewOutbox(a.Id, failedPermanently: true),
             NewOutbox(b.Id, failedPermanently: true),
             NewOutbox(c.Id, retryCount: 2, lastError: "timeout"),
@@ -462,8 +462,8 @@ public class ExpenseRepositoryTests
         // Counting it would leave a banner nobody can clear.
         var withdrawn = MakeReport(status: ExpenseReportStatus.Withdrawn);
         var approved = MakeReport(status: ExpenseReportStatus.Approved);
-        await Seed(withdrawn, approved);
-        await SeedOutbox(
+        await SeedAsync(withdrawn, approved);
+        await SeedOutboxAsync(
             NewOutbox(withdrawn.Id, failedPermanently: true),
             NewOutbox(approved.Id, failedPermanently: true,
                 eventType: HoldedExpenseOutboxEventType.UpdateIncomingDocTag),
@@ -483,7 +483,7 @@ public class ExpenseRepositoryTests
         // the write-off is what has to record it — otherwise the timeline says 9 and the error 10.
         var reportId = Guid.NewGuid();
         var ev = NewOutbox(reportId, retryCount: 9);
-        await SeedOutbox(ev);
+        await SeedOutboxAsync(ev);
 
         await _sut.MarkOutboxFailedPermanentlyAsync(
             ev.Id, "Gave up after 10 attempts.", Instant.FromUtc(2026, 5, 6, 0, 0),
@@ -522,7 +522,7 @@ public class ExpenseRepositoryTests
         // marks the outbox event processed only after every line's create + upload + approve
         // succeeds (idempotency: a retry after a failed upload reuses the persisted doc id).
         var report = MakeReport(status: ExpenseReportStatus.Approved);
-        await Seed(report);
+        await SeedAsync(report);
         var lineId = Guid.NewGuid();
         await _sut.AddLineAsync(report.Id,
             new ExpenseLine { Id = lineId, Description = "x", Amount = 10m }, Xunit.TestContext.Current.CancellationToken);
@@ -541,7 +541,7 @@ public class ExpenseRepositoryTests
     public async Task SetLineHoldedDocIdAsync_SecondWriteIsRefused_AndKeepsTheFirstId()
     {
         var report = MakeReport(status: ExpenseReportStatus.Approved);
-        await Seed(report);
+        await SeedAsync(report);
         var lineId = Guid.NewGuid();
         await _sut.AddLineAsync(report.Id,
             new ExpenseLine { Id = lineId, Description = "x", Amount = 10m }, Xunit.TestContext.Current.CancellationToken);
@@ -557,14 +557,14 @@ public class ExpenseRepositoryTests
         loaded.UpdatedAt.Should().Be(firstAt);
     }
 
-    private async Task Seed(params ExpenseReport[] reports)
+    private async Task SeedAsync(params ExpenseReport[] reports)
     {
         await using var ctx = await _factory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
         await ctx.ExpenseReports.AddRangeAsync(reports);
         await ctx.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 
-    private async Task SeedOutbox(params HoldedExpenseOutboxEvent[] events)
+    private async Task SeedOutboxAsync(params HoldedExpenseOutboxEvent[] events)
     {
         await using var ctx = await _factory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
         await ctx.HoldedExpenseOutboxEvents.AddRangeAsync(events);

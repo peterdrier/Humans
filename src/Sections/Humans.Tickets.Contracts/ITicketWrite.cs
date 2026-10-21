@@ -15,7 +15,7 @@ public interface ITicketWrite : IApplicationService
     /// missing <paramref name="checkedInAt"/> may still be filled), a ticket overrides a
     /// NotAttending declaration, and the first non-null <paramref name="checkedInAt"/> is kept.
     /// </summary>
-    Task SetParticipationFromTicketSyncAsync(
+    Task RecordParticipationAsync(
         Guid userId,
         int year,
         ParticipationStatus status,

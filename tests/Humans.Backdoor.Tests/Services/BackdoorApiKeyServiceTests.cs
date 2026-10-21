@@ -50,6 +50,26 @@ public class BackdoorApiKeyServiceTests
     }
 
     // ==========================================================================
+    // List
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task List_flags_a_key_whose_owner_the_service_would_refuse()
+    {
+        var suspended = Guid.NewGuid();
+        MakeEligible(_owner);
+        MakeEligible(suspended, state: UserState.AdminSuspended);
+        var good = new BackdoorApiKey { Id = Guid.NewGuid(), UserId = _owner, Label = "a", KeyHash = "h1", DisplayPrefix = "hmn_a" };
+        var stranded = new BackdoorApiKey { Id = Guid.NewGuid(), UserId = suspended, Label = "b", KeyHash = "h2", DisplayPrefix = "hmn_b" };
+        _repository.GetAllAsync(Arg.Any<CancellationToken>()).Returns([good, stranded]);
+
+        var rows = await _sut.ListAsync(Xunit.TestContext.Current.CancellationToken);
+
+        rows.Single(r => r.Id == good.Id).IsOwnerEligible.Should().BeTrue();
+        rows.Single(r => r.Id == stranded.Id).IsOwnerEligible.Should().BeFalse();
+    }
+
+    // ==========================================================================
     // Issue
     // ==========================================================================
 

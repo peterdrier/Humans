@@ -14,12 +14,12 @@ repository under `Data/`. **DbContext:**
 All three repositories are registered **Singleton** in `Section.cs`; they hold no state
 and take an `IDbContextFactory`. The services below are Scoped.
 
-`IGovernanceManagement` (internal) extends the public `IGovernanceService` (reads)
-and `IGovernanceWrite` (membership-tier expiry only). Readers outside this section inject
+`IGovernanceManagement` (internal) extends the public `IGovernanceService` (reads) with the
+membership-tier expiry and the section's own members. Readers outside this section inject
 `IGovernanceService` — tier reads from Users (popover, human summary, admin detail, duplicate
-accounts), Onboarding, Workgroups, Tickets, Surveys, Agent and Teams. `SystemTeamSyncJob` is the
-one writer: it calls `IGovernanceWrite.ExpireMembershipTiersAsync` and records the
-`TierDowngraded` audit itself.
+accounts), Onboarding, Workgroups, Tickets, Surveys, Agent and Teams. Nothing outside the section
+writes Governance data: the section's own `MembershipTierExpiryJob` calls
+`IGovernanceManagement.ExpireMembershipTiersAsync` and records the `TierDowngraded` audit.
 
 Cross-section reads inside the section go through the read surfaces
 (`IUserService`, `ITeamService`, `IConsentService`).
@@ -46,7 +46,7 @@ Cross-section calls via `IUserService`,
 `IRoleAssignmentService`, `IEmailService`, `IUserEmailService`, `INotificationEmitter`,
 `ISystemTeamSync`, `IAuditLogService`, `IHumansMetrics`,
 and the section's own `GovernanceEmails` builder. Implements `IGovernanceManagement` (which
-extends `IGovernanceService` and `IGovernanceWrite`), `IUserDataContributor`, `IUserMerge`.
+extends `IGovernanceService`), `IUserDataContributor`, `IUserMerge`.
 `EraseForUserAsync` calls `IApplicationRepository.ScrubFreeTextForUserAsync`,
 which clears the applicant's own free text (motivation, additional info,
 contribution, role understanding) and reviewer prose on `Applications` and

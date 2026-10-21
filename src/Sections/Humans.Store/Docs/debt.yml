@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 8
-inbox:
-  - added: 2026-10-21
-    id: STORE-7
-    what: "TodayInEventZoneAsync is written twice, in Services/Service.cs and Authorization/OrderAuthorizationHandler.cs, two copies of the event-zone 'today' that the deadline checks rely on. Found by a section-doctor shape read; one internal helper both call would do."
-    review: light
+inbox: []

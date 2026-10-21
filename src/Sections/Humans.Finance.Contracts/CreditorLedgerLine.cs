@@ -20,4 +20,8 @@ public sealed record CreditorLedgerLine
     public required decimal Credit { get; init; }
     public string? Type { get; init; }
     public string? Description { get; init; }
+
+    /// <summary>The owed balance (positive = owed to the member) after this line, accumulated
+    /// oldest-first (date, entry, line) from the account's first line.</summary>
+    public decimal RunningBalance { get; init; }
 }

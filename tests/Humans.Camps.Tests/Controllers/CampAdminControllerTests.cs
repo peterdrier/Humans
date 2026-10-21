@@ -227,7 +227,7 @@ public class CampAdminControllerTests
         ConfigureFailure(camps, action, targetId, actorId, new InvalidOperationException(reason));
         var controller = CreateController(camps, Substitute.For<ICampRoleService>(), users, actorId, logger);
 
-        var result = await InvokeAction(controller, action, targetId);
+        var result = await InvokeActionAsync(controller, action, targetId);
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Index");
         controller.TempData["ErrorMessage"].Should().Be(reason);
@@ -254,7 +254,7 @@ public class CampAdminControllerTests
         ConfigureFailure(camps, action, targetId, actorId, new IOException("Storage unavailable"));
         var controller = CreateController(camps, Substitute.For<ICampRoleService>(), users, actorId);
 
-        var act = () => InvokeAction(controller, action, targetId);
+        var act = () => InvokeActionAsync(controller, action, targetId);
 
         await act.Should().ThrowAsync<IOException>().WithMessage("Storage unavailable");
     }
@@ -326,7 +326,7 @@ public class CampAdminControllerTests
         }
     }
 
-    private static Task<IActionResult> InvokeAction(CampAdminController controller, string action, Guid targetId) => action switch
+    private static Task<IActionResult> InvokeActionAsync(CampAdminController controller, string action, Guid targetId) => action switch
     {
         "Approve" => controller.Approve(targetId, null),
         "Reject" => controller.Reject(targetId, "Rejected"),

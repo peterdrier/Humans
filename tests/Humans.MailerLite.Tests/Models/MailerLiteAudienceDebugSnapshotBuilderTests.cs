@@ -278,7 +278,7 @@ public class MailerLiteAudienceDebugSnapshotBuilderTests
     {
         var ml = Substitute.For<IMailerLiteService>();
         ml.ListGroupsAsync(Arg.Any<CancellationToken>()).Returns(groups);
-        ml.ListSubscribersAsync(Arg.Any<CancellationToken>()).Returns(ToAsyncEnumerable(subscribers));
+        ml.ListSubscribersAsync(Arg.Any<CancellationToken>()).Returns(StreamAsync(subscribers));
         return ml;
     }
 
@@ -289,7 +289,7 @@ public class MailerLiteAudienceDebugSnapshotBuilderTests
         return users;
     }
 
-    private static async IAsyncEnumerable<MailerLiteSubscriber> ToAsyncEnumerable(IReadOnlyList<MailerLiteSubscriber> items)
+    private static async IAsyncEnumerable<MailerLiteSubscriber> StreamAsync(IReadOnlyList<MailerLiteSubscriber> items)
     {
         foreach (var i in items) yield return i;
         await Task.CompletedTask;

@@ -276,6 +276,24 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         result.Should().BeTrue();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("Approve", ExpenseReportStatus.CoordinatorEndorsed, true)]
+    [Xunit.InlineData("FinanceReject", ExpenseReportStatus.CoordinatorEndorsed, true)]
+    [Xunit.InlineData("Approve", ExpenseReportStatus.Draft, false)]
+    [Xunit.InlineData("Approve", ExpenseReportStatus.Approved, false)]
+    [Xunit.InlineData("Approve", ExpenseReportStatus.Withdrawn, false)]
+    [Xunit.InlineData("FinanceReject", ExpenseReportStatus.Draft, false)]
+    [Xunit.InlineData("FinanceReject", ExpenseReportStatus.Approved, false)]
+    [Xunit.InlineData("FinanceReject", ExpenseReportStatus.Withdrawn, false)]
+    public async Task FinanceAdmin_FinanceDecision_OnlyWhileReportAwaitsOne(
+        string operationName, ExpenseReportStatus status, bool expected)
+    {
+        var op = Enum.Parse<ExpenseReportOperation>(operationName);
+        var report = MakeReport(SubmitterId, status);
+        var result = await EvaluateAsync(CreateUserWithRole(RoleNames.FinanceAdmin), report, op);
+        result.Should().Be(expected);
+    }
+
     // ─── FinanceAdmin edits on a member's behalf ──────────────────────────────
 
     [HumansTheory]

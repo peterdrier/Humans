@@ -39,8 +39,8 @@ public record GoogleResourceSnapshot(
     bool RestrictInheritedAccess = false);
 
 /// <summary>
-/// Cross-section Google resource reads. The link/unlink writes the Teams section makes live on
-/// <see cref="ITeamResourceWrite"/>.
+/// Cross-section Google resource reads. Every write on a team's linked resources is internal to
+/// <c>Humans.GoogleIntegration</c> (its team-resources page at <c>/Google/Teams/{slug}/Resources</c>).
 /// </summary>
 public interface ITeamResourceService : IApplicationService
 {

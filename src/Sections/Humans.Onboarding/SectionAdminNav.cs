@@ -13,14 +13,14 @@ internal sealed class SectionAdminNav : ISectionAdminNav
     [
         new("Onboarding", [
             new("Review", "OnboardingReview", "Index", null, null, "fa-solid fa-clipboard-check", PolicyNames.ReviewQueueAccess,
-                 PillCount: PillCounts.ReviewQueue)
+                 PillCount: PillCounts.ReviewQueueAsync)
         ])
     ];
 }
 
 internal static class PillCounts
 {
-    public static async ValueTask<int?> ReviewQueue(IServiceProvider sp)
+    public static async ValueTask<int?> ReviewQueueAsync(IServiceProvider sp)
     {
         // Pending-consent-review count: Users' UserInfo snapshot plus Consent's review map
         // (ConsentReviewPredicates.NeedsConsentReview), read through their public surfaces.

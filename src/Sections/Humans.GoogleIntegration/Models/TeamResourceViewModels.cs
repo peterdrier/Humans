@@ -1,7 +1,7 @@
 using Humans.GoogleIntegration.Contracts;
 using System.ComponentModel.DataAnnotations;
 
-namespace Humans.Teams.Models;
+namespace Humans.GoogleIntegration.Models;
 
 internal sealed class TeamResourcesViewModel
 {

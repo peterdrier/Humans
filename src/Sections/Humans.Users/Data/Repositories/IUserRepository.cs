@@ -144,13 +144,6 @@ internal partial interface IUserRepository : IRepository
         Guid userId, ContactSource source, CancellationToken ct = default);
 
     /// <summary>
-    /// Sets <c>User.LastConsentReminderSentAt</c> to <paramref name="sentAt"/>.
-    /// No-op if the user does not exist.
-    /// </summary>
-    Task SetLastConsentReminderSentAsync(
-        Guid userId, Instant sentAt, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the ids of every user whose <c>DeletionScheduledFor</c> is at
     /// or before <paramref name="now"/> and whose <c>DeletionEligibleAfter</c>
     /// is either null or at or before <paramref name="now"/>. Used by the

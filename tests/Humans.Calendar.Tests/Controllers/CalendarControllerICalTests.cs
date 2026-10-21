@@ -617,7 +617,7 @@ public class CalendarControllerICalTests
             id, "Weekly", null, null, null, Guid.NewGuid(), original, original.Plus(Duration.FromHours(1)),
             IsAllDay: false, RecurrenceRule: "FREQ=WEEKLY", RecurrenceTimezone: "Europe/Madrid", _now, _now));
 
-        async Task AssertRejected(OccurrenceOverrideFormViewModel form, string field, string key, params object[] arguments)
+        async Task AssertRejectedAsync(OccurrenceOverrideFormViewModel form, string field, string key, params object[] arguments)
         {
             var controller = CreateController();
             controller.HttpContext.RequestServices = services;
@@ -632,11 +632,11 @@ public class CalendarControllerICalTests
             result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(form);
         }
 
-        await AssertRejected(new() { OverrideTitle = new string('x', 201) }, "OverrideTitle", "Validation_MaxLength", "", 200);
-        await AssertRejected(new() { OverrideDescription = new string('x', 4001) }, "OverrideDescription", "Validation_MaxLength", "", 4000);
-        await AssertRejected(new() { OverrideLocation = new string('x', 501) }, "OverrideLocation", "Validation_MaxLength", "", 500);
-        await AssertRejected(new() { OverrideLocationUrl = "https://example.com/" + new string('x', 2000) }, "OverrideLocationUrl", "Validation_MaxLength", "", 2000);
-        await AssertRejected(new() { OverrideLocationUrl = "invalid" }, "OverrideLocationUrl", "Validation_InvalidValue");
+        await AssertRejectedAsync(new() { OverrideTitle = new string('x', 201) }, "OverrideTitle", "Validation_MaxLength", "", 200);
+        await AssertRejectedAsync(new() { OverrideDescription = new string('x', 4001) }, "OverrideDescription", "Validation_MaxLength", "", 4000);
+        await AssertRejectedAsync(new() { OverrideLocation = new string('x', 501) }, "OverrideLocation", "Validation_MaxLength", "", 500);
+        await AssertRejectedAsync(new() { OverrideLocationUrl = "https://example.com/" + new string('x', 2000) }, "OverrideLocationUrl", "Validation_MaxLength", "", 2000);
+        await AssertRejectedAsync(new() { OverrideLocationUrl = "invalid" }, "OverrideLocationUrl", "Validation_InvalidValue");
         await _calendar.DidNotReceive().OverrideOccurrenceAsync(Arg.Any<Guid>(), Arg.Any<Instant?>(),
             Arg.Any<OverrideOccurrenceDto>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<LocalDate?>());
 

@@ -16,7 +16,7 @@ namespace Humans.Shifts.Tests.ViewComponents;
 /// <summary>The member dashboard's shift block honours the off-season switch.</summary>
 public sealed class DashboardShiftsViewComponentTests
 {
-    private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
+    private readonly IShiftService _shiftMgmt = Substitute.For<IShiftService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly ISettingsService _settings = Substitute.For<ISettingsService>();

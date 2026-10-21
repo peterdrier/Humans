@@ -197,6 +197,19 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 
 - Regular humans **cannot** manage legal documents or document versions.
 - ConsentCoordinator **cannot** manage legal documents or versions — they can only review and clear/flag consent checks.
+### ConsentReminder
+
+**Table:** `consent_reminders` — when the re-consent reminder email last went to a member: one row per user id, written by `ConsentReminderService` (the only writer, through `IConsentReminderRepository`) for `SendReConsentReminderJob`.
+
+| Property | Type | Notes |
+|----------|------|-------|
+| UserId | Guid | PK; FK-only → Users section |
+| LastSentAt | Instant | The cooldown anchor; stamped after each successful enqueue |
+
+- **Legacy fallback.** Until the `consent.reminder-stamps` data migration reports done in production, a member with no row reads the frozen `users.LastConsentReminderSentAt` through `UserInfo` (`[Obsolete(HUM_USER_CONSENT_REMINDER)]`, one suppressed reader, `ConsentReminderService.LegacyLastSent`). The copy skips tombstones, and the fallback reads nothing for one, so a member erased before Users' erasure cleared that column exports no stamp.
+- **Merge.** No `IUserMerge`: rows stay keyed to the id they were written for; the job reads by the resolved survivor id.
+- **GDPR.** Export slice `ConsentReminder` (the stamps of every id in the member's merge chain, the survivor's legacy stamp until copied). Erasure deletes the member's row.
+
 - No one **can** update or delete consent records. They are permanently immutable.
 
 GitHub document discovery, metadata/raw content, commit-summary and prefix-content reads honour their existing caller token before fetching and while waiting. Cancellation propagates rather than becoming a missing summary or continuing to the next fetch; already-started Octokit requests may finish in the background.
@@ -208,7 +221,7 @@ GitHub document discovery, metadata/raw content, commit-summary and prefix-conte
 - When a Consent Coordinator flags a consent check: the review's `IsApproved` is set to false and `Status = Flagged`. This is an audit annotation only — `FlagConsentCheckAsync` provisions/deprovisions no team; Volunteers membership and app access are unaffected. `RejectSignupAsync` (the review's `RejectedAt` here, `UserState.Rejected` in Users) is the CC's only actual kick-out lever.
 - When a new document version is published: affected humans are notified to re-consent. A background job sends re-consent reminders.
 - Re-consent reminder emails render in each recipient’s supported preferred language, with English fallback for blank, malformed or unsupported preferences.
-- The reminder job attempts every eligible recipient before reporting per-recipient preparation, enqueue, or cooldown-stamp failures. Failed enqueues do not stamp the cooldown; successful reminders retain it. Collected failures still fail the job so Hangfire can retry, skipping recipients already in cooldown.
+- The reminder job skips a member stamped in `consent_reminders` within `ConsentReminderCooldownDays` and stamps each member it reminds. It attempts every eligible recipient before reporting per-recipient preparation, enqueue, or cooldown-stamp failures. Failed enqueues do not stamp the cooldown; successful reminders retain it. Collected failures still fail the job so Hangfire can retry, skipping recipients already in cooldown.
 - A background job suspends humans who no longer have valid consents for required documents.
 
 - Legal document names in notices may outgrow the 200-character title limit. Consent sends full copy to Notifications, which bounds stored previews by Unicode character, preserving the full title and existing detail in the body; short notice copy is unchanged.
@@ -235,13 +248,14 @@ GitHub document discovery, metadata/raw content, commit-summary and prefix-conte
 A lazy per-key cache miss cannot republish its old result after an intervening cache eviction or refresh.
 
 **Owning services:** `LegalDocumentService` (Statutes page), `LegalDocumentSyncService` (document-side — sole writer for `legal_documents`/`document_versions`, owning both the admin write surface `IAdminLegalDocumentService` and the GitHub-sync write surface `ILegalDocumentSyncManagement`; nobodies-collective/Humans#751), `ConsentService` (consent-side), `LegalDocumentSyncRunner` (the GitHub sync + re-consent fan-out body) — all in `Humans.Consent.Services`, `internal sealed`. `SyncLegalDocumentsJob` itself is `Humans.Consent/Jobs/SyncLegalDocumentsJob.cs` — `public` because Shell names the concrete type when it registers and schedules it.
-**Owned tables:** `legal_documents`, `document_versions`, `consent_records`, `consent_reviews`
+**Owned tables:** `legal_documents`, `document_versions`, `consent_records`, `consent_reviews`, `consent_reminders`
 **Status:** (G5) Own project — `src/Sections/Humans.Consent` + `src/Sections/Humans.Consent/Contracts` (nobodies-collective/Humans#866). Owns `LegalDbContext` and its migrations; entities, repositories, services, controllers, views and `ConsentResource` are all internal to the assembly. All cross-domain navs (`LegalDocument.Team`, `Team.LegalDocuments`) have been stripped. The context keeps the name `LegalDbContext` and the `legal_*` table names — a G5 move changes files, never the schema (nobodies-collective/Humans#1012).
 
 - Services live in `Humans.Consent/Services/` and take no `DbContext`, `IDbContextFactory<>` or store type in their constructors.
 - `ILegalDocumentRepository` (impl `LegalDocumentRepository` in `Humans.Consent/Data/`) is the only code path that touches `legal_documents` and `document_versions` via `DbContext`.
 - `IConsentRepository` (impl `ConsentRepository` in `Humans.Consent/Data/`) is the only code path that touches `consent_records` via `DbContext`. Exposes `AddAsync` and `GetXxxAsync` only — no `UpdateAsync`/`DeleteAsync`.
 - `IConsentReviewRepository` (impl `ConsentReviewRepository`) is the only code path that touches `consent_reviews`.
+- `IConsentReminderRepository` (impl `ConsentReminderRepository`) is the only code path that touches `consent_reminders`.
 - **Decorator decision (T-04, 2026-05-16)** — Two-layer cache landed:
   - **Global** — `CachingLegalDocumentSyncService` (Singleton in `Humans.Consent.Services`) wraps `LegalDocumentSyncService` (inner, keyed Scoped; also the sole writer, implementing both `ILegalDocumentSyncManagement` and `IAdminLegalDocumentService`). Holds the active+required document set as `LegalDocumentInfo[]` keyed by document id, plus a version-id → document-id index. Serves `GetActiveRequiredDocumentsForTeamsAsync`, `GetRequiredDocumentVersionsForTeamAsync`, `GetRequiredVersionsAsync`, `GetVersionByIdAsync` from cache. `LegalDocumentSyncService` calls `ILegalDocumentCacheInvalidator.InvalidateAll()` directly after each successful repository write (admin create/update/archive/version-summary, GitHub-sync version add/touch) — there is no SaveChanges interceptor (nobodies-collective/Humans#751). Eager warmup at startup: the decorator inherits `TrackedCache<Guid, LegalDocumentInfo>` with `warmOnStartup: true`, so its own `IHostedService.StartAsync` drives `WarmAllAsync` at boot (non-fatal); no separate warmup hosted service. Team names are stitched at warm time via `ITeamService.GetTeamsWithParentsAsync` so the cache build never walks a cross-domain nav.
   - **Per-user** — `CachingConsentService` (Singleton in `Humans.Consent.Services`) wraps `ConsentService` (inner, keyed Scoped). Holds `UserConsentInfo` (the user's explicitly consented version-id set, with the merge source-id chain unioned at warm time) keyed by user id. Serves `GetConsentedVersionIdsAsync`, `GetConsentMapForUsersAsync`, and `GetRequiredConsentRowsForUserAsync` from cache. Lazy per-user warm. **Synchronous refresh on `SubmitConsentAsync`**: the decorator override refreshes the user (and any merged-source-id tombstones) via `ReplaceAsync` inline before returning, so the controller's next-page consent-banner check observes the fresh state. `AccountMergeService.MergeAsync` evicts both source and target post-commit so the surviving target's cached set rebuilds against the new chain.

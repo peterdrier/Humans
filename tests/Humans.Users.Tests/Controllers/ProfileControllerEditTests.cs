@@ -389,13 +389,13 @@ public class ProfileControllerEditTests
     {
         using var request = new CancellationTokenSource();
         _controller.HttpContext.RequestAborted = request.Token;
-        async ValueTask<UserInfo?> ReadViewer(CancellationToken ct)
+        async ValueTask<UserInfo?> ReadViewerAsync(CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
             return new User { Id = _userId, PreferredLanguage = "en" }.ToUserInfo();
         }
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(call => ReadViewer(call.Arg<CancellationToken>()));
+            .Returns(call => ReadViewerAsync(call.Arg<CancellationToken>()));
         Func<Task<IActionResult>> load = () => _controller.Medical(request.Token);
         (await load()).Should().BeOfType<ViewResult>();
         await request.CancelAsync();
@@ -459,7 +459,7 @@ public class ProfileControllerEditTests
         var result = await _controller.Edit(model);
 
         result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
-        _controller.ModelState[string.Empty]!.Errors.Should().ContainSingle()
+        _controller.ModelState[nameof(ProfileViewModel.NoPriorBurnExperience)]!.Errors.Should().ContainSingle()
             .Which.ErrorMessage.Should().Be("Profile_BurnerCVRequired");
         await _userService.DidNotReceiveWithAnyArgs().SaveProfileLanguagesAsync(default, default!, default);
         await _onboardingService.DidNotReceiveWithAnyArgs().SetConsentCheckPendingIfEligibleAsync(default, default);
