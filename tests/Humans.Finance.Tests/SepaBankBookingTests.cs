@@ -1721,7 +1721,10 @@ public class SepaBankBookingTests
                 .Where(i => !(unboundSecond && i == 1))
                 .Select(i => new HoldedCreditorContact
                 {
-                    UserId = users[i], HoldedContactId = "c1", SupplierAccountNum = accounts[i], Source = CreditorContactSource.Auto,
+                    UserId = users[i],
+                    HoldedContactId = "c1",
+                    SupplierAccountNum = accounts[i],
+                    Source = CreditorContactSource.Auto,
                 })
                 .ToList());
         SeedOwed(30m, (OtherAccount, 30m), (40000009, 30m));
