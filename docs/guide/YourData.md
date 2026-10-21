@@ -67,9 +67,10 @@ delete:
 
 - **Straight away:** you're removed from your teams and any roles, and you start
   losing the access that came with them.
-- **For 30 days:** you can still sign in, and you can **change your mind and
-  cancel** the deletion during this window.
-- **After 30 days:** your personal information is automatically erased
+- **Until the erase date:** you can still sign in, and you can **change your mind and
+  cancel** the deletion. The erase date is 30 days after you ask — or, if you hold a
+  ticket for the current event, its post-event hold date, whichever is later.
+- **After the erase date:** your personal information is automatically erased
   (anonymised) in the background, section by section — profile, contact details,
   emails, photo, tickets, feedback, messages, survey answers, the lot.
 - **Your `@nobodies.team` account is suspended** as part of that, and your Google
@@ -81,7 +82,7 @@ delete:
   commercial law), and the consent and audit logs that prove we were allowed to
   hold your data in the first place — and that we erased it.
 
-So nothing is rushed, and you have a full month to undo it if you change your
+So nothing is rushed, and you have at least a full month to undo it if you change your
 mind.
 
 ## Quick answers
@@ -91,8 +92,8 @@ mind.
 | Who can see my phone number? | Only who you allow — set it per field on `/Profile/Me/Edit` |
 | Can I stop the marketing/update emails? | Yes — Profile → Communication preferences. A few essential ones stay on |
 | How do I get everything you have on me? | Profile → My Data → Download My Data |
-| Can I delete my account? | Yes — Profile → My Data. You get 30 days to cancel before anything is erased |
-| I deleted by mistake | Sign in within 30 days and cancel the deletion. After that it's done |
+| Can I delete my account? | Yes — Profile → My Data. You get 30 days to cancel before anything is erased — longer if you hold a ticket for the current event (until its post-event hold date) |
+| I deleted by mistake | Sign in before the erase date (30 days, or the ticket hold date if later) and cancel the deletion. After that it's done |
 | Someone's messaging me and I don't want it | Turn off Facilitated Messages in your communication preferences |
 
 ## Related

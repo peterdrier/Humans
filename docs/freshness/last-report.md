@@ -6,9 +6,9 @@
 **Worktree base:** `origin/main` @ `5eddd89c` (frozen at start; upstream/main is an ancestor)
 **Diff window:** 680 changed files, 12 non-merge commits
 
-**Counts:** 8 of 9 mechanical entries dirty (`code-analysis-suppressions` clean). 143 editorial docs
-dirty, all reviewed; 52 editorial docs changed. All 9 verifiers in `run-all.sh` pass, `diff-mode.sh`
-passes 17/17, and `verify-triggers.sh --check` finds no dead triggers after repair.
+**Result:** every mechanical entry was dirty except `code-analysis-suppressions`. Every dirty
+editorial doc was reviewed. All verifiers in `run-all.sh` and `diff-mode.sh` pass, and
+`verify-triggers.sh --check` finds no dead triggers after repair.
 
 Docs were checked against current source, which includes the Users decomposition (#2055) and the
 controller-intent work that landed on origin/main after the anchor. Those changes drove most fixes.
@@ -19,13 +19,12 @@ controller-intent work that landed on origin/main after the anchor. Those change
 - `dev-stats`: 2 rows appended. Class/interface counts come from reforge for both days.
 - `authorization-inventory`: `MyDataController` added to the Consent map; drifted `AuthorizeAsync`
   and view-map line pins refreshed; TeamResources and CityPlanning call sites added.
-- `dependency-graph`: edges rebuilt from source (369 eager, 22 lazy). New nodes `HoldedDocumentSync`,
-  `SepaBankBooking`, `EmailProblemsService`. Stale edges from before the Users decomposition removed.
-  A prose note says `AgentUserSnapshotProvider`/`AgentToolDispatcher` are unregistered collaborators and
-  therefore not drawn.
+- `dependency-graph`: edges rebuilt from source. New nodes `HoldedDocumentSync`, `SepaBankBooking`,
+  `EmailProblemsService`, `AgentUserSnapshotProvider`, `AgentToolDispatcher`. Stale edges from before
+  the Users decomposition removed.
 - `service-data-access-map`: `ExpenseHoldedBookingService` heading added; constructor-vs-doc drift
   fixed in 8 more section maps; rollup drops retired invalidators and cache keys, adds the new tables
-  (consent reviews, membership tiers, workspace identities, payment details); context count 33 to 35.
+  (consent reviews, membership tiers, workspace identities, payment details).
 - `docs-readme-index`: Backdoor `finance-read-api` and Tickets `accountant-donor-list` indexed.
 - `about-page-packages`, `guid-reservations`: checked against source, no change.
 
