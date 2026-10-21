@@ -12,7 +12,6 @@ using Humans.CityPlanning.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using NodaTime;
 
@@ -49,7 +48,6 @@ internal sealed class DevPersonaSeeder(
     IMembershipCalculator membershipCalculator,
     IHumanLifecycleService humanLifecycleService,
     IClock clock,
-    IMemoryCache cache,
     IOptions<CityPlanningOptions> cityPlanningOptions,
     ILogger<DevPersonaSeeder> logger)
 {
@@ -192,8 +190,6 @@ internal sealed class DevPersonaSeeder(
         // them are suspended by the nightly SuspendNonCompliantMembersJob once a
         // document's grace period lapses (#867).
         await EnsureActiveAsync(id);
-
-        cache.InvalidateUserAccess(id);
 
         logger.LogInformation(
             "DEV: seeded persona {Email} with roles [{Roles}]",
@@ -572,8 +568,6 @@ internal sealed class DevPersonaSeeder(
 
         if (changed)
         {
-            teamWrite.InvalidateActiveTeamsCache();
-            cache.InvalidateUserAccess(coordinatorUserId);
             logger.LogInformation(
                 "DEV: ensured coordinator teams — department {DeptId}, sub-team {SubTeamId}",
                 department.Id, subTeam.Id);
@@ -613,7 +607,6 @@ internal sealed class DevPersonaSeeder(
             return;
         }
 
-        var changed = false;
         var team = await teamService.GetTeamBySlugAsync(teamSlug);
         if (team is null)
         {
@@ -629,17 +622,10 @@ internal sealed class DevPersonaSeeder(
                 "City Planning",
                 "Dev-seeded city planning team",
                 requiresApproval: false);
-            changed = true;
             logger.LogInformation("DEV: seeded city planning team {Slug}", teamSlug);
         }
 
-        changed |= await EnsureSeededTeamMembershipAsync(team.Id, userId, TeamMemberRole.Coordinator, clock.GetCurrentInstant());
-
-        if (changed)
-        {
-            teamWrite.InvalidateActiveTeamsCache();
-            cache.InvalidateUserAccess(userId);
-        }
+        await EnsureSeededTeamMembershipAsync(team.Id, userId, TeamMemberRole.Coordinator, clock.GetCurrentInstant());
     }
 
     /// <summary>

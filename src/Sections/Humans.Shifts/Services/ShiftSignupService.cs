@@ -30,7 +30,7 @@ internal sealed class ShiftSignupService(
     IAuditLogService auditLogService,
     INotificationEmitter notificationService,
     IAdminAuthorizationService adminAuthorization,
-    IShiftViewInvalidator viewInvalidator,
+    CachingShiftViewService viewInvalidator,
     IServiceProvider serviceProvider,
     IClock clock,
     ILogger<ShiftSignupService> logger,

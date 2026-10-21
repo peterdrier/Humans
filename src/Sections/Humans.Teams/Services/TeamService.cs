@@ -28,11 +28,10 @@ internal sealed class TeamService(
     IAuditLogService auditLogService,
     INotificationEmitter notificationService,
     IShiftService shiftManagementService,
-    IShiftAuthorizationInvalidator shiftAuthInvalidator,
     IAdminAuthorizationService adminAuthorization,
     IServiceProvider serviceProvider,
     IClock clock,
-    ILogger<TeamService> logger) : ITeamManagementService, ITeamSeeding, IGoogleGroupMembershipSource, IUserDataContributor, IUserMerge, IEarlyEntryProvider
+    ILogger<TeamService> logger) : ITeamManagementService, ITeamSeeding, IGoogleGroupMembershipSource, IUserMerge, IEarlyEntryProvider
 {
     private static readonly ResourceManager NoticeResources = new(typeof(TeamsResource));
     private static readonly TrackedLock JoinRequestLock = new("Teams.JoinRequest");
@@ -280,8 +279,7 @@ internal sealed class TeamService(
         }
 
         var becomingChild = parentTeamId.HasValue && !team.ParentTeamId.HasValue;
-        var parentChanging = parentTeamId != team.ParentTeamId;
-        var usersNeedingShiftAuthorizationInvalidation = parentChanging
+        var managementUserIds = becomingChild
             ? await repo.GetUserIdsWithManagementOnTeamAsync(teamId, cancellationToken)
             : (IReadOnlyList<Guid>)[];
 
@@ -328,11 +326,9 @@ internal sealed class TeamService(
         var updateConflict = await repo.UpdateTeamAsync(team, cancellationToken);
         if (updateConflict != TeamUpdateConflict.None) return new(Conflict: updateConflict);
 
-        InvalidateShiftAuthorization(usersNeedingShiftAuthorizationInvalidation);
-
-        if (becomingChild && usersNeedingShiftAuthorizationInvalidation.Count > 0)
+        if (managementUserIds.Count > 0)
         {
-            foreach (var userId in usersNeedingShiftAuthorizationInvalidation)
+            foreach (var userId in managementUserIds)
                 await SystemTeamSync.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, cancellationToken);
         }
 
@@ -882,15 +878,13 @@ internal sealed class TeamService(
 
         var wasCoordinator = member.Role == TeamMemberRole.Coordinator;
 
-        var removedAssignments = await MarkMemberLeftWithOutboxAsync(member, null, cancellationToken);
+        await MarkMemberLeftWithOutboxAsync(member, null, cancellationToken);
 
         await auditLogService.LogAsync(
             AuditAction.TeamLeft, nameof(Team), teamId,
             $"Left {team.Name}",
             userId,
             relatedEntityId: userId, relatedEntityType: nameof(User));
-
-        InvalidateShiftAuthorizationIfNeeded(userId, removedAssignments);
 
         if (wasCoordinator)
         {
@@ -1161,15 +1155,12 @@ internal sealed class TeamService(
             actorUserId,
             relatedEntityId: userId, relatedEntityType: nameof(User));
 
-        InvalidateShiftAuthorizationIfNeeded(userId, removedAssignments);
-        if (mergeTarget is not null)
+        if (mergeTarget is not null && (wasCoordinator || removedAssignments.Count > 0))
         {
-            InvalidateShiftAuthorizationIfNeeded(mergeTarget.UserId, removedAssignments);
-            if (wasCoordinator || removedAssignments.Count > 0)
-                await auditLogService.LogAsync(
-                    AuditAction.TeamMemberRoleChanged, nameof(Team), teamId,
-                    $"Folded {removedAssignments.Count} role assignment(s) from merged account {userId}; source coordinator: {wasCoordinator}",
-                    actorUserId, mergeTarget.UserId, nameof(User));
+            await auditLogService.LogAsync(
+                AuditAction.TeamMemberRoleChanged, nameof(Team), teamId,
+                $"Folded {removedAssignments.Count} role assignment(s) from merged account {userId}; source coordinator: {wasCoordinator}",
+                actorUserId, mergeTarget.UserId, nameof(User));
         }
 
         try
@@ -1392,18 +1383,6 @@ internal sealed class TeamService(
         definition.Priorities = priorities;
         definition.SortOrder = sortOrder;
 
-        var usersNeedingShiftAuthorizationInvalidation =
-            team.SystemTeamType == SystemTeamType.None &&
-            definition.IsManagement != isManagement &&
-            definition.Assignments.Count > 0
-                ? definition.Assignments
-                    .Select(a => a.TeamMember?.UserId)
-                    .Where(uid => uid.HasValue)
-                    .Select(uid => uid!.Value)
-                    .Distinct()
-                    .ToList()
-                : [];
-
         if (isManagement && !definition.IsManagement)
         {
             var existingManagement = await repo.OtherRoleHasIsManagementAsync(
@@ -1427,8 +1406,6 @@ internal sealed class TeamService(
             $"Role definition '{name}' updated for team {team.Name}",
             actorUserId,
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
-
-        InvalidateShiftAuthorization(usersNeedingShiftAuthorizationInvalidation);
 
         return definition;
     }
@@ -1470,18 +1447,6 @@ internal sealed class TeamService(
             throw new InvalidOperationException("User does not have permission to manage role definitions for this team");
 
         var isManagement = !definition.IsManagement;
-        var usersNeedingShiftAuthorizationInvalidation =
-            IsShiftAuthorizationDefinition(definition) &&
-            definition.IsManagement != isManagement &&
-            definition.Assignments.Count > 0
-                ? definition.Assignments
-                    .Select(a => a.TeamMember?.UserId)
-                    .Where(uid => uid.HasValue)
-                    .Select(uid => uid!.Value)
-                    .Distinct()
-                    .ToList()
-                : [];
-
         if (isManagement)
         {
             if (definition.Assignments.Count > 0)
@@ -1506,8 +1471,6 @@ internal sealed class TeamService(
             $"IsManagement set to {isManagement} on role '{definition.Name}' in {team.Name}",
             actorUserId,
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
-
-        InvalidateShiftAuthorization(usersNeedingShiftAuthorizationInvalidation);
 
         return new TeamRoleManagementToggleResult(definition.Name, definition.IsManagement);
     }
@@ -1606,8 +1569,6 @@ internal sealed class TeamService(
             actorUserId,
             relatedEntityId: targetUserId, relatedEntityType: nameof(User));
 
-        InvalidateShiftAuthorizationIfNeeded(definition, targetUserId);
-
         // Role assignment can change Coordinators system-team eligibility (management
         // roles promote) — reconcile as part of the mutation.
         await SystemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.Coordinators, cancellationToken);
@@ -1635,8 +1596,6 @@ internal sealed class TeamService(
             $"Unassigned from role '{definition.Name}' in {team.Name}",
             actorUserId,
             relatedEntityId: targetUserId, relatedEntityType: nameof(User));
-
-        InvalidateShiftAuthorizationIfNeeded(definition, targetUserId);
 
         // Losing a (possibly management) role can change Coordinators system-team
         // eligibility — reconcile as part of the mutation.
@@ -1831,18 +1790,10 @@ internal sealed class TeamService(
     }
 
     // Cache mutation/invalidation are owned by CachingTeamService.
-    public void RemoveMemberFromAllTeamsCache(Guid userId) { }
-
     public void InvalidateActiveTeamsCache() { }
 
-    public async Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default)
-    {
-        var now = clock.GetCurrentInstant();
-        var count = await repo.RevokeAllMembershipsAsync(userId, now, cancellationToken);
-        if (count > 0)
-            RemoveMemberFromAllTeamsCache(userId);
-        return count;
-    }
+    public Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        repo.RevokeAllMembershipsAsync(userId, clock.GetCurrentInstant(), cancellationToken);
 
     public async Task ReassignAsync(
         Guid sourceUserId,
@@ -1941,20 +1892,6 @@ internal sealed class TeamService(
         return [membershipSlice, joinRequestSlice, earlyEntrySlice];
     }
 
-    private static readonly IReadOnlyDictionary<string, string?> Erasure =
-        new Dictionary<string, string?>(StringComparer.Ordinal)
-        {
-            [TeamMemberships] =
-                "Partially retained: the membership row (team, role, joined/left dates, keyed to " +
-                "the user id the Users section tombstones) is the association's record of who " +
-                "worked on what — Ley Orgánica 1/2002 Art. 14, GDPR Art. 17(3)(b). Every still-" +
-                "active membership is ended immediately.",
-            [TeamJoinRequests] = null,
-            [TeamEarlyEntry] = null
-        };
-
-    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
-
     /// <summary>
     /// Ends live memberships, then hard-deletes the join requests (they carry the
     /// applicant's free-text message) and the early-entry grants.
@@ -1965,9 +1902,7 @@ internal sealed class TeamService(
         await repo.DeleteJoinRequestsForUserAsync(userId, ct);
         await DeleteEarlyEntryGrantsForUserAsync(userId, ct);
 
-        // No cache call here: this type is the inner service, where the invalidation
-        // methods are empty bodies — the real ones live on CachingTeamService. The
-        // deletion orchestrator drops both team caches through the decorator instead.
+        // No cache call here: Gdpr reaches this through CachingTeamService, which evicts.
     }
 
     // ==========================================================================
@@ -2116,24 +2051,6 @@ internal sealed class TeamService(
         PendingRequestCount: pendingCounts.TryGetValue(team.Id, out var pending) ? pending : 0,
         EarlyEntryEnabled: team.EarlyEntryEnabled);
 
-    private void InvalidateShiftAuthorizationIfNeeded(Guid userId, IEnumerable<TeamRoleAssignment> roleAssignments)
-    {
-        if (roleAssignments.Any(assignment => IsShiftAuthorizationDefinition(assignment.TeamRoleDefinition)))
-            shiftAuthInvalidator.Invalidate(userId);
-    }
-
-    private void InvalidateShiftAuthorizationIfNeeded(TeamRoleDefinition definition, Guid userId)
-    {
-        if (IsShiftAuthorizationDefinition(definition))
-            shiftAuthInvalidator.Invalidate(userId);
-    }
-
-    private void InvalidateShiftAuthorization(IEnumerable<Guid> userIds)
-    {
-        foreach (var userId in userIds.Distinct())
-            shiftAuthInvalidator.Invalidate(userId);
-    }
-
     private async Task<Team> GetRoleDefinitionTeamAsync(TeamRoleDefinition definition, CancellationToken ct)
     {
         var teamsById = await repo.GetByIdsWithParentsAsync([definition.TeamId], ct);
@@ -2141,10 +2058,6 @@ internal sealed class TeamService(
             ? team
             : throw new InvalidOperationException($"Team {definition.TeamId} not found");
     }
-
-    private static bool IsShiftAuthorizationDefinition(TeamRoleDefinition definition) =>
-        definition.IsManagement &&
-        definition.Team.SystemTeamType == SystemTeamType.None;
 
     private async Task<Guid> ResolveMembershipTargetAsync(Guid userId, CancellationToken ct)
     {

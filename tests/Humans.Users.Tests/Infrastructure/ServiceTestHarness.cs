@@ -70,12 +70,10 @@ public abstract class ServiceTestHarness : IDisposable
     // Bare substitutes for the four interfaces that ~30 service tests stub
     // identically. xUnit creates a fresh test class instance per test, so
     // these are per-test-fresh — no state leak across tests. Override behavior
-    // in a derived ctor via `.When(...).Do(...)` or `.Returns(...)` if needed
-    // (e.g., TeamServiceTests redirects ShiftAuthInvalidator to Cache).
+    // in a derived ctor via `.When(...).Do(...)` or `.Returns(...)` if needed.
 
     private protected IAuditLogService AuditLog { get; } = Substitute.For<IAuditLogService>();
     private protected INotificationEmitter Notifier { get; } = Substitute.For<INotificationEmitter>();
-    private protected IShiftAuthorizationInvalidator ShiftAuthInvalidator { get; } = Substitute.For<IShiftAuthorizationInvalidator>();
     private protected IAdminAuthorizationService AdminAuthorization { get; } = Substitute.For<IAdminAuthorizationService>();
 
     protected ServiceTestHarness(Instant? now = null)

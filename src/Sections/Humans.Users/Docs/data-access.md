@@ -128,9 +128,7 @@ No repository. Implements `SuspendNonCompliantMembersJob`'s body
 have not re-consented after the grace period and runs each suspension's
 downstream side effects. Cross-section calls via `IUserService`,
 `IMembershipCalculator`, `IEmailService`, the section's own `UsersEmails` builder, `INotificationEmitter`,
-`IAuditLogService`, `IHumansMetrics`, plus `IActiveTeamsCacheInvalidator`,
-`IRoleAssignmentClaimsCacheInvalidator`, and `IShiftAuthorizationInvalidator`
-for cache eviction. Google access ends at the next Google reconciliation,
+`IAuditLogService` and `IHumansMetrics`. Google access ends at the next Google reconciliation,
 which excludes suspended humans. No direct DB access or `IMemoryCache`.
 
 ### UsersEmails (Scoped, internal)
@@ -258,8 +256,7 @@ No repository. GDPR right-to-deletion orchestrator. Fans out over
 `IRoleAssignmentWrite`, `IGdprService` (runs every section's
 `IUserDataContributor` erasure), `ITicketService`, `IAuditLogService`,
 `IEmailService` (messages built by `UsersEmails`). Refreshes `UserInfo` via
-`IUserInfoSliceRefresher`; invalidates `IRoleAssignmentClaimsCacheInvalidator`,
-`IShiftAuthorizationInvalidator`, `IShiftViewInvalidator`. No cache, no
+`IUserInfoSliceRefresher`. No cache, no
 direct DB access — all writes go through owning services.
 
 ### AccountMergeService (Scoped)
@@ -277,8 +274,7 @@ owned-table reassignment, so `AccountMergeService` does not inject other
 sections' repositories. Both tables it touches are **owned by the Users
 section** (no cross-section table access). Implements `IAccountMergeService`,
 `IUserDataContributor`. Calls the section's own `IUserManagement`; cross-section
-calls via `IRoleAssignmentWrite`, `INotificationService`, `IAuditLogService`,
-`IActiveTeamsCacheInvalidator`, plus the `IUserMerge`
+calls via `ITeamWrite`, `INotificationService`, `IAuditLogService`, plus the `IUserMerge`
 aggregator. Consent's per-user cache needs no merge signal: it rebuilds an entry
 whose `UserInfo.AllUserIds` changed when the tombstone lands.
 

@@ -1,7 +1,6 @@
 using Xunit;
 using Microsoft.EntityFrameworkCore;
 using Humans.Users.Data;
-using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.Users.Tests.Infrastructure;
 using Humans.AuditLog.Contracts;
@@ -23,8 +22,7 @@ public class AccountMergeServiceMergeTests
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly IUserInfoSliceRefresher _userInfoRefresher = Substitute.For<IUserInfoSliceRefresher>();
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
-    private readonly IActiveTeamsCacheInvalidator _activeTeamsCacheInvalidator = Substitute.For<IActiveTeamsCacheInvalidator>();
-    private readonly IRoleAssignmentWrite _roles = Substitute.For<IRoleAssignmentWrite>();
+    private readonly ITeamWrite _teams = Substitute.For<ITeamWrite>();
     private readonly INotificationService _notify = Substitute.For<INotificationService>();
     private readonly List<IUserMerge> _userMerges = [];
     private readonly FakeClock _clock = new(NodaTime.Instant.FromUtc(2026, 5, 5, 12, 0));
@@ -41,7 +39,7 @@ public class AccountMergeServiceMergeTests
         new(
             mergeRepository ?? _mergeRepo, _userEmailRepo, _audit, _userInfoRefresher,
             NullLogger<AccountMergeService>.Instance, _clock,
-            _userMerges, _userService, _activeTeamsCacheInvalidator, _roles, _notify);
+            _userMerges, _userService, _teams, _notify);
 
     private void SetupUsers(Guid sourceId, Guid targetId, bool sourceTombstoned = false)
     {
@@ -164,6 +162,41 @@ public class AccountMergeServiceMergeTests
         var act = () => BuildSut().MergeAsync(tgt, src, Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*tombstoned*");
+    }
+
+    [HumansFact]
+    public async Task MergeAsync_EvictsTeamGraphAfterTombstone()
+    {
+        var src = Guid.NewGuid(); var tgt = Guid.NewGuid(); var admin = Guid.NewGuid();
+        SetupUsers(src, tgt);
+
+        await BuildSut().MergeAsync(tgt, src, admin, ct: TestContext.Current.CancellationToken);
+
+        // The team graph stitches members' UserInfo; the tombstone changes what the archived
+        // id resolves to, so the eviction must follow it, not ride Teams' own ReassignAsync.
+        Received.InOrder(() =>
+        {
+            _ = _userService.AnonymizeForMergeAsync(src, tgt,
+                Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>());
+            _teams.InvalidateActiveTeamsCache();
+        });
+        _teams.Received(1).InvalidateActiveTeamsCache();
+    }
+
+    [HumansFact]
+    public async Task MergeAsync_FanOutThrows_StillEvictsTeamGraph()
+    {
+        var src = Guid.NewGuid(); var tgt = Guid.NewGuid(); var admin = Guid.NewGuid();
+        SetupUsers(src, tgt);
+        var merger = Substitute.For<IUserMerge>();
+        merger.ReassignAsync(src, tgt, admin, Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("boom")));
+        _userMerges.Add(merger);
+
+        var act = () => BuildSut().MergeAsync(tgt, src, admin, ct: TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _teams.Received(1).InvalidateActiveTeamsCache();
     }
 
     [HumansFact]

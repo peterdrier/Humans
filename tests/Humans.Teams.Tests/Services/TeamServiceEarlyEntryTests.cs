@@ -47,7 +47,6 @@ public sealed class TeamServiceEarlyEntryTests
             _audit,
             Substitute.For<INotificationEmitter>(),
             Substitute.For<IShiftManagement>(),
-            Substitute.For<IShiftAuthorizationInvalidator>(),
             Substitute.For<IAdminAuthorizationService>(),
             new ServiceLocatorBuilder()
                 .With<IGoogleSyncOutboxService>()

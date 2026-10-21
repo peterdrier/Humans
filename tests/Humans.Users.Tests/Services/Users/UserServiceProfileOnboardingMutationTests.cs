@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Base.Extensions;
-using Humans.Base.Interfaces.Caching;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
 using Humans.Users.Data.Repositories;
@@ -21,8 +20,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     private readonly IFileStorage _fileStorage = Substitute.For<IFileStorage>();
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository =
         Substitute.For<ICommunicationPreferenceRepository>();
-    private readonly IRoleAssignmentClaimsCacheInvalidator _claimsCacheInvalidator =
-        Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
 
     public UserServiceProfileOnboardingMutationTests()
     {
@@ -37,7 +34,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             userRepository,
             _communicationPreferenceRepository,
             AdminAuthorization,
-            _claimsCacheInvalidator,
             _fileStorage,
             Clock,
             NullLogger<UserService>.Instance, AuditLog);
@@ -366,7 +362,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     // decomposition commit 12; covered by Humans.Consent.Tests). Users keeps the state transitions.
 
     [HumansFact]
-    public async Task SetRejectedAsync_SetsRejectedState_AndInvalidatesClaims()
+    public async Task SetRejectedAsync_SetsRejectedState()
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
@@ -376,7 +372,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         result.Success.Should().BeTrue();
         var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         user.State.Should().Be(UserState.Rejected);
-        _claimsCacheInvalidator.Received(1).Invalidate(userId);
     }
 
     [HumansFact]
@@ -434,7 +429,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         user.State.Should().Be(UserState.Suspended);
         // The reason goes to the audit log and the notification, never onto the profile row.
         profile.AdminNotes.Should().Be("Prefers email contact");
-        _claimsCacheInvalidator.Received(1).Invalidate(userId);
     }
 
     [HumansFact]
@@ -468,7 +462,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         fresh.State.Should().Be(UserState.Active);
     }
     [HumansFact]
-    public async Task SetDeletionPendingAsync_WhenUpdated_InvalidatesClaims()
+    public async Task SetDeletionPendingAsync_WhenUpdated_SetsDeletePendingState()
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
@@ -483,11 +477,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         result.Should().BeTrue();
         var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         user.State.Should().Be(UserState.DeletePending);
-        _claimsCacheInvalidator.Received(1).Invalidate(userId);
     }
 
     [HumansFact]
-    public async Task ClearDeletionAsync_WhenUpdated_InvalidatesClaims()
+    public async Task ClearDeletionAsync_WhenUpdated_RestoresActiveState()
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
@@ -503,7 +496,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         result.Should().BeTrue();
         var fresh = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         fresh.State.Should().Be(UserState.Active);
-        _claimsCacheInvalidator.Received(1).Invalidate(userId);
     }
 
     [HumansFact]
@@ -937,7 +929,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             userRepository,
             Substitute.For<ICommunicationPreferenceRepository>(),
             AdminAuthorization,
-            _claimsCacheInvalidator,
             Substitute.For<IFileStorage>(),
             Clock,
             NullLogger<UserService>.Instance, AuditLog);

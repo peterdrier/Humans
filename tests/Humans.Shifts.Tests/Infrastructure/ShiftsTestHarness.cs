@@ -76,7 +76,6 @@ public abstract class ShiftsTestHarness : IDisposable
 
     private protected IAuditLogService AuditLog { get; } = Substitute.For<IAuditLogService>();
     private protected INotificationEmitter Notifier { get; } = Substitute.For<INotificationEmitter>();
-    private protected IShiftAuthorizationInvalidator ShiftAuthInvalidator { get; } = Substitute.For<IShiftAuthorizationInvalidator>();
     private protected IAdminAuthorizationService AdminAuthorization { get; } = Substitute.For<IAdminAuthorizationService>();
 
     protected ShiftsTestHarness(Instant? now = null)

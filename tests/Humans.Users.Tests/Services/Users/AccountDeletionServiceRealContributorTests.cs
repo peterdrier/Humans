@@ -4,7 +4,6 @@ using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base.Interfaces;
-using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Shifts.Contracts;
@@ -49,7 +48,6 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
             new UserRepository(DbFactory, Clock),
             communicationPreferenceRepo,
             AdminAuthorization,
-            Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
             Substitute.For<IFileStorage>(),
             Clock,
             NullLogger<UserService>.Instance, AuditLog);
@@ -74,9 +72,6 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
             gdprService,
             _ticketQueryService,
             Substitute.For<IUserInfoSliceRefresher>(),
-            Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
-            Substitute.For<IShiftAuthorizationInvalidator>(),
-            Substitute.For<IShiftViewInvalidator>(),
             Substitute.For<IAuditLogService>(),
             Substitute.For<IEmailService>(),
             TestUsersEmails.Create(),

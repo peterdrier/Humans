@@ -3,7 +3,6 @@ using Humans.AuditLog.Contracts;
 using System.ComponentModel.DataAnnotations;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
-using Humans.Base.Interfaces.Caching;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
@@ -19,7 +18,6 @@ internal sealed class UserService(
     IUserRepository repo,
     ICommunicationPreferenceRepository communicationPreferenceRepo,
     IAdminAuthorizationService adminAuthorization,
-    IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
     IFileStorage fileStorage,
     IClock clock,
     ILogger<UserService> logger,
@@ -237,24 +235,13 @@ internal sealed class UserService(
         await repo.SetLastLoginAsync(userId, clock.GetCurrentInstant(), ct);
     }
 
-    public async Task<bool> SetDeletionPendingAsync(
+    public Task<bool> SetDeletionPendingAsync(
         Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
-        CancellationToken ct = default)
-    {
-        var updated = await repo.SetDeletionPendingAsync(
-            userId, requestedAt, scheduledFor, eligibleAfter, ct);
-        if (updated)
-            InvalidateClaims(userId);
-        return updated;
-    }
+        CancellationToken ct = default) =>
+        repo.SetDeletionPendingAsync(userId, requestedAt, scheduledFor, eligibleAfter, ct);
 
-    public async Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default)
-    {
-        var updated = await repo.ClearDeletionAsync(userId, ct);
-        if (updated)
-            InvalidateClaims(userId);
-        return updated;
-    }
+    public Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default) =>
+        repo.ClearDeletionAsync(userId, ct);
 
     public async Task<bool> EnsureStubProfileAsync(
         Guid userId,
@@ -310,7 +297,6 @@ internal sealed class UserService(
         if (actorUserId.HasValue)
             await audit.LogAsync(AuditAction.StubProfileBackfilled, nameof(User), userId,
                 "Created missing profile through admin backfill.", actorUserId.Value);
-        InvalidateClaims(userId);
         return true;
     }
 
@@ -323,7 +309,6 @@ internal sealed class UserService(
         // Nothing on the profile: suspension is users.State alone. The reason goes to the audit
         // log and the notification via HumanLifecycleService, not onto the row.
         await repo.SetSuspensionAsync(userId, suspended, adminSuspension, ct);
-        InvalidateClaims(userId);
         return new OnboardingResult(true);
     }
 
@@ -334,7 +319,6 @@ internal sealed class UserService(
 
         // users.State alone: the reason, time and reviewer are Consent's review.
         await repo.SetRejectedAsync(userId, ct);
-        InvalidateClaims(userId);
         return new OnboardingResult(true);
     }
 
@@ -456,8 +440,6 @@ internal sealed class UserService(
         {
             await DeleteSupersededPictureAsync(profile.Id, previousPictureKey);
         }
-
-        InvalidateClaims(userId);
 
         return new UserProfileSaveResult(profile.Id, previousPictureKey, currentPictureKey);
     }
@@ -1094,10 +1076,6 @@ internal sealed class UserService(
         if (changed.Count > 0)
             await repo.UpdateUserEmailsAsync(changed, ct);
     }
-
-    // RoleAssignmentClaimsTransformation caches the UserState claim for 60s, so evict after
-    // profile transitions that can change the stored state (e.g. Bare after a name submit).
-    private void InvalidateClaims(Guid userId) => roleAssignmentClaimsInvalidator.Invalidate(userId);
 
     // --- Account merge: fold-into-target primitives ---
 

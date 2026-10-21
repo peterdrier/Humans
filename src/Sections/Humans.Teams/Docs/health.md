@@ -32,8 +32,8 @@ Deactivating a team closes its memberships in bulk and does none of the three (�
 | "Staff the team" (members, role definitions, role assignments) | coordinators via the controllers | `AddMemberToTeamAsync` / `RemoveMemberAsync`; the role-definition members; `AssignToRoleAsync` / `UnassignFromRoleAsync` |
 | "Who gets in early, for what?" | the per-team EE page; the EE roster | the EE-grant members; `IEarlyEntryProvider.GetEarlyEntriesAsync` |
 | "Recompute the system teams" | Hangfire, the Google sync admin page, other sections' provisioning flows | `ISystemTeamSync` (job) over `ITeamWrite.ApplySystemTeamMembershipDeltaAsync` and the management interface's role-reconciliation members |
-| "This human is gone / merged" | Users (deletion, merge), Gdpr | `RevokeAllMembershipsAsync` / `RemoveMemberFromAllTeamsCache`; `IUserMerge.ReassignAsync`; `IUserDataContributor` (export + erasure) |
-| "Something changed underneath you" | Users, Development | `IActiveTeamsCacheInvalidator` → `InvalidateActiveTeamsCache` |
+| "This human is gone / merged" | Users (deletion, merge), Gdpr | `RevokeAllMembershipsAsync`; `IUserMerge.ReassignAsync`; `IUserDataContributor` (export + erasure, via the decorator, which evicts) |
+| "Something changed underneath you" | Users (merge tail) | `ITeamWrite.InvalidateActiveTeamsCache` |
 | "Seed a fixture" | Development, Budget dev seeders | `ITeamSeeding` |
 
 Vocabulary the leaf carries: `TeamInfo` (+ `TeamMemberInfo`, `TeamRoleDefinitionSnapshot`,
@@ -128,9 +128,9 @@ The shapes imply:
 
 ## Load-bearing weirdness
 
-- **`TeamService.InvalidateActiveTeamsCache` / `RemoveMemberFromAllTeamsCache` are empty
-  bodies.** The inner service has no cache; the decorator overrides them. Callers always
-  hold the decorator, so the no-ops are the correct inner behaviour, not a bug.
+- **`TeamService.InvalidateActiveTeamsCache` is an empty
+  body.** The inner service has no cache; the decorator overrides it. Callers always
+  hold the decorator, so the no-op is the correct inner behaviour, not a bug.
 - **Keyed-Scoped inner + Singleton decorator.** The decorator opens a scope per call that
   reaches the inner service; `TeamService` is also registered unkeyed so its non-`ITeamService`
   roles (`IGoogleGroupMembershipSource`, `IUserDataContributor`, `IEarlyEntryProvider`) resolve
@@ -138,8 +138,9 @@ The shapes imply:
 - **`HumansTeamControllerBase` is public under `Contracts/` in the section project, not on
   the leaf** — it derives from `HumansControllerBase` in Base's UI layer, which no leaf may
   reference; Shifts' admin controller derives from it.
-- **`IActiveTeamsCacheInvalidator` lives on the leaf but is grandfathered as an
-  `IInvalidator`** — Users evicts through it after writes the service cannot see.
+- **Account merge evicts the team graph twice.** Teams' own `IUserMerge.ReassignAsync`
+  evicts after its re-FK; Users' merge tail evicts again after the tombstone, because the
+  graph stitches each member's `UserInfo` and system-team rows still name the archived id.
 - **Pending-request lookups skip the cache** so a coordinator never sees a stale count.
 - **The reconciler applies Inactive-before-Active-style deltas per team through the
   service** and fans out Google/audit calls itself; the service's bulk-apply members are

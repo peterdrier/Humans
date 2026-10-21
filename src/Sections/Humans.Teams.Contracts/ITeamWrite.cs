@@ -56,17 +56,10 @@ public interface ITeamWrite : IApplicationService
     // ==========================================================================
 
     /// <summary>
-    /// Drops the cached team graph after a user's memberships were changed underneath
-    /// the service (Users' account deletion). The inner service has no cache; only the
-    /// decorator does anything here.
-    /// </summary>
-    void RemoveMemberFromAllTeamsCache(Guid userId);
-
-    /// <summary>
     /// Drops the cached team graph so the next read repopulates from the database.
-    /// For callers that wrote around the service or rolled a transaction back — Users
-    /// evicts through <c>IActiveTeamsCacheInvalidator</c>. The inner service has no
-    /// cache; only the decorator does anything here.
+    /// The graph stitches each member's <c>UserInfo</c>; Users' account merge calls this
+    /// after its tombstone, which no Teams write sees. The inner service has no cache;
+    /// only the decorator does anything here.
     /// </summary>
     void InvalidateActiveTeamsCache();
 

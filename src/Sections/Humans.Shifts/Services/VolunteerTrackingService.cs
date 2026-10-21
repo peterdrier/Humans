@@ -17,7 +17,7 @@ internal sealed class VolunteerTrackingService(
     EventCalendarResolver calendarResolver,
     IUserService userService,
     ITicketService tickets,
-    IShiftViewInvalidator viewInvalidator,
+    CachingShiftViewService viewInvalidator,
     IClock clock,
     IAuditLogService audit) : IVolunteerTrackingManagement, IUserMerge
 {

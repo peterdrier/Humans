@@ -33,8 +33,7 @@ public interface IAccountDeletionService
     /// after the event), immediately revokes active team memberships and
     /// governance role assignments (so the user loses access without waiting
     /// for the grace period to expire), writes an audit entry, sends the
-    /// deletion-scheduled confirmation email, and invalidates the
-    /// shift-authorization cache. No-op with <c>NotFound</c> if the user
+    /// deletion-scheduled confirmation email. No-op with <c>NotFound</c> if the user
     /// does not exist; <c>AlreadyPending</c> if a deletion request is
     /// already open.
     /// </summary>
@@ -52,7 +51,7 @@ public interface IAccountDeletionService
     /// Admin-initiated purge: anonymizes the identity on the <c>User</c> row
     /// (display name + email replaced with sentinels, <c>UserEmail</c> rows
     /// removed) and invalidates the caches that key off the user's identity
-    /// (UserInfo, ActiveTeams, role-assignment claims, shift-authorization)
+    /// (UserInfo, ActiveTeams, role-assignment claims)
     /// so downstream consumers see the purged view before TTL expiry. Writes
     /// an <c>AuditAction.AccountPurged</c> audit-log entry
     /// keyed by <paramref name="actorId"/> (the admin running the purge) so
@@ -71,7 +70,7 @@ public interface IAccountDeletionService
     /// volunteer-event-profile deletion) BEFORE collapsing the User
     /// aggregate's identity — so a mid-cascade failure leaves the deletion
     /// fields intact and tomorrow's job run retries from the same state.
-    /// Invalidates the UserInfo, role-assignment claims, shift-authorization,
+    /// Invalidates the UserInfo, role-assignment claims
     /// and Teams member caches. Returns a summary of the pre-anonymization
     /// identity plus the ids of any cancelled shift signups so the caller
     /// (<c>ProcessAccountDeletionsJob</c>) can emit audit entries and send the

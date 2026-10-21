@@ -5,7 +5,6 @@ using Humans.Onboarding.Contracts;
 using Humans.Tickets.Services;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -22,7 +21,6 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
     private readonly IProfileEditorService _profiles = Substitute.For<IProfileEditorService>();
     private readonly IConsentWrite _consent = Substitute.For<IConsentWrite>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
-    private readonly MemoryCache _cache = new(new MemoryCacheOptions());
     private readonly ServiceProvider _credentialServices;
     private User? _storedUser;
 
@@ -170,7 +168,7 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
     private GateTerminalAccountSeeder NewService() => new(
         _users, _credentialServices.GetRequiredService<IServiceScopeFactory>(),
         _profiles, _consent, _audit,
-        Clock, _cache, NullLogger<GateTerminalAccountSeeder>.Instance);
+        Clock, NullLogger<GateTerminalAccountSeeder>.Instance);
 
     protected override void Dispose(bool disposing)
     {
@@ -178,7 +176,6 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
         {
             _users.Dispose();
             _credentialServices.Dispose();
-            _cache.Dispose();
         }
         base.Dispose(disposing);
     }

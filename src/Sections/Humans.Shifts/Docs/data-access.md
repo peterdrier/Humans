@@ -43,15 +43,15 @@ Repository: `IShiftManagementRepository`.
 
 | Cache Key | TTL | Read | Write | Invalidate |
 |-----------|-----|------|-------|------------|
-| `shift-auth:{userId}` | 60 sec | yes | yes | yes (also via `IShiftAuthorizationInvalidator`) |
 | `dashboard-overall-coverage` | 5 min | yes | no | yes (via `EvictDashboardCaches`, on EventSettings change) |
 
 Cross-section calls via `IAuditLogService`, `IAdminAuthorizationService`,
-`IShiftViewInvalidator`, plus `IServiceProvider` for cycle-breaking, which
+plus `IServiceProvider` for cycle-breaking, which
 lazy-resolves the read surfaces `ITeamService`, `IUserService`,
 `ICampService`, `IRoleAssignmentService`, and
-`ITicketService`. Injects `IMemoryCache` directly for the
-`shift-auth:{userId}` slot. Implements `IShiftAuthorizationInvalidator`,
+`ITicketService`. Evicts the view cache through `CachingShiftViewService`. Injects
+`IMemoryCache` directly for the dashboard slots. `GetCoordinatorTeamIdsAsync` has no
+cache of its own: Teams' singleton decorator answers it from RAM. Implements
 `IUserMerge`. Also exposes the Cantina-gating predicates
 (`HasQualifyingCantinaSignupAsync`, `GetOnSiteUserIdsForDayAsync`).
 
@@ -81,7 +81,7 @@ Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`.
 Cross-section calls via `IShiftManagement`, `ISettingsService` (via
 `EventCalendarResolver`, nobodies-collective/Humans#1630),
 `IAuditLogService`, `INotificationEmitter`, `IAdminAuthorizationService`,
-`IShiftViewInvalidator`, plus `IServiceProvider`
+`CachingShiftViewService`, plus `IServiceProvider`
 (lazy-resolves `ITeamService` for coordinator/team-name lookups).
 Implements `IUserDataContributor`, `IUserMerge`, `ICalendarFeedContributor`
 (personal iCal feed contributor — the user's Confirmed and Pending shift
@@ -104,7 +104,7 @@ Repositories: `IVolunteerTrackingRepository`, `IShiftManagementRepository`.
 | Shifts | R | IShiftManagementRepository |
 | Rotas | R | IShiftManagementRepository |
 
-Cross-section calls via `IUserService`, `IShiftViewInvalidator`, `IAuditLogService` (self-service availability saves). No
+Cross-section calls via `IUserService`, `IAuditLogService` (self-service availability saves); evicts through `CachingShiftViewService`. No
 cache. Holds the gap-detection algorithm + heatmap data assembly,
 plus the full day-availability / camp-setup / day-off mutation surface.
 Build-eligibility signups (`ShiftSignups` + `EventSettings`) read through
@@ -153,10 +153,11 @@ can resolve it without self-recursion.
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
-| `TrackedCache<Guid, ShiftUserView>` (`ShiftView.UserView`, in-process, no `IMemoryCache`) | Per-User | yes | yes | yes (via `IShiftViewInvalidator.InvalidateUser`) |
-| `TrackedCache<Guid, ShiftRotaView>` (`ShiftView.RotaView`, in-process, no `IMemoryCache`) | Per-Entity | yes | yes | yes (via `IShiftViewInvalidator.InvalidateRota`) |
+| `TrackedCache<Guid, ShiftUserView>` (`ShiftView.UserView`, in-process, no `IMemoryCache`) | Per-User | yes | yes | yes (`InvalidateUser`, called by the section's own writes) |
+| `TrackedCache<Guid, ShiftRotaView>` (`ShiftView.RotaView`, in-process, no `IMemoryCache`) | Per-Entity | yes | yes | yes (`InvalidateRota`, called by the section's own writes) |
 
-Implements `IShiftView`, `IShiftViewInvalidator`. Resolves the inner
+Implements `IShiftView`; its `Invalidate*` methods are called only by Shifts' own
+services, so nothing outside the section evicts it. Resolves the inner
 Scoped `IShiftView` via `IServiceScopeFactory` to honour scope rules.
 Both cache instances are surfaced on `/Debug/CacheStats`.
 

@@ -11,8 +11,8 @@ namespace Humans.Issues.Authorization;
 /// same answer, used to shape the page (which controls render, whether a comment may resolve)
 /// and to answer 403 before the service would answer 404.
 ///
-/// Reads from claims only (RoleAssignmentClaimsTransformation populates them per-request,
-/// cached 60s) — no DB hit.
+/// Reads from claims only (RoleAssignmentClaimsTransformation populates them per-request
+/// from in-memory caches) — no DB hit.
 /// </summary>
 internal sealed class IssuesAuthorizationHandler(IssueSectionRouting routing)
     : AuthorizationHandler<IssuesOperationRequirement, IssueDetail>

@@ -28,7 +28,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
     private readonly ITeamService _teamService;
-    private readonly IShiftViewInvalidator _viewInvalidator;
+    private readonly ShiftViewProbe _views = new();
     private readonly IRoleAssignmentService _roleAssignments;
     private readonly ShiftManagementService _service;
 
@@ -36,7 +36,6 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         : base(TestNow)
     {
         _teamService = Substitute.For<ITeamService>();
-        _viewInvalidator = Substitute.For<IShiftViewInvalidator>();
         _roleAssignments = Substitute.For<IRoleAssignmentService>();
         var userService = Substitute.For<IUserService>();
         userService.StubGetUserInfosFromContext(Db);
@@ -65,7 +64,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             AdminAuthorization,
             serviceProvider,
             Cache,
-            _viewInvalidator,
+            _views.Cache,
             NewCalendarResolver(),
             Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
@@ -197,7 +196,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock),
             AuditLog, AdminAuthorization,
             new ServiceLocatorBuilder().With(_teamService).Build(),
-            Cache, _viewInvalidator,
+            Cache, _views.Cache,
             new EventCalendarResolver(settingsService), Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
@@ -217,6 +216,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         await SaveAllAsync(Ct);
 
         var rota = NewRota(es.Id, team.Id);
+        await _views.PrimeRotaAsync(rota.Id);
         await _service.CreateRotaAsync(rota, [tag.Id]);
 
         var saved = await ShiftsDb.Rotas.AsNoTracking().Include(r => r.Tags)
@@ -224,7 +224,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         saved.TeamId.Should().Be(team.Id);
         saved.UpdatedAt.Should().Be(TestNow);
         saved.Tags.Select(t => t.Id).Should().BeEquivalentTo([tag.Id]);
-        _viewInvalidator.Received(1).InvalidateRota(rota.Id);
+        (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
     }
 
     [HumansFact]
@@ -386,6 +386,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
         var target = SeedDepartment("Target");
         await SaveAllAsync(Ct);
+        await _views.PrimeRotaAsync(rota.Id);
 
         var result = await _service.MoveRotaToTeamAsync(
             new MoveRotaInput(rota.Id, rota.TeamId, target.Id, Guid.NewGuid()));
@@ -396,7 +397,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         var moved = await ShiftsDb.Rotas.AsNoTracking().SingleAsync(r => r.Id == rota.Id, Ct);
         moved.TeamId.Should().Be(target.Id);
         moved.UpdatedAt.Should().Be(TestNow);
-        _viewInvalidator.Received(1).InvalidateRota(rota.Id);
+        (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
     }
 
     // ============================================================
@@ -435,6 +436,11 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         SeedSignup(shift, bob.Id, SignupStatus.Bailed);
         var pending = ShiftsDb.ShiftSignups.Local.Single(s => s.UserId == alice.Id);
         await SaveAllAsync(Ct);
+        var viewer = Guid.NewGuid();
+        await _views.PrimeRotaAsync(rota.Id, shift);
+        await _views.PrimeUserAsync(viewer, shift);
+        await _views.PrimeUserAsync(alice.Id);
+        await _views.PrimeUserAsync(bob.Id);
 
         var actorUserId = Guid.NewGuid();
         await _service.DeleteShiftAsync(shift.Id, actorUserId);
@@ -442,10 +448,10 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         ShiftsDb.ChangeTracker.Clear();
         (await ShiftsDb.Shifts.AsNoTracking().AnyAsync(s => s.Id == shift.Id, Ct)).Should().BeFalse();
         (await ShiftsDb.ShiftSignups.AsNoTracking().AnyAsync(s => s.ShiftId == shift.Id, Ct)).Should().BeFalse();
-        _viewInvalidator.Received(1).InvalidateShift(shift.Id);
-        _viewInvalidator.Received(1).InvalidateRota(rota.Id);
-        _viewInvalidator.Received(1).InvalidateUser(alice.Id);
-        _viewInvalidator.Received(1).InvalidateUser(bob.Id);
+        (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
+        (await _views.IsUserCachedAsync(viewer)).Should().BeFalse();
+        (await _views.IsUserCachedAsync(alice.Id)).Should().BeFalse();
+        (await _views.IsUserCachedAsync(bob.Id)).Should().BeFalse();
         await AuditLog.Received(1).LogAsync(AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), pending.Id,
             Arg.Is<string>(text => text.Contains(rota.Name, StringComparison.Ordinal)
                 && text.Contains("deleted", StringComparison.Ordinal)),
@@ -589,6 +595,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             ? new List<DayStaffingInput> { new(dayOffset, 1, 2) }
             : new List<DayStaffingInput> { new(0, 1, 2), new(dayOffset, 1, 2) };
         var input = new ConfigureBuildStrikeStaffingInput(rota.Id, rota.TeamId, days);
+        await _views.PrimeRotaAsync(rota.Id);
 
         if (valid)
         {
@@ -603,7 +610,8 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             var error = await Record.ExceptionAsync(() => _service.CreateBuildStrikeShiftsAsync(input));
             ShiftsDb.Shifts.Should().BeEmpty();
             error.Should().BeOfType<InvalidOperationException>().Which.Message.Should().Contain("outside the all period");
-            _viewInvalidator.ReceivedCalls().Should().BeEmpty();
+            _views.Evictions.Should().Be(0);
+            (await _views.IsRotaCachedAsync(rota.Id)).Should().BeTrue();
         }
     }
 
@@ -714,12 +722,13 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
         await SaveAllAsync(Ct);
+        await _views.PrimeRotaAsync(rota.Id);
 
         var result = await _service.GenerateEventShiftsAsync(new GenerateEventShiftsInput(
             rota.Id, rota.TeamId, 0, 0, [new ShiftTimeSlotInput(new LocalTime(8, 0), 4)], 2, 2));
 
         result.Succeeded.Should().BeTrue();
-        _viewInvalidator.Received(1).InvalidateRota(rota.Id);
+        (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
     }
 
     [HumansTheory]
@@ -889,6 +898,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
         await SaveAllAsync(Ct);
+        await _views.PrimeRotaAsync(rota.Id);
 
         var result = await _service.CreateShiftAsync(NewShiftInput(rota, -3) with
         {
@@ -897,7 +907,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         });
 
         result.Succeeded.Should().BeTrue();
-        _viewInvalidator.Received(1).InvalidateRota(rota.Id);
+        (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
     }
 
     [HumansFact]
@@ -937,10 +947,14 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
         var shift = SeedShift(rota, dayOffset: -4);
         await SaveAllAsync(Ct);
+        var viewer = Guid.NewGuid();
+        await _views.PrimeRotaAsync(rota.Id, shift);
+        await _views.PrimeUserAsync(viewer, shift);
 
         await _service.UpdateShiftAsync(NewUpdateInput(shift, rota.TeamId, dayOffset: -3));
 
-        _viewInvalidator.Received(1).InvalidateShift(shift.Id);
+        (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
+        (await _views.IsUserCachedAsync(viewer)).Should().BeFalse();
     }
 
     // ============================================================
