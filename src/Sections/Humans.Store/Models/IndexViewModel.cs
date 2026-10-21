@@ -39,6 +39,12 @@ internal sealed class OrderViewModel
     /// deposit-return / refund form.</summary>
     public bool CanRecordPayment { get; init; }
 
+    /// <summary>True when the current user may also record a refund (FinanceAdmin or Admin on a camp order).</summary>
+    public bool CanRefund { get; init; }
+
+    /// <summary>True when the current user may delete a payment row (Admin only). Surfaces the per-row Delete buttons.</summary>
+    public bool CanDeletePayment { get; init; }
+
     /// <summary>Paid deposit returns credited to the order (the "Deposits returned" box).</summary>
     public decimal DepositsReturnedEur => Order.Payments
         .Where(p => p.Method == PaymentMethod.DepositReturn && p.Status == PaymentStatus.Paid)
@@ -61,11 +67,15 @@ internal sealed class OrderViewModel
         bool canDelete,
         bool canIssueInvoice,
         bool canRecordPayment,
+        bool canRefund,
+        bool canDeletePayment,
         IReadOnlyList<ProductDto> catalog,
         IReadOnlyCollection<Guid> removableLineIds) => new()
         {
             CanIssueInvoice = canIssueInvoice,
             CanRecordPayment = canRecordPayment,
+            CanRefund = canRefund,
+            CanDeletePayment = canDeletePayment,
             Order = pageData.Order,
             Catalog = catalog,
             CounterpartyDisplayName = pageData.CounterpartyDisplayName,

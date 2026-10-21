@@ -81,6 +81,9 @@ internal sealed class StoreController(
         var canDeleteAuth = (await authService.AuthorizeAsync(User, order, OrderOperationRequirement.Delete)).Succeeded;
         var canIssueAuth = (await authService.AuthorizeAsync(User, order, OrderOperationRequirement.IssueInvoice)).Succeeded;
         var canRecordPayment = (await authService.AuthorizeAsync(User, order, OrderOperationRequirement.RecordPayment)).Succeeded;
+        var canRefund = canRecordPayment
+            && (await authService.AuthorizeAsync(User, order, OrderOperationRequirement.Refund)).Succeeded;
+        var canDeletePayment = (await authService.AuthorizeAsync(User, order, OrderOperationRequirement.DeletePayment)).Succeeded;
         var pageData = await storeService.GetOrderPageDataAsync(order, canEdit, canPay, ct);
         var (catalog, removableLineIds) = await FilterLineEditAffordancesAsync(order, pageData.Catalog, canEdit, ct);
         return View(OrderViewModel.FromPageData(
@@ -88,6 +91,8 @@ internal sealed class StoreController(
             canDeleteAuth && order.BalanceEur == 0m && order.State == OrderState.Open && order.Payments.Count == 0,
             canIssueAuth && order.State == OrderState.Open && order.Lines.Count > 0,
             canRecordPayment,
+            canRefund,
+            canDeletePayment,
             catalog.OrderBy(p => p.Name, StringComparer.Ordinal).ToList(),
             removableLineIds));
     }
