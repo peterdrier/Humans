@@ -10,7 +10,7 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
     {
         b.ToTable("store_orders");
         b.HasKey(x => x.Id);
-        // Shadow property (#816): labels left the UI and nothing reads or writes the column.
+        // Shadow property (nobodies-collective/Humans#816): labels left the UI and nothing reads or writes the column.
         // Mapping stays so EF keeps the column until its drop migration.
         b.Property<string?>("Label").HasMaxLength(100);
         b.Property(x => x.CounterpartyName).HasMaxLength(200);

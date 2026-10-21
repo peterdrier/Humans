@@ -129,7 +129,7 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Order>> GetOrdersForTeamsWithLinesAsync(
+    public async Task<IReadOnlyList<Order>> GetOrdersForTeamsWithLinesAndPaymentsAsync(
         IReadOnlyCollection<Guid> teamIds,
         int year,
         CancellationToken ct = default)
