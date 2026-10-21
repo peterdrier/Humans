@@ -148,8 +148,6 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Users](../src/Sections/Humans.Users/Docs/Users.md) | Merges the old Users and Profiles docs: the User/Identity aggregate (provisioning, unsubscribe, event participation) plus per-human personal data (profile, contact fields, emails, communication preferences) |
 | [Workgroups](../src/Sections/Humans.Workgroups/Docs/Workgroups.md) | Register of association-level working groups the Board resolution obliges the Secretary to keep — administrative recognition, not a workflow engine |
 | [Preapprovals](../src/Sections/Humans.Preapprovals/Docs/Preapprovals.md) | Programs of pre-authorized reimbursements (creativity grants, travel): grants per person, applications, the claim deadline, and the transitions Expenses drives |
-| [Grants](../src/Sections/Humans.Grants/Docs/Grants.md) | Entitlements to a thing (a cheaper ticket, early entry): programs with their own managers or a source section such as Low Income, grants per person with expiry and revoke, and the person's notice |
-| [Low Income](../src/Sections/Humans.LowIncome/Docs/LowIncome.md) | Stub: one Admin-only page that gives or removes a person's Low Income grant through Grants; owns no tables |
 
 ## User Guide
 
