@@ -293,6 +293,71 @@ public sealed class GoogleDriveAccessSyncServiceTests
     }
 
     [HumansFact]
+    public async Task ReconcileOneAsync_RefusedPlusAddress_GrantsBaseAddressAndRecordsIt()
+    {
+        var alice = Guid.NewGuid();
+        var service = CreateService(new StaticSource("folder-1", (alice, DrivePermissionLevel.Contributor)));
+        StubUsers((alice, "Alice", "alice+burn@example.org"));
+        StubFolder("folder-1");
+        _drivePermissions.CreatePermissionAsync("folder-1", "alice+burn@example.org", "writer", Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Failed, GoogleInternalError));
+        _drivePermissions.CreatePermissionAsync("folder-1", "alice@example.org", "writer", Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Created, null));
+
+        var diff = await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        diff.ErrorMessage.Should().BeNull();
+        await _identities.Received(1).SetDriveEmailFromSyncAsync(
+            alice, "alice+burn@example.org", "alice@example.org", Arg.Any<CancellationToken>());
+        await _identities.DidNotReceiveWithAnyArgs().SetStatusFromSyncAsync(default, default!, default, default);
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessGranted, Guid.Empty,
+            Arg.Is<string>(m => m.Contains("in place of alice+burn@example.org")),
+            nameof(GoogleDriveAccessSyncService), "alice@example.org", "writer",
+            GoogleSyncSource.ScheduledSync, success: true, errorMessage: null, userId: alice,
+            ct: Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ReconcileOneAsync_RecordedDriveAddress_MatchesTheBasePermission()
+    {
+        var alice = Guid.NewGuid();
+        var service = CreateService(new StaticSource("folder-1", (alice, DrivePermissionLevel.Contributor)));
+        StubUsers((alice, "Alice", "alice+burn@example.org"));
+        _identities.GetDriveEmailsAsync(Arg.Any<CancellationToken>()).Returns(
+            new Dictionary<Guid, DriveEmailOverride> { [alice] = new("alice+burn@example.org", "alice@example.org") });
+        StubFolder("folder-1", new DrivePermission("perm-1", "user", "writer", "alice@example.org", HasInheritedComponent: false));
+
+        var diff = await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        diff.Members.Should().ContainSingle().Which.State.Should().Be(MemberSyncState.Correct);
+        await _drivePermissions.DidNotReceiveWithAnyArgs().CreatePermissionAsync(default!, default!, default!, default);
+        await _drivePermissions.DidNotReceiveWithAnyArgs().DeletePermissionAsync(default!, default!, default);
+    }
+
+    [HumansFact]
+    public async Task ReconcileOneAsync_RefusedPlusAndBaseAddress_ReportsTheOriginalFailure()
+    {
+        var alice = Guid.NewGuid();
+        var service = CreateService(new StaticSource("folder-1", (alice, DrivePermissionLevel.Contributor)));
+        StubUsers((alice, "Alice", "alice+burn@example.org"));
+        StubFolder("folder-1");
+        _drivePermissions.CreatePermissionAsync("folder-1", "alice+burn@example.org", "writer", Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionMutationResult(
+                DrivePermissionCreateOutcome.Failed, new GoogleClientError(400, "The recipient has no Google account")));
+        _drivePermissions.CreatePermissionAsync("folder-1", "alice@example.org", "writer", Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionMutationResult(
+                DrivePermissionCreateOutcome.Failed, new GoogleClientError(400, "The recipient has no Google account")));
+
+        var diff = await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        diff.ErrorMessage.Should().Contain("al***@example.org");
+        await _identities.DidNotReceiveWithAnyArgs().SetDriveEmailFromSyncAsync(default, default!, default!, default);
+        await _identities.Received(1).SetStatusFromSyncAsync(
+            alice, "alice+burn@example.org", GoogleEmailStatus.Rejected, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ReconcileOneAsync_ExtraMember_RemovesAndLogs()
     {
         var service = CreateService(new StaticSource("folder-1"));

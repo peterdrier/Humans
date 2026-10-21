@@ -39,10 +39,29 @@ internal sealed class WorkspaceIdentityRepository(IDbContextFactory<GoogleIntegr
         }
         else
         {
+            if (!string.Equals(row.Email, email, StringComparison.OrdinalIgnoreCase))
+                row.DriveEmail = null;
             row.Email = email;
             row.Status = status;
             row.UpdatedAt = now;
         }
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task SetDriveEmailAsync(
+        Guid userId, string email, GoogleEmailStatus status, string driveEmail, Instant now, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var row = await ctx.WorkspaceIdentities.SingleOrDefaultAsync(x => x.UserId == userId, ct);
+        if (row is null)
+        {
+            row = new WorkspaceIdentityRecord { UserId = userId };
+            ctx.WorkspaceIdentities.Add(row);
+        }
+        row.Email = email;
+        row.Status = status;
+        row.DriveEmail = driveEmail;
+        row.UpdatedAt = now;
         await ctx.SaveChangesAsync(ct);
     }
 

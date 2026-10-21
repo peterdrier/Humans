@@ -338,12 +338,15 @@ internal sealed class GoogleDriveAccessSyncService(
     {
         var eligibleMembers = await GoogleSyncMemberHydration.LoadAsync(
             access.Keys.ToList(), userService, workspaceIdentities, ct);
+        var driveEmails = await workspaceIdentities.GetDriveEmailsAsync(ct);
         var result = new Dictionary<Guid, DriveExpectedMember>();
         foreach (var (userId, level) in access)
         {
             if (level != DrivePermissionLevel.None && eligibleMembers.TryGetValue(userId, out var member))
                 result[userId] = new DriveExpectedMember(
-                    member.UserId, member.Email, member.DisplayName, member.ProfilePictureUrl, level, member.IdentityEmail);
+                    member.UserId,
+                    DrivePlusAddressFallback.Apply(driveEmails, member.UserId, member.IdentityEmail, member.Email),
+                    member.DisplayName, member.ProfilePictureUrl, level, member.IdentityEmail);
         }
 
         return result;
@@ -459,8 +462,20 @@ internal sealed class GoogleDriveAccessSyncService(
             }
 
             var role = member.ExpectedRole!;
-            var (result, retried) = await WithTransientRetryAsync(
-                () => drivePermissions.CreatePermissionAsync(claim.FolderId, member.Email, role, ct), r => r.Error, ct);
+            var retried = false;
+            async Task<DrivePermissionMutationResult> CreateAsync(string email)
+            {
+                (var created, retried) = await WithTransientRetryAsync(
+                    () => drivePermissions.CreatePermissionAsync(claim.FolderId, email, role, ct), r => r.Error, ct);
+                return created;
+            }
+            var (result, grantedEmail) = member.UserId is { } memberUserId
+                ? await DrivePlusAddressFallback.CreateAsync(
+                    CreateAsync, member.Email, memberUserId, plan.IdentityEmailsByEmail[member.Email], workspaceIdentities, ct)
+                : (await CreateAsync(member.Email), member.Email);
+            var insteadOf = string.Equals(grantedEmail, member.Email, StringComparison.Ordinal)
+                ? ""
+                : $" in place of {member.Email}, which Drive refused";
             switch (result.Outcome)
             {
                 // After a transient retry, AlreadyExists means the failed attempt was applied
@@ -469,13 +484,13 @@ internal sealed class GoogleDriveAccessSyncService(
                 case DrivePermissionCreateOutcome.AlreadyExists when retried:
                     await googleSyncLog.LogAsync(
                         GoogleSyncLogAction.AccessGranted, claim.ResourceId,
-                        $"Granted Drive access ({role}) to {member.Email} ({claim.DisplayName})",
+                        $"Granted Drive access ({role}) to {grantedEmail}{insteadOf} ({claim.DisplayName})",
                         nameof(GoogleDriveAccessSyncService),
-                        member.Email, role, syncSource, success: true,
+                        grantedEmail, role, syncSource, success: true,
                         userId: member.UserId, ct: ct);
                     break;
                 case DrivePermissionCreateOutcome.AlreadyExists:
-                    logger.LogDebug("Permission already exists for {Email} on {FolderId}", member.Email, claim.FolderId);
+                    logger.LogDebug("Permission already exists for {Email} on {FolderId}", grantedEmail, claim.FolderId);
                     break;
                 case DrivePermissionCreateOutcome.Failed:
                     var error = $"Google Drive add failed for {MaskEmail(member.Email)} (HTTP {result.Error?.StatusCode}): {result.Error?.RawMessage}";

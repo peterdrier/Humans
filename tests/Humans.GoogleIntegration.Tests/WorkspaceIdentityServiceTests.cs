@@ -284,6 +284,44 @@ public sealed class WorkspaceIdentityServiceTests
         _repo.Rows[info.Id].Status.Should().Be(GoogleEmailStatus.Rejected);
     }
 
+    [HumansFact]
+    public async Task SetDriveEmailFromSync_RecordsTheDriveAddress_KeepingTheIdentityAndVerdict()
+    {
+        var info = Seed(new Addr("alice+burn@example.org", Primary: true, Google: true, Status: LegacyGoogleEmailStatus.Valid));
+
+        (await _sut.SetDriveEmailFromSyncAsync(info.Id, "alice+burn@example.org", "alice@example.org", Ct)).Should().BeTrue();
+        (await _sut.SetDriveEmailFromSyncAsync(info.Id, "alice+burn@example.org", "alice@example.org", Ct)).Should().BeFalse();
+
+        var identity = await _sut.GetWorkspaceIdentityAsync(info.Id, Ct);
+        identity.Should().Be(new WorkspaceIdentity(info.Id, "alice+burn@example.org", GoogleEmailStatus.Valid));
+        (await _sut.GetDriveEmailsAsync(Ct)).Should().ContainSingle().Which.Should().Be(
+            new KeyValuePair<Guid, DriveEmailOverride>(info.Id, new DriveEmailOverride("alice+burn@example.org", "alice@example.org")));
+    }
+
+    [HumansFact]
+    public async Task SetDriveEmailFromSync_ForAnAddressNoLongerTheIdentity_IsDropped()
+    {
+        var info = Seed(new Addr("alice@example.org", Primary: true), new Addr("alice+burn@example.org"));
+
+        (await _sut.SetDriveEmailFromSyncAsync(info.Id, "alice+burn@example.org", "alice@example.org", Ct)).Should().BeFalse();
+
+        _repo.Rows.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task DriveEmail_IsClearedWhenTheIdentityMoves_AndKeptByAVerdictOnTheSameAddress()
+    {
+        var info = Seed(new Addr("alice+burn@example.org", Primary: true), new Addr("alice@gmail.com"));
+        await _sut.SetDriveEmailFromSyncAsync(info.Id, "alice+burn@example.org", "alice@example.org", Ct);
+
+        await _sut.SetStatusFromSyncAsync(info.Id, "alice+burn@example.org", GoogleEmailStatus.Valid, Ct);
+        _repo.Rows[info.Id].DriveEmail.Should().Be("alice@example.org");
+
+        (await _sut.SetAsync(info.Id, "alice@gmail.com", info.Id, Ct)).Should().BeTrue();
+        _repo.Rows[info.Id].DriveEmail.Should().BeNull();
+        (await _sut.GetDriveEmailsAsync(Ct)).Should().BeEmpty();
+    }
+
     // ─── google.workspace-identities ─────────────────────────────────────────────
 
     [HumansFact]
@@ -341,11 +379,24 @@ public sealed class WorkspaceIdentityServiceTests
 
         var slice = (await _sut.ContributeForUserAsync(info.Id, Ct)).Should().ContainSingle().Subject;
         slice.SectionName.Should().Be(WorkspaceIdentityService.WorkspaceIdentitySlice);
-        slice.Data.Should().BeEquivalentTo(new { Email = "alice@example.org", Status = "Rejected" });
+        slice.Data.Should().BeEquivalentTo(new { Email = "alice@example.org", Status = "Rejected", DriveEmail = (string?)null });
         _sut.ErasureDeclaration.Should().ContainKey(WorkspaceIdentityService.WorkspaceIdentitySlice);
 
         await _sut.EraseForUserAsync(info.Id, Ct);
         _repo.Rows.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Export_CarriesTheDriveAddress()
+    {
+        var info = Seed(new Addr("alice+burn@example.org", Primary: true));
+        await _sut.SetDriveEmailFromSyncAsync(info.Id, "alice+burn@example.org", "alice@example.org", Ct);
+
+        var slice = (await _sut.ContributeForUserAsync(info.Id, Ct)).Should().ContainSingle().Subject;
+        slice.Data.Should().BeEquivalentTo(new
+        {
+            Email = "alice+burn@example.org", Status = "Unknown", DriveEmail = "alice@example.org"
+        });
     }
 
     // ─── Surfaces ────────────────────────────────────────────────────────────────

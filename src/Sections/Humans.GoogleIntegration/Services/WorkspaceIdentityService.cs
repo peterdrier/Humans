@@ -102,6 +102,26 @@ internal sealed class WorkspaceIdentityService(
         return true;
     }
 
+    public async Task<bool> SetDriveEmailFromSyncAsync(
+        Guid userId, string attemptedEmail, string driveEmail, CancellationToken ct = default)
+    {
+        var info = await users.GetUserInfoAsync(userId, ct);
+        if (info is null) return false;
+        var row = await repo.GetAsync(info.Id, ct);
+        var current = Resolve(info, row);
+        if (current is null || !Same(current.Email, attemptedEmail)) return false;
+        if (row is { Email: not null, DriveEmail: not null } && Same(row.Email, current.Email) && Same(row.DriveEmail, driveEmail))
+            return false;
+
+        await repo.SetDriveEmailAsync(info.Id, current.Email, current.Status, driveEmail, clock.GetCurrentInstant(), ct);
+        return true;
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, DriveEmailOverride>> GetDriveEmailsAsync(CancellationToken ct = default) =>
+        (await repo.GetAllAsync(ct))
+            .Where(r => r is { Email: not null, DriveEmail: not null })
+            .ToDictionary(r => r.UserId, r => new DriveEmailOverride(r.Email!, r.DriveEmail!));
+
     public async Task ClearIfAddressAsync(Guid userId, string email, CancellationToken ct = default)
     {
         var info = await users.GetUserInfoAsync(userId, ct);
@@ -200,9 +220,14 @@ internal sealed class WorkspaceIdentityService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var identity = await GetWorkspaceIdentityAsync(userId, ct);
+        var info = await users.GetUserInfoAsync(userId, ct);
+        var row = info is null ? null : await repo.GetAsync(info.Id, ct);
+        var identity = info is null ? null : Resolve(info, row);
+        var driveEmail = identity is not null && row is { Email: not null } && Same(row.Email, identity.Email)
+            ? row.DriveEmail
+            : null;
         return [new UserDataSlice(WorkspaceIdentitySlice,
-            identity is null ? null : new { identity.Email, Status = identity.Status.ToString() })];
+            identity is null ? null : new { identity.Email, Status = identity.Status.ToString(), DriveEmail = driveEmail })];
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =

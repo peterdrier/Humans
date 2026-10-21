@@ -508,6 +508,34 @@ public sealed class GoogleWorkspaceSyncServiceTests
             Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task AddUserToDriveAsync_RefusedPlusAddress_GrantsBaseAddressAndRecordsIt()
+    {
+        // peterdrier/Humans#2037 — Drive can refuse local+tag@domain while the base address works.
+        const string plusEmail = "alice+burn@example.org";
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
+            .Returns(SyncMode.AddAndRemove);
+        _syncSettingsService.GetModeAsync(SyncServiceType.GoogleGroups, Arg.Any<CancellationToken>())
+            .Returns(SyncMode.None);
+        _userService.GetUserInfoAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(MakeUser(TestUserId, plusEmail));
+        _resourceRepository.GetActiveByTeamIdAsync(TestTeamId, Arg.Any<CancellationToken>())
+            .Returns([MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId)]);
+        _teamService.GetTeamAsync(TestTeamId, Arg.Any<CancellationToken>()).Returns((TeamInfo?)null);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        _drivePermissions.CreatePermissionAsync(TestGoogleFolderId, plusEmail, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Failed,
+                new GoogleClientError(400, "Sorry, an internal error has occurred and your request was not completed.")));
+        _drivePermissions.CreatePermissionAsync(TestGoogleFolderId, "alice@example.org", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Created, null));
+
+        var result = await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, ct);
+
+        result.Outcome.Should().Be(GoogleResourceGrantOutcome.Accepted);
+        await _identities.Received(1).SetDriveEmailFromSyncAsync(
+            TestUserId, plusEmail, "alice@example.org", Arg.Any<CancellationToken>());
+    }
+
     [HumansTheory]
     [Xunit.InlineData(UserState.Suspended, false)]
     [Xunit.InlineData(UserState.AdminSuspended, false)]
