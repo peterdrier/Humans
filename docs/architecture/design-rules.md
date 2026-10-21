@@ -625,7 +625,7 @@ This is the Microsoft-endorsed pattern for Singleton services that need DB acces
 The application service (`UserService`, `ProfileService`, `ContactFieldService`, etc.) lives in its section's `Humans.<Section>.Services` namespace and is `internal sealed` per HUM0034. (A handful of Users files still carry the legacy `Humans.Application.Services.*` namespace; namespace normalization retires those.) It:
 
 - Injects repository interfaces, never `DbContext`.
-- Never imports `IMemoryCache` or any caching abstraction — it is completely cache-unaware.
+- Never imports `IMemoryCache` or any caching abstraction; it is cache-unaware. One exception (§15e): it may call its own section's concrete decorator to evict where ordering matters.
 - When the section has a caching decorator: registered as **Scoped** and **keyed** under that decorator's `InnerServiceKey` (e.g., `CachingUserService.InnerServiceKey` = `"user-inner"`) so the Singleton decorator can resolve fresh instances per-call without self-resolution.
 - Implements **every** read method against the DB, with one carve-out: **cache-only reads** — projections served from the decorator's warmed snapshot with no repository equivalent (relevance-ranked search: `UserService.SearchUsersAsync`, `TeamService.SearchAsync`, `CampService.SearchAsync`; §12) — have no DB implementation. For those, the inner method throws `NotSupportedException` so a DI mis-registration fails loudly instead of silently bypassing the cache. The base service must **never** return empty results for a method "so the decorator can override" — implement it against the DB, or throw.
 - Sub-aggregates belong to the parent section (CV entries are written through `IProfileService.SaveCVEntriesAsync`; the parent repository owns the reconcile logic).
@@ -651,7 +651,7 @@ Key rules the example demonstrates:
 
 Only the section that owns a cache evicts it. There is no cross-section invalidator interface: HUM0028 flags any interface extending `IInvalidator`, and the family is at zero.
 
-- **Own writes:** the decorator evicts or replaces after delegating the write, or the inner service calls its own section's concrete decorator when eviction has to happen at a specific point (e.g. before a sync that reads the fresh value). Neither crosses a section boundary.
+- **Own writes:** the decorator evicts or replaces after delegating the write, or the inner service calls its own section's concrete decorator (the one §15c exception) when eviction has to happen at a specific point (e.g. before a sync that reads the fresh value). Neither crosses a section boundary.
 - **Another section's change makes the view stale:** use a signal the owner already receives (`IUserMerge`, `IUserDataContributor` erasure, its own writes), or read that data live from the other section's cached service instead of copying it into this cache. A cached copy of another section's data that nothing tells you about is a design smell; a short TTL is the fallback, not an invalidator.
 - If none of those fits, stop and ask Peter. Don't add an `I*Invalidator` or a cache-clearing method on an `I*Write` interface; `ITeamWrite.InvalidateActiveTeamsCache` is the one recorded exception (debt ledger CENTRAL-98).
 
