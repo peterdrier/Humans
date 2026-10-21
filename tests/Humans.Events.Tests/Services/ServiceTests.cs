@@ -480,12 +480,13 @@ public sealed class EventServiceTests
         _repo.Events.Add(guideEvent);
         var actorUserId = Guid.NewGuid();
 
-        await _service.ApplyModerationAsync(
+        var outcome = await _service.ApplyModerationAsync(
             guideEvent.Id,
             actorUserId,
             EventModerationActionType.ResubmitRequested,
             "Add location", submitterEditUrl: null, TestContext.Current.CancellationToken);
 
+        outcome.Should().Be(ModerationOutcome.Applied);
         guideEvent.Status.Should().Be(EventStatus.ResubmitRequested);
         guideEvent.LastUpdatedAt.Should().Be(_clock.GetCurrentInstant());
         _repo.EventModerationActions.Should().ContainSingle(action =>
@@ -875,18 +876,43 @@ public sealed class EventServiceTests
     [HumansTheory]
     [InlineData(true, null)]
     [InlineData(false, "  ")]
-    public async Task ApplyModerationAsync_ReasonMissing_ThrowsAndLeavesPending(bool reject, string? reason)
+    public async Task ApplyModerationAsync_ReasonMissing_RefusesAndLeavesPending(bool reject, string? reason)
     {
         var actionType = reject ? EventModerationActionType.Rejected : EventModerationActionType.ResubmitRequested;
         var guideEvent = new Event { Id = Guid.NewGuid(), Status = EventStatus.Pending };
         _repo.Events.Add(guideEvent);
 
-        var act = () => _service.ApplyModerationAsync(
+        var outcome = await _service.ApplyModerationAsync(
             guideEvent.Id, Guid.NewGuid(), actionType, reason, submitterEditUrl: null, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<ArgumentException>();
+        outcome.Should().Be(ModerationOutcome.ReasonRequired);
         guideEvent.Status.Should().Be(EventStatus.Pending);
         _repo.EventModerationActions.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task ApplyModerationAsync_NotPending_RefusesAndWritesNothing()
+    {
+        var guideEvent = new Event { Id = Guid.NewGuid(), Status = EventStatus.Approved };
+        _repo.Events.Add(guideEvent);
+
+        var outcome = await _service.ApplyModerationAsync(
+            guideEvent.Id, Guid.NewGuid(), EventModerationActionType.Rejected, "reason", submitterEditUrl: null,
+            TestContext.Current.CancellationToken);
+
+        outcome.Should().Be(ModerationOutcome.NotPending);
+        guideEvent.Status.Should().Be(EventStatus.Approved);
+        _repo.EventModerationActions.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task ApplyModerationAsync_MissingEvent_Throws()
+    {
+        var act = () => _service.ApplyModerationAsync(
+            Guid.NewGuid(), Guid.NewGuid(), EventModerationActionType.Approved, null, submitterEditUrl: null,
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
     }
 
     private void StubEventCalendar(int eventEndOffset)

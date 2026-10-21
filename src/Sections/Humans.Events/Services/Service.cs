@@ -473,16 +473,19 @@ internal sealed class EventService(
     public Task<IReadOnlyList<CampEventOverlap>> GetCampEventsForOverlapAsync(CancellationToken ct = default)
         => repo.GetActiveCampEventsAsync(ct);
 
-    public async Task ApplyModerationAsync(
+    public async Task<ModerationOutcome> ApplyModerationAsync(
         Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason,
         string? submitterEditUrl = null, CancellationToken ct = default)
     {
         if (actionType is EventModerationActionType.Rejected or EventModerationActionType.ResubmitRequested
             && string.IsNullOrWhiteSpace(reason))
-            throw new ArgumentException("A reason is required to reject an event or request edits.", nameof(reason));
+            return ModerationOutcome.ReasonRequired;
 
         var guideEvent = await repo.GetEventForModerationAsync(eventId, ct)
             ?? throw new InvalidOperationException($"Event {eventId} not found.");
+
+        if (guideEvent.Status is not EventStatus.Pending)
+            return ModerationOutcome.NotPending;
 
         guideEvent.ApplyModerationAction(actionType, clock);
 
@@ -512,6 +515,8 @@ internal sealed class EventService(
             if (lifecycleStatus.HasValue)
                 await SendLifecycleEmailAsync(guideEvent, lifecycleStatus.Value, reason, submitterEditUrl, ct);
         }
+
+        return ModerationOutcome.Applied;
     }
 
     public async Task<IReadOnlyList<EventInfo>> GetAllEventsForDashboardAsync(CancellationToken ct = default)

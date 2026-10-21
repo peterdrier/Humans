@@ -90,7 +90,7 @@ public sealed class EventsModerationControllerTests
         _guide.GetEventForModerationAsync(guideEvent.Id, Arg.Any<CancellationToken>()).Returns(guideEvent);
         _guide.ApplyModerationAsync(guideEvent.Id, moderatorId, Arg.Any<EventModerationActionType>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new ArgumentException("A reason is required.", nameof(reject))));
+            .Returns(ModerationOutcome.ReasonRequired);
         _users.GetUserInfoAsync(moderatorId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfoFor(moderatorId)));
         var controller = BuildController(moderatorId, guideEvent.Id);
@@ -110,7 +110,7 @@ public sealed class EventsModerationControllerTests
         _guide.GetEventForModerationAsync(guideEvent.Id, Arg.Any<CancellationToken>()).Returns(guideEvent);
         _guide.ApplyModerationAsync(guideEvent.Id, moderatorId, Arg.Any<EventModerationActionType>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new InvalidOperationException("not pending")));
+            .Returns(ModerationOutcome.NotPending);
         _users.GetUserInfoAsync(moderatorId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfoFor(moderatorId)));
         var controller = BuildController(moderatorId, guideEvent.Id);
@@ -119,6 +119,25 @@ public sealed class EventsModerationControllerTests
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Index");
         controller.TempData[Humans.Base.Constants.TempDataKeys.ErrorMessage].Should().Be("This event is not in a pending state.");
+    }
+
+    [HumansFact]
+    public async Task Unrelated_service_exception_propagates_instead_of_a_refusal_message()
+    {
+        var moderatorId = Guid.NewGuid();
+        var guideEvent = MakeEvent(null, EventStatus.Pending) with { Title = "Pending event" };
+        _guide.GetEventForModerationAsync(guideEvent.Id, Arg.Any<CancellationToken>()).Returns(guideEvent);
+        _guide.ApplyModerationAsync(guideEvent.Id, moderatorId, Arg.Any<EventModerationActionType>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<ModerationOutcome>(new InvalidOperationException("connection is not open")));
+        _users.GetUserInfoAsync(moderatorId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfoFor(moderatorId)));
+        var controller = BuildController(moderatorId, guideEvent.Id);
+
+        var act = () => controller.Approve(new ModerationActionFormModel { EventId = guideEvent.Id });
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("connection is not open");
+        controller.TempData.ContainsKey(Humans.Base.Constants.TempDataKeys.ErrorMessage).Should().BeFalse();
     }
 
     [HumansTheory]

@@ -322,18 +322,15 @@ internal sealed class EventsModerationController(
             : Url.Action("Edit", "Events", new { eventId }, Request.Scheme)!;
 
         // ApplyModerationAsync owns the reason-required and pending-only rules.
-        try
-        {
-            await guide.ApplyModerationAsync(eventId, moderator.Id, actionType, reason, editUrl);
-        }
-        catch (ArgumentException)
+        var outcome = await guide.ApplyModerationAsync(eventId, moderator.Id, actionType, reason, editUrl);
+        if (outcome is ModerationOutcome.ReasonRequired)
         {
             SetError(actionType == EventModerationActionType.Rejected
                 ? "A reason is required when rejecting an event."
                 : "A reason is required when requesting edits.");
             return RedirectToAction(nameof(Index));
         }
-        catch (InvalidOperationException)
+        if (outcome is ModerationOutcome.NotPending)
         {
             SetError("This event is not in a pending state.");
             return RedirectToAction(nameof(Index));
