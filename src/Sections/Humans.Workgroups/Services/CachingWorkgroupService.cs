@@ -56,7 +56,7 @@ internal sealed class CachingWorkgroupService(
             generation = _cacheGeneration;
         }
 
-        var register = await WithInner(inner => inner.GetRegisterAsync(ct));
+        var register = await WithInnerAsync(inner => inner.GetRegisterAsync(ct));
         lock (_cacheGate)
         {
             // A write may have cleared the cache while this register was loading.
@@ -242,7 +242,7 @@ internal sealed class CachingWorkgroupService(
         MutateAsync(inner => inner.SetBudgetAsync(workgroupId, actorUserId, save, ct));
 
     public Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(CancellationToken ct = default) =>
-        WithInner(inner => inner.ListExpenseAccountsAsync(ct));
+        WithInnerAsync(inner => inner.ListExpenseAccountsAsync(ct));
 
     public Task<WorkgroupMutationResult> RecordDispositionAsync(
         Guid documentId,
@@ -257,10 +257,10 @@ internal sealed class CachingWorkgroupService(
     // The root folder id lives in Settings, which owns its own cache; nothing to hold here.
 
     public Task<string?> GetRootDriveFolderIdAsync(CancellationToken ct = default) =>
-        WithInner(inner => inner.GetRootDriveFolderIdAsync(ct));
+        WithInnerAsync(inner => inner.GetRootDriveFolderIdAsync(ct));
 
     public Task<WorkgroupMutationResult> SetRootDriveFolderIdAsync(string folderId, Guid actorUserId, CancellationToken ct = default) =>
-        WithInner(inner => inner.SetRootDriveFolderIdAsync(folderId, actorUserId, ct));
+        WithInnerAsync(inner => inner.SetRootDriveFolderIdAsync(folderId, actorUserId, ct));
 
     // ── The daily job ─────────────────────────────────────────────────────
 
@@ -299,7 +299,7 @@ internal sealed class CachingWorkgroupService(
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
     public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
-        WithInner(inner => inner.ContributeForUserAsync(userId, ct));
+        WithInnerAsync(inner => inner.ContributeForUserAsync(userId, ct));
 
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         MutateAsync(inner => inner.EraseForUserAsync(userId, ct));
@@ -329,7 +329,7 @@ internal sealed class CachingWorkgroupService(
     {
         try
         {
-            return await WithInner(work);
+            return await WithInnerAsync(work);
         }
         finally
         {
@@ -346,7 +346,7 @@ internal sealed class CachingWorkgroupService(
         }
     }
 
-    private async Task<T> WithInner<T>(Func<IWorkgroupService, Task<T>> work)
+    private async Task<T> WithInnerAsync<T>(Func<IWorkgroupService, Task<T>> work)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IWorkgroupService>(InnerServiceKey);

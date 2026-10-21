@@ -13,7 +13,7 @@ internal sealed class SectionAdminNav : ISectionAdminNav
     [
         new("Governance", [
             new("Voting", "GovernanceBoardVoting", "BoardVoting", null, null, "fa-solid fa-check-to-slot", PolicyNames.BoardOrAdmin,
-                 PillCount: PillCounts.VotingQueue),
+                 PillCount: PillCounts.VotingQueueAsync),
             new("Applications", "GovernanceApplications", "Admin", null, null, "fa-solid fa-file-signature", PolicyNames.BoardOrAdmin),
             new("Assembly Votes", "GovernanceVotesAdmin", "Index", null, null, "fa-solid fa-landmark-flag", PolicyNames.BoardOrAdmin),
             // Temporary: term-expiry repair for rows approved under the pre-September-2026 rule.
@@ -24,7 +24,7 @@ internal sealed class SectionAdminNav : ISectionAdminNav
 
 internal static class PillCounts
 {
-    public static async ValueTask<int?> VotingQueue(IServiceProvider sp)
+    public static async ValueTask<int?> VotingQueueAsync(IServiceProvider sp)
     {
         var http = sp.GetRequiredService<IHttpContextAccessor>();
         var idClaim = http.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier);

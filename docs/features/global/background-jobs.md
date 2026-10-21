@@ -23,6 +23,7 @@ Several system operations need to run automatically without user interaction: sy
 | SuspendNonCompliantMembersJob | Daily 4:30 AM | Enforce compliance deadlines |
 | ProcessAccountDeletionsJob | Daily | Process account deletion requests |
 | TermRenewalReminderJob | Weekly (Mon 5:00 AM) | Notify humans with approaching Colaborador/Asociado term expiry |
+| MembershipTierExpiryJob | Daily 00:05 UTC | Downgrade Colaborador/Asociado tiers whose term lapsed (to another in-term tier, else Volunteer), one `TierDowngraded` audit each |
 | AssemblyVoteLapseJob | Hourly | Close assembly votes past their announced deadline and send the T-24h ballot reminder to unvoted roster members |
 | ProcessEmailOutboxJob | Frequent | Send emails queued in the outbox table |
 | CleanupEmailOutboxJob | Weekly (Sun 3:00 AM) | Delete old processed outbox entries |

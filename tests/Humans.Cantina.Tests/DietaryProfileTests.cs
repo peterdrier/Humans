@@ -267,7 +267,7 @@ public class DietaryProfileTests
     {
         var id = Guid.NewGuid();
         SeedUser(id);
-        var shifts = Substitute.For<IShiftManagementService>();
+        var shifts = Substitute.For<IShiftService>();
         shifts.HasQualifyingCantinaSignupAsync(id, Arg.Any<CancellationToken>()).Returns(qualifying);
 
         var entries = await new SectionThingsToDo().EntriesAsync(NudgeServices(shifts), Principal(id));
@@ -287,12 +287,12 @@ public class DietaryProfileTests
         await _sut.SaveAsync(id, Answers(id), Ct);
 
         var entries = await new SectionThingsToDo().EntriesAsync(
-            NudgeServices(Substitute.For<IShiftManagementService>()), Principal(id));
+            NudgeServices(Substitute.For<IShiftService>()), Principal(id));
 
         entries.Should().BeEmpty();
     }
 
-    private IServiceProvider NudgeServices(IShiftManagementService shifts)
+    private IServiceProvider NudgeServices(IShiftService shifts)
     {
         var localizer = Substitute.For<IStringLocalizer<SharedResource>>();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));

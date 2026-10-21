@@ -98,7 +98,7 @@ internal sealed class EventParticipationService(
         return removed;
     }
 
-    public async Task SetParticipationFromTicketSyncAsync(
+    public async Task RecordParticipationAsync(
         Guid userId, int year, ParticipationStatus status, Instant? checkedInAt, CancellationToken ct = default) =>
         await repo.UpsertAsync(
             userId, year, status, ParticipationSource.TicketSync,

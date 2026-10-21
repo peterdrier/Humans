@@ -4,6 +4,7 @@ using System.Security.Claims;
 using Humans.Camps.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
+using Humans.Store.Services;
 using Humans.Store.Services.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using NodaTime;
@@ -75,7 +76,7 @@ internal sealed class OrderAuthorizationHandler(
         // passed — only Store admins (handled above) may cross OrderableUntil.
         var pastDeadline = resource.ProductOrderableUntil is { } until
             && pending.Any(IsLineEdit)
-            && await TodayInEventZoneAsync() > until;
+            && await settingsService.TodayInEventZoneAsync(clock) > until;
 
         // TeamsAdmin: read any order; manage team orders only (camp orders stay
         // view-only) — including Create, for any department rather than only the ones
@@ -132,15 +133,6 @@ internal sealed class OrderAuthorizationHandler(
                 continue;
             context.Succeed(req);
         }
-    }
-
-    private async Task<LocalDate> TodayInEventZoneAsync()
-    {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync();
-        var tz = activeEvent is null
-            ? DateTimeZone.Utc
-            : DateTimeZoneProviders.Tzdb.GetZoneOrNull(activeEvent.TimeZoneId) ?? DateTimeZone.Utc;
-        return clock.GetCurrentInstant().InZone(tz).Date;
     }
 
     private static bool TryResolveResource(

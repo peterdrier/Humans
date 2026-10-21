@@ -342,7 +342,7 @@ public class DriveActivityMonitorServiceTests
 
         // Configure an async-enumerable that throws on MoveNext for the broken resource.
         _client.QueryActivityAsync(broken.GoogleId, Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(_ => ThrowingEnumerable());
+            .Returns(_ => ThrowingEnumerableAsync());
 
         var count = await _service.CheckForAnomalousActivityAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -367,7 +367,7 @@ public class DriveActivityMonitorServiceTests
         SeedResources(first, second);
 
         _client.QueryActivityAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(_ => ThrowingEnumerable());
+            .Returns(_ => ThrowingEnumerableAsync());
 
         var act = async () => await _service.CheckForAnomalousActivityAsync(
             Xunit.TestContext.Current.CancellationToken);
@@ -390,7 +390,7 @@ public class DriveActivityMonitorServiceTests
             addedRole: "writer",
             targetUser: "intruder@example.com");
         _client.QueryActivityAsync(resource.GoogleId, Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(_ => YieldThenThrowEnumerable(streamed));
+            .Returns(_ => YieldThenThrowEnumerableAsync(streamed));
 
         var act = async () => await _service.CheckForAnomalousActivityAsync(
             Xunit.TestContext.Current.CancellationToken);
@@ -412,7 +412,7 @@ public class DriveActivityMonitorServiceTests
         SeedResources(missing);
 
         _client.QueryActivityAsync(missing.GoogleId, Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(_ => ThrowNotFoundEnumerable(missing.GoogleId));
+            .Returns(_ => ThrowNotFoundEnumerableAsync(missing.GoogleId));
 
         var count = await _service.CheckForAnomalousActivityAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -520,7 +520,7 @@ public class DriveActivityMonitorServiceTests
     private void SeedActivity(string googleId, params DriveActivityEvent[] events)
     {
         _client.QueryActivityAsync(googleId, Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(_ => ToAsyncEnumerable(events));
+            .Returns(_ => StreamAsync(events));
     }
 
     private static GoogleResourceSnapshot BuildResource(string name) => new(
@@ -601,7 +601,7 @@ public class DriveActivityMonitorServiceTests
                 ],
                 RemovedPermissions: []));
 
-    private static async IAsyncEnumerable<DriveActivityEvent> ToAsyncEnumerable(
+    private static async IAsyncEnumerable<DriveActivityEvent> StreamAsync(
         IEnumerable<DriveActivityEvent> source)
     {
         foreach (var e in source)
@@ -611,7 +611,7 @@ public class DriveActivityMonitorServiceTests
         }
     }
 
-    private static async IAsyncEnumerable<DriveActivityEvent> ThrowingEnumerable()
+    private static async IAsyncEnumerable<DriveActivityEvent> ThrowingEnumerableAsync()
     {
         await Task.Yield();
         throw new InvalidOperationException("boom");
@@ -621,14 +621,14 @@ public class DriveActivityMonitorServiceTests
 #pragma warning restore CS0162
     }
 
-    private static async IAsyncEnumerable<DriveActivityEvent> YieldThenThrowEnumerable(DriveActivityEvent first)
+    private static async IAsyncEnumerable<DriveActivityEvent> YieldThenThrowEnumerableAsync(DriveActivityEvent first)
     {
         yield return first;
         await Task.Yield();
         throw new InvalidOperationException("dropped");
     }
 
-    private static async IAsyncEnumerable<DriveActivityEvent> ThrowNotFoundEnumerable(string googleItemId)
+    private static async IAsyncEnumerable<DriveActivityEvent> ThrowNotFoundEnumerableAsync(string googleItemId)
     {
         await Task.Yield();
         throw new DriveActivityResourceNotFoundException(googleItemId);

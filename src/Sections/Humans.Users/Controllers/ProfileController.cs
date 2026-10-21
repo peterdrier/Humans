@@ -153,10 +153,6 @@ internal sealed class ProfileController(
         var isInitialSetup = user.Profile is null
             || !(await consentService.GetConsentReviewAsync(user.Id)).IsApproved;
 
-        var burnerCvResult = ValidateBurnerCvOrNull(model, isInitialSetup);
-        if (burnerCvResult is not null)
-            return burnerCvResult;
-
         var pictureUpload = await TryReadProfilePictureUploadAsync(model);
         if (!pictureUpload.Success)
         {
@@ -214,27 +210,6 @@ internal sealed class ProfileController(
         }
     }
 
-    // Burner CV: entries OR "no prior experience". Returns the rerender result
-    // when invalid, null to continue.
-    private IActionResult? ValidateBurnerCvOrNull(ProfileViewModel model, bool isInitialSetup)
-    {
-        var hasVolunteerHistory = model.EditableVolunteerHistory
-            .Any(vh => !string.IsNullOrWhiteSpace(vh.EventName) && vh.ParsedDate.HasValue);
-        if (!model.NoPriorBurnExperience && !hasVolunteerHistory)
-        {
-            ModelState.AddModelError(nameof(model.NoPriorBurnExperience),
-                localizer["Profile_BurnerCVRequired"].Value);
-            model.IsInitialSetup = isInitialSetup;
-            model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
-                && string.IsNullOrEmpty(model.LastName)
-                && string.IsNullOrEmpty(model.EmergencyContactName);
-            ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
-            return View(model);
-        }
-
-        return null;
-    }
-
     // CV: existing rows keep Id/CreatedAt; new rows post Guid.Empty and get fresh Id.
     private static ProfileSaveRequest BuildProfileSaveRequest(
         ProfileViewModel model, (bool Success, byte[]? Data, string? ContentType) pictureUpload)
@@ -284,8 +259,10 @@ internal sealed class ProfileController(
         if (result.Succeeded) return (result.ProfileId!.Value, null);
         var errorKey = result.ErrorKey;
 
-        ModelState.AddModelError(string.Empty, errorKey is not null
-            ? localizer[errorKey].Value : sharedLocalizer["Common_Error"].Value);
+        // ProfileEditorService owns the Burner CV rule; its refusal targets the checkbox field.
+        ModelState.AddModelError(
+            string.Equals(errorKey, ProfileEditorService.BurnerCvRequiredErrorKey, StringComparison.Ordinal) ? nameof(model.NoPriorBurnExperience) : string.Empty,
+            errorKey is not null ? localizer[errorKey].Value : sharedLocalizer["Common_Error"].Value);
         model.IsInitialSetup = isInitialSetup;
         model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
             && string.IsNullOrEmpty(model.LastName)

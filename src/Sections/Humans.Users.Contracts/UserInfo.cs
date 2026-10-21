@@ -156,6 +156,7 @@ public sealed record UserInfo(
     string? FallbackPictureUrl,
     Instant CreatedAt,
     Instant? LastLoginAt,
+    [property: Obsolete("Moved to Consent's consent_reminders. The one reader left is Consent's ConsentReminderService: its legacy fallback and the consent.reminder-stamps copy.", DiagnosticId = "HUM_USER_CONSENT_REMINDER")]
     Instant? LastConsentReminderSentAt,
     Instant? DeletionRequestedAt,
     Instant? DeletionScheduledFor,
@@ -315,6 +316,12 @@ public sealed record UserInfo(
 #pragma warning disable HUM_PROFILE_REVIEW // legacy arm, retired with the consent.profile-review copy
         || Profile?.RejectedAt is not null;
 #pragma warning restore HUM_PROFILE_REVIEW
+
+    /// <summary>
+    /// Has a profile and is not <see cref="IsRejected"/>: the population person search
+    /// (<see cref="IUserService.SearchUsersAsync"/>) and the single-person lookups resolve.
+    /// </summary>
+    public bool IsSearchable => Profile is not null && !IsRejected;
 
     /// <summary>Canonical "has profile" predicate.</summary>
     public bool HasProfile => Profile is not null;

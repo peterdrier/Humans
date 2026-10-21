@@ -317,7 +317,7 @@ public class NotificationMeterProviderTests : IDisposable
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([]));
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(TeamsWithPending(3), TeamsWithPending(1));
+            .Returns(TeamsWithPendingAsync(3), TeamsWithPendingAsync(1));
 
         var first = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.Admin), ct);
         _cache.TryGetValue(NotificationMeterProvider.CountsCacheKey, out _).Should().BeTrue();
@@ -329,7 +329,7 @@ public class NotificationMeterProviderTests : IDisposable
         second.Should().Contain(m => m.Title == "Team join requests pending" && m.Count == 1);
     }
 
-    private static Task<IReadOnlyDictionary<Guid, TeamInfo>> TeamsWithPending(int pending)
+    private static Task<IReadOnlyDictionary<Guid, TeamInfo>> TeamsWithPendingAsync(int pending)
     {
         var teamId = Guid.NewGuid();
         return Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>

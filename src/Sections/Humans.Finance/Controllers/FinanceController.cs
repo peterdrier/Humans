@@ -317,16 +317,10 @@ internal sealed class FinanceController(
         var ledger = await holdedFinance.GetCreditorLedgerAsync(accountNum, HttpContext.RequestAborted);
         if (ledger is null) return NotFound();
 
-        // Controllers assemble and sort the presentation model. The running balance accumulates
-        // oldest-first from the account's first line (credit = owed to the member, debit = paid
-        // out); the page then shows newest activity first, lines within an entry in order.
-        var running = 0m;
+        // The running balance is the service's (CreditorLedgerLine.RunningBalance); the page
+        // shows newest activity first, lines within an entry in order.
         var lines = ledger.Lines
-            .OrderBy(l => l.Date)
-            .ThenBy(l => l.EntryNumber)
-            .ThenBy(l => l.Line)
-            .Select(l => new CreditorStatementLineVm(l, running += l.Credit - l.Debit))
-            .ToList()
+            .Select(l => new CreditorStatementLineVm(l, l.RunningBalance))
             .OrderByDescending(r => r.Line.Date)
             .ThenByDescending(r => r.Line.EntryNumber)
             .ThenBy(r => r.Line.Line)

@@ -859,18 +859,14 @@ internal sealed class ExpensesController(
 
     /// <summary>
     /// Which decisions the detail page offers the current user. The authorization handler owns the
-    /// actor matrix; the status guard here mirrors the repository's, so a button that would be
-    /// refused on arrival is not drawn.
+    /// actor matrix and each decision's status gate.
     /// </summary>
     private async Task<(bool Approve, bool FinanceReject, bool Endorse, bool CoordinatorReject)>
         ResolveDecisionsAsync(ExpenseReportDto report)
     {
-        var isPending = report.Status is ExpenseReportStatus.Submitted
-            or ExpenseReportStatus.CoordinatorEndorsed;
         return (
-            Approve: isPending && await AllowsAsync(report, ExpenseReportOperation.Approve),
-            FinanceReject: isPending && await AllowsAsync(report, ExpenseReportOperation.FinanceReject),
-            // The handler already restricts both coordinator operations to Submitted.
+            Approve: await AllowsAsync(report, ExpenseReportOperation.Approve),
+            FinanceReject: await AllowsAsync(report, ExpenseReportOperation.FinanceReject),
             Endorse: await AllowsAsync(report, ExpenseReportOperation.Endorse),
             CoordinatorReject: await AllowsAsync(report, ExpenseReportOperation.CoordinatorReject));
     }

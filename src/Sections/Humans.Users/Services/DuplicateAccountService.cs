@@ -185,8 +185,7 @@ internal sealed class DuplicateAccountService(
             membershipTier = tiers.GetValueOrDefault(userId, MembershipTier.Volunteer).ToString();
             membershipStatus = info.IsSuspended ? "Suspended"
                 : reviews.TryGetValue(userId, out var review) && review.IsApproved ? "Active" : "Pending";
-            isProfileComplete = !string.IsNullOrEmpty(profile.FirstName) &&
-                                !string.IsNullOrEmpty(profile.LastName);
+            isProfileComplete = info.HasRequiredNameFields;
         }
 
         return new DuplicateAccountInfo

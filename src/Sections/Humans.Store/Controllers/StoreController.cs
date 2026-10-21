@@ -88,8 +88,8 @@ internal sealed class StoreController(
         var (catalog, removableLineIds) = await FilterLineEditAffordancesAsync(order, pageData.Catalog, canEdit, ct);
         return View(OrderViewModel.FromPageData(
             pageData,
-            canDeleteAuth && order.BalanceEur == 0m && order.State == OrderState.Open && order.Payments.Count == 0,
-            canIssueAuth && order.State == OrderState.Open && order.Lines.Count > 0,
+            canDeleteAuth && order.IsDeletable,
+            canIssueAuth && order.IsInvoiceIssuable,
             canRecordPayment,
             canRefund,
             canDeletePayment,

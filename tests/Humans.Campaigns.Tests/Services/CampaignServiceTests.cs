@@ -723,6 +723,20 @@ public sealed class CampaignServiceTests
         page.Preview.Should().NotBeNull();
         page.Preview!.EligibleCount.Should().Be(1);
         page.Teams.Select(t => t.Name).Should().ContainInOrder("Alpha Team", "Beta Team");
+        page.CanSendWave.Should().BeTrue();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("Draft")]
+    [Xunit.InlineData("Completed")]
+    public async Task GetSendWavePageAsync_InactiveCampaign_CannotSendWave(string status)
+    {
+        var campaign = await SeedCampaignAsync(Enum.Parse<CampaignStatus>(status));
+
+        var page = await _service.GetSendWavePageAsync(campaign.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        page.Should().NotBeNull();
+        page.CanSendWave.Should().BeFalse();
     }
 
     [HumansFact]

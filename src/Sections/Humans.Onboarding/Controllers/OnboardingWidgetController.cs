@@ -26,7 +26,7 @@ internal sealed class OnboardingWidgetController(
     IOnboardingWidgetState state,
     IProfileEditorService profileEditorService,
     IShiftSignups signupService,
-    IShiftManagementService shiftMgmt,
+    IShiftService shiftMgmt,
     ISettingsService settingsService,
     IShiftView shiftView,
     IConsentSubmission consents,

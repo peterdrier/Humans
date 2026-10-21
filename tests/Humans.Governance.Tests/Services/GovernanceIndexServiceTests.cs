@@ -102,13 +102,13 @@ public sealed class GovernanceIndexServiceTests
         var userId = Guid.NewGuid();
         var user = new User { Id = userId, DisplayName = "Member", Email = "member@example.com" }.ToUserInfo();
         var abandon = false;
-        async ValueTask<UserInfo?> ReadUser(CallInfo call)
+        async ValueTask<UserInfo?> ReadUserAsync(CallInfo call)
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             if (abandon && cancelAfterViewer) await cancellation.CancelAsync();
             return user;
         }
-        Users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(ReadUser);
+        Users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(ReadUserAsync);
         Applications.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();

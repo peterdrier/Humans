@@ -28,7 +28,7 @@ internal sealed class WidgetGalleryController(
     IUserService userService,
     ITeamService teamService,
     ICampService campService,
-    IShiftManagementService shiftService,
+    IShiftService shiftService,
     ISettingsService settingsService,
     IEventService eventService,
     IConfiguration configuration) : HumansControllerBase(userService)

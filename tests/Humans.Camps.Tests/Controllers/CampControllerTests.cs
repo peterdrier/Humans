@@ -238,7 +238,7 @@ public class CampControllerTests
         using var request = new CancellationTokenSource();
         var abandon = false;
         var boundaryToken = CancellationToken.None;
-        async Task<T> Read<T>(T value, string name, CancellationToken ct)
+        async Task<T> ReadAsync<T>(T value, string name, CancellationToken ct)
         {
             if (abandon && string.Equals(name, boundary, StringComparison.Ordinal))
             {
@@ -253,11 +253,11 @@ public class CampControllerTests
         var camp = MakeCamp("alpha", "Alpha", CampSeasonStatus.Active, userId);
         var season = camp.Seasons.Single();
         _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(call =>
-            Read<CampInfo?>(camp, "Camp", call.Arg<CancellationToken>()));
+            ReadAsync<CampInfo?>(camp, "Camp", call.Arg<CancellationToken>()));
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
-            new ValueTask<UserInfo?>(Read<UserInfo?>(MakeUserInfo(userId), "Viewer", call.Arg<CancellationToken>())));
+            new ValueTask<UserInfo?>(ReadAsync<UserInfo?>(MakeUserInfo(userId), "Viewer", call.Arg<CancellationToken>())));
         _camps.GetCampEditDataAsync(camp.Id, null, Arg.Any<CancellationToken>()).Returns(call =>
-            Read<CampEditData?>(MakeEditData(camp, season), "EditData", call.Arg<CancellationToken>()));
+            ReadAsync<CampEditData?>(MakeEditData(camp, season), "EditData", call.Arg<CancellationToken>()));
         _authorization.AuthorizeAsync(
             Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());

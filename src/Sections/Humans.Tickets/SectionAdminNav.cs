@@ -15,7 +15,7 @@ internal sealed class SectionAdminNav : ISectionAdminNav
         new("Tickets", [
             new("Tickets",           "Ticket",               "Index", null, null, "fa-solid fa-ticket",      PolicyNames.TicketAdminBoardOrAdmin, Weight: 0),
             new("Transfer requests", "TicketTransferAdmin",  "Index", null, null, "fa-solid fa-right-left",  PolicyNames.TicketAdminOrAdmin, Weight: 10,
-                 PillCount: PillCounts.TransferQueue),
+                 PillCount: PillCounts.TransferQueueAsync),
             new("Attendee contacts", "TicketsContactsAdmin", "Index", null, null, "fa-solid fa-address-book", PolicyNames.TicketAdminOrAdmin, Weight: 20),
             new("Onsite roster",     "TicketsOnsiteAdmin",   "Index", null, null, "fa-solid fa-clipboard-list", PolicyNames.ScannerAccess, Weight: 30)
         ])
@@ -24,7 +24,7 @@ internal sealed class SectionAdminNav : ISectionAdminNav
 
 internal static class PillCounts
 {
-    public static async ValueTask<int?> TransferQueue(IServiceProvider sp)
+    public static async ValueTask<int?> TransferQueueAsync(IServiceProvider sp)
     {
         var transfers = sp.GetRequiredService<ITicketTransferQueue>();
         var count = await transfers.CountPendingAsync();

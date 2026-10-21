@@ -41,7 +41,7 @@ Both forms are exempt from `MembershipRequiredFilter` so a not-yet-Active member
 ### US-35.1: Things-to-do nudge
 **Acceptance Criteria:**
 - Cantina's `SectionThingsToDo` contributes a `"dietary"` item whenever the member has no dietary preference on file (`ICantinaService`, which falls back to the legacy profile columns until copied).
-- Title `Todo_DietaryMedical_Title`; description `Todo_DietaryMedical_Pending` when `IShiftManagementService.HasQualifyingCantinaSignupAsync` is true, else `Todo_DietaryMedical_NoShift_Pending`; action `Todo_DietaryMedical_Action` → `CantinaProfile/Dietary`; icon `fa-solid fa-utensils`.
+- Title `Todo_DietaryMedical_Title`; description `Todo_DietaryMedical_Pending` when `IShiftService.HasQualifyingCantinaSignupAsync` is true, else `Todo_DietaryMedical_NoShift_Pending`; action `Todo_DietaryMedical_Action` → `CantinaProfile/Dietary`; icon `fa-solid fa-utensils`.
 - Any non-empty preference (including Omnivore with no allergies) removes it.
 - Self-signups and voluntold signups count alike (`Pending`/`Confirmed`, future, qualifying shift). No email or push.
 
@@ -97,7 +97,7 @@ The legacy `profiles` food columns are read only by Cantina's fallback and the `
 
 ## Cross-section dependencies
 
-- **Shifts** → Cantina: `ICantinaService` for the gate, banner, volunteer search and admin badges. Cantina → Shifts: `IShiftManagementService.HasQualifyingCantinaSignupAsync` (nudge copy) and `IShiftSignups` (replay).
+- **Shifts** → Cantina: `ICantinaService` for the gate, banner, volunteer search and admin badges. Cantina → Shifts: `IShiftService.HasQualifyingCantinaSignupAsync` (nudge copy) and `IShiftSignups` (replay).
 - **Users** → Cantina: `ICantinaService` for the medical prompt's "dietary still open" check. Cantina → Users: `IUserService` for the merge chain and legacy fallback.
 
 ## Negative access rules

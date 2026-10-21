@@ -97,13 +97,13 @@ public class CommunicationPreferencesControllerTests
     {
         using var request = new CancellationTokenSource();
         _controller.HttpContext.RequestAborted = request.Token;
-        async ValueTask<UserInfo?> ReadViewer(CancellationToken ct)
+        async ValueTask<UserInfo?> ReadViewerAsync(CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
             return Viewer();
         }
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(call => ReadViewer(call.Arg<CancellationToken>()));
+            .Returns(call => ReadViewerAsync(call.Arg<CancellationToken>()));
 
         (await _controller.Index()).Should().BeOfType<ViewResult>();
         await request.CancelAsync();

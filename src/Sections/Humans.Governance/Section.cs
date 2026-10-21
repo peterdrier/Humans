@@ -38,7 +38,6 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<ApplicationDecisionService>();
         services.AddScoped<IGovernanceManagement>(sp => sp.GetRequiredService<ApplicationDecisionService>());
         services.AddScoped<IGovernanceService>(sp => sp.GetRequiredService<ApplicationDecisionService>());
-        services.AddScoped<IGovernanceWrite>(sp => sp.GetRequiredService<ApplicationDecisionService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ApplicationDecisionService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ApplicationDecisionService>());
 
@@ -98,6 +97,7 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<IEmailPreviewContributor, GovernanceEmailPreviews>();
 
         services.AddScoped<TermRenewalReminderJob>();
+        services.AddScoped<MembershipTierExpiryJob>();
 
         services.AddSingleton<GovernanceMetricsService>();
         services.AddHostedService(sp => sp.GetRequiredService<GovernanceMetricsService>());

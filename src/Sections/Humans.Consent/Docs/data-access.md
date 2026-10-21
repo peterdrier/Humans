@@ -152,6 +152,20 @@ row reads the legacy `profiles` review columns via `IUserService`; the copy
 also calls `IUserWrite.SetRejectedAsync` for a legacy rejection the stored
 state never recorded. No cache.
 
+### ConsentReminderService (Scoped, internal; implements `IUserDataContributor`)
+
+Repository: `IConsentReminderRepository` (Singleton, `IDbContextFactory<LegalDbContext>`).
+
+| Table | R/W |
+|-------|-----|
+| consent_reminders | R/W |
+
+The re-consent reminder cooldown stamp. Serves `SendReConsentReminderJob`'s
+read (`GetLastSentAsync`) and stamp (`RecordSentAsync`), the
+`consent.reminder-stamps` copy, and the `ConsentReminder` export/erasure
+slice. Until the copy is done, a member with no row reads the legacy
+`users.LastConsentReminderSentAt` via `IUserService`. No cache.
+
 ### ConsentEmails (Scoped, internal)
 
 No repository. Pure builder — reads `ConsentResource` (via

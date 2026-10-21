@@ -199,14 +199,14 @@ nobodies-collective/Humans#933.)
   is the Tickets cache/sync interval, not real-time.
 - **Early Entry** — `IEarlyEntryService.GetForUserAsync`.
 - **Settings / Shifts** — `ISettingsService.GetActiveEventSettingsAsync` (Settings: event time zone for "today"; also the active
-  event/year for the shift roster pre-fill and the Attended-participation write); and Shifts' `IShiftManagementService.GetBrowseShiftsAsync`
+  event/year for the shift roster pre-fill and the Attended-participation write); and Shifts' `IShiftService.GetBrowseShiftsAsync`
   from `GateService`: `GetShiftRosterAsync` pre-fills the claim screen with the gate-shift roster
   (opt-in via `Gate:RosterTeamId`; see Configuration — claim flow unreachable since
   peterdrier#1075). Read-only consumption of the existing Shifts surface — no new Shifts surface.
   _Cross-section read approved by Peter (verbal, 2026-06-29)._
 - **Users** — `IUserService` (scanner name; supervisor/claim display names; leaderboard
   rendering via `<vc:human>`).
-- **Tickets** — `ITicketWrite.SetParticipationFromTicketSyncAsync` (Tickets owns participation since Users
+- **Tickets** — `ITicketWrite.RecordParticipationAsync` (Tickets owns participation since Users
   decomposition commit 13) — on an
   admit with a matched guest, `GateService` projects the check-in onto the guest's
   `EventParticipation` row (Attended, `CheckedInAt` = admit instant, year = the active event's).

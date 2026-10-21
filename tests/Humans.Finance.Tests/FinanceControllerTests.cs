@@ -435,22 +435,22 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
-    public async Task CreditorStatement_RunningBalance_AccumulatesOldestFirst_ShownNewestFirst()
+    public async Task CreditorStatement_ShowsTheServiceRunningBalance_NewestFirst()
     {
         var day1 = Instant.FromUtc(2026, 3, 1, 0, 0);
         var day2 = Instant.FromUtc(2026, 3, 2, 0, 0);
         _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>()).Returns(
             new HoldedCreditorLedger(40000002, -30m, 30m,
             [
-                Ledger(entry: 9, line: 1, day2) with { Credit = 0m, Debit = 50m },  // paid out 50
-                Ledger(entry: 5, line: 1, day1) with { Credit = 100m }, // owed 100
-                Ledger(entry: 7, line: 1, day2) with { Credit = 0m, Debit = 20m },  // paid out 20
+                Ledger(entry: 9, line: 1, day2) with { Credit = 0m, Debit = 50m, RunningBalance = 30m },
+                Ledger(entry: 5, line: 1, day1) with { Credit = 100m, RunningBalance = 100m },
+                Ledger(entry: 7, line: 1, day2) with { Credit = 0m, Debit = 20m, RunningBalance = 80m },
             ]));
 
         var model = (await MakeController().CreditorStatement(40000002))
             .Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<CreditorStatementVm>().Subject;
 
-        // Chronological: +100 → 100, −20 → 80, −50 → 30; presented newest first.
+        // The service accumulates; the page only presents newest first.
         model.Lines.Select(r => (r.Line.EntryNumber, r.RunningBalance)).Should().Equal((9, 30m), (7, 80m), (5, 100m));
         model.Lines[0].RunningBalance.Should().Be(model.OwedBalance);
     }

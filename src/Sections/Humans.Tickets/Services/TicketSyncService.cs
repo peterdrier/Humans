@@ -437,7 +437,7 @@ internal sealed class TicketSyncService(
     /// check-in resource by <see cref="ITicketRepository.ApplyCheckInsAsync"/>),
     /// NOT inferred from <see cref="TicketAttendeeStatus"/> — TicketTailor keeps a
     /// scanned ticket's status "valid". The earliest scan across a user's tickets
-    /// is passed to <see cref="ITicketWrite.SetParticipationFromTicketSyncAsync"/>;
+    /// is passed to <see cref="ITicketWrite.RecordParticipationAsync"/>;
     /// the repo's "never overwrite non-null CheckedInAt" rule keeps the first value.
     /// Issue nobodies-collective/Humans#736.
     /// </para>
@@ -494,7 +494,7 @@ internal sealed class TicketSyncService(
                     && existing.CheckedInAt is not null)
                     continue;
 
-                await participations.SetParticipationFromTicketSyncAsync(
+                await participations.RecordParticipationAsync(
                     userId, year, ParticipationStatus.Attended, info.CheckedInAt, ct);
             }
             else if (hasValidTicket)
@@ -505,7 +505,7 @@ internal sealed class TicketSyncService(
                     or { Status: ParticipationStatus.Ticketed, Source: ParticipationSource.TicketSync })
                     continue;
 
-                await participations.SetParticipationFromTicketSyncAsync(
+                await participations.RecordParticipationAsync(
                     userId, year, ParticipationStatus.Ticketed, checkedInAt: null, ct);
             }
         }

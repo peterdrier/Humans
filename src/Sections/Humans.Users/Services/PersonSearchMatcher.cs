@@ -33,14 +33,11 @@ internal static class PersonSearchMatcher
     /// <summary>Returns the first bucket that matches <paramref name="query"/>, or null if none do.</summary>
     public static PersonSearchMatch? Match(UserInfo user, string query, PersonSearchFields fields)
     {
-        if (fields == PersonSearchFields.None || user.Profile is null)
+        // Implicit scope: no-profile and rejected users are never searchable.
+        if (fields == PersonSearchFields.None || !user.IsSearchable)
             return null;
 
-        var p = user.Profile;
-
-        // Implicit scope: rejected profiles are never searchable.
-        if (user.IsRejected)
-            return null;
+        var p = user.Profile!;
 
         var q = query.Trim();
         if (q.Length == 0)

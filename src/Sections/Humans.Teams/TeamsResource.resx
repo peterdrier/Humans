@@ -99,14 +99,6 @@
   <data name="Teams_TeamAdmin_ProvideRejectionReason" xml:space="preserve"><value>Please provide a reason for rejection.</value></data>
   <data name="Teams_TeamAdmin_RequestRejected" xml:space="preserve"><value>Request rejected.</value></data>
   <data name="Teams_TeamAdmin_MemberRemoved" xml:space="preserve"><value>Member removed from team.</value></data>
-  <data name="Teams_TeamAdmin_InvalidDriveUrl" xml:space="preserve"><value>Please enter a valid Google Drive folder URL.</value></data>
-  <data name="Teams_TeamAdmin_ServiceAccount" xml:space="preserve"><value>Service account: {0}</value><comment>{0} = service account email</comment></data>
-  <data name="Teams_TeamAdmin_InvalidGroupEmail" xml:space="preserve"><value>Please enter a valid Google Group email address.</value></data>
-  <data name="Teams_TeamAdmin_GroupLinked" xml:space="preserve"><value>Google Group "{0}" linked successfully.</value><comment>{0} = group name</comment></data>
-  <data name="Teams_TeamAdmin_GroupLinkFailed" xml:space="preserve"><value>Failed to link Google Group.</value></data>
-  <data name="Teams_TeamAdmin_ResourceUnlinked" xml:space="preserve"><value>Resource unlinked from team.</value></data>
-  <data name="Teams_TeamAdmin_ResourceSynced" xml:space="preserve"><value>Resource permissions synced successfully.</value></data>
-  <data name="Teams_TeamAdmin_ResourceSyncFailed" xml:space="preserve"><value>Failed to sync resource permissions: {0}</value><comment>{0} = error message</comment></data>
   <data name="Teams_AdminTeams_Title" xml:space="preserve"><value>Teams Administration</value></data>
   <data name="Teams_AdminCreateTeam_Title" xml:space="preserve"><value>Create Team</value></data>
   <data name="Teams_AdminEditTeam_Title" xml:space="preserve"><value>Edit Team</value></data>
@@ -149,17 +141,6 @@
   <data name="Teams_TeamAdmin_Reject" xml:space="preserve"><value>Reject</value></data>
   <data name="Teams_TeamAdmin_RejectRequest" xml:space="preserve"><value>Reject Request</value></data>
   <data name="Teams_TeamAdmin_RejectionReason" xml:space="preserve"><value>Reason for rejection (required)</value></data>
-  <data name="Teams_TeamAdmin_Resources" xml:space="preserve"><value>Resources</value></data>
-  <data name="Teams_TeamAdmin_ServiceAccountTitle" xml:space="preserve"><value>Service Account</value></data>
-  <data name="Teams_TeamAdmin_ShareWithServiceAccount" xml:space="preserve"><value>To link a Google resource, you must first share it with the service account:</value></data>
-  <data name="Teams_TeamAdmin_Copy" xml:space="preserve"><value>Copy</value></data>
-  <data name="Teams_TeamAdmin_DriveFolders" xml:space="preserve"><value>Drive folders</value></data>
-  <data name="Teams_TeamAdmin_DriveFoldersHelp" xml:space="preserve"><value>Share the folder with this email as Editor</value></data>
-  <data name="Teams_TeamAdmin_GoogleGroups" xml:space="preserve"><value>Google Groups</value></data>
-  <data name="Teams_TeamAdmin_GoogleGroupsHelp" xml:space="preserve"><value>Add this email as a Manager of the group</value></data>
-  <data name="Teams_TeamAdmin_LinkedResources" xml:space="preserve"><value>Linked Resources</value></data>
-  <data name="Teams_TeamAdmin_LastSynced" xml:space="preserve"><value>Last Synced</value></data>
-  <data name="Teams_TeamAdmin_NoResources" xml:space="preserve"><value>No resources linked to this team yet. Use the forms below to link a Google Drive folder or Google Group.</value></data>
   <data name="Teams_TeamDetail_TeamCoordinators" xml:space="preserve"><value>Coordinators</value></data>
   <data name="Teams_Detail_SubteamLeads" xml:space="preserve"><value>Subteam Leads ({0})</value></data>
   <data name="Teams_TeamDetail_AboutTeam" xml:space="preserve"><value>About</value></data>
@@ -213,7 +194,6 @@
   <data name="Teams_Tree_Subtitle" xml:space="preserve"><value>Every department and the teams inside it.</value></data>
   <data name="Teams_SyncStatus" xml:space="preserve"><value>Sync Status</value></data>
   <data name="Teams_SystemTeams" xml:space="preserve"><value>System Teams</value></data>
-  <data name="Teams_TeamAdminResources_Title" xml:space="preserve"><value>Manage Resources - {0}</value><comment>{0} = team name</comment></data>
   <data name="Teams_TeamAdminMembers_Title" xml:space="preserve"><value>Manage Members - {0}</value><comment>{0} = team name</comment></data>
   <data name="Teams_Email_AddedToTeam_Subject" xml:space="preserve"><value>You've been added to {0}</value><comment>{0} = team name</comment></data>
   <data name="Teams_Email_AddedToTeam_Body" xml:space="preserve"><value>&lt;h2&gt;Welcome to {1}!&lt;/h2&gt;

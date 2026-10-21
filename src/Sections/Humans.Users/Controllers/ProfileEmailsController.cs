@@ -1010,14 +1010,13 @@ internal sealed class ProfileEmailsController(
             rowsByKey.TryAdd((r.Provider!, r.ProviderKey!), r);
         }
 
-        // Auth-method invariant: at least one verified row must remain post-unlink (orphan logins don't touch rows).
-        var verifiedTotal = emails.Count(e => e.IsVerified);
-
         return logins.Select(l =>
         {
             rowsByKey.TryGetValue((l.LoginProvider, l.ProviderKey), out var row);
-            var rowIsVerified = row?.IsVerified == true;
-            var verifiedAfter = verifiedTotal - (rowIsVerified ? 1 : 0);
+            // A row's unlink invariant is the service's (CanUnlink); an orphan login touches no row.
+            var canUnlink = row is not null
+                ? emails.FirstOrDefault(e => e.Id == row.Id)?.CanUnlink == true
+                : emails.Any(e => e.IsVerified);
             return new LinkedOAuthAccountViewModel
             {
                 Provider = l.LoginProvider,
@@ -1027,7 +1026,7 @@ internal sealed class ProfileEmailsController(
                 MatchingUserEmailId = row?.Id,
                 Email = row?.Email,
                 LinkedAt = row?.CreatedAt,
-                CanUnlink = verifiedAfter >= 1,
+                CanUnlink = canUnlink,
             };
         }).ToList();
     }

@@ -94,18 +94,18 @@ public class ShiftsControllerUserActiveSignupsTests
         _signupService.GetByUserAsync(_userId, ct: Arg.Any<CancellationToken>()).Returns([]);
 
         if (string.Equals(boundary, "coordinators", StringComparison.Ordinal))
-            _shiftMgmt.GetCoordinatorTeamIdsAsync(_userId, Arg.Any<CancellationToken>()).ReturnsForAnyArgs(Read<Guid>);
+            _shiftMgmt.GetCoordinatorTeamIdsAsync(_userId, Arg.Any<CancellationToken>()).ReturnsForAnyArgs(ReadAsync<Guid>);
         else if (string.Equals(boundary, "signups", StringComparison.Ordinal))
-            _signupService.GetByUserAsync(_userId, ct: Arg.Any<CancellationToken>()).ReturnsForAnyArgs(Read<ShiftSignupSummary>);
+            _signupService.GetByUserAsync(_userId, ct: Arg.Any<CancellationToken>()).ReturnsForAnyArgs(ReadAsync<ShiftSignupSummary>);
         else if (string.Equals(boundary, "browse", StringComparison.Ordinal))
-            _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>()).ReturnsForAnyArgs(Read<UrgentShiftInfo>);
+            _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>()).ReturnsForAnyArgs(ReadAsync<UrgentShiftInfo>);
         else
-            _shiftMgmt.GetDepartmentsWithRotasAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).ReturnsForAnyArgs(Read<(Guid, string)>);
+            _shiftMgmt.GetDepartmentsWithRotasAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).ReturnsForAnyArgs(ReadAsync<(Guid, string)>);
 
         var act = () => controller.Index(Guid.NewGuid(), null, null, null);
         await act.Should().ThrowAsync<OperationCanceledException>();
 
-        static Task<IReadOnlyList<T>> Read<T>(NSubstitute.Core.CallInfo call)
+        static Task<IReadOnlyList<T>> ReadAsync<T>(NSubstitute.Core.CallInfo call)
         {
             call.Args().OfType<CancellationToken>().SingleOrDefault().ThrowIfCancellationRequested();
             return Task.FromResult<IReadOnlyList<T>>([]);

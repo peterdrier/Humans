@@ -172,24 +172,24 @@ internal sealed class CachingConsentService(
         // Dashboard view needs full ConsentRecord history with document name
         // + version-number stitching — that's record-level data, not version
         // ids; the per-version-id cache here can't answer it. Pass through.
-        WithInner(inner => inner.GetConsentDashboardAsync(userId, ct));
+        WithInnerAsync(inner => inner.GetConsentDashboardAsync(userId, ct));
 
     public Task<ConsentReviewDetail?> GetConsentReviewDetailAsync(
         Guid documentVersionId, Guid userId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetConsentReviewDetailAsync(documentVersionId, userId, ct));
+        WithInnerAsync(inner => inner.GetConsentReviewDetailAsync(documentVersionId, userId, ct));
 
     public Task<int> GetConsentRecordCountAsync(Guid userId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetConsentRecordCountAsync(userId, ct));
+        WithInnerAsync(inner => inner.GetConsentRecordCountAsync(userId, ct));
 
     public Task<IReadOnlyList<string>> GetPendingDocumentNamesAsync(
         Guid userId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetPendingDocumentNamesAsync(userId, ct));
+        WithInnerAsync(inner => inner.GetPendingDocumentNamesAsync(userId, ct));
 
     public Task<ConsentReviewInfo> GetConsentReviewAsync(Guid userId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetConsentReviewAsync(userId, ct));
+        WithInnerAsync(inner => inner.GetConsentReviewAsync(userId, ct));
 
     public Task<IReadOnlyDictionary<Guid, ConsentReviewInfo>> GetConsentReviewsAsync(CancellationToken ct = default) =>
-        WithInner(inner => inner.GetConsentReviewsAsync(ct));
+        WithInnerAsync(inner => inner.GetConsentReviewsAsync(ct));
 
     // ==========================================================================
     // Writes — synchronous invalidation before return
@@ -268,7 +268,7 @@ internal sealed class CachingConsentService(
         // reads through it. The id list is read first, so the entry is never
         // tagged with a list newer than the one its set was built over.
         var userIds = await GetUserIdsAsync(userId, ct);
-        var versions = await WithInner(inner => inner.GetConsentedVersionIdsAsync(userId, ct));
+        var versions = await WithInnerAsync(inner => inner.GetConsentedVersionIdsAsync(userId, ct));
 
         // Copy so the cached snapshot never aliases the inner service's set.
         var frozen = new HashSet<Guid>(versions);
@@ -283,7 +283,7 @@ internal sealed class CachingConsentService(
     // Inner-service resolution
     // ==========================================================================
 
-    private async Task<TResult> WithInner<TResult>(Func<IConsentManagement, Task<TResult>> action)
+    private async Task<TResult> WithInnerAsync<TResult>(Func<IConsentManagement, Task<TResult>> action)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IConsentManagement>(InnerServiceKey);

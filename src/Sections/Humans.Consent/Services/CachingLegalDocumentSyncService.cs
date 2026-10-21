@@ -139,7 +139,7 @@ internal sealed class CachingLegalDocumentSyncService(
         // holds only active+required). Fall through to the inner service so
         // those callers — admin version-summary edits, sync-job lookups — are
         // still served correctly.
-        return await WithInner(inner => inner.GetVersionByIdAsync(versionId, cancellationToken));
+        return await WithInnerAsync(inner => inner.GetVersionByIdAsync(versionId, cancellationToken));
     }
 
     // ==========================================================================
@@ -150,7 +150,7 @@ internal sealed class CachingLegalDocumentSyncService(
         CancellationToken cancellationToken = default) =>
         // Admin list surface. Includes non-required docs and does not benefit
         // from caching at the same shape as the consent-banner read.
-        WithInner(inner => inner.GetActiveDocumentsAsync(cancellationToken));
+        WithInnerAsync(inner => inner.GetActiveDocumentsAsync(cancellationToken));
 
     // ==========================================================================
     // Writes — passed through; the inner service invalidates directly
@@ -158,11 +158,11 @@ internal sealed class CachingLegalDocumentSyncService(
 
     public Task<IReadOnlyList<LegalDocument>> SyncAllDocumentsAsync(
         CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.SyncAllDocumentsAsync(cancellationToken));
+        WithInnerAsync(inner => inner.SyncAllDocumentsAsync(cancellationToken));
 
     public Task<string?> SyncDocumentAsync(
         Guid documentId, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.SyncDocumentAsync(documentId, cancellationToken));
+        WithInnerAsync(inner => inner.SyncDocumentAsync(documentId, cancellationToken));
 
     // ==========================================================================
     // Eviction, called by the section's sole writer
@@ -270,7 +270,7 @@ internal sealed class CachingLegalDocumentSyncService(
     // Inner-service resolution
     // ==========================================================================
 
-    private async Task<TResult> WithInner<TResult>(Func<ILegalDocumentSyncManagement, Task<TResult>> action)
+    private async Task<TResult> WithInnerAsync<TResult>(Func<ILegalDocumentSyncManagement, Task<TResult>> action)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider

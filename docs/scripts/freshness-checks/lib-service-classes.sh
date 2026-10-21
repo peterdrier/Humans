@@ -38,7 +38,7 @@
 # line-oriented grep sees only the line carrying the `interface` keyword, so a
 # declaration whose base list wraps onto the next line reads as having no bases
 # at all — which silently dropped INotificationInboxService and
-# IShiftManagementService, and with them NotificationInboxService and
+# IShiftService, and with them NotificationInboxService and
 # ShiftManagementService, out of both checks.
 service_interfaces() {
   local decls seed pat new merged

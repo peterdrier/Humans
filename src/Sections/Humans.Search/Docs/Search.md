@@ -7,7 +7,7 @@
   src/Sections/Humans.Camps/Services/CachingCampService.cs
   src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
   src/Sections/Humans.Shifts/Data/ShiftRepository.Management.cs
-  src/Sections/Humans.Shifts.Contracts/IShiftManagementService.cs
+  src/Sections/Humans.Shifts.Contracts/IShiftService.cs
   src/Sections/Humans.Users/Services/PersonSearchMatcher.cs
   src/Sections/Humans.Camps/Controllers/CampController.cs
   src/Sections/Humans.Teams/Controllers/TeamController.cs
@@ -85,7 +85,7 @@ None — this section is a pure read surface with no side effects: no writes, no
 - **Users**: `IUserService.SearchUsersAsync(query, PersonSearchFields.PublicAll, limit)` — Humans bucket.
 - **Teams**: `ITeamService.SearchAsync` — Teams bucket, `Team.Name` only, non-hidden teams.
 - **Camps**: `ICampService.SearchAsync` — Camps bucket, public-year `CampSeason.Name` only, `Active`/`Full` seasons.
-- **Shifts**: `IShiftManagementService.SearchAsync` — Shifts bucket (rota names), `IsVisibleToVolunteers` rotas of the active event.
+- **Shifts**: `IShiftService.SearchAsync` — Shifts bucket (rota names), `IsVisibleToVolunteers` rotas of the active event.
 - **Events**: `IEventService.SearchAsync` — Events bucket, approved events by Title or Description; gated by `Features:Events`.
 - **Configuration**: `IConfiguration` — the `Features:Events` flag, read by both the service and `Index.cshtml`.
 - **Project references**: all five publishers whole, not just their `.Contracts` leaves — `@addTagHelper` binds only against a referenced assembly, and every result row is the owning section's view component. Only `Contracts/` surface and the components the framework needs public are reachable through them (HUM0034).
@@ -93,7 +93,7 @@ None — this section is a pure read surface with no side effects: no writes, no
 ## Architecture
 
 **Owning services:** `SearchService` (orchestrator)
-**Owned tables:** None — orchestrator over `IUserService`, `ITeamService`, `ICampService`, `IShiftManagementService`, `IEventService`.
+**Owned tables:** None — orchestrator over `IUserService`, `ITeamService`, `ICampService`, `IShiftService`, `IEventService`.
 **Status:** (A) Migrated — own project at `src/Sections/Humans.Search`; `ISearchService : IOrchestrator` ([`orchestrator-marker`](../../../../memory/architecture/orchestrator-marker.md)).
 
 ### Cross-section read interface

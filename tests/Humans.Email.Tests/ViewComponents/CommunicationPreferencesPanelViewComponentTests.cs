@@ -45,7 +45,7 @@ public class CommunicationPreferencesPanelViewComponentTests
     {
         // Regression: a deleted/never-set Marketing pref (null) must render as
         // opted-out — matching what the send path treats null as — not checked.
-        var model = await InvokeWith(prefs: []);
+        var model = await InvokeWithAsync(prefs: []);
 
         Item(model, MessageCategory.Marketing).EmailEnabled.Should().BeFalse();
     }
@@ -54,7 +54,7 @@ public class CommunicationPreferencesPanelViewComponentTests
     public async Task MissingNonMarketingRow_RendersChecked()
     {
         // Every other category is opt-in-by-default, so a missing row stays checked.
-        var model = await InvokeWith(prefs: []);
+        var model = await InvokeWithAsync(prefs: []);
 
         Item(model, MessageCategory.Governance).EmailEnabled.Should().BeTrue();
     }
@@ -62,7 +62,7 @@ public class CommunicationPreferencesPanelViewComponentTests
     [HumansFact]
     public async Task ExistingMarketingOptIn_RendersChecked()
     {
-        var model = await InvokeWith(prefs:
+        var model = await InvokeWithAsync(prefs:
         [
             new CommunicationPreferenceSnapshot(
                 MessageCategory.Marketing, OptedOut: false, InboxEnabled: true,
@@ -75,7 +75,7 @@ public class CommunicationPreferencesPanelViewComponentTests
     [HumansFact]
     public async Task ExistingMarketingOptOut_RendersUnchecked()
     {
-        var model = await InvokeWith(prefs:
+        var model = await InvokeWithAsync(prefs:
         [
             new CommunicationPreferenceSnapshot(
                 MessageCategory.Marketing, OptedOut: true, InboxEnabled: true,
@@ -88,7 +88,7 @@ public class CommunicationPreferencesPanelViewComponentTests
     private static CategoryPreferenceItem Item(CommunicationPreferencesViewModel model, MessageCategory category) =>
         model.Categories.Single(c => c.Category == category);
 
-    private static async Task<CommunicationPreferencesViewModel> InvokeWith(
+    private static async Task<CommunicationPreferencesViewModel> InvokeWithAsync(
         IReadOnlyList<CommunicationPreferenceSnapshot> prefs)
     {
         var commPrefs = Substitute.For<ICommunicationPreferenceService>();

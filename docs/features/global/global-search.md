@@ -12,7 +12,7 @@
   src/Sections/Humans.Shifts/Controllers/ShiftsController.cs
   src/Sections/Humans.Shifts/Models/ShiftBrowsePageBuilder.cs
   src/Sections/Humans.Camps.Contracts/CampSearchHit.cs
-  src/Sections/Humans.Shifts.Contracts/IShiftManagementService.cs
+  src/Sections/Humans.Shifts.Contracts/IShiftService.cs
   src/Sections/Humans.Teams.Contracts/TeamSearchHit.cs
 -->
 <!-- freshness:flag-on-change
@@ -132,7 +132,7 @@ SearchController
          ├── IUserService.SearchUsersAsync(query, PersonSearchFields.PublicAll, limit)   → IReadOnlyList<HumanSearchResult>
          ├── ITeamService.SearchAsync(query, max)                                         → IReadOnlyList<TeamSearchHit>
          ├── ICampService.SearchAsync(query, max)                                         → IReadOnlyList<CampSearchHit>
-         ├── IShiftManagementService.SearchAsync(query, max)                              → IReadOnlyList<RotaSearchHit>
+         ├── IShiftService.SearchAsync(query, max)                              → IReadOnlyList<RotaSearchHit>
          └── IEventService.SearchAsync(query, max)  (skipped when Features:Events is off)  → IReadOnlyList<EventSearchHit>
 ```
 
@@ -161,7 +161,7 @@ Counts reflect every match — there is no cap, so the chip count is the true nu
 | `HumanSearchResult` | `IUserService.SearchUsersAsync` | View passes each hit's id + match context to `<vc:user-search-result>` |
 | `TeamSearchHit (TeamId, Name, Score)` | `ITeamService.SearchAsync` | Key + ordering → `GlobalSearchResult` |
 | `CampSearchHit (CampId, Name, Score)` | `ICampService.SearchAsync` | Key + ordering → `GlobalSearchResult` |
-| `RotaSearchHit (RotaId, Name, Score)` | `IShiftManagementService.SearchAsync` | Key + ordering → `GlobalSearchResult` |
+| `RotaSearchHit (RotaId, Name, Score)` | `IShiftService.SearchAsync` | Key + ordering → `GlobalSearchResult` |
 | `EventSearchHit (EventId, Title, Score)` | `IEventService.SearchAsync` | Key + ordering → `GlobalSearchResult` |
 | `GlobalSearchResult (Type, Key, SortKey, Score)` | Orchestrator | `Key` is a `Guid` for every bucket; view passes it to the owning section's `<vc:…-search-result>` |
 | `GlobalSearchResults (Query, Humans, Teams, Camps, Shifts, Events)` | `ISearchService` | View-model / view |

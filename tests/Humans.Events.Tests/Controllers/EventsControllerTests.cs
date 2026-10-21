@@ -470,7 +470,7 @@ public class EventsControllerTests
         controller.HttpContext.RequestAborted = request.Token;
         controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
         var abandon = false;
-        async Task<T> Read<T>(T value, string current, CancellationToken ct)
+        async Task<T> ReadAsync<T>(T value, string current, CancellationToken ct)
         {
             if (abandon && string.Equals(current, boundary, StringComparison.Ordinal))
                 await request.CancelAsync();
@@ -496,46 +496,46 @@ public class EventsControllerTests
         _authz.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(call =>
-            Read<CampInfo?>(camp, "Camp", call.Arg<CancellationToken>()));
+            ReadAsync<CampInfo?>(camp, "Camp", call.Arg<CancellationToken>()));
         _guide.GetCampEventAsync(campEvent.Id, camp.Id, Arg.Any<CancellationToken>()).Returns(call =>
-            Read<EventInfo?>(campEvent, "Event", call.Arg<CancellationToken>()));
+            ReadAsync<EventInfo?>(campEvent, "Event", call.Arg<CancellationToken>()));
         _guide.BuildBulkUploadTemplateAsync(camp.Id, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
-            Read<byte[]>([], "Template", call.Arg<CancellationToken>()));
+            ReadAsync<byte[]>([], "Template", call.Arg<CancellationToken>()));
         var submitterId = Guid.NewGuid();
         var approved = new ApprovedEventView(Guid.NewGuid(), null, null, submitterId, Guid.NewGuid(), "music", "Music", false,
             null, "Event", "Description", null, null, Instant.FromUtc(2026, 8, 1, 18, 0), 60, false, null, null,
             Instant.FromUtc(2026, 1, 1, 0, 0), Instant.FromUtc(2026, 1, 1, 0, 0));
         _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
-            new ValueTask<UserInfo?>(Read<UserInfo?>(MakeUserInfo(call.Arg<Guid>(), "Human"),
+            new ValueTask<UserInfo?>(ReadAsync<UserInfo?>(MakeUserInfo(call.Arg<Guid>(), "Human"),
                 call.Arg<Guid>() == userId ? "Viewer" : "Submitter", call.Arg<CancellationToken>())));
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
-            new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(Read<IReadOnlyDictionary<Guid, UserInfo>>(
+            new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(ReadAsync<IReadOnlyDictionary<Guid, UserInfo>>(
                 call.Arg<IReadOnlyCollection<Guid>>().Distinct().ToDictionary(id => id, id => MakeUserInfo(id, "Human")),
                 "Submitter", call.Arg<CancellationToken>())));
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
-            Read<EventGuideSettingsView?>(settings, "Guide", call.Arg<CancellationToken>()));
+            ReadAsync<EventGuideSettingsView?>(settings, "Guide", call.Arg<CancellationToken>()));
         _guide.GetEventSettingsByIdAsync(settings.EventSettingsId, Arg.Any<CancellationToken>()).Returns(call =>
-            Read<EventSettingsInfo?>(burn, "Burn", call.Arg<CancellationToken>()));
+            ReadAsync<EventSettingsInfo?>(burn, "Burn", call.Arg<CancellationToken>()));
         _guide.GetEventForModerationAsync(guideEvent.Id, Arg.Any<CancellationToken>()).Returns(call =>
-            Read<EventInfo?>(guideEvent, "Event", call.Arg<CancellationToken>()));
+            ReadAsync<EventInfo?>(guideEvent, "Event", call.Arg<CancellationToken>()));
         _guide.GetUserSubmissionsAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
-            Read<IReadOnlyList<EventInfo>>([], "Submissions", call.Arg<CancellationToken>()));
+            ReadAsync<IReadOnlyList<EventInfo>>([], "Submissions", call.Arg<CancellationToken>()));
         _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
-            Read(new CampSettingsInfo(2026, [2026]), "CampSettings", call.Arg<CancellationToken>()));
+            ReadAsync(new CampSettingsInfo(2026, [2026]), "CampSettings", call.Arg<CancellationToken>()));
         _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(call =>
-            Read<IReadOnlyList<CampInfo>>([camp], "Camps", call.Arg<CancellationToken>()));
+            ReadAsync<IReadOnlyList<CampInfo>>([camp], "Camps", call.Arg<CancellationToken>()));
         _guide.GetCampSubmissionsSummaryAsync(campId, Arg.Any<CancellationToken>()).Returns(call =>
-            Read(new CampSubmissionsSummary(0, 0, 0, []), "CampSummary", call.Arg<CancellationToken>()));
+            ReadAsync(new CampSubmissionsSummary(0, 0, 0, []), "CampSummary", call.Arg<CancellationToken>()));
         _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>()).Returns(call =>
-            Read<IReadOnlyList<EventCategoryView>>([], "Categories", call.Arg<CancellationToken>()));
+            ReadAsync<IReadOnlyList<EventCategoryView>>([], "Categories", call.Arg<CancellationToken>()));
         _guide.GetActiveVenuesAsync(Arg.Any<CancellationToken>()).Returns(call =>
-            Read<IReadOnlyList<EventVenueView>>([], "Venues", call.Arg<CancellationToken>()));
+            ReadAsync<IReadOnlyList<EventVenueView>>([], "Venues", call.Arg<CancellationToken>()));
         _guide.GetFavouritesWithEventsAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
-            Read<IReadOnlyList<EventFavouriteInfo>>([], "Favourites", call.Arg<CancellationToken>()));
+            ReadAsync<IReadOnlyList<EventFavouriteInfo>>([], "Favourites", call.Arg<CancellationToken>()));
         _guide.GetExcludedCategorySlugsAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
-            Read<List<string>>([], "Excluded", call.Arg<CancellationToken>()));
+            ReadAsync<List<string>>([], "Excluded", call.Arg<CancellationToken>()));
         _guide.GetApprovedEventsAsync(null, null, null, null, Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>()).Returns(call =>
-            Read<IReadOnlyList<ApprovedEventView>>([approved], "Approved", call.Arg<CancellationToken>()));
+            ReadAsync<IReadOnlyList<ApprovedEventView>>([approved], "Approved", call.Arg<CancellationToken>()));
         Func<Task<IActionResult>> load = route switch
         {
             nameof(EventsController.MySubmissions) => controller.MySubmissions,

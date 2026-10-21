@@ -10,6 +10,10 @@ dotnet_diagnostic.MA0004.severity = none
 dotnet_diagnostic.MA0053.severity = warning
 resharper_lambda_expression_can_be_made_static_highlighting = none
 
+# Controller action names are routes, so the Async suffix rule (VSTHRD200) stays off there.
+[src/**/Controllers/**.cs]
+dotnet_diagnostic.VSTHRD200.severity = none
+
 [*.csproj]
 indent_style = tab
 indent_size = 4

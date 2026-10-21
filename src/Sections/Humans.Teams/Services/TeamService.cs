@@ -27,7 +27,7 @@ internal sealed class TeamService(
     ITeamRepository repo,
     IAuditLogService auditLogService,
     INotificationEmitter notificationService,
-    IShiftManagementService shiftManagementService,
+    IShiftService shiftManagementService,
     IShiftAuthorizationInvalidator shiftAuthInvalidator,
     IAdminAuthorizationService adminAuthorization,
     IEarlyEntryInvalidator earlyEntryInvalidator,
