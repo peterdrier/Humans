@@ -32,8 +32,7 @@ reconciliation the hourly job runs). The leaf also
 carries `ITeamSeeding` (implemented explicitly by `TeamService` /
 `CachingTeamService`) for the dev fixture seeders in `Humans.Development`
 and `Humans.Budget`, `ISystemTeamSync` (the reconciler's contract, registered
-in `Section.cs`) and `IActiveTeamsCacheInvalidator` (registered in `Section.cs`;
-Users evicts through it).
+in `Section.cs`).
 
 The section exposes no entity-returning reads — external consumers call
 `GetTeamAsync` / `GetTeamBySlugAsync` (`TeamInfo`), `GetUserTeamMembershipsAsync`
@@ -91,7 +90,7 @@ cycle-breaking: `IGoogleSyncOutboxService` (transactional outbox appends),
 `IGoogleSyncWrite`, `ITeamResourceService`, `IRoleAssignmentService`,
 `IEmailService`, `IUserService`, `ISystemTeamSync`. Implements `ITeamManagementService`
 (internal, `: ITeamManagement`), `ITeamSeeding`,
-`IGoogleGroupMembershipSource`, `IUserDataContributor`, `IUserMerge`,
+`IGoogleGroupMembershipSource`, `IUserMerge`,
 `IEarlyEntryProvider` (role-gated team early entry).
 
 ### TeamDriveAccessSource (Scoped)
@@ -117,9 +116,9 @@ synced. Reads `ITeamService.GetTeamsAsync` and GoogleIntegration's
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
-| `TrackedCache<Guid, TeamInfo>` (`Team.TeamInfo`, in-process, no `IMemoryCache`) | Per-Entity (warmed on startup) | yes | yes | yes (via `IActiveTeamsCacheInvalidator`, called from `IUserMerge` flows and direct mutation paths) |
+| `TrackedCache<Guid, TeamInfo>` (`Team.TeamInfo`, in-process, no `IMemoryCache`) | Per-Entity (warmed on startup) | yes | yes | yes (own writes, `IUserMerge.ReassignAsync` and GDPR erasure; `ITeamWrite.InvalidateActiveTeamsCache` from Users' merge tail) |
 
-Implements `ITeamManagementService`, `ITeamSeeding`, `IUserMerge`. The
+Implements `ITeamManagementService`, `ITeamSeeding`, `IUserMerge`, `IUserDataContributor` (owns the erasure table, forwards to the inner `TeamService`, evicts after erasure). The
 `TeamInfo` `TrackedCache` is the canonical source — no `ActiveTeams`
 `IMemoryCache` entry. `SearchAsync` is served from the cached `TeamInfo`
 snapshot, never the DB. Surfaced on `/Debug/CacheStats`.

@@ -6,7 +6,6 @@ using NSubstitute;
 using Humans.Web.Services;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
-using Humans.Teams.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
@@ -29,7 +28,6 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     private readonly UsersEmails _emailMessages = TestUsersEmails.Create();
     private readonly INotificationEmitter _notificationService;
     private readonly IAuditLogService _auditLogService;
-    private readonly IActiveTeamsCacheInvalidator _activeTeamsCacheInvalidator;
     private readonly HumansMetricsService _metrics;
     private readonly FakeClock _clock;
     private readonly NonCompliantMemberSuspension _sut;
@@ -43,13 +41,12 @@ public class NonCompliantMemberSuspensionTests : IDisposable
         _emailService = Substitute.For<IEmailService>();
         _notificationService = Substitute.For<INotificationEmitter>();
         _auditLogService = Substitute.For<IAuditLogService>();
-        _activeTeamsCacheInvalidator = Substitute.For<IActiveTeamsCacheInvalidator>();
         _clock = new FakeClock(Now);
         _metrics = TestMetrics.Create();
         var logger = Substitute.For<ILogger<NonCompliantMemberSuspension>>();
 
         _sut = new NonCompliantMemberSuspension(
-            _userService, _activeTeamsCacheInvalidator, _membershipCalculator,
+            _userService, _membershipCalculator,
             _emailService, _emailMessages, _notificationService, _auditLogService,
             _metrics, logger);
     }
@@ -270,19 +267,6 @@ public class NonCompliantMemberSuspensionTests : IDisposable
             "SuspendNonCompliantMembersJob",
             Arg.Any<Guid?>(),
             Arg.Any<string?>());
-    }
-
-    [HumansFact]
-    public async Task ExecuteAsync_InvalidatesCaches()
-    {
-        var user = SetupUser();
-        _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<Guid> { user.Id });
-        StubSuspendSucceeds([user.Id]);
-
-        await _sut.SuspendNonCompliantAsync(TestContext.Current.CancellationToken);
-
-        _activeTeamsCacheInvalidator.Received(1).Invalidate();
     }
 
     // ------------------------------------------------------------------

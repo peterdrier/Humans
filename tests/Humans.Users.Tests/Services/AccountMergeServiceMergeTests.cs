@@ -23,7 +23,7 @@ public class AccountMergeServiceMergeTests
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
-    private readonly IActiveTeamsCacheInvalidator _activeTeamsCacheInvalidator = Substitute.For<IActiveTeamsCacheInvalidator>();
+    private readonly ITeamWrite _teams = Substitute.For<ITeamWrite>();
     private readonly INotificationService _notify = Substitute.For<INotificationService>();
     private readonly IConsentCacheInvalidator _consentCache = Substitute.For<IConsentCacheInvalidator>();
     private readonly List<IUserMerge> _userMerges = [];
@@ -41,7 +41,7 @@ public class AccountMergeServiceMergeTests
         new(
             mergeRepository ?? _mergeRepo, _userEmailRepo, _audit, _userInfoInvalidator,
             NullLogger<AccountMergeService>.Instance, _clock,
-            _userMerges, _userService, _activeTeamsCacheInvalidator, _notify, _consentCache);
+            _userMerges, _userService, _teams, _notify, _consentCache);
 
     private void SetupUsers(Guid sourceId, Guid targetId, bool sourceTombstoned = false)
     {
@@ -164,6 +164,41 @@ public class AccountMergeServiceMergeTests
         var act = () => BuildSut().MergeAsync(tgt, src, Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*tombstoned*");
+    }
+
+    [HumansFact]
+    public async Task MergeAsync_EvictsTeamGraphAfterTombstone()
+    {
+        var src = Guid.NewGuid(); var tgt = Guid.NewGuid(); var admin = Guid.NewGuid();
+        SetupUsers(src, tgt);
+
+        await BuildSut().MergeAsync(tgt, src, admin, ct: TestContext.Current.CancellationToken);
+
+        // The team graph stitches members' UserInfo; the tombstone changes what the archived
+        // id resolves to, so the eviction must follow it, not ride Teams' own ReassignAsync.
+        Received.InOrder(() =>
+        {
+            _ = _userService.AnonymizeForMergeAsync(src, tgt,
+                Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>());
+            _teams.InvalidateActiveTeamsCache();
+        });
+        _teams.Received(1).InvalidateActiveTeamsCache();
+    }
+
+    [HumansFact]
+    public async Task MergeAsync_FanOutThrows_StillEvictsTeamGraph()
+    {
+        var src = Guid.NewGuid(); var tgt = Guid.NewGuid(); var admin = Guid.NewGuid();
+        SetupUsers(src, tgt);
+        var merger = Substitute.For<IUserMerge>();
+        merger.ReassignAsync(src, tgt, admin, Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("boom")));
+        _userMerges.Add(merger);
+
+        var act = () => BuildSut().MergeAsync(tgt, src, admin, ct: TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _teams.Received(1).InvalidateActiveTeamsCache();
     }
 
     [HumansFact]

@@ -128,8 +128,7 @@ No repository. Implements `SuspendNonCompliantMembersJob`'s body
 have not re-consented after the grace period and runs each suspension's
 downstream side effects. Cross-section calls via `IUserService`,
 `IMembershipCalculator`, `IEmailService`, the section's own `UsersEmails` builder, `INotificationEmitter`,
-`IAuditLogService`, `IHumansMetrics`, plus `IActiveTeamsCacheInvalidator`
-for cache eviction. Google access ends at the next Google reconciliation,
+`IAuditLogService` and `IHumansMetrics`. Google access ends at the next Google reconciliation,
 which excludes suspended humans. No direct DB access or `IMemoryCache`.
 
 ### UsersEmails (Scoped, internal)
@@ -275,9 +274,8 @@ owned-table reassignment, so `AccountMergeService` does not inject other
 sections' repositories. Both tables it touches are **owned by the Users
 section** (no cross-section table access). Implements `IAccountMergeService`,
 `IUserDataContributor`. Calls the section's own `IUserManagement`; cross-section
-calls via `IRoleAssignmentWrite`, `INotificationService`, `IAuditLogService`,
-`IUserInfoInvalidator`, `IActiveTeamsCacheInvalidator`,
-`IConsentCacheInvalidator`, plus the `IUserMerge` aggregator.
+calls via `IRoleAssignmentWrite`, `ITeamWrite`, `INotificationService`, `IAuditLogService`,
+`IUserInfoInvalidator`, `IConsentCacheInvalidator`, plus the `IUserMerge` aggregator.
 
 Cache: per-section `IUserMerge` implementations invalidate their own
 caches; the unified read-model is evicted via `IUserInfoInvalidator`.

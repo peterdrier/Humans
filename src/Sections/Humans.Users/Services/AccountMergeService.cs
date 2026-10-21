@@ -21,7 +21,7 @@ internal sealed class AccountMergeService(
     IClock clock,
     IEnumerable<IUserMerge> userMerges,
     IUserManagement userService,
-    IActiveTeamsCacheInvalidator activeTeamsCacheInvalidator,
+    ITeamWrite teamService,
     INotificationService notificationService,
     IConsentCacheInvalidator consentCacheInvalidator) : IAccountMergeService, IUserDataContributor
 {
@@ -161,7 +161,10 @@ internal sealed class AccountMergeService(
             notificationService.InvalidateBadgeCachesForUsers([archivedUserId, survivorUserId]);
             consentCacheInvalidator.InvalidateUser(archivedUserId);
             consentCacheInvalidator.InvalidateUser(survivorUserId);
-            activeTeamsCacheInvalidator.Invalidate();
+            // After the tombstone, not inside Teams' own ReassignAsync: the team graph stitches
+            // each member's UserInfo, and system-team rows still name the archived id, which
+            // now resolves forward to the survivor.
+            teamService.InvalidateActiveTeamsCache();
         }
     }
 

@@ -256,7 +256,6 @@ public class AccountDeletionServiceTests
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
-        _teamService.DidNotReceive().InvalidateActiveTeamsCache();
         await _gdprService.DidNotReceiveWithAnyArgs()
             .EraseForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
@@ -325,7 +324,7 @@ public class AccountDeletionServiceTests
     }
 
     [HumansFact]
-    public async Task PurgeAsync_Success_ErasesEverySectionAndInvalidatesActiveTeamsCache()
+    public async Task PurgeAsync_Success_ErasesEverySectionAndInvalidatesCaches()
     {
         var userId = Guid.NewGuid();
         _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
@@ -335,7 +334,6 @@ public class AccountDeletionServiceTests
         result.Success.Should().BeTrue();
         // An admin purge must not erase less than the scheduled job does.
         await _gdprService.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
-        _teamService.Received(1).InvalidateActiveTeamsCache();
         // Parity with AnonymizeExpiredAccountAsync: per-user caches that key
         // off identity must also drop on admin purge. The UserInfo entry first —
         // contributors run against the inner UserService.
@@ -396,7 +394,8 @@ public class AccountDeletionServiceTests
 
         await _gdprService.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
 
-        _teamService.Received(1).RemoveMemberFromAllTeamsCache(userId);
+        await _userInfoInvalidator.Received(1).InvalidateAsync(
+            userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansFact]
@@ -414,7 +413,8 @@ public class AccountDeletionServiceTests
         var act = () => _service.AnonymizeExpiredAccountAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
-        _teamService.DidNotReceive().RemoveMemberFromAllTeamsCache(userId);
+        await _userInfoInvalidator.DidNotReceive().InvalidateAsync(
+            userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansFact]

@@ -6,7 +6,6 @@ using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Users.Services;
@@ -19,13 +18,10 @@ namespace Humans.Users.Services;
 /// The body of the nightly job (<c>Jobs/SuspendNonCompliantMembersJob.cs</c>).
 /// All reads/writes fan out through section services
 /// (<see cref="IUserManagement"/>) so this never touches another section's
-/// DbContext directly (design-rules §2c). Cross-cutting cache invalidation routes
-/// through invalidator interfaces
-/// (<see cref="IActiveTeamsCacheInvalidator"/>) rather than IMemoryCache.
+/// DbContext directly (design-rules §2c).
 /// </remarks>
 internal sealed class NonCompliantMemberSuspension(
     IUserManagement userService,
-    IActiveTeamsCacheInvalidator activeTeamsCacheInvalidator,
     IMembershipCalculator membershipCalculator,
     IEmailService emailService,
     UsersEmails emailMessages,
@@ -135,8 +131,6 @@ internal sealed class NonCompliantMemberSuspension(
                 AuditAction.MemberSuspended, nameof(User), user.Id,
                 $"{user.BurnerName} suspended for missing required document consent (grace period expired)",
                 AuditActor);
-
-            activeTeamsCacheInvalidator.Invalidate();
         }
 
         metrics.RecordJobRun("suspend_noncompliant_members", "success");

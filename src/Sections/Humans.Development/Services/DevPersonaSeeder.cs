@@ -574,7 +574,6 @@ internal sealed class DevPersonaSeeder(
 
         if (changed)
         {
-            teamWrite.InvalidateActiveTeamsCache();
             cache.InvalidateUserAccess(coordinatorUserId);
             // Team membership changes ripple into UserInfo (active-teams shape)
             await userInfoInvalidator.InvalidateAsync(coordinatorUserId);
@@ -641,7 +640,6 @@ internal sealed class DevPersonaSeeder(
 
         if (changed)
         {
-            teamWrite.InvalidateActiveTeamsCache();
             cache.InvalidateUserAccess(userId);
             // Team membership changes ripple into UserInfo (active-teams shape)
             await userInfoInvalidator.InvalidateAsync(userId);

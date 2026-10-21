@@ -5,6 +5,7 @@ using Humans.Base.Extensions;
 using Humans.Teams.Contracts;
 using Humans.Teams.Domain;
 using Humans.Base.Enums;
+using Humans.Gdpr.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Users.Contracts;
@@ -24,7 +25,7 @@ namespace Humans.Teams.Services;
 internal sealed class CachingTeamService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingTeamService> logger) : TrackedCache<Guid, TeamInfo>("Team.TeamInfo", warmOnStartup: true, logger),
-    ITeamManagementService, ITeamSeeding, IUserMerge, IEntityNameContributor
+    ITeamManagementService, ITeamSeeding, IUserMerge, IUserDataContributor, IEntityNameContributor
 {
     public const string InnerServiceKey = "team-inner";
 
@@ -595,11 +596,6 @@ internal sealed class CachingTeamService(
         return result;
     }
 
-    public void RemoveMemberFromAllTeamsCache(Guid userId)
-    {
-        InvalidateTeamsCache();
-    }
-
     public void InvalidateActiveTeamsCache() => InvalidateTeamsCache();
 
     /// <summary>
@@ -651,6 +647,31 @@ internal sealed class CachingTeamService(
             InvalidateTeamsCache();
         }
     }
+
+    // Static table: the erasure-coverage architecture test reads it from an uninitialized instance.
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [TeamService.TeamMemberships] =
+                "Partially retained: the membership row (team, role, joined/left dates, keyed to " +
+                "the user id the Users section tombstones) is the association's record of who " +
+                "worked on what — Ley Orgánica 1/2002 Art. 14, GDPR Art. 17(3)(b). Every still-" +
+                "active membership is ended immediately.",
+            [TeamService.TeamJoinRequests] = null,
+            [TeamService.TeamEarlyEntry] = null
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
+        WithInner(inner => inner.ContributeForUserAsync(userId, ct));
+
+    /// <summary>
+    /// Erasure ends the human's memberships, role assignments and join requests, so the
+    /// team graph is evicted here, even when a later step of the inner erase throws.
+    /// </summary>
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
+        MutateAsync(inner => inner.EraseForUserAsync(userId, ct));
 
     private async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsByIdAsync(CancellationToken ct)
     {
