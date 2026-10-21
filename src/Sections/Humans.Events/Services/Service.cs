@@ -267,9 +267,12 @@ internal sealed class EventService(
         await repo.SaveEventAsync(guideEvent, ct);
     }
 
-    public async Task ModeratorWithdrawAsync(Guid eventId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<bool> ModeratorWithdrawAsync(Guid eventId, Guid actorUserId, CancellationToken ct = default)
     {
         var guideEvent = await LoadEventAsync(eventId, ct);
+        // A moderator may withdraw whatever the submitter could.
+        if (!guideEvent.CanBeWithdrawnBySubmitter)
+            return false;
         guideEvent.Withdraw(clock);
 
         var action = new EventModerationAction
@@ -282,6 +285,7 @@ internal sealed class EventService(
         };
 
         await repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
+        return true;
     }
 
     public async Task AdminUpdateAsync(Guid eventId, EventEdit edit, Guid actorUserId, string? note, CancellationToken ct = default)

@@ -751,6 +751,25 @@ public sealed class EventServiceTests
     }
 
     [HumansTheory]
+    [InlineData(EventStatus.Pending, false, true)]
+    [InlineData(EventStatus.Draft, false, true)]
+    [InlineData(EventStatus.Draft, true, false)]
+    [InlineData(EventStatus.Rejected, false, false)]
+    [InlineData(EventStatus.Withdrawn, false, false)]
+    public async Task ModeratorWithdrawAsync_FollowsTheSubmitterWithdrawRule(EventStatus status, bool isCampEvent, bool expected)
+    {
+        var guideEvent = new Event { Id = Guid.NewGuid(), Status = status, CampId = isCampEvent ? Guid.NewGuid() : null };
+        _repo.Events.Add(guideEvent);
+
+        var withdrawn = await _service.ModeratorWithdrawAsync(guideEvent.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        withdrawn.Should().Be(expected);
+        guideEvent.Status.Should().Be(expected ? EventStatus.Withdrawn : status);
+        _repo.EventModerationActions.Should().HaveCount(expected ? 1 : 0);
+        _repo.SaveChangesCount.Should().Be(expected ? 1 : 0);
+    }
+
+    [HumansTheory]
     [InlineData("")]
     [InlineData("   ")]
     public async Task AdminUpdateAsync_BlankNote_AppendsEditedActionWithNullReason_AnyStatePreserved(string note)

@@ -85,7 +85,7 @@ Event programming: submission, moderation, browsing, export, and preference mana
 | Reason | string? | max 500 |
 | CreatedAt | Instant | |
 
-Append-only audit log. DB-level: `OnDelete(DeleteBehavior.Restrict)` prevents cascade-deleting history when a GuideEvent is deleted. Action values: `Approved` / `Rejected` / `ResubmitRequested` (state-transition decisions, Pending-only), `Edited` (an admin/moderator in-place field edit — **not** a state transition; appended directly without going through `Event.ApplyModerationAction`), and `Withdrawn` (a moderator pulled an Approved event; the status change goes through `Event.Withdraw`, and a submitter's own withdrawal appends nothing).
+Append-only audit log. DB-level: `OnDelete(DeleteBehavior.Restrict)` prevents cascade-deleting history when a GuideEvent is deleted. Action values: `Approved` / `Rejected` / `ResubmitRequested` (state-transition decisions, Pending-only), `Edited` (an admin/moderator in-place field edit — **not** a state transition; appended directly without going through `Event.ApplyModerationAction`), and `Withdrawn` (a moderator pulled an event the submitter could have withdrawn — Pending or Approved, or Draft for an individual event; the status change goes through `Event.Withdraw`, and a submitter's own withdrawal appends nothing).
 
 ### EventGuideSettings (singleton)
 
@@ -233,7 +233,7 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 
 - When a moderation action is applied: an email notification is sent to the submitter (`IEmailService.SendAsync` with the `EventsEmails.EventLifecycle` message — Events owns the four lifecycle templates, internal `EventsEmails` plus the `EventsEmailPreviews` gallery contributor registered in `Section.Register`; the copy lives in `EventsResource` in all six cultures and renders in the submitter's supported preferred language, with English fallback for blank, malformed or unsupported preferences (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651)), coordinated by `EventService.ApplyModerationAsync` (the controller passes the submitter-edit URL; the service owns the send).
 - When a moderator approves an event: `Event.Status` transitions to `Approved` and an `EventModerationAction` record is appended.
-- When a moderator withdraws an Approved event (`IEventManagement.ModeratorWithdrawAsync`): `Event.Status` transitions to `Withdrawn` and a `Withdrawn` `EventModerationAction` naming the moderator is appended.
+- A moderator may withdraw whenever the submitter could (`Event.CanBeWithdrawnBySubmitter`); `IEventManagement.ModeratorWithdrawAsync` returns `false` and writes nothing otherwise. When a moderator withdraws (`ModeratorWithdrawAsync`): `Event.Status` transitions to `Withdrawn` and a `Withdrawn` `EventModerationAction` naming the moderator is appended.
 
 - CSV guide downloads keep the EventsAdmin/Admin policy and existing columns. The owning service builds the file and writes `EventGuideExported` with the authenticated actor and emitted row count (recurring occurrences count separately), including empty/repeated downloads. Print-guide composition uses existing approved-event/settings reads, without the CSV’s SubmitterName column.
 
