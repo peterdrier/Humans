@@ -147,6 +147,9 @@ internal sealed class TicketTransferService(
         };
 
         await transferRepo.AddAsync(request, ct);
+        // The request is committed: a disconnected browser must not prevent the
+        // sender/team notification from reaching the outbox.
+        ct = CancellationToken.None;
 
         // Pendency is baked into the cached holdings rows ("transfer pending" stamp),
         // so every pendency change must evict the sender's holdings.
@@ -205,7 +208,7 @@ internal sealed class TicketTransferService(
         await MarkApprovedAsync(
             request, adminUserId, adminNotes,
             "Transfer marked successful (processed manually in TicketTailor)", ct);
-        return new TicketTransferMutationResult(await BuildRowDtoAsync(request, ct), null);
+        return new TicketTransferMutationResult(await BuildRowDtoAsync(request, CancellationToken.None), null);
     }
 
     public async Task<TicketTransferMutationResult> ProcessTransferAsync(
@@ -224,6 +227,12 @@ internal sealed class TicketTransferService(
         var attendee = request.OriginalTicketAttendee
             ?? await ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct);
         if (attendee is null) return RefuseAdmin(transferRequestId, adminUserId, "Original attendee missing.");
+        // Pending requests can outlive the ticket's eligibility. Recheck the current
+        // synced attendee before the irreversible vendor void, not just at request creation.
+        if (attendee.CheckedInAt is not null || attendee.Status == TicketAttendeeStatus.CheckedIn)
+            return RefuseAdmin(transferRequestId, adminUserId, "Original ticket has already been checked in and cannot be transferred.");
+        if (attendee.Status != TicketAttendeeStatus.Valid)
+            return RefuseAdmin(transferRequestId, adminUserId, "Original ticket is no longer valid and cannot be transferred.");
         await WriteToVendorAsync(request, attendee, ct);
 
         // Once a vendor void has committed it is irreversible — the recorded outcome must persist
@@ -379,6 +388,8 @@ internal sealed class TicketTransferService(
         request.DecidedAt = now;
         request.AdminNotes = adminNotes;
         await transferRepo.UpdateAsync(request, ct);
+        // Finish notification follow-up once the decision has persisted.
+        ct = CancellationToken.None;
 
         // Approving changes the cached order projection (it now carries the
         // recipient/decided-at for void attendees), so evict it here.
@@ -508,6 +519,8 @@ internal sealed class TicketTransferService(
         request.DecidedAt = now;
         request.AdminNotes = reason;
         await transferRepo.UpdateAsync(request, ct);
+        // Finish notification follow-up once the decision has persisted.
+        ct = CancellationToken.None;
 
         cacheInvalidator.InvalidateAfterTransfer(request.SenderUserId, request.ReceiverUserId);
 

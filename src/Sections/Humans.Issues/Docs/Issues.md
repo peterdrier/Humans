@@ -45,7 +45,7 @@ In-app issue tracker (bugs, features, questions) with screenshots, role-routed t
 | ScreenshotStoragePath | string? | `IFileStorage` key `uploads/issues/{issueId}/{guid}.{ext}` (max 512); bytes are read only through `GET /Issues/{id}/Screenshot`, never as a static URL |
 | ScreenshotContentType | string? | MIME type (`image/jpeg`, `image/png`, `image/webp`) (max 64) |
 | Status | IssueStatus | Triage (default), Open, InProgress, Resolved, WontFix, Duplicate. Stored as string (max 32). |
-| GitHubIssueNumber | int? | Linked GitHub issue (org-scoped) |
+| GitHubIssueNumber | int? | Positive linked GitHub issue number (org-scoped), or null to clear. Nonpositive numbers are refused before writes or link-change audit entries, preserving the current link. |
 | DueDate | LocalDate? | Optional handler-set deadline |
 | AssigneeUserId | Guid? | No FK, no nav property — bare column. |
 | CreatedAt | Instant | Submission timestamp |
@@ -183,7 +183,7 @@ Known area labels in the member submission form, issue list and detail view use 
 - **Notifications:** `INotificationEmitter` — `NotificationSource.IssueSubmitted`, `NotificationSource.IssueComment`, `NotificationSource.IssueStatusChanged`, `NotificationSource.IssueAssigned` in-app notifications; `INotificationAutoResolve` — resolves the `IssueSubmitted` notifications when the issue goes terminal.
 - **Audit Log:** `IAuditLogService.LogAsync` — every mutation (`AuditAction.IssueCreated`, `AuditAction.IssueStatusChanged`, `AuditAction.IssueAssigneeChanged`, `AuditAction.IssueSectionChanged`, `AuditAction.IssueGitHubLinked`).
 - **Caching:** the per-viewer actionable count, which `IssuesService` caches and evicts itself whenever it could have changed.
-- **GDPR:** implements `IUserDataContributor` to export the user's reported issues and their comments under the export key declared as `IssuesService.Issues`, and to erase them (`EraseForUserAsync`).
+- **GDPR:** implements `IUserDataContributor` to export the user's reported issues and their threads under `IssuesService.Issues`. Their own comments on other people's issues are exported separately under `IssuesService.IssueComments`, with only comment content, timestamp and issue reference; other authors' comments and issue submission context are excluded. Both slices recognize merged account IDs and include each issue/comment once. `EraseForUserAsync` deletes own issues and detaches authorship on comments retained in other people's threads; each slice declares that existing erasure behavior.
 - **Base:** `ISectionCatalog` — tells the unrouted-section warning whether the value names a real section.
 
 ## Architecture

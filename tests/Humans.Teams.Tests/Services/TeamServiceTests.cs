@@ -617,6 +617,34 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansTheory]
+    [InlineData("javascript:alert(1)", false)]
+    [InlineData("java\nscript:alert(1)", false)]
+    [InlineData("data:text/html,hello", false)]
+    [InlineData("file:///etc/passwd", false)]
+    [InlineData("https://example.org/join", true)]
+    [InlineData("mailto:team@example.org", true)]
+    [InlineData("/join", true)]
+    [InlineData("../join#details", true)]
+    public async Task UpdateTeamPageContentAsync_RejectsUnsafeActionUrlsWithoutChangingPage(string url, bool safe)
+    {
+        var team = SeedTeam("Alpha");
+        team.PageContent = "Original";
+        team.CallsToAction = [new CallToAction { Text = "Original", Url = "/original" }];
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _service.UpdateTeamPageContentAsync(team.Id, "Changed",
+            [new TeamPageCallToActionInput("Join", url, CallToActionStyle.Primary)], true, false,
+            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().Be(safe);
+        var stored = await TeamsDb.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id,
+            Xunit.TestContext.Current.CancellationToken);
+        stored.PageContent.Should().Be(safe ? "Changed" : "Original");
+        stored.CallsToAction.Should().ContainSingle().Which.Url.Should().Be(safe ? url : "/original");
+        if (!safe) result.ErrorMessage.Should().Contain("URL");
+    }
+
+    [HumansTheory]
     [InlineData(false, false)]
     [InlineData(false, true)]
     [InlineData(true, false)]
@@ -1487,15 +1515,17 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result.ErrorKey.Should().Be("Teams_RemoveMember_NotMember");
     }
 
-    [HumansFact]
-    public async Task ReassignAsync_RefusedRemovalStillAbortsMerge()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ReassignAsync_RefusedRemovalStillAbortsMerge(bool targetAlreadyMember)
     {
         var actor = SeedUser(displayName: "Actor");
         var source = SeedUser(displayName: "Source");
         var target = SeedUser(displayName: "Target");
         var team = SeedTeam("Alpha");
         var member = SeedTeamMember(team.Id, source.Id);
-        SeedTeamMember(team.Id, target.Id);
+        if (targetAlreadyMember) SeedTeamMember(team.Id, target.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         Func<Task> act = () => _service.ReassignAsync(source.Id, target.Id, actor.Id,
@@ -1503,6 +1533,8 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*permission*");
         member.LeftAt.Should().BeNull();
+        (await TeamsDb.TeamMembers.CountAsync(m => m.TeamId == team.Id && m.UserId == target.Id,
+            Xunit.TestContext.Current.CancellationToken)).Should().Be(targetAlreadyMember ? 1 : 0);
     }
 
     [HumansFact]
