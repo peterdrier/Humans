@@ -358,30 +358,6 @@ internal sealed class ContactFieldViewModel
     };
 
     /// <summary>
-    /// Gets a visibility icon class.
-    /// </summary>
-    public string VisibilityIconClass => Visibility switch
-    {
-        ContactFieldVisibility.BoardOnly => "fa-solid fa-lock",
-        ContactFieldVisibility.CoordinatorsAndBoard => "fa-solid fa-user-shield",
-        ContactFieldVisibility.MyTeams => "fa-solid fa-users",
-        ContactFieldVisibility.AllActiveProfiles => "fa-solid fa-globe",
-        _ => "fa-solid fa-eye"
-    };
-
-    /// <summary>
-    /// Gets a visibility tooltip.
-    /// </summary>
-    public string VisibilityTooltip => Visibility switch
-    {
-        ContactFieldVisibility.BoardOnly => "Visible to board members only",
-        ContactFieldVisibility.CoordinatorsAndBoard => "Visible to coordinators and board",
-        ContactFieldVisibility.MyTeams => "Visible to your teammates, coordinators, and board",
-        ContactFieldVisibility.AllActiveProfiles => "Visible to all active members",
-        _ => "Visibility unknown"
-    };
-
-    /// <summary>
     /// Resource key for a visibility badge pill. Null for public fields (no badge needed).
     /// </summary>
     public string? VisibilityBadgeKey => Visibility switch
