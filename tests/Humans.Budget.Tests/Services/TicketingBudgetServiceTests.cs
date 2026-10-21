@@ -182,7 +182,7 @@ public class TicketingBudgetServiceTests
     }
 
     [HumansFact]
-    public async Task SyncActualsAsync_SumsStripeFeeTax_TreatingNullAsZero()
+    public async Task SyncActualsAsync_SumsStripeFeeTax_AndTracksFeesOfUnknownTax()
     {
         var purchasedAt = Instant.FromUtc(2026, 3, 3, 10, 0); // inside completed week Mon 2 Mar
         _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
@@ -208,6 +208,7 @@ public class TicketingBudgetServiceTests
         capturedActuals.Should().NotBeNull().And.ContainSingle();
         capturedActuals![0].StripeFees.Should().Be(3m);
         capturedActuals[0].StripeFeeTax.Should().Be(0.42m);
+        capturedActuals[0].StripeFeesTaxUnknown.Should().Be(1m, because: "null FeeTax means unknown, not zero");
     }
 
     [HumansFact]

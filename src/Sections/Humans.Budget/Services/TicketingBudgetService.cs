@@ -63,7 +63,9 @@ internal sealed class TicketingBudgetService(
                             Revenue: g.Sum(o => o.TotalAmount),
                             StripeFees: g.Sum(o => o.StripeFee ?? 0m),
                             TicketTailorFees: g.Sum(o => o.ApplicationFee ?? 0m),
-                            StripeFeeTax: g.Sum(o => o.FeeTax ?? 0m));
+                            StripeFeeTax: g.Sum(o => o.FeeTax ?? 0m),
+                            // Null FeeTax = enriched before Stripe's tax bucket was captured: unknown, not zero.
+                            StripeFeesTaxUnknown: g.Where(o => o.FeeTax is null).Sum(o => o.StripeFee ?? 0m));
                     })
                     .ToList();
             }
