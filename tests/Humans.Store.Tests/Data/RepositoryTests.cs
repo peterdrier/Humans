@@ -168,7 +168,7 @@ public sealed class RepositoryTests
         // …and while Holded is being called, the webhook settles it.
         await _repo.UpdatePaymentStatusAsync(paymentId, PaymentStatus.Paid, ct);
 
-        stale!.State = OrderState.InvoiceIssued;
+        stale.State = OrderState.InvoiceIssued;
         stale.Lines.Single().UnitPriceSnapshot = 5m;
         var invoice = new Invoice
         {

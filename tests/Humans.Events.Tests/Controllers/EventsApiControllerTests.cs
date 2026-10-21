@@ -173,7 +173,7 @@ public class EventsApiControllerTests
         {
             var method = typeof(EventsApiController).GetMethod(action);
             method.Should().NotBeNull();
-            method!.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>().Should().NotBeNull();
+            method.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>().Should().NotBeNull();
         }
     }
 

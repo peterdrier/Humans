@@ -2,7 +2,6 @@ using Humans.Base.Interfaces.Repositories;
 using Humans.Teams.Contracts;
 using NodaTime;
 using Humans.Consent.Domain;
-using Humans.Consent.Services;
 
 namespace Humans.Consent.Data;
 

@@ -1,24 +1,12 @@
-using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base;
-using Humans.Base.Constants;
 using Humans.Base.Extensions;
-using Humans.Camps.Contracts;
-using Humans.CityPlanning.Contracts;
 using Humans.Containers.Contracts;
-using Humans.Containers.Controllers;
-using Humans.Users.Contracts;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
-using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
-using Microsoft.Extensions.Logging.Abstractions;
-using NodaTime;
-using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 using Xunit;
 
 namespace Humans.Containers.Tests;

@@ -63,7 +63,7 @@ public sealed class SurveysEmailsTests
     [HumansFact]
     public void SurveyInvitation_blank_custom_copy_retains_standard_localized_wording()
     {
-        var msg = Create().SurveyInvitation("a@x.com", "Daniel", "Test Survey", "token", "en", " ", null);
+        var msg = Create().SurveyInvitation("a@x.com", "Daniel", "Test Survey", "token", "en", " ");
 
         msg.Subject.Should().Be("Please complete: Test Survey");
         msg.HtmlBody.Should().Contain(

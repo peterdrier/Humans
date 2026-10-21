@@ -71,7 +71,7 @@ public sealed class GoogleDrivePermissionsClientTests
         var error = await client.UpdatePermissionAsync("folder-1", "perm-1", "reader", Xunit.TestContext.Current.CancellationToken);
 
         error.Should().NotBeNull();
-        error!.StatusCode.Should().Be(403);
+        error.StatusCode.Should().Be(403);
         error.RawMessage.Should().Be("permission denied");
         handler.Requests.Should().ContainSingle().Which.Method.Should().Be(HttpMethod.Patch);
     }

@@ -26,6 +26,18 @@ internal interface IWorkspaceIdentityManagement : IGoogleIntegrationService, IGo
     Task<bool> SetStatusFromSyncAsync(
         Guid userId, string attemptedEmail, GoogleEmailStatus status, CancellationToken ct = default);
 
+    /// <summary>
+    /// Records <paramref name="driveEmail"/> as the address Drive grants for the member in place of
+    /// <paramref name="attemptedEmail"/>, their identity address (peterdrier/Humans#2037). Dropped
+    /// (false) when the identity has since moved to another address or nothing changes.
+    /// </summary>
+    Task<bool> SetDriveEmailFromSyncAsync(
+        Guid userId, string attemptedEmail, string driveEmail, CancellationToken ct = default);
+
+    /// <summary>Every recorded Drive address, keyed by member, with the identity address it stands
+    /// in for. Callers apply one only while that identity address is still the member's.</summary>
+    Task<IReadOnlyDictionary<Guid, DriveEmailOverride>> GetDriveEmailsAsync(CancellationToken ct = default);
+
     /// <summary>Living members whose legacy <c>user_emails</c> Google flag or verdict has no
     /// <c>google_workspace_identities</c> row yet, with the identity the copy will write.</summary>
     Task<IReadOnlyList<LegacyWorkspaceIdentityRow>> GetUncopiedLegacyIdentitiesAsync(CancellationToken ct = default);
@@ -34,6 +46,10 @@ internal interface IWorkspaceIdentityManagement : IGoogleIntegrationService, IGo
     /// since the list was read is left alone. Returns the rows written.</summary>
     Task<int> CopyLegacyIdentitiesAsync(CancellationToken ct = default);
 }
+
+/// <summary>The address Drive grants (<paramref name="DriveEmail"/>) in place of the identity
+/// address <paramref name="IdentityEmail"/>.</summary>
+internal sealed record DriveEmailOverride(string IdentityEmail, string DriveEmail);
 
 /// <summary>One pending legacy identity: what the read resolves to today, which the copy pins.</summary>
 internal sealed record LegacyWorkspaceIdentityRow(Guid UserId, string BurnerName, string Email, GoogleEmailStatus Status);

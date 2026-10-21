@@ -1,4 +1,3 @@
-using System.Text;
 using Humans.Shifts.Domain;
 using Humans.Auth.Contracts;
 using Humans.Teams.Domain;
@@ -61,7 +60,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
             Clock,
-            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+            Substitute.For<IEarlyEntryInvalidator>(), NullLogger<ShiftManagementService>.Instance);
 
         var signupRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         _service = new ShiftSignupService(

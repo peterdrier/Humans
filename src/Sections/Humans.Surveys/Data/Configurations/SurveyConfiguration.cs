@@ -1,4 +1,3 @@
-using Humans.Surveys.Contracts;
 using Humans.Surveys.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;

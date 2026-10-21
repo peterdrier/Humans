@@ -4,7 +4,6 @@ using Humans.Base.Interfaces;
 using Humans.Shifts.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Shifts;

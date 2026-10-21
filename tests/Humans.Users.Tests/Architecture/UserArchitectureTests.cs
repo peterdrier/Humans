@@ -5,10 +5,6 @@ using Humans.Base;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using NSubstitute;
-using UserService = Humans.Users.Services.UserService;
-using Humans.Users.Data.Repositories;
 using Humans.Users.Services;
 
 namespace Humans.Users.Tests.Architecture;

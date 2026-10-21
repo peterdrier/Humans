@@ -43,7 +43,7 @@ public class TicketVendorHealthCheckTests
                 failure = ex;
             }
             failure.Should().NotBeNull();
-            failure!.CancellationToken.Should().Be(cancellation.Token);
+            failure.CancellationToken.Should().Be(cancellation.Token);
             logger.ReceivedCalls().Should().BeEmpty();
         }
         else

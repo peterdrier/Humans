@@ -3,7 +3,6 @@ using Humans.Auth.Contracts;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
 using AwesomeAssertions;
-using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
@@ -165,7 +164,7 @@ public class AccountDeletionServiceTests
             .Returns(new Dictionary<Guid, string>());
         if (emailFailure)
             _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
-                .Returns<Task>(_ => throw failure);
+                .Returns(_ => throw failure);
         else
             _roleAssignmentService.RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>())
                 .Returns<Task<int>>(_ => throw failure);

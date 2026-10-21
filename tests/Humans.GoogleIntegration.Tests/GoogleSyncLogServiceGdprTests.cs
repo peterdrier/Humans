@@ -55,7 +55,7 @@ public sealed class GoogleSyncLogServiceGdprTests
 
         await _service.LogAsync(GoogleSyncLogAction.AccessRevoked, Guid.NewGuid(), error, "Sync",
             "member@example.com", "reader", GoogleSyncSource.ScheduledSync, success: false,
-            errorMessage: error, ct: Xunit.TestContext.Current.CancellationToken);
+            errorMessage: error, ct: TestContext.Current.CancellationToken);
 
         saved.Should().NotBeNull();
         saved!.Description.Should().Be(longError ? "Sync: " + new string('e', 3994) : "Sync: " + error);
@@ -86,7 +86,7 @@ public sealed class GoogleSyncLogServiceGdprTests
         _userEmails.GetNobodiesTeamEmailAsync(archived, Arg.Any<CancellationToken>())
             .Returns((string?)null);
 
-        await _service.EraseForUserAsync(archived, Xunit.TestContext.Current.CancellationToken);
+        await _service.EraseForUserAsync(archived, TestContext.Current.CancellationToken);
 
         await _repo.Received(1).DeleteByUserIdsAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(archived)),
@@ -104,7 +104,7 @@ public sealed class GoogleSyncLogServiceGdprTests
         _userEmails.GetNobodiesTeamEmailAsync(archived, Arg.Any<CancellationToken>())
             .Returns((string?)null);
 
-        await _service.EraseForUserAsync(archived, Xunit.TestContext.Current.CancellationToken);
+        await _service.EraseForUserAsync(archived, TestContext.Current.CancellationToken);
 
         await _userEmails.Received(1).GetNobodiesTeamEmailAsync(archived, Arg.Any<CancellationToken>());
         _serviceProvider.DidNotReceive().GetService(typeof(IGoogleAdminService));
@@ -133,7 +133,7 @@ public sealed class GoogleSyncLogServiceGdprTests
         _teamResources.GetResourceNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string> { [resourceId] = "Shared folder" });
 
-        var slices = await _service.ContributeForUserAsync(survivor, Xunit.TestContext.Current.CancellationToken);
+        var slices = await _service.ContributeForUserAsync(survivor, TestContext.Current.CancellationToken);
         using var json = JsonDocument.Parse(JsonSerializer.Serialize(slices.Single().Data,
             new JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } }));
         json.RootElement.GetArrayLength().Should().Be(1);

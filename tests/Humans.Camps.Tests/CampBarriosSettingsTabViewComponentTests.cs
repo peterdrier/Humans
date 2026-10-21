@@ -1,7 +1,4 @@
 using AwesomeAssertions;
-using Humans.Camps.Contracts;
-using Humans.Camps.Models;
-using Humans.Camps.Services;
 using Humans.Camps.ViewComponents;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;

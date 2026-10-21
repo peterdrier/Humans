@@ -12,6 +12,7 @@ internal sealed class WorkspaceIdentityRecordConfiguration : IEntityTypeConfigur
         b.HasKey(x => x.UserId);
         b.Property(x => x.UserId).ValueGeneratedNever();
         b.Property(x => x.Email).HasMaxLength(256);
+        b.Property(x => x.DriveEmail).HasMaxLength(256);
         b.Property(x => x.Status).HasConversion<string>().HasMaxLength(50).IsRequired();
         b.Property(x => x.UpdatedAt).IsRequired();
     }

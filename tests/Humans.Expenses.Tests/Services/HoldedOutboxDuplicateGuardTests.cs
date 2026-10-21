@@ -105,7 +105,7 @@ public class HoldedOutboxDuplicateGuardTests
         // The report snapshot the push works from shows no doc id; "doc-A" lands between that
         // snapshot and this run's create. Nothing is deleted in Holded: the audit entry names the
         // extra document so it can be removed by hand.
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         _holded.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {

@@ -1,4 +1,3 @@
-using System.Text;
 using System.Globalization;
 using System.Resources;
 using Humans.Shifts.Domain;
@@ -72,7 +71,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
             Clock,
-            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+            Substitute.For<IEarlyEntryInvalidator>(), NullLogger<ShiftManagementService>.Instance);
 
         _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         _viewInvalidator = Substitute.For<IShiftViewInvalidator>();
@@ -141,11 +140,11 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             UpdatedAt = TestNow + Duration.FromHours(1),
             StatusReason = "Shift cancelled"
         });
-        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
 
-        var slices = await _service.ContributeForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var slices = await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
         var slice = slices.Single(x => string.Equals(x.SectionName, "ShiftSignups", StringComparison.Ordinal));
         var signup = System.Text.Json.JsonSerializer.SerializeToElement(slice.Data).EnumerateArray().Single();
         signup.GetProperty("CreatedAt").GetString().Should().Be("2026-06-15T12:00:00Z");

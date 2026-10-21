@@ -1,5 +1,3 @@
-using Humans.GoogleIntegration.Contracts;
-
 namespace Humans.GoogleIntegration.Services;
 
 /// <summary>

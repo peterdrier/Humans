@@ -1,4 +1,3 @@
-using AwesomeAssertions;
 using Humans.MailerLite.Services;
 using Humans.Users.Contracts;
 using NSubstitute;

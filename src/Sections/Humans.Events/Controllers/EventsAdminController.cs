@@ -6,7 +6,6 @@ using Humans.Events.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
-using static Humans.Events.Helpers.EventsTimeHelpers;
 
 using Humans.Base.Authorization;
 using Humans.Users.Contracts;

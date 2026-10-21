@@ -4,7 +4,6 @@ using Humans.Base.Extensions;
 using AwesomeAssertions;
 using Humans.Base.Configuration;
 using Humans.Base.Interfaces;
-using Humans.Consent.Contracts;
 using Humans.Consent.Jobs;
 using Humans.Consent.Tests.Infrastructure;
 using Humans.Email.Contracts;

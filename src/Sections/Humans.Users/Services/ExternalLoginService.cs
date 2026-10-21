@@ -1,5 +1,4 @@
 using Humans.Users.Services;
-using Humans.Users.Domain;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Identity;
 using NodaTime;

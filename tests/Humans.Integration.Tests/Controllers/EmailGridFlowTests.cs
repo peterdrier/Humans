@@ -247,7 +247,7 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
         verified.Should().BeTrue("the manual-verify POST must flip the pending row");
     }
 
-    [HumansFact(Timeout = 30_000)]
+    [HumansFact]
     public async Task AdminLinkRoute_DoesNotExist()
     {
         // The /Profile/{userId}/Admin/Emails/Link/Google admin route must NOT be

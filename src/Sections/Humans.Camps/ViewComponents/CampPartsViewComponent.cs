@@ -1,5 +1,3 @@
-using Humans.Camps.Contracts;
-using Humans.Camps.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Camps.ViewComponents;

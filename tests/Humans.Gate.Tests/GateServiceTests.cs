@@ -485,17 +485,17 @@ public class GateServiceTests
 
         // Erase the guest: admission links and their PIN row go.
         await _svc.EraseForUserAsync(GuestId, default);
-        var row = GateDb.GateScanEvents.AsNoTracking().Single();
+        var row = await GateDb.GateScanEvents.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         row.GuestUserId.Should().BeNull();
         GateDb.GateStaffPins.AsNoTracking().Should().BeEmpty();
 
         // Erase the override authorizer: that link goes too.
         await _svc.EraseForUserAsync(supervisor, default);
-        GateDb.GateScanEvents.AsNoTracking().Single().OverrideByUserId.Should().BeNull();
+        (await GateDb.GateScanEvents.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken)).OverrideByUserId.Should().BeNull();
 
         // Erase the scanner: ScannedByUserId stays — the Art. 17(3) operational record.
         await _svc.EraseForUserAsync(AgentId, default);
-        GateDb.GateScanEvents.AsNoTracking().Single().ScannedByUserId.Should().Be(AgentId);
+        (await GateDb.GateScanEvents.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken)).ScannedByUserId.Should().Be(AgentId);
     }
 
     [HumansFact]
@@ -508,10 +508,10 @@ public class GateServiceTests
 
         await _svc.ReassignAsync(AgentId, survivor, actorUserId: Guid.NewGuid(), Clock.GetCurrentInstant(), default);
 
-        var row = GateDb.GateScanEvents.AsNoTracking().Single();
+        var row = await GateDb.GateScanEvents.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         row.ScannedByUserId.Should().Be(survivor);
         row.OverrideByUserId.Should().Be(survivor);
-        var pin = GateDb.GateStaffPins.AsNoTracking().Single();
+        var pin = await GateDb.GateStaffPins.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         pin.UserId.Should().Be(survivor);
         pin.AdminEnrolled.Should().BeTrue(); // enrolment provenance travels with the PIN
     }
@@ -526,7 +526,7 @@ public class GateServiceTests
 
         await _svc.ReassignAsync(mergedAway, survivor, actorUserId: Guid.NewGuid(), Clock.GetCurrentInstant(), default);
 
-        GateDb.GateStaffPins.AsNoTracking().Single().UserId.Should().Be(survivor);
+        (await GateDb.GateStaffPins.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken)).UserId.Should().Be(survivor);
         (await _svc.VerifyPinAsync(survivor, "1357")).Should().BeTrue();
         (await _svc.VerifyPinAsync(survivor, "2580")).Should().BeFalse();
     }

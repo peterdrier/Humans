@@ -215,10 +215,10 @@ public class BackdoorFeedbackControllerTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("message")]
-    [Xunit.InlineData("status")]
-    [Xunit.InlineData("assignment")]
-    [Xunit.InlineData("github")]
+    [InlineData("message")]
+    [InlineData("status")]
+    [InlineData("assignment")]
+    [InlineData("github")]
     public async Task DependencyInvalidOperation_Remains500EvenWhenMessageContainsNotFound(string action)
     {
         var id = Guid.NewGuid();
@@ -277,6 +277,6 @@ public class BackdoorFeedbackControllerTests
 
         await _sut.List(status: null, category: null, limit: requested);
 
-        await _feedback.Received(1).GetFeedbackListAsync(null, null, limit: expected);
+        await _feedback.Received(1).GetFeedbackListAsync(null, limit: expected);
     }
 }

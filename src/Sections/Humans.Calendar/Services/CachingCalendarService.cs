@@ -2,7 +2,6 @@ using Humans.Calendar.Services.Dtos;
 using Humans.Base.Caching;
 using Humans.Calendar.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Calendar.Domain;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 

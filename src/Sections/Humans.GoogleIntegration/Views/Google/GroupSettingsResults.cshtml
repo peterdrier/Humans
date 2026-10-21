@@ -112,7 +112,7 @@
 
     @if (Model.ExpectedSettings.Count > 0)
     {
-        var settingRows = Model.ExpectedSettings.Select(kv => new { Setting = kv.Key, Value = kv.Value }).ToList();
+        var settingRows = Model.ExpectedSettings.Select(kv => new { Setting = kv.Key, kv.Value }).ToList();
         var settingsTable = TableModel.For(settingRows)
             .Template("Setting", item => new HtmlString($"<code>{Html.Encode(item.Setting)}</code>"))
             .Template("Expected Value", item => new HtmlString($"<span class=\"badge bg-success\">{Html.Encode(item.Value)}</span>"))

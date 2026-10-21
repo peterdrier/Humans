@@ -22,7 +22,7 @@ public sealed class SettingsArchitectureTests
             var authorize = controller.GetCustomAttribute<AuthorizeAttribute>();
             authorize.Should().NotBeNull(
                 because: $"{controller.Name} writes the app-wide event values");
-            authorize!.Policy.Should().Be(PolicyNames.AdminOnly,
+            authorize.Policy.Should().Be(PolicyNames.AdminOnly,
                 because: $"{controller.Name} writes the app-wide event values");
         }
     }

@@ -373,7 +373,7 @@ public class TicketTailorServiceWriteTests
         handler.EnqueueResponse(HttpStatusCode.OK, new { id = "ci_1" });
 
         var service = TicketTailorTestHost.CreateService(handler);
-        await service.CreateCheckInAsync("tt_1", Instant.FromUnixTimeSeconds(1751983320L), Xunit.TestContext.Current.CancellationToken);
+        await service.CreateCheckInAsync("tt_1", Instant.FromUnixTimeSeconds(1751983320L), TestContext.Current.CancellationToken);
 
         var (request, body) = handler.Requests.Single();
         request.RequestUri!.ToString().Should().EndWith("/check_ins");
@@ -390,7 +390,7 @@ public class TicketTailorServiceWriteTests
         handler.EnqueueResponse(status, new { error = "check-in failed" });
 
         var service = TicketTailorTestHost.CreateService(handler);
-        var act = () => service.CreateCheckInAsync("tt_1", Instant.FromUnixTimeSeconds(1751983320L), Xunit.TestContext.Current.CancellationToken);
+        var act = () => service.CreateCheckInAsync("tt_1", Instant.FromUnixTimeSeconds(1751983320L), TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<HttpRequestException>();
         handler.RequestCount.Should().Be(1);
@@ -409,7 +409,7 @@ public class TicketTailorServiceWriteTests
         var service = TicketTailorTestHost.CreateService(handler);
         var codes = await service.GenerateDiscountCodesAsync(
             new DiscountCodeSpec(Count: 2, DiscountType: type, DiscountValue: 25m, ExpiresAt: null),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         codes.Should().Equal("NOBO-ONE", "NOBO-TWO");
         handler.Requests.Should().HaveCount(2);

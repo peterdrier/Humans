@@ -19,6 +19,14 @@ internal sealed class WorkspaceIdentityRecord
     /// records that, so the read never falls back to the legacy <c>IsGoogle</c> flag.</summary>
     public string? Email { get; set; }
 
+    /// <summary>
+    /// The address Drive accepted in place of a non-Gmail <c>local+tag@domain</c> <see cref="Email"/>
+    /// that Drive refused (peterdrier/Humans#2037). Drive-only: Groups and other Google services treat
+    /// plus addresses differently, so they keep using <see cref="Email"/>. Cleared when
+    /// <see cref="Email"/> changes.
+    /// </summary>
+    public string? DriveEmail { get; set; }
+
     /// <summary>Google's verdict on <see cref="Email"/>.</summary>
     public GoogleEmailStatus Status { get; set; }
 

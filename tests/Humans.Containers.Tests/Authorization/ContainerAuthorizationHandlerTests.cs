@@ -149,7 +149,7 @@ public sealed class ContainerAuthorizationHandlerTests
     [InlineData(true, false, false)]
     public async Task Place_ExplicitYear_UsesThatYearsPhaseAndLead(bool open, bool lead, bool allowed)
     {
-        _cityPlanningService.GetSettingsAsync(Arg.Any<CancellationToken>(), null)
+        _cityPlanningService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(MakeSettings(2027, true));
         _cityPlanningService.GetSettingsAsync(Arg.Any<CancellationToken>(), 2026)
             .Returns(MakeSettings(2026, open));

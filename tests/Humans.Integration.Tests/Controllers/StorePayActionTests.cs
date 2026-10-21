@@ -20,7 +20,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// </summary>
 public class StorePayActionTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
-    [HumansFact(Timeout = 30000)]
+    [HumansFact]
     public async Task Pay_with_valid_amount_redirects_to_Stripe_session_url()
     {
         await Factory.SignInAsFullyOnboardedAsync(Client, new DevPersona("barrio-1-lead"));
@@ -57,7 +57,7 @@ public class StorePayActionTests(HumansTestDatabase database) : IntegrationTestB
             Arg.Any<CancellationToken>());
     }
 
-    [HumansFact(Timeout = 30000)]
+    [HumansFact]
     public async Task Pay_with_amount_over_balance_redirects_back_to_order_without_calling_Stripe()
     {
         await Factory.SignInAsFullyOnboardedAsync(Client, new DevPersona("barrio-1-lead"));

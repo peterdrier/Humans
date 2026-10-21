@@ -3,7 +3,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Humans.Base.Extensions;
 using Humans.Surveys.Contracts;
-using Humans.Surveys.Domain;
 
 namespace Humans.Surveys.Models;
 

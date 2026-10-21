@@ -3,7 +3,6 @@ using System.Text.RegularExpressions;
 using Humans.Base.Extensions;
 using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Helpers;
 using Humans.Email.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Holded.Contracts;

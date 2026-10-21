@@ -88,7 +88,7 @@ public sealed class DriveFolderPathTests
     }
 
     private Task<string?> ResolveAsync(string fileId) =>
-        DriveFolderPath.ResolveAsync(_drive, fileId, NullLogger.Instance, Xunit.TestContext.Current.CancellationToken);
+        DriveFolderPath.ResolveAsync(_drive, fileId, NullLogger.Instance, TestContext.Current.CancellationToken);
 
     private void StubFile(string id, string name, string[]? parents, string? driveId) =>
         _drive.GetFileAsync(id, Arg.Any<CancellationToken>())

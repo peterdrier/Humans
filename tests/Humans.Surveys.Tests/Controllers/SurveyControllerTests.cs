@@ -97,7 +97,7 @@ public sealed class SurveyControllerTests
             result.Should().BeOfType<RedirectToActionResult>();
             var state = SurveyWizardSession.LoadBySlug(session, "volunteer-survey");
             state.Should().NotBeNull();
-            state!.Anonymity.Should().Be(expected.Value);
+            state.Anonymity.Should().Be(expected.Value);
             state.UserId.Should().Be(expected == ResponseAnonymity.Anonymous ? null : userId);
             state.DraftResponseId.Should().Be(expected == ResponseAnonymity.Identified ? draftId : null);
             await surveys.Received(1).IncrementPublicStartedAsync(surveyId, Xunit.TestContext.Current.CancellationToken);
@@ -281,7 +281,7 @@ public sealed class SurveyControllerTests
             .Should().Be("PublicPage");
         var state = SurveyWizardSession.LoadBySlug(session, "board-vote");
         state.Should().NotBeNull();
-        state!.Anonymity.Should().Be(ResponseAnonymity.Identified);
+        state.Anonymity.Should().Be(ResponseAnonymity.Identified);
         state.UserId.Should().Be(userId);
         state.InvitationId.Should().Be(participationId);
     }
@@ -320,7 +320,7 @@ public sealed class SurveyControllerTests
             .Should().Be("PublicPage");
         var state = SurveyWizardSession.LoadBySlug(session, "asociado-vote");
         state.Should().NotBeNull();
-        state!.Anonymity.Should().Be(ResponseAnonymity.CompletionTracked);
+        state.Anonymity.Should().Be(ResponseAnonymity.CompletionTracked);
         state.UserId.Should().Be(userId);
         state.InvitationId.Should().Be(participationId);
         state.DraftResponseId.Should().BeNull();
@@ -355,7 +355,7 @@ public sealed class SurveyControllerTests
         result.Should().BeOfType<RedirectToActionResult>().Subject.ActionName.Should().Be("Page");
         var state = SurveyWizardSession.Load(session, Token);
         state.Should().NotBeNull();
-        state!.Anonymity.Should().Be(ResponseAnonymity.CompletionTracked);
+        state.Anonymity.Should().Be(ResponseAnonymity.CompletionTracked);
         state.UserId.Should().Be(userId);
         state.InvitationId.Should().Be(invitationId);
         state.DraftResponseId.Should().BeNull();
@@ -382,7 +382,7 @@ public sealed class SurveyControllerTests
                 invitationId,
                 userId,
                 Detail(surveyId, "Thanks!", allowAnonymous: false, isAsociadoVote: true),
-                [new SurveyDraftAnswer(questionId, ["yes"], null, null, null, null)],
+                [new SurveyDraftAnswer(questionId, ["yes"], null, null)],
                 HasResumableDraft: true));
         var sut = CreateController(surveys, out var session);
 
@@ -391,7 +391,7 @@ public sealed class SurveyControllerTests
         result.Should().BeOfType<RedirectToActionResult>().Subject.ActionName.Should().Be("Page");
         var state = SurveyWizardSession.Load(session, Token);
         state.Should().NotBeNull();
-        state!.Anonymity.Should().Be(ResponseAnonymity.CompletionTracked);
+        state.Anonymity.Should().Be(ResponseAnonymity.CompletionTracked);
         state.DraftResponseId.Should().BeNull();
         state.Answers[questionId.ToString()].SelectedOptionValues.Should().ContainSingle("yes");
         await surveys.DidNotReceive().StartIdentifiedDraftAsync(

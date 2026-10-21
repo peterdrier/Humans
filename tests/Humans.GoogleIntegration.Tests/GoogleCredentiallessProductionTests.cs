@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Base.Configuration;
-using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Health;
 using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Services.Workspace;
@@ -50,7 +49,7 @@ public sealed class GoogleCredentiallessProductionTests
             .Build();
         var services = new ServiceCollection();
 
-        var act = () => new Humans.GoogleIntegration.Section().Register(services, configuration);
+        var act = () => new Section().Register(services, configuration);
 
         act.Should().NotThrow();
         services.Should().ContainSingle(descriptor =>

@@ -1,5 +1,4 @@
 using Humans.Governance.Services;
-using Humans.Governance.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Governance.ViewComponents;
