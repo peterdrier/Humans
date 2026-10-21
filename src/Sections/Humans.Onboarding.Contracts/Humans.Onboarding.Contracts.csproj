@@ -15,7 +15,7 @@
     (design §15 step 5b, memory/architecture/section-project-cycle-fix.md).
 
     OnboardingResult is here because it is the funnel's result vocabulary and Users
-    returns it from three surfaces: IUserService.ApplyProfileOnboardingMutationAsync,
+    returns it from three surfaces: IUserWrite.SetRejectedAsync,
     IHumanLifecycleService's three lifecycle transitions and IAccountDeletionService's
     cancel/purge. The last two are Onboarding's own siblings in the three-concerns split
     (nobodies-collective#583/#584), so Humans.Users.Contracts referencing this leaf for a

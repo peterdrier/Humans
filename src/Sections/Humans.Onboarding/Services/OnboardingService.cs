@@ -123,10 +123,9 @@ internal sealed class OnboardingService(
 
     // --- Consent-check mutations ---
 
-    // Annotation-only after the name-only access switch: Clear records the consent-check status
-    // (and sets the review's IsApproved, Consent's consent_reviews) for the CC audit track. It no longer
-    // provisions any team — Volunteers/tier membership is reconciled by SystemTeamSyncJob on
-    // name + consents, decoupled from CC review.
+    // Annotation-only: Clear records the consent-check status (and sets the review's IsApproved,
+    // Consent's consent_reviews) for the CC audit track and provisions no team — Volunteers/tier
+    // membership is reconciled by SystemTeamSyncJob on name + consents, decoupled from CC review.
     public Task<OnboardingResult> ClearConsentCheckAsync(
         Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default) =>
         RecordConsentCheckAsync(userId, reviewerId, ConsentCheckStatus.Cleared, notes, ct);
