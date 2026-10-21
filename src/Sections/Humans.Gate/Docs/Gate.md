@@ -171,8 +171,9 @@ nobodies-collective/Humans#933.)
 - **A result card auto-clears** back to the Ready screen so the previous guest's name never lingers on
   the shared kiosk (PII) and the screen is never stuck on the last scan. Timeouts vary by outcome (a
   quick ADMIT clears in ~10s; a STOP/AMBER refusal that gets explained to the guest lingers ~30s); a
-  terminal card also shows a "Next ticket" button with a live countdown. Any tap on the card pushes the
-  deadline back (active use keeps it up). The interim ID-confirm card has a longer ~60s **safety**
+  terminal card also shows a "Next ticket" button with a live countdown. Any tap on the card, or typing or
+  scanning into the scan field, pushes the deadline back (active use keeps it up, and a reset can't
+  wipe a scan mid-burst). The interim ID-confirm card has a longer ~60s **safety**
   timeout only (it shows a name but the operator is mid-decision); the supervisor-override panel pauses
   the timer while a PIN is being entered.
 - **No dead-ends / minimal-training affordances** (kiosk is chromeless — no browser back). Every screen
