@@ -104,6 +104,9 @@ Member request and cancellation errors are localized in all six cultures. Unknow
   void/reissue (which re-links the API-issued reissue to the original order and preserves its price).
 
 ### US-42.5: Decision notifications
+- Once a request or manual decision has persisted, notification lookup and outbox enqueueing finish
+  independently of HTTP request cancellation. Validation and the initial save remain cancellable;
+  other notification failures retain their best-effort logging behavior.
 - On a decision, an email goes to **both the Sender and the Receiver**: completed, or cancelled with the
   reason.
 

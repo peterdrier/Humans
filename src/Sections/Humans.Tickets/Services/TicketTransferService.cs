@@ -147,6 +147,9 @@ internal sealed class TicketTransferService(
         };
 
         await transferRepo.AddAsync(request, ct);
+        // The request is committed: a disconnected browser must not prevent the
+        // sender/team notification from reaching the outbox.
+        ct = CancellationToken.None;
 
         // Pendency is baked into the cached holdings rows ("transfer pending" stamp),
         // so every pendency change must evict the sender's holdings.
@@ -205,7 +208,7 @@ internal sealed class TicketTransferService(
         await MarkApprovedAsync(
             request, adminUserId, adminNotes,
             "Transfer marked successful (processed manually in TicketTailor)", ct);
-        return new TicketTransferMutationResult(await BuildRowDtoAsync(request, ct), null);
+        return new TicketTransferMutationResult(await BuildRowDtoAsync(request, CancellationToken.None), null);
     }
 
     public async Task<TicketTransferMutationResult> ProcessTransferAsync(
@@ -385,6 +388,8 @@ internal sealed class TicketTransferService(
         request.DecidedAt = now;
         request.AdminNotes = adminNotes;
         await transferRepo.UpdateAsync(request, ct);
+        // Finish notification follow-up once the decision has persisted.
+        ct = CancellationToken.None;
 
         // Approving changes the cached order projection (it now carries the
         // recipient/decided-at for void attendees), so evict it here.
@@ -514,6 +519,8 @@ internal sealed class TicketTransferService(
         request.DecidedAt = now;
         request.AdminNotes = reason;
         await transferRepo.UpdateAsync(request, ct);
+        // Finish notification follow-up once the decision has persisted.
+        ct = CancellationToken.None;
 
         cacheInvalidator.InvalidateAfterTransfer(request.SenderUserId, request.ReceiverUserId);
 

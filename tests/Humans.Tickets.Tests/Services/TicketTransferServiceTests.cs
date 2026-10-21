@@ -257,23 +257,72 @@ public sealed class TicketTransferServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task CreateRequest_PropagatesRequestCancellation_WhenEmailSendIsCancelled()
+    [HumansTheory]
+    [Xunit.InlineData("create")]
+    [Xunit.InlineData("approve")]
+    [Xunit.InlineData("reject")]
+    public async Task Mutation_RequestAbortedAfterPersistence_StillEnqueuesBothNotifications(string operation)
     {
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
         using var aborted = new CancellationTokenSource();
-        _emailService.SendAsync(Arg.Any<EmailMessage>(), aborted.Token)
+        var request = MakePending(Guid.NewGuid());
+        _transferRepo.GetByIdAsync(request.Id, Arg.Any<CancellationToken>()).Returns(request);
+        // Model a disconnect immediately after the repository has committed.
+        _transferRepo.AddAsync(Arg.Any<TicketTransferRequest>(), aborted.Token)
+            .Returns(async _ => await aborted.CancelAsync());
+        _transferRepo.UpdateAsync(request, aborted.Token)
+            .Returns(async _ => await aborted.CancelAsync());
+        var queued = new List<EmailMessage>();
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                queued.Add(call.Arg<EmailMessage>());
+                return Task.CompletedTask;
+            });
+
+        var result = operation switch
+        {
+            "create" => await _service.CreateRequestAsync(
+                new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, aborted.Token),
+            "approve" => await _service.ApproveAsync(request.Id, _adminId, null, aborted.Token),
+            "reject" => await _service.RejectAsync(request.Id, _adminId, "Not available", aborted.Token),
+            _ => throw new InvalidOperationException(),
+        };
+
+        aborted.IsCancellationRequested.Should().BeTrue();
+        result.Succeeded.Should().BeTrue();
+        queued.Should().HaveCount(2);
+        string[] expectedTemplates = operation switch
+        {
+            "create" => ["ticket_transfer_requested", "ticket_transfer_team"],
+            "approve" => ["ticket_transfer_completed", "ticket_transfer_completed"],
+            _ => ["ticket_transfer_cancelled", "ticket_transfer_cancelled"],
+        };
+        queued.Select(m => m.TemplateName).Should().BeEquivalentTo(expectedTemplates);
+        if (!string.Equals(operation, "create", StringComparison.Ordinal))
+            queued.Select(m => m.RecipientEmail).Should().Contain(request.ReceiverEmail);
+    }
+
+    [HumansFact]
+    public async Task CreateRequest_CancellationDuringPersistence_StopsFollowUp()
+    {
+        StubAttendee(TicketAttendeeStatus.Valid, _senderId);
+        using var aborted = new CancellationTokenSource();
+        _transferRepo.AddAsync(Arg.Any<TicketTransferRequest>(), aborted.Token)
             .Returns(async _ =>
             {
                 await aborted.CancelAsync();
-                throw new OperationCanceledException(aborted.Token);
+                aborted.Token.ThrowIfCancellationRequested();
             });
 
         var act = () => _service.CreateRequestAsync(
             new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, aborted.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
-        await _transferRepo.Received(1).AddAsync(Arg.Any<TicketTransferRequest>(), aborted.Token);
+        _cacheInvalidator.ReceivedCalls().Should().BeEmpty();
+        _auditLog.ReceivedCalls().Should().BeEmpty();
+        _emailService.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
