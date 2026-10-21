@@ -1730,7 +1730,7 @@ public sealed class IssuesServiceTests
             .Returns(Info(survivorId)! with { MergedUserIds = [sourceId] });
         var sourceIssueId = await SeedIssueRowAsync(sourceId, IssueStatus.Open, "Source issue");
         await SeedIssueRowAsync(survivorId, IssueStatus.Open, "Survivor issue");
-        await SeedIssueRowAsync(strangerId, IssueStatus.Open, "Stranger issue");
+        var strangerIssueId = await SeedIssueRowAsync(strangerId, IssueStatus.Open, "Stranger issue");
         foreach (var (sender, content) in new[]
         {
             (sourceId, "Before merge"), (survivorId, "After merge"), (strangerId, "Another person")
@@ -1743,11 +1743,23 @@ public sealed class IssuesServiceTests
                 Content = content,
                 CreatedAt = Clock.GetCurrentInstant()
             });
+        foreach (var (sender, content) in new[]
+        {
+            (sourceId, "My archived comment elsewhere"),
+            (survivorId, "My current comment elsewhere"),
+            (strangerId, "Private stranger comment")
+        })
+            _issuesDb.IssueComments.Add(new IssueComment
+            {
+                Id = Guid.NewGuid(), IssueId = strangerIssueId, SenderUserId = sender,
+                Content = content, CreatedAt = Clock.GetCurrentInstant()
+            });
         await _issuesDb.SaveChangesAsync(ct);
 
         var slices = await _service.ContributeForUserAsync(requestedId, ct);
 
-        var exported = System.Text.Json.JsonSerializer.SerializeToElement(slices.Single().Data);
+        var exported = System.Text.Json.JsonSerializer.SerializeToElement(
+            slices.Single(slice => string.Equals(slice.SectionName, "Issues", StringComparison.Ordinal)).Data);
         exported.EnumerateArray().Select(issue => issue.GetProperty("Title").GetString())
             .Should().BeEquivalentTo(["Source issue", "Survivor issue"]);
         var comments = exported.EnumerateArray()
@@ -1757,6 +1769,19 @@ public sealed class IssuesServiceTests
         comments["Before merge"].Should().BeTrue();
         comments["After merge"].Should().BeTrue();
         comments["Another person"].Should().BeFalse();
+
+        var ownComments = System.Text.Json.JsonSerializer.SerializeToElement(
+            slices.Single(slice => string.Equals(slice.SectionName, "IssueComments", StringComparison.Ordinal)).Data);
+        ownComments.EnumerateArray().Select(comment => comment.GetProperty("Content").GetString())
+            .Should().BeEquivalentTo(["My archived comment elsewhere", "My current comment elsewhere"]);
+        foreach (var comment in ownComments.EnumerateArray())
+        {
+            comment.GetProperty("IssueId").GetGuid().Should().Be(strangerIssueId);
+            comment.GetProperty("CreatedAt").GetString().Should().NotBeNullOrEmpty();
+            comment.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo(
+                "IssueId", "Content", "CreatedAt");
+        }
+        _service.ErasureDeclaration.Should().ContainKey("IssueComments");
     }
 
     [HumansFact]
@@ -1778,7 +1803,10 @@ public sealed class IssuesServiceTests
 
         var slices = await _service.ContributeForUserAsync(aliceId, Xunit.TestContext.Current.CancellationToken);
 
-        slices.Should().ContainSingle();
+        slices.Select(slice => slice.SectionName).Should().BeEquivalentTo("Issues", "IssueComments");
+        System.Text.Json.JsonSerializer.SerializeToElement(
+                slices.Single(slice => string.Equals(slice.SectionName, "IssueComments", StringComparison.Ordinal)).Data)
+            .GetArrayLength().Should().Be(0);
         slices[0].SectionName.Should().Be("Issues");
         var data = slices[0].Data.Should().BeAssignableTo<System.Collections.IEnumerable>().Subject;
         data.Cast<object>().Should().HaveCount(2);

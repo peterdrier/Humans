@@ -41,6 +41,7 @@ internal sealed class IssuesService(
     ILogger<IssuesService> logger) : IIssuesService, IUserDataContributor
 {
     internal const string Issues = "Issues";
+    internal const string IssueComments = "IssueComments";
 
     private static readonly TimeSpan BadgeCacheDuration = TimeSpan.FromMinutes(2);
     private static readonly ResourceManager NoticeResources = new(typeof(IssuesResource));
@@ -808,7 +809,8 @@ internal sealed class IssuesService(
         var issues = new List<Issue>();
         foreach (var id in userIds)
             issues.AddRange(await repo.GetForUserExportAsync(id, ct));
-        var shaped = issues.Select(i => new
+        var distinctIssues = issues.DistinctBy(i => i.Id).ToList();
+        var shaped = distinctIssues.Where(i => userIds.Contains(i.ReporterUserId)).Select(i => new
         {
             i.Title,
             i.Description,
@@ -828,7 +830,19 @@ internal sealed class IssuesService(
             })
         }).ToList();
 
-        return [new UserDataSlice(Issues, shaped)];
+        var comments = distinctIssues
+            .Where(i => !userIds.Contains(i.ReporterUserId))
+            .SelectMany(i => i.Comments)
+            .Where(c => c.SenderUserId is { } senderId && userIds.Contains(senderId))
+            .OrderBy(c => c.CreatedAt)
+            .Select(c => new
+            {
+                c.IssueId,
+                c.Content,
+                CreatedAt = c.CreatedAt.ToIso8601()
+            }).ToList();
+
+        return [new UserDataSlice(Issues, shaped), new UserDataSlice(IssueComments, comments)];
     }
 
     // ─── IUserDataContributor (GDPR erasure) ───
@@ -836,11 +850,10 @@ internal sealed class IssuesService(
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [Issues] =
-                "Partially retained: issues the person reported are deleted outright, comments " +
-                "and screenshots with them. A comment they left on someone else's issue is that " +
-                "issue's content and stays, with the authorship detached (SenderUserId nulled) — " +
-                "GDPR Art. 17(3)(b), since removing it would gut another human's thread."
+            [Issues] = null, // Own issues, comments and screenshots are deleted outright.
+            [IssueComments] =
+                "Partially retained: comments on other people's issues remain as that issue's content, " +
+                "with authorship detached (SenderUserId nulled), per GDPR Art. 17(3)(b)."
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
@@ -850,7 +863,8 @@ internal sealed class IssuesService(
     {
         var ownIssues = await repo.GetForUserExportAsync(userId, ct);
         var badgeUserIds = new HashSet<Guid> { userId };
-        foreach (var section in ownIssues.Select(i => i.Section).Distinct(StringComparer.Ordinal))
+        foreach (var section in ownIssues.Where(i => i.ReporterUserId == userId)
+                     .Select(i => i.Section).Distinct(StringComparer.Ordinal))
         {
             badgeUserIds.UnionWith(await ResolveBadgeUserIdsAsync(userId, section, previousSection: null, ct));
         }
