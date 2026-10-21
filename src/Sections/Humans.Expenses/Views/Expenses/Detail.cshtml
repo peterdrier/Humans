@@ -430,9 +430,9 @@
             </div>
         }
 
-        @* Submitter-voiced ("owed to you"), so it stays with the submitter even though finance
-           admins now also load the timeline for the sync card below. *@
-        @if (Model.IsSubmitter && Model.HoldedTimeline is { RegisteredInHolded: true } tl)
+        @* Everyone who may view the report sees its payment progress; only the "owed to you"
+           clause is submitter-voiced, so it stays with the submitter. *@
+        @if (Model.HoldedTimeline is { RegisteredInHolded: true } tl)
         {
             <div class="card mb-3">
                 <div class="card-header"><strong>@Localizer["Expenses_PaymentStatus"]</strong></div>
@@ -445,7 +445,7 @@
                         <li class="mb-2">
                             <i class="fa-solid fa-building-columns text-info me-1"></i>
                             @Localizer["Expenses_Detail_RegisteredInHolded"]
-                            @if (tl.OwedToMember > 0)
+                            @if (Model.IsSubmitter && tl.OwedToMember > 0)
                             {
                                 <span class="fw-semibold">&mdash; @Localizer["Expenses_Detail_OwedToYou", tl.OwedToMember.ToEuro()]</span>
                             }
