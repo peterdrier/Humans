@@ -3,12 +3,9 @@ using System.Resources;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Shifts.Contracts;
-using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Users.Services;
@@ -21,21 +18,15 @@ namespace Humans.Users.Services;
 /// The body of the nightly job (<c>Jobs/SuspendNonCompliantMembersJob.cs</c>).
 /// All reads/writes fan out through section services
 /// (<see cref="IUserManagement"/>) so this never touches another section's
-/// DbContext directly (design-rules §2c). Cross-cutting cache invalidation routes
-/// through invalidator interfaces
-/// (<see cref="IRoleAssignmentClaimsCacheInvalidator"/>,
-/// <see cref="IShiftAuthorizationInvalidator"/>) rather than IMemoryCache.
+/// DbContext directly (design-rules §2c).
 /// </remarks>
 internal sealed class NonCompliantMemberSuspension(
     IUserManagement userService,
-    IActiveTeamsCacheInvalidator activeTeamsCacheInvalidator,
     IMembershipCalculator membershipCalculator,
     IEmailService emailService,
     UsersEmails emailMessages,
     INotificationEmitter notificationService,
     IAuditLogService auditLogService,
-    IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
-    IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
     IHumansMetrics metrics,
     ILogger<NonCompliantMemberSuspension> logger) : INonCompliantMemberSuspension
 {
@@ -140,10 +131,6 @@ internal sealed class NonCompliantMemberSuspension(
                 AuditAction.MemberSuspended, nameof(User), user.Id,
                 $"{user.BurnerName} suspended for missing required document consent (grace period expired)",
                 AuditActor);
-
-            roleAssignmentClaimsInvalidator.Invalidate(user.Id);
-            shiftAuthorizationInvalidator.Invalidate(user.Id);
-            activeTeamsCacheInvalidator.Invalidate();
         }
 
         metrics.RecordJobRun("suspend_noncompliant_members", "success");

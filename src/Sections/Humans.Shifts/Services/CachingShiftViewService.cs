@@ -9,8 +9,8 @@ using Microsoft.Extensions.Hosting;
 namespace Humans.Shifts.Services;
 
 /// <summary>
-/// Singleton caching decorator for <see cref="IShiftRowView"/> / <see cref="IShiftView"/> and the
-/// implementation of <see cref="IShiftViewInvalidator"/>. Composes two
+/// Singleton caching decorator for <see cref="IShiftRowView"/> / <see cref="IShiftView"/>, and the
+/// owner of their eviction: every Shifts write calls its <c>Invalidate*</c> methods. Composes two
 /// <see cref="TrackedCache{TKey,TValue}"/> instances — one keyed by user id
 /// (<see cref="ShiftUserView"/>) and one keyed by rota id
 /// (<see cref="ShiftRotaView"/>). Dict hits complete synchronously via
@@ -31,7 +31,7 @@ namespace Humans.Shifts.Services;
 /// </para>
 /// </remarks>
 internal sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory, ILogger<CachingShiftViewService> logger)
-    : IShiftRowView, IShiftView, IShiftViewInvalidator, IEventSettingsChangeListener, IHostedService
+    : IShiftRowView, IShiftView, IEventSettingsChangeListener, IHostedService
 {
     /// <summary>
     /// DI service key under which the undecorated (inner) <see cref="IShiftRowView"/>

@@ -1,4 +1,5 @@
 using System.Transactions;
+using Humans.Users.Data;
 using NSubstitute.ExceptionExtensions;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
@@ -360,7 +361,7 @@ public class AccountProvisioningServiceTests
     private readonly IUserEmailService _userEmailService;
     private readonly IUserManagement _userService;
     private readonly AccountProvisioningService _service;
-    private readonly IUserInfoInvalidator _invalidator = Substitute.For<IUserInfoInvalidator>();
+    private readonly IUserInfoSliceRefresher _userInfoRefresher = Substitute.For<IUserInfoSliceRefresher>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
 
     public AccountProvisioningServiceTests()
@@ -417,7 +418,7 @@ public class AccountProvisioningServiceTests
             _userRepo,
             _userEmailService,
             _userService,
-            _invalidator,
+            _userInfoRefresher,
             _userManager,
             _audit,
             _clock,
@@ -452,7 +453,7 @@ public class AccountProvisioningServiceTests
                     row.UserId, nameof(User)).ThrowsAsync(new InvalidOperationException("Deletion audit failed"));
                 break;
         }
-        _invalidator.InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
+        _userInfoRefresher.RefreshAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
             .Returns(call => { Transaction.Current.Should().BeNull(); return Task.CompletedTask; });
 
         Func<Task> act = () => _service.ReplaceUnverifiedEmailAndProvisionAsync(
@@ -461,7 +462,7 @@ public class AccountProvisioningServiceTests
 
         _userEmailFake.All.Should().ContainSingle().Which.Should().BeSameAs(row);
         _userRepo.All.Should().ContainSingle().Which.Id.Should().Be(row.UserId);
-        await _invalidator.Received(1).InvalidateAsync(row.UserId, CancellationToken.None, Arg.Any<string>(), Arg.Any<string>());
+        await _userInfoRefresher.Received(1).RefreshAsync(row.UserId, CancellationToken.None, Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansFact]
@@ -478,8 +479,8 @@ public class AccountProvisioningServiceTests
             nameof(AccountProvisioningService), row.UserId, nameof(User));
         _userEmailFake.All.Should().ContainSingle().Which.UserId.Should().Be(result.UserId);
         _userEmailFake.All.Single().IsVerified.Should().BeTrue();
-        await _invalidator.Received(1).InvalidateAsync(row.UserId, CancellationToken.None, Arg.Any<string>(), Arg.Any<string>());
-        await _invalidator.Received(1).InvalidateAsync(result.UserId, CancellationToken.None, Arg.Any<string>(), Arg.Any<string>());
+        await _userInfoRefresher.Received(1).RefreshAsync(row.UserId, CancellationToken.None, Arg.Any<string>(), Arg.Any<string>());
+        await _userInfoRefresher.Received(1).RefreshAsync(result.UserId, CancellationToken.None, Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansTheory]
@@ -785,7 +786,7 @@ public class AccountProvisioningServiceTests
             .Returns(profileFailure
                 ? Task.FromException<bool>(new InvalidOperationException("profile save unavailable"))
                 : Task.FromResult(true));
-        _invalidator.InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
+        _userInfoRefresher.RefreshAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
             .Returns(call => { Transaction.Current.Should().BeNull(); return Task.CompletedTask; });
         _audit.LogAsync(AuditAction.ContactCreated, nameof(User), Arg.Any<Guid>(), Arg.Any<string>(),
             nameof(AccountProvisioningService)).Returns(_ =>
@@ -803,7 +804,7 @@ public class AccountProvisioningServiceTests
         _userRepo.All.Should().BeEmpty();
         _userEmailFake.All.Should().BeEmpty();
         _audit.ReceivedCalls().Should().BeEmpty();
-        await _invalidator.Received(1).InvalidateAsync(Arg.Any<Guid>(), CancellationToken.None, Arg.Any<string>(), Arg.Any<string>());
+        await _userInfoRefresher.Received(1).RefreshAsync(Arg.Any<Guid>(), CancellationToken.None, Arg.Any<string>(), Arg.Any<string>());
         _userEmailFake.ThrowOnAddProvisioned = false;
         _userService.EnsureStubProfileAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(true);

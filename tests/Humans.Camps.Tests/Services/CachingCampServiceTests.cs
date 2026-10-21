@@ -45,7 +45,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
             new Lazy<ICampRoleService>(() => Substitute.For<ICampRoleService>()),
             new Lazy<Humans.CityPlanning.Contracts.ICityPlanningWrite>(() =>
                 Substitute.For<Humans.CityPlanning.Contracts.ICityPlanningWrite>()),
-            Substitute.For<IEarlyEntryInvalidator>(), Substitute.For<ICampInfoInvalidator>(),
+            Substitute.For<ICampInfoInvalidator>(),
             Substitute.For<IUserService>(),
             Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
             Clock, NullLogger<CampService>.Instance);

@@ -32,9 +32,7 @@ public sealed class GateControllerAdminSettingsTests
     {
         _controller = new GateController(
             _gate, Substitute.For<IUserService>(), new ConfigurationBuilder().Build(),
-            new GatePinThrottle(new MemoryCache(new MemoryCacheOptions()), _clock),
-            new GateVendorMirrorLedger(new MemoryCache(new MemoryCacheOptions())),
-            Substitute.For<IBackgroundJobClient>(), _clock, NullLogger<GateController>.Instance);
+            new GatePinThrottle(new MemoryCache(new MemoryCacheOptions()), _clock), _clock, NullLogger<GateController>.Instance);
 
         var http = new DefaultHttpContext();
         _controller.ControllerContext = new ControllerContext { HttpContext = http };

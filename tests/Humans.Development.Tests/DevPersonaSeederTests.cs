@@ -11,7 +11,6 @@ using Humans.Teams.Contracts;
 using Humans.Base.Enums;
 using Humans.Development.Services;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -34,7 +33,6 @@ public class DevPersonaSeederTests
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IContactFieldService _contactFields = Substitute.For<IContactFieldService>();
     private readonly IRoleAssignmentWrite _roleAssignments = Substitute.For<IRoleAssignmentWrite>();
-    private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly ITeamWrite _teamsWrite = Substitute.For<ITeamWrite>();
     private readonly ITeamSeeding _teamSeeding = Substitute.For<ITeamSeeding>();
@@ -49,7 +47,6 @@ public class DevPersonaSeederTests
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly IHumanLifecycleService _humanLifecycle = Substitute.For<IHumanLifecycleService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 7, 13, 12, 0));
-    private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
 
     public DevPersonaSeederTests()
     {
@@ -63,7 +60,6 @@ public class DevPersonaSeederTests
         _userEmails,
         _contactFields,
         _roleAssignments,
-        _userInfoInvalidator,
         _teams,
         _teamsWrite,
         _teamSeeding,
@@ -78,7 +74,6 @@ public class DevPersonaSeederTests
         _membershipCalculator,
         _humanLifecycle,
         _clock,
-        _cache,
         Options.Create(new CityPlanningOptions()),
         NullLogger<DevPersonaSeeder>.Instance);
 

@@ -1323,4 +1323,55 @@ public sealed class GoogleWorkspaceSyncServiceTests
             [new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = email,
                 IsVerified = true, IsGoogle = true, GoogleEmailStatus = (LegacyGoogleEmailStatus)status }],
             [], [], null, []);
+
+    // ==========================================================================
+    // Admin retries: the service writes the audit entry
+    // ==========================================================================
+
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task RequeueOutboxEventAsync_AuditsOnlyWhenTheEventWasRequeued(bool requeued)
+    {
+        var id = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        _googleSyncOutboxRepository.RequeueAsync(id, Arg.Any<CancellationToken>()).Returns(requeued);
+
+        (await _syncService.RequeueOutboxEventAsync(id, actor, Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(requeued);
+
+        await _auditLogService.Received(requeued ? 1 : 0).LogAsync(
+            AuditAction.GoogleSyncRetryScheduled, "GoogleSyncOutboxEvent", id,
+            $"Admin manually requeued Google sync outbox event {id}", actor);
+    }
+
+    [HumansFact]
+    public async Task RequeueAllFailedOutboxEventsAsync_AuditsTheCount()
+    {
+        var actor = Guid.NewGuid();
+        _googleSyncOutboxRepository.RequeueAllFailedAsync(Arg.Any<CancellationToken>()).Returns(3);
+
+        (await _syncService.RequeueAllFailedOutboxEventsAsync(actor, Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(3);
+
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.GoogleSyncRetryScheduled, "GoogleSyncOutbox", Guid.Empty,
+            "Admin requeued all 3 permanently-failed Google sync outbox event(s)", actor);
+    }
+
+    [HumansFact]
+    public async Task EnqueueUserSyncAsync_AuditsTheRerunEvenWhenNothingWasEnqueued()
+    {
+        var userId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        _teamService.GetUserTeamMembershipsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<UserTeamMembershipInfo>());
+
+        (await _syncService.EnqueueUserSyncAsync(userId, actor, Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(0);
+
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.GoogleSyncRetryScheduled, "User", userId,
+            $"Admin enqueued Google sync re-run for user {userId} (0 team event(s))", actor);
+    }
 }

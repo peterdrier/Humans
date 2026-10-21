@@ -22,7 +22,6 @@ internal sealed class HoldedController(
     IHoldedAdminService admin,
     IHoldedService holded,
     IHoldedFinanceService holdedFinance,
-    IHoldedFinanceWrite holdedFinanceWrite,
     ILogger<HoldedController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
@@ -61,12 +60,10 @@ internal sealed class HoldedController(
     {
         try
         {
-            var docs = await holdedFinanceWrite.SyncAsync(ct);
-            var swept = await holded.SyncLedgerAsync(full: false, ct);
-            if (swept)
-                SetSuccess($"Synced {docs.DocCount} purchase doc(s) and swept the trailing ledger window.");
+            if (await holded.SyncLedgerAsync(full: false, ct))
+                SetSuccess("Swept the trailing ledger window.");
             else
-                SetInfo($"Synced {docs.DocCount} purchase doc(s). A ledger sweep was already running, so this one was skipped.");
+                SetInfo("A ledger sweep was already running, so this one was skipped.");
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -75,7 +72,7 @@ internal sealed class HoldedController(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Holded sync failed");
+            logger.LogError(ex, "Holded ledger sweep failed");
             SetError("Sync failed.");
         }
         return RedirectToAction(nameof(Index));

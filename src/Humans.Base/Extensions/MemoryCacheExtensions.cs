@@ -76,30 +76,14 @@ public static class MemoryCacheExtensions
     // CampSettings keys are gone from CacheKeys as well (snapshot lives on
     // the decorator).
     //
-    // Ticket-cache invalidation extensions were retired in T-07. Eviction is
-    // now owned by CachingTicketQueryService (Infrastructure decorator) and
-    // reached through ITicketCacheInvalidator. Per-user holdings and the vendor
-    // event summary both live in TrackedCache instances now (the latter on the
-    // separate CachingTicketVendorService decorator, reached through
-    // ITicketVendorCacheInvalidator) — no ticket key is removed from
-    // IMemoryCache directly any more.
+    // Ticket-cache invalidation extensions were retired in T-07. Ticket orders,
+    // per-user holdings and the vendor event summary live in TrackedCache
+    // instances on Tickets' caching decorators, which evict on their own write
+    // pass-throughs — no ticket key is removed from IMemoryCache directly.
 
     public static void InvalidateCampContactRateLimit(this IMemoryCache cache, Guid userId, Guid campId) =>
         cache.Remove(CacheKeys.CampContactRateLimit(userId, campId));
 
-    public static void InvalidateRoleAssignmentClaims(this IMemoryCache cache, Guid userId) =>
-        cache.Remove(CacheKeys.RoleAssignmentClaims(userId));
-
-    public static void InvalidateShiftAuthorization(this IMemoryCache cache, Guid userId) =>
-        cache.Remove(CacheKeys.ShiftAuthorization(userId));
-
     public static void InvalidateCampLeadJoinRequestsBadge(this IMemoryCache cache, Guid userId) =>
         cache.Remove(CacheKeys.CampLeadJoinRequestsBadge(userId));
-
-    public static void InvalidateUserAccess(this IMemoryCache cache, Guid userId)
-    {
-        cache.InvalidateRoleAssignmentClaims(userId);
-        cache.InvalidateShiftAuthorization(userId);
-    }
-
 }

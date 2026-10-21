@@ -117,13 +117,11 @@ internal sealed class EventsModerationController(
             return RedirectToAction(nameof(Index), new { tab = EventStatus.Approved });
         }
 
-        if (guideEvent.Status != EventStatus.Approved)
+        if (!await guide.ModeratorWithdrawAsync(guideEvent.Id, moderator.Id))
         {
-            SetError("This event is not in an approved state.");
+            SetError("This event cannot be withdrawn in its current state.");
             return RedirectToAction(nameof(Index), new { tab = EventStatus.Approved });
         }
-
-        await guide.ModeratorWithdrawAsync(guideEvent.Id, moderator.Id);
 
         logger.LogInformation("Moderator {UserId} withdrew event '{Title}' ({EventId})",
             moderator.Id, guideEvent.Title, model.EventId);

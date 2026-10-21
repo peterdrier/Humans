@@ -106,7 +106,6 @@ public sealed class VolunteerTrackingControllerExportXlsxTests
         var service = Substitute.For<IVolunteerTrackingManagement>();
         var shiftMgmt = Substitute.For<IShiftManagement>();
         var userService = Substitute.For<IUserService>();
-        var auditLog = Substitute.For<IAuditLogService>();
         var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
@@ -168,7 +167,7 @@ public sealed class VolunteerTrackingControllerExportXlsxTests
 
         var ctrl = new VolunteerTrackingController(
             service, shiftMgmt, burnSettings, exportService, xlsxBuilder,
-            userService, auditLog, localizer, NullLogger<VolunteerTrackingController>.Instance)
+            userService, localizer, NullLogger<VolunteerTrackingController>.Instance)
         {
             ControllerContext = BuildControllerContext(currentUserId),
         };

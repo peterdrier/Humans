@@ -1,4 +1,3 @@
-using Humans.EarlyEntry.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Shifts.Services.Dtos;
 using Humans.Base.Extensions;
@@ -25,7 +24,7 @@ namespace Humans.Shifts.Services;
 /// <summary>
 /// Consolidated shift-management (authorization, event settings, rotas, shifts, urgency,
 /// coordinator dashboard, shift tags, volunteer event profiles).
-/// Caches: 60s coordinator-team-ids (hot path, §15f); 5min dashboard. No full-grid cache.
+/// Caches: 5min dashboard. No full-grid cache; coordinator-team ids read through Teams' in-RAM model.
 /// </summary>
 internal sealed class ShiftManagementService(
     IShiftManagementRepository repo,
@@ -33,13 +32,11 @@ internal sealed class ShiftManagementService(
     IAdminAuthorizationService adminAuthorization,
     IServiceProvider serviceProvider,
     IMemoryCache cache,
-    IShiftViewInvalidator viewInvalidator,
+    CachingShiftViewService viewInvalidator,
     EventCalendarResolver calendarResolver,
     IClock clock,
-    IEarlyEntryInvalidator earlyEntryInvalidator,
-    ILogger<ShiftManagementService> logger) : IShiftManagement, IShiftAuthorizationInvalidator, IUserMerge
+    ILogger<ShiftManagementService> logger) : IShiftManagement, IUserMerge
 {
-    private static readonly TimeSpan AuthCacheDuration = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan DashboardCacheTtl = TimeSpan.FromMinutes(5);
     private const string OverallCoverageCacheKey = "dashboard-overall-coverage";
 
@@ -112,23 +109,10 @@ internal sealed class ShiftManagementService(
         return await IsDeptCoordinatorAsync(userId, departmentTeamId, ct);
     }
 
-    public async Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default)
-    {
-        var result = await cache.GetOrCreateAsync(CacheKeys.ShiftAuthorization(userId), async entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = AuthCacheDuration;
-            return await TeamService.GetUserCoordinatedTeamIdsAsync(userId, ct);
-        });
-        return result ?? [];
-    }
-
-    /// <summary>
-    /// Drops the cached coordinator-team-id list for a single user.
-    /// </summary>
-    public void Invalidate(Guid userId)
-    {
-        cache.Remove(CacheKeys.ShiftAuthorization(userId));
-    }
+    // No cache of its own: Teams' singleton decorator answers this from its in-RAM team
+    // read model, which it keeps current on every team / coordinator / role write.
+    public Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default) =>
+        TeamService.GetUserCoordinatedTeamIdsAsync(userId, ct);
 
     public async Task<ShiftEventKnobs?> GetKnobsAsync(Guid eventSettingsId)
     {
@@ -212,7 +196,6 @@ internal sealed class ShiftManagementService(
         {
             EvictDashboardCaches(eventSettingsId);
             viewInvalidator.InvalidateAll();
-            earlyEntryInvalidator.InvalidateAll();
         }
     }
 
@@ -297,7 +280,6 @@ internal sealed class ShiftManagementService(
         await repo.UpdateRotaTeamAssignmentAsync(
             rota.Id, input.TargetTeamId, clock.GetCurrentInstant());
         viewInvalidator.InvalidateRota(rota.Id);
-        earlyEntryInvalidator.InvalidateAll();
 
         await auditLogService.LogAsync(
             AuditAction.RotaMovedToTeam, nameof(Rota), rota.Id,
@@ -775,7 +757,6 @@ internal sealed class ShiftManagementService(
 
         await repo.SaveShiftAsync(shift, EntityMutationMode.Update);
         viewInvalidator.InvalidateShift(shift.Id);
-        earlyEntryInvalidator.InvalidateAll();
         return ShiftMutationResult.Success("Shift updated.", shift.Id);
     }
 

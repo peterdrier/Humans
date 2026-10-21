@@ -1,9 +1,9 @@
-using Humans.Auth.Contracts;
 using System.Transactions;
 using NodaTime;
 using Humans.Base.Extensions;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
+using Humans.Users.Data;
 using Humans.AuditLog.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Gdpr.Contracts;
@@ -17,13 +17,12 @@ internal sealed class AccountMergeService(
     IAccountMergeRepository mergeRepository,
     IUserRepository userRepository,
     IAuditLogService auditLogService,
-    IUserInfoInvalidator userInfoInvalidator,
+    IUserInfoSliceRefresher userInfoRefresher,
     ILogger<AccountMergeService> logger,
     IClock clock,
     IEnumerable<IUserMerge> userMerges,
     IUserManagement userService,
-    IActiveTeamsCacheInvalidator activeTeamsCacheInvalidator,
-    IRoleAssignmentWrite roleAssignmentService,
+    ITeamWrite teamService,
     INotificationService notificationService,
     IConsentCacheInvalidator consentCacheInvalidator) : IAccountMergeService, IUserDataContributor
 {
@@ -160,13 +159,13 @@ internal sealed class AccountMergeService(
         }
         finally
         {
-            roleAssignmentService.InvalidateClaimsCacheForUser(archivedUserId);
-            roleAssignmentService.InvalidateClaimsCacheForUser(survivorUserId);
-            roleAssignmentService.InvalidateRoleAssignmentCache();
             notificationService.InvalidateBadgeCachesForUsers([archivedUserId, survivorUserId]);
             consentCacheInvalidator.InvalidateUser(archivedUserId);
             consentCacheInvalidator.InvalidateUser(survivorUserId);
-            activeTeamsCacheInvalidator.Invalidate();
+            // After the tombstone, not inside Teams' own ReassignAsync: the team graph stitches
+            // each member's UserInfo, and system-team rows still name the archived id, which
+            // now resolves forward to the survivor.
+            teamService.InvalidateActiveTeamsCache();
         }
     }
 
@@ -262,7 +261,7 @@ internal sealed class AccountMergeService(
         }
 
         // Invalidate target's UserInfo AFTER commit.
-        await userInfoInvalidator.InvalidateAsync(request.TargetUserId, ct);
+        await userInfoRefresher.RefreshAsync(request.TargetUserId, ct);
     }
 
     public async Task ReconcileMergedRequestAsync(

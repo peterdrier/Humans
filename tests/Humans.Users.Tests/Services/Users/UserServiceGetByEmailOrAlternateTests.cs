@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
-using Humans.Base.Interfaces.Caching;
 using Humans.Users.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Services;
@@ -32,7 +31,6 @@ public sealed class UserServiceGetByEmailOrAlternateTests : ServiceTestHarness
             _repo,
             communicationPreferenceRepository,
             AdminAuthorization,
-            Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
             Substitute.For<IFileStorage>(),
             Clock,
             NullLogger<UserService>.Instance, AuditLog);

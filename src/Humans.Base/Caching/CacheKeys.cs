@@ -10,10 +10,6 @@ public static class CacheKeys
     public static string CampContactRateLimit(Guid userId, Guid campId) =>
         $"CampContactRateLimit:{userId:N}:{campId:N}";
 
-    public static string RoleAssignmentClaims(Guid userId) => $"claims:{userId:N}";
-
-    public static string ShiftAuthorization(Guid userId) => $"shift-auth:{userId:N}";
-
     public static string CampLeadJoinRequestsBadge(Guid userId) => $"NavBadge:CampLeadJoinRequests:{userId:N}";
 
     public static string LegalDocument(string slug) => $"Legal:{slug}";
@@ -44,8 +40,6 @@ public static class CacheKeys
             ["HoldedContacts"] = new("2 min", CacheKeyType.Static),
             ["SepaStuckBankLines"] = new("until the lines read again", CacheKeyType.Static),
             ["CampContactRateLimit"] = new("10 min", CacheKeyType.RateLimit),
-            ["claims"] = new("60 sec", CacheKeyType.PerUser),
-            ["shift-auth"] = new("60 sec", CacheKeyType.PerUser),
             ["NavBadge"] = new("2 min", CacheKeyType.PerUser),
             ["Legal"] = new("1 hour", CacheKeyType.PerEntity),
             ["magic_link_used"] = new("15 min", CacheKeyType.RateLimit),

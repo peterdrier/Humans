@@ -23,6 +23,7 @@ using Humans.Teams.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
+using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using RoleAssignmentService = Humans.Auth.Services.RoleAssignmentService;
 using TeamService = Humans.Teams.Services.TeamService;
@@ -41,8 +42,9 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             AuditLog,
             Notifier,
             Substitute.For<ISystemTeamSync>(),
-            Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
-            Substitute.For<IRoleAssignmentCacheInvalidator>(),
+            new CachingRoleAssignmentService(
+                Substitute.For<IServiceScopeFactory>(), Clock,
+                NullLogger<CachingRoleAssignmentService>.Instance),
             Clock,
             NullLogger<RoleAssignmentService>.Instance);
         var teamResourceService = Substitute.For<ITeamResourceService>();
@@ -69,19 +71,17 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             AdminAuthorization,
             serviceProvider,
             Cache,
-            Substitute.For<IShiftViewInvalidator>(),
+            new CachingShiftViewService(Substitute.For<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<CachingShiftViewService>.Instance),
             new EventCalendarResolver(Substitute.For<ISettingsService>()),
             Clock,
-            Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), NullLogger<ShiftManagementService>.Instance);
+            NullLogger<ShiftManagementService>.Instance);
         _service = new TeamService(
             new TeamRepository(TeamsDbFactory),
             AuditLog,
             Notifier,
             shiftManagementService,
             Substitute.For<INotificationMeterCacheInvalidator>(),
-            ShiftAuthInvalidator,
             AdminAuthorization,
-            EarlyEntryInvalidator,
             serviceProvider,
             Clock,
             NullLogger<TeamService>.Instance);
@@ -304,7 +304,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
     /// <c>Assignments.TeamMember</c>.
     /// </summary>
     [HumansFact]
-    public async Task UpdateRoleDefinitionAsync_FlipIsManagementWithAssignees_InvalidatesShiftAuthPerAssignee()
+    public async Task UpdateRoleDefinitionAsync_FlipIsManagementWithAssignees_MakesEachAssigneeACoordinator()
     {
         var admin = SeedUser("Admin");
         SeedAdminRole(admin);
@@ -324,8 +324,10 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             [SlotPriority.Critical, SlotPriority.Critical], 0,
             isManagement: true, RolePeriod.YearRound, admin.Id, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        ShiftAuthInvalidator.Received(1).Invalidate(user1.Id);
-        ShiftAuthInvalidator.Received(1).Invalidate(user2.Id);
+        (await _service.GetUserCoordinatedTeamIdsAsync(user1.Id, Xunit.TestContext.Current.CancellationToken))
+            .Should().Contain(team.Id);
+        (await _service.GetUserCoordinatedTeamIdsAsync(user2.Id, Xunit.TestContext.Current.CancellationToken))
+            .Should().Contain(team.Id);
     }
 
     // ==========================================================================

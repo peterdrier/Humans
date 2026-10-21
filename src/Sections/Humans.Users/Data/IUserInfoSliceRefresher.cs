@@ -4,18 +4,22 @@ using Humans.Users.Contracts;
 namespace Humans.Users.Data;
 
 /// <summary>
-/// Infrastructure-internal cache-staleness signal used by
-/// <c>UserInfoSaveChangesInterceptor</c> to apply slice-level refreshes to the
-/// <see cref="CachingUserService"/> dict when Identity / OAuth / direct-repo
-/// writes touch contributing tables. Split out from
-/// <c>IUserInfoInvalidator</c> (§15e — one-method cross-section signal) so the
-/// public Application-layer interface stays a single <c>InvalidateAsync</c>
-/// surface; the six slice methods are an implementation detail of the
-/// interceptor–decorator conversation and must not become a cross-section
-/// contract.
+/// Section-internal cache-staleness signal into the <see cref="CachingUserService"/> dict.
+/// <c>UserInfoSaveChangesInterceptor</c> applies slice-level refreshes when Identity / OAuth /
+/// direct-repo writes touch contributing tables; Users' own services that write past the
+/// decorator (GDPR erasure, import provisioning, merge rejection, contact fields) call
+/// <see cref="RefreshAsync"/>. Every contributing table is Users-owned, so no other section
+/// needs it: it must not become a cross-section contract.
 /// </summary>
 internal interface IUserInfoSliceRefresher
 {
+    /// <summary>Reloads the whole entry from the contributing tables, removing it when the user is gone.</summary>
+    Task RefreshAsync(
+        Guid userId,
+        CancellationToken ct = default,
+        [CallerMemberName] string memberName = "",
+        [CallerFilePath] string filePath = "");
+
     Task RefreshUserFieldsAsync(
         User user,
         CancellationToken ct = default,

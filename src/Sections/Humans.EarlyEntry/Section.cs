@@ -1,8 +1,6 @@
 using Humans.Base.Interfaces;
-using Humans.Base.Interfaces.Caching;
 using Humans.EarlyEntry.Contracts;
 using Humans.EarlyEntry.Services;
-using Humans.Settings.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -13,17 +11,8 @@ public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
-        // Keyed so the Singleton decorator can resolve this Scoped instance without resolving itself.
-        services.AddKeyedScoped<IEarlyEntryService, EarlyEntryService>(
-            CachingEarlyEntryService.InnerServiceKey);
-
-        // Singleton decorator; same instance backs read + invalidator (§15e).
-        services.AddSingleton<CachingEarlyEntryService>();
-        services.AddSingleton<IEarlyEntryService>(sp => sp.GetRequiredService<CachingEarlyEntryService>());
-        services.AddSingleton<IEarlyEntryInvalidator>(sp => sp.GetRequiredService<CachingEarlyEntryService>());
-        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingEarlyEntryService>());
-
-        // Settings fans out over this after an event-settings save; the same instance answers.
-        services.AddSingleton<IEventSettingsChangeListener>(sp => sp.GetRequiredService<CachingEarlyEntryService>());
+        // Uncached: every read fans out over the providers live, so no other section
+        // has to tell this one when a grant moves.
+        services.AddScoped<IEarlyEntryService, EarlyEntryService>();
     }
 }

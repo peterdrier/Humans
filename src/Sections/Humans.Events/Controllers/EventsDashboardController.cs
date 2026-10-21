@@ -29,15 +29,16 @@ internal sealed class EventsDashboardController(IEventManagement guide, ICampSer
         var tz = GetTimeZone(eventSettings);
 
         var allEvents = await guide.GetAllEventsForDashboardAsync(ct);
+        var statusCounts = await guide.GetEventStatusCountsAsync(ct);
 
         var model = new EventsDashboardViewModel
         {
             TotalCount = allEvents.Count,
-            PendingCount = allEvents.Count(e => e.Status == EventStatus.Pending),
-            ApprovedCount = allEvents.Count(e => e.Status == EventStatus.Approved),
-            RejectedCount = allEvents.Count(e => e.Status == EventStatus.Rejected),
-            ResubmitRequestedCount = allEvents.Count(e => e.Status == EventStatus.ResubmitRequested),
-            WithdrawnCount = allEvents.Count(e => e.Status == EventStatus.Withdrawn)
+            PendingCount = statusCounts.GetValueOrDefault(EventStatus.Pending),
+            ApprovedCount = statusCounts.GetValueOrDefault(EventStatus.Approved),
+            RejectedCount = statusCounts.GetValueOrDefault(EventStatus.Rejected),
+            ResubmitRequestedCount = statusCounts.GetValueOrDefault(EventStatus.ResubmitRequested),
+            WithdrawnCount = statusCounts.GetValueOrDefault(EventStatus.Withdrawn)
         };
 
         var approvedEvents = allEvents.Where(e => e.Status == EventStatus.Approved).ToList();

@@ -8,7 +8,8 @@ namespace Humans.Tickets.ViewComponents;
 
 /// <summary>
 /// The member dashboard's ticket card: confirmed, not attending, or missing — plus the
-/// buy/declare actions that go with each. Shows a "not configured" note when no ticket
+/// buy/declare actions that go with each. When the holdings read fails the card says the
+/// status is unavailable instead of claiming "no ticket" and offering buy/declare. Shows a "not configured" note when no ticket
 /// vendor is set up, rather than hiding. Renders nothing off season (the admin switch on
 /// the active event settings): there is no ticket to buy or declare against.
 /// </summary>
@@ -34,17 +35,22 @@ public sealed class MemberTicketStatusViewComponent(
 
         var configured = ticketSettings.Value.IsConfigured;
         var ticketCount = configured ? await TicketCountAsync(userId, ct) : 0;
+        if (ticketCount is null)
+        {
+            return View(new MemberTicketStatusViewModel(userId, configured, 0, null, null, HoldingsUnavailable: true));
+        }
         var eventYear = activeEvent is not null && activeEvent.Year > 0 ? activeEvent.Year : (int?)null;
 
         return View(new MemberTicketStatusViewModel(
             userId,
             configured,
-            ticketCount,
+            ticketCount.Value,
             eventYear,
             eventYear is null ? null : await ParticipationStatusAsync(userId, eventYear.Value, ct)));
     }
 
-    private async Task<int> TicketCountAsync(Guid userId, CancellationToken ct)
+    /// <summary>The member's ticket count, or <c>null</c> when the holdings read failed.</summary>
+    private async Task<int?> TicketCountAsync(Guid userId, CancellationToken ct)
     {
         try
         {
@@ -57,7 +63,7 @@ public sealed class MemberTicketStatusViewComponent(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to load ticket status for user {UserId}", userId);
-            return 0;
+            return null;
         }
     }
 
@@ -102,7 +108,8 @@ internal sealed record MemberTicketStatusViewModel(
     bool TicketsConfigured,
     int UserTicketCount,
     int? EventYear,
-    ParticipationStatus? ParticipationStatus)
+    ParticipationStatus? ParticipationStatus,
+    bool HoldingsUnavailable = false)
 {
     public const string TicketPurchaseUrl = "https://tickets.nobodies.team";
 

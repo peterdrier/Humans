@@ -89,12 +89,31 @@ public sealed class EventsModerationControllerTests
         _users.GetUserInfoAsync(moderatorId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfoFor(moderatorId)));
 
+        _guide.ModeratorWithdrawAsync(guideEvent.Id, moderatorId, Arg.Any<CancellationToken>()).Returns(true);
         var controller = BuildController(moderatorId, guideEvent.Id);
 
         await controller.Withdraw(new ModerationActionFormModel { EventId = guideEvent.Id });
 
         await _guide.Received(1).ModeratorWithdrawAsync(guideEvent.Id, moderatorId, Arg.Any<CancellationToken>());
         await _guide.DidNotReceive().WithdrawEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        controller.TempData["SuccessMessage"].Should().NotBeNull();
+    }
+
+    [HumansFact]
+    public async Task Withdraw_leaves_the_status_rule_to_the_service_and_reports_its_refusal()
+    {
+        var moderatorId = Guid.NewGuid();
+        var guideEvent = MakeEvent(null, EventStatus.Rejected) with { Title = "Rejected event" };
+        _guide.GetEventForModerationAsync(guideEvent.Id, Arg.Any<CancellationToken>()).Returns(guideEvent);
+        _users.GetUserInfoAsync(moderatorId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfoFor(moderatorId)));
+        _guide.ModeratorWithdrawAsync(guideEvent.Id, moderatorId, Arg.Any<CancellationToken>()).Returns(false);
+        var controller = BuildController(moderatorId, guideEvent.Id);
+
+        await controller.Withdraw(new ModerationActionFormModel { EventId = guideEvent.Id });
+
+        await _guide.Received(1).ModeratorWithdrawAsync(guideEvent.Id, moderatorId, Arg.Any<CancellationToken>());
+        controller.TempData["ErrorMessage"].Should().NotBeNull();
     }
 
     [HumansFact]

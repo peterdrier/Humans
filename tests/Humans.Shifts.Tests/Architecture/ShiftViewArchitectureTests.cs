@@ -51,10 +51,9 @@ public class ShiftViewArchitectureTests
     }
 
     [HumansFact]
-    public void CachingShiftViewService_ImplementsIShiftViewAndInvalidator()
+    public void CachingShiftViewService_ImplementsIShiftView()
     {
         typeof(CachingShiftViewService).Should().BeAssignableTo<IShiftView>();
-        typeof(CachingShiftViewService).Should().BeAssignableTo<IShiftViewInvalidator>();
     }
 
     // ── IShiftView contract ──────────────────────────────────────────────────
@@ -77,16 +76,16 @@ public class ShiftViewArchitectureTests
         }
     }
 
-    // ── Invalidator fan-in ──────────────────────────────────────────────────
+    // ── Eviction fan-in ──────────────────────────────────────────────────
 
     [HumansTheory]
     [MemberData(nameof(ShiftsServicesThatInvalidate))]
-    public void Shifts_section_services_take_view_invalidator(Type serviceType)
+    public void Shifts_section_services_take_view_cache(Type serviceType)
     {
         var ctor = serviceType.GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
-        paramTypes.Should().Contain(typeof(IShiftViewInvalidator),
-            because: "every Shifts-section service that mutates a row owned by the section must hold a reference to IShiftViewInvalidator (issue nobodies-collective/Humans#720)");
+        paramTypes.Should().Contain(typeof(CachingShiftViewService),
+            because: "every Shifts-section service that mutates a row owned by the section must evict the view cache it changes (issue nobodies-collective/Humans#720)");
     }
 }

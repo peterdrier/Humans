@@ -2,7 +2,6 @@ using Humans.Auth.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Web.Authorization;
-using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using NSubstitute;
 using Xunit;
@@ -15,11 +14,10 @@ namespace Humans.Web.Tests.Authorization;
 /// <see cref="UserState"/> as the access claim from cached <see cref="UserInfo.State"/>,
 /// and adds role claims from <see cref="IRoleAssignmentService"/>.
 /// </summary>
-public class RoleAssignmentClaimsTransformationTests : IDisposable
+public class RoleAssignmentClaimsTransformationTests
 {
     private readonly IRoleAssignmentService _roleAssignments;
     private readonly IUserService _userService;
-    private readonly IMemoryCache _cache;
 
     public RoleAssignmentClaimsTransformationTests()
     {
@@ -29,16 +27,10 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
             .Returns([]);
 
         _userService = Substitute.For<IUserService>();
-        _cache = new MemoryCache(new MemoryCacheOptions());
-    }
-
-    public void Dispose()
-    {
-        _cache.Dispose();
     }
 
     private RoleAssignmentClaimsTransformation BuildSut() =>
-        new(_roleAssignments, _userService, _cache);
+        new(_roleAssignments, _userService);
 
     private static ClaimsPrincipal BuildPrincipal(Guid userId)
     {
@@ -141,5 +133,32 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
 
         principal.HasClaim(ClaimTypes.Role, "Board").Should().BeTrue();
         principal.HasClaim(ClaimTypes.Role, "Treasurer").Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task Transform_reflects_a_state_or_role_change_on_the_very_next_request()
+    {
+        // No per-user claims cache: both inputs are already in-memory caches their owners
+        // keep current, so a suspension or a role change shows on the next request
+        // without anyone evicting anything here.
+        var userId = Guid.NewGuid();
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(
+                new ValueTask<UserInfo?>(MakeUserInfo(userId, UserState.Active)),
+                new ValueTask<UserInfo?>(MakeUserInfo(userId, UserState.Suspended)));
+        IReadOnlyList<RoleAssignmentSnapshot> board = [new RoleAssignmentSnapshot("Board", ValidTo: null)];
+        IReadOnlyList<RoleAssignmentSnapshot> none = [];
+        _roleAssignments
+            .GetActiveForUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(board, none);
+        var sut = BuildSut();
+
+        var first = await sut.TransformAsync(BuildPrincipal(userId));
+        var second = await sut.TransformAsync(BuildPrincipal(userId));
+
+        RoleAssignmentClaimsTransformation.GetUserState(first).Should().Be(UserState.Active);
+        first.HasClaim(ClaimTypes.Role, "Board").Should().BeTrue();
+        RoleAssignmentClaimsTransformation.GetUserState(second).Should().Be(UserState.Suspended);
+        second.HasClaim(ClaimTypes.Role, "Board").Should().BeFalse();
     }
 }

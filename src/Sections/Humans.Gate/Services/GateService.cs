@@ -10,7 +10,11 @@ using Humans.Base.Constants;
 using Humans.Gate.Contracts;
 using Humans.Gate.Data;
 using Humans.Gate.Domain;
+using Humans.Gate.Jobs;
+using Humans.Gate.Services.Stores;
+using Hangfire;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
 using NodaTime;
 using Humans.Users.Contracts;
 
@@ -34,10 +38,15 @@ internal sealed class GateService(
     ITicketWrite ticketWrite,
     IPasswordHasher<GateStaffPin> pinHasher,
     IAuditLogService auditLog,
+    IBackgroundJobClient backgroundJobs,
+    GateVendorMirrorLedger mirrorLedger,
+    IConfiguration configuration,
     ILogger<GateService> logger,
     IClock clock) : IGateService, IGateScanRetention, IUserMerge, IUserDataContributor
 {
     internal const string GateScans = "GateScans";
+
+    private const string VendorMirrorEnabledKey = "Gate:VendorMirrorEnabled";
 
     /// <summary>How far either side of "now" a gate shift may start to count as current.</summary>
     private static readonly Duration RosterWindow = Duration.FromHours(2);
@@ -125,13 +134,31 @@ internal sealed class GateService(
         }
 
         if (admit)
+        {
             await MarkAttendedAsync(eval.GuestUserId);
+            if (eval.VendorTicketId is { Length: > 0 } vendorTicketId)
+                MirrorVendorCheckIn(vendorTicketId);
+        }
 
         return new GateDecisionResult(verdict, eval.GuestName, eval.TicketTypeName,
             IsEarly: admit && eval.IsEarly,
             eval.PreviousAdmitAt, eval.PreviousAdmitByUserId,
             // Only surface the vendor ticket id when there's an admit to mirror.
             VendorTicketId: admit ? eval.VendorTicketId : null);
+    }
+
+    /// <summary>
+    /// Best-effort vendor check-in mirror on admit — fire-and-forget so the gate never waits.
+    /// Marked in the mirror ledger so the vendor check-in backfill page never re-sends a live
+    /// admit that hasn't flowed back through the ticket sync yet (TT check-ins double-record).
+    /// Marked ONLY when the mirror flag is on: with it off the job no-ops, and a ledger mark
+    /// would hide exactly the rows the backfill page exists to recover.
+    /// </summary>
+    private void MirrorVendorCheckIn(string vendorTicketId)
+    {
+        backgroundJobs.Enqueue<GateVendorCheckInJob>(j => j.ExecuteAsync(vendorTicketId, CancellationToken.None));
+        if (configuration.GetValue<bool>(VendorMirrorEnabledKey))
+            mirrorLedger.TryMarkSent(vendorTicketId);
     }
 
     /// <summary>

@@ -123,6 +123,16 @@ public sealed class WorkspaceIdentityServiceTests
     }
 
     [HumansFact]
+    public async Task IsNobodiesTeamAccount_TrueOnlyWhileAVerifiedNobodiesAddressIsTheIdentity()
+    {
+        var withNobodies = Seed(new Addr("alice@example.org", Primary: true), new Addr("Alice@Nobodies.Team"));
+        var without = Seed(new Addr("bob@example.org", Primary: true), new Addr("bob@nobodies.team", Verified: false));
+
+        (await _sut.GetWorkspaceIdentityAsync(withNobodies.Id, Ct))!.IsNobodiesTeamAccount.Should().BeTrue();
+        (await _sut.GetWorkspaceIdentityAsync(without.Id, Ct))!.IsNobodiesTeamAccount.Should().BeFalse();
+    }
+
+    [HumansFact]
     public async Task LegacyOnly_NoRow_ReadsTheFrozenFlags_AndARowOverridesThem()
     {
         var info = Seed(

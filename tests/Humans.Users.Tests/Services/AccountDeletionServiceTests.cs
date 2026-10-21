@@ -1,10 +1,10 @@
 using Humans.Base.Extensions;
+using Humans.Users.Data;
 using Humans.Auth.Contracts;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
@@ -32,13 +32,7 @@ public class AccountDeletionServiceTests
     private readonly IRoleAssignmentWrite _roleAssignmentService = Substitute.For<IRoleAssignmentWrite>();
     private readonly IGdprService _gdprService = Substitute.For<IGdprService>();
     private readonly ITicketService _ticketQueryService = Substitute.For<ITicketService>();
-    private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
-    private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator =
-        Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
-    private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator =
-        Substitute.For<IShiftAuthorizationInvalidator>();
-    private readonly IShiftViewInvalidator _shiftViewInvalidator =
-        Substitute.For<IShiftViewInvalidator>();
+    private readonly IUserInfoSliceRefresher _userInfoRefresher = Substitute.For<IUserInfoSliceRefresher>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly UsersEmails _emailMessages = TestUsersEmails.Create();
@@ -59,10 +53,7 @@ public class AccountDeletionServiceTests
             _roleAssignmentService,
             _gdprService,
             _ticketQueryService,
-            _userInfoInvalidator,
-            _roleAssignmentClaimsInvalidator,
-            _shiftAuthorizationInvalidator,
-            _shiftViewInvalidator,
+            _userInfoRefresher,
             _auditLogService,
             _emailService,
             _emailMessages,
@@ -148,39 +139,6 @@ public class AccountDeletionServiceTests
                 && m.RecipientEmail == user.Email! && m.RecipientName == user.BurnerName
                 && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
-
-        // Shift-authorization cache must drop in-orchestrator (parity with
-        // PurgeAsync / AnonymizeExpiredAccountAsync) so direct callers don't
-        // depend on the Profile caching decorator for correctness.
-        _shiftAuthorizationInvalidator.Received(1).Invalidate(userId);
-    }
-
-    [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
-    public async Task RequestDeletionAsync_InvalidatesShiftAccessWhenCommittedCleanupFails(bool emailFailure)
-    {
-        var userId = Guid.NewGuid();
-        var failure = new InvalidOperationException("Deletion cleanup unavailable");
-        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
-        _userEmailService.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string>());
-        if (emailFailure)
-            _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
-                .Returns(_ => throw failure);
-        else
-            _roleAssignmentService.RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>())
-                .Returns<Task<int>>(_ => throw failure);
-
-        var action = () => _service.RequestDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
-        var thrown = await action.Should().ThrowAsync<InvalidOperationException>();
-
-        thrown.Which.Should().BeSameAs(failure);
-        await _userService.Received(1).SetDeletionPendingAsync(userId, Arg.Any<Instant>(), Arg.Any<Instant>(),
-            Arg.Any<Instant?>(), Arg.Any<CancellationToken>());
-        await _teamService.Received(1).RevokeAllMembershipsAsync(userId, Arg.Any<CancellationToken>());
-        _shiftAuthorizationInvalidator.Received(1).Invalidate(userId);
-        _shiftViewInvalidator.Received(1).InvalidateUser(userId);
     }
 
     [HumansFact]
@@ -302,7 +260,6 @@ public class AccountDeletionServiceTests
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
-        _teamService.DidNotReceive().InvalidateActiveTeamsCache();
         await _gdprService.DidNotReceiveWithAnyArgs()
             .EraseForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
@@ -352,7 +309,7 @@ public class AccountDeletionServiceTests
         await _gdprService.Received(1).EraseForUserAsync(mergedIn, Arg.Any<CancellationToken>());
         await _gdprService.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
         // The archived id's cache entry too, or its tombstone name stays searchable.
-        await _userInfoInvalidator.Received(1).InvalidateAsync(
+        await _userInfoRefresher.Received(1).RefreshAsync(
             mergedIn, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
@@ -400,7 +357,7 @@ public class AccountDeletionServiceTests
     }
 
     [HumansFact]
-    public async Task PurgeAsync_Success_ErasesEverySectionAndInvalidatesActiveTeamsCache()
+    public async Task PurgeAsync_Success_ErasesEverySectionAndInvalidatesCaches()
     {
         var userId = Guid.NewGuid();
         _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
@@ -410,14 +367,11 @@ public class AccountDeletionServiceTests
         result.Success.Should().BeTrue();
         // An admin purge must not erase less than the scheduled job does.
         await _gdprService.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
-        _teamService.Received(1).InvalidateActiveTeamsCache();
         // Parity with AnonymizeExpiredAccountAsync: per-user caches that key
         // off identity must also drop on admin purge. The UserInfo entry first —
         // contributors run against the inner UserService.
-        await _userInfoInvalidator.Received(1).InvalidateAsync(
+        await _userInfoRefresher.Received(1).RefreshAsync(
             userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
-        _roleAssignmentClaimsInvalidator.Received(1).Invalidate(userId);
-        _shiftAuthorizationInvalidator.Received(1).Invalidate(userId);
     }
 
     [HumansFact]
@@ -473,9 +427,8 @@ public class AccountDeletionServiceTests
 
         await _gdprService.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
 
-        _teamService.Received(1).RemoveMemberFromAllTeamsCache(userId);
-        _roleAssignmentClaimsInvalidator.Received(1).Invalidate(userId);
-        _shiftAuthorizationInvalidator.Received(1).Invalidate(userId);
+        await _userInfoRefresher.Received(1).RefreshAsync(
+            userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansFact]
@@ -493,8 +446,8 @@ public class AccountDeletionServiceTests
         var act = () => _service.AnonymizeExpiredAccountAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
-        _teamService.DidNotReceive().RemoveMemberFromAllTeamsCache(userId);
-        _shiftAuthorizationInvalidator.DidNotReceive().Invalidate(userId);
+        await _userInfoRefresher.DidNotReceive().RefreshAsync(
+            userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansFact]
@@ -515,7 +468,7 @@ public class AccountDeletionServiceTests
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         await _gdprService.Received(1).EraseForUserAsync(archived, Arg.Any<CancellationToken>());
-        await _userInfoInvalidator.Received(1).InvalidateAsync(
+        await _userInfoRefresher.Received(1).RefreshAsync(
             archived, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 

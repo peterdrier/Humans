@@ -301,7 +301,7 @@ public class CalendarControllerICalTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
         var repository = new CalendarRepository(new TestDbContextFactory<CalendarDbContext>(options));
         var audit = Substitute.For<IAuditLogService>();
-        var calendar = new CalendarService(repository, new FakeClock(_now), audit, NullLogger<CalendarService>.Instance);
+        var calendar = new CalendarService(repository, _teams, new FakeClock(_now), audit, NullLogger<CalendarService>.Instance);
         var id = Guid.NewGuid();
         var teamId = Guid.NewGuid();
         await repository.AddAsync(new CalendarEvent
@@ -663,23 +663,61 @@ public class CalendarControllerICalTests
     }
 
     [HumansFact]
-    public async Task Index_asks_for_the_viewers_token_and_renders_it_as_the_feed_url()
+    public async Task Index_renders_an_existing_token_as_the_feed_url()
     {
         StubViewer();
         var token = Guid.NewGuid();
-        _feedTokens.EnsureAsync(_viewer, Arg.Any<CancellationToken>()).Returns(token);
+        _feedTokens.GetAsync(_viewer, Arg.Any<CancellationToken>()).Returns(token);
 
         var model = await IndexModelAsync();
 
-        await _feedTokens.Received(1).EnsureAsync(_viewer, Arg.Any<CancellationToken>());
         model.ICalUrl.Should().EndWith($"/api/ical/{_viewer}/{token}.ics");
+        model.CanCreateICal.Should().BeFalse();
+        await _feedTokens.DidNotReceive().EnsureAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Index_never_mints_a_token_and_offers_the_create_button_instead()
+    {
+        StubViewer();
+        _feedTokens.GetAsync(_viewer, Arg.Any<CancellationToken>()).Returns((Guid?)null);
+
+        var model = await IndexModelAsync();
+
+        model.ICalUrl.Should().BeNull();
+        model.CanCreateICal.Should().BeTrue();
+        await _feedTokens.DidNotReceive().EnsureAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateIcal_mints_the_viewers_own_token_and_returns_to_the_grid()
+    {
+        StubViewer();
+
+        var result = await CreateController().CreateIcal(Xunit.TestContext.Current.CancellationToken);
+
+        await _feedTokens.Received(1).EnsureAsync(_viewer, Arg.Any<CancellationToken>());
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be(nameof(CalendarController.Index));
+    }
+
+    [HumansFact]
+    public async Task CreateIcal_challenges_a_viewer_with_no_user_row_and_mints_nothing()
+    {
+        _users.GetUserInfoAsync(_viewer, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>((UserInfo?)null));
+
+        var result = await CreateController().CreateIcal(Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ChallengeResult>();
+        await _feedTokens.DidNotReceive().EnsureAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
     public async Task Index_never_rotates_the_token_it_renders()
     {
         StubViewer();
-        _feedTokens.EnsureAsync(_viewer, Arg.Any<CancellationToken>()).Returns(Guid.NewGuid());
+        _feedTokens.GetAsync(_viewer, Arg.Any<CancellationToken>()).Returns(Guid.NewGuid());
 
         await IndexModelAsync();
 
@@ -695,6 +733,8 @@ public class CalendarControllerICalTests
         var model = await IndexModelAsync();
 
         model.ICalUrl.Should().BeNull();
+        model.CanCreateICal.Should().BeFalse();
+        await _feedTokens.DidNotReceive().GetAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _feedTokens.DidNotReceive().EnsureAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
@@ -702,7 +742,7 @@ public class CalendarControllerICalTests
     public async Task Index_does_not_load_teams_for_an_unused_month_model_field()
     {
         StubViewer();
-        _feedTokens.EnsureAsync(_viewer, Arg.Any<CancellationToken>()).Returns(Guid.NewGuid());
+        _feedTokens.GetAsync(_viewer, Arg.Any<CancellationToken>()).Returns(Guid.NewGuid());
 
         await IndexModelAsync();
 

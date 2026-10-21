@@ -73,8 +73,10 @@ internal interface IEventManagement : IApplicationService, IEventService
     /// <summary>
     /// Moderator withdrawal: withdraws the event and appends a
     /// <see cref="EventModerationActionType.Withdrawn"/> history row naming the moderator.
+    /// Allowed whenever the submitter could withdraw (<c>Event.CanBeWithdrawnBySubmitter</c>);
+    /// otherwise returns <c>false</c> and writes nothing.
     /// </summary>
-    Task ModeratorWithdrawAsync(Guid eventId, Guid actorUserId, CancellationToken ct = default);
+    Task<bool> ModeratorWithdrawAsync(Guid eventId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
     /// Admin / moderator in-place edit. Applies <paramref name="edit"/> (camp or

@@ -7,10 +7,6 @@
   src/Sections/Humans.Shifts/SectionPolicies.cs
   src/Sections/Humans.Shifts/Services/VolunteerTrackingExportService.cs
   src/Sections/Humans.Shifts/Services/ShiftEarlyEntryProjection.cs
-  src/Sections/Humans.Shifts/Services/ShiftSignupService.cs
-  src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
-  src/Sections/Humans.Settings/Contracts/IEventSettingsChangeListener.cs
-  src/Sections/Humans.Settings/Services/Service.cs
   src/Sections/Humans.Teams/Section.cs
   src/Sections/Humans.Teams/Services/TeamService.cs
   src/Sections/Humans.Teams/Services/TeamEarlyEntryProjection.cs
@@ -22,8 +18,8 @@
   src/Sections/Humans.Tickets/ViewComponents/TicketHoldingsViewComponent.cs
 -->
 <!-- freshness:flag-on-change
-  Re-read the provider fan-out contract and the eviction rules: EE is derived data with no
-  table of its own, so every invariant here is about who contributes grants and who evicts.
+  Re-read the provider fan-out contract: EE is derived data with no table of its own, so
+  every invariant here is about who contributes grants.
 -->
 
 # Early Entry — Section Invariants
@@ -67,11 +63,11 @@ verbatim; the nav entry is the section's own "Early Entry" group. The route is n
   the provider fan-out (`EarlyEntryArchitectureTests.OrchestratorInjectsOnlyTheProviderFanout`).
 - The fan-out is sequential — a simplicity choice, not a thread-safety requirement
   (design-rules §8b); each provider reads through its own section.
-- `GetRosterAsync` is **never cached**. `GetForUserAsync` is cached per human, negative results
-  included; only eviction refreshes it (no warmup, no expiry). A load begun before eviction
-  cannot repopulate the cache with its old grant or no-grant answer.
-- The Singleton decorator resolves the Scoped inner service per call through the keyed
-  registration `CachingEarlyEntryService.InnerServiceKey`, never a repository.
+- **Nothing outlives the request.** The scoped service fans out over the providers once per
+  request scope (the home page asks twice), so a grant written in any contributing section shows
+  on the next request and no section has to tell this one about its writes
+  (`EarlyEntryServiceTests.GetForUserAsync_GathersOncePerScope_AndFreshInTheNext`,
+  `EarlyEntryArchitectureTests.SectionRegistersTheOrchestratorPerRequest`).
 - Per human: earliest date wins, sources are distinct and ordinal-compared in provider order,
   and `HasMultiple` is `Sources.Count > 1`.
 - The roster is gated by `ShiftDashboardAccess`
@@ -90,36 +86,22 @@ verbatim; the nav entry is the section's own "Early Entry" group. The route is n
 
 ## Triggers
 
-- When a contributing section changes a single human's EE-relevant data, it evicts that human
-  through `IEarlyEntryInvalidator.InvalidateUser` — Camps on `SetEarlyEntryAsync`, member
-  removal, GDPR erasure and account merge; Shifts on every build-shift
-  confirm/bail/remove/no-show/reassign, erasure and merge; Teams on every EE grant add/edit/remove,
-  erasure and merge.
-- When an event-settings save moves every holder's date at once (the gate date, the build
-  offset, `EventSettings.EarlyEntryStartOffset`), Settings fans out over
-  `IEventSettingsChangeListener` and `CachingEarlyEntryService` evicts everyone — Settings
-  names no consumer.
-- Shift edits and rota-team moves evict all cached answers, so shift dates and source labels reload.
-- When a team's `EarlyEntryEnabled` flag flips, Teams calls `InvalidateAll`, because that
-  changes *who* contributes. Team-name changes also evict all answers so source labels reload.
-- Eviction is pure: the next read lazy-reloads.
+None. Every read derives grants live from the providers, so a camp EE flag, a build-shift
+signup, a team grant, a team flag or rename, a shift edit or an event-settings save shows on
+the next read with no signal to this section.
 
 ## Cross-Section Dependencies
 
-Outbound (the `.csproj` references `Humans.Base`, `Humans.Users.Contracts` and `Humans.Settings` only):
+Outbound (the `.csproj` references `Humans.Base` and `Humans.Users.Contracts` only):
 
 - **Users** — `IUserService` through `HumansControllerBase.FindUserInfoByIdAsync`, for the
   roster's legal-name column.
-- **Settings** — `CachingEarlyEntryService` implements `IEventSettingsChangeListener`; Settings'
-  event-settings save fans out to it and it evicts every cached answer.
 
 Inbound, all through `Contracts/`:
 
-- **Camps** — `CachingCampService` implements `IEarlyEntryProvider`; `CampService` injects
-  `IEarlyEntryInvalidator`.
-- **Shifts** — `VolunteerTrackingExportService` implements `IEarlyEntryProvider`;
-  `ShiftSignupService` injects `IEarlyEntryInvalidator`.
-- **Teams** — `TeamService` implements `IEarlyEntryProvider` and injects `IEarlyEntryInvalidator`.
+- **Camps** — `CachingCampService` implements `IEarlyEntryProvider`.
+- **Shifts** — `VolunteerTrackingExportService` implements `IEarlyEntryProvider`.
+- **Teams** — `TeamService` implements `IEarlyEntryProvider`.
 - **Gate** — `GateService` calls `IEarlyEntryService.GetForUserAsync` for the scanned attendee.
 - **Scanner** — `ScannerController` calls `GetForUserAsync` for the scanned attendee.
 - **Tickets** — `TicketTransferController`, `MyTicketStubsViewComponent` and
@@ -127,7 +109,7 @@ Inbound, all through `Contracts/`:
 
 ## Architecture
 
-**Owning services:** `EarlyEntryService` (orchestrator), `CachingEarlyEntryService` (§15 decorator)
+**Owning services:** `EarlyEntryService` (orchestrator, Scoped, no decorator)
 **Owned tables:** None — orchestrator over every registered `IEarlyEntryProvider`.
 **Status:** (A) Migrated.
 
@@ -140,20 +122,15 @@ consumer references the whole section, and only `internal` keeps them off the in
 
 | Read interface | Methods | Notes |
 |---|---:|---|
-| `IEarlyEntryService` | 2 | `GetRosterAsync` (live), `GetForUserAsync` (cached) |
+| `IEarlyEntryService` | 2 | `GetRosterAsync`, `GetForUserAsync` — both live |
 
 ### For (A) Migrated sections
 
-- **No repository, no `DbContext`.** `TrackedCache` comes from `Humans.Base.Caching`,
-  `ICacheStats` from `Humans.Base.Interfaces.Caching`.
-- **Decorator decision** — caching decorator, Singleton, `TrackedCache`-backed,
-  `warmOnStartup: false`; not a hosted service, there is nothing to warm. Negative results are
-  cached by hand (`TryGet` / `Set`) because `TrackedCache.GetAsync` never stores a null.
-- **Cross-section calls** — `IUserService`; Settings' `IEventSettingsChangeListener`
-  (implemented, not called).
+- **No repository, no `DbContext`.**
+- **Decorator decision** — Option A, no decorator. A per-human cache here could only be kept
+  true by every contributing section evicting it on its writes; a read costs one provider
+  pass (a few small queries), which this scale affords on every ticket page and gate scan.
+- **Cross-section calls** — `IUserService`.
 - **Architecture test** — `tests/Humans.EarlyEntry.Tests/EarlyEntryArchitectureTests.cs`; the
   rendered page is pinned by `tests/Humans.Integration.Tests/Controllers/EarlyEntryPageRenderTests.cs`
   (local-only, never runs in CI).
-- **Known debt** — `IEarlyEntryInvalidator` carries `[Grandfathered(HUM0028)]`
-  (nobodies-collective/Humans#805): the contributing sections flush this section's cache rather
-  than the decorator owning invalidation end-to-end.

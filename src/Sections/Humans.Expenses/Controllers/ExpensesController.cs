@@ -228,9 +228,7 @@ internal sealed class ExpensesController(
 
             var isFinanceAdmin = await IsFinanceAdminAsync();
             var decisions = await ResolveDecisionsAsync(report);
-            // The submitter reads the payment half of the timeline; the finance admin reads the push
-            // half and is the only one who can act on a failed push.
-            var timeline = isSubmitter || isFinanceAdmin
+            var timeline = await AllowsAsync(report, ExpenseReportOperation.ViewHoldedTimeline)
                 ? await service.GetHoldedTimelineAsync(report, HttpContext.RequestAborted)
                 : null;
             var creditor = await GetCreditorBindingViewAsync(report.SubmitterUserId, isFinanceAdmin, HttpContext.RequestAborted);
@@ -762,11 +760,8 @@ internal sealed class ExpensesController(
                 SubmitterNames = submitterNames,
                 BookingLabels = await ResolveBookingLabelsAsync(reports, HttpContext.RequestAborted),
                 Grants = await ResolveGrantsAsync(reports, HttpContext.RequestAborted),
-                // Finance admins are the only ones who can act on a written-off push, and the
-                // list is queue-wide rather than scoped, so it stays with them.
-                FailedHoldedPushReportIds = isFinanceAdmin
-                    ? (await service.GetFailedHoldedPushReportIdsAsync(HttpContext.RequestAborted)).ToHashSet()
-                    : [],
+                FailedHoldedPushReportIds = (await service.GetFailedHoldedPushReportIdsAsync(
+                    isFinanceAdmin, HttpContext.RequestAborted)).ToHashSet(),
             });
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

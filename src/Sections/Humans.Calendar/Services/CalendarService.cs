@@ -4,6 +4,7 @@ using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Calendar.Data;
 using Humans.Calendar.Domain;
+using Humans.Teams.Contracts;
 using Ical.Net.DataTypes;
 using Ical.Net.Evaluation;
 using NodaTime;
@@ -20,6 +21,7 @@ namespace Humans.Calendar.Services;
 /// </summary>
 internal sealed class CalendarService(
     ICalendarRepository repo,
+    ITeamService teams,
     IClock clock,
     IAuditLogService audit,
     ILogger<CalendarService> logger) : ICalendarService
@@ -46,6 +48,7 @@ internal sealed class CalendarService(
     {
         var prepared = PrepareEvent(dto, createdByUserId);
         if (!prepared.Succeeded) return prepared;
+        if (await RejectOwningTeamAsync(dto.OwningTeamId, ct) is { } teamRejection) return teamRejection;
         var ev = prepared.Event!;
 
         await repo.AddAsync(ev, ct);
@@ -68,6 +71,19 @@ internal sealed class CalendarService(
         }
 
         return CalendarEventMutationResult.Success(ev);
+    }
+
+    /// <summary>An event's owner must be an active, non-hidden team — the set the form's team picker offers.</summary>
+    internal static bool CanOwnEvents(TeamInfo team) => team.IsActive && !team.IsHidden;
+
+    private async Task<CalendarEventMutationResult?> RejectOwningTeamAsync(Guid owningTeamId, CancellationToken ct)
+    {
+        if (await teams.GetTeamAsync(owningTeamId, ct) is { } team && CanOwnEvents(team))
+            return null;
+
+        logger.LogWarning("Calendar event rejected: owning team {TeamId} is missing, inactive or hidden", owningTeamId);
+        return CalendarEventMutationResult.ValidationFailed(nameof(CreateCalendarEventDto.OwningTeamId),
+            "Calendar_OwningTeamUnavailable");
     }
 
     private CalendarEventMutationResult PrepareEvent(CreateCalendarEventDto dto, Guid createdByUserId)
@@ -290,6 +306,7 @@ internal sealed class CalendarService(
     {
         var prepared = PrepareEvent(dto, updatedByUserId);
         if (!prepared.Succeeded) return prepared;
+        if (await RejectOwningTeamAsync(dto.OwningTeamId, ct) is { } teamRejection) return teamRejection;
         var candidate = prepared.Event!;
         CalendarEvent? mutated = null;
         CalendarEventMutationResult? rejection = null;

@@ -25,24 +25,25 @@ internal interface IVolunteerTrackingManagement : IApplicationService, IVoluntee
     /// the user's declared availability. Read-modify-write; preserves other
     /// offsets; invalidates the user's shift view cache. Additions require a known
     /// calendar and an offset inside its build period; removals can clear old offsets.
+    /// Coordinator path: a change is audited against <paramref name="coordinatorUserId"/>.
     /// </summary>
     Task<bool> SetDayAvailabilityAsync(
         Guid userId, Guid eventSettingsId, int dayOffset, bool available,
-        CancellationToken ct = default);
+        Guid coordinatorUserId, CancellationToken ct = default);
 
     /// <summary>
     /// Coordinator path. Caller has already authorized. When the new
     /// camp-setup span newly covers existing day-off entries, those entries
-    /// are silently auto-cleared in the same transaction; the cleared
-    /// offsets are returned so the controller can emit one
+    /// are auto-cleared in the same transaction; the service audits the
+    /// camp-setup change plus one
     /// <see cref="Humans.AuditLog.Contracts.AuditAction.VolunteerDayOffCleared"/>
-    /// row per offset alongside the camp-setup audit row.
+    /// row per cleared offset, and returns the cleared offsets.
     /// </summary>
     Task<SetCampSetupResult> SetCampSetupAsync(
         Guid targetUserId, LocalDate barrioSetupStartDate,
         string? notes, Guid coordinatorUserId, CancellationToken ct = default);
 
-    /// <summary>Coordinator path. Caller has already authorized.</summary>
+    /// <summary>Coordinator path. Caller has already authorized. Audited.</summary>
     Task ClearCampSetupAsync(
         Guid targetUserId, Guid coordinatorUserId, CancellationToken ct = default);
 
@@ -51,7 +52,7 @@ internal interface IVolunteerTrackingManagement : IApplicationService, IVoluntee
     /// (targetUserId, dayOffset) as a "day off" with the optional reason.
     /// Replaces any existing entry for that day. Camp-setup overlap is
     /// not validated server-side — the UI prevents it by not rendering
-    /// the action on CampSetup cells.
+    /// the action on CampSetup cells. Audited when it succeeds.
     /// </summary>
     Task<SetDayOffResult> SetDayOffAsync(
         Guid targetUserId, int dayOffset, string? reason,
@@ -60,6 +61,7 @@ internal interface IVolunteerTrackingManagement : IApplicationService, IVoluntee
     /// <summary>
     /// Coordinator path. Caller has already authorized. Idempotent: returns
     /// <c>Removed = false</c> if no entry exists for (userId, dayOffset).
+    /// Audited only when an entry was removed.
     /// </summary>
     Task<ClearDayOffResult> ClearDayOffAsync(
         Guid targetUserId, int dayOffset,
