@@ -12,7 +12,8 @@ namespace Humans.Analyzers;
 ///
 /// <list type="table">
 /// <item><term>HUM0034</term><description>Outside <c>Contracts/</c> a section's types are
-/// internal, except what the framework silently drops when they are not.</description></item>
+/// internal, except what the framework silently drops when they are not; an
+/// <c>I*Management</c> interface is internal everywhere.</description></item>
 /// <item><term>HUM0035</term><description>A repository never lives under
 /// <c>Contracts/</c> — persistence is not a section's public surface.</description></item>
 /// <item><term>HUM0008</term><description>A controller never injects a
@@ -58,6 +59,15 @@ public sealed class SectionRulesAnalyzer : DiagnosticAnalyzer
         TableOwnershipRule.Register(context);
         CachingDecoratorRule.Register(context);
         ContractPersistenceRule.Register(context);
+
+        if (context.Compilation.AssemblyName?.EndsWith(".Contracts", StringComparison.Ordinal) == true)
+        {
+            var leafGrandfathered = GrandfatheredCheck.Resolve(context.Compilation);
+            context.RegisterSymbolAction(
+                ctx => PublicSurfaceRule.AnalyzeContractsLeaf(ctx, leafGrandfathered),
+                SymbolKind.NamedType);
+            return;
+        }
 
         if (!AssemblyScope.IsSection(context.Compilation.Assembly))
             return;
