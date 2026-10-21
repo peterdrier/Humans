@@ -42,6 +42,8 @@ internal sealed class UserEmailService(
 
         var emailIds = info.UserEmails.Select(e => e.Id).ToList();
         var mergePendingSet = await MergeService.GetPendingEmailIdsAsync(emailIds, cancellationToken);
+        var ticketOrders = await TicketService.GetTicketOrdersAsync(cancellationToken);
+        var verifiedCount = info.UserEmails.Count(e => e.IsVerified);
 
         return info.UserEmails.Select(e => new UserEmailEditDto(
             e.Id,
@@ -52,7 +54,10 @@ internal sealed class UserEmailService(
             e.IsPrimary,
             e.Visibility,
             IsPendingVerification: !e.IsVerified && e.VerificationSentAt.HasValue,
-            IsMergePending: mergePendingSet.Contains(e.Id)
+            IsMergePending: mergePendingSet.Contains(e.Id),
+            IsTicketLinked: IsAddressTicketLinked(ticketOrders, info.Id, e.Email),
+            CanUnlink: !string.IsNullOrEmpty(e.Provider) && !string.IsNullOrEmpty(e.ProviderKey)
+                && verifiedCount - (e.IsVerified ? 1 : 0) >= 1
         )).ToList();
     }
 
@@ -474,10 +479,12 @@ internal sealed class UserEmailService(
     // ticket emails (order buyer or matched attendee). Reads the Tickets section through its
     // owning read interface (design-rules §9); IUserEmail row data is never read cross-section.
     private async Task<bool> IsAddressTicketLinkedAsync(
-        Guid userId, string address, CancellationToken cancellationToken)
-    {
-        var orders = await TicketService.GetTicketOrdersAsync(cancellationToken);
+        Guid userId, string address, CancellationToken cancellationToken) =>
+        IsAddressTicketLinked(await TicketService.GetTicketOrdersAsync(cancellationToken), userId, address);
 
+    private static bool IsAddressTicketLinked(
+        IReadOnlyList<Humans.Tickets.Contracts.TicketOrderInfo> orders, Guid userId, string address)
+    {
         foreach (var order in orders)
         {
             if (order.MatchedUserId == userId

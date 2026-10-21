@@ -316,6 +316,12 @@ public sealed record UserInfo(
         || Profile?.RejectedAt is not null;
 #pragma warning restore HUM_PROFILE_REVIEW
 
+    /// <summary>
+    /// Has a profile and is not <see cref="IsRejected"/>: the population person search
+    /// (<see cref="IUserService.SearchUsersAsync"/>) and the single-person lookups resolve.
+    /// </summary>
+    public bool IsSearchable => Profile is not null && !IsRejected;
+
     /// <summary>Canonical "has profile" predicate.</summary>
     public bool HasProfile => Profile is not null;
 

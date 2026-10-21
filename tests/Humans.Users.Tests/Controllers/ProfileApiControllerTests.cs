@@ -1,5 +1,4 @@
 using Humans.Users.Tests.Infrastructure;
-using Humans.Consent.Contracts;
 using Humans.Users.Services;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -45,7 +44,6 @@ public class ProfileApiControllerTests
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly IContactFieldService _contactFieldService = Substitute.For<IContactFieldService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
-    private readonly Dictionary<Guid, ConsentReviewInfo> _reviews = [];
     private readonly UserManager<User> _userManager;
 
     public ProfileApiControllerTests()
@@ -65,7 +63,7 @@ public class ProfileApiControllerTests
         }
 
         var ctrl = new ProfileApiController(
-            _userService, ConsentReviewStubs.Create(_reviews), _contactFieldService, _userEmailService);
+            _userService, _contactFieldService, _userEmailService);
 
         var http = new DefaultHttpContext();
         if (currentUser is not null)
@@ -480,7 +478,6 @@ public class ProfileApiControllerTests
 
         _userService.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(targetUserId, targetProfileId, isRejected: true)));
-        _reviews[targetUserId] = ConsentReviewStubs.Rejected(targetUserId);
 
         var sut = BuildSut(viewer);
 

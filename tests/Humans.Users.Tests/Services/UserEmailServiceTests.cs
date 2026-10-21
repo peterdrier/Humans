@@ -591,6 +591,42 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
+    public async Task GetUserEmailsAsync_FlagsTicketLinkedRowsAndTheUnlinkInvariant()
+    {
+        var userId = Guid.NewGuid();
+        var onlyVerifiedGoogle = new UserEmail
+        {
+            Id = Guid.NewGuid(), UserId = userId, Email = "katja@gmail.com", IsVerified = true,
+            Provider = "Google", ProviderKey = "g-1",
+        };
+        var unverifiedLinked = new UserEmail
+        {
+            Id = Guid.NewGuid(), UserId = userId, Email = "other@example.com", IsVerified = false,
+            Provider = "Microsoft", ProviderKey = "m-1",
+        };
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(BuildStubUserInfo(userId, [onlyVerifiedGoogle, unverifiedLinked]));
+        _mergeService.GetPendingEmailIdsAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid>() as IReadOnlySet<Guid>);
+        _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<TicketOrderInfo>>([
+                new TicketOrderInfo(
+                    Guid.NewGuid(), "vendor-order", "Buyer", "katja@googlemail.com", 100m, "USD", null,
+                    TicketPaymentStatus.Paid, "event", _clock.GetCurrentInstant(), userId, true, [])
+            ]));
+
+        var rows = await _service.GetUserEmailsAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        var google = rows.Single(r => r.Id == onlyVerifiedGoogle.Id);
+        google.IsTicketLinked.Should().BeTrue();
+        // Unlinking the only verified row would leave no verified sign-in address (UnlinkAsync refuses).
+        google.CanUnlink.Should().BeFalse();
+        var other = rows.Single(r => r.Id == unverifiedLinked.Id);
+        other.IsTicketLinked.Should().BeFalse();
+        other.CanUnlink.Should().BeTrue();
+    }
+
+    [HumansFact]
     public async Task DeleteEmailAsync_TicketLinkedEmail_ReturnsRefusal()
     {
         // see nobodies-collective/Humans#758 — a non-primary verified email that matches the

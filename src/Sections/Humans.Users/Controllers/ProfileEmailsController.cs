@@ -16,7 +16,6 @@ using Humans.Users.Models;
 using Microsoft.Extensions.Options;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
-using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Humans.Base;
 using Humans.Base.Authorization;
@@ -40,12 +39,10 @@ internal sealed class ProfileEmailsController(
     ILogger<ProfileEmailsController> logger,
     IStringLocalizer<UsersResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer,
-    ITicketService ticketQueryService,
     IAuthorizationService authorizationService,
     SignInManager<User> signInManager,
     IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions) : HumansControllerBase(userService)
 {
-    private readonly ITicketService _ticketQueryService = ticketQueryService;
     private readonly IUserManagement _userService = userService;
     private readonly GoogleWorkspaceOptions _googleWorkspaceOptions = googleWorkspaceOptions.Value;
 
@@ -887,13 +884,6 @@ internal sealed class ProfileEmailsController(
 
         var linkedAccounts = await BuildLinkedAccountsAsync(user, emails, isAdminContext, ct);
 
-        // see nobodies-collective/Humans#758 — addresses linked to the user's event ticket.
-        // The grid hides Delete for these rows; UserEmailService.DeleteEmailAsync re-validates.
-        var ticketEmails = await GetTicketLinkedEmailsAsync(user.Id, ct);
-
-        bool RowIsTicketLinked(string address) =>
-            ticketEmails.Any(ticketEmail => Base.Helpers.EmailNormalization.EmailsMatch(address, ticketEmail));
-
         bool RowHasOrphanProviderTag(string? provider, string? providerKey) =>
             isAdminContext
             && !string.IsNullOrEmpty(provider)
@@ -921,7 +911,8 @@ internal sealed class ProfileEmailsController(
                 IsNobodiesTeamDomain = e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase),
                 Provider = e.Provider,
                 HasOrphanProviderTag = RowHasOrphanProviderTag(e.Provider, e.ProviderKey),
-                IsTicketLinked = RowIsTicketLinked(e.Email),
+                // see nobodies-collective/Humans#758 — the grid hides Delete; DeleteEmailAsync refuses.
+                IsTicketLinked = e.IsTicketLinked,
             }).ToList(),
             ExternalLogins = userLogins.Select(l => new ExternalLoginRowViewModel
             {
@@ -1010,14 +1001,13 @@ internal sealed class ProfileEmailsController(
             rowsByKey.TryAdd((r.Provider!, r.ProviderKey!), r);
         }
 
-        // Auth-method invariant: at least one verified row must remain post-unlink (orphan logins don't touch rows).
-        var verifiedTotal = emails.Count(e => e.IsVerified);
-
         return logins.Select(l =>
         {
             rowsByKey.TryGetValue((l.LoginProvider, l.ProviderKey), out var row);
-            var rowIsVerified = row?.IsVerified == true;
-            var verifiedAfter = verifiedTotal - (rowIsVerified ? 1 : 0);
+            // A row's unlink invariant is the service's (CanUnlink); an orphan login touches no row.
+            var canUnlink = row is not null
+                ? emails.FirstOrDefault(e => e.Id == row.Id)?.CanUnlink == true
+                : emails.Any(e => e.IsVerified);
             return new LinkedOAuthAccountViewModel
             {
                 Provider = l.LoginProvider,
@@ -1027,22 +1017,9 @@ internal sealed class ProfileEmailsController(
                 MatchingUserEmailId = row?.Id,
                 Email = row?.Email,
                 LinkedAt = row?.CreatedAt,
-                CanUnlink = verifiedAfter >= 1,
+                CanUnlink = canUnlink,
             };
         }).ToList();
-    }
-
-    private async Task<List<string>> GetTicketLinkedEmailsAsync(Guid userId, CancellationToken ct)
-    {
-        var ticketOrders = await _ticketQueryService.GetTicketOrdersAsync(ct);
-        return ticketOrders
-            .Where(o => o.MatchedUserId == userId && !string.IsNullOrWhiteSpace(o.BuyerEmail))
-            .Select(o => o.BuyerEmail!)
-            .Concat(ticketOrders
-                .SelectMany(o => o.Attendees)
-                .Where(a => a.MatchedUserId == userId && !string.IsNullOrWhiteSpace(a.AttendeeEmail))
-                .Select(a => a.AttendeeEmail!))
-            .ToList();
     }
 
     private static string HashForDisplay(string s)

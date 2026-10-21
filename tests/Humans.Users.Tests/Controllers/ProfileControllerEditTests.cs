@@ -459,7 +459,7 @@ public class ProfileControllerEditTests
         var result = await _controller.Edit(model);
 
         result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
-        _controller.ModelState[string.Empty]!.Errors.Should().ContainSingle()
+        _controller.ModelState[nameof(ProfileViewModel.NoPriorBurnExperience)]!.Errors.Should().ContainSingle()
             .Which.ErrorMessage.Should().Be("Profile_BurnerCVRequired");
         await _userService.DidNotReceiveWithAnyArgs().SaveProfileLanguagesAsync(default, default!, default);
         await _onboardingService.DidNotReceiveWithAnyArgs().SetConsentCheckPendingIfEligibleAsync(default, default);

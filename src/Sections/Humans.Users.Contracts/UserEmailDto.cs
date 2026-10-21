@@ -16,6 +16,12 @@ public record UserEmailDto(
 /// <summary>
 /// User email data for the Manage Emails page.
 /// </summary>
+/// <remarks>
+/// <c>IsTicketLinked</c>: the address is matched to one of the user's event tickets, so
+/// <see cref="IUserEmailService.DeleteEmailAsync"/> refuses it (nobodies-collective/Humans#758).
+/// <c>CanUnlink</c>: the row carries a provider login and another verified address would
+/// remain after it goes — the invariant <see cref="IUserEmailService.UnlinkAsync"/> enforces.
+/// </remarks>
 public record UserEmailEditDto(
     Guid Id,
     string Email,
@@ -25,7 +31,9 @@ public record UserEmailEditDto(
     bool IsPrimary,
     ContactFieldVisibility? Visibility,
     bool IsPendingVerification,
-    bool IsMergePending = false);
+    bool IsMergePending = false,
+    bool IsTicketLinked = false,
+    bool CanUnlink = false);
 
 /// <summary>
 /// Result of adding an email address.
