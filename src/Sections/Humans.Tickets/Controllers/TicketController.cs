@@ -274,7 +274,7 @@ internal sealed class TicketController(
         var bytes = HumansCsv.WriteBytes(csv =>
         {
             csv.WriteRow("Date", "Purchaser", "Email", "Tickets", "Amount", "Currency",
-                "Code", "Discount", "Donation", "VAT", "Payment Method", "Stripe Fee", "TT Fee", "Status");
+                "Code", "Discount", "Donation", "VAT", "Payment Method", "Stripe Fee", "TT Fee", "Stripe Fee VAT", "Withheld Tax", "Status");
             foreach (var o in rows)
             {
                 csv.WriteRow(
@@ -291,6 +291,8 @@ internal sealed class TicketController(
                     o.PaymentMethod,
                     o.StripeFee,
                     o.ApplicationFee,
+                    o.FeeTax,
+                    o.WithheldTax,
                     o.PaymentStatus);
             }
         });
@@ -312,18 +314,19 @@ internal sealed class TicketController(
         {
             csv.WriteRow("Month", "Orders", "Tickets", "Gross Collected", "Standalone Donations", "VIP Donations",
                 "Ticket Income incl VAT", "VAT 10%", "Ticket Income ex VAT", "Stripe Fees", "Ticket Tailor Fees",
-                "Refunded Orders Gross");
+                "Stripe Fee VAT", "Withheld Tax", "Refunded Orders Gross");
             foreach (var m in months)
             {
                 WriteAccountantRow(csv, m.MonthLabel, m.OrderCount, m.TicketsSold, m.GrossRevenue, m.Donations,
                     m.VipDonations, m.TicketIncomeInclVat, m.VatAmount, m.TicketIncomeExVat, m.StripeFees,
-                    m.ApplicationFees, m.RefundedGross);
+                    m.ApplicationFees, m.FeeTax, m.WithheldTax, m.RefundedGross);
             }
             WriteAccountantRow(csv, "Total", months.Sum(m => m.OrderCount), months.Sum(m => m.TicketsSold),
                 months.Sum(m => m.GrossRevenue), months.Sum(m => m.Donations), months.Sum(m => m.VipDonations),
                 months.Sum(m => m.TicketIncomeInclVat), months.Sum(m => m.VatAmount),
                 months.Sum(m => m.TicketIncomeExVat), months.Sum(m => m.StripeFees),
-                months.Sum(m => m.ApplicationFees), months.Sum(m => m.RefundedGross));
+                months.Sum(m => m.ApplicationFees), months.Sum(m => m.FeeTax), months.Sum(m => m.WithheldTax),
+                months.Sum(m => m.RefundedGross));
         });
         return File(bytes, "text/csv", "ticket-income-by-month.csv");
     }
@@ -357,7 +360,8 @@ internal sealed class TicketController(
 
     private static void WriteAccountantRow(CsvWriter csv, string label, int orders, int tickets, decimal gross,
         decimal donations, decimal vipDonations, decimal ticketIncomeInclVat, decimal vat,
-        decimal ticketIncomeExVat, decimal stripeFees, decimal ttFees, decimal refundedGross)
+        decimal ticketIncomeExVat, decimal stripeFees, decimal ttFees, decimal feeTax, decimal withheldTax,
+        decimal refundedGross)
         => csv.WriteRow(label, orders, tickets, gross, donations, vipDonations,
-            ticketIncomeInclVat, vat, ticketIncomeExVat, stripeFees, ttFees, refundedGross);
+            ticketIncomeInclVat, vat, ticketIncomeExVat, stripeFees, ttFees, feeTax, withheldTax, refundedGross);
 }

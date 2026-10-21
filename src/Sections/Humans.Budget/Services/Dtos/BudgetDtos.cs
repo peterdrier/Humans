@@ -101,7 +101,8 @@ internal sealed record TicketingWeeklyActuals(
     int TicketCount,
     decimal Revenue,
     decimal StripeFees,
-    decimal TicketTailorFees);
+    decimal TicketTailorFees,
+    decimal StripeFeeTax);
 
 internal sealed record TicketingProjectionUpdateCommand(
     Guid BudgetGroupId,

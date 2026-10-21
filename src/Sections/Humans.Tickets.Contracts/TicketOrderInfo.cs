@@ -27,7 +27,9 @@ public sealed record TicketAttendeeInfo(
 /// Compact projection of a <c>TicketOrder</c>
 /// row, with embedded <see cref="TicketAttendeeInfo"/> children. Used as the
 /// canonical in-memory shape behind <c>CachingTicketQueryService</c>'s
-/// order projection.
+/// order projection. <paramref name="FeeTax"/> (VAT Stripe charged on its fees) and
+/// <paramref name="WithheldTax"/> (tax Stripe withheld from the payout) are null on orders
+/// enriched before those Stripe fee buckets were captured.
 /// </summary>
 public sealed record TicketOrderInfo(
     Guid Id,
@@ -44,4 +46,6 @@ public sealed record TicketOrderInfo(
     bool IsCurrentEvent,
     IReadOnlyList<TicketAttendeeInfo> Attendees,
     decimal? StripeFee = null,
-    decimal? ApplicationFee = null);
+    decimal? ApplicationFee = null,
+    decimal? FeeTax = null,
+    decimal? WithheldTax = null);

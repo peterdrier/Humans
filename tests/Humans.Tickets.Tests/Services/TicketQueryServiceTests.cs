@@ -421,12 +421,15 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         var march = MakeOrder("ord_mar", TicketPaymentStatus.Paid, Instant.FromUtc(2026, 3, 2, 10, 0), 425m, 25m, 28.64m, 1, 85m);
         march.StripeFee = 5.50m;
         march.ApplicationFee = 2m;
+        march.FeeTax = 1.16m;
+        march.WithheldTax = 0.30m;
         var april = MakeOrder("ord_apr", TicketPaymentStatus.Paid, Instant.FromUtc(2026, 4, 20, 10, 0), 315m, 0m, 28.64m, 1, 0m);
         april.StripeFee = 3m;
         april.ApplicationFee = 1m;
         var marchRefund = MakeOrder("ord_mar_refund", TicketPaymentStatus.Refunded, Instant.FromUtc(2026, 3, 9, 10, 0), 200m, 0m, 0m, 1, 0m);
         marchRefund.StripeFee = 4m;
         marchRefund.ApplicationFee = 1.50m;
+        marchRefund.FeeTax = 0.84m;
         var mayRefund = MakeOrder("ord_may_refund", TicketPaymentStatus.Refunded, Instant.FromUtc(2026, 5, 1, 10, 0), 315m, 0m, 0m, 1, 0m);
         mayRefund.StripeFee = 6m;
         mayRefund.ApplicationFee = 2.50m;
@@ -454,6 +457,8 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         // Refunds return the gross, not the fees already charged.
         mar.StripeFees.Should().Be(5.50m + 4m);
         mar.ApplicationFees.Should().Be(2m + 1.50m);
+        mar.FeeTax.Should().Be(1.16m + 0.84m);
+        mar.WithheldTax.Should().Be(0.30m);
         mar.RefundedGross.Should().Be(200m);
 
         var apr = result.MonthlySales[1];
@@ -470,6 +475,24 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         may.RefundedGross.Should().Be(315m);
         may.StripeFees.Should().Be(6m);
         may.ApplicationFees.Should().Be(2.50m);
+    }
+
+    [HumansFact]
+    public async Task GetDashboardStatsAsync_NetRevenue_DeductsFeeVatAndWithheldTax()
+    {
+        var order = MakeOrder("ord_fees", TicketPaymentStatus.Paid, Instant.FromUtc(2026, 3, 2, 10, 0), 315m, 0m, 28.64m, 1, 0m);
+        order.StripeFee = 5m;
+        order.ApplicationFee = 2m;
+        order.FeeTax = 1.05m;
+        order.WithheldTax = 0.50m;
+        await TicketsDb.TicketOrders.AddAsync(order, Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var stats = await _service.GetDashboardStatsAsync();
+
+        stats.TotalFeeTax.Should().Be(1.05m);
+        stats.TotalWithheldTax.Should().Be(0.50m);
+        stats.NetRevenue.Should().Be(315m - 5m - 2m - 1.05m - 0.50m);
     }
 
     [HumansFact]

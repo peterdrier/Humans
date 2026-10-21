@@ -1172,7 +1172,8 @@ public sealed class BudgetServiceTests
                 TicketCount: 10,
                 Revenue: 500m,
                 StripeFees: 15m,
-                TicketTailorFees: 5m)
+                TicketTailorFees: 5m,
+                StripeFeeTax: 0m)
         };
 
         var changed = await _service.SyncTicketingActualsAsync(_yearId, actuals, actorUserId: null, TestContext.Current.CancellationToken);
@@ -1196,12 +1197,41 @@ public sealed class BudgetServiceTests
     }
 
     [HumansFact]
+    public async Task SyncTicketingActualsAsync_fee_vat_comes_from_the_actual_stripe_fee_tax()
+    {
+        var (_, projectionId, _, feesCatId) = await SeedTicketingYearAsync();
+        var ct = TestContext.Current.CancellationToken;
+        var taxed = new TicketingWeeklyActuals(
+            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 10, 500m,
+            StripeFees: 10m, TicketTailorFees: 5m, StripeFeeTax: 2.10m);
+        var untaxed = new TicketingWeeklyActuals(
+            new LocalDate(2026, 3, 9), new LocalDate(2026, 3, 15), "Mar 9–Mar 15", 10, 500m,
+            StripeFees: 10m, TicketTailorFees: 5m, StripeFeeTax: 0m);
+
+        await _service.SyncTicketingActualsAsync(_yearId, [taxed, untaxed], actorUserId: null, ct);
+
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(ct);
+        var fees = await ctx.BudgetLineItems.Where(li => li.BudgetCategoryId == feesCatId
+            && !li.Description.StartsWith("Projected: ")).ToListAsync(ct);
+        var taxedStripe = fees.Single(li => string.Equals(li.Description, "Stripe fees: Mar 2–Mar 8", StringComparison.Ordinal));
+        taxedStripe.Amount.Should().Be(-12.10m, because: "the line records the gross cash cost, fee VAT included");
+        taxedStripe.VatRate.Should().Be(21);
+        BudgetService.ComputeVatPortion(taxedStripe.Amount, taxedStripe.VatRate).Should().Be(2.10m);
+        fees.Single(li => string.Equals(li.Description, "Stripe fees: Mar 9–Mar 15", StringComparison.Ordinal)).VatRate
+            .Should().Be(0, because: "no fee VAT was charged, so none is reclaimable");
+        fees.Where(li => li.Description.StartsWith("TT fees:", StringComparison.Ordinal)).Should().OnlyContain(li => li.VatRate == 0);
+
+        var projection = await ctx.TicketingProjections.SingleAsync(p => p.Id == projectionId, ct);
+        projection.StripeFeePercent.Should().Be(2.21m, because: "(10 + 2.10 + 10) / 1000 — learned gross of fee VAT");
+    }
+
+    [HumansFact]
     public async Task SyncTicketingActualsAsync_clears_existing_fees_when_actuals_become_zero()
     {
         var (_, _, _, feesCatId) = await SeedTicketingYearAsync();
         var ct = TestContext.Current.CancellationToken;
         var week = new TicketingWeeklyActuals(
-            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 10, 500m, 15m, 5m);
+            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 10, 500m, 15m, 5m, 0m);
         await _service.SyncTicketingActualsAsync(_yearId, [week], actorUserId: null, ct);
 
         var corrected = week with { StripeFees = 0m, TicketTailorFees = 0m };
@@ -1228,13 +1258,13 @@ public sealed class BudgetServiceTests
         var (_, _, revenueCatId, feesCatId) = await SeedTicketingYearAsync();
         var ct = TestContext.Current.CancellationToken;
         var week = new TicketingWeeklyActuals(
-            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 3, 150m, 15m, 5m);
+            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 3, 150m, 15m, 5m, 0m);
         await _service.SyncTicketingActualsAsync(_yearId, [week], actorUserId: null, ct);
 
         // All of the week's orders were refunded: it no longer appears in the input, which now
         // holds only a later week.
         var laterWeek = new TicketingWeeklyActuals(
-            new LocalDate(2026, 3, 9), new LocalDate(2026, 3, 15), "Mar 9–Mar 15", 1, 50m, 0m, 0m);
+            new LocalDate(2026, 3, 9), new LocalDate(2026, 3, 15), "Mar 9–Mar 15", 1, 50m, 0m, 0m, 0m);
         await _service.SyncTicketingActualsAsync(_yearId, [laterWeek], actorUserId: null, ct);
 
         await using var ctx = await BudgetDbFactory.CreateDbContextAsync(ct);
@@ -1254,7 +1284,7 @@ public sealed class BudgetServiceTests
         var ct = TestContext.Current.CancellationToken;
         // Fully-discounted week: 3 tickets, 0 revenue.
         var week = new TicketingWeeklyActuals(
-            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 3, 0m, 0m, 0m);
+            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 3, 0m, 0m, 0m, 0m);
         await _service.SyncTicketingActualsAsync(_yearId, [week], actorUserId: null, ct);
 
         await _service.SyncTicketingActualsAsync(_yearId, [], actorUserId: null, ct);
@@ -1274,7 +1304,7 @@ public sealed class BudgetServiceTests
         var (_, _, revenueCatId, feesCatId) = await SeedTicketingYearAsync();
         var ct = TestContext.Current.CancellationToken;
         var week = new TicketingWeeklyActuals(
-            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 3, 150m, 15m, 5m);
+            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 3, 150m, 15m, 5m, 0m);
         await _service.SyncTicketingActualsAsync(_yearId, [week], actorUserId: null, ct);
 
         // Every order of the week was refunded: empty input zeroes the stored week.
@@ -1302,7 +1332,8 @@ public sealed class BudgetServiceTests
                 TicketCount: 10,
                 Revenue: 500m,
                 StripeFees: 15m,
-                TicketTailorFees: 5m)
+                TicketTailorFees: 5m,
+                StripeFeeTax: 0m)
         };
 
         await _service.SyncTicketingActualsAsync(_yearId, actuals, actorUserId: null, TestContext.Current.CancellationToken);
@@ -1555,7 +1586,8 @@ public sealed class BudgetServiceTests
                 TicketCount: 20,
                 Revenue: 1000m,
                 StripeFees: 0m,
-                TicketTailorFees: 0m)
+                TicketTailorFees: 0m,
+                StripeFeeTax: 0m)
         };
 
         await _service.SyncTicketingActualsAsync(_yearId, actuals, actorUserId: null, TestContext.Current.CancellationToken);
@@ -1641,7 +1673,8 @@ public sealed class BudgetServiceTests
                 TicketCount: 20,
                 Revenue: 1000m,
                 StripeFees: 15m,
-                TicketTailorFees: 30m)
+                TicketTailorFees: 30m,
+                StripeFeeTax: 0m)
         };
 
         await _service.SyncTicketingActualsAsync(_yearId, actuals, actorUserId: null, TestContext.Current.CancellationToken);

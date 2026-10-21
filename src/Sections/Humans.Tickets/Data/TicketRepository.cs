@@ -359,6 +359,8 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 t.PaymentMethodDetail = order.PaymentMethodDetail;
                 t.StripeFee = order.StripeFee;
                 t.ApplicationFee = order.ApplicationFee;
+                t.FeeTax = order.FeeTax;
+                t.WithheldTax = order.WithheldTax;
             }
         }
 
@@ -480,6 +482,8 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         var revenue = await paidOrders.SumAsync(o => o.TotalAmount, ct);
         var totalStripeFees = await paidOrders.SumAsync(o => o.StripeFee ?? 0m, ct);
         var totalAppFees = await paidOrders.SumAsync(o => o.ApplicationFee ?? 0m, ct);
+        var totalFeeTax = await paidOrders.SumAsync(o => o.FeeTax ?? 0m, ct);
+        var totalWithheldTax = await paidOrders.SumAsync(o => o.WithheldTax ?? 0m, ct);
         var unmatchedCount = await paidOrders.CountAsync(o => o.MatchedUserId == null, ct);
 
         return new TicketDashboardTotals
@@ -488,6 +492,8 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
             GrossRevenue = revenue,
             TotalStripeFees = totalStripeFees,
             TotalApplicationFees = totalAppFees,
+            TotalFeeTax = totalFeeTax,
+            TotalWithheldTax = totalWithheldTax,
             UnmatchedOrderCount = unmatchedCount,
         };
     }
@@ -576,6 +582,8 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 DiscountAmount = o.DiscountAmount ?? 0m,
                 StripeFee = o.StripeFee,
                 ApplicationFee = o.ApplicationFee,
+                FeeTax = o.FeeTax,
+                WithheldTax = o.WithheldTax,
             })
             .ToListAsync(ct);
     }
@@ -593,6 +601,8 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 TotalAmount = o.TotalAmount,
                 StripeFee = o.StripeFee,
                 ApplicationFee = o.ApplicationFee,
+                FeeTax = o.FeeTax,
+                WithheldTax = o.WithheldTax,
             })
             .ToListAsync(ct);
     }
@@ -849,6 +859,8 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 PaymentMethod = method,
                 StripeFee = o.StripeFee,
                 ApplicationFee = o.ApplicationFee,
+                FeeTax = o.FeeTax,
+                WithheldTax = o.WithheldTax,
                 PaymentStatus = o.PaymentStatus.ToString(),
                 VendorOrderId = o.VendorOrderId,
                 PurchasedAt = o.PurchasedAt,

@@ -413,4 +413,5 @@ internal sealed record TicketingWeeklyActualsInput(
     int TicketCount,
     decimal Revenue,
     decimal StripeFees,
-    decimal TicketTailorFees);
+    decimal TicketTailorFees,
+    decimal StripeFeeTax);

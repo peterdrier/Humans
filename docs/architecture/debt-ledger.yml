@@ -268,10 +268,6 @@ themes:
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
-  - added: 2026-10-18
-    id: CENTRAL-87
-    what: "StripeService.GetPaymentDetailsAsync sums only stripe_fee/application_fee although Stripe supports payment_method_passthrough_fee, tax and withheld_tax. Tickets reports therefore omit legitimate settlement costs and overstate net revenue; Budget imports only those two fee buckets, both at a fixed 21% VAT rate. Preserve additional components through StripePaymentDetails and TicketOrderInfo, Tickets persistence/reports/exports, and Budget actuals after defining their expense/VAT classification rather than silently treating tax or withholding as processing fees. Found by comparing Stripe.net FeeDetail.Type with the enrichment loop and TicketingBudgetService/BudgetRepository actuals mapping."
-    review: panel
   - added: 2026-10-19
     id: CENTRAL-88
     what: "CacheKeys.MagicLinkUsed in Humans.Base names its parameter tokenPrefix, but its only caller (Auth's MagicLinkRateLimiter) passes a SHA-256 digest of the whole token. Rename the parameter. Found by section-doctor on Auth."

@@ -892,15 +892,18 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
                 $"Week of {week.WeekLabel}",
                 week.Revenue, week.Monday, projectionVatRate, $"{week.TicketCount} tickets", now);
 
+            // The Stripe line carries the VAT Stripe actually charged on its fees: gross = fees + tax,
+            // rate derived from the two. No fee VAT is captured for Ticket Tailor's fee, so it has none.
             if (week.StripeFees >= 0)
                 lineItemsChanged += UpsertTicketingLineItem(ctx, feesCategory,
                     $"Stripe fees: {week.WeekLabel}",
-                    -week.StripeFees, week.Monday, TicketingFeeVatRate, null, now, omitNewZero: true);
+                    -(week.StripeFees + week.StripeFeeTax), week.Monday,
+                    ActualFeeVatRate(week.StripeFees, week.StripeFeeTax), null, now, omitNewZero: true);
 
             if (week.TicketTailorFees >= 0)
                 lineItemsChanged += UpsertTicketingLineItem(ctx, feesCategory,
                     $"TT fees: {week.WeekLabel}",
-                    -week.TicketTailorFees, week.Monday, TicketingFeeVatRate, null, now, omitNewZero: true);
+                    -week.TicketTailorFees, week.Monday, 0, null, now, omitNewZero: true);
         }
 
         lineItemsChanged += ZeroDroppedActualWeeks(
@@ -913,7 +916,8 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         if (weeklyActuals.Count > 0 && ticketingGroup.TicketingProjection is not null)
         {
             var totalRevenue = weeklyActuals.Sum(w => w.Revenue);
-            var totalStripeFees = weeklyActuals.Sum(w => w.StripeFees);
+            // Gross of fee VAT, so projected Stripe lines project the same cash cost the actuals record.
+            var totalStripeFees = weeklyActuals.Sum(w => w.StripeFees + w.StripeFeeTax);
             var totalTtFees = weeklyActuals.Sum(w => w.TicketTailorFees);
             var totalTickets = weeklyActuals.Sum(w => w.TicketCount);
 
@@ -1005,8 +1009,19 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
             .ToListAsync(ct);
     }
 
-    // Spanish IVA rate applied to Stripe and TicketTailor processing fees.
-    private const int TicketingFeeVatRate = 21;
+    // Assumed Spanish IVA rate on PROJECTED Stripe and Ticket Tailor fees only: a projection has no
+    // actual fee tax to derive from. Actual weeks use ActualFeeVatRate.
+    private const int ProjectedTicketingFeeVatRate = 21;
+
+    /// <summary>
+    /// Whole-percent VAT rate that reproduces the fee VAT Stripe actually charged
+    /// (<paramref name="feeTax"/> on <paramref name="netFees"/>) through the line item's
+    /// VAT-inclusive split; 0 when no fee VAT was charged. Clamped to the 0–21 line-item range.
+    /// </summary>
+    private static int ActualFeeVatRate(decimal netFees, decimal feeTax) =>
+        netFees <= 0m || feeTax <= 0m
+            ? 0
+            : (int)Math.Clamp(Math.Round(feeTax / netFees * 100m, MidpointRounding.AwayFromZero), 0m, 21m);
 
     private static void AddDefaultTicketingCategories(
         BudgetDbContext ctx, Guid ticketingGroupId, Instant now)
@@ -1114,7 +1129,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
                 feeDescriptions.Add(feeDescription);
                 created += UpsertTicketingLineItem(ctx, feesCategory,
                     feeDescription,
-                    -Math.Round(week.StripeFees, 2), week.Start, TicketingFeeVatRate, null, now);
+                    -Math.Round(week.StripeFees, 2), week.Start, ProjectedTicketingFeeVatRate, null, now);
             }
 
             if (week.TicketTailorFees > 0)
@@ -1123,7 +1138,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
                 feeDescriptions.Add(feeDescription);
                 created += UpsertTicketingLineItem(ctx, feesCategory,
                     feeDescription,
-                    -Math.Round(week.TicketTailorFees, 2), week.Start, TicketingFeeVatRate, null, now);
+                    -Math.Round(week.TicketTailorFees, 2), week.Start, ProjectedTicketingFeeVatRate, null, now);
             }
         }
 
