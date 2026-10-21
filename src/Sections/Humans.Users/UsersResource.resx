@@ -337,8 +337,6 @@
   <!-- Admin: member detail     -->
   <!-- ======================== -->
   <data name="AdminHuman_Information" xml:space="preserve"><value>Member Information</value></data>
-  <data name="AdminHuman_ConsentCheck" xml:space="preserve"><value>Consent Check</value></data>
-  <data name="AdminHuman_NotStarted" xml:space="preserve"><value>Not started</value></data>
   <data name="AdminHuman_UserId" xml:space="preserve"><value>User ID</value></data>
   <data name="AdminHuman_AdminNotes" xml:space="preserve"><value>Board Notes</value></data>
   <data name="AdminHuman_AdminNotesGdprHint" xml:space="preserve"><value>This member can request to see these notes under GDPR.</value></data>

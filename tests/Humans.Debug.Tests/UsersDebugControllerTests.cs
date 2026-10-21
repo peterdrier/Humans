@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Consent.Contracts;
 using Humans.Debug.Controllers;
 using Humans.Debug.Models;
 using Humans.Testing;
@@ -26,13 +27,21 @@ public class UsersDebugControllerTests
             []);
     }
 
+    private static IConsentService NoReviews()
+    {
+        var consent = Substitute.For<IConsentService>();
+        consent.GetConsentReviewsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, ConsentReviewInfo>());
+        return consent;
+    }
+
     [HumansFact]
     public async Task Index_large_page_does_not_wrap_to_the_first_page()
     {
         var users = new[] { MakeUserInfo(Guid.NewGuid(), "Human", true, false) };
         var service = Substitute.For<IUserService>();
         service.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>()).Returns(users);
-        var controller = new UsersDebugController(service);
+        var controller = new UsersDebugController(service, NoReviews());
         var first = (UsersDebugViewModel)((ViewResult)await controller.Index(page: 1, pageSize: 50)).Model!;
         first.Rows.Should().ContainSingle();
 
@@ -53,7 +62,7 @@ public class UsersDebugControllerTests
         userService.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(users));
 
-        var controller = new UsersDebugController(userService);
+        var controller = new UsersDebugController(userService, NoReviews());
 
         var result = await controller.Index(page: 1, pageSize: 50, sort: "displayName", dir: "asc", ct: Xunit.TestContext.Current.CancellationToken) as ViewResult;
 
@@ -78,7 +87,7 @@ public class UsersDebugControllerTests
         userService.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(users));
 
-        var controller = new UsersDebugController(userService);
+        var controller = new UsersDebugController(userService, NoReviews());
 
         var result = await controller.Index(page: 1, pageSize: 50, sort: "displayName", dir: "desc", ct: Xunit.TestContext.Current.CancellationToken) as ViewResult;
 
@@ -96,7 +105,7 @@ public class UsersDebugControllerTests
         userService.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(users));
 
-        var controller = new UsersDebugController(userService);
+        var controller = new UsersDebugController(userService, NoReviews());
 
         var tooSmall = (UsersDebugViewModel)((ViewResult)await controller.Index(1, 1, ct: Xunit.TestContext.Current.CancellationToken)).Model!;
         tooSmall.PageSize.Should().Be(10);

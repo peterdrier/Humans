@@ -402,146 +402,62 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         remaining.Should().BeEmpty();
     }
 
+    // The consent-check and rejection annotations moved to Consent (consent_reviews, Users
+    // decomposition commit 12; covered by Humans.Consent.Tests). Users keeps the state transitions.
+
     [HumansFact]
-    public async Task ApplyProfileOnboardingMutationAsync_RecordConsentCheckCleared_FlipsIsApprovedAndStamps()
+    public async Task SetRejectedAsync_SetsRejectedState_AndInvalidatesClaims()
     {
         var userId = Guid.NewGuid();
-        var reviewerId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
 
-        var result = await _service.ApplyProfileOnboardingMutationAsync(
-            userId,
-            new UserProfileOnboardingCommand(
-                UserProfileOnboardingMutation.RecordConsentCheck,
-                ActorUserId: reviewerId,
-                ConsentCheckStatus: ConsentCheckStatus.Cleared,
-                Notes: "Looks good"), TestContext.Current.CancellationToken);
+        var result = await _service.SetRejectedAsync(userId, TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
-        profile.ConsentCheckStatus.Should().Be(ConsentCheckStatus.Cleared);
-        profile.IsApproved.Should().BeTrue();
-        profile.ConsentCheckAt.Should().Be(Clock.GetCurrentInstant());
-        profile.ConsentCheckedByUserId.Should().Be(reviewerId);
-        profile.ConsentCheckNotes.Should().Be("Looks good");
-    }
-
-    [HumansFact]
-    public async Task ApplyProfileOnboardingMutationAsync_InvalidatesRoleAssignmentClaimsCache()
-    {
-        // The mutation resyncs users.State; the cached UserState claim must be evicted so
-        // MembershipRequiredFilter stops routing on the stale pre-transition state.
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId);
-
-        await _service.ApplyProfileOnboardingMutationAsync(
-            userId,
-            new UserProfileOnboardingCommand(
-                UserProfileOnboardingMutation.RecordConsentCheck,
-                ActorUserId: Guid.NewGuid(),
-                ConsentCheckStatus: ConsentCheckStatus.Cleared), TestContext.Current.CancellationToken);
-
+        var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
+        user.State.Should().Be(UserState.Rejected);
         _claimsCacheInvalidator.Received(1).Invalidate(userId);
     }
 
     [HumansFact]
-    public async Task ApplyProfileOnboardingMutationAsync_RecordConsentCheckFlagged_KeepsIsApprovedFalse()
+    public async Task SetRejectedAsync_StateSurvivesALaterUnsuspend()
     {
+        // The rejection is no longer a profile column, so the classifier must carry it forward
+        // from users.State on every later transition.
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
+        await _service.SetRejectedAsync(userId, TestContext.Current.CancellationToken);
 
-        var result = await _service.ApplyProfileOnboardingMutationAsync(
-            userId,
-            new UserProfileOnboardingCommand(
-                UserProfileOnboardingMutation.RecordConsentCheck,
-                ActorUserId: Guid.NewGuid(),
-                ConsentCheckStatus: ConsentCheckStatus.Flagged,
-                Notes: "Concern X"), TestContext.Current.CancellationToken);
+        await _service.SetSuspensionAsync(userId, suspended: false, ct: TestContext.Current.CancellationToken);
 
-        result.Success.Should().BeTrue();
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
-        profile.ConsentCheckStatus.Should().Be(ConsentCheckStatus.Flagged);
-        profile.IsApproved.Should().BeFalse();
+        var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
+        user.State.Should().Be(UserState.Rejected);
     }
 
     [HumansFact]
-    public async Task ApplyProfileOnboardingMutationAsync_RecordConsentCheckAlreadyRejected_BlocksClear()
+    public async Task LegacyRejectedProfile_WithNonRejectedState_StillReadsAndClassifiesRejected()
     {
+        // A profile rejected before commit 12 (profiles.RejectedAt set) whose users.State never
+        // recorded Rejected: it reads as rejected, and the next transition stores Rejected.
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId);
         var profile = await Db.Profiles.FirstAsync(p => p.Id == profileId, TestContext.Current.CancellationToken);
         profile.RejectedAt = Clock.GetCurrentInstant();
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        Db.ChangeTracker.Clear();
+        (await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken))
+            .State.Should().NotBe(UserState.Rejected);
 
-        var result = await _service.ApplyProfileOnboardingMutationAsync(
-            userId,
-            new UserProfileOnboardingCommand(
-                UserProfileOnboardingMutation.RecordConsentCheck,
-                ActorUserId: Guid.NewGuid(),
-                ConsentCheckStatus: ConsentCheckStatus.Cleared), TestContext.Current.CancellationToken);
+        var info = await _service.GetRawUserInfoAsync(userId, TestContext.Current.CancellationToken);
+        info!.IsRejected.Should().BeTrue();
 
-        result.Success.Should().BeFalse();
-        result.ErrorKey.Should().Be("AlreadyRejected");
+        await _service.SetSuspensionAsync(userId, suspended: false, ct: TestContext.Current.CancellationToken);
+        var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
+        user.State.Should().Be(UserState.Rejected);
     }
 
     [HumansFact]
-    public async Task ApplyProfileOnboardingMutationAsync_RecordConsentCheckPending_Throws()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId);
-
-        await Assert.ThrowsAsync<ArgumentException>(() =>
-            _service.ApplyProfileOnboardingMutationAsync(
-                userId,
-                new UserProfileOnboardingCommand(
-                    UserProfileOnboardingMutation.RecordConsentCheck,
-                    ActorUserId: Guid.NewGuid(),
-                    ConsentCheckStatus: ConsentCheckStatus.Pending), TestContext.Current.CancellationToken));
-    }
-
-    [HumansFact]
-    public async Task ApplyProfileOnboardingMutationAsync_RejectSignup_StampsRejectionFields()
-    {
-        var userId = Guid.NewGuid();
-        var reviewerId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId);
-
-        var result = await _service.ApplyProfileOnboardingMutationAsync(
-            userId,
-            new UserProfileOnboardingCommand(
-                UserProfileOnboardingMutation.RejectSignup,
-                ActorUserId: reviewerId,
-                RejectionReason: "Spam account"), TestContext.Current.CancellationToken);
-
-        result.Success.Should().BeTrue();
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
-        profile.RejectedAt.Should().Be(Clock.GetCurrentInstant());
-        profile.RejectedByUserId.Should().Be(reviewerId);
-        profile.RejectionReason.Should().Be("Spam account");
-        profile.IsApproved.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task ApplyProfileOnboardingMutationAsync_RejectSignupAlreadyRejected_ReturnsErrorKey()
-    {
-        var userId = Guid.NewGuid();
-        var profileId = await SeedUserWithProfileAsync(userId);
-        var profile = await Db.Profiles.FirstAsync(p => p.Id == profileId, TestContext.Current.CancellationToken);
-        profile.RejectedAt = Clock.GetCurrentInstant();
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        var result = await _service.ApplyProfileOnboardingMutationAsync(
-            userId,
-            new UserProfileOnboardingCommand(
-                UserProfileOnboardingMutation.RejectSignup,
-                ActorUserId: Guid.NewGuid()), TestContext.Current.CancellationToken);
-
-        result.Success.Should().BeFalse();
-        result.ErrorKey.Should().Be("AlreadyRejected");
-    }
-
-    [HumansFact]
-    public async Task ApplyProfileOnboardingMutationAsync_SetSuspensionTrue_SetsSuspendedStateWithoutTouchingAdminNotes()
+    public async Task SetSuspensionAsync_True_SetsSuspendedStateWithoutTouchingAdminNotes()
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
@@ -550,12 +466,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         Db.ChangeTracker.Clear();
 
-        var result = await _service.ApplyProfileOnboardingMutationAsync(
-            userId,
-            new UserProfileOnboardingCommand(
-                UserProfileOnboardingMutation.SetSuspension,
-                Suspended: true,
-                Notes: "Disruptive"), TestContext.Current.CancellationToken);
+        var result = await _service.SetSuspensionAsync(userId, suspended: true, ct: TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
@@ -563,21 +474,17 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         user.State.Should().Be(UserState.Suspended);
         // The reason goes to the audit log and the notification, never onto the profile row.
         profile.AdminNotes.Should().Be("Prefers email contact");
+        _claimsCacheInvalidator.Received(1).Invalidate(userId);
     }
 
     [HumansFact]
-    public async Task ApplyProfileOnboardingMutationAsync_SetAdminSuspensionTrue_SetsAdminSuspendedState()
+    public async Task SetSuspensionAsync_AdminSuspension_SetsAdminSuspendedState()
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
 
-        var result = await _service.ApplyProfileOnboardingMutationAsync(
-            userId,
-            new UserProfileOnboardingCommand(
-                UserProfileOnboardingMutation.SetSuspension,
-                Suspended: true,
-                AdminSuspension: true,
-                Notes: "Manual hold"), TestContext.Current.CancellationToken);
+        var result = await _service.SetSuspensionAsync(
+            userId, suspended: true, adminSuspension: true, TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
@@ -585,7 +492,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task ApplyProfileOnboardingMutationAsync_SetSuspensionFalse_RestoresActiveWhenIdentityComplete()
+    public async Task SetSuspensionAsync_False_RestoresActiveWhenIdentityComplete()
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
@@ -594,32 +501,12 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         Db.ChangeTracker.Clear();
 
-        var result = await _service.ApplyProfileOnboardingMutationAsync(
-            userId,
-            new UserProfileOnboardingCommand(
-                UserProfileOnboardingMutation.SetSuspension,
-                Suspended: false), TestContext.Current.CancellationToken);
+        var result = await _service.SetSuspensionAsync(userId, suspended: false, ct: TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         var fresh = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         fresh.State.Should().Be(UserState.Active);
     }
-
-    [HumansFact]
-    public async Task ApplyProfileOnboardingMutationAsync_SetConsentCheckPending_FlipsToPending()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId);
-
-        var result = await _service.ApplyProfileOnboardingMutationAsync(
-            userId,
-            new UserProfileOnboardingCommand(UserProfileOnboardingMutation.SetConsentCheckPending), TestContext.Current.CancellationToken);
-
-        result.Success.Should().BeTrue();
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
-        profile.ConsentCheckStatus.Should().Be(ConsentCheckStatus.Pending);
-    }
-
     [HumansFact]
     public async Task SetDeletionPendingAsync_WhenUpdated_InvalidatesClaims()
     {
@@ -660,16 +547,11 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task ApplyProfileOnboardingMutationAsync_NoProfile_ReturnsNotFound()
+    public async Task StateTransitions_NoProfile_ReturnNotFound()
     {
-        var result = await _service.ApplyProfileOnboardingMutationAsync(
-            Guid.NewGuid(),
-            new UserProfileOnboardingCommand(
-                UserProfileOnboardingMutation.RejectSignup,
-                ActorUserId: Guid.NewGuid()), TestContext.Current.CancellationToken);
-
-        result.Success.Should().BeFalse();
-        result.ErrorKey.Should().Be("NotFound");
+        var ct = TestContext.Current.CancellationToken;
+        (await _service.SetRejectedAsync(Guid.NewGuid(), ct)).ErrorKey.Should().Be("NotFound");
+        (await _service.SetSuspensionAsync(Guid.NewGuid(), suspended: true, ct: ct)).ErrorKey.Should().Be("NotFound");
     }
 
     [HumansFact(Timeout = 5000)]

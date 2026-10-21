@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Humans.Users.Services;
 using Humans.Base.Attributes;
 using Humans.Base.Models.Tables;
@@ -52,6 +53,7 @@ internal sealed class ProfileViewController(
     ITeamService teamService,
     ICampService campService,
     IGovernanceService governanceService,
+    IConsentService consentService,
     IAuthorizationService authorizationService) : HumansControllerBase(userService)
 {
     private readonly IUserManagement _userService = userService;
@@ -113,7 +115,7 @@ internal sealed class ProfileViewController(
             UserId = id,
             DisplayName = profileInfo.BurnerName,
             IsOwnProfile = isOwnProfile,
-            IsApproved = profile.IsApproved,
+            IsApproved = (await consentService.GetConsentReviewAsync(id, ct)).IsApproved,
             NoShowHistory = noShowContext.History,
             CanViewShiftSignups = noShowContext.CanView,
             OnsiteSince = canViewOnsiteChip
@@ -224,7 +226,8 @@ internal sealed class ProfileViewController(
         // Camp + roles for the active season; rendered admin-only in the view.
         var camp = await campService.GetCampUserInfoAsync(id, ct);
         var tier = await governanceService.GetMembershipTierAsync(id, ct);
-        var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(info, memberships, tier, camp);
+        var isApproved = (await consentService.GetConsentReviewAsync(id, ct)).IsApproved;
+        var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(info, memberships, tier, isApproved, camp);
 
         return PartialView("_HumanPopover", vm);
     }

@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 

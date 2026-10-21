@@ -70,6 +70,13 @@ internal partial interface IUserRepository : IRepository
         Guid userId, bool suspended, bool adminSuspension, CancellationToken ct = default);
 
     /// <summary>
+    /// Records a signup rejection on <c>User.State</c> (the classifier keeps a higher-precedence
+    /// merge/deletion state). Writes <c>users.State</c> only.
+    /// </summary>
+    /// <returns>true if a row was updated; false if the user does not exist.</returns>
+    Task<bool> SetRejectedAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Clears deletion-pending fields (<c>DeletionRequestedAt</c>,
     /// <c>DeletionScheduledFor</c>, <c>DeletionEligibleAfter</c>).
     /// Returns false if the user does not exist.

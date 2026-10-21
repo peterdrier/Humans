@@ -123,4 +123,5 @@
   <data name="Consent_MyData_YesDeleteMyAccount" xml:space="preserve"><value>Yes, Delete My Account</value></data>
   <data name="Consent_MyData_DeletionAccessRevoked" xml:space="preserve"><value>Your team memberships and role assignments have been revoked.</value></data>
   <data name="Consent_MyData_CancelNoRestore" xml:space="preserve"><value>Cancelling will not restore your previous team memberships. You will need to rejoin teams.</value></data>
+  <data name="Consent_AccountStatus_ReasonLabel" xml:space="preserve"><value>Reason:</value></data>
 </root>

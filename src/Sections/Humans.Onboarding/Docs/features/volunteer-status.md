@@ -80,7 +80,7 @@ Status is computed on the dashboard based on Volunteers team presence and profil
         │              │
    [Suspended]  ┌──────▼──────────┐
                 │ Rejected?       │
-                │ (RejectedAt set)│
+                │ (State=Rejected)│
                 └──────┬──────────┘
                        │
                 ┌─Yes──┴──No───┐
@@ -225,7 +225,7 @@ Triggered by:
 ```
 Triggered by:
   - A ConsentCoordinator, Board member, or Admin rejects the signup
-  - Profile.RejectionReason set, RejectedAt set
+  - Consent's review records RejectionReason and RejectedAt; Users stores UserState.Rejected
   - Human is notified, cannot become Volunteer unless rejection is reversed
 ```
 

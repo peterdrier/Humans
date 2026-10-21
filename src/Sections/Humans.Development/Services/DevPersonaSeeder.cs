@@ -41,7 +41,7 @@ internal sealed class DevPersonaSeeder(
     ITeamSeeding teamSeeding,
     ISystemTeamSync systemTeamSync,
     IUserService userService,
-    IUserWrite userWrite,
+    IConsentWrite consentWrite,
     IAuditLogService auditLogService,
     ICampService campService,
     ICampSeeding campSeeding,
@@ -132,16 +132,10 @@ internal sealed class DevPersonaSeeder(
         var profileId = save.ProfileId!.Value;
 
         // Mark approved + cleared so the dev persona skips the consent gate
-        // and lands on the dashboard. The CachingUserService decorator handles
-        // the UserInfo profile-slice refresh after the storage write.
+        // and lands on the dashboard (Consent's review row).
         const string consentNotes = "Dev persona - auto-seeded";
-        var consentCheckResult = await userWrite.ApplyProfileOnboardingMutationAsync(
-            id,
-            new UserProfileOnboardingCommand(
-                UserProfileOnboardingMutation.RecordConsentCheck,
-                ActorUserId: id,
-                ConsentCheckStatus: ConsentCheckStatus.Cleared,
-                Notes: consentNotes));
+        var consentCheckResult = await consentWrite.RecordConsentCheckAsync(
+            id, ConsentCheckStatus.Cleared, id, consentNotes);
         if (!consentCheckResult.Success)
         {
             logger.LogWarning(

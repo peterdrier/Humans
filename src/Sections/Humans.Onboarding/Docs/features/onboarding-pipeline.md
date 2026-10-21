@@ -36,6 +36,8 @@ The consent check is purely a **Volunteer-level gate**. It has nothing to do wit
 
 Previously, Board members manually set `IsApproved = true` on each profile. The new model replaced that with a Consent Coordinator audit gate; Volunteers admission is name + consents, not this gate. Board members now only vote on Colaborador/Asociado tier applications.
 
+The review fields named below (`ConsentCheckStatus`, `IsApproved`, `RejectedAt`, …) live in Consent's `consent_reviews` (`ConsentReviewInfo`) since Users decomposition commit 12; the rejection state itself is `UserState.Rejected` in Users.
+
 ## Pipeline Overview
 
 ```
@@ -164,7 +166,7 @@ The default Volunteer flow uses the **onboarding widget** (Names → Shifts → 
 - **Bulk Clear**: Coordinators can multi-select rows and clear them in one action. The server re-checks each selection against the live queue — eligibility is *membership of that queue* (`Pending` **or** `Flagged`), so a flagged row is bulk-clearable exactly as it is clearable one at a time; anything no longer in the queue (already cleared, profile rejected) is dropped. Each survivor then goes through the single-row `ClearConsentCheckAsync`, whose own refusals are logged and counted as skips. There is **no server-side legal-name check** in this path: the view withholds the checkbox from a nameless row, so the constraint is presentational only. The flash reads "Approved {0} of {1} selected — the others are no longer eligible."
 - **Flag**: ConsentCheckStatus = Flagged with notes — an audit annotation only; it does NOT block app access or Volunteers admission (Reject, which sets `RejectedAt`, is the kick-out lever). Can be resolved later.
 
-`IsApproved = true` is set on clearance even if legal docs are incomplete — it is a CC audit annotation, not an activation signal. App access came earlier at name entry (`UserState == Active`), and Volunteers-team admission is reconciled by `SystemTeamSyncJob` on **name + consents** (`HasRequiredNameFields && !IsSuspended && RejectedAt is null && HasAllRequiredConsents`); `IsApproved` / `ConsentCheckStatus` are not consulted.
+`IsApproved = true` is set on clearance even if legal docs are incomplete — it is a CC audit annotation, not an activation signal. App access came earlier at name entry (`UserState == Active`), and Volunteers-team admission is reconciled by `SystemTeamSyncJob` on **name + consents** (`HasRequiredNameFields && !IsSuspended && !review.IsRejected && HasAllRequiredConsents`); `IsApproved` / `ConsentCheckStatus` are not consulted.
 
 This gate is about Volunteer access only. It does not evaluate tier applications.
 

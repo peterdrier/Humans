@@ -1,6 +1,6 @@
 ---
 name: Derived user/profile predicates live on UserInfo, not ProfileInfo
-description: Derived user predicates (IsActive, IsStub, NeedsConsentReview, etc.) go on `UserInfo`, never on `ProfileInfo` or `Profile` — ProfileInfo stays a flat field projection.
+description: Derived user predicates (IsActive, IsStub, IsRejected, etc.) go on `UserInfo`, never on `ProfileInfo` or `Profile` — ProfileInfo stays a flat field projection; one that also needs another section's data lives with that section.
 ---
 
 `UserInfo` is the one-stop-shop read model (see [`iuserservice-onestop-userinfo`](iuserservice-onestop-userinfo.md)). Every derived predicate about a user — including ones that read off `Profile` fields — lives on `UserInfo`, not on `ProfileInfo`.
@@ -20,8 +20,10 @@ description: Derived user predicates (IsActive, IsStub, NeedsConsentReview, etc.
 - `BurnerName`, `Email`, `EmailConfirmed`, `IsDeletionPending`
 - `PrimaryEmail`, `GoogleEmail`, `AllVerifiedEmails`, `MarketingOptedOut`
 - `HasTicket`, `HasTicketForYear(year)`
-- `IsStub`, `IsActive`, `HasRequiredNameFields`, `NeedsConsentReview`
+- `IsStub`, `IsActive`, `HasRequiredNameFields`, `IsRejected`
 - `FullName` lives on `ProfileInfo` as a trivial concatenation — that's a **field formatter**, not a predicate; keep it where it is.
+
+**Exception — the predicate needs another section's data.** `NeedsConsentReview` / `IsConsentCheckFlagged` read the Consent Coordinator review, which Consent owns (`consent_reviews`), so they are extension methods `ConsentReviewPredicates.X(this UserInfo, ConsentReviewInfo)` in Consent's contracts, not `UserInfo` properties: `Users.Contracts` cannot see Consent's types.
 
 **Counter-example (don't do):**
 - ❌ `ProfileInfo.IsStub` (was briefly considered, rejected — moved to `UserInfo`).

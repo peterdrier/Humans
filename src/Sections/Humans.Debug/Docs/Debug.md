@@ -96,7 +96,7 @@ Debug consumes in-memory telemetry trackers (`IClientStatsTracker`, `IHttpStatus
 
 `/Debug/DataMigrations` and `/api/data-migrations` compose every section's `ISectionDataMigrations` contribution and audit through `IAuditLogService`; they name no section.
 
-The all-users grid reads `IUserService.GetAllRawUserInfosAsync` and the `UserInfo` projection only.
+The all-users grid reads `IUserService.GetAllRawUserInfosAsync` and the `UserInfo` projection, plus Consent's `IConsentService.GetConsentReviewsAsync` for its consent column.
 
 The widget gallery and the dashboard card read other sections through their contracts: `ITeamService`, `ICampService`, `IShiftManagementService`, `IEventService`, `IUserService`, `IShiftView`, and `ISettingsService` (Settings' supplier of the active event). The gallery also references the section assemblies whose public view components it renders as `<vc:>` tag helpers (Camps, Users, Tickets, Shifts, Calendar, AuditLog, Teams, Events); that fan-in is the page's job and is opened in `Views/_ViewImports.cshtml`. `MemberTermStatus` (Governance), `MyGoogleResources` (GoogleIntegration) and `NotificationBell` (Notifications) get no gallery card at all — they already render on the page through the member-dashboard and header-right chrome-slot demos, and a `WidgetGallery` contribution would only duplicate them.
 

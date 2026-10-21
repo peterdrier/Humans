@@ -749,12 +749,6 @@
   <data name="AdminHuman_Information" xml:space="preserve">
     <value>Informazioni sul membro</value>
   </data>
-  <data name="AdminHuman_ConsentCheck" xml:space="preserve">
-    <value>Verifica del consenso</value>
-  </data>
-  <data name="AdminHuman_NotStarted" xml:space="preserve">
-    <value>Non avviato</value>
-  </data>
   <data name="AdminHuman_UserId" xml:space="preserve">
     <value>ID utente</value>
   </data>

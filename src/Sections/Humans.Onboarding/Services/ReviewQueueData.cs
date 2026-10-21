@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 
@@ -8,6 +9,7 @@ internal sealed record ReviewQueueData(
     List<UserInfo> Flagged,
     HashSet<Guid> PendingAppUserIds,
     Dictionary<Guid, ConsentProgressInfo> ConsentProgress,
-    IReadOnlyDictionary<Guid, MembershipTier> Tiers);
+    IReadOnlyDictionary<Guid, MembershipTier> Tiers,
+    IReadOnlyDictionary<Guid, ConsentReviewInfo> Reviews);
 
 internal sealed record ConsentProgressInfo(int Signed, int Required);

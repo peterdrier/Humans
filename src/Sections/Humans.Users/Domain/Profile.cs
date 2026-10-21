@@ -121,7 +121,12 @@ internal sealed class Profile
     [PersonalData]
     public string? Iban { get; set; }
 
-    /// <summary>Auto-set when consent check clears.</summary>
+    /// <summary>
+    /// Frozen legacy column, like the review columns below: no longer written. The live Consent
+    /// Coordinator review is Consent's <c>consent_reviews</c> (Users decomposition commit 12); kept
+    /// until the <c>consent.profile-review</c> copy reports done in production and a drop PR removes
+    /// them. <see cref="RejectedAt"/> still feeds the state classifier's legacy arm until then.
+    /// </summary>
     public bool IsApproved { get; set; }
 
     /// <summary>
@@ -131,8 +136,8 @@ internal sealed class Profile
     /// </summary>
     public LegacyMembershipTier MembershipTier { get; set; }
 
-    /// <summary>Null until all required consents are signed; cleared triggers auto-approve.</summary>
-    public ConsentCheckStatus? ConsentCheckStatus { get; set; }
+    /// <summary>Frozen legacy column (see <see cref="IsApproved"/>).</summary>
+    public LegacyConsentCheckStatus? ConsentCheckStatus { get; set; }
 
     public Instant? ConsentCheckAt { get; set; }
 

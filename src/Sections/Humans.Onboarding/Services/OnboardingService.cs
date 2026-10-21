@@ -22,6 +22,7 @@ namespace Humans.Onboarding.Services;
 internal sealed class OnboardingService(
     IUserService userService,
     IUserWrite userWrite,
+    IConsentWrite consentWrite,
     IGovernanceService applicationDecisionService,
     IEmailService emailService,
     OnboardingEmails emailMessages,
@@ -41,10 +42,12 @@ internal sealed class OnboardingService(
     {
         // Invariant: anyone with an unresolved Flagged consent check must appear in the queue so a
         // CC can resolve them — even if a prior admin override flipped IsApproved=true. Rejected
-        // profiles are excluded (see UserInfo.IsConsentCheckFlagged): Clear is blocked on them and
-        // the row would otherwise be unresolvable. Pending list keeps the NeedsConsentReview gate.
+        // members are excluded (see ConsentReviewPredicates.IsConsentCheckFlagged): Clear is blocked
+        // on them and the row would otherwise be unresolvable. Pending list keeps the
+        // NeedsConsentReview gate.
         var all = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
-        var (pending, flagged) = PartitionReviewQueue(all);
+        var reviews = await consentService.GetConsentReviewsAsync(ct);
+        var (pending, flagged) = PartitionReviewQueue(all, reviews);
 
         var allUserIds = flagged.Concat(pending).Select(u => u.Id).ToList();
         var pendingAppUserIds = await applicationDecisionService
@@ -64,22 +67,24 @@ internal sealed class OnboardingService(
 
         var tiers = await applicationDecisionService.GetMembershipTiersAsync(ct);
 
-        return new ReviewQueueData(pending, flagged, pendingAppHashSet, consentProgress, tiers);
+        return new ReviewQueueData(pending, flagged, pendingAppHashSet, consentProgress, tiers, reviews);
     }
 
     // Who is in the queue, in one place. Bulk clear's eligibility is *defined* as "a row in the
     // queue", so it partitions here too rather than restating the predicate — the two cannot
     // drift apart. Ordering is the queue's display order and both callers depend on it.
     private static (List<UserInfo> Pending, List<UserInfo> Flagged) PartitionReviewQueue(
-        IEnumerable<UserInfo> all)
+        IEnumerable<UserInfo> all, IReadOnlyDictionary<Guid, ConsentReviewInfo> reviews)
     {
+        ConsentReviewInfo ReviewOf(UserInfo u) => reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id);
+
         var flagged = all
-            .Where(u => u.IsConsentCheckFlagged)
+            .Where(u => u.IsConsentCheckFlagged(ReviewOf(u)))
             .OrderBy(u => u.Profile!.CreatedAt)
             .ToList();
 
         var pending = all
-            .Where(u => u.NeedsConsentReview && !u.IsConsentCheckFlagged)
+            .Where(u => u.NeedsConsentReview(ReviewOf(u)) && !u.IsConsentCheckFlagged(ReviewOf(u)))
             .OrderBy(u => u.Profile!.CreatedAt)
             .ToList();
 
@@ -92,6 +97,8 @@ internal sealed class OnboardingService(
 
         if (profile is null)
             return new ReviewDetailData(null, 0, 0, null);
+
+        var review = await consentService.GetConsentReviewAsync(userId, ct);
 
         var snapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId, ct);
 
@@ -106,8 +113,8 @@ internal sealed class OnboardingService(
                 profile.City,
                 profile.CountryCode,
                 tier,
-                profile.ConsentCheckStatus,
-                profile.ConsentCheckNotes,
+                review.Status,
+                review.Notes,
                 profile.CreatedAt),
             snapshot.RequiredConsentCount - snapshot.PendingConsentCount,
             snapshot.RequiredConsentCount,
@@ -117,7 +124,7 @@ internal sealed class OnboardingService(
     // --- Consent-check mutations ---
 
     // Annotation-only after the name-only access switch: Clear records the consent-check status
-    // (and flips Profile.IsApproved via RecordConsentCheck) for the CC audit track. It no longer
+    // (and sets the review's IsApproved, Consent's consent_reviews) for the CC audit track. It no longer
     // provisions any team — Volunteers/tier membership is reconciled by SystemTeamSyncJob on
     // name + consents, decoupled from CC review.
     public Task<OnboardingResult> ClearConsentCheckAsync(
@@ -136,7 +143,7 @@ internal sealed class OnboardingService(
         // discards to reach the ids.
         var selected = userIds.ToHashSet();
         var all = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
-        var (pending, flagged) = PartitionReviewQueue(all);
+        var (pending, flagged) = PartitionReviewQueue(all, await consentService.GetConsentReviewsAsync(ct));
         var eligibleUserIds = pending
             .Concat(flagged)
             .Where(u => selected.Contains(u.Id))
@@ -164,7 +171,7 @@ internal sealed class OnboardingService(
     }
 
     // Flag records the consent-check status for the CC audit track. Inert for a Volunteer, NOT for
-    // a Colaborador/Asociado: it clears Profile.IsApproved, which gates their tier team on the next
+    // a Colaborador/Asociado: it clears the review's IsApproved, which gates their tier team on the next
     // sync (Docs/health.md §4, and §5 for why the detail view withholds it). Reject is the CC's
     // kick-out lever.
     public Task<OnboardingResult> FlagConsentCheckAsync(
@@ -176,13 +183,11 @@ internal sealed class OnboardingService(
     public async Task<OnboardingResult> RejectSignupAsync(
         Guid userId, Guid reviewerId, string? reason, CancellationToken ct = default)
     {
-        var result = await userWrite.ApplyProfileOnboardingMutationAsync(
-            userId,
-            new UserProfileOnboardingCommand(
-                UserProfileOnboardingMutation.RejectSignup,
-                ActorUserId: reviewerId,
-                RejectionReason: reason),
-            ct);
+        // Two writes: Consent records the rejection (reason, time, reviewer), Users the state.
+        var result = await consentWrite.RecordRejectionAsync(userId, reviewerId, reason, ct);
+        if (!result.Success)
+            return result;
+        result = await userWrite.SetRejectedAsync(userId, ct);
         if (!result.Success)
             return result;
 
@@ -251,7 +256,10 @@ internal sealed class OnboardingService(
         Guid userId, CancellationToken ct = default)
     {
         var info = await userService.GetUserInfoAsync(userId, ct);
-        if (info is null || !info.NeedsConsentReview || info.Profile!.ConsentCheckStatus is not null)
+        if (info is null)
+            return false;
+        var review = await consentService.GetConsentReviewAsync(info.Id, ct);
+        if (!info.NeedsConsentReview(review) || review.Status is not null)
             return false;
         userId = info.Id;
 
@@ -260,10 +268,7 @@ internal sealed class OnboardingService(
         if (!hasAllConsents)
             return false;
 
-        var result = await userWrite.ApplyProfileOnboardingMutationAsync(
-            userId,
-            new UserProfileOnboardingCommand(UserProfileOnboardingMutation.SetConsentCheckPending),
-            ct);
+        var result = await consentWrite.SetConsentCheckPendingAsync(userId, ct);
         if (!result.Success)
             return false;
 
@@ -317,14 +322,7 @@ internal sealed class OnboardingService(
         string? notes,
         CancellationToken ct)
     {
-        var result = await userWrite.ApplyProfileOnboardingMutationAsync(
-            userId,
-            new UserProfileOnboardingCommand(
-                UserProfileOnboardingMutation.RecordConsentCheck,
-                ActorUserId: reviewerId,
-                ConsentCheckStatus: status,
-                Notes: notes),
-            ct);
+        var result = await consentWrite.RecordConsentCheckAsync(userId, status, reviewerId, notes, ct);
         if (!result.Success)
             return result;
 

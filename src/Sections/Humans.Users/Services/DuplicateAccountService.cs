@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
@@ -14,6 +15,7 @@ internal sealed class DuplicateAccountService(
     ITeamService teamService,
     IRoleAssignmentService roleAssignmentService,
     IGovernanceService governanceService,
+    IConsentService consentService,
     IAuditLogService auditLogService) : IDuplicateAccountService
 {
     /// <summary>
@@ -78,6 +80,7 @@ internal sealed class DuplicateAccountService(
             .ToDictionary(u => u.Id);
 
         var tiers = await governanceService.GetMembershipTiersAsync(ct);
+        var reviews = await consentService.GetConsentReviewsAsync(ct);
 
         // Per-user team counts (active only).
         var teamCounts = new Dictionary<Guid, int>();
@@ -122,10 +125,10 @@ internal sealed class DuplicateAccountService(
                         [
                             BuildAccountInfo(id1,
                                 entries.Where(e => e.UserId == id1).Select(e => e.Source).ToList(),
-                                infoMap, tiers, teamCounts, roleAssignmentCounts),
+                                infoMap, tiers, reviews, teamCounts, roleAssignmentCounts),
                             BuildAccountInfo(id2,
                                 entries.Where(e => e.UserId == id2).Select(e => e.Source).ToList(),
-                                infoMap, tiers, teamCounts, roleAssignmentCounts)
+                                infoMap, tiers, reviews, teamCounts, roleAssignmentCounts)
                         ]
                     };
                 }
@@ -166,6 +169,7 @@ internal sealed class DuplicateAccountService(
         List<string> emailSources,
         Dictionary<Guid, UserInfo> infoMap,
         IReadOnlyDictionary<Guid, MembershipTier> tiers,
+        IReadOnlyDictionary<Guid, ConsentReviewInfo> reviews,
         Dictionary<Guid, int> teamCounts,
         Dictionary<Guid, int> roleAssignmentCounts)
     {
@@ -181,7 +185,7 @@ internal sealed class DuplicateAccountService(
         {
             membershipTier = tiers.GetValueOrDefault(userId, MembershipTier.Volunteer).ToString();
             membershipStatus = info.IsSuspended ? "Suspended"
-                : profile.IsApproved ? "Active" : "Pending";
+                : reviews.TryGetValue(userId, out var review) && review.IsApproved ? "Active" : "Pending";
             isProfileComplete = !string.IsNullOrEmpty(profile.FirstName) &&
                                 !string.IsNullOrEmpty(profile.LastName);
         }

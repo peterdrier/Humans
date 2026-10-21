@@ -13,8 +13,7 @@ internal static class AdminHumanDetailViewModelBuilder
         MembershipTier membershipTier,
         IReadOnlyList<UserEmailRowSnapshot> userEmails,
         int consentCount,
-        Instant now,
-        string? rejectedByName)
+        Instant now)
     {
         ArgumentNullException.ThrowIfNull(info);
         ArgumentNullException.ThrowIfNull(applications);
@@ -38,10 +37,6 @@ internal static class AdminHumanDetailViewModelBuilder
             AdminNotes = profile?.AdminNotes,
             PreferredLanguage = info.PreferredLanguage,
             MembershipTier = membershipTier,
-            ConsentCheckStatus = profile?.ConsentCheckStatus,
-            RejectionReason = profile?.RejectionReason,
-            RejectedAt = profile?.RejectedAt?.ToDateTimeUtc(),
-            RejectedByName = rejectedByName,
             ApplicationCount = applications.Count,
             ConsentCount = consentCount,
             Applications = applications

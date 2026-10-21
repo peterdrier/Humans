@@ -269,4 +269,5 @@
   <data name="Consent_MyData_CancelNoRestore" xml:space="preserve">
     <value>Das Abbrechen stellt Ihre früheren Teammitgliedschaften nicht wieder her. Sie müssen den Teams erneut beitreten.</value>
   </data>
+  <data name="Consent_AccountStatus_ReasonLabel" xml:space="preserve"><value>Grund:</value></data>
 </root>

@@ -29,7 +29,9 @@ public static class UserFixtures
     public static UserState StateFor(ProfileInfo? profile) =>
         profile switch
         {
+#pragma warning disable HUM_PROFILE_REVIEW // a legacy-rejected fixture profile still classifies as Rejected
             { RejectedAt: not null } => UserState.Rejected,
+#pragma warning restore HUM_PROFILE_REVIEW
             not null when !string.IsNullOrWhiteSpace(profile.BurnerName)
                 && !string.IsNullOrWhiteSpace(profile.FirstName)
                 && !string.IsNullOrWhiteSpace(profile.LastName) => UserState.Active,
@@ -68,7 +70,7 @@ public static class UserFixtures
         string? iban = null,
         bool isApproved = false,
         LegacyMembershipTier membershipTier = LegacyMembershipTier.Volunteer,
-        ConsentCheckStatus? consentCheckStatus = null,
+        LegacyConsentCheckStatus? consentCheckStatus = null,
         Instant? consentCheckAt = null,
         Guid? consentCheckedByUserId = null,
         string? consentCheckNotes = null,

@@ -1261,41 +1261,27 @@ public class CachingUserServiceTests
         refreshed.Profile.ProfilePictureContentType.Should().BeNull();
     }
 
-    [HumansFact]
-    public async Task ApplyProfileOnboardingMutationAsync_RefreshesProfileSlice()
+    [HumansTheory]
+    [Xunit.InlineData(UserState.Rejected)]
+    [Xunit.InlineData(UserState.Suspended)]
+    public async Task StateTransitions_RefreshEntry(UserState newState)
     {
         var userId = Guid.NewGuid();
         var sut = CreateSut();
         await PrimeAsync(sut, SampleUserInfo(userId));
+        var ct = Xunit.TestContext.Current.CancellationToken;
 
-        _inner.ApplyProfileOnboardingMutationAsync(
-                userId,
-                Arg.Any<UserProfileOnboardingCommand>(),
-                Arg.Any<CancellationToken>())
-            .Returns(new OnboardingResult(true));
+        _inner.SetRejectedAsync(userId, Arg.Any<CancellationToken>()).Returns(new OnboardingResult(true));
+        _inner.SetSuspensionAsync(userId, true, false, Arg.Any<CancellationToken>()).Returns(new OnboardingResult(true));
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(SampleUserInfo(userId) with { State = newState }));
 
-        StubRefreshEntry(userId, new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            BurnerName = "Alice",
-            FirstName = "Alice",
-            LastName = "Example",
-            IsApproved = true,
-            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            UpdatedAt = Instant.FromUtc(2026, 1, 2, 0, 0),
-        });
+        if (newState == UserState.Rejected)
+            await sut.SetRejectedAsync(userId, ct);
+        else
+            await sut.SetSuspensionAsync(userId, suspended: true, ct: ct);
 
-        await sut.ApplyProfileOnboardingMutationAsync(
-            userId,
-            new UserProfileOnboardingCommand(
-                UserProfileOnboardingMutation.RecordConsentCheck,
-                ActorUserId: Guid.NewGuid(),
-                ConsentCheckStatus: ConsentCheckStatus.Cleared), Xunit.TestContext.Current.CancellationToken);
-
-        var refreshed = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
-        refreshed!.Profile.Should().NotBeNull();
-        refreshed.Profile!.IsApproved.Should().BeTrue();
+        (await sut.GetUserInfoAsync(userId, ct))!.State.Should().Be(newState);
     }
 
     [HumansFact]

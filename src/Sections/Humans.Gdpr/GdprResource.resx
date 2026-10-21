@@ -41,7 +41,6 @@
   <data name="Gdpr_AccountStatus_ConsentSuspendedBody" xml:space="preserve"><value>Your access is suspended until you complete the required legal consents.</value></data>
   <data name="Gdpr_AccountStatus_ReviewConsents" xml:space="preserve"><value>Review required consents</value></data>
   <data name="Gdpr_AccountStatus_ContactInfo" xml:space="preserve"><value>Contact an admin for more information:</value></data>
-  <data name="Gdpr_AccountStatus_ReasonLabel" xml:space="preserve"><value>Reason:</value></data>
   <data name="Gdpr_AccountStatus_ReferenceId" xml:space="preserve"><value>Reference ID:</value></data>
   <data name="Gdpr_AccountDeletion_Title" xml:space="preserve"><value>Pending account deletion</value></data>
   <data name="Gdpr_AccountDeletion_Heading" xml:space="preserve"><value>Your account is scheduled for deletion</value></data>

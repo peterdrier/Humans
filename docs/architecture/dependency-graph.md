@@ -240,6 +240,7 @@ graph LR
     %% Agent
     AgentSvc --> User
     AgentSvc --> AppDec
+    AgentSvc --> Consent
     AgentSettings --> Audit
 
     %% Users
@@ -268,6 +269,7 @@ graph LR
     DupAcct --> Role
     DupAcct --> Audit
     DupAcct --> AppDec
+    DupAcct --> Consent
     ExtLogin --> MagicLink
     UsersAudience --> TicketQ
     HumanLifecycle --> NotifEmitter
@@ -529,6 +531,7 @@ graph LR
     NotifMeter --> TicketSync
     NotifMeter --> AppDec
     NotifMeter --> Camp
+    NotifMeter --> Consent
 
     %% Gdpr
     Gdpr --> User
@@ -622,6 +625,7 @@ graph LR
     Survey --> Email
     Survey --> GTrans
     Survey --> AppDec
+    Survey --> Consent
     SurveyPrevEmail --> UEmail
     SurveyPrevEmail --> User
     SurveyPrevEmail --> Email

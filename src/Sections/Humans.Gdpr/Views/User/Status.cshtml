@@ -31,11 +31,9 @@
                     <a href="mailto:@Model.ContactEmail">@Model.ContactEmail</a>
                 </p>
             }
-            @if (!string.IsNullOrWhiteSpace(Model.RejectionReason))
+            @if (Model.State == UserState.Rejected)
             {
-                <div class="alert alert-secondary text-start mt-3 mb-0">
-                    <strong>@Localizer["Gdpr_AccountStatus_ReasonLabel"]</strong> @Model.RejectionReason
-                </div>
+                <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.AccountStatus" user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Self" />
             }
             <p class="text-muted small mt-4 mb-0">
                 @Localizer["Gdpr_AccountStatus_ReferenceId"] <code>@Model.UserId</code>

@@ -41,7 +41,6 @@ internal sealed class UserController(
             State = state.Value,
             UserId = user?.Id ?? Guid.Empty,
             ContactEmail = "humans@nobodies.team",
-            RejectionReason = state == UserState.Rejected ? user?.Profile?.RejectionReason : null,
         };
         return View(viewModel);
     }

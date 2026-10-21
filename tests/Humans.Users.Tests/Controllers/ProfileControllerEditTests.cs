@@ -100,7 +100,8 @@ public class ProfileControllerEditTests
             sharedLocalizer,
             _governanceService,
             _accountDeletionService,
-            _membershipCalculator);
+            _membershipCalculator,
+            ConsentReviewStubs.Create());
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _userId.ToString())
@@ -607,15 +608,15 @@ public class ProfileControllerEditTests
     }
 
     private static ProfileViewModel MakeValidModel() => new()
-        {
-            BurnerName = "Burner",
-            FirstName = "First",
-            LastName = "Last",
-            // NoPriorBurnExperience=true short-circuits the volunteer-history
-            // requirement so we don't need to fabricate history rows just to
-            // reach the save path under test.
-            NoPriorBurnExperience = true,
-        };
+    {
+        BurnerName = "Burner",
+        FirstName = "First",
+        LastName = "Last",
+        // NoPriorBurnExperience=true short-circuits the volunteer-history
+        // requirement so we don't need to fabricate history rows just to
+        // reach the save path under test.
+        NoPriorBurnExperience = true,
+    };
 
     private UserInfo BuildUserInfo(Profile? profile) => UserInfoFactory.Create(
         user: new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" },

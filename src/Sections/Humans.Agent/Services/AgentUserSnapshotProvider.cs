@@ -45,6 +45,7 @@ internal sealed class AgentUserSnapshotProvider(
         var openTickets = ticketHoldings.OpenTicketOrderIds;
         var upcomingShifts = await LoadUpcomingShiftsAsync(userId, cancellationToken);
         var tier = await governance.GetMembershipTierAsync(userId, cancellationToken);
+        var review = await consents.GetConsentReviewAsync(userId, cancellationToken);
 
         var roleAssignments = activeRoles
             .Select(r => (r.RoleName, r.ValidTo?.ToIso8601() ?? "—"))
@@ -55,7 +56,7 @@ internal sealed class AgentUserSnapshotProvider(
             DisplayName: user?.BurnerName ?? string.Empty,
             PreferredLocale: user?.PreferredLanguage ?? "es",
             Tier: tier.ToString(),
-            IsApproved: profile?.IsApproved ?? false,
+            IsApproved: profile is not null && review.IsApproved,
             RoleAssignments: roleAssignments,
             Teams: teamMemberships,
             PendingConsentDocs: pendingDocs,

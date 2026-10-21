@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Threading;
@@ -31,6 +32,7 @@ internal sealed class SurveyService(
     ITeamService teamService,
     IUserService userService,
     IGovernanceService governanceService,
+    IConsentService consentService,
     ITicketService ticketService,
     IShiftView shiftView,
     IUserEmailService userEmailService,
@@ -918,7 +920,8 @@ internal sealed class SurveyService(
         // id resolves to an eligible survivor, but answering under the archived id would let one
         // Asociado hold two ballots, so eligibility requires the stored id to be the live one.
         var info = await userService.GetUserInfoAsync(userId, ct);
-        return info is not null && info.Id == userId && IsEligibleAsociado(info)
+        return info is not null && info.Id == userId
+            && IsEligibleAsociado(info, (await consentService.GetConsentReviewAsync(userId, ct)).IsApproved)
             && await governanceService.GetMembershipTierAsync(userId, ct) == MembershipTier.Asociado;
     }
 
@@ -2313,8 +2316,9 @@ internal sealed class SurveyService(
             case SurveyAudienceType.Asociados:
                 {
                     var tiers = await governanceService.GetMembershipTiersAsync(ct);
+                    var reviews = await consentService.GetConsentReviewsAsync(ct);
                     return (await userService.GetAllUserInfosAsync(ct))
-                        .Where(user => IsEligibleAsociado(user)
+                        .Where(user => IsEligibleAsociado(user, IsApproved(reviews, user.Id))
                             && tiers.GetValueOrDefault(user.Id) == MembershipTier.Asociado)
                         .Select(user => user.Id)
                         .ToHashSet();
@@ -2371,18 +2375,22 @@ internal sealed class SurveyService(
     private async Task<List<Guid>> ActiveMemberIdsAsync(CancellationToken ct)
     {
         var users = await userService.GetAllUserInfosAsync(ct);
+        var reviews = await consentService.GetConsentReviewsAsync(ct);
         return users
-            .Where(u => u.IsApproved && !u.IsDeletionPending)
+            .Where(u => IsApproved(reviews, u.Id) && !u.IsDeletionPending)
             .Select(u => u.Id)
             .ToList();
     }
 
-    /// <summary>The account half of Asociado eligibility; the tier half is Governance's
-    /// (<see cref="IGovernanceService.GetMembershipTierAsync"/>).</summary>
-    private static bool IsEligibleAsociado(UserInfo? user)
-        => user is
+    /// <summary>Cleared by the Consent Coordinator (Consent's review).</summary>
+    private static bool IsApproved(IReadOnlyDictionary<Guid, ConsentReviewInfo> reviews, Guid userId) =>
+        reviews.TryGetValue(userId, out var review) && review.IsApproved;
+
+    /// <summary>The account half of Asociado eligibility (with the Consent Coordinator's approval);
+    /// the tier half is Governance's (<see cref="IGovernanceService.GetMembershipTierAsync"/>).</summary>
+    private static bool IsEligibleAsociado(UserInfo? user, bool isApproved)
+        => isApproved && user is
         {
-            IsApproved: true,
             IsGdprAnonymized: false,
             IsDeletionPending: false,
             IsMerged: false,

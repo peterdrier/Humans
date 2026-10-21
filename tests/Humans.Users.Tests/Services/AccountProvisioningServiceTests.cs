@@ -199,6 +199,8 @@ public class AccountProvisioningServiceTests
         public Task<bool> SetSuspensionAsync(
             Guid userId, bool suspended, bool adminSuspension, CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task<bool> SetRejectedAsync(Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
         public Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdReadOnlyAsync(
             Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();

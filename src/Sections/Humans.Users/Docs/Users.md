@@ -79,7 +79,7 @@ Extends `IdentityUser<Guid>` with project-specific columns.
 
 Computed: `IsDeletionPending => DeletionRequestedAt.HasValue`.
 
-User-suspension state lives on `User.State` (`UserState.Suspended` / `AdminSuspended`); `UserInfo.IsSuspended` is the canonical predicate. Single-user writes go through `IUserWrite.ApplyProfileOnboardingMutationAsync` with `UserProfileOnboardingMutation.SetSuspension` (called by `HumanLifecycleService`), which delegates to `IUserRepository.SetSuspensionAsync` — that call writes `users.State` and nothing else. The suspension **reason** is not stored on the row: `HumanLifecycleService.SuspendAsync` puts it in the audit log (`AuditAction.MemberSuspended`) and in the `AccessSuspended` notification body. `Profile.AdminNotes` is a general-purpose admin field and is never written by the suspension path. The nightly consent-expiry sweep prepares user details and one team-membership snapshot before changing state, so lookup failures leave suspension retryable; downstream cleanup and audits process only the IDs the write actually changes. The bulk path is `IUserManagement.SuspendProfilesForMissingConsentAsync` → `IUserRepository.SuspendManyAsync`, which returns only the users whose state actually moved — a row already `Rejected`/`Merged`/`Deleted` outranks `Suspended` and is left alone. Unsuspending re-classifies from the remaining fields, so a rejected or deletion-pending row does not come back as `Active`. The User entity has no `IsArchived` / `SuspendedAt` / `SuspensionReason` columns; "archive" / "lockout" semantics are achieved by anonymizing identity fields and removing OAuth logins through `IAccountDeletionService.PurgeAsync` / `AnonymizeExpiredAccountAsync`.
+User-suspension state lives on `User.State` (`UserState.Suspended` / `AdminSuspended`); `UserInfo.IsSuspended` is the canonical predicate. Single-user writes go through `IUserWrite.SetSuspensionAsync` (called by `HumanLifecycleService`), which delegates to `IUserRepository.SetSuspensionAsync` — that call writes `users.State` and nothing else. The suspension **reason** is not stored on the row: `HumanLifecycleService.SuspendAsync` puts it in the audit log (`AuditAction.MemberSuspended`) and in the `AccessSuspended` notification body. `Profile.AdminNotes` is a general-purpose admin field and is never written by the suspension path. The nightly consent-expiry sweep prepares user details and one team-membership snapshot before changing state, so lookup failures leave suspension retryable; downstream cleanup and audits process only the IDs the write actually changes. The bulk path is `IUserManagement.SuspendProfilesForMissingConsentAsync` → `IUserRepository.SuspendManyAsync`, which returns only the users whose state actually moved — a row already `Rejected`/`Merged`/`Deleted` outranks `Suspended` and is left alone. Unsuspending re-classifies from the remaining fields, so a rejected or deletion-pending row does not come back as `Active`. Rejection is written by `IUserWrite.SetRejectedAsync` (Onboarding's reject, after Consent records the rejection in `consent_reviews`; Users decomposition commit 12) and carried forward from the stored `UserState.Rejected` by every later classification, alongside the frozen legacy `profiles.RejectedAt`. `UserInfo.IsRejected` reads both. The User entity has no `IsArchived` / `SuspendedAt` / `SuspensionReason` columns; "archive" / "lockout" semantics are achieved by anonymizing identity fields and removing OAuth logins through `IAccountDeletionService.PurgeAsync` / `AnonymizeExpiredAccountAsync`.
 
 `UserStateEvaluator.Classify`'s `isGdprDeleted` (→ `UserState.Deleted`) is keyed on the minted tombstone email (`deleted-<id>@deleted.local`, written by `ApplyExpiredDeletionAnonymizationAsync`), never on a user-editable name field — `DisplayName`/`BurnerName` are things a member can type, and a burner name of "Deleted User" must not read as erasure (nobodies-collective/Humans#1742). A narrower legacy fallback recognises the complete pre-email tombstone shape — `DisplayName`, `FirstName` and `LastName` all set to their sentinel values together — for rows anonymized before the email scrub existed; it retires with the #1102 `DisplayName` column drop.
 
@@ -401,15 +401,15 @@ A contact is identified by `ContactSource != null && LastLoginAt == null`. When 
 | BoardNotes | string? | null | Notes from the human intended for the Board (self + Board only). |
 | AdminNotes | string? (4000) | null | Admin-only notes (not visible to the human). |
 | Iban | string? (34) | null | **Legacy, no longer written.** The member's IBAN moved to Finance's `finance_payment_details` (Users decomposition commit 1). Carried on `ProfileInfo.Iban` as `[Obsolete]` (`HUM_PROFILE_IBAN`) for Finance's read fallback and the `finance.iban-to-payment-details` copy only; still erased by `EraseProfileExtrasForUserAsync` until the column is dropped. |
-| IsApproved | bool | false | Set automatically when consent check is cleared. |
+| IsApproved | bool | false | **Legacy, no longer written.** Moved to Consent's `consent_reviews` (Users decomposition commit 12). Carried on `ProfileInfo` as `[Obsolete]` (`HUM_PROFILE_REVIEW`) for Consent's read fallback and the `consent.profile-review` copy only; still exported and erased here until the column is dropped. |
 | MembershipTier | LegacyMembershipTier | Volunteer | **Legacy, no longer written.** The tier moved to Governance's `governance_membership_tiers` (Users decomposition commit 11). Carried on `ProfileInfo` as `[Obsolete]` (`HUM_PROFILE_TIER`) for Governance's read fallback and the `governance.profile-tier` copy only; still exported here until the column is dropped. |
-| ConsentCheckStatus | ConsentCheckStatus? | null | Consent check gate status (null until all consents signed). |
-| ConsentCheckAt | Instant? | null | When consent check was performed. |
-| ConsentCheckedByUserId | Guid? | null | Consent Coordinator who performed the check. |
-| ConsentCheckNotes | string? (4000) | null | Notes from the Consent Coordinator. |
-| RejectionReason | string? (4000) | null | Reason for rejection (when Admin rejects a flagged check). |
-| RejectedAt | Instant? | null | When the profile was rejected. |
-| RejectedByUserId | Guid? | null | Admin who rejected the profile. |
+| ConsentCheckStatus | LegacyConsentCheckStatus? | null | Legacy, as `IsApproved`. |
+| ConsentCheckAt | Instant? | null | When consent check was performed. Legacy, as `IsApproved`. |
+| ConsentCheckedByUserId | Guid? | null | Consent Coordinator who performed the check. Legacy, as `IsApproved`. |
+| ConsentCheckNotes | string? (4000) | null | Notes from the Consent Coordinator. Legacy, as `IsApproved`. |
+| RejectionReason | string? (4000) | null | Reason for rejection (when Admin rejects a flagged check). Legacy, as `IsApproved`. |
+| RejectedAt | Instant? | null | Legacy, as `IsApproved`. Still read by the state classifier and `UserInfo.IsRejected` (legacy arm) until the retirement PR. |
+| RejectedByUserId | Guid? | null | Admin who rejected the profile. Legacy, as `IsApproved`. |
 | NoPriorBurnExperience | bool | false | When true, CV entries are not required during onboarding. |
 | CreatedAt | Instant | — | Set on insert. |
 | UpdatedAt | Instant | — | Maintained by services. |
@@ -555,15 +555,9 @@ Sub-aggregate of Profile — no separate service. Records languages spoken with 
 
 Frozen copy of Governance's `MembershipTier` (`Volunteer` 0, `Colaborador` 1, `Asociado` 2) typing the legacy `profiles.MembershipTier` column, stored as string via `HasConversion<string>()`. The live enum and its meaning live in Governance.Contracts.
 
-### ConsentCheckStatus
+### LegacyConsentCheckStatus
 
-| Value | Int | Description |
-|-------|-----|-------------|
-| Pending | 0 | All required consents signed, awaiting Coordinator review |
-| Cleared | 1 | Cleared — triggers auto-approve as Volunteer |
-| Flagged | 2 | Safety concern flagged — blocks Volunteer access |
-
-Stored as string via `HasConversion<string>()`. Nullable on Profile (null until all consents signed).
+Frozen copy of Consent's `ConsentCheckStatus` (`Pending` 0, `Cleared` 1, `Flagged` 2) typing the legacy `profiles.ConsentCheckStatus` column, stored as string via `HasConversion<string>()`. The live enum and its meaning live in Consent's contracts; deleted with the `consent.profile-review` retirement PR.
 
 ### MessageCategory
 
@@ -690,7 +684,7 @@ Email Problems remediation buttons use the shared `data-confirm` handler: each c
 - Contact field visibility is enforced per-field: a human viewing their own profile sees everything. Board members see everything. Coordinators see CoordinatorsAndBoard-level and below. Shared-team members see MyTeams-level and below. Other active members see only AllActiveProfiles fields. Each call derives permissions for its supplied viewer; a reused service cannot carry another viewer’s roles or team membership into the result.
 - Birthday stores month and day only — never year. UI text uses "birthday", not "date of birth". The editor’s month names follow the selected UI language; numeric option values and English input parsing stay unchanged. Displayed location coordinates also follow the UI culture; hidden coordinate form values retain English input formatting.
 - Membership tier (Volunteer, Colaborador, Asociado) is owned by Governance, not the profile and not a role assignment. Initial profile setup shows the tier descriptions and links to `/Governance/Applications/Create` (new tab); the profile form carries no tier fields and submits no application.
-- Consent check status on the profile gates Volunteer activation: unset until all consents are signed, then Pending, Cleared, or Flagged.
+- The Consent Coordinator review (status, approval, rejection record) is Consent's (`consent_reviews`, Users decomposition commit 12) and gates nothing here: Volunteer admission is name + required consents. Users holds only the resulting `UserState.Rejected`. The admin detail page's consent-check badge and rejection alert are Consent's `AdminDetail` user part.
 - App access is gated by the stored `User.State` (`UserState`: Bare/Active/DeletePending/Suspended/Rejected/Deleted/Merged/AdminSuspended). `Profile` carries no state column.
 - Suspension notices use the recipient’s supported preferred language (English fallback), including the title, action, and consent-expiry email reason. Administrative suspension reasons are excerpted only when needed to fit the 2,000-character notification body; the full original reason remains in the suspension audit entry. Admin and consent-expiry notices reuse the account-status resources; suspension audit entries keep their existing text and actor.
 - Profile deletion request sets `User.DeletionRequestedAt` and `User.DeletionScheduledFor = now + 30 days` on the User record. Team memberships and governance role assignments are revoked immediately. Actual data purge is deferred to a background job. The request result, confirmation email, privacy page and deletion status wall report the later of the grace deadline and any ticket-holder event-hold floor, matching the job’s eligibility check. The existing `UserInfo` read model exposes this derived value as `EffectiveDeletionDate`.
@@ -722,8 +716,7 @@ Email Problems remediation buttons use the shared `data-confirm` handler: each c
 
 ## Triggers
 
-- When all required legal documents are consented to, consent check status transitions to Pending.
-- When consent check status is Cleared, the human is auto-approved as a Volunteer and added to the Volunteers system team.
+- When Onboarding rejects a signup, `IUserWrite.SetRejectedAsync` stores `UserState.Rejected` (Consent records the reason, time and reviewer).
 - When a human requests account deletion, team memberships and governance roles are revoked immediately and `User.DeletionScheduledFor` is set to `now + 30 days`. `ProcessAccountDeletionsJob` runs the actual anonymisation via `IAccountDeletionService.AnonymizeExpiredAccountAsync` after the scheduled date passes. The deletion-scheduled email formats that UTC date through the shared display formatter in the recipient’s language. Users email templates carry their resolved culture into Email’s wrapper so the branded footer uses the same language as the body.
 - Token verification and admin manual verification share `UserEmailService`'s conflict-to-merge path. A pending email already verified on another row creates an `AccountMergeRequest` (status `Pending`) for admin review instead of marking the email verified; an existing pending request for that email row is reused.
 - When an `AccountMergeRequest` is accepted, `IAccountMergeService.AcceptAsync` orchestrates a **fold-into-target** as an ordered fan-out with no wrapping transaction (see Part 1, "A merge is atomic by ordering"): it runs every registered `IUserMerge` implementation (`merger.ReassignAsync(source, target, …)`), each owning section re-FKing its own user-keyed rows source→target; then calls `IUserManagement.AnonymizeForMergeAsync` last to tombstone the source User row (sets `MergedToUserId` + `MergedAt`, locks out login). The source row is **not** deleted — it stays as a redirect for chain-follow reads on append-only history.
@@ -734,7 +727,7 @@ Email Problems remediation buttons use the shared `data-confirm` handler: each c
 
 - **Consent:** `IConsentManagement` — consent-check status gating depends on all required document versions having active consent records.
 - **Teams:** `ITeamService` — active membership equals membership in the Volunteers system team. Profile activation triggers addition.
-- **Onboarding:** none (one-directional — `OnboardingService` consumes `IUserService`, never the reverse). The consent-check threshold (`Profile.ConsentCheckStatus → Pending` + Consent Coordinator notification) is director-level work and lives on `IOnboardingIntake.SetConsentCheckPendingIfEligibleAsync`; controllers call it as a peer call after `IProfileEditorService.SaveProfileAsync`.
+- **Onboarding:** none (one-directional — `OnboardingService` consumes `IUserService`, never the reverse). The consent-check threshold (Consent's review `Status → Pending` + Consent Coordinator notification) is director-level work and lives on `IOnboardingIntake.SetConsentCheckPendingIfEligibleAsync`; controllers call it as a peer call after `IProfileEditorService.SaveProfileAsync`.
 - **Cantina:** `ICantinaService` (project reference; acyclic — Cantina reaches only `Users.Contracts`) for the medical things-to-do. Cantina owns the food answers, their form and nudge, and its own export/erase/merge.
 - **Finance:** none at compile time. The admin detail page's Payment Details card and its reveal (`/Finance/Admin/Members/{id}/RevealIban`) are Finance's, contributed to the `AdminDetailSidebar` user-part slot; Users only keeps the legacy `profiles.Iban` column (see Profile).
 - **Google Integration:** `IGoogleWorkspaceUserService` — a human's Google service email determines which email is used for Google Groups and Drive sync.

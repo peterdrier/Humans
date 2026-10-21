@@ -97,25 +97,9 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
     [HumansFact]
     public async Task SignUp_PublicRota_UserMissingConsents_ReturnsConfirmed()
     {
+        // Shifts never reads the Consent Coordinator review (it is Consent's, and Shifts does not
+        // reference it), so the review's approval cannot change this outcome either way.
         Assert.True(_userInfo.HasRequiredNameFields);
-        Assert.False(_userInfo.IsApproved);
-        var (_, shift) = SeedShiftScenario(SignupPolicy.Public);
-        await SaveAllAsync(TestContext.Current.CancellationToken);
-
-        var result = await _service.SignUpAsync(_userId, shift.Id, _userId);
-
-        Assert.True(result.Success);
-        Assert.Equal(SignupStatus.Confirmed, Saved(result).Status);
-    }
-
-    [HumansFact]
-    public async Task SignUp_PublicRota_ApprovedUser_ReturnsConfirmed()
-    {
-        _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(_userInfo with
-            {
-                Profile = _userInfo.Profile! with { IsApproved = true, ConsentCheckStatus = ConsentCheckStatus.Cleared },
-            });
         var (_, shift) = SeedShiftScenario(SignupPolicy.Public);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 

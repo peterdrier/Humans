@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using System.Globalization;
 using System.Security.Claims;
 using Humans.Base;
@@ -37,7 +38,8 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
 
         if (!isVolunteerMember)
         {
-            entries.Add(ConsentCheckEntry(localizer, profile));
+            var review = await services.GetRequiredService<IConsentService>().GetConsentReviewAsync(userId);
+            entries.Add(ConsentCheckEntry(localizer, profile is not null && review.Status == ConsentCheckStatus.Cleared));
         }
 
         var medical = await MedicalEntryAsync(services, localizer, logger, profile, userId);
@@ -76,10 +78,8 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
         };
     }
 
-    private static ThingsToDoEntry ConsentCheckEntry(IStringLocalizer<SharedResource> localizer, ProfileInfo? profile)
+    private static ThingsToDoEntry ConsentCheckEntry(IStringLocalizer<SharedResource> localizer, bool cleared)
     {
-        var cleared = profile?.ConsentCheckStatus == ConsentCheckStatus.Cleared;
-
         return new ThingsToDoEntry("consent-check", localizer["Todo_ConsentCheck_Title"].Value,
             "fa-solid fa-clipboard-check", Weight: 30)
         {

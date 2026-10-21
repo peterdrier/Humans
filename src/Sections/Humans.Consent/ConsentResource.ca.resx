@@ -269,4 +269,5 @@
   <data name="Consent_MyData_CancelNoRestore" xml:space="preserve">
     <value>Cancel·lar no restaurarà les teves pertinences a equips anteriors. Hauràs de tornar a unir-te als equips.</value>
   </data>
+  <data name="Consent_AccountStatus_ReasonLabel" xml:space="preserve"><value>Motiu:</value></data>
 </root>

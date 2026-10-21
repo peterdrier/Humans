@@ -8,9 +8,6 @@ internal sealed class AccountStatusViewModel
     public required UserState State { get; init; }
     public required Guid UserId { get; init; }
     public required string ContactEmail { get; init; }
-
-    /// <summary>Shown only for Rejected, when a reason was recorded.</summary>
-    public string? RejectionReason { get; init; }
 }
 
 /// <summary>The single screen a DeletePending user can reach — cancel the pending deletion.</summary>

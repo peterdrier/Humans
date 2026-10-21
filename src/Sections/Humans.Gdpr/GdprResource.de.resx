@@ -50,7 +50,6 @@
   <data name="Gdpr_AccountStatus_ConsentSuspendedBody" xml:space="preserve"><value>Dein Zugang ist gesperrt, bis du die erforderlichen rechtlichen Einwilligungen abschließt.</value></data>
   <data name="Gdpr_AccountStatus_ReviewConsents" xml:space="preserve"><value>Erforderliche Einwilligungen prüfen</value></data>
   <data name="Gdpr_AccountStatus_ContactInfo" xml:space="preserve"><value>Kontaktiere einen Administrator für weitere Informationen:</value></data>
-  <data name="Gdpr_AccountStatus_ReasonLabel" xml:space="preserve"><value>Grund:</value></data>
   <data name="Gdpr_AccountStatus_ReferenceId" xml:space="preserve"><value>Referenz-ID:</value></data>
   <data name="Gdpr_AccountDeletion_Title" xml:space="preserve"><value>Ausstehende Kontolöschung</value></data>
   <data name="Gdpr_AccountDeletion_Heading" xml:space="preserve"><value>Dein Konto ist zur Löschung vorgemerkt</value></data>

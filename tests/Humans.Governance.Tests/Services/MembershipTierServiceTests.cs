@@ -62,8 +62,12 @@ public sealed class MembershipTierServiceTests : IDisposable
     {
         var app = new MemberApplication
         {
-            Id = Guid.NewGuid(), UserId = userId, MembershipTier = tier, Motivation = "m",
-            SubmittedAt = Now - Duration.FromDays(30), UpdatedAt = Now - Duration.FromDays(30),
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            MembershipTier = tier,
+            Motivation = "m",
+            SubmittedAt = Now - Duration.FromDays(30),
+            UpdatedAt = Now - Duration.FromDays(30),
         };
         app.Approve(Guid.NewGuid(), null, new FakeClock(Now - Duration.FromDays(20)));
         app.TermExpiresAt = expires;

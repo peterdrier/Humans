@@ -33,27 +33,6 @@
                     </div>
                 </div>
 
-                @if (Model.State == UserState.Rejected)
-                {
-                    <div class="alert alert-danger mt-3 mb-0">
-                        <strong><i class="fa-solid fa-ban me-1"></i> Rejected</strong>
-                        @if (!string.IsNullOrEmpty(Model.RejectionReason))
-                        {
-                            <p class="mb-1 mt-1" style="white-space: pre-wrap;">@Model.RejectionReason</p>
-                        }
-                        <small class="text-muted">
-                            @if (Model.RejectedAt.HasValue)
-                            {
-                                @Model.RejectedAt.Value.ToDateTime()
-                            }
-                            @if (!string.IsNullOrEmpty(Model.RejectedByName))
-                            {
-                                <text> by @Model.RejectedByName</text>
-                            }
-                        </small>
-                    </div>
-                }
-
                 <hr />
 
                 <dl class="row mb-0">
@@ -78,24 +57,6 @@
                             </div>
                         </dd>
                     }
-
-                    <dt class="col-sm-3">@Localizer["AdminHuman_ConsentCheck"]</dt>
-                    <dd class="col-sm-9">
-                        @if (Model.ConsentCheckStatus.HasValue)
-                        {
-                            var badgeClass = Model.ConsentCheckStatus.Value switch
-                            {
-                                ConsentCheckStatus.Cleared => "bg-success",
-                                ConsentCheckStatus.Flagged => "bg-danger",
-                                _ => "bg-warning"
-                            };
-                            <span class="badge @badgeClass">@Model.ConsentCheckStatus.Value</span>
-                        }
-                        else
-                        {
-                            <span class="text-muted">@Localizer["AdminHuman_NotStarted"]</span>
-                        }
-                    </dd>
 
                     <dt class="col-sm-3">@Localizer["AdminHuman_UserId"]</dt>
                     <dd class="col-sm-9"><code>@Model.UserId</code></dd>

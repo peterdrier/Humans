@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using NodaTime;
 using Humans.Users.Contracts;
 
@@ -31,7 +32,7 @@ internal sealed record UserDebugRow(
     Instant CreatedAt,
     Instant? LastLoginAt)
 {
-    public static UserDebugRow From(UserInfo info) => new(
+    public static UserDebugRow From(UserInfo info, ConsentReviewInfo? review) => new(
         UserId: info.Id,
         HasProfile: info.Profile is not null,
         HasTicket: info.HasTicket,
@@ -42,7 +43,7 @@ internal sealed record UserDebugRow(
         HasName: info.Profile is null ? null : info.HasRequiredNameFields,
         HasConsent: info.Profile is null
             ? null
-            : info.Profile.ConsentCheckStatus == ConsentCheckStatus.Cleared,
+            : review?.Status == ConsentCheckStatus.Cleared,
         CreatedAt: info.CreatedAt,
         LastLoginAt: info.LastLoginAt);
 }

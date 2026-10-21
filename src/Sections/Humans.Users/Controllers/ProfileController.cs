@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Users.Services;
 using Humans.Base.Models.Tables;
@@ -57,7 +58,8 @@ internal sealed class ProfileController(
     IStringLocalizer<SharedResource> sharedLocalizer,
     IGovernanceService governanceService,
     IAccountDeletionService accountDeletionService,
-    IMembershipCalculator membershipCalculator) : HumansControllerBase(userService)
+    IMembershipCalculator membershipCalculator,
+    IConsentService consentService) : HumansControllerBase(userService)
 {
     private readonly IUserManagement _userService = userService;
 
@@ -96,6 +98,7 @@ internal sealed class ProfileController(
 
         var applications = await governanceService.GetUserApplicationsAsync(info.Id, ct);
         var latestApplication = applications.MaxBy(a => a.SubmittedAt);
+        var review = await consentService.GetConsentReviewAsync(info.Id, ct);
 
         var viewModel = new ProfileViewModel
         {
@@ -103,7 +106,7 @@ internal sealed class ProfileController(
             UserId = info.Id,
             HasPendingConsents = pendingConsentCount > 0,
             PendingConsentCount = pendingConsentCount,
-            IsApproved = profile?.IsApproved ?? false,
+            IsApproved = profile is not null && review.IsApproved,
             IsOwnProfile = true,
             DisplayName = info.BurnerName,
             // Onsite chip — own profile, always visible. Issue
@@ -147,9 +150,11 @@ internal sealed class ProfileController(
         if (info is null) return NotFound();
 
         var applications = await governanceService.GetUserApplicationsAsync(user.Id, ct);
+        var review = await consentService.GetConsentReviewAsync(info.Id, ct);
         var viewModel = ProfileEditViewModelBuilder.Build(
             info,
             applications,
+            review.IsApproved,
             preview,
             p => Url.Action(nameof(ProfileViewController.Picture), "ProfileView", new { id = p.Id, v = p.UpdatedAt.ToUnixTimeTicks() }));
 
@@ -179,10 +184,10 @@ internal sealed class ProfileController(
             return View(model);
         }
 
-        // Canonical predicate — UserInfo.IsApproved is the Consent-Coordinator gate, so
-        // "not approved yet" IS initial setup (it already absorbs the no-profile case).
-        // See memory/architecture/derived-predicates-on-userinfo.md.
-        var isInitialSetup = !user.IsApproved;
+        // The Consent Coordinator's approval (Consent's review): "not approved yet" IS initial
+        // setup (it already absorbs the no-profile case).
+        var isInitialSetup = user.Profile is null
+            || !(await consentService.GetConsentReviewAsync(user.Id)).IsApproved;
 
         var burnerCvResult = ValidateBurnerCvOrNull(model, isInitialSetup);
         if (burnerCvResult is not null)

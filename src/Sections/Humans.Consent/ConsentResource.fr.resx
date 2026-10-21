@@ -269,4 +269,5 @@
   <data name="Consent_MyData_CancelNoRestore" xml:space="preserve">
     <value>L'annulation ne restaurera pas vos anciennes appartenances aux équipes. Vous devrez rejoindre les équipes à nouveau.</value>
   </data>
+  <data name="Consent_AccountStatus_ReasonLabel" xml:space="preserve"><value>Motif :</value></data>
 </root>

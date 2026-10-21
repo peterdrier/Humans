@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Humans.Debug.Models;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
@@ -10,10 +11,12 @@ using Humans.Users.Contracts;
 namespace Humans.Debug.Controllers;
 
 // Diagnostic surface for UserInfo cache — flat sortable table from GetAllRawUserInfosAsync
-// (tombstones included: this is the cache diagnostic, it shows what is in the cache), no secondary queries.
+// (tombstones included: this is the cache diagnostic, it shows what is in the cache), plus Consent's
+// review map for the consent-check column.
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Users/Admin/Debug")]
-internal sealed class UsersDebugController(IUserService userService) : HumansControllerBase(userService)
+internal sealed class UsersDebugController(IUserService userService, IConsentService consentService)
+    : HumansControllerBase(userService)
 {
     private const int MinPageSize = 10;
     private const int MaxPageSize = 200;
@@ -30,7 +33,8 @@ internal sealed class UsersDebugController(IUserService userService) : HumansCon
         if (page < 1) page = 1;
 
         var snapshot = await _userService.GetAllRawUserInfosAsync(ct);
-        var allRows = snapshot.Select(UserDebugRow.From).ToList();
+        var reviews = await consentService.GetConsentReviewsAsync(ct);
+        var allRows = snapshot.Select(u => UserDebugRow.From(u, reviews.GetValueOrDefault(u.Id))).ToList();
 
         var sorted = ApplySort(allRows, sort, dir);
         var total = sorted.Count;

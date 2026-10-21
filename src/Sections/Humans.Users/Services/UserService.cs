@@ -345,72 +345,26 @@ internal sealed class UserService(
         return true;
     }
 
-    public async Task<OnboardingResult> ApplyProfileOnboardingMutationAsync(
-        Guid userId,
-        UserProfileOnboardingCommand command,
-        CancellationToken ct = default)
+    public async Task<OnboardingResult> SetSuspensionAsync(
+        Guid userId, bool suspended, bool adminSuspension = false, CancellationToken ct = default)
     {
-        switch (command.Mutation)
-        {
-            case UserProfileOnboardingMutation.RecordConsentCheck
-                when command.ConsentCheckStatus is not ConsentCheckStatus.Cleared and not ConsentCheckStatus.Flagged:
-                throw new ArgumentException(
-                    "RecordConsentCheck only accepts Cleared or Flagged; use SetConsentCheckPending for the system-driven Pending transition.",
-                    nameof(command));
-
-            case UserProfileOnboardingMutation.SetSuspension when command.Suspended is null:
-                throw new ArgumentException("SetSuspension requires Suspended.", nameof(command));
-        }
-
-        var profile = await repo.GetByUserIdAsync(userId, ct);
-        if (profile is null)
+        if (await repo.GetByUserIdAsync(userId, ct) is null)
             return new OnboardingResult(false, "NotFound");
 
-        var now = clock.GetCurrentInstant();
-        switch (command.Mutation)
-        {
-            case UserProfileOnboardingMutation.RecordConsentCheck:
-                if (command.ConsentCheckStatus == ConsentCheckStatus.Cleared && profile.RejectedAt is not null)
-                    return new OnboardingResult(false, "AlreadyRejected");
-                var cleared = command.ConsentCheckStatus == ConsentCheckStatus.Cleared;
-                profile.ConsentCheckStatus = command.ConsentCheckStatus;
-                profile.ConsentCheckAt = now;
-                profile.ConsentCheckedByUserId = command.ActorUserId;
-                profile.ConsentCheckNotes = command.Notes;
-                profile.IsApproved = cleared;
-                profile.UpdatedAt = now;
-                break;
+        // Nothing on the profile: suspension is users.State alone. The reason goes to the audit
+        // log and the notification via HumanLifecycleService, not onto the row.
+        await repo.SetSuspensionAsync(userId, suspended, adminSuspension, ct);
+        InvalidateClaims(userId);
+        return new OnboardingResult(true);
+    }
 
-            case UserProfileOnboardingMutation.RejectSignup:
-                if (profile.RejectedAt is not null)
-                    return new OnboardingResult(false, "AlreadyRejected");
-                profile.RejectionReason = command.RejectionReason;
-                profile.RejectedAt = now;
-                profile.RejectedByUserId = command.ActorUserId;
-                profile.IsApproved = false;
-                profile.UpdatedAt = now;
-                break;
+    public async Task<OnboardingResult> SetRejectedAsync(Guid userId, CancellationToken ct = default)
+    {
+        if (await repo.GetByUserIdAsync(userId, ct) is null)
+            return new OnboardingResult(false, "NotFound");
 
-            case UserProfileOnboardingMutation.SetSuspension:
-                // Nothing on the profile: suspension is users.State alone. command.Notes goes to
-                // the audit log and the notification via HumanLifecycleService, not onto the row.
-                break;
-
-            case UserProfileOnboardingMutation.SetConsentCheckPending:
-                profile.ConsentCheckStatus = ConsentCheckStatus.Pending;
-                profile.UpdatedAt = now;
-                break;
-
-            default:
-                throw new ArgumentOutOfRangeException(nameof(command), command.Mutation, "Unknown profile onboarding mutation.");
-        }
-
-        if (command.Mutation == UserProfileOnboardingMutation.SetSuspension)
-            await repo.SetSuspensionAsync(
-                userId, command.Suspended!.Value, command.AdminSuspension, ct);
-        else
-            await repo.UpdateAsync(profile, ct);
-
+        // users.State alone: the reason, time and reviewer are Consent's review.
+        await repo.SetRejectedAsync(userId, ct);
         InvalidateClaims(userId);
         return new OnboardingResult(true);
     }

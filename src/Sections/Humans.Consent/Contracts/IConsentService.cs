@@ -4,7 +4,7 @@ namespace Humans.Consent.Contracts;
 
 /// <summary>
 /// Public contract of the Consent section. External sections inject
-/// this interface; only Consent projections (RequiredConsentRow, ConsentReviewDetail)
+/// this interface; only Consent projections (RequiredConsentRow, ConsentReviewDetail, ConsentReviewInfo)
 /// and value-type reads, no EF entities and no writes/cache hooks.
 /// </summary>
 public interface IConsentService : IApplicationService
@@ -41,4 +41,14 @@ public interface IConsentService : IApplicationService
     /// <summary>Returns null when the version or its canonical Spanish content is unavailable.</summary>
     Task<ConsentReviewDetail?> GetConsentReviewDetailAsync(
         Guid documentVersionId, Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// The member's Consent Coordinator review; <see cref="ConsentReviewInfo.None"/> when nothing
+    /// is recorded. A merged-away id reads its survivor's review.
+    /// </summary>
+    Task<ConsentReviewInfo> GetConsentReviewAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>Every member with a recorded review, keyed by user id. A member missing from the
+    /// map reads as <see cref="ConsentReviewInfo.None"/>.</summary>
+    Task<IReadOnlyDictionary<Guid, ConsentReviewInfo>> GetConsentReviewsAsync(CancellationToken ct = default);
 }

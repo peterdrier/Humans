@@ -270,7 +270,7 @@ When an Application is approved:
 ## Volunteer Access vs Tier Application
 
 ### Volunteer Access (Name + Consents → Team Sync)
-- **Gate**: Required name fields + all required consents → `SystemTeamSyncJob` adds to Volunteers team. `Profile.IsApproved` is not consulted for Volunteers.
+- **Gate**: Required name fields + all required consents → `SystemTeamSyncJob` adds to Volunteers team. The Consent Coordinator review's `IsApproved` (Consent) is not consulted for Volunteers.
 - **Applies to**: All new humans — the universal onboarding gate
 - **No Application needed**
 - **Independent of tier applications** — the gate does not evaluate tier suitability

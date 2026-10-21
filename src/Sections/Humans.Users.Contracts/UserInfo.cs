@@ -106,15 +106,23 @@ public sealed record ProfileInfo(
     string? BoardNotes,
     [property: Obsolete("Moved to Finance's finance_payment_details (Users decomposition commit 1). Read IFinanceService.GetIbanAsync; the one reader left is Finance's legacy fallback and the finance.iban-to-payment-details copy.", DiagnosticId = "HUM_PROFILE_IBAN")]
     string? Iban,
+    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
     bool IsApproved,
     [property: Obsolete("Moved to Governance's governance_membership_tiers (Users decomposition commit 11). Read IGovernanceService.GetMembershipTierAsync / GetMembershipTiersAsync; the one reader left is Governance's legacy fallback and the governance.profile-tier copy.", DiagnosticId = "HUM_PROFILE_TIER")]
     LegacyMembershipTier MembershipTier,
-    ConsentCheckStatus? ConsentCheckStatus,
+    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
+    LegacyConsentCheckStatus? ConsentCheckStatus,
+    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
     Instant? ConsentCheckAt,
+    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
     Guid? ConsentCheckedByUserId,
+    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
     string? ConsentCheckNotes,
+    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
     string? RejectionReason,
+    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
     Instant? RejectedAt,
+    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
     Guid? RejectedByUserId,
     bool NoPriorBurnExperience,
     IReadOnlyList<ContactFieldInfo> ContactFields,
@@ -338,7 +346,7 @@ public sealed record UserInfo(
 
     /// <summary>Has a profile, is not rejected, and is not a merge/deletion tombstone (a tombstone
     /// keeps its anonymized Profile row, so that check alone isn't enough — peterdrier/Humans#1707).
-    /// Does NOT require <see cref="ProfileInfo.IsApproved"/> (separate Consent Coordinator gate).
+    /// Does NOT consult the Consent Coordinator review (Consent's annotation, not a gate).
     /// Reads rejection off the stored <see cref="State"/>.</summary>
     public bool IsActive =>
         Profile is not null && State != UserState.Rejected && !IsTombstone;
@@ -348,8 +356,18 @@ public sealed record UserInfo(
     public bool IsSuspended =>
         State is UserState.Suspended or UserState.AdminSuspended;
 
-    /// <summary>Canonical "approved by Consent Coordinator" predicate — see memory/architecture/derived-predicates-on-userinfo.md.</summary>
-    public bool IsApproved => Profile?.IsApproved ?? false;
+    /// <summary>
+    /// The signup was rejected: the stored <see cref="State"/> is <see cref="UserState.Rejected"/>,
+    /// or (legacy arm, until the <c>consent.profile-review</c> copy is done in production) the
+    /// frozen profile still carries a rejection time. Exact for live accounts; a merged or deleted
+    /// tombstone reads its final state instead — Consent's review (<c>IConsentService</c>) keeps the
+    /// rejection record itself.
+    /// </summary>
+    public bool IsRejected =>
+        State == UserState.Rejected
+#pragma warning disable HUM_PROFILE_REVIEW // legacy arm, retired with the consent.profile-review copy
+        || Profile?.RejectedAt is not null;
+#pragma warning restore HUM_PROFILE_REVIEW
 
     /// <summary>Canonical "has profile" predicate.</summary>
     public bool HasProfile => Profile is not null;
@@ -363,22 +381,6 @@ public sealed record UserInfo(
         && !string.IsNullOrWhiteSpace(Profile.BurnerName)
         && !string.IsNullOrWhiteSpace(Profile.FirstName)
         && !string.IsNullOrWhiteSpace(Profile.LastName);
-
-    /// <summary>In CC review queue: active (which excludes merged/deleted tombstones), named, and not
-    /// yet approved. Shared by queue list + nav badge + admin dashboard so they cannot drift.</summary>
-    public bool NeedsConsentReview =>
-        IsActive && HasRequiredNameFields && !Profile!.IsApproved;
-
-    /// <summary>
-    /// Carries an unresolved Flagged consent check. Excludes rejected profiles — those have already
-    /// been dealt with and the Clear mutation is blocked, so they'd be unresolvable in the queue —
-    /// and merged/deleted tombstones, which are not live accounts left to review.
-    /// Drives the /OnboardingReview flagged section.
-    /// </summary>
-    public bool IsConsentCheckFlagged =>
-        Profile?.ConsentCheckStatus == ConsentCheckStatus.Flagged
-        && Profile.RejectedAt is null
-        && !IsTombstone;
 
     /// <summary>
     /// Builds <see cref="UserInfo"/> from the projections of the contributing tables;

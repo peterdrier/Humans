@@ -60,7 +60,7 @@ Three controllers and two views (`Views/User/Status`, `Views/User/Deletion`), so
 | `GET /User/Deletion` | `UserController.Deletion` | Pending-deletion landing; redirects home when nothing is pending |
 | `POST /User/Deletion/Cancel` | `UserController.CancelDeletion` | `IAccountDeletionService.CancelDeletionAsync` |
 
-The views' copy lives in `GdprResource` (six cultures; keys `Gdpr_AccountStatus_*`, `Gdpr_AccountDeletion_*`, `Gdpr_Deletion_*`). Users keeps its own copies of the deletion flash keys (the guest dashboard still uses them) and of the suspension keys its notification text reads.
+The views' copy lives in `GdprResource` (six cultures; keys `Gdpr_AccountStatus_*`, `Gdpr_AccountDeletion_*`, `Gdpr_Deletion_*`). For a Rejected account the wall renders the `UserPartSlots.AccountStatus` slot (Base), where Consent contributes the rejection reason — Gdpr cannot reference Consent, which owns the record (Users decomposition commit 12). Users keeps its own copies of the deletion flash keys (the guest dashboard still uses them) and of the suspension keys its notification text reads.
 
 The `/Profile/Me/Privacy` page itself is Consent's (`MyDataController`) and links to the two
 `MemberData` actions. The `User` controller and the two `MemberData` actions are exempt from

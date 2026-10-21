@@ -269,4 +269,5 @@
   <data name="Consent_MyData_CancelNoRestore" xml:space="preserve">
     <value>Cancelar no restaurará sus membresías de equipo anteriores. Deberá volver a unirse a los equipos.</value>
   </data>
+  <data name="Consent_AccountStatus_ReasonLabel" xml:space="preserve"><value>Motivo:</value></data>
 </root>

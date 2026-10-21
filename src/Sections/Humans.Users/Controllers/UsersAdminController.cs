@@ -98,18 +98,13 @@ internal sealed class UsersAdminController(
         var userEmails = await userEmailService.GetEntitiesByUserIdAsync(id, ct);
         var consentCount = await consentService.GetConsentRecordCountAsync(id, ct);
 
-        var rejectedByName = info.Profile?.RejectedByUserId is Guid rejectedByUserId
-            ? (await _userService.GetRawUserInfoAsync(rejectedByUserId, ct))?.BurnerName
-            : null;
-
         var viewModel = AdminHumanDetailViewModelBuilder.Build(
             info,
             applications,
             membershipTier,
             userEmails,
             consentCount,
-            clock.GetCurrentInstant(),
-            rejectedByName);
+            clock.GetCurrentInstant());
 
         return View(viewModel);
     }

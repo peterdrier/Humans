@@ -37,15 +37,10 @@ internal sealed class AdminHumanDetailViewModel
 
     public string? AdminNotes { get; set; }
     public MembershipTier MembershipTier { get; set; }
-    public ConsentCheckStatus? ConsentCheckStatus { get; set; }
     public string? EmergencyContactName { get; set; }
     public string? EmergencyContactPhone { get; set; }
     public string? EmergencyContactRelationship { get; set; }
     public string? PreferredLanguage { get; set; }
-
-    public string? RejectionReason { get; set; }
-    public DateTime? RejectedAt { get; set; }
-    public string? RejectedByName { get; set; }
 
     public string? NobodiesTeamEmail { get; set; }
 

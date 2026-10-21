@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Humans.Base.Extensions;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Auth.Contracts;
@@ -57,6 +58,9 @@ internal sealed class SystemTeamSyncJob(
 
     private IMembershipCalculator MembershipCalculator =>
         serviceProvider.GetRequiredService<IMembershipCalculator>();
+
+    private IConsentService ConsentService =>
+        serviceProvider.GetRequiredService<IConsentService>();
 
     /// <summary>
     /// Executes the system team sync job and returns a report of what changed.
@@ -189,12 +193,13 @@ internal sealed class SystemTeamSyncJob(
         }
 
         // Name-only access switch: Volunteers admission is name + consents. The Flagged consent-check
-        // is an audit annotation that no longer gates admission; Suspended + RejectedAt remain the
-        // CC's kick-out levers. Profile.IsApproved is not consulted.
+        // is an audit annotation that no longer gates admission; Suspended + a recorded rejection
+        // remain the CC's kick-out levers. The review's IsApproved is not consulted.
+        var reviews = await ConsentService.GetConsentReviewsAsync(cancellationToken);
         var candidateIds = (await userService.GetAllUserInfosAsync(cancellationToken).ConfigureAwait(false))
             .Where(u => u.HasRequiredNameFields
                 && !u.IsSuspended
-                && u.Profile!.RejectedAt is null)
+                && !(reviews.TryGetValue(u.Id, out var review) && review.IsRejected))
             .Select(u => u.Id)
             .ToList();
 
@@ -359,7 +364,7 @@ internal sealed class SystemTeamSyncJob(
 
     /// <summary>Volunteers membership for one user: in when the required name fields are filled and the
     /// required consents are signed, and the user is neither suspended nor rejected. Coordinator review
-    /// (<c>Profile.IsApproved</c>) annotates, it does not gate.</summary>
+    /// (<c>ConsentReviewInfo.IsApproved</c>) annotates, it does not gate.</summary>
     private async Task SyncVolunteersMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var team = await GetSystemTeamSnapshotAsync(SystemTeamType.Volunteers, cancellationToken);
@@ -375,7 +380,7 @@ internal sealed class SystemTeamSyncJob(
 
         // Name-only access switch: admission is name + consents — see SyncVolunteersTeamAsync.
         var isEligible = info is { HasRequiredNameFields: true, IsSuspended: false }
-            && info.Profile!.RejectedAt is null
+            && !(await ConsentService.GetConsentReviewAsync(userId, cancellationToken)).IsRejected
             && await MembershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, cancellationToken);
 
         var eligibleUserIds = isEligible ? [userId] : new List<Guid>();
@@ -425,7 +430,8 @@ internal sealed class SystemTeamSyncJob(
             .HasActiveApprovedTierAsync(userId, tier, today, cancellationToken);
 
         var isEligible = hasApprovedApp
-            && info is { Profile.IsApproved: true, IsSuspended: false }
+            && info is { Profile: not null, IsSuspended: false }
+            && (await ConsentService.GetConsentReviewAsync(userId, cancellationToken)).IsApproved
             && await MembershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, teamId, cancellationToken);
 
         var eligibleUserIds = isEligible ? [userId] : new List<Guid>();

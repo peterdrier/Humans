@@ -300,7 +300,7 @@ internal sealed class CachingUserService(
             if (TryGet(idGuid, out var byIdRow)
                 && Resolve(byIdRow) is { Profile: not null } byId
                 && !byId.IsTombstone
-                && byId.Profile.RejectedAt is null)
+                && !byId.IsRejected)
             {
                 return [
                     new HumanSearchResult(
@@ -324,7 +324,7 @@ internal sealed class CachingUserService(
             // row carries the same person.
             if (u.IsTombstone) continue;
             if (u.Profile is null) continue;
-            if (u.Profile.RejectedAt is not null) continue;
+            if (u.IsRejected) continue;
 
             var match = PersonSearchMatcher.Match(u, query, fields);
             if (match is null) continue;
@@ -631,13 +631,18 @@ internal sealed class CachingUserService(
         return created;
     }
 
-    public async Task<OnboardingResult> ApplyProfileOnboardingMutationAsync(
-        Guid userId,
-        UserProfileOnboardingCommand command,
-        CancellationToken ct = default)
+    public async Task<OnboardingResult> SetSuspensionAsync(
+        Guid userId, bool suspended, bool adminSuspension = false, CancellationToken ct = default)
     {
         var result = await WithInnerAsync(inner =>
-            inner.ApplyProfileOnboardingMutationAsync(userId, command, ct));
+            inner.SetSuspensionAsync(userId, suspended, adminSuspension, ct));
+        if (result.Success) await RefreshEntryAsync(userId);
+        return result;
+    }
+
+    public async Task<OnboardingResult> SetRejectedAsync(Guid userId, CancellationToken ct = default)
+    {
+        var result = await WithInnerAsync(inner => inner.SetRejectedAsync(userId, ct));
         if (result.Success) await RefreshEntryAsync(userId);
         return result;
     }

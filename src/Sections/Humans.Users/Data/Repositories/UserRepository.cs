@@ -113,7 +113,7 @@ internal sealed partial class UserRepository : IUserRepository
         if (user is null)
             return false;
 
-        // Read-only: the classifier needs the profile's name fields and RejectedAt. The suspension
+        // Read-only: the classifier needs the profile's name fields and legacy RejectedAt. The suspension
         // reason is NOT written here — it lives in the audit log and the notification, and profiles
         // is never mutated by this path.
         var profile = await ctx.Profiles
@@ -123,6 +123,25 @@ internal sealed partial class UserRepository : IUserRepository
             user, profile,
             isSuspended: suspended && !adminSuspension,
             isAdminSuspended: suspended && adminSuspension);
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task<bool> SetRejectedAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var user = await ctx.Users.FindAsync([userId], ct);
+        if (user is null)
+            return false;
+
+        var profile = await ctx.Profiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.UserId == userId, ct);
+        user.State = UserStateEvaluator.Classify(
+            user, profile,
+            isSuspended: user.State == UserState.Suspended,
+            isAdminSuspended: user.State == UserState.AdminSuspended,
+            isRejected: true);
         await ctx.SaveChangesAsync(ct);
         return true;
     }

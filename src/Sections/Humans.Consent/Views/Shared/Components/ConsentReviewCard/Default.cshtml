@@ -1,0 +1,47 @@
+@model Humans.Consent.ViewComponents.ConsentReviewCardViewModel
+@* Admin-only card on /Users/Admin/{id}: no localization keys (memory/code/localization-admin-exempt.md). *@
+
+<div class="card mb-4">
+    <div class="card-header">Consent review</div>
+    <div class="card-body">
+        @if (Model.IsRejected)
+        {
+            <div class="alert alert-danger mb-3">
+                <strong><i class="fa-solid fa-ban me-1"></i> Rejected</strong>
+                @if (!string.IsNullOrEmpty(Model.RejectionReason))
+                {
+                    <p class="mb-1 mt-1" style="white-space: pre-wrap;">@Model.RejectionReason</p>
+                }
+                <small class="text-muted">
+                    @if (Model.RejectedAt.HasValue)
+                    {
+                        @Model.RejectedAt.Value.ToDateTime()
+                    }
+                    @if (!string.IsNullOrEmpty(Model.RejectedByName))
+                    {
+                        <text> by @Model.RejectedByName</text>
+                    }
+                </small>
+            </div>
+        }
+        <dl class="row mb-0">
+            <dt class="col-sm-4">Consent check</dt>
+            <dd class="col-sm-8">
+                @if (Model.Status.HasValue)
+                {
+                    var badgeClass = Model.Status.Value switch
+                    {
+                        ConsentCheckStatus.Cleared => "bg-success",
+                        ConsentCheckStatus.Flagged => "bg-danger",
+                        _ => "bg-warning"
+                    };
+                    <span class="badge @badgeClass">@Model.Status.Value</span>
+                }
+                else
+                {
+                    <span class="text-muted">Not started</span>
+                }
+            </dd>
+        </dl>
+    </div>
+</div>
