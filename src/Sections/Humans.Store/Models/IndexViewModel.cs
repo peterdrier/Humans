@@ -28,7 +28,7 @@ internal sealed class OrderViewModel
     public bool CanPay { get; init; }
     /// <summary>False when STRIPE_STORE_KEY is unset; suppresses the Pay button + shows a disabled tooltip.</summary>
     public bool IsStripeConfigured { get; init; }
-    /// <summary>True when the current user may delete the order (Store admin, or TeamsAdmin on a team order), it is Open and its balance is zero. Surfaces the Delete button.</summary>
+    /// <summary>True when the current user may delete the order (Store admin, or TeamsAdmin on a team order), it is Open, its balance is zero and it has no payment rows. Surfaces the Delete button.</summary>
     public bool CanDelete { get; init; }
 
     /// <summary>True when the current user may issue this camp order's Holded factura — Store
