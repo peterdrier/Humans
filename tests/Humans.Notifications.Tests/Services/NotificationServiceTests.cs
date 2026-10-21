@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Xunit;
 
 
 using Humans.Users.Contracts;
@@ -163,8 +164,10 @@ public class NotificationServiceTests : IDisposable
         notification.Recipients.Select(r => r.UserId).Should().BeEquivalentTo([allowed]);
     }
 
-    [HumansFact]
-    public async Task SendToRoleAsync_Actionable_IgnoresInboxPreference()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SendToRoleAsync_Actionable_IgnoresInboxPreference(bool preferenceReadFails)
     {
         var holder = Guid.NewGuid();
         _roleAssignmentService.GetActiveUserIdsInRoleAsync("Board", Arg.Any<CancellationToken>())
@@ -175,6 +178,11 @@ public class NotificationServiceTests : IDisposable
             Category = NotificationSource.TeamMemberAdded.ToMessageCategory(),
             InboxEnabled = false,
         });
+
+        if (preferenceReadFails)
+            _preferenceService.GetUsersWithInboxDisabledAsync(
+                    Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<MessageCategory>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<IReadOnlySet<Guid>>(new InvalidOperationException("Preferences unavailable")));
 
         await _service.SendToRoleAsync(
             NotificationSource.TeamMemberAdded,

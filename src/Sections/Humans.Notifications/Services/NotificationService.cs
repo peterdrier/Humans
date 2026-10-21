@@ -61,8 +61,9 @@ internal sealed class NotificationService(
         }
 
         var category = source.ToMessageCategory();
-        var inboxDisabled = await preferenceService.GetUsersWithInboxDisabledAsync(
-            roleUserIds, category, cancellationToken);
+        var inboxDisabled = notificationClass == NotificationClass.Informational
+            ? await preferenceService.GetUsersWithInboxDisabledAsync(roleUserIds, category, cancellationToken)
+            : null;
 
         (title, body) = NotificationEmitter.FitCopyToStorage(title, body);
 
@@ -82,7 +83,7 @@ internal sealed class NotificationService(
 
         foreach (var userId in roleUserIds)
         {
-            if (notificationClass == NotificationClass.Informational && inboxDisabled.Contains(userId))
+            if (inboxDisabled?.Contains(userId) == true)
             {
                 continue;
             }

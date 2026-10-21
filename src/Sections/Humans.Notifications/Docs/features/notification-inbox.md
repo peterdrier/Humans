@@ -61,7 +61,7 @@ Callers decide resolution scope:
 - `SendAsync` -- individual users, one notification per user
 - `SendToRoleAsync` -- shared notification for all users with a role
 
-Dispatch checks `CommunicationPreference.InboxEnabled` and suppresses informational notifications when disabled. Actionable notifications are always delivered.
+Dispatch checks `CommunicationPreference.InboxEnabled` and suppresses informational notifications when disabled. Actionable notifications skip preference reads entirely on both known-recipient and role-broadcast paths, so a preference lookup failure cannot block delivery. Informational delivery still requires a successful preference read.
 
 ## UI Components
 
