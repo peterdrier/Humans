@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Hangfire;
 using Humans.Gate.Controllers;
 using Humans.Gate.Domain;
 using Humans.Gate.Models;
@@ -43,22 +42,14 @@ public class GateControllerOverridePinTests
                 IsEarly: true, null, null));
     }
 
-    private GateController BuildController(
-        string? configuredPin,
-        bool mirrorEnabled = false,
-        GateVendorMirrorLedger? mirrorLedger = null,
-        IBackgroundJobClient? backgroundJobs = null)
+    private GateController BuildController(string? configuredPin)
     {
         Dictionary<string, string?> settings = new(StringComparer.OrdinalIgnoreCase);
         if (configuredPin is not null)
             settings["Gate:SupervisorPin"] = configuredPin;
-        if (mirrorEnabled)
-            settings["Gate:VendorMirrorEnabled"] = "true";
         var config = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
         var throttle = new GatePinThrottle(new MemoryCache(new MemoryCacheOptions()), _clock);
-        mirrorLedger ??= new GateVendorMirrorLedger(new MemoryCache(new MemoryCacheOptions()));
-        var controller = new GateController(_gate, _users, config, throttle, mirrorLedger,
-            backgroundJobs ?? Substitute.For<IBackgroundJobClient>(), _clock, NullLogger<GateController>.Instance);
+        var controller = new GateController(_gate, _users, config, throttle, _clock, NullLogger<GateController>.Instance);
 
         var http = new DefaultHttpContext
         {
@@ -201,30 +192,5 @@ public class GateControllerOverridePinTests
         await _gate.Received(1).RecordDecisionAsync(
             Arg.Is<GateDecisionInput>(i => i.ChildWithAdult && i.OverrideByUserId == _gateAccount),
             _gateAccount, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task AdmitWithVendorTicket_AlwaysEnqueuesTheMirror_ButMarksTheLedgerOnlyWhenTheFlagIsOn()
-    {
-        _gate.RecordDecisionAsync(Arg.Any<GateDecisionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new GateDecisionResult(GateVerdict.Admitted, "Guest", null,
-                IsEarly: false, null, null, VendorTicketId: "vt-1"));
-
-        // Flag off: the job is still enqueued (it no-ops itself), but the ledger must NOT be
-        // marked — a mark would hide exactly the row the backfill page exists to recover.
-        var ledgerOff = new GateVendorMirrorLedger(new MemoryCache(new MemoryCacheOptions()));
-        var jobsOff = Substitute.For<IBackgroundJobClient>();
-        await Decide(BuildController(Pin, mirrorEnabled: false, ledgerOff, jobsOff));
-        jobsOff.ReceivedCalls().Should().NotBeEmpty();
-        ledgerOff.WasSent("vt-1").Should().BeFalse();
-
-        // Flag on: enqueued AND ledger-claimed, so a backfill after this mark won't re-send.
-        // The mark lands after the enqueue, so a backfill in that instant can still double-post
-        // one — accepted, not a guarantee (health.md, "Vendor mirror").
-        var ledgerOn = new GateVendorMirrorLedger(new MemoryCache(new MemoryCacheOptions()));
-        var jobsOn = Substitute.For<IBackgroundJobClient>();
-        await Decide(BuildController(Pin, mirrorEnabled: true, ledgerOn, jobsOn));
-        jobsOn.ReceivedCalls().Should().NotBeEmpty();
-        ledgerOn.WasSent("vt-1").Should().BeTrue();
     }
 }

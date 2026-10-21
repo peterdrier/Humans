@@ -72,7 +72,7 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
   provider can't enforce unique indexes) — a Postgres-backed race test is tracked in the debt-ledger
   inbox (2026-06-29).
 - Only a violation of `ix_gate_scan_events_admit_dedupe_key` becomes a duplicate-admit outcome; unrelated persistence failures propagate.
-- **Vendor check-in mirror** — on an admit the controller enqueues `GateVendorCheckInJob`
+- **Vendor check-in mirror** — on an admit `GateService.RecordDecisionAsync` enqueues `GateVendorCheckInJob`
   (fire-and-forget) which calls Tickets' `ITicketVendorMirror.CreateCheckInAsync` (TicketTailor
   `POST /v1/check_ins`, reached through Tickets rather than the vendor port directly — Tickets is
   the application's only door to ticketing). Best-effort only; `gate_scan_events` remains the dedupe authority.

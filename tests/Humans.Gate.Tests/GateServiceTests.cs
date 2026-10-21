@@ -10,6 +10,13 @@ using Humans.Base.Constants;
 using Humans.Gate.Data;
 using Humans.Gate.Domain;
 using Humans.Gate.Services;
+using Humans.Gate.Services.Stores;
+using Humans.Gate.Jobs;
+using Hangfire;
+using Hangfire.Common;
+using Hangfire.States;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using NodaTime.Testing;
@@ -85,6 +92,9 @@ public class GateServiceTests
     private readonly IPasswordHasher<GateStaffPin> _pinHasher = new PasswordHasher<GateStaffPin>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly ITicketWrite _users = Substitute.For<ITicketWrite>();
+    private readonly IBackgroundJobClient _jobs = Substitute.For<IBackgroundJobClient>();
+    private readonly GateVendorMirrorLedger _ledger = new(new MemoryCache(new MemoryCacheOptions()));
+    private readonly IConfiguration _config = new ConfigurationBuilder().AddInMemoryCollection().Build();
     private readonly GateService _svc;
 
     public GateServiceTests()
@@ -95,7 +105,7 @@ public class GateServiceTests
         _burn.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
         _earlyEntry.GetForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((EarlyEntryRosterRow?)null);
-        _svc = new GateService(new GateRepository(GateDbFactory), _tickets, _earlyEntry, _burn, _shifts, _roles, _users, _pinHasher, _auditLog, NullLogger<GateService>.Instance, Clock);
+        _svc = new GateService(new GateRepository(GateDbFactory), _tickets, _earlyEntry, _burn, _shifts, _roles, _users, _pinHasher, _auditLog, _jobs, _ledger, _config, NullLogger<GateService>.Instance, Clock);
 
         // Baseline: an admin has set the cutoff in the past, so general entry is open.
         // Seeded directly (sync) since the ctor can't await; GateDb shares the in-memory
@@ -204,6 +214,36 @@ public class GateServiceTests
         var second = await Record(idConfirmed: true);
         second.Verdict.Should().Be(GateVerdict.RejectedDuplicate);
         second.PreviousAdmitByUserId.Should().Be(AgentId);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task RecordDecision_Admit_AlwaysEnqueuesTheVendorMirror_ButMarksTheLedgerOnlyWhenTheFlagIsOn(bool mirrorEnabled)
+    {
+        StubTicket();
+        _config["Gate:VendorMirrorEnabled"] = mirrorEnabled ? "true" : "false";
+
+        (await Record(idConfirmed: true)).Verdict.Should().Be(GateVerdict.Admitted);
+
+        // Flag off: the job still no-ops itself, but a ledger mark would hide exactly the row
+        // the backfill page exists to recover.
+        _jobs.Received(1).Create(
+            Arg.Is<Job>(j => j.Type.Equals(typeof(GateVendorCheckInJob)) && string.Equals((string)j.Args[0], "v1", StringComparison.Ordinal)),
+            Arg.Any<IState>());
+        _ledger.WasSent("v1").Should().Be(mirrorEnabled);
+    }
+
+    [HumansFact]
+    public async Task RecordDecision_Rejected_DoesNotMirrorToTheVendor()
+    {
+        StubTicket();
+        _config["Gate:VendorMirrorEnabled"] = "true";
+
+        (await Record(idConfirmed: false)).Verdict.Should().Be(GateVerdict.RejectedNameMismatch);
+
+        _jobs.ReceivedCalls().Should().BeEmpty();
+        _ledger.WasSent("v1").Should().BeFalse();
     }
 
     [HumansFact]
