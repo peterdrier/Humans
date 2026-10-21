@@ -1154,8 +1154,8 @@
   <data name="Dashboard_CampsDescription" xml:space="preserve">
     <value>Els barris que fan que Elsewhere sembli casa.</value>
   </data>
-  <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>We need your dietary info</value></data>
-  <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>You're signed up for a long shift. The cantina can't plan your meals until you tell us your food preferences.</value></data>
+  <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>Ens expliques les teves preferències alimentàries?</value></data>
+  <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>Estàs en un torn llarg. Si ens expliques les teves preferències alimentàries, la cantina pot planificar els teus àpats. És opcional.</value></data>
   <data name="DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
   <data name="DietaryMissingBanner_Decline" xml:space="preserve"><value>Prefereixo no respondre</value></data>
   <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>Veure tots els meus torns</value></data>

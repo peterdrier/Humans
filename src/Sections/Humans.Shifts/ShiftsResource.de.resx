@@ -1154,8 +1154,8 @@
   <data name="Dashboard_CampsDescription" xml:space="preserve">
     <value>Die Nachbarschaften, die Elsewhere wie zuhause fühlen lassen.</value>
   </data>
-  <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>We need your dietary info</value></data>
-  <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>You're signed up for a long shift. The cantina can't plan your meals until you tell us your food preferences.</value></data>
+  <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>Magst du uns deine Essensvorlieben mitteilen?</value></data>
+  <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>Du bist für eine lange Schicht eingetragen. Wenn du uns deine Essensvorlieben mitteilst, kann die Kantine deine Mahlzeiten planen. Das ist freiwillig.</value></data>
   <data name="DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
   <data name="DietaryMissingBanner_Decline" xml:space="preserve"><value>Ich möchte nicht antworten</value></data>
   <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>Alle meine Schichten anzeigen</value></data>
