@@ -865,8 +865,7 @@ public class EventsControllerTests
         var profile = UserFixtures.Profile(
             burnerName: burnerName,
             firstName: "Test",
-            lastName: "User",
-            isApproved: true);
+            lastName: "User");
         var user = new User
         {
             Id = userId,

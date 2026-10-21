@@ -7,8 +7,7 @@ namespace Humans.Consent.Domain;
 /// A member's Consent Coordinator review, one row per member (<c>consent_reviews</c>): the
 /// consent-check annotation (status, when, by whom, notes, <see cref="IsApproved"/>) and the
 /// signup rejection's reason, time and reviewer. Replaces the review columns on <c>profiles</c>,
-/// which Users keeps unwritten until the <c>consent.profile-review</c> data migration is done in
-/// production. The rejection <em>state</em> is Users' <c>users.State</c>; this row annotates it.
+/// which Users keeps unwritten and unread until their drop. The rejection <em>state</em> is Users' <c>users.State</c>; this row annotates it.
 /// </summary>
 internal sealed class ConsentReview
 {

@@ -122,9 +122,8 @@ internal sealed class Profile
 
     /// <summary>
     /// Frozen legacy column, like the review columns below: no longer written. The live Consent
-    /// Coordinator review is Consent's <c>consent_reviews</c> (Users decomposition commit 12); kept
-    /// until the <c>consent.profile-review</c> copy reports done in production and a drop PR removes
-    /// them. <see cref="RejectedAt"/> still feeds the state classifier's legacy arm until then.
+    /// Coordinator review is Consent's <c>consent_reviews</c> (Users decomposition commit 12); the
+    /// <c>consent.profile-review</c> copy is retired, and a drop PR removes them.
     /// </summary>
     public bool IsApproved { get; set; }
 

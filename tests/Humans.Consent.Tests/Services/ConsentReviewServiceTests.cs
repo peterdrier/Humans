@@ -24,9 +24,8 @@ using Xunit;
 namespace Humans.Consent.Tests.Services;
 
 /// <summary>
-/// consent_reviews (Users decomposition commit 12): the read with its legacy profile fallback, the
-/// IConsentWrite annotations, the consent.profile-review copy, export and erasure, the queue
-/// predicates and the two user parts.
+/// consent_reviews (Users decomposition commit 12): the read, the IConsentWrite annotations,
+/// export and erasure, the queue predicates and the two user parts.
 /// </summary>
 public sealed class ConsentReviewServiceTests : IDisposable
 {
@@ -35,7 +34,6 @@ public sealed class ConsentReviewServiceTests : IDisposable
 
     private readonly FakeClock _clock = new(Now);
     private readonly IUserService _users = Substitute.For<IUserService>();
-    private readonly IUserWrite _userWrite = Substitute.For<IUserWrite>();
     private readonly List<UserInfo> _all = [];
     private readonly LegalDbContext _db;
     private readonly ConsentReviewService _sut;
@@ -45,16 +43,15 @@ public sealed class ConsentReviewServiceTests : IDisposable
         var factory = new TestDbContextFactory<LegalDbContext>(
             new DbContextOptionsBuilder<LegalDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
         _db = factory.CreateDbContext();
-        _sut = new ConsentReviewService(new ConsentReviewRepository(factory), _users, _userWrite, _clock);
+        _sut = new ConsentReviewService(new ConsentReviewRepository(factory), _users, _clock);
         _users.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>()).Returns(_ => _all.ToList());
-        _userWrite.SetRejectedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new OnboardingResult(true));
     }
 
     public void Dispose() => _db.Dispose();
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    /// <summary>A named member whose frozen profile columns hold <paramref name="profile"/>'s review.</summary>
+    /// <summary>A named member.</summary>
     private UserInfo SeedUser(
         ProfileInfo? profile = null, UserState state = UserState.Active, Guid? id = null, Instant? mergedAt = null)
     {
@@ -70,15 +67,6 @@ public sealed class ConsentReviewServiceTests : IDisposable
         return info;
     }
 
-    private static ProfileInfo LegacyProfile(
-        LegacyConsentCheckStatus? status = null, bool isApproved = false, Instant? rejectedAt = null,
-        string? notes = null, string? reason = null) =>
-        UserFixtures.Profile(
-            burnerName: "Ana", firstName: "Ana", lastName: "García",
-            isApproved: isApproved, consentCheckStatus: status, consentCheckAt: status is null ? null : Earlier,
-            consentCheckNotes: notes, rejectionReason: reason, rejectedAt: rejectedAt,
-            rejectedByUserId: rejectedAt is null ? null : Guid.NewGuid());
-
     private async Task SeedRowAsync(ConsentReview row)
     {
         _db.ConsentReviews.Add(row);
@@ -92,16 +80,9 @@ public sealed class ConsentReviewServiceTests : IDisposable
     // ─── Read ────────────────────────────────────────────────────────────────────
 
     [HumansFact]
-    public async Task Read_FallsBackToTheLegacyProfileReview_UntilARowExists()
+    public async Task Read_ReturnsTheRow()
     {
-        var user = SeedUser(LegacyProfile(LegacyConsentCheckStatus.Cleared, isApproved: true, notes: "ok"));
-
-        var legacy = await _sut.GetReviewAsync(user.Id, Ct);
-        legacy.Status.Should().Be(ConsentCheckStatus.Cleared);
-        legacy.IsApproved.Should().BeTrue();
-        legacy.Notes.Should().Be("ok");
-        (await _sut.GetReviewsAsync(Ct))[user.Id].Should().Be(legacy);
-
+        var user = SeedUser();
         await SeedRowAsync(new ConsentReview { UserId = user.Id, Status = ConsentCheckStatus.Flagged, UpdatedAt = Now });
 
         var row = await _sut.GetReviewAsync(user.Id, Ct);
@@ -131,33 +112,6 @@ public sealed class ConsentReviewServiceTests : IDisposable
             new { UserId = survivor.Id, IsApproved = true }, o => o.ExcludingMissingMembers());
     }
 
-    [HumansFact]
-    public async Task LegacyRejectedProfile_WithNonRejectedState_StillReadsRejectedEverywhere()
-    {
-        // A profile rejected before commit 12 whose users.State never recorded Rejected: every
-        // reader that gated on profiles.RejectedAt must still see the rejection.
-        var user = SeedUser(LegacyProfile(LegacyConsentCheckStatus.Flagged, rejectedAt: Earlier, reason: "dup"));
-        user.State.Should().NotBe(UserState.Rejected);
-
-        user.IsRejected.Should().BeTrue();
-        var review = await _sut.GetReviewAsync(user.Id, Ct);
-        review.IsRejected.Should().BeTrue();
-        review.RejectionReason.Should().Be("dup");
-        (await _sut.GetReviewsAsync(Ct))[user.Id].IsRejected.Should().BeTrue();
-        user.IsConsentCheckFlagged(review).Should().BeFalse();
-        (await _sut.RecordConsentCheckAsync(user.Id, ConsentCheckStatus.Cleared, Guid.NewGuid(), null, Ct))
-            .ErrorKey.Should().Be("AlreadyRejected");
-        (await _sut.RecordRejectionAsync(user.Id, Guid.NewGuid(), "again", Ct))
-            .ErrorKey.Should().Be("AlreadyRejected");
-
-        // The copy records the rejection as the stored state as well as copying the row.
-        var pending = (await _sut.GetUncopiedLegacyReviewsAsync(Ct)).Should().ContainSingle().Subject;
-        pending.Should().BeEquivalentTo(new { CopyRow = true, SetRejectedState = true }, o => o.ExcludingMissingMembers());
-        await _sut.CopyLegacyReviewsAsync(Ct);
-        await _userWrite.Received(1).SetRejectedAsync(user.Id, Arg.Any<CancellationToken>());
-        (await RowAsync(user.Id))!.RejectedAt.Should().Be(Earlier);
-    }
-
     // ─── IConsentWrite ───────────────────────────────────────────────────────────
 
     [HumansFact]
@@ -182,7 +136,8 @@ public sealed class ConsentReviewServiceTests : IDisposable
     [HumansFact]
     public async Task RecordConsentCheck_Flagged_ClearsApproval()
     {
-        var user = SeedUser(LegacyProfile(LegacyConsentCheckStatus.Cleared, isApproved: true));
+        var user = SeedUser();
+        await _sut.RecordConsentCheckAsync(user.Id, ConsentCheckStatus.Cleared, Guid.NewGuid(), null, Ct);
 
         (await _sut.RecordConsentCheckAsync(user.Id, ConsentCheckStatus.Flagged, Guid.NewGuid(), "Concern", Ct))
             .Success.Should().BeTrue();
@@ -204,8 +159,9 @@ public sealed class ConsentReviewServiceTests : IDisposable
     [HumansFact]
     public async Task RecordRejection_Stamps_ThenRefusesASecond()
     {
-        var user = SeedUser(LegacyProfile(LegacyConsentCheckStatus.Cleared, isApproved: true));
+        var user = SeedUser();
         var reviewer = Guid.NewGuid();
+        await _sut.RecordConsentCheckAsync(user.Id, ConsentCheckStatus.Cleared, reviewer, null, Ct);
 
         (await _sut.RecordRejectionAsync(user.Id, reviewer, "Spam account", Ct)).Success.Should().BeTrue();
 
@@ -240,51 +196,6 @@ public sealed class ConsentReviewServiceTests : IDisposable
         (await _sut.SetConsentCheckPendingAsync(id, Ct)).ErrorKey.Should().Be("NotFound");
         (await _sut.RecordRejectionAsync(id, Guid.NewGuid(), null, Ct)).ErrorKey.Should().Be("NotFound");
         (await RowAsync(id)).Should().BeNull();
-    }
-
-    // ─── consent.profile-review ──────────────────────────────────────────────────
-
-    [HumansFact]
-    public async Task Copy_ListsEveryUncopiedLegacyReview_IncludingTombstones_ThenIsIdempotent()
-    {
-        var cleared = SeedUser(LegacyProfile(LegacyConsentCheckStatus.Cleared, isApproved: true));
-        var rejected = SeedUser(LegacyProfile(rejectedAt: Earlier), state: UserState.Rejected);
-        var merged = SeedUser(LegacyProfile(rejectedAt: Earlier), state: UserState.Merged, mergedAt: Earlier);
-        SeedUser();
-
-        var pending = await _sut.GetUncopiedLegacyReviewsAsync(Ct);
-        pending.Select(p => p.Review.UserId).Should().BeEquivalentTo([cleared.Id, rejected.Id, merged.Id]);
-        pending.Should().OnlyContain(p => p.CopyRow && !p.SetRejectedState);
-
-        (await _sut.CopyLegacyReviewsAsync(Ct)).Should().Be(3);
-        (await _sut.CopyLegacyReviewsAsync(Ct)).Should().Be(0);
-        (await _sut.GetUncopiedLegacyReviewsAsync(Ct)).Should().BeEmpty();
-        await _userWrite.DidNotReceiveWithAnyArgs().SetRejectedAsync(default, Arg.Any<CancellationToken>());
-        (await RowAsync(cleared.Id))!.IsApproved.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task Copy_NeverOverwritesARowWrittenSinceTheDeploy()
-    {
-        var user = SeedUser(LegacyProfile(LegacyConsentCheckStatus.Cleared, isApproved: true));
-        await _sut.RecordConsentCheckAsync(user.Id, ConsentCheckStatus.Flagged, Guid.NewGuid(), null, Ct);
-
-        (await _sut.GetUncopiedLegacyReviewsAsync(Ct)).Should().BeEmpty();
-        (await _sut.CopyLegacyReviewsAsync(Ct)).Should().Be(0);
-        (await RowAsync(user.Id))!.Status.Should().Be(ConsentCheckStatus.Flagged);
-    }
-
-    [HumansFact]
-    public async Task DataMigration_IsRegistered_AndRunsTheCopy()
-    {
-        SeedUser(LegacyProfile(LegacyConsentCheckStatus.Pending));
-        var services = new ServiceCollection().AddSingleton(_sut).BuildServiceProvider();
-        var migration = new SectionDataMigrations().Migrations().Should().ContainSingle().Subject;
-
-        migration.Key.Should().Be("consent.profile-review");
-        (await migration.Status(services, Ct)).Pending.Should().Be(1);
-        (await migration.Apply(services, Guid.NewGuid(), Ct)).Should().Be(1);
-        (await migration.Status(services, Ct)).Pending.Should().Be(0);
     }
 
     // ─── Export, erasure ─────────────────────────────────────────────────────────

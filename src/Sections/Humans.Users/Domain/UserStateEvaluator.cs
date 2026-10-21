@@ -23,7 +23,7 @@ internal static class UserStateEvaluator
     /// <summary>
     /// Classify at the suspend/unsuspend or reject transition, which supplies the new signal.
     /// A rejection is carried forward from the stored state (<c>IUserRepository.SetRejectedAsync</c>
-    /// writes it; Consent keeps the record) or read from the frozen legacy <c>profiles.RejectedAt</c>.
+    /// writes it; Consent keeps the record).
     /// </summary>
     public static UserState Classify(
         User user, Profile? profile, bool isSuspended, bool isAdminSuspended, bool isRejected = false)
@@ -37,7 +37,7 @@ internal static class UserStateEvaluator
             hasRequiredNameFields: hasName,
             isSuspended: isSuspended,
             isAdminSuspended: isAdminSuspended,
-            isRejected: isRejected || user.State == UserState.Rejected || profile?.RejectedAt is not null,
+            isRejected: isRejected || user.State == UserState.Rejected,
             isDeletionPending: user.DeletionRequestedAt.HasValue,
             isMerged: user.MergedAt is not null && !isGdprDeleted,
             isGdprDeleted: isGdprDeleted);

@@ -103,14 +103,7 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
                 [new TeamMemberInfo(Guid.NewGuid(), boardUserId, "Board Member", null, null, TeamMemberRole.Member,
                     Instant.FromUtc(2026, 1, 1, 0, 0))]));
 
-        var colaborador = SeedUser("Colaborador", profile: UserFixtures.Profile(
-            isApproved: true));
-        var asociado = SeedUser("Asociado", profile: UserFixtures.Profile(
-            isApproved: true));
-        var unapprovedColaborador = SeedUser("Unapproved", profile: UserFixtures.Profile(
-            isApproved: false));
-        var volunteer = SeedUser("Volunteer", profile: UserFixtures.Profile(
-            isApproved: true));
+        var member = SeedUser("Member", profile: UserFixtures.Profile());
 
         var access = await NewSource().GetExpectedAccessAsync(ct: Ct);
 
@@ -118,10 +111,7 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
         var readers = access["root-folder"].Access;
         readers[boardUserId].Should().Be(DrivePermissionLevel.Viewer);
         // The root is the register's shelf for the Board; everyone else reaches only their groups' subfolders.
-        readers.Should().NotContainKey(colaborador);
-        readers.Should().NotContainKey(asociado);
-        readers.Should().NotContainKey(unapprovedColaborador);
-        readers.Should().NotContainKey(volunteer);
+        readers.Should().NotContainKey(member);
     }
 
     [HumansFact]

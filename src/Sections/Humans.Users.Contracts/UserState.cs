@@ -32,7 +32,7 @@ public enum UserState
     /// <summary>Suspended for missing required consents. Shown the account-status wall with a consent-completion path.</summary>
     Suspended = 3,
 
-    /// <summary>Signup rejected (<c>IUserWrite.SetRejectedAsync</c>; legacy: <c>profiles.RejectedAt</c> set). Shown the
+    /// <summary>Signup rejected (<c>IUserWrite.SetRejectedAsync</c>). Shown the
     /// account-status wall, including the rejection reason when present.</summary>
     Rejected = 4,
 

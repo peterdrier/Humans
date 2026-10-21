@@ -31,8 +31,7 @@ internal static class UserInfoStubHelpers
     public static UserInfo MakeUserInfo(Guid userId, ProfileInfo? profile = null, string displayName = "User")
     {
         var resolvedProfile = profile ?? UserFixtures.Profile(
-            burnerName: displayName,
-            isApproved: true);
+            burnerName: displayName);
         return UserInfo.Create(
             // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
             // UserInfo.BurnerName reads User.BurnerName only (#1098).

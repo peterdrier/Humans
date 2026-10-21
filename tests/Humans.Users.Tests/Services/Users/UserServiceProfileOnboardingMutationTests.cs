@@ -394,28 +394,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task LegacyRejectedProfile_WithNonRejectedState_StillReadsAndClassifiesRejected()
-    {
-        // A profile rejected before commit 12 (profiles.RejectedAt set) whose users.State never
-        // recorded Rejected: it reads as rejected, and the next transition stores Rejected.
-        var userId = Guid.NewGuid();
-        var profileId = await SeedUserWithProfileAsync(userId);
-        var profile = await Db.Profiles.FirstAsync(p => p.Id == profileId, TestContext.Current.CancellationToken);
-        profile.RejectedAt = Clock.GetCurrentInstant();
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
-        Db.ChangeTracker.Clear();
-        (await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken))
-            .State.Should().NotBe(UserState.Rejected);
-
-        var info = await _service.GetRawUserInfoAsync(userId, TestContext.Current.CancellationToken);
-        info!.IsRejected.Should().BeTrue();
-
-        await _service.SetSuspensionAsync(userId, suspended: false, ct: TestContext.Current.CancellationToken);
-        var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
-        user.State.Should().Be(UserState.Rejected);
-    }
-
-    [HumansFact]
     public async Task SetSuspensionAsync_True_SetsSuspendedStateWithoutTouchingAdminNotes()
     {
         var userId = Guid.NewGuid();

@@ -79,7 +79,7 @@ Extends `IdentityUser<Guid>` with project-specific columns.
 
 Computed: `IsDeletionPending => DeletionRequestedAt.HasValue`.
 
-User-suspension state lives on `User.State` (`UserState.Suspended` / `AdminSuspended`); `UserInfo.IsSuspended` is the canonical predicate. Single-user writes go through `IUserWrite.SetSuspensionAsync` (called by `HumanLifecycleService`), which delegates to `IUserRepository.SetSuspensionAsync` — that call writes `users.State` and nothing else. The suspension **reason** is not stored on the row: `HumanLifecycleService.SuspendAsync` puts it in the audit log (`AuditAction.MemberSuspended`) and in the `AccessSuspended` notification body. `Profile.AdminNotes` is a general-purpose admin field and is never written by the suspension path. The nightly consent-expiry sweep prepares user details and one team-membership snapshot before changing state, so lookup failures leave suspension retryable; downstream cleanup and audits process only the IDs the write actually changes. The bulk path is `IUserManagement.SuspendProfilesForMissingConsentAsync` → `IUserRepository.SuspendManyAsync`, which returns only the users whose state actually moved — a row already `Rejected`/`Merged`/`Deleted` outranks `Suspended` and is left alone. Unsuspending re-classifies from the remaining fields, so a rejected or deletion-pending row does not come back as `Active`. Rejection is written by `IUserWrite.SetRejectedAsync` (Onboarding's reject, after Consent records the rejection in `consent_reviews`; Users decomposition commit 12) and carried forward from the stored `UserState.Rejected` by every later classification, alongside the frozen legacy `profiles.RejectedAt`. `UserInfo.IsRejected` reads both. The User entity has no `IsArchived` / `SuspendedAt` / `SuspensionReason` columns; "archive" / "lockout" semantics are achieved by anonymizing identity fields and removing OAuth logins through `IAccountDeletionService.PurgeAsync` / `AnonymizeExpiredAccountAsync`.
+User-suspension state lives on `User.State` (`UserState.Suspended` / `AdminSuspended`); `UserInfo.IsSuspended` is the canonical predicate. Single-user writes go through `IUserWrite.SetSuspensionAsync` (called by `HumanLifecycleService`), which delegates to `IUserRepository.SetSuspensionAsync` — that call writes `users.State` and nothing else. The suspension **reason** is not stored on the row: `HumanLifecycleService.SuspendAsync` puts it in the audit log (`AuditAction.MemberSuspended`) and in the `AccessSuspended` notification body. `Profile.AdminNotes` is a general-purpose admin field and is never written by the suspension path. The nightly consent-expiry sweep prepares user details and one team-membership snapshot before changing state, so lookup failures leave suspension retryable; downstream cleanup and audits process only the IDs the write actually changes. The bulk path is `IUserManagement.SuspendProfilesForMissingConsentAsync` → `IUserRepository.SuspendManyAsync`, which returns only the users whose state actually moved — a row already `Rejected`/`Merged`/`Deleted` outranks `Suspended` and is left alone. Unsuspending re-classifies from the remaining fields, so a rejected or deletion-pending row does not come back as `Active`. Rejection is written by `IUserWrite.SetRejectedAsync` (Onboarding's reject, after Consent records the rejection in `consent_reviews`; Users decomposition commit 12) and carried forward from the stored `UserState.Rejected` by every later classification. `UserInfo.IsRejected` reads it. The User entity has no `IsArchived` / `SuspendedAt` / `SuspensionReason` columns; "archive" / "lockout" semantics are achieved by anonymizing identity fields and removing OAuth logins through `IAccountDeletionService.PurgeAsync` / `AnonymizeExpiredAccountAsync`.
 
 `UserStateEvaluator.Classify`'s `isGdprDeleted` (→ `UserState.Deleted`) is keyed on the minted tombstone email (`deleted-<id>@deleted.local`, written by `ApplyExpiredDeletionAnonymizationAsync`), never on a user-editable name field — `DisplayName`/`BurnerName` are things a member can type, and a burner name of "Deleted User" must not read as erasure (nobodies-collective/Humans#1742). A narrower legacy fallback recognises the complete pre-email tombstone shape — `DisplayName`, `FirstName` and `LastName` all set to their sentinel values together — for rows anonymized before the email scrub existed; it retires with the #1102 `DisplayName` column drop.
 
@@ -389,14 +389,14 @@ A contact is identified by `ContactSource != null && LastLoginAt == null`. When 
 | BoardNotes | string? | null | Notes from the human intended for the Board (self + Board only). |
 | AdminNotes | string? (4000) | null | Admin-only notes (not visible to the human). |
 | Iban | string? (34) | null | **Legacy, no longer written.** The member's IBAN moved to Finance's `finance_payment_details` (Users decomposition commit 1). No longer read: `finance.iban-to-payment-details` is retired and `ProfileInfo.Iban` is gone. Still erased by `EraseProfileExtrasForUserAsync` until the column is dropped. |
-| IsApproved | bool | false | **Legacy, no longer written.** Moved to Consent's `consent_reviews` (Users decomposition commit 12). Carried on `ProfileInfo` as `[Obsolete]` (`HUM_PROFILE_REVIEW`) for Consent's read fallback and the `consent.profile-review` copy only; still exported and erased here until the column is dropped. |
+| IsApproved | bool | false | **Legacy, no longer written.** Moved to Consent's `consent_reviews` (Users decomposition commit 12). No longer read: `consent.profile-review` is retired and the `ProfileInfo` review fields are gone. Still exported and erased here until the column is dropped. |
 | MembershipTier | LegacyMembershipTier | Volunteer | **Legacy, no longer written.** The tier moved to Governance's `governance_membership_tiers` (Users decomposition commit 11). No longer read by Governance: `governance.profile-tier` is retired and `ProfileInfo.MembershipTier` is gone. Still exported here until the column is dropped. |
 | ConsentCheckStatus | LegacyConsentCheckStatus? | null | Legacy, as `IsApproved`. |
 | ConsentCheckAt | Instant? | null | When consent check was performed. Legacy, as `IsApproved`. |
 | ConsentCheckedByUserId | Guid? | null | Consent Coordinator who performed the check. Legacy, as `IsApproved`. |
 | ConsentCheckNotes | string? (4000) | null | Notes from the Consent Coordinator. Legacy, as `IsApproved`. |
 | RejectionReason | string? (4000) | null | Reason for rejection (when Admin rejects a flagged check). Legacy, as `IsApproved`. |
-| RejectedAt | Instant? | null | Legacy, as `IsApproved`. Still read by the state classifier and `UserInfo.IsRejected` (legacy arm) until the retirement PR. |
+| RejectedAt | Instant? | null | Legacy, as `IsApproved`. |
 | RejectedByUserId | Guid? | null | Admin who rejected the profile. Legacy, as `IsApproved`. |
 | NoPriorBurnExperience | bool | false | When true, CV entries are not required during onboarding. |
 | CreatedAt | Instant | — | Set on insert. |
@@ -550,13 +550,13 @@ Nothing here is written. Each row is read only by its new owner's fallback and d
 | `profiles.Iban` | Finance `finance_payment_details` | `finance.iban-to-payment-details` (retired, no reader left) | USERS-15 |
 | `profiles` food columns (`DietaryPreference`, `Allergies`, `AllergyOtherText`, `Intolerances`, `IntoleranceOtherText`) | Cantina `cantina_dietary_profiles` | `cantina.profile-dietary` (retired, no reader left) | USERS-16 |
 | `profiles.MembershipTier` | Governance `governance_membership_tiers` | `governance.profile-tier` (retired, no reader left) | USERS-17 |
-| `profiles` review columns (`ConsentCheck*`, `RejectionReason`, `RejectedAt`, `RejectedByUserId`, `IsApproved`) and the `ConsentCheckStatus` index | Consent `consent_reviews` | `consent.profile-review` | USERS-18 |
+| `profiles` review columns (`ConsentCheck*`, `RejectionReason`, `RejectedAt`, `RejectedByUserId`, `IsApproved`) and the `ConsentCheckStatus` index | Consent `consent_reviews` | `consent.profile-review` (retired, no reader left) | USERS-18 |
 | `event_participations` table | Tickets `tickets_event_participations` | `tickets.event-participations` | USERS-19 |
 | `communication_preferences` table | Email `email_communication_preferences` | `email.communication-preferences` | USERS-20 |
 | `user_emails.IsGoogle`, `user_emails.GoogleEmailStatus` | GoogleIntegration `google_workspace_identities` | `google.workspace-identities` | USERS-21 |
 | `users.UnsubscribedFromCampaigns`, `users.SuppressScheduleChangeEmails`, `users.GoogleEmailStatus` | none (dead, no migration) | none | USERS-12 to USERS-14 (per-case approval) |
 
-The `Legacy*` enums still type the frozen columns, so each one leaves `Users.Contracts` for Users' internal `Domain` with its retirement PR (`LegacyMembershipTier` has) and is deleted with its drop row.
+The `Legacy*` enums still type the frozen columns, so each one leaves `Users.Contracts` for Users' internal `Domain` with its retirement PR (`LegacyMembershipTier` and `LegacyConsentCheckStatus` have) and is deleted with its drop row.
 
 ### LegacyMembershipTier
 
@@ -568,7 +568,7 @@ Frozen copies of Tickets' `ParticipationStatus` (`NotAttending` 0, `Ticketed` 1,
 
 ### LegacyConsentCheckStatus
 
-Frozen copy of Consent's `ConsentCheckStatus` (`Pending` 0, `Cleared` 1, `Flagged` 2) typing the legacy `profiles.ConsentCheckStatus` column, stored as string via `HasConversion<string>()`. The live enum and its meaning live in Consent's contracts; deleted with the `consent.profile-review` retirement PR.
+Frozen copy of Consent's `ConsentCheckStatus` (`Pending` 0, `Cleared` 1, `Flagged` 2) typing the legacy `profiles.ConsentCheckStatus` column, stored as string via `HasConversion<string>()`. Internal to Users (`Humans.Users.Domain`) since the `consent.profile-review` retirement; deleted with the USERS-18 drop. The live enum and its meaning live in Consent's contracts.
 
 ### LegacyMessageCategory
 

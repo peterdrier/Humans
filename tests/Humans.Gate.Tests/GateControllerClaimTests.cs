@@ -138,8 +138,7 @@ public class GateControllerClaimTests
             [],
             [],
             profile: UserFixtures.Profile(
-                burnerName: displayName,
-                isApproved: true),
+                burnerName: displayName),
             []);
 
     private sealed class TestSession : ISession

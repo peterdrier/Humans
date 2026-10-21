@@ -29,7 +29,7 @@ inbox:
     review: panel
   - added: 2026-10-21
     id: USERS-18
-    what: "Drop the profiles review columns (ConsentCheckStatus, ConsentCheckAt, ConsentCheckedByUserId, ConsentCheckNotes, RejectionReason, RejectedAt, RejectedByUserId, IsApproved) and the index on ConsentCheckStatus (Users) and delete the matching Profile entity properties and configuration. Replaced by data migration consent.profile-review; blocked on CENTRAL-92 (the retirement PR) merged and deployed. The production done reading of consent.profile-review (quoted with its date) is the standing approval in memory/architecture/no-drops-until-prod-verified.md; the drop is its own generated migration with a baseline entry in NoDestructiveMigrationOps.baseline.txt whose Approval line cites that reading and Evidence line cites the retirement PR."
+    what: "Drop the profiles review columns (ConsentCheckStatus, ConsentCheckAt, ConsentCheckedByUserId, ConsentCheckNotes, RejectionReason, RejectedAt, RejectedByUserId, IsApproved), the internal LegacyConsentCheckStatus enum and the index on ConsentCheckStatus (Users) and delete the matching Profile entity properties and configuration. Replaced by data migration consent.profile-review; blocked on CENTRAL-92 (the retirement PR) merged and deployed. The production done reading of consent.profile-review (quoted with its date) is the standing approval in memory/architecture/no-drops-until-prod-verified.md; the drop is its own generated migration with a baseline entry in NoDestructiveMigrationOps.baseline.txt whose Approval line cites that reading and Evidence line cites the retirement PR."
     review: panel
   - added: 2026-10-21
     id: USERS-19

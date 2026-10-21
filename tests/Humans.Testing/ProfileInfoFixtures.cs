@@ -22,16 +22,13 @@ public static class UserFixtures
     public static readonly Instant DefaultInstant = Instant.FromUtc(2026, 1, 1, 0, 0);
 
     /// <summary>
-    /// The stored <c>User.State</c> a row with <paramref name="profile"/> carries: Rejected once
-    /// rejected, otherwise Bare until the required name fields are filled. Nothing derives state on
+    /// The stored <c>User.State</c> a row with <paramref name="profile"/> carries: Bare until the
+    /// required name fields are filled. Nothing derives state on
     /// read any more, so a test that builds a <c>UserInfo</c> by hand must stamp it.
     /// </summary>
     public static UserState StateFor(ProfileInfo? profile) =>
         profile switch
         {
-#pragma warning disable HUM_PROFILE_REVIEW // a legacy-rejected fixture profile still classifies as Rejected
-            { RejectedAt: not null } => UserState.Rejected,
-#pragma warning restore HUM_PROFILE_REVIEW
             not null when !string.IsNullOrWhiteSpace(profile.BurnerName)
                 && !string.IsNullOrWhiteSpace(profile.FirstName)
                 && !string.IsNullOrWhiteSpace(profile.LastName) => UserState.Active,
@@ -62,14 +59,6 @@ public static class UserFixtures
         string? adminNotes = null,
         string? contributionInterests = null,
         string? boardNotes = null,
-        bool isApproved = false,
-        LegacyConsentCheckStatus? consentCheckStatus = null,
-        Instant? consentCheckAt = null,
-        Guid? consentCheckedByUserId = null,
-        string? consentCheckNotes = null,
-        string? rejectionReason = null,
-        Instant? rejectedAt = null,
-        Guid? rejectedByUserId = null,
         bool noPriorBurnExperience = false,
         IReadOnlyList<ContactFieldInfo>? contactFields = null,
         IReadOnlyList<ProfileLanguageInfo>? languages = null,
@@ -101,14 +90,6 @@ public static class UserFixtures
             AdminNotes: adminNotes,
             ContributionInterests: contributionInterests,
             BoardNotes: boardNotes,
-            IsApproved: isApproved,
-            ConsentCheckStatus: consentCheckStatus,
-            ConsentCheckAt: consentCheckAt,
-            ConsentCheckedByUserId: consentCheckedByUserId,
-            ConsentCheckNotes: consentCheckNotes,
-            RejectionReason: rejectionReason,
-            RejectedAt: rejectedAt,
-            RejectedByUserId: rejectedByUserId,
             NoPriorBurnExperience: noPriorBurnExperience,
             ContactFields: contactFields ?? [],
             Languages: languages ?? [],

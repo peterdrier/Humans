@@ -30,7 +30,7 @@ public class PersonSearchMatcherTests
         string? consentCheckNotes = null,
         string? rejectionReason = null,
         string? emergencyContactName = null,
-        Instant? rejectedAt = null,
+        bool rejected = false,
         IEnumerable<(string Value, ContactFieldVisibility Vis)>? contactFields = null,
         IEnumerable<(string Email, bool Verified, ContactFieldVisibility? Vis)>? emails = null,
         IEnumerable<(string EventName, string? Description)>? cv = null)
@@ -56,7 +56,6 @@ public class PersonSearchMatcherTests
             ConsentCheckNotes = consentCheckNotes,
             RejectionReason = rejectionReason,
             EmergencyContactName = emergencyContactName,
-            RejectedAt = rejectedAt,
             CreatedAt = At,
             UpdatedAt = At,
         };
@@ -71,6 +70,8 @@ public class PersonSearchMatcherTests
             PreferredLanguage = "en",
             CreatedAt = At,
         };
+        if (rejected)
+            user.State = UserState.Rejected;
 
         var contactEntities = (contactFields ?? [])
             .Select((c, i) => new ContactField
@@ -309,7 +310,7 @@ public class PersonSearchMatcherTests
     [HumansFact]
     public void Rejected_profile_is_never_matched()
     {
-        var human = Human(burnerName: "Sparkle", rejectedAt: At);
+        var human = Human(burnerName: "Sparkle", rejected: true);
 
         PersonSearchMatcher.Match(human, "sparkle", PersonSearchFields.AdminAll).Should().BeNull();
     }
@@ -343,7 +344,7 @@ public class PersonSearchMatcherTests
     [HumansFact]
     public void ExactName_never_matches_rejected_profile()
     {
-        var human = Human(burnerName: "Sparkle", rejectedAt: At);
+        var human = Human(burnerName: "Sparkle", rejected: true);
 
         PersonSearchMatcher.Match(human, "sparkle", PersonSearchFields.ExactName).Should().BeNull();
     }

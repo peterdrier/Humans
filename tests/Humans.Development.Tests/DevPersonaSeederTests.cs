@@ -89,8 +89,7 @@ public class DevPersonaSeederTests
             profile: UserFixtures.Profile(
                 burnerName: "Dev Board",
                 firstName: "Dev",
-                lastName: "Board",
-                isApproved: true),
+                lastName: "Board"),
             []);
 
     private static MembershipSnapshot Snapshot(params Guid[] missingVersionIds) => new(

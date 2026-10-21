@@ -17,9 +17,6 @@ internal interface IConsentReviewRepository : IRepository
     /// <summary>Inserts or overwrites the member's row.</summary>
     Task UpsertAsync(ConsentReview values, CancellationToken ct = default);
 
-    /// <summary>Inserts only when the member has no row; false when one exists.</summary>
-    Task<bool> TryInsertAsync(ConsentReview values, CancellationToken ct = default);
-
     /// <summary>Article 17: nulls the free-text notes and rejection reason on the member's row.</summary>
     Task EraseFreeTextAsync(Guid userId, CancellationToken ct = default);
 }
