@@ -735,10 +735,6 @@ internal sealed class UserService(
         return new UserEmailReconcilePlanResult(mutatedUserIds);
     }
 
-    public Task SetLastConsentReminderSentAsync(
-        Guid userId, Instant sentAt, CancellationToken ct = default) =>
-        repo.SetLastConsentReminderSentAsync(userId, sentAt, ct);
-
     // --- IUserDataContributor — GDPR export ---
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)

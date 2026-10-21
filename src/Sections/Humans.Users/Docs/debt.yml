@@ -1,7 +1,7 @@
 # Section debt ledger for Humans.Users. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 22
+next_id: 23
 inbox:
   - added: 2026-10-21
     id: USERS-12
@@ -42,4 +42,8 @@ inbox:
   - added: 2026-10-21
     id: USERS-21
     what: "Drop user_emails.IsGoogle and user_emails.GoogleEmailStatus (Users) and delete the UserEmail entity properties and configuration (users.GoogleEmailStatus is USERS-14). Replaced by data migration google.workspace-identities; blocked on CENTRAL-95 (the retirement PR) merged and deployed. The production done reading of google.workspace-identities (quoted with its date) is the standing approval in memory/architecture/no-drops-until-prod-verified.md; the drop is its own generated migration with a baseline entry in NoDestructiveMigrationOps.baseline.txt whose Approval line cites that reading and Evidence line cites the retirement PR."
+    review: panel
+  - added: 2026-10-21
+    id: USERS-22
+    what: "Drop users.LastConsentReminderSentAt (Users) and delete the User.LastConsentReminderSentAt entity property and its copy in UserInfoSaveChangesInterceptor. Replaced by data migration consent.reminder-stamps; blocked on CENTRAL-96 (the retirement PR) merged and deployed. The production done reading of consent.reminder-stamps (quoted with its date) is the standing approval in memory/architecture/no-drops-until-prod-verified.md; the drop is its own generated migration with a baseline entry in NoDestructiveMigrationOps.baseline.txt whose Approval line cites that reading and Evidence line cites the retirement PR."
     review: panel

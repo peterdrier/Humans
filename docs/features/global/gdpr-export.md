@@ -167,6 +167,7 @@ archived account and the survivor.
 | `Applications` | `ApplicationDecisionService` | Array of tier application records with `StateHistory` inline. |
 | `MembershipTier` | `MembershipTierService` | Single object `{ Tier, GrantedAt, ExpiresAt, GrantedByApplicationId }`, or `{ Tier }` for a not-yet-copied legacy profile tier; null for a Volunteer. Retained on erasure (register of members). |
 | `Consents` | `ConsentService` | Array of `{ DocumentName, DocumentVersion, ExplicitConsent, ConsentedAt, IpAddress, UserAgent }`. |
+| `ConsentReminder` | `ConsentReminderService` | Array of `{ UserId, LastSentAt }` — when the re-consent reminder email last went to each id in the merge chain (survivor first; the survivor's legacy `users.LastConsentReminderSentAt` until the `consent.reminder-stamps` copy has run); null when none. Erased in full. |
 | `ConsentReview` | `ConsentReviewService` | Array of `{ UserId, Status, CheckedAt, Notes, IsApproved, RejectionReason, RejectedAt }` — the Consent Coordinator's review rows for every id in the merge chain (survivor first); null when none. Erasure keeps status, dates, approval and reviewer ids and erases the notes and the rejection reason. |
 | `TeamMemberships` | `TeamService` | Array of `{ TeamName, Role, JoinedAt, LeftAt, TeamRoles[] }`. |
 | `TeamJoinRequests` | `TeamService` | Array of `{ TeamName, Status, Message, ReviewNotes, RequestedAt, ResolvedAt, StateHistory[] }` (`StateHistory` entries are `{ Status, ChangedAt, Notes }`). |

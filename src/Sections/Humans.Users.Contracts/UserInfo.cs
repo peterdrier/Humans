@@ -156,6 +156,7 @@ public sealed record UserInfo(
     string? FallbackPictureUrl,
     Instant CreatedAt,
     Instant? LastLoginAt,
+    [property: Obsolete("Moved to Consent's consent_reminders. The one reader left is Consent's ConsentReminderService: its legacy fallback and the consent.reminder-stamps copy.", DiagnosticId = "HUM_USER_CONSENT_REMINDER")]
     Instant? LastConsentReminderSentAt,
     Instant? DeletionRequestedAt,
     Instant? DeletionScheduledFor,
