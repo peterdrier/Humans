@@ -4,7 +4,7 @@ using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Constants;
-using Humans.Shifts.Domain;
+using Humans.Shifts.Services.Dtos;
 using Humans.Base.Enums;
 using NodaTime;
 using Humans.Users.Contracts;
@@ -62,12 +62,12 @@ internal sealed class ShiftAdminPageBuilder(
         };
     }
 
-    private async Task<(List<ShiftSignup> PendingSignups, int TotalSlots, int ConfirmedCount)> BuildStaffingSummaryAsync(
-        IReadOnlyList<Rota> rotas,
+    private async Task<(List<ShiftAdminPendingSignup> PendingSignups, int TotalSlots, int ConfirmedCount)> BuildStaffingSummaryAsync(
+        IReadOnlyList<ShiftAdminRota> rotas,
         bool incompleteOnboarding,
         CancellationToken ct)
     {
-        var pendingSignups = new List<ShiftSignup>();
+        var pendingSignups = new List<ShiftAdminPendingSignup>();
         var totalSlots = 0;
         var confirmedCount = 0;
 
@@ -75,9 +75,13 @@ internal sealed class ShiftAdminPageBuilder(
         {
             foreach (var shift in rota.Shifts)
             {
-                totalSlots += shift.MaxVolunteers;
-                confirmedCount += shift.ShiftSignups.Count(s => s.Status == SignupStatus.Confirmed);
-                pendingSignups.AddRange(shift.ShiftSignups.Where(s => s.Status == SignupStatus.Pending));
+                totalSlots += shift.Shift.MaxVolunteers;
+                confirmedCount += shift.ConfirmedCount;
+                pendingSignups.AddRange(shift.Signups
+                    .Where(s => s.Status == SignupStatus.Pending)
+                    .Select(s => new ShiftAdminPendingSignup(
+                        s.Id, s.UserId, s.SignupBlockId, s.CreatedAt,
+                        shift.Shift, shift.ConfirmedCount, rota.Rota.Name)));
             }
         }
 
@@ -87,8 +91,8 @@ internal sealed class ShiftAdminPageBuilder(
         return (pendingSignups, totalSlots, confirmedCount);
     }
 
-    private async Task<IReadOnlyList<ShiftSignup>> FilterToIncompleteOnboardingAsync(
-        IReadOnlyList<ShiftSignup> signups, CancellationToken ct)
+    private async Task<IReadOnlyList<ShiftAdminPendingSignup>> FilterToIncompleteOnboardingAsync(
+        IReadOnlyList<ShiftAdminPendingSignup> signups, CancellationToken ct)
     {
         if (signups.Count == 0) return signups;
 
@@ -144,10 +148,10 @@ internal sealed class ShiftAdminPageBuilder(
     }
 
     private static IReadOnlyList<Guid> GetRelevantUserIds(
-        IReadOnlyList<Rota> rotas,
-        IReadOnlyList<ShiftSignup> pendingSignups) =>
+        IReadOnlyList<ShiftAdminRota> rotas,
+        IReadOnlyList<ShiftAdminPendingSignup> pendingSignups) =>
         rotas.SelectMany(r => r.Shifts)
-            .SelectMany(s => s.ShiftSignups)
+            .SelectMany(s => s.Signups)
             .Select(su => su.UserId)
             .Concat(pendingSignups.Select(p => p.UserId))
             .Distinct()

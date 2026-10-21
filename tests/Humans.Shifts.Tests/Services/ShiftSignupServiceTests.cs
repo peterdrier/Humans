@@ -2467,6 +2467,38 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         }
     }
 
+    [HumansFact]
+    public async Task GetByUserAsync_ResolvesEachSignupAgainstItsOwnEvent()
+    {
+        // Same DayOffset + StartTime in two events in different time zones: the
+        // instants can only differ if each row is resolved against its own calendar.
+        var (_, madridRota, madridShift) = SeedShiftScenario(SignupPolicy.Public);
+        var (aucklandEs, aucklandRota, _) = SeedShiftScenario(SignupPolicy.Public);
+        aucklandEs.IsActive = false;
+        aucklandEs.TimeZoneId = "Pacific/Auckland";
+        aucklandEs.GateOpeningDate = new LocalDate(2025, 1, 15);
+        aucklandRota.Name = "Southern Rota";
+        var aucklandShift = SeedShift(aucklandRota, dayOffset: 1, startHour: 10, durationHours: 4);
+        var userId = Guid.NewGuid();
+        SeedSignup(userId, madridShift.Id, SignupStatus.Confirmed);
+        SeedSignup(userId, aucklandShift.Id, SignupStatus.Pending);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var rows = await _service.GetByUserAsync(userId, ct: TestContext.Current.CancellationToken);
+
+        rows.Should().HaveCount(2);
+        var madrid = rows.Single(r => r.ShiftId == madridShift.Id);
+        madrid.RotaName.Should().Be(madridRota.Name);
+        madrid.Status.Should().Be(SignupStatus.Confirmed);
+        // 2026-07-02 10:00 Europe/Madrid = 08:00Z
+        madrid.AbsoluteStart.Should().Be(Instant.FromUtc(2026, 7, 2, 8, 0));
+        var auckland = rows.Single(r => r.ShiftId == aucklandShift.Id);
+        auckland.RotaName.Should().Be("Southern Rota");
+        auckland.EventSettingsId.Should().Be(aucklandEs.Id);
+        // 2025-01-16 10:00 Pacific/Auckland = 2025-01-15 21:00Z
+        auckland.AbsoluteStart.Should().Be(Instant.FromUtc(2025, 1, 15, 21, 0));
+    }
+
     // ============================================================
     // Helpers
     // ============================================================

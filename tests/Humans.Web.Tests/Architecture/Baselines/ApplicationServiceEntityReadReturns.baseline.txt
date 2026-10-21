@@ -22,8 +22,3 @@
 Humans.Auth.Contracts.IMagicLinkService.FindUserByVerifiedEmailAsync:Humans.Users.Contracts.EventParticipation
 Humans.Auth.Contracts.IMagicLinkService.FindUserByVerifiedEmailAsync:Humans.Users.Contracts.User
 Humans.Auth.Contracts.IMagicLinkService.FindUserByVerifiedEmailAsync:Humans.Users.Contracts.UserEmail
-Humans.Shifts.Services.IShiftManagement.GetOrCreateShiftProfileAsync:Humans.Shifts.Domain.VolunteerEventProfile
-Humans.Shifts.Services.IShiftManagement.GetRotaByIdAsync:Humans.Shifts.Domain.Rota
-Humans.Shifts.Services.IShiftManagement.GetRotasByDepartmentAsync:Humans.Shifts.Domain.Rota
-Humans.Shifts.Services.IShiftManagement.GetShiftByIdAsync:Humans.Shifts.Domain.Shift
-Humans.Shifts.Services.IShiftSignupService.GetByUserAsync:Humans.Shifts.Domain.ShiftSignup

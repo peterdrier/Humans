@@ -43,8 +43,8 @@ public class ShiftProfileControllerTests
         var userId = Guid.NewGuid();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], [], null, [])));
-        var profile = new VolunteerEventProfile { Id = Guid.NewGuid(), UserId = userId };
-        shifts.GetOrCreateShiftProfileAsync(userId).Returns(profile);
+        ShiftVolunteerProfileInfo? saved = null;
+        await shifts.UpdateShiftProfileAsync(Arg.Do<ShiftVolunteerProfileInfo>(p => { saved = p; }));
         var http = new DefaultHttpContext
         {
             RequestServices = services,
@@ -62,8 +62,9 @@ public class ShiftProfileControllerTests
         validator.Validate(controller.ControllerContext, null, "", model);
         controller.ModelState.IsValid.Should().BeTrue();
         (await controller.ShiftInfo(model)).Should().BeOfType<RedirectToActionResult>();
-        profile.Skills.Should().ContainSingle().Which.Should().Be("Other: " + new string('s', 200));
-        profile.Languages.Should().ContainSingle().Which.Should().Be("Other: " + new string('l', 200));
+        saved!.UserId.Should().Be(userId);
+        saved.Skills.Should().ContainSingle().Which.Should().Be("Other: " + new string('s', 200));
+        saved.Languages.Should().ContainSingle().Which.Should().Be("Other: " + new string('l', 200));
         shifts.ClearReceivedCalls();
         controller.ModelState.Clear();
 
@@ -74,10 +75,7 @@ public class ShiftProfileControllerTests
         foreach (var field in new[] { nameof(model.SkillOtherText), nameof(model.LanguageOtherText) })
             controller.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage
                 .Should().Be(shared["Validation_MaxLength", field, 200].Value);
-        await shifts.DidNotReceive().GetOrCreateShiftProfileAsync(Arg.Any<Guid>());
-        await shifts.DidNotReceive().UpdateShiftProfileAsync(Arg.Any<VolunteerEventProfile>());
-        profile.Skills.Should().ContainSingle().Which.Should().HaveLength(207);
-        profile.Languages.Should().ContainSingle().Which.Should().HaveLength(207);
+        await shifts.DidNotReceive().UpdateShiftProfileAsync(Arg.Any<ShiftVolunteerProfileInfo>());
     }
 
     [HumansFact]
@@ -91,7 +89,6 @@ public class ShiftProfileControllerTests
         var userId = Guid.NewGuid();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], [], null, [])));
-        shifts.GetOrCreateShiftProfileAsync(userId).Returns(new VolunteerEventProfile { Id = Guid.NewGuid(), UserId = userId });
         var http = new DefaultHttpContext
         {
             RequestServices = services,

@@ -47,7 +47,7 @@ internal sealed class ShiftsGalleryViewComponent(
             {
                 sampleDeptId = depts[0].TeamId;
                 var rotas = await shiftMgmt.GetRotasByDepartmentAsync(sampleDeptId.Value, es.Id);
-                rota = rotas.Select(ToSampleRotaInfo).FirstOrDefault();
+                rota = rotas.Select(r => r.Rota).FirstOrDefault();
             }
 
             var sampleRotaShifts = new List<ShiftDisplayItem>();
@@ -90,20 +90,6 @@ internal sealed class ShiftsGalleryViewComponent(
             return View(ShiftsGalleryViewModel.Empty with { CurrentUserId = currentUserId });
         }
     }
-
-    private static RotaInfo ToSampleRotaInfo(Rota rota) =>
-        new(
-            rota.Id,
-            rota.EventSettingsId,
-            rota.TeamId,
-            rota.Name,
-            rota.Description,
-            rota.PracticalInfo,
-            rota.Priority,
-            rota.Policy,
-            rota.Period,
-            rota.IsVisibleToVolunteers,
-            rota.Tags.Select(t => new ShiftTagSummary(t.Id, t.Name)).ToList());
 }
 
 internal sealed record ShiftsGalleryViewModel

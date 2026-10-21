@@ -67,16 +67,16 @@ internal sealed class ShiftProfileController(
             if (user is null)
                 return NotFound();
 
-            var shiftProfile = await shiftMgmt.GetOrCreateShiftProfileAsync(user.Id);
+            var existing = await shiftMgmt.GetShiftProfileAsync(user.Id);
 
-            shiftProfile.Skills = ShiftInfoViewModel.MergeSkills(
-                model.SelectedSkills, model.SkillOtherText, shiftProfile.Skills);
-            shiftProfile.Quirks = ShiftInfoViewModel.MergePersistedQuirks(
-                model.TimePreference, model.SelectedQuirks, shiftProfile.Quirks);
-            shiftProfile.Languages = ShiftInfoViewModel.MergeLanguages(
-                model.SelectedLanguages, model.LanguageOtherText, shiftProfile.Languages);
-
-            await shiftMgmt.UpdateShiftProfileAsync(shiftProfile);
+            await shiftMgmt.UpdateShiftProfileAsync(new ShiftVolunteerProfileInfo(
+                user.Id,
+                ShiftInfoViewModel.MergeSkills(
+                    model.SelectedSkills, model.SkillOtherText, existing?.Skills),
+                ShiftInfoViewModel.MergePersistedQuirks(
+                    model.TimePreference, model.SelectedQuirks, existing?.Quirks),
+                ShiftInfoViewModel.MergeLanguages(
+                    model.SelectedLanguages, model.LanguageOtherText, existing?.Languages)));
             await shiftProfiles.SetVolunteerTagPreferencesAsync(user.Id, model.EditableShiftTagIds);
 
             SetSuccess(localizer["Profile_Updated"].Value);

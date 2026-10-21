@@ -7,6 +7,7 @@ using Humans.Shifts.Tests.Infrastructure;
 using Humans.Users.Contracts;
 using Humans.Users.Domain;
 using Humans.Shifts.Helpers;
+using Humans.Settings.Contracts;
 using NodaTime;
 using NSubstitute;
 using Xunit;
@@ -108,7 +109,9 @@ public class ShiftVolunteerSearchBuilderTests
         SetCachedSignups(MakeSignup(ActiveBurnId, dayOffset: 1, new LocalTime(10, 0), Duration.FromHours(4)));
         _signupService.GetByUserAsync(_candidateId, PastBurnId).Returns(
         [
-            MakeSignup(PastBurnId, dayOffset: 1, new LocalTime(20, 0), Duration.FromHours(2)),
+            ShiftUserSummaryProjection.ToSummary(
+                MakeSignup(PastBurnId, dayOffset: 1, new LocalTime(20, 0), Duration.FromHours(2)),
+                ToCalendar(PastBurn)),
         ]);
 
         var result = await BuildSut().BuildForShiftAsync(target, "ann", canViewMedical: false);
@@ -195,7 +198,7 @@ public class ShiftVolunteerSearchBuilderTests
         _shiftView.GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, ShiftUserView>
             {
-                [_candidateId] = new(_candidateId, null, null, null, [], signups),
+                [_candidateId] = new(_candidateId, null, null, null, [], signups, ToCalendar(ActiveBurn)),
             });
 
     private void StubCandidateMedicalConditions(string medicalConditions) =>
@@ -214,7 +217,17 @@ public class ShiftVolunteerSearchBuilderTests
                 })
             });
 
-    private static Shift MakeShift(Guid burnId, int dayOffset, LocalTime start, Duration duration) =>
+    // The target as GetShiftByIdAsync hands it over: the shift's own fields plus its rota.
+    private static ShiftWithRota MakeShift(Guid burnId, int dayOffset, LocalTime start, Duration duration)
+    {
+        var rotaId = Guid.NewGuid();
+        return new ShiftWithRota(
+            new ShiftInfo(Guid.NewGuid(), rotaId, null, dayOffset, start, duration.TotalHours, 0, 5, false, false, dayOffset < 0),
+            new RotaInfo(rotaId, burnId, Guid.NewGuid(), "Rota", null, null,
+                ShiftPriority.Normal, SignupPolicy.Public, RotaPeriod.Event, true, []));
+    }
+
+    private static Shift MakeShiftEntity(Guid burnId, int dayOffset, LocalTime start, Duration duration) =>
         new()
         {
             Id = Guid.NewGuid(),
@@ -229,8 +242,25 @@ public class ShiftVolunteerSearchBuilderTests
         {
             Id = Guid.NewGuid(),
             Status = SignupStatus.Confirmed,
-            Shift = MakeShift(burnId, dayOffset, start, duration),
+            Shift = MakeShiftEntity(burnId, dayOffset, start, duration),
         };
+
+    private static EventSettingsInfo ToCalendar(BurnSettingsInfo burn) => new(
+        Id: burn.Id,
+        EventName: burn.EventName,
+        Year: burn.Year,
+        TimeZoneId: burn.TimeZoneId,
+        GateOpeningDate: burn.GateOpeningDate,
+        BuildStartOffset: burn.BuildStartOffset,
+        EventEndOffset: burn.EventEndOffset,
+        StrikeEndOffset: burn.StrikeEndOffset,
+        FirstCrewStartOffset: burn.FirstCrewStartOffset,
+        SetupWeekStartOffset: burn.SetupWeekStartOffset,
+        PreEventWeekStartOffset: burn.PreEventWeekStartOffset,
+        FinishingWeekendStartOffset: burn.FinishingWeekendStartOffset,
+        EarlyEntryCapacity: new Dictionary<int, int>(),
+        BarriosEarlyEntryAllocation: null,
+        EarlyEntryClose: null);
 
     private static BurnSettingsInfo MakeBurn(Guid id, string timeZoneId, LocalDate gateOpening) =>
         new(
