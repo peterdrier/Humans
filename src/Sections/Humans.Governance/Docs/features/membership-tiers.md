@@ -45,18 +45,18 @@ Volunteer is the default tier for everyone. No badge is displayed for Volunteers
 
 ## User Stories
 
-### US-15.1: Inline Tier Application During Signup
+### US-15.1: Tier Application Link During Signup
 
 **As a** new human signing up
-**I want to** apply for Colaborador or Asociado as part of my initial profile setup
-**So that** I don't have to go through a separate application process
+**I want to** see the tiers and how to apply during my initial profile setup
+**So that** I can apply for Colaborador or Asociado if I want deeper involvement
 
 **Acceptance Criteria:**
-- During initial signup, profile setup includes a tier selection step
-- Choosing Colaborador or Asociado reveals the application form inline
-- Submitting creates both a Profile and an Application entity behind the scenes
-- This is a **one-shot** experience — after initial onboarding, profile edit has NO tier/application sections
-- Default is Volunteer (no application form shown)
+- During initial signup, profile setup shows a membership tier card describing the three tiers
+- The card links to `/Governance/Applications/Create`; the profile form submits no application
+- With a pending or approved application, the card shows a note instead of the link
+- The card is initial-setup only; after onboarding, profile edit has NO tier/application sections
+- Default is Volunteer (nothing to submit)
 
 ### US-15.2: Apply for Tier After Onboarding
 

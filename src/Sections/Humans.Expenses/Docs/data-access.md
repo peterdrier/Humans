@@ -66,6 +66,21 @@ it selects is baked into the line's amount at creation. The service has an
 `appsettings.json`); rate math happens in the service, not the DB. Travel
 lines can no longer be created — see `health.md` §5.
 
+### ExpenseHoldedBookingService (Scoped — `IExpenseHoldedBookingService`)
+
+Repository: `IExpenseRepository`. Read-only list of every booked expense line for Finance's
+Holded reconciliation; it carries no `ExpenseReportService` dependency so Finance can inject
+it without a DI cycle.
+
+| Table | R/W |
+|-------|-----|
+| ExpenseReports | R |
+| ExpenseLines | R |
+| ExpenseAttachments | R (included with the lines) |
+
+Cross-section calls via `IUserService` (resolves the submitter to the survivor after a merge,
+the creditor as `ExpenseHoldedPublisher` binds it). No `IMemoryCache`.
+
 ---
 
 

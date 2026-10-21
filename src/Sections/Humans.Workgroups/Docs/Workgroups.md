@@ -512,12 +512,13 @@ display-name reads.
   entry for the whole register, cleared on every write. Loads begun before a clear cannot
   repopulate it with the old register. Nothing time-derived is cached —
   `WorkgroupRhythm` computes rhythm badges from the snapshot against the caller's clock.
-- **Display stitching** — `IUserService.GetUserInfosAsync` for burner names and tiers.
+- **Display stitching** — `IUserService.GetUserInfosAsync` for burner names; `IGovernanceService.GetMembershipTiersAsync` (in `WorkgroupsController`) for tiers.
 - **Cross-section calls** — `IUserService`, `IUserEmailService`,
   `IRoleAssignmentService`, `ISettingsService`, `IGoogleSyncService`, `IGoogleSyncWrite`,
   `INotificationService`, `IEmailService`, `IAuditLogService`,
   `ISurveyAnalysisRead`, `IClock`, `IHoldedFinanceWrite`, `IHoldedClient`.
   `ITeamService` is used by `WorkgroupsController` and `WorkgroupDriveAccessSource`, not by `WorkgroupService`.
+  `IGovernanceService` is used by `WorkgroupsController` only.
 - **Email** — Workgroups owns the working-group notice: `WorkgroupsEmails` (internal)
   builds the `EmailMessage` for each `WorkgroupNoticeKind` from Workgroups' own
   `Workgroups_Email_*` keys in `WorkgroupsResource`, rendered in the recipient's culture

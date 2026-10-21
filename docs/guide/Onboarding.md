@@ -92,7 +92,7 @@ like. It asks for your pronouns, location, bio, birthday, and any contact fields
 
 A separate step (`/Shifts/ShiftInfo`) walks you through your skills, work-style preferences, and languages. Coordinators search by skill to find the right person for a role, so a thin profile is harder to place — fill these in honestly and fully even if you're not sure what you'll end up doing.
 
-During this one-shot setup you also see a tier selector. Leave it on **Volunteer** unless you want to apply for Colaborador or Asociado — picking one reveals a short inline application form submitted alongside your profile. After initial onboarding, the profile edit page shows profile fields only; the tier selector does not reappear.
+During this one-shot setup you also see a membership tier card explaining Volunteer, Colaborador and Asociado. You are a Volunteer by default; if you want to apply for Colaborador or Asociado, its link opens the tier application form in a new tab. After initial onboarding, the profile edit page shows profile fields only; the tier card does not reappear.
 
 ### 3. Sign the required legal documents
 
@@ -110,7 +110,7 @@ Until you enter that name the app stays shut: every page sends you back to the n
 
 ## As a [Coordinator](Glossary.md#coordinator)
 
-If you hold the **Consent Coordinator** role, your work in onboarding is reviewing the queue at `/OnboardingReview` — clearing, flagging, or rejecting new humans. Rejection records a reason and timestamp on the profile and notifies the human. That flow is documented in [LegalAndConsent.md](LegalAndConsent.md).
+If you hold the **Consent Coordinator** role, your work in onboarding is reviewing the queue at `/OnboardingReview` — clearing, flagging, or rejecting new humans. Rejection records a reason and timestamp and notifies the human. That flow is documented in [LegalAndConsent.md](LegalAndConsent.md).
 
 If you hold the **Volunteer Coordinator** role, you have read-only access to the same queue so you can assist new humans, but you cannot clear, flag, or reject — those actions all require Consent Coordinator (or Board / Admin).
 

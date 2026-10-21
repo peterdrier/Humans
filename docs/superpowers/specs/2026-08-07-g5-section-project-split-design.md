@@ -33,7 +33,7 @@ sections had executed it. The template is the living recipe and the authority on
 doc is the record and the rationale.
 
 **End-state design amended 2026-08-14** by
-[`2026-08-14-g5-endstate-design.md`](2026-08-14-g5-endstate-design.md): the `Platform/`
+`2026-08-14-g5-endstate-design.md` (historical, deleted; current invariants live in [`design-rules.md`](../../architecture/design-rules.md) §1): the `Platform/`
 tier is dropped, `Humans.UI` is retired, Base = `Humans.Interfaces` renamed (an RCL, may
 reference `Users.Contracts` only), every `.Contracts` leaf references nothing, "G5
 complete" is defined by graph predicates, and contracts fold-back happens at G6. Where
@@ -922,7 +922,7 @@ smoke test for the resx move.
 
 ### PR A — G4: peel `StoreDbContext`
 
-Follows `docs/superpowers/specs/2026-07-15-per-section-dbcontext-design.md` §8 exactly. Store was
+Follows the #858 per-section DbContext design §8 exactly (historical, deleted; current invariants live in `docs/architecture/design-rules.md` §2b). Store was
 **deferred** from the #858 stack by §5.1 (`store_orders.Year` carried a physical `DEFAULT 0` absent
 from the model). **That wall is down**: `20260802203816_RealignScaffoldedPhysicalDefaults` dropped
 it (`AlterColumn Year / store_orders / oldDefaultValue: 0`), and `PhysicalDefaultParityTests` now
@@ -1427,7 +1427,7 @@ serialized PR, which satisfies the reason for the rule.
   recipe** (extracted from §15, 2026-08-09)
 - nobodies-collective/Humans#1013 — the keystone analyzer (§10)
 - Q3 transition plan (historical, deleted) — pillar #2, gate ladder G5 predicates
-- `docs/superpowers/specs/2026-07-15-per-section-dbcontext-design.md` — the G4 recipe PR A follows
+- `docs/superpowers/specs/2026-07-15-per-section-dbcontext-design.md` (historical, deleted; current invariants live in `docs/architecture/design-rules.md` §2b) - the G4 recipe PR A follows
 - `docs/plans/2026-08-03-g0-first-audit/Store.md` (historical, since deleted — current invariants live in `src/Sections/Humans.Store/Docs/Store.md`) — Store's G1/G3 audit (its G3 predicate-1 row is
   void per §5)
 - `memory/architecture/section-project-cycle-fix.md` — the cycle-fix playbook this doc adds;

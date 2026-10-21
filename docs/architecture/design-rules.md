@@ -39,6 +39,9 @@ The four role names below still describe what code *does*, and a section assembl
 
 Because those roles now share one assembly, the old project graph no longer enforces "no EF in business logic" structurally. The enforcement moved to the analyzers: HUM0008 (controller injects a context), HUM0009 (non-repository uses a context), HUM0025 (a table read or written by two repositories), and `Internal/AssemblyScope.IsInSectionDataLayer` is how a rule tells a section's `Data/` folder from the rest of it.
 
+<!-- wheat: docs/superpowers/specs/2026-08-14-g5-endstate-design.md §The Base floor -->
+An analyzer keyed on one of our own marker attributes resolves it with `GetTypeByMetadataName` and registers nothing when that returns null, so a stale name switches the rule off with a green build. Never hardcode the name: `Humans.Analyzers.csproj` compiles the attribute sources in as linked files and derives it via `typeof(XAttribute).FullName` (nobodies-collective/Humans#1057).
+
 `Humans.Base` is the base — the bottom of the graph, and the only project every section may reference. **Its one invariant is the reference rule, not a package count:** it may take any NuGet package or shared framework it needs (Peter's ruling, 2026-08-15), and it currently carries NodaTime, CsvHelper, Serilog, Octokit, HtmlSanitizer, Markdig, EF Core + Npgsql, and `FrameworkReference Microsoft.AspNetCore.App`. It has exactly one `ProjectReference` — `Humans.Users.Contracts` — allowed only because that chain terminates (`Humans.Base → Humans.Users.Contracts → Humans.Onboarding.Contracts → nothing`); a reference to anything not on a terminating chain would close an assembly cycle. It holds the role markers (`IApplicationService`, `IRepository`, `IOrchestrator`, `IFanout`, `IInvalidator`, `ISection`, `IRecurringJob`), the architecture attributes (`GrandfatheredAttribute`, `DontFixAttribute`, `SurfaceBudgetAttribute`, `ExternalWriteAttribute`, `ExpiresOnAttribute`), `TrackedCache` and the cross-cutting cache invalidators, the `AddSectionDbContext` registration seam and migration runner, and the shared view layer (below). Its namespaces are `Humans.Base.<folder>`, folder-mirrored.
 
 **The shared view layer lives in the base.** `Humans.Base` builds with `Microsoft.NET.Sdk.Razor` + `AddRazorSupportForMvc` to support it. It holds `SharedResource` and its satellite resx files, the tag helpers (`AuthorizeView`, `MarkdownEditor`, `Nonce`, `PageHeader`), the shared `Views/Shared` partials (`_Table`, `_Pager`, `_ValidationScriptsPartial`, …; the chrome — `_Layout`, `_AdminLayout`, `_LoginPartial`, `_LanguageChooser`, `_AuthorizationPill`, `_VersionInfo` — is the Shell's), the generic table + pager view models, `PolicyNames`, `TempDataKeys`, `HumansControllerBase`, the display extensions, and the section-agnostic view components (`AccessMatrix`, `Human`, `HumanSearch`, `TempDataAlerts`). The member-facing section-help widget’s tooltip, close label, tabs and feature header use `SharedResource` in all six cultures; contributed help content and matrix rows stay owned by their sections. Its types now live under `Humans.Base.*` — notably `Humans.Base.Authorization.PolicyNames` and `Humans.Base.Extensions.DateTimeDisplayExtensions` — and the assembly Razor binds by name is `Humans.Base`, which is what `@addTagHelper *, Humans.Base` names.
@@ -81,6 +84,10 @@ Every application context is `internal sealed` (issue #750). External access is 
 - **History-table names are derived, never typed.** `SectionMigrationsHistory.TableFor<TContext>()` (`Humans.Base/Data/`) is the single source for both the runtime registration (`AddSectionDbContext`) and the design-time factories.
 - **Section contexts apply their configurations explicitly** (no assembly scanning, which would drag in other sections). `DbContextEntityOwnershipTests` (`tests/Humans.Web.Tests/Architecture/`) fails the build if an `IEntityTypeConfiguration` ends up applied by zero contexts (invisible to `has-pending-model-changes`) or by two.
 - **Unit tests for a section context** build their in-memory options with a `NewSectionDbOptions<TContext>()` helper rather than hand-rolling a `DbContextOptionsBuilder`. The helper is per-test-project now that the section test projects are separate assemblies — `tests/Humans.Users.Tests/Infrastructure/ServiceTestHarness.cs` and `tests/Humans.Camps.Tests/Infrastructure/CampsTestHarness.cs` are the two harness-shaped copies; the rest declare it locally.
+<!-- wheat: docs/superpowers/specs/2026-07-15-per-section-dbcontext-design.md §4, §5.1, §10.3, §12 -->
+- **Only a baseline is ever fake-applied.** `SectionMigrationRunner` (`Humans.Base/Hosting/`) records a context's baseline as applied without executing it only when that context's history is empty and its sentinel table exists; a fresh database executes every baseline for real, and post-baseline migrations always run. Sentinels are exact stored table names, matched as plain strings against `information_schema` (not `to_regclass`, which lowercases unquoted names). There is no migrate-down below a baseline: its `Down()` would drop the section's tables, so rolling back a peel means reverting the PR.
+- **Physical schema must match the model.** A baseline is generated from the model, so anything that exists only physically is silently missing on fresh databases: raw-SQL triggers (carried forward explicitly, see §12) and the `DEFAULT` EF scaffolds when `AddColumn` adds a non-nullable column to an existing table. `PhysicalDefaultParityTests` and `SectionMigrationRunnerTests`' schema-equivalence check (columns, defaults, indexes, constraints, triggers) guard this.
+- **`SystemDbContext` is under glass.** It holds framework-owned tables no section could plausibly own (today only `DataProtectionKeys`); adding a table to it is Peter's call.
 
 ### 2c. Table Ownership Is Strict and Sectional
 
@@ -264,7 +271,7 @@ Each section's service owns these tables. Cross-service access goes through the 
 
 Ownership is now physical as well as conventional: the map below is **per DbContext**, not per single model, and every table belongs to exactly one section context. Users/Identity and Profiles merged into `UsersDbContext` at peel 15, which also deleted the root `HumansDbContext` (framework-owned tables live in `SystemDbContext`). See the methodology block of [`service-data-access-map.md`](service-data-access-map.md) for the context-to-table listing.
 
-The table-owning sections are listed below. The other section projects own no tables and so have no row: Cantina, Debug, Development, EarlyEntry, Gdpr, Guide, Monitor, Onboarding, Scanner, Search, Stripe, TicketTailor, Tour — several appear anyway, with an explicit *(no owned tables)* note, because a reader looking for them expects to find them here.
+The table-owning sections are listed below. The other section projects own no tables and so have no row: Debug, Development, EarlyEntry, Gdpr, Guide, Monitor, Onboarding, Scanner, Search, Stripe, TicketTailor, Tour — several appear anyway, with an explicit *(no owned tables)* note, because a reader looking for them expects to find them here.
 
 | Section | Service(s) | Owned Tables |
 |---------|-----------|--------------|
@@ -414,7 +421,7 @@ What keeps it contained is a convention with three parts, and all three are load
 
 1. Outbound DTOs omit the field by construction (`RosterPersonDto`, `DailyPersonRowDto` — both carry an XML-doc note saying why).
 2. Each such surface pins the omission with a test — e.g. `CantinaRosterServiceTests.GetWeeklyRoster_MedicalConditionsNeverInDto` reflects over the DTO to assert the property does not exist, *then* serializes a result containing medical text to JSON and asserts it does not appear.
-3. Write paths document the caller's obligation (`IUserService`, `UserProfileCommands`: "MedicalConditions is GDPR Art. 9 — callers must already have verified the caller is allowed"), and the section docs carry the matching negative access rules (department coordinators and VolunteerCoordinator cannot view medical data).
+3. Write paths document the caller's obligation (`IUserManagement.SaveMedicalConditionsAsync`: "MedicalConditions is GDPR Art. 9 — the caller owns ownership/authorization checks"), and the section docs carry the matching negative access rules (department coordinators and VolunteerCoordinator cannot view medical data).
 
 **A wrapper type was considered and rejected.** The alternative was a `Sensitive<T>`-style wrapper that forces the caller to present a policy token to read the value, which would turn an accidental leak into a compile error rather than a review miss. It was rejected as over-engineering at this scale — but it is the designated fallback: **if medical data ever does leak through a serializer, the fix is the wrapper type, not another one-off test.** Adding `MedicalConditions` (or any future Art. 9 field) to a DTO therefore requires the omission test on that surface, and a leak is the trigger to escalate to type-level enforcement. There is no analyzer covering this today.
 
@@ -503,7 +510,8 @@ await _budgetService.DeleteLineItemAsync(id);
 
 | Handler | Requirement | Resource | Purpose |
 |---------|-------------|----------|---------|
-| `TeamAuthorizationHandler` (`Humans.Teams.Authorization`) | `TeamOperationRequirement` | `Team` | Coordinator/manager/admin checks |
+| `TeamAuthorizationHandler` (`Humans.Teams.Authorization`) | `TeamOperationRequirement` | `TeamInfo` | Coordinator/manager/admin checks |
+| `TeamResourceAuthorizationHandler` (`Humans.GoogleIntegration.Authorization`) | `TeamResourceManageRequirement` | `TeamInfo` | TeamsAdmin / Board / Admin, or the department's resource manager (sub-teams checked at the parent) |
 | `BudgetAuthorizationHandler` (`Humans.Budget.Authorization`) | `BudgetOperationRequirement` | `BudgetCategorySnapshot` | Finance role + coordinator checks |
 | `CampAuthorizationHandler` (`Humans.Camps.Authorization`) | `CampOperationRequirement` | `CampInfo` / `Camp` / `Guid` (untyped — the handler accepts all three) | Lead/CampAdmin checks |
 | `RoleAssignmentAuthorizationHandler` (`Humans.Auth.Authorization`) | `RoleAssignmentOperationRequirement` | `string` (role name) | Who can assign which roles |
@@ -516,8 +524,9 @@ await _budgetService.DeleteLineItemAsync(id);
 | `WorkgroupAuthorizationHandler` (`Humans.Workgroups.Authorization`) | `WorkgroupOperationRequirement` | `WorkgroupInfo` | Member / Board / Admin checks |
 | `ProgramAuthorizationHandler` (`Humans.Preapprovals.Authorization`) | `ProgramOperationRequirement` | `ProgramInfo` | Program manager (Manage) / Board, FinanceAdmin, Admin (Administer) checks |
 | `OrderAuthorizationHandler` (`Humans.Store.Authorization`) | `OrderOperationRequirement` | `OrderDto` / `OrderCreateContext` / `OrderLineContext` | Camp-lead, coordinator, and store-admin checks (implements `IAuthorizationHandler` directly to span the three resource shapes) |
+| `AgentRateLimitHandler` (`Humans.Agent.Authorization`) | `AgentRateLimitRequirement` | `Guid` (user id) | Per-user agent message rate limit |
 
-**No authorization handler is left in the Shell.** The two resource-less handlers went to their sections with the rest: `CampComplianceAccessHandler` (`Humans.Camps.Authorization`) and `IsAnyTeamManagerOrCoordinatorHandler` (`Humans.Shifts.Authorization`).
+**No authorization handler is left in the Shell.** The resource-less handlers live in their sections too: `CampComplianceAccessHandler` (`Humans.Camps.Authorization`), `IsAnyTeamManagerOrCoordinatorHandler` (`Humans.Shifts.Authorization`) and `CityPlanningMapAdminHandler` (`Humans.CityPlanning.Authorization`).
 
 ### Rules
 
@@ -649,7 +658,7 @@ Key rules the example demonstrates:
 
 ### 15e. Invalidator — One-Way Cross-Section Signal
 
-Each cached section exposes a one-method invalidator interface (e.g., `IUserInfoInvalidator`):
+Some cached sections still expose a one-method invalidator interface (e.g., `IConsentCacheInvalidator`). These are grandfathered debt: HUM0028 makes any new interface extending `IInvalidator` a build error, and the owning section's decorator evicts on its own writes instead (Users, Teams, Tickets, Shifts and Auth already do). The legacy shape:
 
 ```csharp
 Task InvalidateAsync(Guid userId, CancellationToken ct = default);
@@ -665,7 +674,7 @@ Implemented by the section's caching decorator. External sections inject the inv
 |------|------|
 | Canonical section read model | `<Section>Info` (e.g., `UserInfo`, `TeamInfo`). |
 | Read method | Match the read model name when returning one item (e.g., `GetUserInfoAsync`, `GetTeamAsync`). Plural collection methods may use the natural plural (e.g., `GetTeamsAsync`). Load-all methods used by decorators must still be normal service/read-interface methods (e.g., `GetAllEventInfosAsync`, `GetTicketOrderInfosAsync`), never cache-shaped `ForCache` helpers. |
-| Invalidator interface | `I<SectionInfo>Invalidator` (e.g., `IUserInfoInvalidator`). |
+| Invalidator interface (legacy, HUM0028) | `I<SectionInfo>Invalidator` (e.g., `ICampInfoInvalidator`). |
 | Sub-aggregate collections | Natural plural on the DTO (e.g., `VolunteerHistory`, `ContactFields`). |
 
 Do not expose EF entity types from section service read APIs — the canonical

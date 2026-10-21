@@ -72,7 +72,8 @@ Repository: `ICommunicationPreferenceRepository` (Singleton, `IDbContextFactory<
 
 Implements `ICommunicationPreferenceService`, `ICommunicationPreferenceWrite`,
 the internal `ICommunicationPreferenceManagement`, `IUserDataContributor` and
-`IUserMerge`. Cross-section calls via `IUserService`, `IAuditLogService`;
+`IUserMerge`. Cross-section calls via `IUserService`, `ITicketService` (ticket-holding lookup that locks
+the Ticketing preference for ticket holders), `IAuditLogService`;
 `IUnsubscribeTokenProvider` is section-internal. No cache.
 
 ### UnsubscribeService (Scoped, internal)

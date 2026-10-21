@@ -81,7 +81,7 @@ Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`.
 Cross-section calls via `IShiftManagement`, `ISettingsService` (via
 `EventCalendarResolver`, nobodies-collective/Humans#1630),
 `IAuditLogService`, `INotificationEmitter`, `IAdminAuthorizationService`,
-`CachingShiftViewService`, plus `IServiceProvider`
+`IUserService` (user lookups), `CachingShiftViewService`, plus `IServiceProvider`
 (lazy-resolves `ITeamService` for coordinator/team-name lookups).
 Implements `IUserDataContributor`, `IUserMerge`, `ICalendarFeedContributor`
 (personal iCal feed contributor — the user's Confirmed and Pending shift
@@ -104,7 +104,7 @@ Repositories: `IVolunteerTrackingRepository`, `IShiftManagementRepository`.
 | Shifts | R | IShiftManagementRepository |
 | Rotas | R | IShiftManagementRepository |
 
-Cross-section calls via `IUserService`, `IAuditLogService` (self-service availability saves); evicts through `CachingShiftViewService`. No
+Cross-section calls via `IUserService`, `ITicketService` (`GetAllParticipationsAsync`), `IAuditLogService` (self-service availability saves); evicts through `CachingShiftViewService`. No
 cache. Holds the gap-detection algorithm + heatmap data assembly,
 plus the full day-availability / camp-setup / day-off mutation surface.
 Build-eligibility signups (`ShiftSignups` + `EventSettings`) read through
@@ -122,7 +122,8 @@ Repository: `IShiftManagementRepository`.
 | Shifts | R (via repo) |
 | Rotas | R (via repo) |
 
-Cross-section calls via `IShiftManagement`, `IUserService`.
+Cross-section calls via `IShiftManagement`, `IUserService`, `IAuditLogService` (one entry per
+export). Reads `IBurnSettingsService` (section-internal).
 Implements `IVolunteerTrackingExportService`, `IEarlyEntryProvider`
 (contributes confirmed-build-shift early-entry rows). No cache, no
 direct DB access beyond the export query.

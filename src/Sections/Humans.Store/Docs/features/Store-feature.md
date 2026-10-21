@@ -84,11 +84,11 @@ The section invariant doc is [`Store.md`](../Store.md).
 **As** a Store admin (`StoreAdmin`, `FinanceAdmin` or `Admin`), **I want** to emit one Holded factura per order once the camp's purchases are finalized, **so that** the camp gets a single consolidated invoice rather than line-item-by-line-item paperwork.
 
 **Acceptance Criteria:**
-- POST to `/Store/Order/{id}/IssueInvoice` validates: order must be `Open`, must have at least one line, `IssuedInvoiceId` must be null, and Holded must be configured.
+- POST to `/Store/Order/{id}/IssueInvoice` validates: order must be `Open`, must have at least one line, `IssuedInvoiceId` must be null, and Holded must be configured. New issuance and draft approval also require a zero balance; recovery of an already approved document is checked first and may proceed at a nonzero balance.
 - Before issuing, each line's `UnitPriceSnapshot` / `VatRateSnapshot` / `DepositAmountSnapshot` is rewritten from the live catalog (nobodies-collective/Humans#816), so the document and the order agree forever after.
 - Issues a full Holded `invoice` (with an upserted `client` contact) when the counterparty has name, address, and a tax id; otherwise a contact-less `sales-receipt`, allowed only at or below `Store:SimplifiedInvoiceThresholdEur` (default €400) — above it issuance is refused rather than downgraded. Each line resolves its Holded revenue account from the product's `HoldedRevenueAccountNum`; deposit lines post tax-0 to `Store:DepositLiabilityAccountNum`.
 - The document is approved (a Holded draft books no revenue) and read back for its `document_number`, then written to an `Invoice` row (`OrderId`, `HoldedDocId`, `HoldedDocNumber`, `IssuedAt`, `IssuedByUserId`, full request/response payloads) in the same save that sets the order's `State = InvoiceIssued` and `IssuedInvoiceId`.
-- Idempotent: re-issuing an already-issued order throws. If an earlier attempt created a Holded document but failed before the local save, the retry recovers that same document by tag instead of creating a second one — and refuses if the order changed since.
+- Idempotent: re-issuing an already-issued order is refused without calling Holded. If an earlier attempt created a Holded document but failed before the local save, the retry recovers that same document by tag instead of creating a second one — and refuses if the order changed since.
 - Implemented per nobodies-collective/Humans#1029.
 
 ### US-30.6: Treasury Sync (Background)

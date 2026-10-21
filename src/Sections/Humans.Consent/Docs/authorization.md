@@ -5,6 +5,7 @@
 | `AdminLegalDocumentsController` | Class | `Board, Admin` | `PolicyNames.BoardOrAdmin` (`/Legal/Admin` — Documents CRUD, Archive, Sync, Versions/Summary all inherit) |
 | `ConsentController` | Class | `[Authorize]` (authenticated) | — |
 | `LegalController` | Class | `AllowAnonymous` | — |
+| `MyDataController` | Class | `[Authorize]` (authenticated) | — (`/Consent/MyData`; the member's own pending-deletion status and signed documents, read for the current user only) |
 
 ## User parts
 

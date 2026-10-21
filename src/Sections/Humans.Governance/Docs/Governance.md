@@ -33,7 +33,7 @@ The Governance page’s tier totals and Colaborador prompts use active approved 
 
 ### Application
 
-Tier application entity with state machine workflow. Used for Colaborador and Asociado applications (never Volunteer). During initial signup, created inline alongside the profile. After onboarding, created via the Governance Applications route.
+Tier application entity with state machine workflow. Used for Colaborador and Asociado applications (never Volunteer). Always created via the Governance Applications route; initial profile setup only links to it.
 
 **Table:** `applications`
 
@@ -301,7 +301,7 @@ Approval and rejection share one committed-decision path: capture Board ids, fin
 - **A ballot** can be cast or changed only while `Status = Open` and `now < ClosesAt`, by the roster member it belongs to. One ballot per roster row; changes bump `Revision`, preserve `CastAt`, and append a history row. Nothing is ever deleted.
 - **Content** (`Title`, `OfficialText`, options, `Kind`, `RequiredMajority`, audiences, disclosure) is immutable once Open. The one permitted change is extending `ClosesAt`.
 - **The embargo:** no read path returns per-option counts, rankings, or any ballot content for an Open vote except `Peek`, which writes its audit entry and peek row in the same unit of work as the read. Structurally, only `GetResultsAsync`, `PeekAsync` and `GetBallotsForBoardAsync` on `IAssemblyVoteService` can return ballot-derived content; a fourth such path is a change to the association's voting guarantees, not a refactor.
-- Bounded assembly notice/email titles and cancellation audit descriptions retain their UTF-16 limits without splitting a Unicode surrogate pair.
+- Bounded assembly notice/email titles retain their UTF-16 limits without splitting a Unicode surrogate pair.
 - Ranked ballot forms reject binding errors before projecting ranks or casting: the existing localized invalid-ballot message redisplays the submitted choice and leaves the stored ballot, revision and ballot history unchanged, without writing a ballot audit. Redisplay skips missing option keys and refuses non-roster POSTs. Intentional blank ranks remain valid, and Abstain ignores inactive rank fields, including their binding errors.
 - **A ballot audit entry** names the actor and the vote, never the choice. The choice lives only in `assembly_ballots` / `assembly_ballot_history`.
 - **The result** is computed once, at close, and stored in `ResultJson`; the results page renders the stored result rather than recounting. Closure persists the closed status before it reads the ballots, and `UpsertBallotAsync` re-reads the vote under its row lock, so no ballot is ever told "recorded" and then left out of the tally. Every write to a vote row — close, extend, cancel, draft edit, open, delete — names the state it read and applies under the same lock only while the row is still in it, so a transition that committed first is never undone or repeated by a request that started before it.
@@ -399,7 +399,7 @@ Approval and rejection share one committed-decision path: capture Board ids, fin
 ### Touch-and-clean guidance
 
 - Nothing outside this section reads the governance-owned tables. `OnboardingService`, `SystemTeamSyncJob` and `NotificationMeterProvider` all go through `IGovernanceService`.
-- The four board-voting methods have no delegating wrapper; callers reach them directly. Three of them — `GetBoardVotingDashboardAsync`, `GetBoardVotingDetailAsync`, `CastBoardVoteAsync` — are internal, consumed only by the section's own `GovernanceBoardVotingController` at `/Governance/BoardVoting`. `GetUnvotedApplicationCountAsync` is the one cross-section member, and it sits on `IGovernanceService` (this section's own `SectionAdminNav`, plus Notifications' `NotificationMeterProvider`). `CastBoardVoteAsync` returns `ApplicationDecisionResult` (not `OnboardingResult`); error keys `NotFound` and `NotSubmitted` are still returned by the service. The controller switch handles `NotFound` explicitly and maps all other error keys (including `NotSubmitted`) to the same "not votable" message via the default arm.
+- The four board-voting methods have no delegating wrapper; callers reach them directly. Three of them — `GetBoardVotingDashboardAsync`, `GetBoardVotingDetailAsync`, `CastBoardVoteAsync` — are internal, consumed only by the section's own `GovernanceBoardVotingController` at `/Governance/BoardVoting`. `GetUnvotedApplicationCountAsync` is the one cross-section member, and it sits on `IGovernanceService` (this section's own `SectionAdminNav`, plus Notifications' `NotificationMeterProvider`). `CastBoardVoteAsync` returns `ApplicationDecisionResult` (not `OnboardingResult`); error keys `NotFound` and `NotSubmitted` are still returned by the service. The controller switch handles `NotFound` and `NoteTooLong` explicitly and maps all other error keys (including `NotSubmitted`) to the same "not votable" message via the default arm.
 
 ## Issue queue
 

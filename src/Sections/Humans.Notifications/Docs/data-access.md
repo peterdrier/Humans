@@ -71,7 +71,7 @@ No repository. Pure read-aggregation over owning services.
 
 Cross-section calls via `IUserService`, `IGoogleSyncService`,
 `ITeamService`, `ITicketSync`, `IGovernanceService`,
-`ICampService`. **No direct DB access** — every counter fans out
+`IConsentService`, `ICampService`. **No direct DB access** — every counter fans out
 through an owning-service interface call.
 
 ### NotificationInboxRead (Scoped)

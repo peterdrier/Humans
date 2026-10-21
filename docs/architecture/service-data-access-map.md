@@ -23,13 +23,13 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > | `UsersDbContext` | `Profiles`, `ContactFields`, `UserEmails`, `VolunteerHistoryEntries`, `AccountMergeRequests`, `CommunicationPreferences` (frozen legacy — Email owns preferences), `ProfileLanguages`, `EventParticipations` (frozen legacy — Tickets owns participation), plus the Identity base (`IdentityDbContext<User, IdentityRole<Guid>, Guid>`: `users`/`roles`/`user_roles`/`user_claims`/`user_logins`/`role_claims`/`user_tokens`). Own project, `src/Sections/Humans.Users/` (Profiles folded in — no separate Profiles project). |
 > | `TeamsDbContext` | `Teams`, `TeamMembers`, `TeamJoinRequests`, `TeamJoinRequestStateHistories`, `TeamRoleDefinitions`, `TeamRoleAssignments`, `TeamEarlyEntryGrants` — owned by `src/Sections/Humans.Teams`; `TeamRepository` injects `IDbContextFactory<TeamsDbContext>` |
 > | `AuditLogDbContext` | `AuditLogEntries` — owned by `src/Sections/Humans.AuditLog` (a *horizontal* section — see [AuditLog](../../src/Sections/Humans.AuditLog/Docs/data-access.md)) |
-> | `LegalDbContext` | `LegalDocuments`, `DocumentVersions`, `ConsentRecords` — own project, `src/Sections/Humans.Consent/Data/`. `ConsentRecords` lives here (not a separate Consent context) — Consent has never owned its own DbContext. |
+> | `LegalDbContext` | `LegalDocuments`, `DocumentVersions`, `ConsentRecords`, `consent_reviews`, `consent_reminders` — own project, `src/Sections/Humans.Consent/Data/`. `ConsentRecords` lives here (not a separate Consent context) — Consent has never owned its own DbContext. |
 > | `ShiftsDbContext` | `EventSettings`, `Rotas`, `Shifts`, `ShiftSignups`, `ShiftTags`, `RotaShiftTags` (`rota_shift_tags` — the implicit many-to-many mapped by `ShiftTagConfiguration` via `UsingEntity`), `VolunteerEventProfiles`, `GeneralAvailability`, `VolunteerBuildStatuses`, `VolunteerTagPreferences` (own project, `src/Sections/Humans.Shifts/`) |
 > | `TicketsDbContext` | `TicketOrders`, `TicketAttendees`, `TicketSyncStates`, `TicketTransferRequests`, `EventParticipations` (`tickets_event_participations`) — owned by `src/Sections/Humans.Tickets`, alongside a `src/Sections/Humans.Tickets.Contracts` leaf and the `src/Sections/Humans.TicketTailor` vendor adapter (see [Tickets](../../src/Sections/Humans.Tickets/Docs/data-access.md)) |
 > | `AuthDbContext` | `RoleAssignments` (own project, `src/Sections/Humans.Auth/`) |
-> | `GovernanceDbContext` | `Applications`, `ApplicationStateHistories`, `BoardVotes`, `AssemblyVotes`, `AssemblyVoteOptions`, `AssemblyVoteRosterEntries`, `AssemblyBallots`, `AssemblyBallotHistories`, `AssemblyVotePeeks` (own project, `src/Sections/Humans.Governance/`) |
+> | `GovernanceDbContext` | `Applications`, `ApplicationStateHistories`, `BoardVotes`, `AssemblyVotes`, `AssemblyVoteOptions`, `AssemblyVoteRosterEntries`, `AssemblyBallots`, `AssemblyBallotHistories`, `AssemblyVotePeeks`, `governance_membership_tiers` (own project, `src/Sections/Humans.Governance/`) |
 > | `CampaignsDbContext` | `Campaigns`, `CampaignCodes`, `CampaignGrants` (own project, `src/Sections/Humans.Campaigns/`) |
-> | `GoogleIntegrationDbContext` | `GoogleResources`, `GoogleSyncOutboxEvents`, `SyncServiceSettings`, `GoogleSyncLog` (own project, `src/Sections/Humans.GoogleIntegration/`; owns no table beyond these — see [Monitor](../../src/Sections/Humans.Monitor/Docs/data-access.md) for the related horizontal section) |
+> | `GoogleIntegrationDbContext` | `GoogleResources`, `GoogleSyncOutboxEvents`, `SyncServiceSettings`, `GoogleSyncLog`, `google_workspace_identities` (own project, `src/Sections/Humans.GoogleIntegration/`; owns no table beyond these — see [Monitor](../../src/Sections/Humans.Monitor/Docs/data-access.md) for the related horizontal section) |
 > | `FeedbackDbContext` | `FeedbackReports`, `FeedbackMessages` (own project, `src/Sections/Humans.Feedback/`) |
 > | `CityPlanningDbContext` | `CityPlanningSettings`, `CampPolygons`, `CampPolygonHistories` (own project, `src/Sections/Humans.CityPlanning/`) |
 > | `BudgetDbContext` | `BudgetYears`, `BudgetGroups`, `BudgetCategories`, `BudgetLineItems`, `BudgetAuditLogs`, `TicketingProjections` (own project, `src/Sections/Humans.Budget/`) |
@@ -45,7 +45,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > | `SettingsDbContext` | `Setting`, `EventSettings` — tables `system_settings` and `settings_event` (own project, `src/Sections/Humans.Settings/`) |
 > | `ContainersDbContext` | `Containers`, `ContainerPlacements`, `ContainerImages` (own project, `src/Sections/Humans.Containers/`) |
 > | `ExpensesDbContext` | `ExpenseReports`, `ExpenseLines`, `ExpenseAttachments`, `HoldedExpenseOutboxEvents` (own project, `src/Sections/Humans.Expenses/`) |
-> | `FinanceDbContext` | `HoldedExpenseDocs`, `HoldedCategoryMap`, `HoldedCreditorContacts`, `HoldedDocSyncStates`, `HoldedManagedAccounts`, `SepaPayoutFiles`, `SepaPayoutTransfers` (own project, `src/Sections/Humans.Finance/`). The ledger mirror (`HoldedLedgerLines`, its sync state, the chart-of-accounts cache, and the API call log) lives in the separate `HoldedDbContext` below. |
+> | `FinanceDbContext` | `HoldedExpenseDocs`, `HoldedCategoryMap`, `HoldedCreditorContacts`, `HoldedDocSyncStates`, `HoldedManagedAccounts`, `SepaPayoutFiles`, `SepaPayoutTransfers`, `finance_payment_details` (own project, `src/Sections/Humans.Finance/`). The ledger mirror (`HoldedLedgerLines`, its sync state, the chart-of-accounts cache, and the API call log) lives in the separate `HoldedDbContext` below. |
 > | `HoldedDbContext` | `HoldedLedgerLines`, `HoldedSyncStates`, `HoldedAccounts`, `HoldedApiCalls` (own project, `src/Sections/Humans.Holded/`). The daybook-journal ledger mirror, chart-of-accounts cache, and Holded API call-log/metering — split out of Finance so the two sections that both touch Holded data stay structurally isolated from each other. |
 > | `EventGuideDbContext` | `EventGuideSettings`, `EventCategories`, `EventVenues`, `Events`, `EventModerationActions`, `EventPreferences`, `EventFavourites` (own project, `src/Sections/Humans.Events/`; the Shifts-owned `EventSettings` / `EventParticipations` tables deliberately stay off this context, despite the name collision) |
 > | `StoreDbContext` | `Products`, `Orders`, `OrderLines`, `Payments`, `Invoices` (own project, `src/Sections/Humans.Store/`, table names `store_products` / `store_orders` / `store_order_lines` / `store_payments` / `store_invoices`) |
@@ -69,13 +69,14 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > `Extensions/MemoryCacheExtensions.cs`, `Caching/MemoryCacheInvalidators.cs`,
 > and the `TrackedCache<TKey, TValue>` base class
 > (`Caching/TrackedCache.cs`) that every section-owned Singleton
-> caching decorator below inherits. Cross-cutting invalidator interfaces
+> caching decorator below inherits. The cross-cutting invalidator interfaces
 > (`INotificationMeterCacheInvalidator`,
-> `IRoleAssignmentClaimsCacheInvalidator`, `IActiveTeamsCacheInvalidator`,
-> `ICampLeadJoinRequestsBadgeCacheInvalidator`, `IShiftAuthorizationInvalidator`,
-> `IUserInfoInvalidator`, `IShiftViewInvalidator`, `IEarlyEntryInvalidator`)
+> `ICampLeadJoinRequestsBadgeCacheInvalidator`)
 > resolve via `MemoryCacheInvalidators.cs` to
-> the cache keys their backing `MemoryCacheExtensions` invalidator hits.
+> the cache keys their backing `MemoryCacheExtensions` invalidator hits. The only
+> other `IInvalidator`-marked interfaces are section-owned (`ICampInfoInvalidator`,
+> `IConsentCacheInvalidator`, `ILegalDocumentCacheInvalidator`); every other
+> decorator invalidates itself when a write passes through it.
 > Section-decorator `TrackedCache<TKey, TValue>` subclasses live beside
 > their inner service in each section's own `Services/` (or `Data/`) folder —
 > e.g. `CachingUserService` is `src/Sections/Humans.Users/Data/CachingUserService.cs`
@@ -154,7 +155,8 @@ Every table is owned by exactly one repository; there are no HUM0025
    section's service implementing `IUserMerge` to reassign its own owned
    rows. `DuplicateAccountService` is **detection-only** (no
    repository, no DB access) — it reads through `IUserService` /
-   `ITeamService` / `IRoleAssignmentService` only. The three Profiles
+   `ITeamService` / `IRoleAssignmentService` / `IGovernanceService` /
+   `IConsentService` only, and writes one audit entry through `IAuditLogService`. The three Profiles
    repositories are collapsed into `IUserRepository`, so what looked like
    cross-section reads/writes between the Profiles and Users sections is
    internal to the unified Users+Profiles section owner.
@@ -252,17 +254,16 @@ Every table is owned by exactly one repository; there are no HUM0025
    - `CachingConsentService` → `UserConsentInfo` per user.
    - `CachingLegalDocumentSyncService` → `LegalDocumentInfo` per document.
    - `CachingRoleAssignmentService` → `RoleAssignmentRow` set.
-   - `CachingEarlyEntryService` → `UserEarlyEntry?` per user (caches
-     negative results too).
-   All are surfaced on `/Debug/CacheStats` via `ICacheStats` and evicted
-   through narrow `I*Invalidator` interfaces (or EF
-   `SaveChangesInterceptor`s for Legal / User-Identity writes) — no direct
-   `IMemoryCache` coupling in the Application layer.
+   All are surfaced on `/Debug/CacheStats` via `ICacheStats`. Each evicts
+   itself when a write passes through the decorator; the few cross-section
+   signals are the section-owned `ICampInfoInvalidator`, `IConsentCacheInvalidator`
+   and `ILegalDocumentCacheInvalidator`, plus EF `SaveChangesInterceptor`s
+   (Users, Events) — no direct `IMemoryCache` coupling in the Application layer.
 
 9. **Notification meters are computed, not queried.**
    `NotificationMeterProvider` reads no tables directly — every counter
    fans out through an owning-service interface call (`IUserService`,
-   `ITeamService`, `IGovernanceService`, `ITicketSync`,
+   `ITeamService`, `IGovernanceService`, `IConsentService`, `ITicketSync`,
    `IGoogleSyncService`, `ICampService`). Cache invalidation goes
    through `INotificationMeterCacheInvalidator`.
 
@@ -284,7 +285,8 @@ Every table is owned by exactly one repository; there are no HUM0025
 
 12. **Surveys section uses cross-section read-split surfaces exclusively.**
     `SurveyService` fans out over `ITeamService`,
-    `IUserService`, `ITicketService`, and `IShiftView` for
+    `IUserService`, `ITicketService`, `IShiftView`, `IGovernanceService` and
+    `IConsentService` for
     audience resolution and display-name stitching — never a foreign
     repository. `IGoogleTranslationService` (GoogleIntegration section)
     is the translation bridge for the admin pre-fill helper. No
@@ -310,7 +312,7 @@ Every table is owned by exactly one repository; there are no HUM0025
 14. **Gate composes cached cross-section reads and never touches a foreign
     table.** `GateService` resolves a scanned barcode by filtering
     the cached `ITicketService.GetTicketOrdersAsync` projection in
-    memory (no new interface method), checks early entry via the cached
+    memory (no new interface method), checks early entry via
     `IEarlyEntryService`, verifies supervisor roles via
     `IRoleAssignmentService`, and pulls the gate-crew roster via
     `IShiftManagement` — all §15-compliant service-interface calls.
@@ -323,7 +325,7 @@ Every table is owned by exactly one repository; there are no HUM0025
 
 15. **The per-section DbContext split is complete — "one
     table, one repository" is a compile/schema-enforced boundary for
-    every table-owning section, with no shared context left.** 33 contexts
+    every table-owning section, with no shared context left.** 35 contexts
     exist — see the full DbContext table in the intro Methodology block
     above — each mapping **only** its own section's tables via explicit
     `ApplyConfiguration` calls (no assembly scanning), so a section's
@@ -371,8 +373,7 @@ separately below the key table.
 | `FeedbackBadgeCount` | 2 min | Static | **FeedbackService** (`GetActionableCountAsync`) | FeedbackService (evicts its own key) |
 | `NotificationBadge:{userId}` | 2 min | Per-User | **NotificationInboxService** (`GetUnreadBadgeCountsAsync`) | NotificationService, NotificationEmitter, NotificationInboxService |
 | `NotificationMeters` | 2 min | Static | NotificationMeterProvider | `INotificationMeterCacheInvalidator` (TeamService, ApplicationDecisionService) |
-| `claims:{userId}` | 60 sec | Per-User | (claims principal factory) | `IRoleAssignmentClaimsCacheInvalidator` (RoleAssignmentService, AccountDeletionService) |
-| `shift-auth:{userId}` | 60 sec | Per-User | ShiftManagementService | ShiftManagementService, `IShiftAuthorizationInvalidator` (TeamService, AccountDeletionService) |
+| `HoldedContacts` | 2 min | Static | **Finance** `Service` (Holded contact list) | expiry only |
 | `NavBadge:Voting:{userId}` | 2 min | Per-User | **ApplicationDecisionService** (`GetUnvotedApplicationCountAsync`) | ApplicationDecisionService (evicts its own key) |
 | `NavBadge:CampLeadJoinRequests:{userId}` | 2 min | Per-User | NotificationMeterProvider | `ICampLeadJoinRequestsBadgeCacheInvalidator` (CampService) |
 | `NavBadge:Issues:{userId}` | 2 min | Per-User | IssuesService | IssuesService (evicts its own key) |
@@ -393,21 +394,21 @@ separately below the key table.
 
 | Cache | Section | Key | Type | Populated By | Invalidated By |
 |-------|---------|-----|------|-------------|----------------|
-| `TrackedCache<Guid, UserInfo>` | Users (+Profiles) | `User.UserInfo` | Per-User | CachingUserService warmup + lazy load | `IUserInfoInvalidator` + `IUserMerge` + `UserInfoSaveChangesInterceptor` |
-| `TrackedCache<Guid, TeamInfo>` | Teams | `Team.TeamInfo` | Per-Entity | CachingTeamService warmup + lazy load | `IActiveTeamsCacheInvalidator` + `IUserMerge` |
-| `TrackedCache<Guid, ShiftUserView>` / `TrackedCache<Guid, ShiftRotaView>` | Shifts | `ShiftView.UserView` / `ShiftView.RotaView` | Per-User / Per-Entity | CachingShiftViewService lazy load | `IShiftViewInvalidator` (ShiftManagementService, ShiftSignupService, VolunteerTrackingService, AccountDeletionService) |
-| `TrackedCache<Guid, TicketOrderInfo>` | Tickets | `Tickets.Orders` | Per-Entity | CachingTicketQueryService warmup + lazy load | `ITicketCacheInvalidator` |
-| `TrackedCache<Guid, CachedUserTicketHoldings>` | Tickets | `Tickets.UserHoldings` | Per-User (5-min freshness in value) | CachingTicketQueryService lazy load | `ITicketCacheInvalidator` |
+| `TrackedCache<Guid, UserInfo>` | Users (+Profiles) | `User.UserInfo` | Per-User | CachingUserService warmup + lazy load | `UserInfoSaveChangesInterceptor` + `IUserInfoSliceRefresher` (Users-internal) + `IUserMerge` |
+| `TrackedCache<Guid, TeamInfo>` | Teams | `Team.TeamInfo` | Per-Entity | CachingTeamService warmup + lazy load | self-invalidating on writes through `CachingTeamService` + `IUserMerge` |
+| `TrackedCache<Guid, ShiftUserView>` / `TrackedCache<Guid, ShiftRotaView>` | Shifts | `ShiftView.UserView` / `ShiftView.RotaView` | Per-User / Per-Entity | CachingShiftViewService lazy load | `CachingShiftViewService` (`IEventSettingsChangeListener` plus eviction by ShiftManagementService, ShiftSignupService, VolunteerTrackingService) |
+| `TrackedCache<Guid, TicketOrderInfo>` | Tickets | `Tickets.Orders` | Per-Entity | CachingTicketQueryService warmup + lazy load | `CachingTicketQueryService` evicts in a `finally` after each delegated write |
+| `TrackedCache<Guid, CachedUserTicketHoldings>` | Tickets | `Tickets.UserHoldings` | Per-User (5-min freshness in value) | CachingTicketQueryService lazy load | `CachingTicketQueryService` evicts in a `finally` after each delegated write |
 | `TrackedCache<Guid, CampInfo>` + settings slot | Camps | `Camp.CampInfo` | Per-Entity / Static | CachingCampService warmup + lazy load | `ICampInfoInvalidator` + `IUserMerge` |
 | `TrackedCache<Guid, CalendarEventInfo>` | Calendar | `Calendar.Event` | Per-Entity | CachingCalendarService warmup + lazy load | per-event `ReplaceAsync` after delegated write |
 | `TrackedCache<Guid, ApprovedEventView>` + category/venue/settings snapshots | Events | `Event.ApprovedEventView` | Per-Entity / Static | CachingEventService warmup + lazy load | inline per write |
 | `TrackedCache<Guid, UserConsentInfo>` | Consent | `Consent.UserConsentInfo` | Per-User | CachingConsentService lazy load | `IConsentCacheInvalidator` (synchronous per-user evict on submit) |
 | `TrackedCache<Guid, LegalDocumentInfo>` | Legal | `Legal.LegalDocumentInfo` | Per-Entity | CachingLegalDocumentSyncService warmup + lazy load | `ILegalDocumentCacheInvalidator.InvalidateAll` (called directly by `LegalDocumentSyncService` after each write) |
-| `TrackedCache<Guid, RoleAssignmentRow>` | Auth | `Auth.RoleAssignmentRow` | Per-Entity | CachingRoleAssignmentService warmup + lazy load | `IRoleAssignmentCacheInvalidator.InvalidateAll` (service-level) |
-| `TrackedCache<Guid, UserEarlyEntry?>` | Early Entry | `EarlyEntry.UserEarlyEntry` | Per-User (negative-result safe) | CachingEarlyEntryService lazy load | `IEarlyEntryInvalidator.InvalidateUser` / `InvalidateAll` (ShiftSignupService, CampService, TeamService) |
+| `TrackedCache<Guid, RoleAssignmentRow>` | Auth | `Auth.RoleAssignmentRow` | Per-Entity | CachingRoleAssignmentService warmup + lazy load | `CachingRoleAssignmentService` (service-level, after each delegated write) |
 | `TrackedCache<int, RideshareSnapshot>` | Rideshare | `Rideshare.Snapshot` | Per-Year | CachingRideshareService lazy load | full `Clear()` after every delegated write |
 | `TrackedCache<byte, IReadOnlyList<WorkgroupInfo>>` | Workgroups | `Workgroups.Register` | Single entry | CachingWorkgroupService lazy load | full `Clear()` after every delegated write |
-| `TrackedCache<string, CachedVendorEventSummary>` | Tickets | `Tickets.VendorEventSummary` | Per-Entity (15-min freshness in value) | CachingTicketVendorService lazy load | `ITicketVendorCacheInvalidator.InvalidateEventSummary` |
+| `TrackedCache<string, CachedVendorEventSummary>` | Tickets | `Tickets.VendorEventSummary` | Per-Entity (15-min freshness in value) | CachingTicketVendorService lazy load | `CachingTicketVendorService` (`GetOrdersAsync` for that event drops the entry; 15-min freshness) |
+| `TrackedCache<string, Dictionary<string, int>>` | Finance | `Finance.SepaStuckBankLines` | Single entry | `SepaBankBooking` sweep | `SepaBankBooking` (cleared when no line is stuck) |
 
 ### Cache Issues / Notes
 
@@ -422,12 +423,7 @@ separately below the key table.
    `ITicketCacheInvalidator`; stale entries also reload after the 5-minute
    freshness deadline stored in the tracked value.
 
-3. **`CachingEarlyEntryService` caches negative results.** Most users have
-   no early entry, so the `EarlyEntry.UserEarlyEntry` tracked cache stores
-   the `null` outcome too — otherwise every page render for the no-EE
-   majority would re-fan-out across the provider chain.
-
-4. **Caching decorators live beside their inner service in each section's
+3. **Caching decorators live beside their inner service in each section's
    own project**, not in a shared Infrastructure layer. Every decorator
    listed above lives in its owning section's `Services/` (or, for Users,
    `Data/`) folder. They are transparent
@@ -435,7 +431,7 @@ separately below the key table.
    `"user-inner"`, `"team-inner"`, `"shift-view-inner"`,
    `"ticket-query-inner"`, `"camp-inner"`, `"calendar-inner"`,
    `"event-inner"`, `"role-assignment-inner"`, `"legal-document-sync-inner"`,
-   `"early-entry-inner"`, plus the Consent inner key) and inherit
+   plus the Consent inner key) and inherit
    `TrackedCache<TKey, TValue>` (`src/Humans.Base/Caching/TrackedCache.cs`)
    rather than using `IMemoryCache` for their projection state.
 

@@ -16,9 +16,9 @@
 
 ## Business Context
 
-The Application entity serves all tier-based membership applications: **Colaborador** (active contributor) and **Asociado** (voting member). Each Application has a `MembershipTier` field indicating which tier is being applied for. There is a specific application form for each tier — during initial signup it is embedded inline alongside profile setup for a streamlined experience, but it remains a distinct Application entity in the system.
+The Application entity serves all tier-based membership applications: **Colaborador** (active contributor) and **Asociado** (voting member). Each Application has a `MembershipTier` field indicating which tier is being applied for. There is a specific application form for each tier, on the dedicated Governance Applications route. During initial signup, profile setup shows a membership tier card that links to that route; it no longer submits an application itself.
 
-After initial onboarding, existing volunteers apply for Colaborador or Asociado through the dedicated Governance Applications route. The inline embedding is a one-shot convenience for new signups only.
+After initial onboarding, existing volunteers apply for Colaborador or Asociado through the same route.
 
 Applications go through a review workflow: once submitted, the Application enters the Board's voting queue — this is not gated on the human's Volunteer consent-check status. The Board votes individually, then finalizes the decision. Approved applications set the human's tier and enroll them in the appropriate system team with a synchronized 2-year term.
 
@@ -28,22 +28,17 @@ The Application entity also serves **upgrades** (Volunteer→Colaborador, Volunt
 
 ## User Stories
 
-### US-3.1: Inline Tier Application During Signup
+### US-3.1: Tier Application Link During Signup
 
 **As a** new human
-**I want to** apply for Colaborador or Asociado as part of my initial signup
-**So that** my application is created alongside my profile in one flow
+**I want to** find the tier application from my initial signup
+**So that** I can apply for Colaborador or Asociado alongside setting up my profile
 
 **Acceptance Criteria:**
-- During initial signup, profile setup includes tier selection
-- Choosing Colaborador or Asociado reveals the application form inline
-- Application form collects: Motivation (required), AdditionalInfo (optional)
-- Submitting creates both Profile and Application entities
-- Application.MembershipTier set to the selected tier
-- Application.Status = Submitted
-- Language recorded from current UI locale
-- Cannot create if a pending application already exists
-- **This inline experience is one-shot** — not available on subsequent profile edits
+- During initial signup, profile setup shows a membership tier card explaining the tiers
+- The card links to `/Governance/Applications/Create`; the application is submitted there, not from the profile form
+- When the human already has a pending or approved application, the card shows a note instead of the link
+- **The tier card is initial-setup only**: not shown on subsequent profile edits
 
 ### US-3.2: Apply for Tier After Onboarding
 
@@ -248,7 +243,7 @@ When an Application is approved:
 ## Business Rules
 
 1. **No Application for Volunteers**: Only Colaborador and Asociado require applications
-2. **Inline creation is one-shot**: Only during initial signup; afterwards use dedicated Application route
+2. **Applications use the dedicated route**: Initial profile setup only links to `/Governance/Applications/Create`
 3. **Single Pending Application**: User cannot have multiple pending applications
 4. **Motivation Required**: Motivation must be 50–2000 characters; additional information at most 1000; Asociado contribution and role-understanding answers (both required for Asociado) at most 2000
 5. **Board Votes on Applications**: See [Board Voting](board-voting.md)

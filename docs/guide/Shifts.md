@@ -111,5 +111,5 @@ Only one active Event Settings exists at a time. Changes ripple through every sh
 ## Related sections
 
 - [Teams](Teams.md) — rotas belong to departments and sub-teams; coordinator status on a team unlocks shift management.
-- [Profiles](Profiles.md) — your volunteer event profile (skills, dietary, languages) feeds shift matching; no-show history shows on your profile to coordinators.
+- [Profiles](Profiles.md) — your volunteer event profile (skills, work style, languages) feeds shift matching; no-show history shows on your profile to coordinators.
 - [Camps](Camps.md) — camp timing and early-entry windows share the event settings configured here.

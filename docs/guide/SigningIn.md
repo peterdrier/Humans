@@ -60,7 +60,7 @@ A few things to know about the link:
 | "This link has expired" or it won't work | Links last 15 minutes and work once — just request a fresh one |
 | I clicked the link but nothing happened | Make sure you click the **button** on the page the link opens — that's the step that signs you in |
 | Google sign-in won't go through | Try the "email me a login link" option instead — it gets you to the same place |
-| I'm signed in but the app looks empty / locked | You're in, but your profile isn't finished yet. Fill it in (you'll be nudged to `/Profile/Me/Edit`) and the rest opens up — see [Getting Started](GettingStarted.md) |
+| I'm signed in but the app looks empty / locked | You're in, but your profile isn't finished yet. Fill it in (you'll be nudged to the name form at `/OnboardingWidget/Names`) and the rest opens up — see [Getting Started](GettingStarted.md) |
 | I think I have two accounts | Don't make a third one. Sign in to either and use the help button (bottom right) to file an issue so they can be merged |
 | Totally stuck | Ask in [#🧘-humans-app](https://discord.gg/fq7gr29p) on Discord. If you truly can't get in and nobody there could help, email [humans@nobodies.team](mailto:humans@nobodies.team) as a last resort |
 

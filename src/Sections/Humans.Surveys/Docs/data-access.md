@@ -46,6 +46,8 @@ enumeration, display-name stitching in results / export), `ITicketService`
 (audience resolution — current-event ticket holders for
 `SurveyAudienceType.TicketHolders`), `IShiftView` (audience resolution —
 shift participants for `SurveyAudienceType.ShiftParticipants`),
+`IGovernanceService` / `IConsentService` (audience resolution — `SurveyAudienceType.Asociados`,
+and Asociado eligibility: membership tier plus an approved consent review),
 `IUserEmailService` (notification email per invitee), `IEmailService` (outbox
 enqueue), the section's own `SurveysEmails` builder (invitation templates),
 `ISurveyInviteTokenProvider` (section-local, data-protection invite tokens),

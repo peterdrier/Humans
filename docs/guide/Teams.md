@@ -29,7 +29,7 @@ A few teams are **system teams** (Volunteers, Coordinators, Board, Asociados, Co
 - **Roles** (`/Teams/{slug}/Roles`) — define named role slots.
 - **Early Entry** (`/Teams/{slug}/EarlyEntry`) — grant festival early-entry access for a team (only shown when the team has Early Entry enabled).
 - **Summary**, **Create**, **Edit** — admin pages at `/Teams/Summary`, `/Teams/Create`, `/Teams/{id}/Edit`.
-- **Sync** — system-team and Google sync admin pages live under the Google controller: `/Google/SyncSettings`, `/Google/SyncResults`, `/Google/SyncSystemTeams` (POST, Admin only).
+- **Sync** — system-team and Google sync admin pages live under the Google controller: `/Google/SyncResults`, `/Google/SyncSystemTeams` (POST), plus the sync-mode tab at `/Settings#google-sync` (all Admin only).
 
 ## As a Volunteer
 
@@ -153,7 +153,7 @@ Toggle `IsHidden` on create or edit. Hidden teams do not appear in the directory
 
 ### System team sync
 
-Admins (TeamsAdmin / Board / Admin) view per-service sync mode at `/Google/SyncSettings` and (Admin only) trigger an immediate run via POST to `/Google/SyncSystemTeams`, with results landing on `/Google/SyncResults`. The hourly Hangfire job (`teams-system-sync`) keeps Volunteers (profiles carrying the required name fields and consents, not suspended or rejected), Coordinators (department-level management role assignments), Board, Asociados, Colaboradors, and Barrio Leads (active camp leads) aligned, also reconciling `TeamMember.Role` against `IsManagement` role assignments and then reconciling Google Groups.
+Admins view per-service sync mode at `/Settings#google-sync` and trigger an immediate run via POST to `/Google/SyncSystemTeams`, with results landing on `/Google/SyncResults`. The hourly Hangfire job (`teams-system-sync`) keeps Volunteers (profiles carrying the required name fields and consents, not suspended or rejected), Coordinators (department-level management role assignments), Board, Asociados, Colaboradors, and Barrio Leads (active camp leads) aligned, also reconciling `TeamMember.Role` against `IsManagement` role assignments and then reconciling Google Groups.
 
 ## Related sections
 

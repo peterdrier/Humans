@@ -195,7 +195,7 @@ All weekly aggregates are computed over the **unique-humans cohort** for the wee
 | Aggregate | Definition |
 |---|---|
 | `TotalUniqueOnSite` | Distinct `UserId` count across Mon–Sun. |
-| `DietaryBreakdown` | One entry per canonical preference plus `"Unanswered"`. Each unique human contributes once based on their `Profile.DietaryPreference` (or "Unanswered" if null/empty). |
+| `DietaryBreakdown` | One entry per canonical preference plus `"Unanswered"`. Each unique human contributes once based on their `DietaryProfileInfo.DietaryPreference` (or "Unanswered" if null/empty). |
 | `AllergyRollup` | One entry per canonical allergy label. Each unique human contributes once per label they ticked. |
 | `AllergyOtherEntries` | List of free-text `AllergyOtherText` values, deduplicated across the week by trimmed text (case-sensitive). |
 | `IntoleranceRollup` | Same shape as `AllergyRollup`. |

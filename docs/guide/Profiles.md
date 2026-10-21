@@ -34,7 +34,7 @@ Each contact field has its own visibility setting, so you can share your Signal 
 - **Emails** (`/Profile/Me/Emails`) — add, verify, and manage your email addresses
 - **Shift info** (`/Shifts/ShiftInfo`) — preferences and availability info used for shift planning
 - **Communication preferences** (`/Email/CommunicationPreferences`) — per-category email preferences
-- **Privacy** (`/Consent/MyData`) — data export and account deletion
+- **My Data** (`/Consent/MyData`) — data export and account deletion
 - **Outbox** (`/Email/Outbox`) — the emails the system has sent to you
 - **View another human** (`/Profile/{id}`) — another human's profile, filtered by visibility
 - **Search** (`/Profile/Search`) — find other humans by name

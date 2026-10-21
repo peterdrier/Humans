@@ -413,7 +413,7 @@ section and is not on the leaf.
 ## Architecture
 
 **Owning services:** `ShiftManagementService`, `ShiftSignupService`, `VolunteerTrackingService`, `BurnSettingsService` (cross-section read DTO supplier — maps the Settings calendar plus this section's own knobs row to `BurnSettingsInfo`, issue nobodies-collective/Humans#719), `WorkloadService` (read-only aggregations, no DbSet writes)
-**Owned tables:** `rotas`, `shifts`, `shift_signups`, `event_settings` (app-wide calendar columns + `IsActive` dead, nobodies-collective/Humans#1631 — see Data Model), `general_availability`, `volunteer_event_profiles`, `volunteer_build_statuses`, `shift_tags`, `volunteer_tag_preferences`, `rota_shift_tags` (join table). `event_participations` is owned by Users (see [`Users.md`](../../Humans.Users/Docs/Users.md)); Shifts only reads it via `IUserService`.
+**Owned tables:** `rotas`, `shifts`, `shift_signups`, `event_settings` (app-wide calendar columns + `IsActive` dead, nobodies-collective/Humans#1631 — see Data Model), `general_availability`, `volunteer_event_profiles`, `volunteer_build_statuses`, `shift_tags`, `volunteer_tag_preferences`, `rota_shift_tags` (join table). `tickets_event_participations` is owned by Tickets (see Data Model); Shifts only reads it via `ITicketService`.
 **Status:** (A) Fully migrated. The services live in `Humans.Shifts.Services` and route through `IShiftManagementRepository` / `IVolunteerTrackingRepository`. Cross-section links on Shifts-owned entities are bare Guid columns: no navigation property, no FK constraint.
 
 - Services live in `src/Sections/Humans.Shifts/Services/` (`Humans.Shifts.Services`) and never import `Microsoft.EntityFrameworkCore`.

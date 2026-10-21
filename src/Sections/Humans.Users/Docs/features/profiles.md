@@ -107,7 +107,7 @@ Members can optionally provide emergency contact information for safety at event
 - **Other members**: Cannot see emergency contact information (not shown on public profile views)
 
 ### GDPR
-Emergency contact fields are marked `[PersonalData]` and included in the data export (`ExportData`).
+Emergency contact fields are marked `[PersonalData]` and included in the data export (the `Profile` slice).
 
 ## Membership Status
 
@@ -179,15 +179,15 @@ Profile picture, burner name, pronouns, location (Google Places), birthday, cont
 ### Section 2: Contributor Information (always visible)
 Burner CV entries with "No prior burn experience" checkbox, contribution interests. Includes a note that this info may be considered for tier applications.
 
-### Section 3: Application (initial setup only)
-Membership tier selection, motivation, additional info, Asociado-specific questions. Only shown when `IsInitialSetup` is true. After onboarding, users apply via `/Governance/Applications/Create`.
+### Section 3: Membership tier (initial setup only)
+Describes the Volunteer, Colaborador and Asociado tiers and links to `/Governance/Applications/Create` (new tab); the form carries no tier or application fields. Only shown when `IsInitialSetup` is true. After onboarding, users apply via `/Governance/Applications/Create`.
 
 ### Section 4: Private Information (always visible)
 Legal first name(s), last name, emergency contact, board notes. Prefixed with lock icon and "only visible to you and the board" note.
 
 ### Section Ordering
-- **Normal order:** General → Contributor → Application (if initial) → Private
-- **ShowPrivateFirst:** Private → General → Contributor → Application (if initial)
+- **Normal order:** General → Contributor → Membership tier (if initial) → Private
+- **ShowPrivateFirst:** Private → General → Contributor → Membership tier (if initial)
 - `ShowPrivateFirst` is true when FirstName, LastName, and EmergencyContactName are all empty (new user hasn't filled them in yet)
 
 ### Burner CV Validation

@@ -85,7 +85,7 @@ Filter by status, type, and area, and search titles and descriptions. Admins can
 
 - **Reply** in the thread — this emails the reporter
 - **Move the status** — Triage (where new reports land) → Open → In Progress → Resolved, Won't Fix, or Duplicate
-- **Assign it** to someone
+- **Assign it** to an active member
 - **Change the area** if it was filed in the wrong place, which hands it to that area's holders. Only possible while the issue is still open — reopen it first if it's closed
 - **Link a GitHub issue** by number, once the work is tracked
 

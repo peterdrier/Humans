@@ -62,8 +62,10 @@ Cross-section calls via `IBudgetService` (`budget` in the ctor), `IHoldedService
 ledger-mirror read surface — `holded` in the ctor; ledger-line /
 account-balance reads for creditor status, ledger, and account listing),
 `IHoldedClient` (Holded's `Contracts/` folder — purchase-document / contact / expense-account
-API calls, plus `PayPurchaseDocumentAsync` for SEPA booking) and `IAuditLogService`
-(one entry per SEPA credit transfer generated, and one per transfer booked).
+API calls, plus `PayPurchaseDocumentAsync` for SEPA booking), `IAuditLogService`
+(one entry per SEPA credit transfer generated, and one per transfer booked), and
+`IUserService` / `IUserEmailService` / `IEmailService` (the payout-generated and
+payout-withdrawn notification to each creditor, through the section's `FinanceEmails` builder).
 Implements `IHoldedFinanceManagement` (the public `IHoldedFinanceService` and `IHoldedFinanceWrite`), `IHoldedFinanceAdminService`
 and `IUserDataContributor`.
 Injects `IMemoryCache` for the 2-minute Holded contact-list entry

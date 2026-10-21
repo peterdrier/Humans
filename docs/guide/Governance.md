@@ -54,7 +54,7 @@ As an active Volunteer you can apply for **Colaborador** (active contributor wit
 
 Go to `/Governance/Applications/Create`, pick the tier, and fill in a **motivation** (required, 50 to 2000 characters) and any **additional info** for the Board (optional, up to 1000). An Asociado application also asks for your most significant contribution and your understanding of the asociado role (both required, up to 2000 characters each). Your current tier and access stay the same while the Board reviews. While one application is pending you cannot submit another, of any tier.
 
-If you applied inline during initial signup, that form was a one-shot. After onboarding, `/Governance/Applications/Create` is the only way to apply.
+`/Governance/Applications/Create` is the only way to apply. During initial signup, profile setup describes the tiers and links there.
 
 ### See your application status
 
@@ -73,7 +73,7 @@ While your application is still **Submitted**, you can withdraw it from the appl
 
 ### Renew your tier
 
-About 90 days before your term expires, a renewal reminder email and in-app notification go out, and a reminder appears on your dashboard. A renewal creates a new application for the same tier and goes through the normal Board vote. Board and Admin see the same upcoming expirations on the Board voting dashboard, so renewals can be prompted or processed proactively. If you do not renew before the term ends, the next hourly system-team sync removes you from the Colaboradors or Asociados system team, so you lose the access tied to that membership. Your profile's tier label is updated at the same time — back to another tier you still hold, or to Volunteer if you hold none. Volunteer access is unaffected.
+About 90 days before your term expires, a renewal reminder email and in-app notification go out, and a reminder appears on your dashboard. A renewal creates a new application for the same tier and goes through the normal Board vote. Board and Admin see the same upcoming expirations on the Board voting dashboard, so renewals can be prompted or processed proactively. If you do not renew before the term ends, the next hourly system-team sync removes you from the Colaboradors or Asociados system team, so you lose the access tied to that membership. A daily job also updates your membership tier, back to another tier you still hold, or to Volunteer if you hold none. Volunteer access is unaffected.
 
 ### Vote in an assembly vote
 

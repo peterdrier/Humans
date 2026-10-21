@@ -57,7 +57,7 @@ Ticket Admin, Admin, and Board all see the Tickets dashboard. Board can view eve
 
 ### Dashboard, orders, and attendees
 
-`/Tickets` shows five summary cards across the top — Tickets Sold (with a break-even progress bar against capacity), Gross Revenue (with a fees percentage), Net Revenue (with the Stripe / TT split), Avg. Gross Price, and Tickets Remaining. Below them are a Daily Sales chart with a 7-day rolling average line, a Fees by Payment Method table when fees are present, an Attention list (unmatched orders, sync errors, low-remaining warning, and a link to "Who Hasn't Bought?"), and Recent Orders.
+`/Tickets` shows five summary cards across the top — Tickets Sold (with a break-even progress bar against capacity), Gross Revenue (with a fees percentage), Net Revenue (with the Stripe / TT split, plus Stripe's VAT on its fees and any withheld tax), Avg. Gross Price, and Tickets Remaining. Below them are a Daily Sales chart with a 7-day rolling average line, a Fees by Payment Method table when fees are present, an Attention list (unmatched orders, sync errors, low-remaining warning, and a link to "Who Hasn't Bought?"), and Recent Orders.
 
 `/Tickets/Orders` lists every order with search, sort, filter (payment status, ticket type, matched/unmatched), and per-order donation, VAT, discount, payment-method, and Stripe-fee columns. `/Tickets/Attendees` lists every issued ticket with a VIP badge above the VIP threshold (315 EUR) and the split between taxable portion and VIP donation premium; its search box matches attendee name, email, or the ticket's barcode.
 
