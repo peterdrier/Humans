@@ -178,7 +178,7 @@ Every table is owned by exactly one repository; there are no HUM0025
    consumers are Web-layer controllers/handlers, no Application-layer
    service consumer yet), and
    the Governance pair `IGovernanceService` / `IMembershipCalculator`
-   (foreign writes via `IGovernanceWrite`).
+   (no foreign writes).
    Several of these are the Singleton caching decorators re-cast
    to a narrow surface; the Governance read interfaces are plain
    read-only contracts the section's services implement directly. All keep
