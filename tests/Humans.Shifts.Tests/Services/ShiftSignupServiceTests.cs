@@ -1221,6 +1221,92 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task SignUpRange_OverlappingSelectedShifts_RejectsOrSkipsTheConflictingDay(bool skipConflicts)
+    {
+        var (_, rota, _) = SeedShiftScenario(SignupPolicy.Public);
+        rota.Period = RotaPeriod.Build;
+        SeedAllDayShift(rota, -3);
+        SeedAllDayShift(rota, -2);
+        SeedAllDayShift(rota, -2);
+        SeedAllDayShift(rota, -1);
+        var userId = Guid.NewGuid();
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.SignUpRangeAsync(userId, rota.Id, -3, -1,
+            flags: skipConflicts ? ShiftSignupRequestFlags.SkipConflicts : ShiftSignupRequestFlags.None);
+
+        var signups = await ShiftsDb.ShiftSignups.AsNoTracking()
+            .Where(s => s.UserId == userId).Include(s => s.Shift)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        if (skipConflicts)
+        {
+            result.Success.Should().BeTrue();
+            result.Warning.Should().Contain("Time conflict");
+            signups.Select(s => s.Shift.DayOffset).Order().Should().Equal(-3, -1);
+        }
+        else
+        {
+            result.Success.Should().BeFalse();
+            result.Error.Should().Contain("Time conflict");
+            signups.Should().BeEmpty();
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ApproveRange_OverlappingCommitments_ConfirmsWithWarning(bool overlapsWithinBlock)
+    {
+        var (_, rota, _) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        rota.Period = RotaPeriod.Build;
+        var userId = Guid.NewGuid();
+        var blockId = Guid.NewGuid();
+        for (var day = -3; day <= -1; day++)
+            SeedSignup(userId, SeedAllDayShift(rota, day).Id, SignupStatus.Pending).SignupBlockId = blockId;
+        if (overlapsWithinBlock)
+            SeedSignup(userId, SeedAllDayShift(rota, -2).Id, SignupStatus.Pending).SignupBlockId = blockId;
+        else
+        {
+            var (_, otherRota, _) = SeedShiftScenario(SignupPolicy.Public);
+            SeedSignup(userId, SeedAllDayShift(otherRota, -2).Id, SignupStatus.Confirmed);
+        }
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.ApproveRangeAsync(blockId, Guid.NewGuid());
+
+        result.Success.Should().BeTrue();
+        result.Warning.Should().Contain("Time conflict");
+        var block = await ShiftsDb.ShiftSignups.AsNoTracking()
+            .Where(s => s.SignupBlockId == blockId).ToListAsync(TestContext.Current.CancellationToken);
+        block.Should().AllSatisfy(s => s.Status.Should().Be(SignupStatus.Confirmed));
+    }
+
+    [HumansFact]
+    public async Task VoluntellRange_OverlappingSelectedShifts_SkipsTheConflictingDay()
+    {
+        var (_, rota, _) = SeedShiftScenario(SignupPolicy.Public);
+        rota.Period = RotaPeriod.Build;
+        SeedAllDayShift(rota, -3);
+        SeedAllDayShift(rota, -2);
+        SeedAllDayShift(rota, -2);
+        SeedAllDayShift(rota, -1);
+        var userId = Guid.NewGuid();
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.VoluntellRangeAsync(userId, rota.Id, -3, -1, Guid.NewGuid());
+
+        result.Success.Should().BeTrue();
+        result.Warning.Should().Contain("time conflicts");
+        var signups = await ShiftsDb.ShiftSignups.AsNoTracking()
+            .Where(s => s.UserId == userId).Include(s => s.Shift)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        signups.Select(s => s.Shift.DayOffset).Order().Should().Equal(-3, -1);
+        signups.Should().AllSatisfy(s => s.Status.Should().Be(SignupStatus.Confirmed));
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task SignUpRange_CreatesOneSignupPerDay(bool mergedAlias)
     {
         // Arrange: rota with 5 all-day shifts (days -5 to -1), user picks days -3 to -1

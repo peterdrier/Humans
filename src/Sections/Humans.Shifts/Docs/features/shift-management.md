@@ -67,6 +67,7 @@ Nobodies Collective runs multi-day events (e.g., Nowhere) where volunteers are n
 - Sign up for a shift with an Active account (auto-confirmed for Public policy, pending for RequireApproval). Single and range signup enforce account state even through onboarding/dietary replay and with privileged flags.
 - Per-day instant signup on the browse page: clicking a day's toggle button signs up or bails that single shift via `POST /Shifts/ToggleDay` (AJAX, no page reload), re-rendering just that row. Applies to both timed Event shifts and all-day Build/Strike days. Date-range signup over a shared `SignupBlockId` (via `SignUpRangeAsync`) lives only in the onboarding-widget shift step
 - Overlap detection prevents signing up for conflicting time slots — a toggle that would overlap an existing confirmed signup is refused with a warning toast and the day stays unsigned
+- Range signup and coordinator range assignment also detect selected all-day shifts that overlap each other on the same date. Conflict-skipping paths omit that entire date with a warning; signup without conflict skipping refuses the range.
 - AdminOnly shifts hidden from non-privileged users
 - EE freeze blocks non-privileged build shift signups after early entry close
 
@@ -76,7 +77,7 @@ Nobodies Collective runs multi-day events (e.g., Nowhere) where volunteers are n
 **So that** I can manage who works my department's shifts
 
 **Acceptance Criteria:**
-- Approve re-validates overlap (returns warning, not blocker)
+- Single and range approval re-validate overlap (warning, not blocker). Range approval checks both existing confirmed commitments and overlapping shifts within its pending block.
 - Refuse with optional reason
 - Batch approve/refuse: `ApproveRangeAsync`/`RefuseRangeAsync` — approves or refuses all pending signups sharing a `SignupBlockId` in one action
 - Pending approvals table shows signup date and groups range signups with date range display
