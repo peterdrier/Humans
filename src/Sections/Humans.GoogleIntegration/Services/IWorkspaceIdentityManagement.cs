@@ -4,7 +4,7 @@ namespace Humans.GoogleIntegration.Services;
 
 /// <summary>
 /// GoogleIntegration-internal surface over <c>google_workspace_identities</c>: designating the
-/// identity, recording sync verdicts, and the legacy copy behind <c>google.workspace-identities</c>.
+/// identity and recording sync verdicts.
 /// </summary>
 internal interface IWorkspaceIdentityManagement : IGoogleIntegrationService, IGoogleIntegrationWrite
 {
@@ -25,15 +25,5 @@ internal interface IWorkspaceIdentityManagement : IGoogleIntegrationService, IGo
     /// </summary>
     Task<bool> SetStatusFromSyncAsync(
         Guid userId, string attemptedEmail, GoogleEmailStatus status, CancellationToken ct = default);
-
-    /// <summary>Living members whose legacy <c>user_emails</c> Google flag or verdict has no
-    /// <c>google_workspace_identities</c> row yet, with the identity the copy will write.</summary>
-    Task<IReadOnlyList<LegacyWorkspaceIdentityRow>> GetUncopiedLegacyIdentitiesAsync(CancellationToken ct = default);
-
-    /// <summary>Copies every pending legacy identity into its own row. Idempotent: a row written
-    /// since the list was read is left alone. Returns the rows written.</summary>
-    Task<int> CopyLegacyIdentitiesAsync(CancellationToken ct = default);
 }
 
-/// <summary>One pending legacy identity: what the read resolves to today, which the copy pins.</summary>
-internal sealed record LegacyWorkspaceIdentityRow(Guid UserId, string BurnerName, string Email, GoogleEmailStatus Status);

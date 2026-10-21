@@ -374,8 +374,8 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
             {
                 [memberId] = new User { Id = memberId, DisplayName = "Second-team human", CreatedAt = Clock.GetCurrentInstant() }.ToUserInfo() with
                 {
-                    UserEmails = [new UserEmailInfo(Guid.NewGuid(), email, true, false, true, null, null, null, null,
-                        Clock.GetCurrentInstant(), Clock.GetCurrentInstant(), LegacyGoogleEmailStatus.Unknown)]
+                    UserEmails = [new UserEmailInfo(Guid.NewGuid(), email, true, false, null, null, null, null,
+                        Clock.GetCurrentInstant(), Clock.GetCurrentInstant())]
                 }
             });
 

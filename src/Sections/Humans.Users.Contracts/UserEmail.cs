@@ -55,17 +55,16 @@ public class UserEmail
 
     /// <summary>
     /// FROZEN (Users decomposition commit 15): the Google Workspace identity now lives in
-    /// GoogleIntegration's <c>google_workspace_identities</c>. Users no longer writes this flag
-    /// except to clear it on rows an account merge moves; it is read only through the obsolete
-    /// <see cref="UserEmailInfo.IsGoogle"/> by the <c>google.workspace-identities</c> copy and
-    /// fallback, and the column is dropped once that copy is done in production.
+    /// GoogleIntegration's <c>google_workspace_identities</c>. Nothing writes this flag; since the
+    /// <c>google.workspace-identities</c> copy was retired it is read only by Users' GDPR export,
+    /// until USERS-21 drops the column.
     /// </summary>
     public bool IsGoogle { get; set; }
 
     /// <summary>
     /// FROZEN (Users decomposition commit 15): the per-address Google sync verdict, now
-    /// GoogleIntegration's status on <c>google_workspace_identities</c>. Read only by the
-    /// <c>google.workspace-identities</c> copy and fallback; no longer written.
+    /// GoogleIntegration's status on <c>google_workspace_identities</c>. No longer written; read
+    /// only by Users' GDPR export until USERS-21 drops the column.
     /// </summary>
     public LegacyGoogleEmailStatus GoogleEmailStatus { get; set; } = LegacyGoogleEmailStatus.Unknown;
 

@@ -8,16 +8,12 @@ public sealed record UserEmailInfo(
     string Email,
     bool IsVerified,
     bool IsPrimary,
-    [property: Obsolete("Moved to GoogleIntegration's google_workspace_identities (Users decomposition commit 15). Read IGoogleIntegrationService.GetWorkspaceIdentityAsync / GetWorkspaceIdentitiesAsync; the one reader left is GoogleIntegration's legacy fallback and the google.workspace-identities copy.", DiagnosticId = "HUM_USER_GOOGLE_IDENTITY")]
-    bool IsGoogle,
     string? Provider,
     string? ProviderKey,
     ContactFieldVisibility? Visibility,
     Instant? VerificationSentAt,
     Instant CreatedAt,
-    Instant UpdatedAt,
-    [property: Obsolete("Moved to GoogleIntegration's google_workspace_identities (Users decomposition commit 15). Read IGoogleIntegrationService.GetWorkspaceIdentityAsync / GetWorkspaceIdentitiesAsync; the one reader left is GoogleIntegration's legacy fallback and the google.workspace-identities copy.", DiagnosticId = "HUM_USER_GOOGLE_IDENTITY")]
-    LegacyGoogleEmailStatus GoogleEmailStatus);
+    Instant UpdatedAt);
 
 /// <summary>Compact projection of <c>ContactField</c> carried inside <see cref="ProfileInfo"/>.</summary>
 public sealed record ContactFieldInfo(
@@ -287,9 +283,9 @@ public sealed record UserInfo(
             .OrderByDescending(e => e.IsPrimary)
             .ThenBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
             .Select(e => new UserEmailInfo(
-                e.Id, e.Email, e.IsVerified, e.IsPrimary, e.IsGoogle,
+                e.Id, e.Email, e.IsVerified, e.IsPrimary,
                 e.Provider, e.ProviderKey, e.Visibility, e.VerificationSentAt,
-                e.CreatedAt, e.UpdatedAt, e.GoogleEmailStatus))
+                e.CreatedAt, e.UpdatedAt))
             .ToList();
 
         var loginInfos = externalLogins

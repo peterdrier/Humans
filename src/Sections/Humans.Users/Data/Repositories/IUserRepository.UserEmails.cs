@@ -51,8 +51,8 @@ internal partial interface IUserRepository
     /// row for the same address (case-insensitive), the rows collapse —
     /// <c>IsVerified</c> is OR-combined onto the target's row and the
     /// source's row is deleted. Surviving source rows are re-FK'd to target
-    /// with <c>IsPrimary</c> and <c>IsGoogle</c> cleared so the target's
-    /// existing primary / Google selections remain authoritative.
+    /// with <c>IsPrimary</c> cleared so the target's existing primary remains
+    /// authoritative.
     /// <c>UpdatedAt</c> is stamped to <paramref name="updatedAt"/> on every
     /// row touched.
     /// </summary>

@@ -46,22 +46,6 @@ internal sealed class WorkspaceIdentityRepository(IDbContextFactory<GoogleIntegr
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<bool> TryInsertAsync(
-        Guid userId, string? email, GoogleEmailStatus status, Instant now, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        if (await ctx.WorkspaceIdentities.AnyAsync(x => x.UserId == userId, ct)) return false;
-        ctx.WorkspaceIdentities.Add(new WorkspaceIdentityRecord
-        {
-            UserId = userId,
-            Email = email,
-            Status = status,
-            UpdatedAt = now,
-        });
-        await ctx.SaveChangesAsync(ct);
-        return true;
-    }
-
     public async Task<bool> DeleteAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

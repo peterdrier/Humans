@@ -51,9 +51,7 @@ Repository: `IWorkspaceIdentityRepository` (Singleton, `IDbContextFactory`).
 Implements the internal `IWorkspaceIdentityManagement` (extends the public
 `IGoogleIntegrationService` reads and `IGoogleIntegrationWrite.ClearIfAddressAsync`),
 `IUserDataContributor` and `IUserMerge`. Reads the member's verified addresses
-via `IUserService` (merge-aware) and is the single reader of the obsolete
-`UserEmailInfo.IsGoogle` / `GoogleEmailStatus` legacy fallback (`HUM_USER_GOOGLE_IDENTITY`
-pragma). Audits `Set` via `IAuditLogService`. No cache (the `UserInfo` read is cached by
+via `IUserService` (merge-aware). Audits `Set` via `IAuditLogService`. No cache (the `UserInfo` read is cached by
 Users' decorator; the table is one row per member).
 
 ### GoogleGroupSyncService (Scoped)

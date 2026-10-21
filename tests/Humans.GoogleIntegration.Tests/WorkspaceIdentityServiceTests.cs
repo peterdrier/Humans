@@ -16,7 +16,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NSubstitute;
 
@@ -24,8 +23,7 @@ namespace Humans.GoogleIntegration.Tests;
 
 /// <summary>
 /// <see cref="WorkspaceIdentityService"/>: the read-time resolution that replaced Users'
-/// <c>EnsureGoogleInvariantAsync</c>, the writes, the <c>google.workspace-identities</c> copy, and
-/// the GDPR / merge hooks of <c>google_workspace_identities</c> (Users decomposition commit 15).
+/// <c>EnsureGoogleInvariantAsync</c>, the writes, and the GDPR / merge hooks of <c>google_workspace_identities</c> (Users decomposition commit 15).
 /// </summary>
 public sealed class WorkspaceIdentityServiceTests
 {
@@ -44,14 +42,10 @@ public sealed class WorkspaceIdentityServiceTests
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ci => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(ci.Arg<IReadOnlyCollection<Guid>>()
                 .Where(_infos.ContainsKey).ToDictionary(id => id, id => _infos[id])));
-        _users.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => Task.FromResult<IReadOnlyCollection<UserInfo>>(_infos.Values.Distinct().ToList()));
         _sut = WorkspaceIdentityFakes.Create(_users, _repo, _audit);
     }
 
-    private sealed record Addr(
-        string Email, bool Primary = false, bool Google = false, bool Verified = true,
-        LegacyGoogleEmailStatus Status = LegacyGoogleEmailStatus.Unknown);
+    private sealed record Addr(string Email, bool Primary = false, bool Verified = true);
 
     private UserInfo Seed(params Addr[] addresses)
     {
@@ -64,42 +58,42 @@ public sealed class WorkspaceIdentityServiceTests
             Email = a.Email,
             IsVerified = a.Verified,
             IsPrimary = a.Primary,
-            IsGoogle = a.Google,
-            GoogleEmailStatus = a.Status,
         }).ToList();
         var info = user.ToUserInfo(rows);
         _infos[id] = info;
         return info;
     }
 
-    // ─── Resolution parity with today's IsGoogle invariant ──────────────────────
-    // For a member whose data satisfies the invariant EnsureGoogleInvariantAsync kept (exactly one
-    // verified IsGoogle row, the @nobodies.team one when there is one), the effective identity is
-    // that same address, with that row's status — before and after the copy.
+    // ─── Resolution ──────────────────────────────────────────────────────────────
 
-    public static Xunit.TheoryData<string, string, LegacyGoogleEmailStatus> ParityCases => new()
+    public static Xunit.TheoryData<string, GoogleEmailStatus> DesignatedCases => new()
     {
-        { "nobodies", "alice@nobodies.team", LegacyGoogleEmailStatus.Valid },
-        { "designated-personal", "alice@gmail.com", LegacyGoogleEmailStatus.Rejected },
+        { "alice@nobodies.team", GoogleEmailStatus.Valid },
+        { "alice@gmail.com", GoogleEmailStatus.Rejected },
     };
 
     [HumansTheory]
-    [Xunit.MemberData(nameof(ParityCases))]
-    public async Task InvariantHolder_ResolvesToTheIsGoogleAddress_BeforeAndAfterTheCopy(
-        string scenario, string googleAddress, LegacyGoogleEmailStatus status)
+    [Xunit.MemberData(nameof(DesignatedCases))]
+    public async Task Designated_ResolvesToTheDesignatedAddress_WithItsVerdict(string googleAddress, GoogleEmailStatus status)
     {
-        _ = scenario;
         var info = Seed(
             new Addr("alice@example.org", Primary: true),
-            new Addr(googleAddress, Google: true, Status: status),
+            new Addr(googleAddress),
             new Addr("zz-other@example.org"));
+        await _repo.UpsertAsync(info.Id, googleAddress, status, Instant.MinValue, Ct);
 
-        var legacy = await _sut.GetWorkspaceIdentityAsync(info.Id, Ct);
-        legacy.Should().Be(new WorkspaceIdentity(info.Id, googleAddress, (GoogleEmailStatus)(int)status));
+        (await _sut.GetWorkspaceIdentityAsync(info.Id, Ct)).Should()
+            .Be(new WorkspaceIdentity(info.Id, googleAddress, status));
+    }
 
-        (await _sut.CopyLegacyIdentitiesAsync(Ct)).Should().Be(1);
-        _repo.Rows[info.Id].Email.Should().Be(googleAddress);
-        (await _sut.GetWorkspaceIdentityAsync(info.Id, Ct)).Should().Be(legacy);
+    [HumansFact]
+    public async Task ClearedRow_ReadsAsNothingDesignated()
+    {
+        var info = Seed(new Addr("alice@example.org", Primary: true), new Addr("alice@gmail.com"));
+        await _repo.UpsertAsync(info.Id, null, GoogleEmailStatus.Rejected, Instant.MinValue, Ct);
+
+        (await _sut.GetWorkspaceIdentityAsync(info.Id, Ct)).Should()
+            .Be(new WorkspaceIdentity(info.Id, "alice@example.org", GoogleEmailStatus.Unknown));
     }
 
     [HumansFact]
@@ -123,25 +117,9 @@ public sealed class WorkspaceIdentityServiceTests
     }
 
     [HumansFact]
-    public async Task LegacyOnly_NoRow_ReadsTheFrozenFlags_AndARowOverridesThem()
-    {
-        var info = Seed(
-            new Addr("alice@example.org", Primary: true),
-            new Addr("alice@gmail.com", Google: true, Status: LegacyGoogleEmailStatus.Valid));
-        _repo.Rows.Should().BeEmpty();
-
-        (await _sut.GetWorkspaceIdentityAsync(info.Id, Ct)).Should()
-            .Be(new WorkspaceIdentity(info.Id, "alice@gmail.com", GoogleEmailStatus.Valid));
-
-        await _repo.UpsertAsync(info.Id, "alice@example.org", GoogleEmailStatus.Rejected, Instant.MinValue, Ct);
-        (await _sut.GetWorkspaceIdentityAsync(info.Id, Ct)).Should()
-            .Be(new WorkspaceIdentity(info.Id, "alice@example.org", GoogleEmailStatus.Rejected));
-    }
-
-    [HumansFact]
     public async Task NoVerifiedAddress_HasNoIdentity()
     {
-        var info = Seed(new Addr("alice@example.org", Primary: true, Google: true, Verified: false));
+        var info = Seed(new Addr("alice@example.org", Primary: true, Verified: false));
 
         (await _sut.GetWorkspaceIdentityAsync(info.Id, Ct)).Should().BeNull();
     }
@@ -162,26 +140,22 @@ public sealed class WorkspaceIdentityServiceTests
     // ─── ClearIfAddress ──────────────────────────────────────────────────────────
 
     [HumansFact]
-    public async Task ClearIfAddress_ThenLegacyFallback_DoesNotResurrectTheAddress()
+    public async Task ClearIfAddress_DeletesTheDesignation_AndTheReadFallsBackToTheAutomaticChoice()
     {
-        // The frozen IsGoogle flag still names the address (Users no longer writes it), so only the
-        // cleared row keeps the read from falling back to it.
-        var info = Seed(
-            new Addr("alice@example.org", Primary: true),
-            new Addr("alice@gmail.com", Google: true, Status: LegacyGoogleEmailStatus.Valid));
+        var info = Seed(new Addr("alice@example.org", Primary: true), new Addr("alice@gmail.com"));
+        await _repo.UpsertAsync(info.Id, "alice@gmail.com", GoogleEmailStatus.Valid, Instant.MinValue, Ct);
 
         await _sut.ClearIfAddressAsync(info.Id, "ALICE@gmail.com", Ct);
 
-        _repo.Rows[info.Id].Email.Should().BeNull();
+        _repo.Rows.Should().BeEmpty();
         (await _sut.GetWorkspaceIdentityAsync(info.Id, Ct)).Should()
             .Be(new WorkspaceIdentity(info.Id, "alice@example.org", GoogleEmailStatus.Unknown));
-        (await _sut.GetUncopiedLegacyIdentitiesAsync(Ct)).Should().BeEmpty();
     }
 
     [HumansFact]
     public async Task ClearIfAddress_OtherAddress_LeavesTheIdentity()
     {
-        var info = Seed(new Addr("alice@example.org", Primary: true), new Addr("alice@gmail.com", Google: true));
+        var info = Seed(new Addr("alice@example.org", Primary: true), new Addr("alice@gmail.com"));
         await _repo.UpsertAsync(info.Id, "alice@gmail.com", GoogleEmailStatus.Valid, Instant.MinValue, Ct);
 
         await _sut.ClearIfAddressAsync(info.Id, "alice@example.org", Ct);
@@ -256,7 +230,7 @@ public sealed class WorkspaceIdentityServiceTests
     [HumansFact]
     public async Task SetStatusFromSync_WritesTheVerdictForTheCurrentIdentity()
     {
-        var info = Seed(new Addr("alice@example.org", Primary: true, Google: true));
+        var info = Seed(new Addr("alice@example.org", Primary: true));
 
         (await _sut.SetStatusFromSyncAsync(info.Id, "Alice@Example.org", GoogleEmailStatus.Rejected, Ct)).Should().BeTrue();
 
@@ -282,40 +256,6 @@ public sealed class WorkspaceIdentityServiceTests
         (await _sut.SetStatusFromSyncAsync(info.Id, "alice@example.org", GoogleEmailStatus.Valid, Ct)).Should().BeFalse();
 
         _repo.Rows[info.Id].Status.Should().Be(GoogleEmailStatus.Rejected);
-    }
-
-    // ─── google.workspace-identities ─────────────────────────────────────────────
-
-    [HumansFact]
-    public async Task Copy_TakesOnlyMembersWithLegacyState_AndIsIdempotent()
-    {
-        var flagged = Seed(new Addr("a@example.org", Primary: true, Google: true));
-        var verdictOnly = Seed(new Addr("b@example.org", Primary: true, Status: LegacyGoogleEmailStatus.Rejected));
-        var untouched = Seed(new Addr("c@example.org", Primary: true));
-        var alreadyCopied = Seed(new Addr("d@example.org", Primary: true, Google: true));
-        await _repo.UpsertAsync(alreadyCopied.Id, "d@example.org", GoogleEmailStatus.Valid, Instant.MinValue, Ct);
-
-        (await _sut.GetUncopiedLegacyIdentitiesAsync(Ct)).Select(r => r.UserId).Should()
-            .BeEquivalentTo([flagged.Id, verdictOnly.Id]);
-        (await _sut.CopyLegacyIdentitiesAsync(Ct)).Should().Be(2);
-        (await _sut.CopyLegacyIdentitiesAsync(Ct)).Should().Be(0);
-
-        _repo.Rows[verdictOnly.Id].Status.Should().Be(GoogleEmailStatus.Rejected);
-        _repo.Rows.Should().NotContainKey(untouched.Id);
-        _repo.Rows[alreadyCopied.Id].Status.Should().Be(GoogleEmailStatus.Valid);
-    }
-
-    [HumansFact]
-    public async Task DataMigration_IsRegistered_AndRunsTheCopy()
-    {
-        Seed(new Addr("a@example.org", Primary: true, Google: true));
-        var services = new ServiceCollection().AddSingleton<IWorkspaceIdentityManagement>(_sut).BuildServiceProvider();
-        var migration = new SectionDataMigrations().Migrations().Should().ContainSingle().Subject;
-
-        migration.Key.Should().Be("google.workspace-identities");
-        (await migration.Status(services, Ct)).Pending.Should().Be(1);
-        (await migration.Apply(services, Guid.NewGuid(), Ct)).Should().Be(1);
-        (await migration.Status(services, Ct)).Pending.Should().Be(0);
     }
 
     // ─── Merge, export, erasure ──────────────────────────────────────────────────

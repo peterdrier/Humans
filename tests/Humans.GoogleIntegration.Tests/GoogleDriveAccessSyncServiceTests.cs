@@ -1,5 +1,6 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data;
+using Humans.GoogleIntegration.Domain;
 using Humans.Teams.Contracts;
 using NodaTime.Testing;
 using AwesomeAssertions;
@@ -19,6 +20,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
     private readonly IGoogleDrivePermissionsClient _drivePermissions = Substitute.For<IGoogleDrivePermissionsClient>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IWorkspaceIdentityManagement _identities;
+    private readonly InMemoryWorkspaceIdentityRepository _identityRows = new();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
     private readonly IGoogleSyncLogService _googleSyncLog = Substitute.For<IGoogleSyncLogService>();
@@ -29,7 +31,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
 
     public GoogleDriveAccessSyncServiceTests()
     {
-        _identities = WorkspaceIdentityFakes.ResolvingThrough(_userService);
+        _identities = WorkspaceIdentityFakes.ResolvingThrough(_userService, _identityRows);
         _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
             .Returns(SyncMode.AddAndRemove);
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -119,24 +121,17 @@ public sealed class GoogleDriveAccessSyncServiceTests
         var alice = Guid.NewGuid();
         var service = CreateService(new StaticSource("folder-1", (alice, DrivePermissionLevel.Contributor)));
         StubUsers((alice, "Alice", "alice@example.org"));
-        var attemptedEmailId = _usersById[alice].UserEmails.Single().Id;
         StubFolder("folder-1");
         _drivePermissions.CreatePermissionAsync("folder-1", "alice@example.org", "writer", Arg.Any<CancellationToken>())
             .Returns(new DrivePermissionMutationResult(
                 DrivePermissionCreateOutcome.Failed,
                 new GoogleClientError(403, "Cannot share a shared drive with non Google accounts.")));
         _identities.SetStatusFromSyncAsync(alice, "alice@example.org", GoogleEmailStatus.Rejected, Arg.Any<CancellationToken>())
-            .Returns(call =>
+            .Returns(_ =>
             {
-                _usersById[alice] = _usersById[alice] with
+                _identityRows.Rows[alice] = new WorkspaceIdentityRecord
                 {
-                    UserEmails =
-                    [
-                        new UserEmailInfo(
-                            attemptedEmailId, "alice@example.org", IsVerified: true, IsPrimary: false, IsGoogle: true,
-                            Provider: null, ProviderKey: null, Visibility: null, VerificationSentAt: null,
-                            CreatedAt: _now, UpdatedAt: _now, LegacyGoogleEmailStatus.Rejected)
-                    ]
+                    UserId = alice, Email = "alice@example.org", Status = GoogleEmailStatus.Rejected, UpdatedAt = _now,
                 };
                 return true;
             });
@@ -1037,8 +1032,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
             if (_usersById.TryGetValue(id, out var user))
                 _usersById[id] = user with
                 {
-                    UserEmails = [new UserEmailInfo(Guid.NewGuid(), email, true, false, true,
-                        null, null, null, null, _now, _now, LegacyGoogleEmailStatus.Unknown)]
+                    UserEmails = [new UserEmailInfo(Guid.NewGuid(), email, true, false, null, null, null, null, _now, _now)]
                 };
 
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

@@ -137,7 +137,7 @@ internal sealed partial class UserRepository
             if (targetByAddress.TryGetValue(src.Email, out var tgt))
             {
                 // Same address on both sides — collapse onto target row.
-                // OR-combine IsVerified; preserve target's IsPrimary/IsGoogle.
+                // OR-combine IsVerified; preserve target's IsPrimary.
                 if (src.IsVerified)
                 {
                     tgt.IsVerified = true;
@@ -148,12 +148,8 @@ internal sealed partial class UserRepository
             else
             {
                 // Re-FK to target. Clear IsPrimary so the target's existing primary stands.
-                // IsGoogle is frozen (GoogleIntegration owns the identity since Users
-                // decomposition commit 15); clearing it here keeps the target's legacy
-                // designation the one the google.workspace-identities fallback reads.
                 ctx.Entry(src).Property(nameof(UserEmail.UserId)).CurrentValue = targetUserId;
                 src.IsPrimary = false;
-                src.IsGoogle = false;
                 src.UpdatedAt = updatedAt;
             }
         }

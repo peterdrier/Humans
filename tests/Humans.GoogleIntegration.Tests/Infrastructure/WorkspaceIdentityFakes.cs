@@ -12,16 +12,16 @@ namespace Humans.GoogleIntegration.Tests.Infrastructure;
 
 /// <summary>
 /// Google identity doubles for the sync tests. Their fixtures describe members through
-/// <see cref="UserInfo"/> (the legacy <c>IsGoogle</c> / <c>GoogleEmailStatus</c> flags), so the reads
-/// go through the real <see cref="WorkspaceIdentityService"/> resolution over an empty
-/// <c>google_workspace_identities</c> (the legacy fallback), while the writes stay recordable on the
-/// substitute.
+/// <see cref="UserInfo"/>, so the reads go through the real <see cref="WorkspaceIdentityService"/>
+/// resolution over an in-memory <c>google_workspace_identities</c> (empty unless a test passes rows), while the
+/// writes stay recordable on the substitute.
 /// </summary>
 internal static class WorkspaceIdentityFakes
 {
-    public static IWorkspaceIdentityManagement ResolvingThrough(IUserService users)
+    public static IWorkspaceIdentityManagement ResolvingThrough(
+        IUserService users, InMemoryWorkspaceIdentityRepository? rows = null)
     {
-        var real = Create(users, new InMemoryWorkspaceIdentityRepository());
+        var real = Create(users, rows ?? new InMemoryWorkspaceIdentityRepository());
         var fake = Substitute.For<IWorkspaceIdentityManagement>();
         fake.GetWorkspaceIdentityAsync(default, default)
             .ReturnsForAnyArgs(ci => real.GetWorkspaceIdentityAsync(ci.Arg<Guid>(), ci.Arg<CancellationToken>()));
@@ -55,13 +55,6 @@ internal sealed class InMemoryWorkspaceIdentityRepository : IWorkspaceIdentityRe
     {
         Rows[userId] = new WorkspaceIdentityRecord { UserId = userId, Email = email, Status = status, UpdatedAt = now };
         return Task.CompletedTask;
-    }
-
-    public Task<bool> TryInsertAsync(Guid userId, string? email, GoogleEmailStatus status, Instant now, CancellationToken ct = default)
-    {
-        if (Rows.ContainsKey(userId)) return Task.FromResult(false);
-        Rows[userId] = new WorkspaceIdentityRecord { UserId = userId, Email = email, Status = status, UpdatedAt = now };
-        return Task.FromResult(true);
     }
 
     public Task<bool> DeleteAsync(Guid userId, CancellationToken ct = default) => Task.FromResult(Rows.Remove(userId));

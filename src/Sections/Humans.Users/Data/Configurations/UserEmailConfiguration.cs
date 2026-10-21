@@ -40,7 +40,7 @@ internal sealed class UserEmailConfiguration : IEntityTypeConfiguration<UserEmai
         // UserEmailService — no DB index per feedback_db_enforcement_minimal.
         // IsGoogle / GoogleEmailStatus are frozen: the Google Workspace identity is
         // GoogleIntegration's google_workspace_identities (Users decomposition commit 15);
-        // the columns stay mapped until the drop PR after google.workspace-identities is done.
+        // the columns stay mapped, read only by Users' GDPR export, until their drop (USERS-21).
         builder.Property(e => e.Provider)
             .HasMaxLength(64);
 

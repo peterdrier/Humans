@@ -116,8 +116,7 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
             Id = Guid.NewGuid(),
             UserId = userId,
             Email = primaryEmail,
-            IsVerified = true,
-            IsGoogle = true
+            IsVerified = true
         });
 
         _userEmailService.FindByAddressAsync(removedEmail, false, true, Arg.Any<CancellationToken>())
