@@ -96,8 +96,8 @@ internal sealed class BackdoorController(
 
         // A role assignment outlives a suspension, so the role sets alone name accounts the
         // service refuses. Narrowing them by state gives the same two-part test
-        // IBackdoorApiKeyService applies at issue and on every authentication — used both to
-        // populate the dropdown and to tell a working key from an unrevoked but refused one.
+        // IBackdoorApiKeyService applies at issue — used to populate the dropdown. Whether a
+        // listed key's owner still passes it is the service's own IsOwnerEligible.
         var eligibleOwnerIds = eligibleIds
             .Where(id => infos.GetValueOrDefault(id)?.State == UserState.Active)
             .ToHashSet();
@@ -114,7 +114,7 @@ internal sealed class BackdoorController(
                 r.CreatedAt,
                 r.LastUsedAt,
                 r.RevokedAt,
-                eligibleOwnerIds.Contains(r.UserId)))],
+                r.IsOwnerEligible))],
             EligibleUsers = [.. eligibleOwnerIds
                 .Select(id => new BackdoorKeyCandidate(id, infos[id].BurnerName))
                 .OrderBy(c => c.DisplayName, StringComparer.CurrentCulture)],

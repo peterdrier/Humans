@@ -45,7 +45,7 @@ public class ShiftSignupsBucketingTests
     {
         // Shift started at 08:00 (4h ago), ends at 16:00 (4h from now) → still in progress
         var signup = MakeSignup(SignupStatus.Confirmed, dayOffset: 0, startHour: 8, durationHours: 8);
-        var model = await RunComponent([signup]);
+        var model = await RunComponentAsync([signup]);
 
         model.Upcoming.Should().HaveCount(1);
         model.Past.Should().BeEmpty();
@@ -56,7 +56,7 @@ public class ShiftSignupsBucketingTests
     {
         // Shift started at 06:00, ended at 10:00 (2h ago) → past
         var signup = MakeSignup(SignupStatus.Confirmed, dayOffset: 0, startHour: 6, durationHours: 4);
-        var model = await RunComponent([signup]);
+        var model = await RunComponentAsync([signup]);
 
         model.Past.Should().HaveCount(1);
         model.Upcoming.Should().BeEmpty();
@@ -67,7 +67,7 @@ public class ShiftSignupsBucketingTests
     {
         // Shift starts tomorrow at 08:00 → future
         var signup = MakeSignup(SignupStatus.Confirmed, dayOffset: 1, startHour: 8, durationHours: 4);
-        var model = await RunComponent([signup]);
+        var model = await RunComponentAsync([signup]);
 
         model.Upcoming.Should().HaveCount(1);
         model.Past.Should().BeEmpty();
@@ -77,7 +77,7 @@ public class ShiftSignupsBucketingTests
     public async Task PendingShift_BucketedAsPending()
     {
         var signup = MakeSignup(SignupStatus.Pending, dayOffset: 1, startHour: 8, durationHours: 4);
-        var model = await RunComponent([signup]);
+        var model = await RunComponentAsync([signup]);
 
         model.Pending.Should().HaveCount(1);
         model.Upcoming.Should().BeEmpty();
@@ -88,7 +88,7 @@ public class ShiftSignupsBucketingTests
     public async Task NoShowShift_BucketedAsPast()
     {
         var signup = MakeSignup(SignupStatus.NoShow, dayOffset: 0, startHour: 6, durationHours: 4);
-        var model = await RunComponent([signup]);
+        var model = await RunComponentAsync([signup]);
 
         model.Past.Should().HaveCount(1);
     }
@@ -97,7 +97,7 @@ public class ShiftSignupsBucketingTests
     public async Task BailedShift_BucketedAsPast()
     {
         var signup = MakeSignup(SignupStatus.Bailed, dayOffset: 0, startHour: 6, durationHours: 4);
-        var model = await RunComponent([signup]);
+        var model = await RunComponentAsync([signup]);
 
         model.Past.Should().HaveCount(1);
     }
@@ -110,14 +110,14 @@ public class ShiftSignupsBucketingTests
         burnSettings.GetActiveAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromException<BurnSettingsInfo?>(new InvalidOperationException("DB down")));
 
-        var model = await RunComponent([], burnSettings, shiftView);
+        var model = await RunComponentAsync([], burnSettings, shiftView);
 
         model.Upcoming.Should().BeEmpty();
         model.Pending.Should().BeEmpty();
         model.Past.Should().BeEmpty();
     }
 
-    private async Task<ShiftSignupsViewModel> RunComponent(
+    private async Task<ShiftSignupsViewModel> RunComponentAsync(
         List<ShiftSignupSummary> signups,
         IBurnSettingsService? burnSettings = null,
         IShiftView? shiftView = null)

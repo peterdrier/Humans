@@ -21,7 +21,7 @@ public class MergedAccountsViewComponentTests
     {
         var id = Guid.NewGuid();
 
-        var result = await InvokeWith(id, Row(id));
+        var result = await InvokeWithAsync(id, Row(id));
 
         result.Should().BeOfType<ContentViewComponentResult>(
             "an admin page invokes this unconditionally, so a clean account renders no banner");
@@ -30,7 +30,7 @@ public class MergedAccountsViewComponentTests
     [HumansFact]
     public async Task UnknownUser_RendersNothing()
     {
-        var result = await InvokeWith(Guid.NewGuid());
+        var result = await InvokeWithAsync(Guid.NewGuid());
 
         result.Should().BeOfType<ContentViewComponentResult>();
     }
@@ -41,7 +41,7 @@ public class MergedAccountsViewComponentTests
         var tombstone = Guid.NewGuid();
         var survivor = Guid.NewGuid();
 
-        var model = await ModelFrom(
+        var model = await ModelFromAsync(
             tombstone,
             Row(tombstone, mergedTo: survivor, mergedAt: Now),
             Row(survivor, name: "Survivor"));
@@ -62,7 +62,7 @@ public class MergedAccountsViewComponentTests
         var firstMergedAt = Now.Minus(Duration.FromDays(30));
 
         // A→B→C: the survivor's stamped list is transitive, so both ids are named here.
-        var model = await ModelFrom(
+        var model = await ModelFromAsync(
             survivor,
             Row(survivor, name: "Survivor", mergedUserIds: [first, second]),
             Row(first, name: "First", mergedTo: second, mergedAt: firstMergedAt),
@@ -82,7 +82,7 @@ public class MergedAccountsViewComponentTests
 
         // GDPR erasure can take the row out from under the stamped list; the widget
         // must still show that something was folded in rather than drop it silently.
-        var model = await ModelFrom(survivor, Row(survivor, mergedUserIds: [erased]));
+        var model = await ModelFromAsync(survivor, Row(survivor, mergedUserIds: [erased]));
 
         model.MergedIn.Should().ContainSingle();
         model.MergedIn[0].UserId.Should().Be(erased);
@@ -143,16 +143,16 @@ public class MergedAccountsViewComponentTests
             },
         };
 
-    private static async Task<IViewComponentResult> InvokeWith(Guid userId, params UserInfo[] rows)
+    private static async Task<IViewComponentResult> InvokeWithAsync(Guid userId, params UserInfo[] rows)
     {
         var users = Substitute.For<IUserManagement>();
         Stub(users, rows);
         return await Sut(users).InvokeAsync(userId);
     }
 
-    private static async Task<MergedAccountsViewModel> ModelFrom(Guid userId, params UserInfo[] rows)
+    private static async Task<MergedAccountsViewModel> ModelFromAsync(Guid userId, params UserInfo[] rows)
     {
-        var result = await InvokeWith(userId, rows) as ViewViewComponentResult;
+        var result = await InvokeWithAsync(userId, rows) as ViewViewComponentResult;
         return (MergedAccountsViewModel)result!.ViewData!.Model!;
     }
 }

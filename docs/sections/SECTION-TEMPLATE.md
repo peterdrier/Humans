@@ -90,7 +90,7 @@ Rules:
 
 <!--
 Optional. Include ONLY when the URL-to-controller mapping is non-obvious
-(Profiles: /Profile/Me vs /Profile/{id}, Google: /Google vs /Teams/{slug}/Resources)
+(Profiles: /Profile/Me vs /Profile/{id}, Google: /Google vs /Google/Teams/{slug}/Resources)
 or when multiple controllers serve one section. If the section has a single
 conventional controller, skip this heading entirely.
 -->

@@ -267,6 +267,9 @@ public enum AuditAction
     CityPlanningLimitZoneDeleted,
     CityPlanningOfficialZonesUpdated,
     CityPlanningOfficialZonesDeleted,
+    // The informational placement open/close dates and the barrio registration page copy.
+    CityPlanningPlacementDatesUpdated,
+    CityPlanningRegistrationInfoUpdated,
 
     // A finance admin filed an expense report for another member. Self-created drafts are not
     // audited — only the on-behalf case, which names the actor and the member.

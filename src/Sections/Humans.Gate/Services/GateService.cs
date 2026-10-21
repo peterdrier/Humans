@@ -33,7 +33,7 @@ internal sealed class GateService(
     ITicketService tickets,
     IEarlyEntryService earlyEntry,
     ISettingsService settingsService,
-    IShiftManagementService shifts,
+    IShiftService shifts,
     IRoleAssignmentService roles,
     ITicketWrite ticketWrite,
     IPasswordHasher<GateStaffPin> pinHasher,
@@ -184,7 +184,7 @@ internal sealed class GateService(
             if (activeEvent is null || activeEvent.Year == 0)
                 return;
 
-            await ticketWrite.SetParticipationFromTicketSyncAsync(
+            await ticketWrite.RecordParticipationAsync(
                 guestUserId.Value, activeEvent.Year, ParticipationStatus.Attended,
                 clock.GetCurrentInstant(), CancellationToken.None);
         }

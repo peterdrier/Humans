@@ -59,7 +59,7 @@ public class StripeBootJobTests
         // enumeration; and with nothing configured the probe logs these three and then awaits an
         // empty probe set, so once the third lands nobody is writing and the assertion below is
         // free to enumerate. The dropped level predicate is not lost — the next line asserts it.
-        await WaitUntil(() => log.Entries.Count >= 3);
+        await WaitUntilAsync(() => log.Entries.Count >= 3);
         log.Entries.Should().HaveCount(3).And.OnlyContain(e => e.Level == LogLevel.Warning);
 
         await probe.StopAsync(CancellationToken.None);
@@ -75,7 +75,7 @@ public class StripeBootJobTests
         var start = registrar.StartAsync(CancellationToken.None);
         start.IsCompleted.Should().BeTrue("boot must not wait on a Stripe round trip");
 
-        // Not StartAndSettle: its wait is for an entry to appear, which is exactly what must not
+        // Not StartAndSettleAsync: its wait is for an entry to appear, which is exactly what must not
         // happen here, so it could only ever time out. See SilenceWindow.
         await Task.Delay(SilenceWindow);
         await registrar.StopAsync(CancellationToken.None);
@@ -92,7 +92,7 @@ public class StripeBootJobTests
             new StripeSettings { WebhookRegistrarKey = "rk_test_registrar" },
             "https://localhost:5001");
 
-        var entries = await StartAndSettle(registrar, log);
+        var entries = await StartAndSettleAsync(registrar, log);
 
         entries.Should().ContainSingle()
             .Which.Message.Should().Contain("not a recognized PR-preview host");
@@ -105,7 +105,7 @@ public class StripeBootJobTests
             new StripeSettings { WebhookRegistrarKey = "rk_test_registrar" },
             baseUrl: null);
 
-        var entries = await StartAndSettle(registrar, log);
+        var entries = await StartAndSettleAsync(registrar, log);
 
         entries.Should().ContainSingle()
             .Which.Message.Should().Contain("no Email:BaseUrl configured");
@@ -124,7 +124,7 @@ public class StripeBootJobTests
     }
 
     private static async Task<IReadOnlyList<CapturingLogger<StoreWebhookRegistrationService>.LogEntry>>
-        StartAndSettle(StoreWebhookRegistrationService registrar, CapturingLogger<StoreWebhookRegistrationService> log)
+        StartAndSettleAsync(StoreWebhookRegistrationService registrar, CapturingLogger<StoreWebhookRegistrationService> log)
     {
         var start = registrar.StartAsync(CancellationToken.None);
         start.IsCompleted.Should().BeTrue("boot must not wait on a Stripe round trip");
@@ -132,12 +132,12 @@ public class StripeBootJobTests
         // Every caller of this helper expects exactly one entry, and every path they exercise
         // returns before any network call — so the wait is only for the background task to be
         // scheduled, and returns as soon as it has been. Settle is the upper bound, not the cost.
-        await WaitUntil(() => log.Entries.Count > 0);
+        await WaitUntilAsync(() => log.Entries.Count > 0);
         await registrar.StopAsync(CancellationToken.None);
         return log.Entries;
     }
 
-    private static async Task WaitUntil(Func<bool> condition)
+    private static async Task WaitUntilAsync(Func<bool> condition)
     {
         var deadline = DateTime.UtcNow + Settle;
         while (!condition() && DateTime.UtcNow < deadline)

@@ -422,6 +422,26 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result.ErrorKey.Should().Be("NotFound");
     }
 
+    [HumansFact]
+    public async Task Detail_reads_carry_the_submitted_only_withdraw_and_decide_rules()
+    {
+        var userId = Guid.NewGuid();
+        var app = await SeedSubmittedApplicationAsync(userId);
+        var ct = TestContext.Current.CancellationToken;
+
+        (await _service.GetUserApplicationDetailAsync(app.Id, userId, ct))!.CanWithdraw.Should().BeTrue();
+        (await _service.GetApplicationDetailAsync(app.Id, ct))!.CanApproveReject.Should().BeTrue();
+        (await _service.GetSubmittedApplicationForUserAsync(userId, ct)).Should().NotBeNull();
+
+        app.Withdraw(Clock);
+        await SaveAllAsync(ct);
+        ClearAllTrackers();
+
+        (await _service.GetUserApplicationDetailAsync(app.Id, userId, ct))!.CanWithdraw.Should().BeFalse();
+        (await _service.GetApplicationDetailAsync(app.Id, ct))!.CanApproveReject.Should().BeFalse();
+        (await _service.GetSubmittedApplicationForUserAsync(userId, ct)).Should().BeNull();
+    }
+
     // --- Approve flow ---
 
     [HumansFact]
@@ -1227,14 +1247,14 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var viewerId = Guid.NewGuid();
         var app = await SeedSubmittedApplicationAsync(applicantId);
         var abandonAfterApplicant = false;
-        async ValueTask<UserInfo?> ReadUser(CallInfo call)
+        async ValueTask<UserInfo?> ReadUserAsync(CallInfo call)
         {
             var id = call.Arg<Guid>();
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             if (abandonAfterApplicant && id == applicantId) await cancellation.CancelAsync();
             return new User { Id = id, DisplayName = "Member", Email = "member@example.com" }.ToUserInfo();
         }
-        _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(ReadUser);
+        _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(ReadUserAsync);
         var controller = new GovernanceBoardVotingController(_userService, _service,
             NullLogger<GovernanceBoardVotingController>.Instance, Substitute.For<IStringLocalizer<GovernanceResource>>())
         {
@@ -1314,7 +1334,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
                 }
             },
         };
-        Task<IActionResult> ReadPage() => page switch
+        Task<IActionResult> ReadPageAsync() => page switch
         {
             "Index" => controller.Index(),
             "Create" => controller.Create(),
@@ -1325,9 +1345,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             _ => throw new ArgumentOutOfRangeException(nameof(page)),
         };
 
-        (await ReadPage()).Should().BeOfType<ViewResult>();
+        (await ReadPageAsync()).Should().BeOfType<ViewResult>();
         await request.CancelAsync();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(ReadPage);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(ReadPageAsync);
     }
 
     // --- GetUserApplicationDetailAsync ---

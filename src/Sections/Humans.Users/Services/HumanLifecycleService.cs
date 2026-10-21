@@ -42,8 +42,6 @@ internal sealed class HumanLifecycleService(
                 ? NoticeResources.GetString("AccountStatus_HeadingAdminSuspended", culture)!
                 : string.Format(culture,
                     NoticeResources.GetString("Users_Notification_AdminSuspendedWithReason", culture)!, notes);
-            if (body.EnumerateRunes().Count() > 2000)
-                body = string.Concat(body.EnumerateRunes().Take(1999)) + "…";
             await notificationService.SendAsync(
                 NotificationSource.AccessSuspended,
                 NotificationClass.Actionable,

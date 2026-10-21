@@ -315,18 +315,6 @@ internal sealed partial class UserRepository : IUserRepository
         }
     }
 
-    public async Task SetLastConsentReminderSentAsync(
-        Guid userId, Instant sentAt, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var user = await ctx.Users.FindAsync([userId], ct);
-        if (user is null)
-            return;
-
-        user.LastConsentReminderSentAt = sentAt;
-        await ctx.SaveChangesAsync(ct);
-    }
-
     public async Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
         Instant now, CancellationToken ct = default)
     {
@@ -377,6 +365,9 @@ internal sealed partial class UserRepository : IUserRepository
         user.ProfilePictureUrl = null;
         user.PhoneNumber = null;
         user.PhoneNumberConfirmed = false;
+
+        // The frozen re-consent stamp (Consent's consent_reminders replaced it) goes with the rest.
+        user.LastConsentReminderSentAt = null;
 
         // Drop external logins for the same reason — see nobodies-collective/Humans#661.
         var logins = await ctx.Set<IdentityUserLogin<Guid>>()

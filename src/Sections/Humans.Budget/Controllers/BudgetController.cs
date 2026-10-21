@@ -77,12 +77,6 @@ internal sealed class BudgetController(
             var visibleGroups = activeYear.Groups.ToList();
             var summary = budgetService.ComputeBudgetSummaryWithBuffers(visibleGroups);
 
-            var totalLineItems = visibleGroups
-                .SelectMany(g => g.Categories)
-                .SelectMany(c => c.LineItems)
-                .Where(li => !li.IsCashflowOnly)
-                .Sum(li => li.Amount);
-
             var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id, ct);
 
             var model = new BudgetSummaryViewModel
@@ -91,7 +85,7 @@ internal sealed class BudgetController(
                 TotalIncome = summary.TotalIncome,
                 TotalExpenses = summary.TotalExpenses,
                 NetBalance = summary.NetBalance,
-                TotalLineItems = totalLineItems,
+                TotalLineItems = summary.TotalLineItems,
                 IncomeSlices = summary.IncomeSlices,
                 ExpenseSlices = summary.ExpenseSlices,
                 IsCoordinator = coordinatorTeamIds.Count > 0 || (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded

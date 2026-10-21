@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.GoogleIntegration/Views/Google/**
-  src/Sections/Humans.Teams/Views/TeamAdmin/Resources.cshtml
+  src/Sections/Humans.GoogleIntegration/Views/TeamResources/Index.cshtml
   src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
   src/Sections/Humans.GoogleIntegration/Services/**
   src/Sections/Humans.GoogleIntegration/Contracts/GoogleResource.cs
@@ -35,7 +35,7 @@ All Drive resources are on **Shared Drives only** (no personal My Drive), and th
 - **All Groups** (`/Google/AllGroups`) — every Google Group in the domain, linked or not.
 - **Workspace accounts** (`/Google/Accounts`) — every `@nobodies.team` account, with link-to-human search.
 - **Sync audit** — per-human (`/Google/Human/{id}`) and per-resource (`/Google/Resource/{id}`).
-- **Team resources** (`/Teams/{slug}/Resources`) — where coordinators link, unlink, and sync a team's Drive folders, files, and Groups.
+- **Team resources** (`/Google/Teams/{slug}/Resources`) — where coordinators link, unlink, and sync a team's Drive folders, files, and Groups.
 - **Drive activity** — anomalous changes land in `/AuditLog` under the "Anomalous Permissions" filter.
 
 ## As a [Volunteer](Glossary.md#volunteer)
@@ -62,7 +62,7 @@ Joining a team grants you its Group membership and access to its linked Shared D
 
 ### Link a Google resource to your department
 
-Open `/Teams/{slug}/Resources`. Two link forms:
+Open `/Google/Teams/{slug}/Resources`. Two link forms:
 
 - **Link Google Drive Resource** — paste a Shared Drive folder URL, or a Sheet/Doc/Slides/Forms file URL; the app detects which kind it is from the URL. The resource must already be shared with the app's service account as Editor (the page shows that email if validation fails).
 - **Link Google Group** — paste the group email; the service account must be a Group Manager.

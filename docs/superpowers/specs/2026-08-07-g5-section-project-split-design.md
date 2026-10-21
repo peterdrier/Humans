@@ -862,7 +862,7 @@ pilot landed, as planned.
 
 Confirmed against the wiring. Store's outbound dependencies, from `StoreService.cs:17-25`:
 `IStoreRepository`, `IAuditLogService` (horizontal), `ICampServiceRead`, `ITeamServiceRead`,
-`IShiftManagementService`, `IStripeService`, `IClock`. Inbound: only `Humans.Web` (three
+`IShiftService`, `IStripeService`, `IClock`. Inbound: only `Humans.Web` (three
 controllers, one auth handler, four view-model files, six views) — plus `IStripeService`, which
 names Store only in `Guid`/`decimal` parameters and doc comments, so no type dependency.
 
@@ -870,7 +870,7 @@ Every one of those outbound interfaces lives in `Humans.Application` today, whic
 the pilot Store references Base and nothing references Store: fan-in of one, and that one becomes
 Shell. This is why Store is the pilot.
 
-Note `IShiftManagementService` is a **full** service interface, not `IShiftManagementServiceRead`.
+Note `IShiftService` is a **full** service interface, not `IShiftManagementServiceRead`.
 At the pilot it resolves inside Base and cannot cycle — but it is the shape that will cycle once
 Shifts becomes its own section. Record it; do not fix it in the pilot.
 
@@ -1289,7 +1289,7 @@ plenty of headroom. **No case for fewer, larger section projects.** Re-measure a
 **4. Where the first real cycle appears — answered for section-to-Base, still open for
 section-to-section.** The first real cycles arrived in A1 and were section-to-Base:
 `Humans.Application` consumes SystemSettings and Events, so both needed the downward `.Contracts`
-project on their first build (template step 5b). `IShiftManagementService` (a *full* service
+project on their first build (template step 5b). `IShiftService` (a *full* service
 interface, §8) is still the first concrete section-to-section candidate, and it is still resolved
 inside Base. That half settles when Shifts moves.
 

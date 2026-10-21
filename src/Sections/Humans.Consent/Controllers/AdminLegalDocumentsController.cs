@@ -1,7 +1,6 @@
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using NodaTime;
 using Humans.Teams.Contracts;
 
 using Humans.Base.Authorization;
@@ -17,7 +16,6 @@ internal sealed class AdminLegalDocumentsController(
     IUserService userService,
     IAdminLegalDocumentService adminLegalDocumentService,
     ITeamService teamService,
-    IClock clock,
     ILogger<AdminLegalDocumentsController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("Documents")]
@@ -115,11 +113,6 @@ internal sealed class AdminLegalDocumentsController(
             return NotFound();
         }
 
-        var now = clock.GetCurrentInstant();
-        var currentVersion = document.Versions
-            .Where(v => v.EffectiveFrom <= now)
-            .MaxBy(v => v.EffectiveFrom);
-
         var viewModel = new LegalDocumentEditViewModel
         {
             Id = document.Id,
@@ -130,7 +123,7 @@ internal sealed class AdminLegalDocumentsController(
             GracePeriodDays = document.GracePeriodDays,
             GitHubFolderPath = document.GitHubFolderPath,
             Teams = await GetTeamSelectItems(HttpContext.RequestAborted),
-            CurrentVersion = currentVersion?.VersionNumber,
+            CurrentVersion = document.CurrentVersion,
             LastSyncedAt = document.LastSyncedAt != default ? document.LastSyncedAt.ToDateTimeUtc() : null,
             VersionCount = document.Versions.Count,
             Versions = document.Versions

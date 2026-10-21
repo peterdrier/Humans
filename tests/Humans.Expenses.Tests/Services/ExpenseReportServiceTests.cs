@@ -197,13 +197,13 @@ public sealed partial class ExpenseReportServiceTests
         var attachmentId = (await _sut.GetAsync(id, TestContext.Current.CancellationToken))!.Lines.Single(l => l.Id == lineId).AttachmentId!.Value;
         using var request = new CancellationTokenSource();
         var abandon = false;
-        async ValueTask<UserInfo?> ReadActor(NSubstitute.Core.CallInfo call)
+        async ValueTask<UserInfo?> ReadActorAsync(NSubstitute.Core.CallInfo call)
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             if (abandon && string.Equals(boundary, "Report", StringComparison.Ordinal)) await request.CancelAsync();
             return UserInfo.Create(new User { Id = actorId }, [], [], [], null, []);
         }
-        _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(ReadActor);
+        _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(ReadActorAsync);
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
             Arg.Any<IEnumerable<IAuthorizationRequirement>>()).Returns(async _ =>
@@ -229,15 +229,15 @@ public sealed partial class ExpenseReportServiceTests
                 }
             },
         };
-        Task<IActionResult> ReadAttachment() => inline ? controller.AttachmentView(attachmentId) : controller.Attachment(attachmentId);
+        Task<IActionResult> ReadAttachmentAsync() => inline ? controller.AttachmentView(attachmentId) : controller.Attachment(attachmentId);
 
-        var file = (await ReadAttachment()).Should().BeOfType<FileContentResult>().Subject;
+        var file = (await ReadAttachmentAsync()).Should().BeOfType<FileContentResult>().Subject;
         file.FileContents.Should().Equal(4, 5, 6);
         file.ContentType.Should().Be("application/pdf");
         file.FileDownloadName.Should().Be(inline ? "" : "receipt.pdf");
         abandon = true;
         if (string.Equals(boundary, "User", StringComparison.Ordinal)) await request.CancelAsync();
-        Func<Task> read = async () => await ReadAttachment();
+        Func<Task> read = async () => await ReadAttachmentAsync();
         await read.Should().ThrowAsync<OperationCanceledException>();
     }
 
@@ -294,20 +294,20 @@ public sealed partial class ExpenseReportServiceTests
         var id = (await _sut.CreateDraftAsync(actorId, actorId, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
         var lineId = (await _sut.AddLineWithResultAsync(id, actorId, false, "Invoice", 10m,
             lineType: ExpenseLineType.Invoice, ct: TestContext.Current.CancellationToken)).LineId!.Value;
-        await SeedReportWithStatus(Guid.NewGuid(), actorId, category.Id, year.Id, ExpenseReportStatus.Submitted);
+        await SeedReportWithStatusAsync(Guid.NewGuid(), actorId, category.Id, year.Id, ExpenseReportStatus.Submitted);
         _budgetService.GetEffectiveCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         var actor = UserInfo.Create(new User { Id = actorId }, [], [], [], null, []);
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo> { [actorId] = actor }));
         using var request = new CancellationTokenSource();
         var abandon = false;
-        async ValueTask<UserInfo?> ReadActor(NSubstitute.Core.CallInfo call)
+        async ValueTask<UserInfo?> ReadActorAsync(NSubstitute.Core.CallInfo call)
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             if (abandon && cancelAfterViewer) await request.CancelAsync();
             return actor;
         }
-        _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(ReadActor);
+        _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(ReadActorAsync);
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
             Arg.Any<IEnumerable<IAuthorizationRequirement>>()).Returns(AuthorizationResult.Success());
@@ -326,7 +326,7 @@ public sealed partial class ExpenseReportServiceTests
             },
         };
         controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
-        Task<IActionResult> ReadPage() => page switch
+        Task<IActionResult> ReadPageAsync() => page switch
         {
             "Detail" => controller.Detail(id),
             "Edit" => controller.Edit(id),
@@ -338,11 +338,11 @@ public sealed partial class ExpenseReportServiceTests
             _ => throw new ArgumentOutOfRangeException(nameof(page)),
         };
 
-        (await ReadPage()).Should().BeOfType<ViewResult>();
+        (await ReadPageAsync()).Should().BeOfType<ViewResult>();
         controller.TempData.Should().BeEmpty();
         abandon = true;
         if (!cancelAfterViewer) await request.CancelAsync();
-        Func<Task> read = async () => await ReadPage();
+        Func<Task> read = async () => await ReadPageAsync();
         await read.Should().ThrowAsync<OperationCanceledException>();
         controller.TempData.Should().BeEmpty();
     }
@@ -356,7 +356,7 @@ public sealed partial class ExpenseReportServiceTests
         var blankId = Guid.NewGuid();
         var missingId = Guid.NewGuid();
         foreach (var userId in new[] { namedId, blankId, missingId })
-            await SeedReportWithStatus(Guid.NewGuid(), userId, category.Id, year.Id, ExpenseReportStatus.Submitted);
+            await SeedReportWithStatusAsync(Guid.NewGuid(), userId, category.Id, year.Id, ExpenseReportStatus.Submitted);
         _userService.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = viewerId }, [], [], [], null, []));
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(
@@ -588,9 +588,9 @@ public sealed partial class ExpenseReportServiceTests
         _userService.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>()).Returns(survivor);
         var ownReportId = Guid.NewGuid();
         var sourceReportId = Guid.NewGuid();
-        await SeedReportWithStatus(ownReportId, survivorId, category.Id, Guid.NewGuid(), ExpenseReportStatus.Submitted);
-        await SeedReportWithStatus(sourceReportId, sourceId, category.Id, Guid.NewGuid(), ExpenseReportStatus.Submitted);
-        await SeedReportWithStatus(Guid.NewGuid(), otherId, category.Id, Guid.NewGuid(), ExpenseReportStatus.Submitted);
+        await SeedReportWithStatusAsync(ownReportId, survivorId, category.Id, Guid.NewGuid(), ExpenseReportStatus.Submitted);
+        await SeedReportWithStatusAsync(sourceReportId, sourceId, category.Id, Guid.NewGuid(), ExpenseReportStatus.Submitted);
+        await SeedReportWithStatusAsync(Guid.NewGuid(), otherId, category.Id, Guid.NewGuid(), ExpenseReportStatus.Submitted);
 
         foreach (var id in new[] { survivorId, sourceId })
         {
@@ -1823,7 +1823,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
         var id = Guid.NewGuid();
-        await SeedReportWithStatus(id, submitter, category.Id, Guid.NewGuid(), ExpenseReportStatus.Submitted);
+        await SeedReportWithStatusAsync(id, submitter, category.Id, Guid.NewGuid(), ExpenseReportStatus.Submitted);
 
         var result = await _sut.SubmitWithResultAsync(id, submitter, false, TestContext.Current.CancellationToken);
 
@@ -2010,7 +2010,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, submitter, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
 
         var ok = (await _sut.WithdrawWithResultAsync(reportId, submitter, TestContext.Current.CancellationToken)).Succeeded;
@@ -2026,7 +2026,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, submitter, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
 
         (await _sut.WithdrawWithResultAsync(reportId, submitter, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
@@ -2043,7 +2043,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, submitter, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
 
         var result = await _sut.WithdrawWithResultAsync(reportId, submitter, TestContext.Current.CancellationToken);
@@ -2061,7 +2061,7 @@ public sealed partial class ExpenseReportServiceTests
         var submitter = Guid.NewGuid();
         var other = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, submitter, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
 
         var result = await _sut.WithdrawWithResultAsync(reportId, other, TestContext.Current.CancellationToken);
@@ -2078,7 +2078,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, submitter, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Draft);
         _financeWrite
             .SetIbanAsync(submitter, "ES9121000418450200051332", Arg.Any<CancellationToken>())
@@ -2108,7 +2108,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, submitter, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Draft);
 
         var result = await _sut.SaveSubmitterIbanWithResultAsync(reportId, submitter, iban, TestContext.Current.CancellationToken);
@@ -2154,7 +2154,7 @@ public sealed partial class ExpenseReportServiceTests
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, member, category.Id, year.Id,
+        await SeedReportWithStatusAsync(reportId, member, category.Id, year.Id,
             ExpenseReportStatus.CoordinatorEndorsed);
 
         await _sut.UpdateDraftWithResultAsync(reportId, admin, true, CategoryAccountNumber, "corrected", ct: TestContext.Current.CancellationToken);
@@ -2179,7 +2179,7 @@ public sealed partial class ExpenseReportServiceTests
         _budgetService.GetCategoryByIdAsync(oldCategoryId)
             .Returns(MakeCategorySnapshot(oldCategoryId, null, "Last Year Category", null, oldYearId));
         StubExpenseAccounts((oldCategoryId, oldAccountNumber, "acc-old"));
-        await SeedReportWithStatus(reportId, member, oldCategoryId, oldYearId,
+        await SeedReportWithStatusAsync(reportId, member, oldCategoryId, oldYearId,
             ExpenseReportStatus.Submitted);
 
         await _sut.UpdateDraftWithResultAsync(reportId, admin, true, oldAccountNumber, "corrected", ct: TestContext.Current.CancellationToken);
@@ -2198,7 +2198,7 @@ public sealed partial class ExpenseReportServiceTests
         var admin = Guid.NewGuid();
         var reportId = Guid.NewGuid();
         var oldYearId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, member, Guid.NewGuid(), oldYearId,
+        await SeedReportWithStatusAsync(reportId, member, Guid.NewGuid(), oldYearId,
             ExpenseReportStatus.Submitted);
 
         // The category account maps to the active year, not to this report's year.
@@ -2218,7 +2218,7 @@ public sealed partial class ExpenseReportServiceTests
         var (year, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, submitter, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Draft);
 
         await _sut.UpdateDraftWithResultAsync(reportId, submitter, false, CategoryAccountNumber, "note", ct: TestContext.Current.CancellationToken);
@@ -2368,7 +2368,7 @@ public sealed partial class ExpenseReportServiceTests
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, member, category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, member, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Draft);
         SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
         _financeWrite
@@ -2421,7 +2421,7 @@ public sealed partial class ExpenseReportServiceTests
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, member, category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, member, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted, payeeIban: "ES1000750000010000000000");
         SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
         _financeWrite
@@ -2449,7 +2449,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var member = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, member, category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, member, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Draft);
         _financeWrite
             .SetIbanAsync(member, "ES9121000418450200051332", Arg.Any<CancellationToken>())
@@ -2473,7 +2473,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var member = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, member, category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, member, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Approved, payeeIban: "ES1000750000010000000000");
         _financeWrite
             .SetIbanAsync(member, "ES9121000418450200051332", Arg.Any<CancellationToken>())
@@ -2494,7 +2494,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var member = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, member, category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, member, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted, payeeIban: "ES1000750000010000000000");
 
         var result = await _sut.SaveSubmitterIbanWithResultAsync(
@@ -2561,7 +2561,7 @@ public sealed partial class ExpenseReportServiceTests
         var submitter = Guid.NewGuid();
         var coordinator = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, submitter, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
 
         SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
@@ -2606,7 +2606,7 @@ public sealed partial class ExpenseReportServiceTests
         _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, coordinator, Arg.Any<CancellationToken>())
             .Returns(true);
         var inBudget = Guid.NewGuid();
-        await SeedReportWithStatus(inBudget, submitter, category.Id, year.Id, ExpenseReportStatus.Submitted);
+        await SeedReportWithStatusAsync(inBudget, submitter, category.Id, year.Id, ExpenseReportStatus.Submitted);
         var outsideBudget = (await _sut.CreateDraftAsync(submitter, submitter, OtherAccountNumber, null, ct: TestContext.Current.CancellationToken)).ReportId!.Value;
         await using (var ctx = new ExpensesDbContext(_expensesOptions))
         {
@@ -2625,7 +2625,7 @@ public sealed partial class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
 
         var nonCoordinator = Guid.NewGuid();
@@ -2643,7 +2643,7 @@ public sealed partial class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
         var financeAdmin = Guid.NewGuid();
         _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, financeAdmin,
@@ -2664,7 +2664,7 @@ public sealed partial class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
         var financeAdmin = Guid.NewGuid();
         _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, financeAdmin,
@@ -2683,7 +2683,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var coordinator = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
         SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
 
@@ -2702,7 +2702,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var coordinator = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
         SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
 
@@ -2719,7 +2719,7 @@ public sealed partial class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
         var nonCoordinator = Guid.NewGuid();
         _budgetService.GetCategoryByIdAsync(category.Id).Returns(category);
@@ -2738,7 +2738,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var coordinator = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
         SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
 
@@ -2764,7 +2764,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var coordinator = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
         SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
 
@@ -2781,7 +2781,7 @@ public sealed partial class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
         var nonCoordinator = Guid.NewGuid();
         _budgetService.GetCategoryByIdAsync(category.Id).Returns(category);
@@ -2800,7 +2800,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var coordinator = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
         SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
 
@@ -2816,7 +2816,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var coordinator = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
         SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
         (await _sut.CoordinatorEndorseWithResultAsync(reportId, coordinator, false, 40m, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
@@ -2833,7 +2833,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var coordinator = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
         SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
         (await _sut.CoordinatorEndorseWithResultAsync(reportId, coordinator, false, 40m, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
@@ -2850,7 +2850,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var actor = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
 
         var ok = (await _sut.ApproveWithResultAsync(reportId, actor, null, null, TestContext.Current.CancellationToken)).Succeeded;
@@ -2881,7 +2881,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, submitter, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted, payeeIban: "ES9121000418450200051332", total: 40m);
         StubSubmitter(submitter, "Ana", "ana@example.com", language);
 
@@ -2906,7 +2906,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, submitter, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
         StubSubmitter(submitter, "Ana", "ana@example.com", "es");
         _userEmailService.GetNotificationTargetEmailsAsync(
@@ -2927,7 +2927,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, submitter, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
         StubSubmitter(submitter, "Ana", "ana@example.com", "es");
         _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
@@ -2946,7 +2946,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, submitter, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Draft);
         StubSubmitter(submitter, "Ana", "ana@example.com", "es");
 
@@ -2974,7 +2974,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var actor = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
 
         (await _sut.ApproveWithResultAsync(reportId, actor, OtherAccountNumber, null, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
@@ -3002,7 +3002,7 @@ public sealed partial class ExpenseReportServiceTests
         var actor = Guid.NewGuid();
         var reportId = Guid.NewGuid();
         var oldYearId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, Guid.NewGuid(), Guid.NewGuid(), oldYearId,
+        await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), Guid.NewGuid(), oldYearId,
             ExpenseReportStatus.Submitted);
 
         var result = await _sut.ApproveWithResultAsync(reportId, actor, CategoryAccountNumber, null, TestContext.Current.CancellationToken);
@@ -3044,7 +3044,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var actor = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
 
         var result = await _sut.ApproveWithResultAsync(reportId, actor, null, null, TestContext.Current.CancellationToken);
@@ -3071,7 +3071,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var coordinator = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
         SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
         (await _sut.CoordinatorEndorseWithResultAsync(reportId, coordinator, false, 40m, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
@@ -3090,7 +3090,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var actor = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
 
         var ok = (await _sut.FinanceRejectWithResultAsync(reportId, actor, "Wrong category", TestContext.Current.CancellationToken)).Succeeded;
@@ -3114,7 +3114,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var actor = Guid.NewGuid();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+        await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
 
         var result = await _sut.FinanceRejectWithResultAsync(reportId, actor, "Wrong category", TestContext.Current.CancellationToken);
@@ -3139,10 +3139,10 @@ public sealed partial class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var yearId = Guid.NewGuid();
-        await SeedReportWithStatus(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Draft);
-        await SeedReportWithStatus(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Submitted);
-        await SeedReportWithStatus(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Approved);
-        await SeedReportWithStatus(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Withdrawn);
+        await SeedReportWithStatusAsync(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Draft);
+        await SeedReportWithStatusAsync(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Submitted);
+        await SeedReportWithStatusAsync(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Approved);
+        await SeedReportWithStatusAsync(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Withdrawn);
 
         var queue = await _sut.GetReviewQueueAsync(Guid.NewGuid(), isFinanceAdmin: true,
             TestContext.Current.CancellationToken);
@@ -3162,11 +3162,11 @@ public sealed partial class ExpenseReportServiceTests
         var ownId = Guid.NewGuid();
         var departmentId = Guid.NewGuid();
         var strangersId = Guid.NewGuid();
-        await SeedReportWithStatus(ownId, coordinatorUserId, Guid.NewGuid(), yearId,
+        await SeedReportWithStatusAsync(ownId, coordinatorUserId, Guid.NewGuid(), yearId,
             ExpenseReportStatus.Approved);
-        await SeedReportWithStatus(departmentId, Guid.NewGuid(), category.Id, yearId,
+        await SeedReportWithStatusAsync(departmentId, Guid.NewGuid(), category.Id, yearId,
             ExpenseReportStatus.Submitted);
-        await SeedReportWithStatus(strangersId, Guid.NewGuid(), Guid.NewGuid(), yearId,
+        await SeedReportWithStatusAsync(strangersId, Guid.NewGuid(), Guid.NewGuid(), yearId,
             ExpenseReportStatus.Submitted);
 
         _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, coordinatorUserId,
@@ -3186,9 +3186,9 @@ public sealed partial class ExpenseReportServiceTests
         var yearId = Guid.NewGuid();
 
         var ownId = Guid.NewGuid();
-        await SeedReportWithStatus(ownId, memberUserId, category.Id, yearId,
+        await SeedReportWithStatusAsync(ownId, memberUserId, category.Id, yearId,
             ExpenseReportStatus.Submitted);
-        await SeedReportWithStatus(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId,
+        await SeedReportWithStatusAsync(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId,
             ExpenseReportStatus.Submitted);
 
         var queue = await _sut.GetReviewQueueAsync(memberUserId, isFinanceAdmin: false,
@@ -3254,15 +3254,15 @@ public sealed partial class ExpenseReportServiceTests
 
         var submittedId = Guid.NewGuid();
         var draftId = Guid.NewGuid();
-        await SeedReportWithStatus(submittedId, Guid.NewGuid(), category.Id, yearId,
+        await SeedReportWithStatusAsync(submittedId, Guid.NewGuid(), category.Id, yearId,
             ExpenseReportStatus.Submitted);
-        await SeedReportWithStatus(draftId, Guid.NewGuid(), category.Id, yearId,
+        await SeedReportWithStatusAsync(draftId, Guid.NewGuid(), category.Id, yearId,
             ExpenseReportStatus.Draft);
 
         // Also seed a Submitted report in a category the user does NOT coordinate.
         var otherCategoryId = Guid.NewGuid();
         var otherSubmittedId = Guid.NewGuid();
-        await SeedReportWithStatus(otherSubmittedId, Guid.NewGuid(), otherCategoryId, yearId,
+        await SeedReportWithStatusAsync(otherSubmittedId, Guid.NewGuid(), otherCategoryId, yearId,
             ExpenseReportStatus.Submitted);
 
         _teamService.IsUserCoordinatorOfTeamAsync(teamId, coordinatorUserId,
@@ -3484,7 +3484,7 @@ public sealed partial class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(), status);
+        await SeedReportWithStatusAsync(reportId, submitter, category.Id, Guid.NewGuid(), status);
 
         var lineIds = new List<Guid>();
         await using var ctx = new ExpensesDbContext(_expensesOptions);
@@ -4182,7 +4182,7 @@ public sealed partial class ExpenseReportServiceTests
             Arg.Any<CancellationToken>()).Returns(true);
     }
 
-    private async Task SeedReportWithStatus(
+    private async Task SeedReportWithStatusAsync(
         Guid reportId, Guid submitter, Guid categoryId, Guid yearId,
         ExpenseReportStatus status, string payeeIban = "", decimal total = 0m)
     {

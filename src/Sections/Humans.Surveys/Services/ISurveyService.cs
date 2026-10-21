@@ -356,7 +356,7 @@ internal sealed record SurveyInviteStatus(
 /// <summary>
 /// Everything the wizard entry needs for one invited person: the survey definition (reused
 /// <see cref="SurveyDetail"/>), the invitee identity from the token's invitation, and any resumable
-/// Identified draft. <see cref="HasResumableDraft"/> is true only when an in-progress Identified
+/// Identified draft. <see cref="DraftResponseId"/> is that in-progress Identified response, when one
 /// response already exists for this invitee.
 /// </summary>
 internal sealed record SurveyAnswerContext(
@@ -365,8 +365,11 @@ internal sealed record SurveyAnswerContext(
     Guid UserId,
     SurveyDetail Definition,
     IReadOnlyList<SurveyDraftAnswer> DraftAnswers,
-    bool HasResumableDraft,
-    bool IsEligible = true);
+    Guid? DraftResponseId,
+    bool IsEligible = true)
+{
+    public bool HasResumableDraft => DraftResponseId is not null;
+}
 
 /// <summary>
 /// A survey resolved from its public slug: the survey id plus the reused editable definition

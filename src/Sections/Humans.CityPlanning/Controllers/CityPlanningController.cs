@@ -174,10 +174,10 @@ internal sealed class CityPlanningController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdatePlacementDates(string? opensAt, string? closesAt, CancellationToken cancellationToken)
     {
-        var (error, _) = await RequireMapAdminAsync(cancellationToken);
+        var (error, user) = await RequireMapAdminAsync(cancellationToken);
         if (error is not null) return error;
 
-        var result = await cityPlanningService.UpdatePlacementDatesAsync(opensAt, closesAt, cancellationToken);
+        var result = await cityPlanningService.UpdatePlacementDatesAsync(opensAt, closesAt, user!.Id, cancellationToken);
         if (!result.Success)
         {
             SetError(PlacementDateErrorMessage(result.ErrorKey));
@@ -192,10 +192,10 @@ internal sealed class CityPlanningController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateRegistrationInfo(string? registrationInfo, CancellationToken cancellationToken)
     {
-        var (error, _) = await RequireMapAdminAsync(cancellationToken);
+        var (error, user) = await RequireMapAdminAsync(cancellationToken);
         if (error is not null) return error;
 
-        await cityPlanningService.UpdateRegistrationInfoAsync(registrationInfo, cancellationToken);
+        await cityPlanningService.UpdateRegistrationInfoAsync(registrationInfo, user!.Id, cancellationToken);
         SetSuccess("Registration info updated.");
         return Redirect("/Settings#city-planning");
     }

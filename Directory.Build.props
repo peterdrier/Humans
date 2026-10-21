@@ -30,9 +30,6 @@
           service entry point per issue #691. Kept visible as warnings (not
           hidden via NoWarn in production projects) so new render-path
           violations stay surfaced.
-        - HUM_USER_NORMALIZEDEMAIL: User.NormalizedEmail is shadow-populated
-          by Identity; application-code reads are not canonical but a few
-          legacy reads remain. Issue #635 §15i.
         - HUM0028: cache-invalidator interface ratchet. Error by default;
           every existing *Invalidator interface carries
           [Grandfathered("HUM0028", ...)] to downgrade to warning while the
@@ -51,7 +48,7 @@
           inert; it stays so a grandfather (ordinary debt) never breaks the
           build. Permanent.
     -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0010;HUM0011;HUM0028;HUM0031;HUM_USER_DISPLAYNAME;HUM_USER_NORMALIZEDEMAIL</WarningsNotAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0010;HUM0011;HUM0028;HUM0031;HUM_USER_DISPLAYNAME</WarningsNotAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>
@@ -59,10 +56,9 @@
     <!-- CS1591: Missing XML comment for publicly visible type or member -->
     <!-- MA0048: File name must match type name -->
     <!-- MA0016: Prefer using collection abstraction instead of implementation -->
-    <!-- MA0026: Fix TODO comment -->
     <!-- MA0051: Method is too long -->
-    <!-- VSTHRD200: Async suffix not required for ASP.NET Core controller actions -->
-    <NoWarn>$(NoWarn);CS1591;MA0048;MA0016;MA0026;MA0051;VSTHRD200</NoWarn>
+    <!-- VSTHRD200 (Async suffix) is exempted for controller actions only, in .editorconfig. -->
+    <NoWarn>$(NoWarn);CS1591;MA0048;MA0016;MA0051</NoWarn>
   </PropertyGroup>
 
   <!--

@@ -44,6 +44,9 @@ internal sealed record ProgramInfo(
 
     public bool DeadlinePassed(LocalDate today) => today > ClaimBy;
 
+    /// <summary>Once any grant exists the kind cannot change — the rule <c>UpdateProgramAsync</c> enforces.</summary>
+    public bool KindLocked => Grants.Count > 0;
+
     /// <summary>The apply form shows and the POST is accepted only while all three hold.</summary>
     public bool IsAcceptingApplications(LocalDate today) =>
         Status == ProgramStatus.Open && AcceptsApplications && !DeadlinePassed(today);

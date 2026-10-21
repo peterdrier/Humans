@@ -106,7 +106,7 @@ public sealed class EventParticipationServiceTests : IDisposable
             new { Year = 2026, Status = ParticipationStatus.Ticketed, OnsiteSince = (Instant?)null },
         ], o => o.ExcludingMissingMembers());
 
-        await _sut.SetParticipationFromTicketSyncAsync(user.Id, 2026, ParticipationStatus.Attended, Now, Ct);
+        await _sut.RecordParticipationAsync(user.Id, 2026, ParticipationStatus.Attended, Now, Ct);
 
         var read = await _sut.GetParticipationsAsync(user.Id, Ct);
         read.Single(p => p.Year == 2026).OnsiteSince.Should().Be(Now);
@@ -148,7 +148,7 @@ public sealed class EventParticipationServiceTests : IDisposable
 
         (await _sut.DeclareNotAttendingAsync(user.Id, 2026, Ct)).Should().BeFalse();
         await _sut.RemoveTicketSyncParticipationAsync(user.Id, 2026, Ct);
-        await _sut.SetParticipationFromTicketSyncAsync(user.Id, 2026, ParticipationStatus.Ticketed, null, Ct);
+        await _sut.RecordParticipationAsync(user.Id, 2026, ParticipationStatus.Ticketed, null, Ct);
 
         (await _sut.GetParticipationsAsync(user.Id, Ct)).Should().ContainSingle().Which.Should().BeEquivalentTo(
             new { Status = ParticipationStatus.Attended, CheckedInAt = (Instant?)Earlier },
@@ -222,7 +222,7 @@ public sealed class EventParticipationServiceTests : IDisposable
     public async Task Copy_NeverOverwritesARowWrittenSinceTheDeploy()
     {
         var user = SeedUser((2026, LegacyParticipationStatus.Ticketed, LegacyParticipationSource.TicketSync));
-        await _sut.SetParticipationFromTicketSyncAsync(user.Id, 2026, ParticipationStatus.Attended, Now, Ct);
+        await _sut.RecordParticipationAsync(user.Id, 2026, ParticipationStatus.Attended, Now, Ct);
 
         (await _sut.CopyLegacyParticipationsAsync(Ct)).Should().Be(0);
         (await RowsAsync(user.Id)).Single().Status.Should().Be(ParticipationStatus.Attended);

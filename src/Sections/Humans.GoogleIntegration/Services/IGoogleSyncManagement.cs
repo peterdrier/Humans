@@ -13,6 +13,16 @@ namespace Humans.GoogleIntegration.Services;
 internal interface IGoogleSyncManagement : IGoogleSyncService, IGoogleSyncWrite, IApplicationService
 {
     /// <summary>
+    /// Syncs a single Google resource by ID. Drive resources are reconciled here;
+    /// Google Group resources are routed through <see cref="IGoogleGroupSync"/>.
+    /// </summary>
+    [ExternalWrite]
+    Task<ResourceSyncDiff> SyncSingleResourceAsync(
+        Guid resourceId,
+        SyncAction action,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Drive sync entry point. Computes diff for all active Drive resources of the given
     /// type, then optionally executes adds/removes based on the action. Google Group
     /// membership is handled by <see cref="IGoogleGroupSync"/>.

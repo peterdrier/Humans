@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 2
-inbox:
-  - added: 2026-10-21
-    id: DEBUG-1
-    what: "WidgetGallery/Index.cshtml (~line 298-308) still attributes <vc:communication-preferences-panel> and <vc:nobodies-email-badge> to Users and <vc:dietary-missing-banner> to Shifts; after the Users decomposition they belong to Email, GoogleIntegration and Cantina. Fix the prose. Found while writing Users decomposition commit 15."
-    review: light
+inbox: []

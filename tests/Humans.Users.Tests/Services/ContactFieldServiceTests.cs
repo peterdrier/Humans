@@ -214,7 +214,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var ownerId = Guid.NewGuid();
         var privilegedViewerId = Guid.NewGuid();
         var ordinaryViewerId = Guid.NewGuid();
-        StubUserInfo(ownerId, await CreateProfileWithFields(ownerId));
+        StubUserInfo(ownerId, await CreateProfileWithFieldsAsync(ownerId));
         var teamId = Guid.NewGuid();
         if (privilege == ContactFieldVisibility.BoardOnly)
         {
@@ -252,7 +252,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         // Arrange
         var ownerId = Guid.NewGuid();
         var viewerId = Guid.NewGuid();
-        var profile = await CreateProfileWithFields(ownerId);
+        var profile = await CreateProfileWithFieldsAsync(ownerId);
         StubUserInfo(ownerId, profile);
 
         // Viewer is just a regular member (no shared teams)
@@ -281,7 +281,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var localizer = new StringLocalizer<UsersResource>(new ResourceManagerStringLocalizerFactory(
             Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
         var ownerId = Guid.NewGuid();
-        var profile = await CreateProfile(ownerId);
+        var profile = await CreateProfileAsync(ownerId);
         foreach (var type in Enum.GetValues<ContactFieldType>())
         {
             Db.ContactFields.Add(new ContactField
@@ -324,7 +324,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     {
         // Arrange
         var ownerId = Guid.NewGuid();
-        var profile = await CreateProfileWithFields(ownerId);
+        var profile = await CreateProfileWithFieldsAsync(ownerId);
         StubUserInfo(ownerId, profile);
 
         // Act
@@ -342,7 +342,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     public async Task SaveContactFields_CreatesNewFields()
     {
         // Arrange
-        var profile = await CreateProfile(Guid.NewGuid());
+        var profile = await CreateProfileAsync(Guid.NewGuid());
         var fields = new List<ContactFieldEditDto>
         {
             new(null, ContactFieldType.Phone, null, "+34 612345678", ContactFieldVisibility.AllActiveProfiles, 0),
@@ -363,7 +363,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     public async Task SaveContactFields_UpdatesExistingFields()
     {
         // Arrange
-        var profile = await CreateProfile(Guid.NewGuid());
+        var profile = await CreateProfileAsync(Guid.NewGuid());
         var existingField = new ContactField
         {
             Id = Guid.NewGuid(),
@@ -397,7 +397,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     public async Task SaveContactFields_DeletesRemovedFields()
     {
         // Arrange
-        var profile = await CreateProfile(Guid.NewGuid());
+        var profile = await CreateProfileAsync(Guid.NewGuid());
         var existingField = new ContactField
         {
             Id = Guid.NewGuid(),
@@ -426,7 +426,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     public async Task SaveContactFields_Omitted_legacy_email_is_preserved()
     {
         var ct = TestContext.Current.CancellationToken;
-        var profile = await CreateProfile(Guid.NewGuid());
+        var profile = await CreateProfileAsync(Guid.NewGuid());
         var legacy = new ContactField
         {
             Id = Guid.NewGuid(),
@@ -453,7 +453,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     public async Task Profile_editor_keeps_legacy_email_out_of_editable_type_selector()
     {
         var userId = Guid.NewGuid();
-        var profile = await CreateProfile(userId);
+        var profile = await CreateProfileAsync(userId);
         var legacyId = Guid.NewGuid();
         var signalId = Guid.NewGuid();
         await Db.ContactFields.AddRangeAsync(
@@ -497,8 +497,8 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     public async Task Legacy_contact_removal_is_explicit_and_profile_scoped(bool removeOwn, bool staleEditor)
     {
         var ct = TestContext.Current.CancellationToken;
-        var profile = await CreateProfile(Guid.NewGuid());
-        var otherProfile = await CreateProfile(Guid.NewGuid());
+        var profile = await CreateProfileAsync(Guid.NewGuid());
+        var otherProfile = await CreateProfileAsync(Guid.NewGuid());
         var now = Clock.GetCurrentInstant();
         var legacy = new ContactField
         {
@@ -559,7 +559,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     public async Task SaveContactFields_OwnerLookupFailure_DoesNotCommitWithoutCacheRefresh()
     {
         var ct = TestContext.Current.CancellationToken;
-        var profile = await CreateProfile(Guid.NewGuid());
+        var profile = await CreateProfileAsync(Guid.NewGuid());
         var field = new ContactField
         {
             Id = Guid.NewGuid(),
@@ -602,7 +602,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     public async Task SaveContactFields_WithInvalidValueOnNonEmailField_Succeeds()
     {
         // Non-email fields should not be validated as email
-        var profile = await CreateProfile(Guid.NewGuid());
+        var profile = await CreateProfileAsync(Guid.NewGuid());
         var fields = new List<ContactFieldEditDto>
         {
             new(null, ContactFieldType.Telegram, null, "@my_telegram_handle", ContactFieldVisibility.AllActiveProfiles, 0)
@@ -646,7 +646,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
     }
 
-    private async Task<Profile> CreateProfile(Guid userId)
+    private async Task<Profile> CreateProfileAsync(Guid userId)
     {
         var profile = new Profile
         {
@@ -665,9 +665,9 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         return profile;
     }
 
-    private async Task<Profile> CreateProfileWithFields(Guid userId)
+    private async Task<Profile> CreateProfileWithFieldsAsync(Guid userId)
     {
-        var profile = await CreateProfile(userId);
+        var profile = await CreateProfileAsync(userId);
         var now = Clock.GetCurrentInstant();
 
         var fields = new List<ContactField>

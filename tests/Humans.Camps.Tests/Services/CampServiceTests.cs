@@ -92,7 +92,7 @@ public sealed class CampServiceTests : CampsTestHarness
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         var season = await CampsDb.CampSeasons.SingleAsync(ct);
         var imageId = Guid.Empty;
         switch (action)
@@ -145,7 +145,7 @@ public sealed class CampServiceTests : CampsTestHarness
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         var settings = await CampsDb.CampSettings.SingleAsync(ct);
         settings.OpenSeasons.Add(2027);
         await SaveAllAsync(ct);
@@ -224,7 +224,7 @@ public sealed class CampServiceTests : CampsTestHarness
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
         var source = Guid.NewGuid();
         var target = Guid.NewGuid();
@@ -367,7 +367,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task GetCampsForYearAsync_RoleLeadResolvesSeason_NonLeadNull()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         var season = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id, TestContext.Current.CancellationToken);
 
         var campInfo = (await _service.GetCampsForYearAsync(2026, TestContext.Current.CancellationToken)).Single(c => c.Id == camp.Id);
@@ -381,7 +381,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task GetCampsForYearAsync_ProjectsSpecialRoleFacts()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
 
         var info = (await _service.GetCampsForYearAsync(2026, TestContext.Current.CancellationToken))
             .Single(c => c.Id == camp.Id);
@@ -398,7 +398,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task ApproveSeasonAsync_PendingSeason_SetsActive()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         var season = await CampsDb.CampSeasons.FirstAsync(s => s.CampId == camp.Id, TestContext.Current.CancellationToken);
         var adminId = Guid.NewGuid();
 
@@ -419,7 +419,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task RejectSeasonAsync_PendingSeason_SetsRejected()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         var season = await CampsDb.CampSeasons.FirstAsync(s => s.CampId == camp.Id, TestContext.Current.CancellationToken);
 
         await _service.RejectSeasonAsync(season.Id, Guid.NewGuid(), "Not a real camp", TestContext.Current.CancellationToken);
@@ -441,7 +441,7 @@ public sealed class CampServiceTests : CampsTestHarness
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         var seasonsBefore = await CampsDb.CampSeasons.CountAsync(ct);
         var auditCallsBefore = AuditLog.ReceivedCalls().Count();
 
@@ -456,7 +456,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task OptInToSeasonAsync_ReturningCamp_AutoApproves()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         var season = await CampsDb.CampSeasons.FirstAsync(s => s.CampId == camp.Id, TestContext.Current.CancellationToken);
         await _service.ApproveSeasonAsync(season.Id, Guid.NewGuid(), null, TestContext.Current.CancellationToken);
 
@@ -476,7 +476,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task OptInToSeasonAsync_PreviouslyRejected_GoesPending()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         var season = await CampsDb.CampSeasons.FirstAsync(s => s.CampId == camp.Id, TestContext.Current.CancellationToken);
         await _service.RejectSeasonAsync(season.Id, Guid.NewGuid(), "nope", TestContext.Current.CancellationToken);
 
@@ -493,7 +493,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task OptInToSeasonAsync_PendingOnly_GoesPending()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         // Don't approve or reject — season stays Pending
 
         var settings = await CampsDb.CampSettings.FirstAsync(TestContext.Current.CancellationToken);
@@ -513,7 +513,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task GetCampsForYearAsync_NonLead_FilterReturnsFalse()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         var userId = Guid.NewGuid();
         var result = (await _service.GetCampsForYearAsync(2026, TestContext.Current.CancellationToken))
             .Single(c => c.Id == camp.Id)
@@ -577,7 +577,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task GetCampsForYearAsync_CreatorLead_CanBeFilteredFromCampInfo()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp(); // creator is seeded as a role-backed Camp Lead.
+        var camp = await CreateTestCampAsync(); // creator is seeded as a role-backed Camp Lead.
 
         var result = (await _service.GetCampsForYearAsync(2026, TestContext.Current.CancellationToken))
             .Where(info => info.IsEventManager(camp.CreatedByUserId))
@@ -590,7 +590,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task GetCampsForYearAsync_LeadRoleHolders_CanBeFilteredOnceFromCampInfo()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp(); // creator is a role-backed Camp Lead.
+        var camp = await CreateTestCampAsync(); // creator is a role-backed Camp Lead.
         var seasonId = (await CampsDb.CampSeasons
             .Where(s => s.CampId == camp.Id)
             .OrderByDescending(s => s.Year)
@@ -914,7 +914,7 @@ public sealed class CampServiceTests : CampsTestHarness
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
-        await CreateTestCamp();
+        await CreateTestCampAsync();
         var actorId = Guid.NewGuid();
         var lockDate = new LocalDate(2026, 3, 1);
         AuditLog.ClearReceivedCalls();
@@ -958,7 +958,7 @@ public sealed class CampServiceTests : CampsTestHarness
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
-        await CreateTestCamp();
+        await CreateTestCampAsync();
         var actorId = Guid.NewGuid();
         var lockDate = new LocalDate(2026, 3, 1);
         await _service.SetNameLockDateAsync(2026, lockDate, actorId, ct);
@@ -992,7 +992,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task GetSettingsAsync_IncludesOpenSeasonNameLockDates()
     {
         await SeedSettingsAsync();
-        await CreateTestCamp();
+        await CreateTestCampAsync();
         var lockDate = new LocalDate(2026, 3, 1);
 
         await _service.SetNameLockDateAsync(2026, lockDate, Guid.NewGuid(), TestContext.Current.CancellationToken);
@@ -1045,7 +1045,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task ChangeSeasonNameAsync_LogsOldNameToHistory()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         var season = await CampsDb.CampSeasons.FirstAsync(s => s.CampId == camp.Id, TestContext.Current.CancellationToken);
         await _service.ApproveSeasonAsync(season.Id, Guid.NewGuid(), null, TestContext.Current.CancellationToken);
 
@@ -1065,7 +1065,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task ChangeSeasonNameAsync_AfterLockDate_Throws()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         var season = await CampsDb.CampSeasons.FirstAsync(s => s.CampId == camp.Id, TestContext.Current.CancellationToken);
         await _service.ApproveSeasonAsync(season.Id, Guid.NewGuid(), null, TestContext.Current.CancellationToken);
 
@@ -1085,7 +1085,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task RequestCampMembershipAsync_OpenSeason_CreatesPending()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId, "Alice");
@@ -1104,7 +1104,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task RequestCampMembershipAsync_NoOpenSeason_ReturnsNoOpenSeason()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId, "Alice");
 
@@ -1124,7 +1124,7 @@ public sealed class CampServiceTests : CampsTestHarness
         // visitors the camp looks full, it does not gate join requests. Humans doesn't
         // yet know everyone actually in the camp.
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
         var season = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id, TestContext.Current.CancellationToken);
         await _service.MarkSeasonFullAsync(camp.Id, season.Id, actorUserId: TestActorId, TestContext.Current.CancellationToken);
@@ -1145,7 +1145,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task RequestCampMembershipAsync_AlreadyPending_IsIdempotent()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId, "Alice");
@@ -1169,7 +1169,7 @@ public sealed class CampServiceTests : CampsTestHarness
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
         var season = await CampsDb.CampSeasons.SingleAsync(row => row.CampId == camp.Id, ct);
         var name = new string('x', 168) + "😀" + new string('x', 86);
@@ -1204,7 +1204,7 @@ public sealed class CampServiceTests : CampsTestHarness
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId, "Alice");
@@ -1248,7 +1248,7 @@ public sealed class CampServiceTests : CampsTestHarness
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId, "Alice");
@@ -1271,7 +1271,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task ApproveCampMemberAsync_PendingRequest_SetsActiveAndNotifies()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId, "Alice");
@@ -1304,7 +1304,7 @@ public sealed class CampServiceTests : CampsTestHarness
     {
         // P1 fix: controller authorizes camp A, but attacker submits camp B's member id.
         await SeedSettingsAsync();
-        var campA = await CreateTestCamp();
+        var campA = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(campA.Id);
         var campB = (await _service.CreateCampAsync(
             Guid.NewGuid(), "Other Camp", "other@camp.com", "+34600000001",
@@ -1328,7 +1328,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task RejectCampMemberAsync_CrossCampMemberId_Throws()
     {
         await SeedSettingsAsync();
-        var campA = await CreateTestCamp();
+        var campA = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(campA.Id);
         var campB = (await _service.CreateCampAsync(
             Guid.NewGuid(), "Other Camp", "other@camp.com", "+34600000001",
@@ -1351,7 +1351,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task RemoveCampMemberAsync_CrossCampMemberId_Throws()
     {
         await SeedSettingsAsync();
-        var campA = await CreateTestCamp();
+        var campA = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(campA.Id);
         var campB = (await _service.CreateCampAsync(
             Guid.NewGuid(), "Other Camp", "other@camp.com", "+34600000001",
@@ -1375,7 +1375,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task RejectCampMemberAsync_PendingRequest_SetsRemovedAndNotifies()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId, "Alice");
@@ -1405,7 +1405,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task RejectCampMemberAsync_AllowsReRequest()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId, "Alice");
@@ -1422,7 +1422,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task WithdrawCampMembershipRequestAsync_Self_SetsRemoved()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId, "Alice");
@@ -1438,7 +1438,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task WithdrawCampMembershipRequestAsync_OtherUser_Throws()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId, "Alice");
@@ -1452,7 +1452,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task SelfMembershipRuleFailures_ReturnResourceKeysWithoutChangingStatus()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId, "Alice");
@@ -1478,7 +1478,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task LeaveCampAsync_ActiveMember_SetsRemoved()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId, "Alice");
@@ -1497,7 +1497,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task RemoveCampMemberAsync_ActiveMember_SetsRemoved()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId, "Alice");
@@ -1913,7 +1913,7 @@ public sealed class CampServiceTests : CampsTestHarness
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
         var englishId = Guid.NewGuid();
         var spanishIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
@@ -1967,7 +1967,7 @@ public sealed class CampServiceTests : CampsTestHarness
     {
         // No more auto-withdraw cascade — just a notification out. Pending rows stay pending.
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId, "Alice");
@@ -1998,7 +1998,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task MarkSeasonFullAsync_SetsStatusAndAudits()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
         var season = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id, TestContext.Current.CancellationToken);
 
@@ -2022,7 +2022,7 @@ public sealed class CampServiceTests : CampsTestHarness
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         var season = await CampsDb.CampSeasons.SingleAsync(s => s.CampId == camp.Id, ct);
         season.Status = status;
         await SaveAllAsync(ct);
@@ -2051,7 +2051,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task MarkSeasonFullAsync_WrongCamp_ReturnsRefusal()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
         var season = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id, TestContext.Current.CancellationToken);
 
@@ -2066,7 +2066,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task UpdateSeasonAsync_WrongCamp_ReturnsRefusal()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
         var season = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id, TestContext.Current.CancellationToken);
 
@@ -2083,7 +2083,7 @@ public sealed class CampServiceTests : CampsTestHarness
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         var season = await CampsDb.CampSeasons.SingleAsync(s => s.CampId == camp.Id, ct);
         season.Status = status;
         await CampsDb.SaveChangesAsync(ct);
@@ -2103,7 +2103,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task WithdrawSeasonAsync_WrongCamp_ReturnsRefusal()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
         var season = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id, TestContext.Current.CancellationToken);
 
@@ -2119,7 +2119,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task ChangeSeasonNameAsync_WrongCamp_ReturnsRefusal()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
         var season = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id, TestContext.Current.CancellationToken);
 
@@ -2133,7 +2133,7 @@ public sealed class CampServiceTests : CampsTestHarness
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         var season = await CampsDb.CampSeasons.AsNoTracking().SingleAsync(s => s.CampId == camp.Id, ct);
         var failure = new InvalidOperationException("Private audit-store diagnostic");
         AuditLog.When(a => a.LogAsync(AuditAction.CampUpdated, Arg.Any<string>(), camp.Id,
@@ -2154,7 +2154,7 @@ public sealed class CampServiceTests : CampsTestHarness
         // committed; UpdateCampAsync must refuse the cross-camp season before its first write,
         // or a failed update leaves the camp partially changed behind an uninvalidated cache.
         await SeedSettingsAsync();
-        var campA = await CreateTestCamp();
+        var campA = await CreateTestCampAsync();
         var campB = (await _service.CreateCampAsync(
             Guid.NewGuid(), "Other Camp", "other@camp.com", "+34600000001",
             null, null, false, 1, MakeSeasonData(), null, 2026, TestContext.Current.CancellationToken)).Value!;
@@ -2182,7 +2182,7 @@ public sealed class CampServiceTests : CampsTestHarness
         bool deleteCamp, bool storageFails)
     {
         var ct = TestContext.Current.CancellationToken;
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         var image = new CampImage
         {
             Id = Guid.NewGuid(),
@@ -2247,7 +2247,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task DeleteImageAsync_WrongCamp_ReturnsRefusal()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
         await using var imageStream = new MemoryStream([1, 2, 3, 4]);
         var upload = await _service.UploadImageAsync(camp.Id, imageStream, "camp.jpg", "image/jpeg", imageStream.Length, actorUserId: TestActorId, TestContext.Current.CancellationToken);
@@ -2304,7 +2304,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task UploadImageAsync_RejectsOverlongFilenameBeforeWriting()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         var fileName = new string('a', 253) + ".jpg";
 
         var result = await _service.UploadImageAsync(
@@ -2324,7 +2324,7 @@ public sealed class CampServiceTests : CampsTestHarness
         string contentType, string fileName, long length, string key)
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
 
         var result = await _service.UploadImageAsync(camp.Id, Stream.Null, fileName, contentType, length, actorUserId: TestActorId,
             TestContext.Current.CancellationToken);
@@ -2340,7 +2340,7 @@ public sealed class CampServiceTests : CampsTestHarness
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         var first = await _service.UploadImageAsync(camp.Id, Stream.Null, "first.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct);
         var middle = await _service.UploadImageAsync(camp.Id, Stream.Null, "middle.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct);
         var last = await _service.UploadImageAsync(camp.Id, Stream.Null, "last.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct);
@@ -2362,7 +2362,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task UploadImageAsync_FullGalleryReturnsCountResourceKey()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         for (var i = 0; i < 5; i++)
         {
             var accepted = await _service.UploadImageAsync(camp.Id, Stream.Null, $"camp{i}.jpg", "image/jpeg", 1, actorUserId: TestActorId,
@@ -2386,7 +2386,7 @@ public sealed class CampServiceTests : CampsTestHarness
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
 
         var result = await _service.AddHistoricalNameAsync(camp.Id, $"  {new string('a', length)}  ", ct);
 
@@ -2399,7 +2399,7 @@ public sealed class CampServiceTests : CampsTestHarness
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         var name = new string('a', 256);
 
         var result = await _service.AddHistoricalNameAsync(camp.Id, $"  {name}  ", ct);
@@ -2432,7 +2432,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task RemoveHistoricalNameAsync_WrongCamp_ReturnsRefusal()
     {
         await SeedSettingsAsync();
-        var campA = await CreateTestCamp();
+        var campA = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(campA.Id);
         var campB = (await _service.CreateCampAsync(
             Guid.NewGuid(), "Other Camp", "other@camp.com", "+34600000001",
@@ -2489,7 +2489,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task GetCampsForYearAsync_NoOpenSeasonMembershipState_ReturnsNoOpenSeason()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
 
         var campInfo = (await _service.GetCampsForYearAsync(2026, TestContext.Current.CancellationToken)).Single(c => c.Id == camp.Id);
 
@@ -2572,7 +2572,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task GetCampUserInfoAsync_ActiveMemberWithRole_ReturnsActiveSeasonAndNamedRole()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         var season = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id, TestContext.Current.CancellationToken);
         var regularDef = await SeedRegularDefinitionAsync();
         var userId = Guid.NewGuid();
@@ -2590,7 +2590,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task GetCampUserInfoAsync_NonMember_ReturnsNone()
     {
         await SeedSettingsAsync();
-        await CreateTestCamp();
+        await CreateTestCampAsync();
 
         var info = await _service.GetCampUserInfoAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
@@ -2638,7 +2638,7 @@ public sealed class CampServiceTests : CampsTestHarness
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         var userId = Guid.NewGuid();
         var archivedId = Guid.NewGuid();
         var requestedId = requestArchivedId ? archivedId : userId;
@@ -2824,7 +2824,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task DeleteCampAsync_ClearsCityPlanningPolygonsForItsSeasons()
     {
         var ct = TestContext.Current.CancellationToken;
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         var season = await CampsDb.CampSeasons.FirstAsync(s => s.CampId == camp.Id, ct);
 
         await _service.DeleteCampAsync(camp.Id, actorUserId: TestActorId, ct);
@@ -2836,7 +2836,7 @@ public sealed class CampServiceTests : CampsTestHarness
         (await CampsDb.Camps.AnyAsync(c => c.Id == camp.Id, ct)).Should().BeFalse();
     }
 
-    private async Task<Camp> CreateTestCamp()
+    private async Task<Camp> CreateTestCampAsync()
     {
         // Production seeds the Camp Lead special role in every env, so creation
         // produces a role-based lead. Mirror that here (idempotent) so the
@@ -2890,7 +2890,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
     private async Task<(Guid CampId, Guid SeasonId)> SeedCampWithSeasonAsync()
     {
-        var camp = await CreateTestCamp();
+        var camp = await CreateTestCampAsync();
         var season = await CampsDb.CampSeasons
             .Where(s => s.CampId == camp.Id)
             .OrderByDescending(s => s.Year)

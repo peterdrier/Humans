@@ -106,14 +106,14 @@ public sealed class MemberOutboxControllerTests
     public async Task MyOutbox_StopsLoading_WhenTheRequestIsAbandonedDuringTheViewerLookup()
     {
         using var request = new CancellationTokenSource();
-        async ValueTask<UserInfo?> AbandonDuringLookup(CancellationToken ct)
+        async ValueTask<UserInfo?> AbandonDuringLookupAsync(CancellationToken ct)
         {
             await request.CancelAsync();
             ct.ThrowIfCancellationRequested();
             return null;
         }
         _users.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
-            .Returns(call => AbandonDuringLookup(call.Arg<CancellationToken>()));
+            .Returns(call => AbandonDuringLookupAsync(call.Arg<CancellationToken>()));
 
         await BuildController(UserId, request.Token).Invoking(c => c.MyOutbox())
             .Should().ThrowAsync<OperationCanceledException>();

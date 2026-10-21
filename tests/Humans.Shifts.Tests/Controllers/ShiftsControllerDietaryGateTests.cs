@@ -138,7 +138,7 @@ public class ShiftsControllerDietaryGateTests
         _shiftMgmt.HasQualifyingCantinaSignupAsync(_user.Id, Arg.Any<CancellationToken>())
                   .Returns(false);
 
-        var model = await GetMineViewModel();
+        var model = await GetMineViewModelAsync();
 
         model.UserId.Should().Be(_user.Id);
         model.SignupsBlockedByMissingDietary.Should().BeFalse();
@@ -151,7 +151,7 @@ public class ShiftsControllerDietaryGateTests
                   .Returns(true);
         SetDietary(null);
 
-        var model = await GetMineViewModel();
+        var model = await GetMineViewModelAsync();
 
         model.SignupsBlockedByMissingDietary.Should().BeTrue();
     }
@@ -163,12 +163,12 @@ public class ShiftsControllerDietaryGateTests
                   .Returns(true);
         SetDietary("Vegan");
 
-        var model = await GetMineViewModel();
+        var model = await GetMineViewModelAsync();
 
         model.SignupsBlockedByMissingDietary.Should().BeFalse();
     }
 
-    private async Task<MyShiftsViewModel> GetMineViewModel()
+    private async Task<MyShiftsViewModel> GetMineViewModelAsync()
     {
         var result = await _controller.Mine();
         return result.Should().BeOfType<ViewResult>()

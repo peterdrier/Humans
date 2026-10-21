@@ -24,7 +24,7 @@ Pure orchestrator over Profiles, Consent, Teams, and Governance. Owns no tables.
 >
 > - **Lifecycle state-machine** (suspend/unsuspend, future re-consent suspensions and term-renewals) → `IHumanLifecycleService` (nobodies-collective#583).
 > - **Board voting** (`GetBoardVotingDashboardAsync`, `GetBoardVotingDetailAsync`, `HasBoardVotesAsync`, `CastBoardVoteAsync`, `GetUnvotedApplicationCountAsync`) → `IGovernanceManagement` (Governance owns the `applications` + `board_votes` tables; this PR removed the OnboardingService delegating wrappers).
-> - **Admin dashboard aggregation is gone, not relocated** — no `IAdminDashboardService` exists. `GetPendingReviewCountAsync` was dropped with `NavBadgesViewComponent` (nobodies-collective/Humans#1091); the review-queue badge is now `PillCounts.ReviewQueue` in `SectionAdminNav.cs`, counting `UserInfo.NeedsConsentReview` off `IUserService` without a service method of its own. The single-user member dashboard's old `IDashboardService` is gone too — its content is section-contributed chrome now (also #1091).
+> - **Admin dashboard aggregation is gone, not relocated** — no `IAdminDashboardService` exists. `GetPendingReviewCountAsync` was dropped with `NavBadgesViewComponent` (nobodies-collective/Humans#1091); the review-queue badge is now `PillCounts.ReviewQueueAsync` in `SectionAdminNav.cs`, counting `UserInfo.NeedsConsentReview` off `IUserService` without a service method of its own. The single-user member dashboard's old `IDashboardService` is gone too — its content is section-contributed chrome now (also #1091).
 > - **Account deletion cascade** → `IAccountDeletionService` (`src/Sections/Humans.Users/Contracts/IAccountDeletionService.cs`, nobodies-collective#582).
 
 ## Concepts

@@ -167,6 +167,19 @@ public sealed class UserRepositoryTests : IDisposable
     }
 
     [HumansFact]
+    public async Task ApplyExpiredDeletionAnonymizationAsync_ClearsTheLegacyConsentReminderStamp()
+    {
+        var user = await SeedUserAsync();
+        user.LastConsentReminderSentAt = Instant.FromUtc(2026, 4, 1, 0, 0);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.ApplyExpiredDeletionAnonymizationAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+
+        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id, Xunit.TestContext.Current.CancellationToken);
+        reloaded.LastConsentReminderSentAt.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task AnonymizeForMergeAsync_ScrubsLegacyIdentityEmailPii()
     {
         var source = await SeedUserAsync();

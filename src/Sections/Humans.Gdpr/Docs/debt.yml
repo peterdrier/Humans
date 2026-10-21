@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 6
-inbox:
-  - added: 2026-10-21
-    id: GDPR-5
-    what: "Gdpr.md line ~188 says the section has no Resources folder and no GdprResource, but GdprResource exists and Gdpr.md line ~65 describes it. Reconcile the stale sentence. Found while writing Users decomposition commit 14."
-    review: light
+inbox: []

@@ -303,7 +303,7 @@ internal sealed class CampaignController(
         var page = await campaignService.GetSendWavePageAsync(id, teamId, HttpContext.RequestAborted);
         if (page is null) return NotFound();
 
-        if (page.Campaign.Status != CampaignStatus.Active)
+        if (!page.CanSendWave)
         {
             SetError("Waves can only be sent while the campaign is Active.");
             return RedirectToAction(nameof(Detail), new { id });

@@ -10,6 +10,7 @@ using Humans.Users.Controllers;
 using Humans.Users.Models;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
+using Humans.Application.Services.Users.AccountLifecycle;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -25,7 +26,7 @@ using NSubstitute;
 namespace Humans.Users.Tests.Controllers;
 
 /// <summary>
-/// Purge never runs in Production and never on oneself.
+/// Admin per-user actions forward to their services and map the result; purge refusals are the service's.
 /// </summary>
 public class UsersAdminControllerPurgeTests
 {
@@ -121,27 +122,27 @@ public class UsersAdminControllerPurgeTests
     }
 
     [HumansFact]
-    public async Task PurgeHuman_InProduction_ReturnsNotFoundWithoutPurging()
+    public async Task PurgeHuman_ServiceRefusesProduction_ReturnsNotFound()
     {
-        _environment.EnvironmentName.Returns("Production");
         var target = Guid.NewGuid();
-        _userService.GetRawUserInfoAsync(target, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(new User { Id = target }.ToUserInfo()));
+        _deletion.PurgeAsync(target, _adminUserId, Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(false, AccountDeletionService.PurgeRefusedInProduction));
 
         var result = await BuildController().PurgeHuman(target);
 
         result.Should().BeOfType<NotFoundResult>();
-        await _deletion.DidNotReceive().PurgeAsync(Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task PurgeHuman_TargetIsSelf_RedirectsToDetailWithoutPurging()
+    public async Task PurgeHuman_ServiceRefusesSelf_RedirectsToDetail()
     {
+        _deletion.PurgeAsync(_adminUserId, _adminUserId, Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(false, AccountDeletionService.PurgeRefusedSelf));
+
         var result = await BuildController().PurgeHuman(_adminUserId);
 
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be(nameof(UsersAdminController.AdminDetail));
-        await _deletion.DidNotReceive().PurgeAsync(Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

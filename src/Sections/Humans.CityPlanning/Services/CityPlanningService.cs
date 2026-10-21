@@ -455,7 +455,7 @@ internal sealed class CityPlanningService(
             cancellationToken);
 
     public async Task<PlacementDateUpdateResult> UpdatePlacementDatesAsync(
-        string? opensAt, string? closesAt, CancellationToken cancellationToken = default)
+        string? opensAt, string? closesAt, Guid userId, CancellationToken cancellationToken = default)
     {
         var pattern = DateFormattingExtensions.PlacementDateTimePattern;
 
@@ -467,15 +467,15 @@ internal sealed class CityPlanningService(
         if (!closesResult.Success)
             return new PlacementDateUpdateResult(false, "InvalidClosesAt");
 
-        var campSettings = await campService.GetSettingsAsync(cancellationToken);
-        await repo.MutateSettingsAsync(
-            campSettings.PublicYear,
-            s =>
+        await MutateSettingsAndAuditAsync(
+            (s, _) =>
             {
                 s.PlacementOpensAt = opensResult.Value;
                 s.PlacementClosesAt = closesResult.Value;
             },
-            clock.GetCurrentInstant(),
+            AuditAction.CityPlanningPlacementDatesUpdated,
+            $"Set the placement dates: opens {FormatPlacementDate(opensResult.Value, pattern)}, closes {FormatPlacementDate(closesResult.Value, pattern)}",
+            userId,
             cancellationToken);
         return new PlacementDateUpdateResult(true);
     }
@@ -493,6 +493,9 @@ internal sealed class CityPlanningService(
             : (false, null);
     }
 
+    private static string FormatPlacementDate(LocalDateTime? value, LocalDateTimePattern pattern) =>
+        value is { } date ? pattern.Format(date) : "unset";
+
     public async Task<string?> GetRegistrationInfoAsync(CancellationToken cancellationToken = default)
     {
         var targetYear = await GetRegistrationTargetYearAsync(cancellationToken);
@@ -502,15 +505,19 @@ internal sealed class CityPlanningService(
     }
 
     public async Task UpdateRegistrationInfoAsync(
-        string? registrationInfo, CancellationToken cancellationToken = default)
+        string? registrationInfo, Guid userId, CancellationToken cancellationToken = default)
     {
         var targetYear = await GetRegistrationTargetYearAsync(cancellationToken);
         var trimmed = string.IsNullOrWhiteSpace(registrationInfo) ? null : registrationInfo.Trim();
+        var now = clock.GetCurrentInstant();
+        // Same ordering as MutateSettingsAndAuditAsync, but keyed to the registration target year.
+        var settings = await repo.GetOrCreateSettingsAsync(targetYear, now, cancellationToken);
         await repo.MutateSettingsAsync(
-            targetYear,
-            s => s.RegistrationInfo = trimmed,
-            clock.GetCurrentInstant(),
-            cancellationToken);
+            targetYear, s => s.RegistrationInfo = trimmed, now, CancellationToken.None);
+        await auditLog.LogAsync(
+            AuditAction.CityPlanningRegistrationInfoUpdated, nameof(CityPlanningSettings), settings.Id,
+            trimmed is null ? $"Cleared the {targetYear} registration info" : $"Updated the {targetYear} registration info",
+            userId);
     }
 
     // Key registration-info to the highest open season (Register page targets it), not PublicYear.

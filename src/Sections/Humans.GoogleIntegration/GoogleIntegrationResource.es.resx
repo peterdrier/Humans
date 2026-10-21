@@ -125,4 +125,31 @@
     <value>Verifica primero</value>
   </data>
   <data name="GoogleIntegration_Identity_Locked" xml:space="preserve"><value>Bloqueado por la fila de correo de Workspace</value></data>
+  <data name="GoogleIntegration_TeamResources_Heading" xml:space="preserve"><value>Gestionar recursos</value></data>
+  <data name="GoogleIntegration_TeamResources_Team" xml:space="preserve"><value>Equipo</value></data>
+  <data name="GoogleIntegration_TeamResources_Name" xml:space="preserve"><value>Nombre</value></data>
+  <data name="GoogleIntegration_TeamResources_Type" xml:space="preserve"><value>Tipo</value></data>
+  <data name="GoogleIntegration_TeamResources_Actions" xml:space="preserve"><value>Acciones</value></data>
+  <data name="GoogleIntegration_TeamResources_BackToTeam" xml:space="preserve"><value>Volver al equipo</value></data>
+  <data name="GoogleIntegration_TeamResources_ManageMembers" xml:space="preserve"><value>Gestionar miembros</value></data>
+  <data name="GoogleIntegration_TeamResources_Title" xml:space="preserve"><value>Gestionar recursos - {0}</value><comment>{0} = team name</comment></data>
+  <data name="GoogleIntegration_TeamResources_Breadcrumb" xml:space="preserve"><value>Recursos</value></data>
+  <data name="GoogleIntegration_TeamResources_ServiceAccountTitle" xml:space="preserve"><value>Cuenta de servicio</value></data>
+  <data name="GoogleIntegration_TeamResources_ShareWithServiceAccount" xml:space="preserve"><value>Para vincular un recurso de Google, primero debe compartirlo con la cuenta de servicio:</value></data>
+  <data name="GoogleIntegration_TeamResources_Copy" xml:space="preserve"><value>Copiar</value></data>
+  <data name="GoogleIntegration_TeamResources_DriveFolders" xml:space="preserve"><value>Carpetas de Drive</value></data>
+  <data name="GoogleIntegration_TeamResources_DriveFoldersHelp" xml:space="preserve"><value>Comparta la carpeta con este correo como Editor</value></data>
+  <data name="GoogleIntegration_TeamResources_GoogleGroups" xml:space="preserve"><value>Google Groups</value></data>
+  <data name="GoogleIntegration_TeamResources_GoogleGroupsHelp" xml:space="preserve"><value>Añada este correo como Administrador del grupo</value></data>
+  <data name="GoogleIntegration_TeamResources_LinkedResources" xml:space="preserve"><value>Recursos vinculados</value></data>
+  <data name="GoogleIntegration_TeamResources_LastSynced" xml:space="preserve"><value>Última sincronización</value></data>
+  <data name="GoogleIntegration_TeamResources_NoResources" xml:space="preserve"><value>Aún no hay recursos vinculados a este equipo. Utilice los formularios a continuación para vincular una carpeta de Google Drive o un Google Group.</value></data>
+  <data name="GoogleIntegration_TeamResources_InvalidDriveUrl" xml:space="preserve"><value>Por favor, introduzca una URL válida de carpeta de Google Drive.</value></data>
+  <data name="GoogleIntegration_TeamResources_InvalidGroupEmail" xml:space="preserve"><value>Por favor, introduzca una dirección de correo válida de Google Group.</value></data>
+  <data name="GoogleIntegration_TeamResources_GroupLinked" xml:space="preserve"><value>Google Group “{0}” vinculado correctamente.</value><comment>{0} = group name</comment></data>
+  <data name="GoogleIntegration_TeamResources_GroupLinkFailed" xml:space="preserve"><value>No se ha podido vincular el Google Group.</value></data>
+  <data name="GoogleIntegration_TeamResources_ResourceUnlinked" xml:space="preserve"><value>Recurso desvinculado del equipo.</value></data>
+  <data name="GoogleIntegration_TeamResources_ResourceSynced" xml:space="preserve"><value>Permisos del recurso sincronizados correctamente.</value></data>
+  <data name="GoogleIntegration_TeamResources_ResourceSyncFailed" xml:space="preserve"><value>Error al sincronizar los permisos del recurso: {0}</value><comment>{0} = error message</comment></data>
+  <data name="GoogleIntegration_TeamResources_ServiceAccount" xml:space="preserve"><value>Cuenta de servicio: {0}</value><comment>{0} = service account email</comment></data>
 </root>

@@ -271,10 +271,10 @@ public sealed class IssuesServiceTests
                 }
             }
         };
-        Task<IActionResult> Read() => detail
+        Task<IActionResult> ReadAsync() => detail
             ? controller.Detail(issueId, partial: true)
             : controller.Index(null, null, null, null, null, null);
-        var healthy = await Read();
+        var healthy = await ReadAsync();
         if (detail)
             healthy.Should().BeOfType<PartialViewResult>().Which.Model.Should().BeOfType<IssueDetailViewModel>();
         else
@@ -292,7 +292,7 @@ public sealed class IssuesServiceTests
         _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(_ => CancelBeforeIssueReadAsync());
 
-        var abandoned = () => Read();
+        var abandoned = () => ReadAsync();
         await abandoned.Should().ThrowAsync<OperationCanceledException>();
     }
 

@@ -19,7 +19,7 @@ namespace Humans.Shifts.Contracts;
 /// writes and would make this name a lie); the dev-fixture verbs are
 /// <see cref="IShiftSeeding"/>.
 /// </remarks>
-public interface IShiftManagementService : IApplicationService
+public interface IShiftService : IApplicationService
 {
     /// <summary>
     /// Whether the user is a department coordinator for the given team
@@ -105,7 +105,7 @@ public interface IShiftManagementService : IApplicationService
 
 /// <summary>
 /// One rota that matched a global-search query. Returned by
-/// <see cref="IShiftManagementService.SearchAsync"/>, already scored by this
+/// <see cref="IShiftService.SearchAsync"/>, already scored by this
 /// section — the orchestrator ranks by <see cref="Score"/> and passes
 /// <see cref="RotaId"/> to <c>&lt;vc:shifts-search-result&gt;</c>, which fetches
 /// the row's team name and link itself.

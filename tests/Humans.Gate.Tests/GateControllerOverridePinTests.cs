@@ -61,7 +61,7 @@ public class GateControllerOverridePinTests
         return controller;
     }
 
-    private Task<IActionResult> Decide(GateController c, bool overrideEarly = false, bool child = false, string? pin = null) =>
+    private Task<IActionResult> DecideAsync(GateController c, bool overrideEarly = false, bool child = false, string? pin = null) =>
         c.Decision(Barcode, idConfirmed: false, childWithAdult: child, overrideEarly: overrideEarly,
             supervisorPin: pin, laneId: null, TestContext.Current.CancellationToken);
 
@@ -108,7 +108,7 @@ public class GateControllerOverridePinTests
     {
         var controller = BuildController(Pin);
 
-        var card = CardOf(await Decide(controller, overrideEarly: true, pin: "0000"));
+        var card = CardOf(await DecideAsync(controller, overrideEarly: true, pin: "0000"));
 
         Assert.Equal(GateCardKind.Amber, card.Kind);
         Assert.True(card.AllowSupervisorOverride); // inline retry stays available
@@ -121,7 +121,7 @@ public class GateControllerOverridePinTests
     {
         var controller = BuildController(Pin);
 
-        await Decide(controller, overrideEarly: true, pin: Pin);
+        await DecideAsync(controller, overrideEarly: true, pin: Pin);
 
         await _gate.Received(1).RecordDecisionAsync(
             Arg.Is<GateDecisionInput>(i => i.OverrideByUserId == _gateAccount),
@@ -133,7 +133,7 @@ public class GateControllerOverridePinTests
     {
         var controller = BuildController(configuredPin: null);
 
-        var card = CardOf(await Decide(controller, overrideEarly: true, pin: "1111"));
+        var card = CardOf(await DecideAsync(controller, overrideEarly: true, pin: "1111"));
 
         Assert.Equal(GateCardKind.Amber, card.Kind);
         Assert.Contains("not configured", card.Reason, StringComparison.OrdinalIgnoreCase);
@@ -149,28 +149,28 @@ public class GateControllerOverridePinTests
         // Literal 5, not GatePinThrottle.MaxFailures — a test written against the constant
         // it pins cannot notice the constant changing.
         for (var i = 0; i < 5; i++)
-            await Decide(controller, overrideEarly: true, pin: "0000");
+            await DecideAsync(controller, overrideEarly: true, pin: "0000");
 
         // Even the CORRECT pin is now refused (locked out)…
-        var locked = CardOf(await Decide(controller, overrideEarly: true, pin: Pin));
+        var locked = CardOf(await DecideAsync(controller, overrideEarly: true, pin: Pin));
         Assert.Contains("wait", locked.Reason, StringComparison.OrdinalIgnoreCase);
         await _gate.DidNotReceive().RecordDecisionAsync(
             Arg.Any<GateDecisionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
 
         // …and the lockout does not decay early: 14 minutes in, still locked…
         _clock.Advance(Duration.FromMinutes(14));
-        var stillLocked = CardOf(await Decide(controller, overrideEarly: true, pin: Pin));
+        var stillLocked = CardOf(await DecideAsync(controller, overrideEarly: true, pin: Pin));
         Assert.Contains("wait", stillLocked.Reason, StringComparison.OrdinalIgnoreCase);
 
         // …but a plain (non-override) decision on the same terminal still records.
-        await Decide(controller);
+        await DecideAsync(controller);
         await _gate.Received(1).RecordDecisionAsync(
             Arg.Is<GateDecisionInput>(i => i.OverrideByUserId == null),
             _gateAccount, Arg.Any<CancellationToken>());
 
         // Past the full 15 minutes the correct PIN authorizes again.
         _clock.Advance(Duration.FromMinutes(1) + Duration.FromSeconds(1));
-        await Decide(controller, overrideEarly: true, pin: Pin);
+        await DecideAsync(controller, overrideEarly: true, pin: Pin);
         await _gate.Received(1).RecordDecisionAsync(
             Arg.Is<GateDecisionInput>(i => i.OverrideByUserId == _gateAccount),
             _gateAccount, Arg.Any<CancellationToken>());
@@ -181,14 +181,14 @@ public class GateControllerOverridePinTests
     {
         var controller = BuildController(Pin);
 
-        var card = CardOf(await Decide(controller, child: true, pin: "9999"));
+        var card = CardOf(await DecideAsync(controller, child: true, pin: "9999"));
 
         Assert.Equal(GateCardKind.Amber, card.Kind);
         Assert.False(card.AllowSupervisorOverride); // child waiver retries by re-scanning
         await _gate.DidNotReceive().RecordDecisionAsync(
             Arg.Any<GateDecisionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
 
-        await Decide(controller, child: true, pin: Pin);
+        await DecideAsync(controller, child: true, pin: Pin);
         await _gate.Received(1).RecordDecisionAsync(
             Arg.Is<GateDecisionInput>(i => i.ChildWithAdult && i.OverrideByUserId == _gateAccount),
             _gateAccount, Arg.Any<CancellationToken>());

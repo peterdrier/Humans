@@ -702,14 +702,6 @@ internal sealed class CachingUserService(
         return result;
     }
 
-    public Task SetLastConsentReminderSentAsync(
-        Guid userId, Instant sentAt, CancellationToken ct = default) =>
-        WithInnerAsync(async inner =>
-        {
-            await inner.SetLastConsentReminderSentAsync(userId, sentAt, ct);
-            await RefreshEntryAsync(userId);
-        });
-
     public async Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
         Guid userId, CancellationToken ct = default)
     {

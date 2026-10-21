@@ -50,7 +50,7 @@ public class NotificationInboxServiceTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private async Task<Notification> CreateNotification(
+    private async Task<Notification> CreateNotificationAsync(
         NotificationClass cls = NotificationClass.Informational,
         NotificationSource source = NotificationSource.TeamMemberAdded,
         Instant? resolvedAt = null,
@@ -86,10 +86,10 @@ public class NotificationInboxServiceTests : IDisposable
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var otherUserId = Guid.NewGuid();
-        var stale = await CreateNotification();
+        var stale = await CreateNotificationAsync();
         _clock.Advance(Duration.FromDays(40));
-        var retired = await CreateNotification(NotificationClass.Actionable, NotificationSource.ApplicationSubmitted);
-        await CreateNotification(); // Fresh informational notification survives.
+        var retired = await CreateNotificationAsync(NotificationClass.Actionable, NotificationSource.ApplicationSubmitted);
+        await CreateNotificationAsync(); // Fresh informational notification survives.
         foreach (var notification in new[] { stale, retired })
         {
             notification.Recipients.Add(new NotificationRecipient
@@ -133,7 +133,7 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task ResolveAsync_RejectsInformationalWithoutResolvingIt()
     {
-        var notification = await CreateNotification();
+        var notification = await CreateNotificationAsync();
 
         var result = await _service.ResolveAsync(notification.Id, _userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -148,7 +148,7 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task ResolveAsync_ResolvesNotification()
     {
-        var notification = await CreateNotification(NotificationClass.Actionable);
+        var notification = await CreateNotificationAsync(NotificationClass.Actionable);
 
         var result = await _service.ResolveAsync(notification.Id, _userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -165,7 +165,7 @@ public class NotificationInboxServiceTests : IDisposable
         // Resolving deliberately does not touch the recipient's ReadAt. It doesn't
         // have to: every unread query also filters ResolvedAt == null, so a resolved
         // notification drops out of the badge whether or not it was ever read.
-        var notification = await CreateNotification(NotificationClass.Actionable);
+        var notification = await CreateNotificationAsync(NotificationClass.Actionable);
 
         await _service.ResolveAsync(notification.Id, _userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -185,7 +185,7 @@ public class NotificationInboxServiceTests : IDisposable
         // Resolved rows are never unread, so the resolved filter forces the tab to
         // "all". The service reports the tab it actually queried so the view's tab
         // pill cannot disagree with the rows underneath it.
-        await CreateNotification(resolvedAt: _clock.GetCurrentInstant(), resolvedByUserId: _userId);
+        await CreateNotificationAsync(resolvedAt: _clock.GetCurrentInstant(), resolvedByUserId: _userId);
 
         var result = await _service.GetInboxAsync(
             _userId, search: null, filter: "resolved", tab: "unread",
@@ -199,7 +199,7 @@ public class NotificationInboxServiceTests : IDisposable
     public async Task GetInboxAsync_NamesTheResolver_AndLooksUpNoOtherUser()
     {
         var resolverId = Guid.NewGuid();
-        var notification = await CreateNotification(
+        var notification = await CreateNotificationAsync(
             resolvedAt: _clock.GetCurrentInstant(), resolvedByUserId: resolverId);
         _dbContext.NotificationRecipients.Add(new NotificationRecipient
         {
@@ -238,7 +238,7 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task ResolveAsync_ReturnsForbiddenIfNotRecipient()
     {
-        var notification = await CreateNotification(NotificationClass.Actionable);
+        var notification = await CreateNotificationAsync(NotificationClass.Actionable);
 
         var result = await _service.ResolveAsync(notification.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
@@ -250,7 +250,7 @@ public class NotificationInboxServiceTests : IDisposable
     public async Task ResolveAsync_IdempotentIfAlreadyResolved()
     {
         var now = _clock.GetCurrentInstant();
-        var notification = await CreateNotification(
+        var notification = await CreateNotificationAsync(
             NotificationClass.Actionable,
             resolvedAt: now,
             resolvedByUserId: _userId);
@@ -265,7 +265,7 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task DismissAsync_DismissesInformationalNotification()
     {
-        var notification = await CreateNotification();
+        var notification = await CreateNotificationAsync();
 
         var result = await _service.DismissAsync(notification.Id, _userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -278,7 +278,7 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task DismissAsync_RejectsDismissOfActionableNotification()
     {
-        var notification = await CreateNotification(NotificationClass.Actionable);
+        var notification = await CreateNotificationAsync(NotificationClass.Actionable);
 
         var result = await _service.DismissAsync(notification.Id, _userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -289,7 +289,7 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task DismissAsync_ReturnsForbiddenIfNotRecipient()
     {
-        var notification = await CreateNotification();
+        var notification = await CreateNotificationAsync();
 
         var result = await _service.DismissAsync(notification.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
@@ -313,7 +313,7 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task MarkReadAsync_SetsReadAt()
     {
-        var notification = await CreateNotification();
+        var notification = await CreateNotificationAsync();
 
         var result = await _service.MarkReadAsync(notification.Id, _userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -328,7 +328,7 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task MarkReadAsync_ReturnsNotFoundIfNotRecipient()
     {
-        var notification = await CreateNotification();
+        var notification = await CreateNotificationAsync();
 
         var result = await _service.MarkReadAsync(notification.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
@@ -341,8 +341,8 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task MarkAllReadAsync_MarksAllUnreadAsRead()
     {
-        await CreateNotification();
-        await CreateNotification();
+        await CreateNotificationAsync();
+        await CreateNotificationAsync();
 
         await _service.MarkAllReadAsync(_userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -358,8 +358,8 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task BulkResolveAsync_ResolvesMultipleActionableNotifications()
     {
-        var n1 = await CreateNotification(NotificationClass.Actionable);
-        var n2 = await CreateNotification(NotificationClass.Actionable);
+        var n1 = await CreateNotificationAsync(NotificationClass.Actionable);
+        var n2 = await CreateNotificationAsync(NotificationClass.Actionable);
 
         await _service.BulkResolveAsync([n1.Id, n2.Id], _userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -373,8 +373,8 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task BulkResolveAsync_SkipsInformationalNotifications()
     {
-        var actionable = await CreateNotification(NotificationClass.Actionable);
-        var informational = await CreateNotification();
+        var actionable = await CreateNotificationAsync(NotificationClass.Actionable);
+        var informational = await CreateNotificationAsync();
 
         await _service.BulkResolveAsync([actionable.Id, informational.Id], _userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -388,7 +388,7 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task BulkResolveAsync_LeavesOtherUsersNotificationsAlone()
     {
-        var notification = await CreateNotification(NotificationClass.Actionable);
+        var notification = await CreateNotificationAsync(NotificationClass.Actionable);
 
         await _service.BulkResolveAsync([notification.Id], Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
@@ -401,8 +401,8 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task BulkDismissAsync_DismissesMultipleInformationalNotifications()
     {
-        var n1 = await CreateNotification();
-        var n2 = await CreateNotification();
+        var n1 = await CreateNotificationAsync();
+        var n2 = await CreateNotificationAsync();
 
         await _service.BulkDismissAsync([n1.Id, n2.Id], _userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -416,8 +416,8 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact(Timeout = 10000)]
     public async Task BulkDismissAsync_SkipsActionableNotifications()
     {
-        var actionable = await CreateNotification(NotificationClass.Actionable);
-        var informational = await CreateNotification();
+        var actionable = await CreateNotificationAsync(NotificationClass.Actionable);
+        var informational = await CreateNotificationAsync();
 
         await _service.BulkDismissAsync([actionable.Id, informational.Id], _userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -431,7 +431,7 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task BulkDismissAsync_LeavesOtherUsersNotificationsAlone()
     {
-        var notification = await CreateNotification();
+        var notification = await CreateNotificationAsync();
 
         await _service.BulkDismissAsync([notification.Id], Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
@@ -444,7 +444,7 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task ClickThroughAsync_MarksReadAndReturnsUrl()
     {
-        var notification = await CreateNotification();
+        var notification = await CreateNotificationAsync();
 
         var url = await _service.ClickThroughAsync(notification.Id, _userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -459,7 +459,7 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task ClickThroughAsync_ReturnsNullIfNotRecipient()
     {
-        var notification = await CreateNotification();
+        var notification = await CreateNotificationAsync();
 
         var url = await _service.ClickThroughAsync(notification.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
@@ -471,9 +471,9 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task GetPopupAsync_ReturnsUnresolvedNotificationsSplitByClass()
     {
-        await CreateNotification(NotificationClass.Actionable);
-        await CreateNotification();
-        await CreateNotification(
+        await CreateNotificationAsync(NotificationClass.Actionable);
+        await CreateNotificationAsync();
+        await CreateNotificationAsync(
             NotificationClass.Actionable,
             resolvedAt: _clock.GetCurrentInstant(),
             resolvedByUserId: _userId); // resolved — should not appear
@@ -489,7 +489,7 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task ResolveAsync_InvalidatesBadgeCache()
     {
-        var notification = await CreateNotification(NotificationClass.Actionable);
+        var notification = await CreateNotificationAsync(NotificationClass.Actionable);
         var cacheKey = CacheKeys.NotificationBadgeCounts(_userId);
         _cache.Set(cacheKey, 5);
 
@@ -501,7 +501,7 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task MarkReadAsync_InvalidatesBadgeCache()
     {
-        var notification = await CreateNotification();
+        var notification = await CreateNotificationAsync();
         var cacheKey = CacheKeys.NotificationBadgeCounts(_userId);
         _cache.Set(cacheKey, 3);
 
@@ -513,7 +513,7 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task MarkAllReadAsync_InvalidatesBadgeCache()
     {
-        await CreateNotification();
+        await CreateNotificationAsync();
         var cacheKey = CacheKeys.NotificationBadgeCounts(_userId);
         _cache.Set(cacheKey, 2);
 

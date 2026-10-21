@@ -279,9 +279,9 @@ public sealed class ConsentReviewServiceTests : IDisposable
     {
         SeedUser(LegacyProfile(LegacyConsentCheckStatus.Pending));
         var services = new ServiceCollection().AddSingleton(_sut).BuildServiceProvider();
-        var migration = new SectionDataMigrations().Migrations().Should().ContainSingle().Subject;
+        var migration = new SectionDataMigrations().Migrations()
+            .Should().ContainSingle(m => m.Key == "consent.profile-review").Subject;
 
-        migration.Key.Should().Be("consent.profile-review");
         (await migration.Status(services, Ct)).Pending.Should().Be(1);
         (await migration.Apply(services, Guid.NewGuid(), Ct)).Should().Be(1);
         (await migration.Status(services, Ct)).Pending.Should().Be(0);

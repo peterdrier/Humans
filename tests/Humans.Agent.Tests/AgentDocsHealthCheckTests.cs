@@ -22,9 +22,9 @@ public class AgentDocsHealthCheckTests
     {
         var source = Substitute.For<IGuideContentSource>();
         source.GetMarkdownAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(call => ReadFromRepo(call.ArgAt<string>(0), call.ArgAt<string>(1)));
+            .Returns(call => ReadFromRepoAsync(call.ArgAt<string>(0), call.ArgAt<string>(1)));
 
-        var result = await Check(source);
+        var result = await CheckAsync(source);
 
         result.Status.Should().Be(HealthStatus.Healthy, result.Description);
     }
@@ -36,13 +36,13 @@ public class AgentDocsHealthCheckTests
         source.GetMarkdownAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Throws(new NotFoundException("missing", System.Net.HttpStatusCode.NotFound));
 
-        var result = await Check(source);
+        var result = await CheckAsync(source);
 
         result.Status.Should().Be(HealthStatus.Degraded);
         result.Description.Should().Contain("src/Sections/Humans.Agent/Docs/Agent.md");
     }
 
-    private static Task<HealthCheckResult> Check(IGuideContentSource source)
+    private static Task<HealthCheckResult> CheckAsync(IGuideContentSource source)
     {
         var agent = Substitute.For<IAgentAvailability>();
         agent.IsEnabled.Returns(true);
@@ -51,7 +51,7 @@ public class AgentDocsHealthCheckTests
     }
 
     /// <summary>Serves the probe from this checkout, throwing as GitHub does on a missing file.</summary>
-    private static Task<string> ReadFromRepo(string folder, string stem)
+    private static Task<string> ReadFromRepoAsync(string folder, string stem)
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Humans.slnx")))

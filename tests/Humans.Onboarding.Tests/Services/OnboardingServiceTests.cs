@@ -225,7 +225,7 @@ public sealed class OnboardingServiceTests
     [HumansTheory]
     [Xunit.InlineData("a")]
     [Xunit.InlineData("😀")]
-    public async Task RejectSignupAsync_LongReason_BoundsNoticeAndPreservesStoredReason(string character)
+    public async Task RejectSignupAsync_LongReason_LeavesBoundingToNotificationsAndPreservesStoredReason(string character)
     {
         var userId = Guid.NewGuid();
         var reviewerId = Guid.NewGuid();
@@ -242,10 +242,8 @@ public sealed class OnboardingServiceTests
 
         result.Success.Should().BeTrue();
         var body = (string)_notificationService.ReceivedCalls().Single().GetArguments()[5]!;
-        body.EnumerateRunes().Count().Should().Be(2000);
-        body.Should().StartWith("Tu inscripción no se ha podido aprobar: ");
-        body.Should().EndWith("…");
-        body.Should().NotContain("�");
+        // Notifications owns the column limit and bounds the copy itself.
+        body.Should().Be("Tu inscripción no se ha podido aprobar: " + reason);
         await _consentWrite.Received(1).RecordRejectionAsync(userId, reviewerId, reason, Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
             AuditAction.SignupRejected, AuditEntityTypes.Profile, userId,

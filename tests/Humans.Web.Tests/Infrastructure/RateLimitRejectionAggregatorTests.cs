@@ -30,7 +30,7 @@ public class RateLimitRejectionAggregatorTests
         }
     }
 
-    private static async Task<IReadOnlyList<string>> WaitForFlush(ListLogger logger)
+    private static async Task<IReadOnlyList<string>> WaitForFlushAsync(ListLogger logger)
     {
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
         while (logger.Messages.Count == 0 && DateTime.UtcNow < deadline)
@@ -62,7 +62,7 @@ public class RateLimitRejectionAggregatorTests
         for (var i = 0; i < 5; i++)
             aggregator.RecordRejection("1.2.3.4");
 
-        var messages = await WaitForFlush(logger);
+        var messages = await WaitForFlushAsync(logger);
         messages.Should().ContainSingle()
             .Which.Should().Contain("1.2.3.4").And.Contain("5 times");
     }
@@ -92,7 +92,7 @@ public class RateLimitRejectionAggregatorTests
         aggregator.RecordRejection("1.2.3.4");
         aggregator.RecordRejection("1.2.3.4");
 
-        await WaitForFlush(logger);
+        await WaitForFlushAsync(logger);
         aggregator.RecordRejection("1.2.3.4").Should().BeTrue("the flushed window must not suppress future detail");
     }
 }

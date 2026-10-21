@@ -118,7 +118,7 @@ public sealed class CityPlanningControllerSettingsRedirectTests : CityPlanningTe
         });
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(Array.Empty<CampInfo>());
 
-        Task<IActionResult> ReadPage() => page switch
+        Task<IActionResult> ReadPageAsync() => page switch
         {
             "Index" => _controller.Index(cancellation.Token),
             "BarrioMap" => _controller.BarrioMap(cancellation.Token),
@@ -126,9 +126,9 @@ public sealed class CityPlanningControllerSettingsRedirectTests : CityPlanningTe
             _ => throw new ArgumentOutOfRangeException(nameof(page)),
         };
 
-        (await ReadPage()).Should().BeOfType<ViewResult>();
+        (await ReadPageAsync()).Should().BeOfType<ViewResult>();
         await cancellation.CancelAsync();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(ReadPage);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(ReadPageAsync);
         canceledAtUserLookup.Should().BeTrue("an abandoned page must stop its initial member read");
     }
 

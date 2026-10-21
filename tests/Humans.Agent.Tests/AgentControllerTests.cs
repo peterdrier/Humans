@@ -66,7 +66,7 @@ public class AgentControllerTests
     {
         var agent = Substitute.For<IAgentService>();
         agent.AskAsync(Arg.Any<AgentTurnRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Foreign());
+            .Returns(ForeignAsync());
         var controller = MakeController(agent, enabled: true);
 
         await controller.Ask(
@@ -76,7 +76,7 @@ public class AgentControllerTests
         controller.Response.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
         controller.Response.ContentType.Should().BeNull("no event stream was opened");
 
-        static async IAsyncEnumerable<AgentTurnToken> Foreign()
+        static async IAsyncEnumerable<AgentTurnToken> ForeignAsync()
         {
             await Task.Yield();
             throw new UnauthorizedAccessException();
@@ -98,20 +98,20 @@ public class AgentControllerTests
         var controller = MakeController(agent, enabled: true);
         controller.HttpContext.RequestAborted = request.Token;
         var id = Guid.NewGuid();
-        Task<IActionResult> ReadPage() => page switch
+        Task<IActionResult> ReadPageAsync() => page switch
         {
             "Conversations" => controller.Conversations(cancellationToken: request.Token),
             "Conversation" => controller.Conversation(id, request.Token),
             "ConversationDetail" => controller.ConversationDetail(id, request.Token),
             _ => throw new ArgumentOutOfRangeException(nameof(page)),
         };
-        var healthy = await ReadPage();
+        var healthy = await ReadPageAsync();
         if (string.Equals(page, "Conversations", StringComparison.Ordinal))
             healthy.Should().BeOfType<ViewResult>();
         else
             healthy.Should().BeOfType<NotFoundResult>();
         await request.CancelAsync();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(ReadPage);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(ReadPageAsync);
     }
 
     [HumansTheory]

@@ -314,6 +314,16 @@ public class PersonSearchMatcherTests
         PersonSearchMatcher.Match(human, "sparkle", PersonSearchFields.AdminAll).Should().BeNull();
     }
 
+    [HumansFact]
+    public void IsSearchable_is_profile_present_and_not_rejected()
+    {
+        // The single-person lookups (/api/profiles/by-userid, allowEmail) read this same flag.
+        Human().IsSearchable.Should().BeTrue();
+        Human(rejectedAt: At).IsSearchable.Should().BeFalse();
+        UserInfo.Create(new User { Id = Guid.NewGuid(), PreferredLanguage = "en" }, [], [], [], profile: null, [])
+            .IsSearchable.Should().BeFalse();
+    }
+
     [HumansTheory]
     [InlineData("jose", "José")]   // diacritic + case folded
     [InlineData("JOSÉ", "josé")]

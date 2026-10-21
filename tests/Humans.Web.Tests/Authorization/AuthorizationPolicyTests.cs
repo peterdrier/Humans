@@ -28,7 +28,7 @@ public class AuthorizationPolicyTests : IDisposable
 {
     private readonly ServiceProvider _serviceProvider;
     private readonly IAuthorizationService _authorizationService;
-    private readonly IShiftManagementService _shiftManagement;
+    private readonly IShiftService _shiftManagement;
 
     public AuthorizationPolicyTests()
     {
@@ -48,7 +48,7 @@ public class AuthorizationPolicyTests : IDisposable
         // (design §15 step 6). Their coverage lives in Humans.Expenses.Tests.
         // IsAnyTeamManagerOrCoordinatorHandler reads team-coord ids through this service
         // (cached path); register a single shared substitute so per-test setups stick.
-        _shiftManagement = Substitute.For<IShiftManagementService>();
+        _shiftManagement = Substitute.For<IShiftService>();
         _shiftManagement.GetCoordinatorTeamIdsAsync(Arg.Any<Guid>()).Returns([]);
         services.AddSingleton(_shiftManagement);
         services.AddSingleton<IClock>(SystemClock.Instance);

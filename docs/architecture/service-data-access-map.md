@@ -48,7 +48,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > | `FinanceDbContext` | `HoldedExpenseDocs`, `HoldedCategoryMap`, `HoldedCreditorContacts`, `HoldedDocSyncStates`, `HoldedManagedAccounts`, `SepaPayoutFiles`, `SepaPayoutTransfers` (own project, `src/Sections/Humans.Finance/`). The ledger mirror (`HoldedLedgerLines`, its sync state, the chart-of-accounts cache, and the API call log) lives in the separate `HoldedDbContext` below. |
 > | `HoldedDbContext` | `HoldedLedgerLines`, `HoldedSyncStates`, `HoldedAccounts`, `HoldedApiCalls` (own project, `src/Sections/Humans.Holded/`). The daybook-journal ledger mirror, chart-of-accounts cache, and Holded API call-log/metering — split out of Finance so the two sections that both touch Holded data stay structurally isolated from each other. |
 > | `EventGuideDbContext` | `EventGuideSettings`, `EventCategories`, `EventVenues`, `Events`, `EventModerationActions`, `EventPreferences`, `EventFavourites` (own project, `src/Sections/Humans.Events/`; the Shifts-owned `EventSettings` / `EventParticipations` tables deliberately stay off this context, despite the name collision) |
-> | `StoreDbContext` | `Products`, `Orders`, `OrderLines`, `Payments`, `Invoices`, `TreasurySyncStates` (own project, `src/Sections/Humans.Store/`, table names `store_products` / `store_orders` / `store_order_lines` / `store_payments` / `store_invoices` / `store_treasury_sync_state`) |
+> | `StoreDbContext` | `Products`, `Orders`, `OrderLines`, `Payments`, `Invoices` (own project, `src/Sections/Humans.Store/`, table names `store_products` / `store_orders` / `store_order_lines` / `store_payments` / `store_invoices`) |
 > | `BackdoorDbContext` | `backdoor_api_keys` (own project, `src/Sections/Humans.Backdoor/`) |
 > | `MailerLiteDbContext` | `MailerLiteSyncStates` (`mailerlite_sync_states`) (own project, `src/Sections/Humans.MailerLite/`) |
 > | `RideshareDbContext` | `RideshareTrips`, `RideshareRequests`, `RideshareInterests`, `RideshareSettings` (own project, `src/Sections/Humans.Rideshare/`, table names `rideshare_trips` / `rideshare_requests` / `rideshare_interests` / `rideshare_settings`) |
@@ -166,8 +166,7 @@ Every table is owned by exactly one repository; there are no HUM0025
    (`IRoleAssignmentWrite`), `IConsentService`,
    `ICampService`, `ITicketService`, `IGoogleSyncService`
    (consumed by `NotificationMeterProvider` for failed-sync-event counts;
-   foreign writes go through `IGoogleSyncWrite`), `ITeamResourceService`
-   (writes via `ITeamResourceWrite`), `IHoldedFinanceService`
+   foreign writes go through `IGoogleSyncWrite`), `ITeamResourceService`, `IHoldedFinanceService`
    (writes via `IHoldedFinanceWrite`),
    `ICampaignService` (consumed by `TicketQueryService`; writes via
    `ICampaignWrite`),
@@ -178,7 +177,7 @@ Every table is owned by exactly one repository; there are no HUM0025
    consumers are Web-layer controllers/handlers, no Application-layer
    service consumer yet), and
    the Governance pair `IGovernanceService` / `IMembershipCalculator`
-   (foreign writes via `IGovernanceWrite`).
+   (no foreign writes).
    Several of these are the Singleton caching decorators re-cast
    to a narrow surface; the Governance read interfaces are plain
    read-only contracts the section's services implement directly. All keep
@@ -317,7 +316,7 @@ Every table is owned by exactly one repository; there are no HUM0025
     `IShiftManagement` — all §15-compliant service-interface calls.
     Its one cross-section **write** — projecting an admit onto the guest's
     participation record as `Attended` — goes through the
-    owning `ITicketWrite.SetParticipationFromTicketSyncAsync` (Tickets), so no
+    owning `ITicketWrite.RecordParticipationAsync` (Tickets), so no
     design-rule violation. `IGateRepository` reads/writes only the three
     Gate-owned tables. The section deliberately has **no caching
     decorator**: admission verdicts must be live.

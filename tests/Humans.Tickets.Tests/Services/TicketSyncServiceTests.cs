@@ -651,7 +651,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
 
         await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _participations.Received(1).SetParticipationFromTicketSyncAsync(
+        await _participations.Received(1).RecordParticipationAsync(
             userId, 2026, ParticipationStatus.Attended,
             checkInInstant, Arg.Any<CancellationToken>());
 
@@ -692,7 +692,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
 
         await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _participations.Received(1).SetParticipationFromTicketSyncAsync(
+        await _participations.Received(1).RecordParticipationAsync(
             userId, 2026, ParticipationStatus.Attended,
             earlier, Arg.Any<CancellationToken>());
     }
@@ -718,7 +718,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
 
         await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _participations.Received(1).SetParticipationFromTicketSyncAsync(
+        await _participations.Received(1).RecordParticipationAsync(
             userId, 2026, ParticipationStatus.Ticketed,
             null, Arg.Any<CancellationToken>());
     }
@@ -753,7 +753,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
 
         await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _participations.DidNotReceive().SetParticipationFromTicketSyncAsync(
+        await _participations.DidNotReceive().RecordParticipationAsync(
             Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<ParticipationStatus>(),
             Arg.Any<Instant?>(), Arg.Any<CancellationToken>());
         await _participations.DidNotReceive().RemoveTicketSyncParticipationAsync(
@@ -790,7 +790,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
 
         await _participations.Received(1).RemoveTicketSyncParticipationAsync(
             userId, 2026, Arg.Any<CancellationToken>());
-        await _participations.DidNotReceive().SetParticipationFromTicketSyncAsync(
+        await _participations.DidNotReceive().RecordParticipationAsync(
             Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<ParticipationStatus>(),
             Arg.Any<Instant?>(), Arg.Any<CancellationToken>());
     }
@@ -828,7 +828,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
 
         await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _participations.Received(1).SetParticipationFromTicketSyncAsync(
+        await _participations.Received(1).RecordParticipationAsync(
             userId, 2026, ParticipationStatus.Attended,
             checkInInstant, Arg.Any<CancellationToken>());
     }
