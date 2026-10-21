@@ -254,8 +254,9 @@ a person) the first time a ticket admin sets its password from
 `/Tickets/Admin/Gate`. Creates the Identity
 user via `UserManager<User>`, saves its profile through Users' canonical
 `IProfileEditorService.SaveProfileAsync`, clears its consent check via
-Consent's `IConsentWrite.RecordConsentCheckAsync`, invalidates user-access
-cache and `IUserInfoInvalidator`, and logs via `IAuditLogService`. No direct
+Consent's `IConsentWrite.RecordConsentCheckAsync`, invalidates the user-access
+cache, and logs via `IAuditLogService`. Users refreshes its own `UserInfo`
+entry on the create and the profile save. No direct
 DB or cache access of its own — every mutation goes through another
 section's public service surface.
 

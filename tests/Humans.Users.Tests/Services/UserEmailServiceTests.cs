@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Users.Data;
 using Humans.AuditLog.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Tickets.Contracts;
@@ -23,7 +24,7 @@ public class UserEmailServiceTests
     private readonly ITicketService _ticketService = Substitute.For<ITicketService>();
     private readonly UserManager<User> _userManager;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 21, 12, 0));
-    private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
+    private readonly IUserInfoSliceRefresher _userInfoRefresher = Substitute.For<IUserInfoSliceRefresher>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IGoogleIntegrationWrite _googleIdentity = Substitute.For<IGoogleIntegrationWrite>();
     private readonly IServiceProvider _serviceProvider;
@@ -187,7 +188,7 @@ public class UserEmailServiceTests
 
         await _repository.AddUserEmailAsync(row, ct);
         await EnsurePrimaryInvariantForTestAsync(userId, ct);
-        await _userInfoInvalidator.InvalidateAsync(userId, ct);
+        await _userInfoRefresher.RefreshAsync(userId, ct);
         return new UserEmailAddResult(row.Id, Added: true, IsConflict: false);
     }
 
@@ -255,7 +256,7 @@ public class UserEmailServiceTests
         }
 
         if (changed)
-            await _userInfoInvalidator.InvalidateAsync(userId, ct);
+            await _userInfoRefresher.RefreshAsync(userId, ct);
         return new UpdateEmailResult(changed);
     }
 
@@ -284,7 +285,7 @@ public class UserEmailServiceTests
         {
             await EnsurePrimaryInvariantForTestAsync(userId, ct);
         }
-        await _userInfoInvalidator.InvalidateAsync(userId, ct);
+        await _userInfoRefresher.RefreshAsync(userId, ct);
         return true;
     }
 
@@ -370,7 +371,7 @@ public class UserEmailServiceTests
 
         await _service.SetPrimaryAsync(userId, targetId, Xunit.TestContext.Current.CancellationToken);
 
-        await _userInfoInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
+        await _userInfoRefresher.Received(1).RefreshAsync(userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
         emails.Single(e => e.Id == targetId).IsPrimary.Should().BeTrue();
         emails.Single(e => e.Id == otherId).IsPrimary.Should().BeFalse();
     }
@@ -394,7 +395,7 @@ public class UserEmailServiceTests
         var result = await _service.SetPrimaryAsync(userId, targetId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be(new UpdateEmailResult(false, "Users_EmailUpdate_UnverifiedTarget"));
-        await _userInfoInvalidator.DidNotReceive().InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
+        await _userInfoRefresher.DidNotReceive().RefreshAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansFact]
@@ -432,7 +433,7 @@ public class UserEmailServiceTests
         await _service.DeleteEmailAsync(userId, deletingId, Xunit.TestContext.Current.CancellationToken);
 
         await _repository.Received(1).RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
-        await _userInfoInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
+        await _userInfoRefresher.Received(1).RefreshAsync(userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
         // A deleted address stops being the member's Google Workspace identity.
         await _googleIdentity.Received(1).ClearIfAddressAsync(userId, "secondary@example.com", Arg.Any<CancellationToken>());
     }
@@ -464,7 +465,7 @@ public class UserEmailServiceTests
         result.Succeeded.Should().BeFalse();
         result.ErrorKey.Should().Be("EmailGrid_DeleteRejectedHasProvider");
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
-        await _userInfoInvalidator.DidNotReceive().InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
+        await _userInfoRefresher.DidNotReceive().RefreshAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansFact]
@@ -494,7 +495,7 @@ public class UserEmailServiceTests
         result.Succeeded.Should().BeFalse();
         result.ErrorKey.Should().Be("Users_EmailDelete_LastVerifiedBlocked");
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
-        await _userInfoInvalidator.DidNotReceive().InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
+        await _userInfoRefresher.DidNotReceive().RefreshAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansFact]
@@ -527,7 +528,7 @@ public class UserEmailServiceTests
         result.Succeeded.Should().BeFalse();
         result.ErrorKey.Should().Be("Users_EmailDelete_LastVerifiedBlocked");
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
-        await _userInfoInvalidator.DidNotReceive().InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
+        await _userInfoRefresher.DidNotReceive().RefreshAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansFact]
@@ -722,7 +723,7 @@ public class UserEmailServiceTests
         result.Should().BeFalse();
         row.IsPrimary.Should().BeTrue();
         await _repository.DidNotReceive().UpdateUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
-        await _userInfoInvalidator.DidNotReceive().InvalidateAsync(
+        await _userInfoRefresher.DidNotReceive().RefreshAsync(
             Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
@@ -919,7 +920,7 @@ public class UserEmailServiceTests
         rows.Should().ContainSingle().Which.Email.Should().Be("other@example.com");
         await _userManager.Received(1).RemoveLoginAsync(user, "Google", "sub-Z");
         await _repository.Received(1).RemoveUserEmailAsync(row, Arg.Any<CancellationToken>());
-        await _userInfoInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
+        await _userInfoRefresher.Received(1).RefreshAsync(userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
         await _googleIdentity.Received(1).ClearIfAddressAsync(userId, "linked@example.com", CancellationToken.None);
         await _auditLogService.Received(1).LogAsync(
             AuditAction.UserEmailUnlinked,
@@ -1054,7 +1055,7 @@ public class UserEmailServiceTests
         await _userManager.DidNotReceive().RemoveLoginAsync(
             Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
-        await _userInfoInvalidator.DidNotReceive().InvalidateAsync(
+        await _userInfoRefresher.DidNotReceive().RefreshAsync(
             Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
         await _auditLogService.DidNotReceive().LogAsync(
             Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
@@ -1319,7 +1320,7 @@ public class UserEmailServiceTests
 
         result.Succeeded.Should().BeFalse();
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
-        await _userInfoInvalidator.DidNotReceive().InvalidateAsync(
+        await _userInfoRefresher.DidNotReceive().RefreshAsync(
             Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
         await _auditLogService.DidNotReceive().LogAsync(
             Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
@@ -1571,7 +1572,7 @@ public class UserEmailServiceTests
         result.Email.Should().Be("pending@example.com");
         pending.IsVerified.Should().BeTrue();
         await _repository.Received(1).UpdateUserEmailAsync(pending, Arg.Any<CancellationToken>());
-        await _userInfoInvalidator.Received(1).InvalidateAsync(
+        await _userInfoRefresher.Received(1).RefreshAsync(
             userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
         await _auditLogService.Received(1).LogAsync(
             AuditAction.UserEmailManuallyVerified,

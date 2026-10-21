@@ -22,9 +22,8 @@ namespace Humans.Users.Data;
 /// <see cref="IUserManagement"/>, and every write through this surface delegates
 /// and then refreshes the affected entry. Identity-machinery write paths
 /// (<c>UserManager.UpdateAsync</c>, sign-in <c>LastLoginAt</c> bumps) are
-/// caught by <c>UserInfoSaveChangesInterceptor</c>, which invokes
-/// <see cref="IUserInfoInvalidator.InvalidateAsync"/> for every
-/// touched userId.
+/// caught by <c>UserInfoSaveChangesInterceptor</c>, which refreshes every
+/// touched userId through <see cref="IUserInfoSliceRefresher"/>.
 /// </para>
 /// <para>
 /// Registered as Singleton so the dict persists across requests. Scoped
@@ -38,7 +37,7 @@ namespace Humans.Users.Data;
 internal sealed class CachingUserService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingUserService> logger) : TrackedCache<Guid, UserInfo>("User.UserInfo", warmOnStartup: true, logger),
-    IUserManagement, IUserInfoInvalidator, IUserInfoSliceRefresher, IEntityNameContributor
+    IUserManagement, IUserInfoSliceRefresher, IEntityNameContributor
 {
     /// <summary>
     /// DI service key under which the undecorated (inner) <see cref="IUserManagement"/>
@@ -374,18 +373,18 @@ internal sealed class CachingUserService(
     }
 
     // ==========================================================================
-    // IUserInfoInvalidator (cross-section) + IUserInfoSliceRefresher (interceptor)
+    // IUserInfoSliceRefresher (section-internal: interceptor + Users' own services)
     // ==========================================================================
 
-    /// <inheritdoc cref="IUserInfoInvalidator.InvalidateAsync" />
-    public async Task InvalidateAsync(
+    /// <inheritdoc cref="IUserInfoSliceRefresher.RefreshAsync" />
+    public async Task RefreshAsync(
         Guid userId,
         CancellationToken ct = default,
         [CallerMemberName] string memberName = "",
         [CallerFilePath] string filePath = "")
     {
         logger.LogDebug(
-            "UserInfo invalidate userId={UserId} caller={CallerMember} file={CallerFile}",
+            "UserInfo refresh userId={UserId} caller={CallerMember} file={CallerFile}",
             userId, memberName, Path.GetFileName(filePath));
 
         // Warmed cache, row updated: replace in-place via the base primitive

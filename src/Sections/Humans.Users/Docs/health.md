@@ -30,7 +30,7 @@ Users decomposition commit 14.
 | **Mail consent** | moved to Email (Users decomposition commit 14); Users only carries the frozen `communication_preferences` rows on `UserInfo` for Email's fallback and copy | `UserInfo.CommunicationPreferences` (`[Obsolete(HUM_USER_COMMPREFS)]`) |
 | **Presence** | moved to Tickets (Users decomposition commit 13); Users only carries the frozen `event_participations` rows on `UserInfo` for Tickets' fallback and copy | `UserInfo.EventParticipations` (`[Obsolete(HUM_USER_PARTICIPATIONS)]`) |
 | **Account life** | create (OAuth callback, magic link, import), suspend / unsuspend / reject / restore, request and cancel deletion, anonymize on expiry, purge (non-prod), merge two accounts | `IExternalLoginService`, `IAccountProvisioningService`, `IHumanLifecycleService`, `IAccountDeletionService`, `IAccountMergeService` + `IDuplicateAccountService`, `INonCompliantMemberSuspension` |
-| **Cache signal** | "this person changed" from a write the service did not see | `IUserInfoInvalidator`, `IUserInfoSliceRefresher` + `UserInfoSaveChangesInterceptor` |
+| **Cache signal** | "this person changed" from a write the service did not see | section-internal: `IUserInfoSliceRefresher` + `UserInfoSaveChangesInterceptor` |
 | **Repair** | email-invariant violations; profile-less accounts; unsynced names; picture migration | `IEmailProblemsService`, the `/Profile/Admin/*` backfill controllers |
 | **Admin views** | list / detail / roles roster / audience / merges | `UsersAdminController`, `UsersAdminAccountMergesController` |
 
@@ -84,7 +84,7 @@ The shapes imply one register with one cache and one write funnel:
 - A merge is ordered, not transactional; every `IUserMerge.ReassignAsync` is idempotent; the
   source row becomes a tombstone (`MergedToUserId`, `MergedAt`, far-future lockout) and is never
   deleted; tombstones cannot sign in.
-- `CachingUserService` and `IUserInfoInvalidator` are the same singleton.
+- `CachingUserService` and `IUserInfoSliceRefresher` are the same singleton.
 - Deletion is a 30-day grace period; memberships and roles go on request, data goes on expiry;
   purge never runs in Production and never on oneself.
 - Contact-field and email visibility resolve from the viewer's relation to the owner: self and

@@ -634,7 +634,7 @@ The application service (`UserService`, `ProfileService`, `ContactFieldService`,
 
 A section's caching decorator is a **Singleton** that inherits (or composes) `TrackedCache<TKey, TValue>` (`Humans.Base`) — a primitive owning a private `ConcurrentDictionary<TKey, TValue>` keyed by the aggregate's identity, with hit/miss/invalidation counters and built-in startup-warmup machinery. The dict persists across HTTP requests. There is no separate store interface, no store class, no `IMemoryCache` for canonical domain data.
 
-**Live example:** `CachingUserService` — Singleton, inherits `TrackedCache<Guid, UserInfo>` (`src/Humans.Base/Caching/TrackedCache.cs`), owns the unified User+Profile read-model spanning 8 contributing tables. See `src/Sections/Humans.Users/Data/CachingUserService.cs` for the canonical pattern (constructor passing `warmOnStartup: true`, scope-factory-resolved inner, `RefreshEntryAsync`, `WarmAllAsync` override, `IUserInfoInvalidator` aliasing).
+**Live example:** `CachingUserService` — Singleton, inherits `TrackedCache<Guid, UserInfo>` (`src/Humans.Base/Caching/TrackedCache.cs`), owns the unified User+Profile read-model spanning 8 contributing tables. See `src/Sections/Humans.Users/Data/CachingUserService.cs` for the canonical pattern (constructor passing `warmOnStartup: true`, scope-factory-resolved inner, `RefreshEntryAsync`, `WarmAllAsync` override, section-internal `IUserInfoSliceRefresher` aliasing).
 
 Key rules the example demonstrates:
 

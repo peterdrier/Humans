@@ -22,7 +22,7 @@ public class AccountMergeServiceMergeTests
     private readonly IAccountMergeRepository _mergeRepo = Substitute.For<IAccountMergeRepository>();
     private readonly IUserRepository _userEmailRepo = Substitute.For<IUserRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
-    private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
+    private readonly IUserInfoSliceRefresher _userInfoRefresher = Substitute.For<IUserInfoSliceRefresher>();
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly IActiveTeamsCacheInvalidator _activeTeamsCacheInvalidator = Substitute.For<IActiveTeamsCacheInvalidator>();
     private readonly IRoleAssignmentWrite _roles = Substitute.For<IRoleAssignmentWrite>();
@@ -41,7 +41,7 @@ public class AccountMergeServiceMergeTests
 
     private AccountMergeService BuildSut(IAccountMergeRepository? mergeRepository = null) =>
         new(
-            mergeRepository ?? _mergeRepo, _userEmailRepo, _audit, _userInfoInvalidator,
+            mergeRepository ?? _mergeRepo, _userEmailRepo, _audit, _userInfoRefresher,
             NullLogger<AccountMergeService>.Instance, _clock,
             _userMerges, _userService, _activeTeamsCacheInvalidator, _roles, _notify, _consentCache);
 

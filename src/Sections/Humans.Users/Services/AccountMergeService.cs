@@ -4,6 +4,7 @@ using NodaTime;
 using Humans.Base.Extensions;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
+using Humans.Users.Data;
 using Humans.AuditLog.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Gdpr.Contracts;
@@ -17,7 +18,7 @@ internal sealed class AccountMergeService(
     IAccountMergeRepository mergeRepository,
     IUserRepository userRepository,
     IAuditLogService auditLogService,
-    IUserInfoInvalidator userInfoInvalidator,
+    IUserInfoSliceRefresher userInfoRefresher,
     ILogger<AccountMergeService> logger,
     IClock clock,
     IEnumerable<IUserMerge> userMerges,
@@ -262,7 +263,7 @@ internal sealed class AccountMergeService(
         }
 
         // Invalidate target's UserInfo AFTER commit.
-        await userInfoInvalidator.InvalidateAsync(request.TargetUserId, ct);
+        await userInfoRefresher.RefreshAsync(request.TargetUserId, ct);
     }
 
     public async Task ReconcileMergedRequestAsync(

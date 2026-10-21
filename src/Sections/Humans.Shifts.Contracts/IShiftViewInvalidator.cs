@@ -12,7 +12,7 @@ namespace Humans.Shifts.Contracts;
 /// committing its own writes.
 /// </summary>
 /// <remarks>
-/// Mirrors <c>IUserInfoInvalidator</c> (Profiles §15i). The decorator
+/// Follows design-rules §15e. The decorator
 /// resolves the next read from the inner service; consumers never poke the
 /// underlying <c>ConcurrentDictionary</c> directly.
 /// </remarks>
