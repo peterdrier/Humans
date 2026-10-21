@@ -1,6 +1,7 @@
-using System.Security.Claims;
 using Humans.Base.Enums;
+using Humans.Grants.Authorization;
 using Humans.Grants.Services;
+using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Grants.ViewComponents;
@@ -8,20 +9,21 @@ namespace Humans.Grants.ViewComponents;
 /// <summary>
 /// The "My grants" card, contributed to <c>UserPartSlots.Profile</c>. Own profile only: renders
 /// for <see cref="ProfileCardViewMode.Self"/> when the signed-in user is the target, and nothing
-/// for anyone else. Shows the person's active grants and the ones that ended this year or
+/// for anyone else. The viewer is resolved through Users, so a cookie still carrying an id
+/// merged away matches the surviving account the profile page passes in. Shows the person's active grants and the ones that ended this year or
 /// later; nothing when there are none.
 /// </summary>
 /// <remarks>
 /// Internal: invoked by Type through the Shell's slot renderer, and its constructor takes the
 /// section-internal <see cref="IGrantManagement"/>.
 /// </remarks>
-internal sealed class MyGrantsViewComponent(IGrantManagement grants) : ViewComponent
+internal sealed class MyGrantsViewComponent(IGrantManagement grants, IUserService users) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
     {
         if (viewMode != ProfileCardViewMode.Self
-            || !Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var viewerId)
-            || viewerId != userId)
+            || await GrantsPolicyHandler.ViewerAsync(users, UserClaimsPrincipal, HttpContext.RequestAborted) is not { } viewer
+            || !viewer.AllUserIds.Contains(userId))
             return Content(string.Empty);
 
         var today = grants.Today;

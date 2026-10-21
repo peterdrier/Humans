@@ -36,13 +36,27 @@ public sealed class MyGrantsViewComponentTests : GrantsTestHarness
         model.Grants.Select(g => g.Id).Should().BeEquivalentTo([revokedThisYear.Id, expiredThisYear.Id]);
     }
 
-    private async Task<GrantsCardViewModel> CardAsync(Guid holder)
+    [HumansFact]
+    public async Task ACookieStillCarryingAMergedAwayId_SeesTheSurvivorsGrants()
+    {
+        var archived = Guid.NewGuid();
+        var survivor = SeedUser("Survivor", mergedIds: [archived]);
+        AliasMergedId(archived, survivor);
+        var grant = await SeedGrantAsync(await SeedProgramAsync(), survivor);
+
+        var model = await CardAsync(survivor, viewerClaim: archived);
+
+        model.Grants.Select(g => g.Id).Should().Equal(grant.Id);
+    }
+
+    private async Task<GrantsCardViewModel> CardAsync(Guid holder, Guid? viewerClaim = null)
     {
         var http = new DefaultHttpContext
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, holder.ToString())], "test"))
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, (viewerClaim ?? holder).ToString())], "test"))
         };
-        var component = new MyGrantsViewComponent(NewService())
+        var component = new MyGrantsViewComponent(NewService(), Users)
         {
             ViewComponentContext = new ViewComponentContext { ViewContext = new ViewContext { HttpContext = http } }
         };

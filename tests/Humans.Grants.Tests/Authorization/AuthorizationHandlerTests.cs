@@ -16,17 +16,17 @@ public sealed class AuthorizationHandlerTests : GrantsTestHarness
             roles.Select(r => new Claim(ClaimTypes.Role, r)).Prepend(new Claim(ClaimTypes.NameIdentifier, userId.ToString())),
             authenticationType: "test"));
 
-    private static async Task<bool> ProgramAllowedAsync(ClaimsPrincipal user, ProgramInfo program, ProgramOperationRequirement requirement)
+    private async Task<bool> ProgramAllowedAsync(ClaimsPrincipal user, ProgramInfo program, ProgramOperationRequirement requirement)
     {
         var context = new AuthorizationHandlerContext([requirement], user, program);
-        await new ProgramAuthorizationHandler().HandleAsync(context);
+        await new ProgramAuthorizationHandler(Users).HandleAsync(context);
         return context.HasSucceeded;
     }
 
     private async Task<bool> PolicyAllowedAsync(ClaimsPrincipal user)
     {
         var context = new AuthorizationHandlerContext([new ManagesGrantsRequirement()], user, resource: null);
-        await new GrantsPolicyHandler(NewService()).HandleAsync(context);
+        await new GrantsPolicyHandler(NewService(), Users).HandleAsync(context);
         return context.HasSucceeded;
     }
 
@@ -71,5 +71,19 @@ public sealed class AuthorizationHandlerTests : GrantsTestHarness
 
         (await PolicyAllowedAsync(user)).Should().BeFalse();
         (await ProgramAllowedAsync(user, info, ProgramOperationRequirement.Manage)).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task ACookieStillCarryingAMergedAwayId_ManagesTheSurvivorsProgram()
+    {
+        var archived = Guid.NewGuid();
+        var survivor = SeedUser("Survivor", mergedIds: [archived]);
+        AliasMergedId(archived, survivor);
+        var program = (await NewService().GetProgramAsync((await SeedProgramAsync(managers: survivor)).Id, Ct))!;
+        var user = Principal(archived);
+
+        (await PolicyAllowedAsync(user)).Should().BeTrue();
+        (await ProgramAllowedAsync(user, program, ProgramOperationRequirement.Manage)).Should().BeTrue();
+        (await ProgramAllowedAsync(user, program, ProgramOperationRequirement.Administer)).Should().BeFalse();
     }
 }

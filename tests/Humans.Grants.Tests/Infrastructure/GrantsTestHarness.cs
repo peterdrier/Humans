@@ -97,6 +97,12 @@ public abstract class GrantsTestHarness : IDisposable
         return userId;
     }
 
+    /// <summary>
+    /// Makes <paramref name="archived"/> resolve to <paramref name="survivor"/>'s record, as
+    /// <see cref="IUserService.GetUserInfoAsync"/> does for an id merged away.
+    /// </summary>
+    protected void AliasMergedId(Guid archived, Guid survivor) => _users[archived] = _users[survivor];
+
     private protected async Task<GrantProgram> SeedProgramAsync(
         GrantIssuer issuedBy = GrantIssuer.Managers,
         string? sourceKey = null,
