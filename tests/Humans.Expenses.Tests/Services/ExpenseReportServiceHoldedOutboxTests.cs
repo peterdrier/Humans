@@ -96,7 +96,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         _holdedFinanceWrite = Substitute.For<IHoldedFinanceWrite>();
         _holdedFinanceWrite.EnsureCreditorContactAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
-                Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+                Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns("holded-contact-1");
         _holdedClient.GetContactAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new HoldedContactDto { Id = "holded-contact-1", SupplierAccountNum = 40000050 });
@@ -1447,7 +1447,7 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         await _holdedFinanceWrite.Received(1).EnsureCreditorContactAsync(
             survivorId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
-            Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).GetForSubmitterAsync(survivorId, Arg.Any<CancellationToken>());
         await _repo.Received(1).GetForSubmitterAsync(SubmitterId, Arg.Any<CancellationToken>());
     }

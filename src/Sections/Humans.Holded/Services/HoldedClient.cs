@@ -403,37 +403,28 @@ internal sealed class HoldedClient : IHoldedClient
 
     public async Task<string> UpsertContactAsync(HoldedContactInput input, CancellationToken ct = default)
     {
-        // v2 contacts POST/PUT have no `custom_id` field (see HoldedContactInput.CustomId) — not sent.
-        // bill_address stays null when we hold no address parts, and OmitNulls then drops the key:
-        // an object of nulls, or the key with a null value, would both blank an address already on
-        // the contact.
+        // Create only. There is deliberately no update path: v2's contact PUT is a full replacement that
+        // resets every omitted field, supplier_record included, so a partial PUT mints the contact a
+        // second creditor account (memory/code/holded-contact-put-is-full-replacement.md).
+        // v2 contacts POST has no `custom_id` field (see HoldedContactInput.CustomId) — not sent.
+        // bill_address stays null when we hold no address parts, and OmitNulls then drops the key
+        // rather than sending an object of nulls.
         object? billAddress =
             string.IsNullOrWhiteSpace(input.Address) && string.IsNullOrWhiteSpace(input.CountryCode)
                 ? null
                 : new { address = input.Address, country_code = input.CountryCode };
 
-        var isUpdate = !string.IsNullOrEmpty(input.ExistingContactId);
-
-        // On update, `type` is omitted rather than sent (same OmitNulls trick as bill_address): a
-        // PUT carrying it flips a manually-created contact's type (e.g. a proveedor kept as
-        // "supplier" for a 400000xx account) to whatever Type defaults to, which mints a new
-        // 410000xx creditor account instead of reusing the existing one. Only a create needs to
-        // set a type at all.
         var payload = new
         {
             name = input.Name,
             trade_name = input.TradeName,
-            type = isUpdate ? null : input.Type,
+            type = input.Type,
             iban = input.Iban,
             code = input.TaxCode,
             email = input.Email,
             bill_address = billAddress,
         };
-        using var req = new HttpRequestMessage(
-            isUpdate ? HttpMethod.Put : HttpMethod.Post,
-            isUpdate
-                ? $"/api/v2/contacts/{input.ExistingContactId}"
-                : "/api/v2/contacts")
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v2/contacts")
         { Content = JsonContent.Create(payload, options: OmitNulls) };
         AttachAuth(req);
 
@@ -444,7 +435,6 @@ internal sealed class HoldedClient : IHoldedClient
                 ?? throw new HoldedPermanentException("Holded returned no contact identity after accepting the upsert.");
             var id = node["id"]?.GetValue<string>();
             if (!string.IsNullOrWhiteSpace(id)) return id;
-            if (!string.IsNullOrWhiteSpace(input.ExistingContactId)) return input.ExistingContactId;
             throw new HoldedPermanentException("Holded returned no contact identity after accepting the upsert.");
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException

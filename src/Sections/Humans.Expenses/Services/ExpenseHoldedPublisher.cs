@@ -60,7 +60,7 @@ internal sealed class ExpenseHoldedPublisher(
 
         var holdedContactId = await holdedFinanceWrite.EnsureCreditorContactAsync(
             creditorUserId, report.PayeeName, burnerName, report.PayeeIban,
-            seedContactId, seedAccountNum, ct);
+            seedContactId, seedAccountNum, ExpenseReportBackgroundProcessor.OutboxJobName, ct);
 
         // Mirror the contact id onto the report (creditor-timeline reads need it) before the
         // retryable doc-create + attachment steps; the supplier-account number is set in step 5.
@@ -118,7 +118,8 @@ internal sealed class ExpenseHoldedPublisher(
         }
         await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, supplierAccountNum, now, ct);
         if (supplierAccountNum is not null)
-            await holdedFinanceWrite.SetCreditorAccountNumAsync(creditorUserId, supplierAccountNum.Value, ct);
+            await holdedFinanceWrite.SetCreditorAccountNumAsync(
+                creditorUserId, supplierAccountNum.Value, ExpenseReportBackgroundProcessor.OutboxJobName, ct);
 
         await repo.MarkOutboxProcessedAsync(outboxEventId, now, ct);
 

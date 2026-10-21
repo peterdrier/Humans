@@ -297,6 +297,7 @@
   <data name="Enum_AuditAction_StorePaymentMethodBackfilled" xml:space="preserve"><value>Método de pago de la tienda completado retroactivamente</value></data>
   <data name="Enum_AuditAction_HoldedCreditorBound" xml:space="preserve"><value>Acreedor de Holded vinculado</value></data>
   <data name="Enum_AuditAction_HoldedCreditorUnbound" xml:space="preserve"><value>Acreedor de Holded desvinculado</value></data>
+  <data name="Enum_AuditAction_HoldedCreditorAccountNumChanged" xml:space="preserve"><value>Cuenta de acreedor de Holded cambiada</value></data>
   <data name="Enum_AuditAction_HoldedCategoryAccountProvisioned" xml:space="preserve"><value>Cuenta de categoría de Holded aprovisionada</value></data>
   <data name="Enum_AuditAction_CampaignCreated" xml:space="preserve"><value>Campaña creada</value></data>
   <data name="Enum_AuditAction_CampaignUpdated" xml:space="preserve"><value>Campaña actualizada</value></data>

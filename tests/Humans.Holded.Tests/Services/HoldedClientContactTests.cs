@@ -231,7 +231,7 @@ public class HoldedClientContactTests
     }
 
     [HumansFact]
-    public async Task UpsertContact_posts_when_no_existing_id_and_returns_id()
+    public async Task UpsertContact_always_posts_and_returns_id()
     {
         string? method = null;
         var client = Make(new StubHandler(req =>
@@ -247,33 +247,9 @@ public class HoldedClientContactTests
     }
 
     [HumansFact]
-    public async Task UpsertContact_puts_when_existing_id_present()
-    {
-        string? method = null;
-        string? path = null;
-        var client = Make(new StubHandler(req =>
-        {
-            method = req.Method.Method;
-            path = req.RequestUri!.AbsolutePath;
-            return Respond(HttpStatusCode.OK, """{"id":"c-exist"}""");
-        }));
-
-        var id = await client.UpsertContactAsync(new HoldedContactInput
-        {
-            Name = "Legal",
-            TradeName = "Burner",
-            ExistingContactId = "c-exist",
-        }, Xunit.TestContext.Current.CancellationToken);
-
-        method.Should().Be("PUT");
-        path.Should().EndWith("/contacts/c-exist");
-        id.Should().Be("c-exist");
-    }
-
-    [HumansFact]
     public async Task UpsertContact_does_not_send_custom_id_v2_has_no_such_field()
     {
-        // v2 contacts POST/PUT schema has no `custom_id` property (it is read-only on GET).
+        // v2 contacts POST schema has no `custom_id` property (it is read-only on GET).
         string? capturedBody = null;
         var client = Make(new StubHandler(req =>
         {
@@ -310,35 +286,14 @@ public class HoldedClientContactTests
     [Xunit.InlineData("{\"id\":null}")]
     [Xunit.InlineData("{\"id\":\"\"}")]
     [Xunit.InlineData("{\"id\":\"  \"}")]
-    public async Task UpsertContact_update_reuses_known_identity_when_response_id_is_missing(string response)
+    public async Task UpsertContact_create_without_an_id_in_the_response_is_permanent(string response)
     {
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, response)));
 
-        var id = await client.UpsertContactAsync(
-            new HoldedContactInput { Name = "Legal", ExistingContactId = "c-exist" },
-            Xunit.TestContext.Current.CancellationToken);
+        var act = () => client.UpsertContactAsync(
+            new HoldedContactInput { Name = "Legal" }, Xunit.TestContext.Current.CancellationToken);
 
-        id.Should().Be("c-exist");
-    }
-
-    [HumansFact]
-    public async Task UpsertContact_update_omits_type()
-    {
-        // A PUT carrying type flipped a manually-created supplier contact to creditor, minting a
-        // new 410000xx acreedor account instead of reusing the contact's existing 400000xx
-        // proveedor account. type is left off the update payload entirely.
-        string? capturedBody = null;
-        var client = Make(new StubHandler(req =>
-        {
-            capturedBody = new StreamReader(req.Content!.ReadAsStream()).ReadToEnd();
-            return Respond(HttpStatusCode.OK, """{"id":"c-exist"}""");
-        }));
-
-        await client.UpsertContactAsync(
-            new HoldedContactInput { Name = "Legal", ExistingContactId = "c-exist" },
-            Xunit.TestContext.Current.CancellationToken);
-
-        capturedBody.Should().NotContain("\"type\"");
+        await act.Should().ThrowAsync<HoldedPermanentException>();
     }
 
     [HumansFact]
@@ -370,9 +325,8 @@ public class HoldedClientContactTests
     [HumansFact]
     public async Task UpsertContactAsync_OmitsEveryFieldItHoldsNoValueFor()
     {
-        // Holded applies every key a PUT carries, so a null blanks the stored value. Finance's
-        // creditor update supplies only name/trade name/type/iban — the tax code, email and billing
-        // address maintained in Holded for that contact must survive it untouched.
+        // A key sent with a null value is a value to Holded; a field the caller does not hold is
+        // left off the body entirely rather than sent as null.
         string? body = null;
         var handler = new StubHandler(req =>
         {
@@ -386,7 +340,6 @@ public class HoldedClientContactTests
                 Name = "Supplier",
                 Type = "creditor",
                 Iban = "ES9121000418450200051332",
-                ExistingContactId = "contact-1",
             },
             Xunit.TestContext.Current.CancellationToken);
 
@@ -395,9 +348,6 @@ public class HoldedClientContactTests
         body.Should().NotContain("bill_address");
         body.Should().NotContain("trade_name");
         body.Should().NotContain("null");
-        // An update omits type entirely (see HoldedClientContactTests.UpsertContact_update_omits_type) —
-        // sending it flips a manually-created contact's type on Holded's side.
-        body.Should().NotContain("\"type\"");
         // What it does mean to send still goes.
         body.Should().Contain("\"name\":\"Supplier\"");
         body.Should().Contain("\"iban\":\"ES9121000418450200051332\"");

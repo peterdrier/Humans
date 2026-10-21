@@ -65,6 +65,9 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   7.5% is `s_iva_75`.
 - Post-issuance corrections are a *factura rectificativa* in Holded, never a mutation of the
   issued document — the same reason there is no doc-update endpoint below.
+- Contacts are **create-only**: `UpsertContactAsync` POSTs and never PUTs. v2's contact PUT is a
+  full replacement (every omitted field, `supplier_record` included, resets), so a partial update
+  mints the contact a second creditor account.
 - There is **no tag/doc-update endpoint in v2**; recategorizing a pushed doc is done inside
   Holded (reclassify the line) and the ledger mirror picks the correction up.
 - The two deletes are `DELETE /api/v2/purchases/{id}` and `DELETE /api/v2/contacts/{id}`. A 404

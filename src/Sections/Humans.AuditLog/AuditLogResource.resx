@@ -297,6 +297,7 @@
   <data name="Enum_AuditAction_StorePaymentMethodBackfilled" xml:space="preserve"><value>Store payment method backfilled</value></data>
   <data name="Enum_AuditAction_HoldedCreditorBound" xml:space="preserve"><value>Holded creditor bound</value></data>
   <data name="Enum_AuditAction_HoldedCreditorUnbound" xml:space="preserve"><value>Holded creditor unbound</value></data>
+  <data name="Enum_AuditAction_HoldedCreditorAccountNumChanged" xml:space="preserve"><value>Holded creditor account changed</value></data>
   <data name="Enum_AuditAction_HoldedCategoryAccountProvisioned" xml:space="preserve"><value>Holded category account provisioned</value></data>
   <data name="Enum_AuditAction_CampaignCreated" xml:space="preserve"><value>Campaign created</value></data>
   <data name="Enum_AuditAction_CampaignUpdated" xml:space="preserve"><value>Campaign updated</value></data>

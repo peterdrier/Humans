@@ -297,6 +297,7 @@
   <data name="Enum_AuditAction_StorePaymentMethodBackfilled" xml:space="preserve"><value>Mode de paiement de la boutique renseigné rétroactivement</value></data>
   <data name="Enum_AuditAction_HoldedCreditorBound" xml:space="preserve"><value>Créancier Holded associé</value></data>
   <data name="Enum_AuditAction_HoldedCreditorUnbound" xml:space="preserve"><value>Créancier Holded dissocié</value></data>
+  <data name="Enum_AuditAction_HoldedCreditorAccountNumChanged" xml:space="preserve"><value>Compte créancier Holded modifié</value></data>
   <data name="Enum_AuditAction_HoldedCategoryAccountProvisioned" xml:space="preserve"><value>Compte de catégorie Holded provisionné</value></data>
   <data name="Enum_AuditAction_CampaignCreated" xml:space="preserve"><value>Campagne créée</value></data>
   <data name="Enum_AuditAction_CampaignUpdated" xml:space="preserve"><value>Campagne mise à jour</value></data>

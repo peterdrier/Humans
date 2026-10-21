@@ -899,7 +899,7 @@ internal sealed class Service(
 
     public async Task<string> EnsureCreditorContactAsync(
         Guid userId, string legalName, string? burnerName, string? iban,
-        string? seedContactId, int? seedAccountNum, CancellationToken ct = default)
+        string? seedContactId, int? seedAccountNum, string jobName, CancellationToken ct = default)
     {
         var binding = await repo.GetCreditorContactByUserAsync(userId, ct);
         var allBindings = await repo.GetCreditorContactsAsync(ct);
@@ -979,7 +979,7 @@ internal sealed class Service(
         {
             var bound = await repo.GetCreditorContactByUserAsync(userId, ct);
             if (bound is { HoldedContactId.Length: > 0 })
-                return await AdoptBoundContactAsync(userId, contactId, minted, bound, ct);
+                return await AdoptBoundContactAsync(userId, contactId, minted, bound, jobName, ct);
         }
         else if (!await BindingUnchangedAsync(nameof(EnsureCreditorContactAsync), userId, binding, ct))
             return contactId;
@@ -1006,15 +1006,17 @@ internal sealed class Service(
         var winner = await repo.GetCreditorContactByUserAsync(userId, ct)
             ?? throw new InvalidOperationException(
                 $"Creditor binding insert for member {userId} hit the unique index but no binding exists.");
-        return await AdoptBoundContactAsync(userId, contactId, minted, winner, ct);
+        return await AdoptBoundContactAsync(userId, contactId, minted, winner, jobName, ct);
     }
 
     /// <summary>The member is already bound to <paramref name="bound"/> — a concurrent run got there
     /// first. That binding is the one contact the member keeps, so a contact this call minted is
-    /// deleted from Holded rather than left as a second creditor. A failed delete is logged, not thrown:
-    /// the bound contact is still the right answer, and the orphan is named in the log for an admin.</summary>
+    /// deleted from Holded rather than left as a second creditor, and the delete is audited. A failed
+    /// delete is logged, not thrown: the bound contact is still the right answer, and the orphan is
+    /// named in the log and listed as an empty unbound contact on /Finance/HoldedDuplicates.</summary>
     private async Task<string> AdoptBoundContactAsync(
-        Guid userId, string contactId, bool minted, HoldedCreditorContact bound, CancellationToken ct)
+        Guid userId, string contactId, bool minted, HoldedCreditorContact bound, string jobName,
+        CancellationToken ct)
     {
         if (!minted || string.Equals(bound.HoldedContactId, contactId, StringComparison.Ordinal))
             return bound.HoldedContactId;
@@ -1022,6 +1024,10 @@ internal sealed class Service(
         try
         {
             await client.DeleteContactAsync(contactId, ct);
+            await audit.LogAsync(AuditAction.HoldedDuplicateRemoved, nameof(User), userId,
+                $"DELETED duplicate Holded contact {contactId} that a concurrent push created; kept "
+                + $"{bound.HoldedContactId}.",
+                jobName);
             logger.LogWarning(
                 "Member {UserId} was bound to Holded contact {BoundContactId} by a concurrent push; the " +
                 "contact {MintedContactId} this push created was deleted from Holded.",
@@ -1039,7 +1045,7 @@ internal sealed class Service(
     }
 
     public async Task SetCreditorAccountNumAsync(
-        Guid userId, int supplierAccountNum, CancellationToken ct = default)
+        Guid userId, int supplierAccountNum, string jobName, CancellationToken ct = default)
     {
         var binding = await repo.GetCreditorContactByUserAsync(userId, ct);
         if (binding is null) return;
@@ -1058,7 +1064,7 @@ internal sealed class Service(
         if (!await BindingUnchangedAsync(nameof(SetCreditorAccountNumAsync), userId, binding, ct)) return;
 
         var now = clock.GetCurrentInstant();
-        await repo.UpsertCreditorContactAsync(new HoldedCreditorContact
+        var written = await repo.UpsertCreditorContactAsync(new HoldedCreditorContact
         {
             Id = binding.Id,
             UserId = userId,
@@ -1068,6 +1074,16 @@ internal sealed class Service(
             CreatedAt = binding.CreatedAt,
             UpdatedAt = now,
         }, now, ct);
+
+        // Which account a member is paid from is the Board's business, and this write moves it on
+        // Holded's word alone — the 2026-09-21 reset (40000004 → 40000060) moved a member silently.
+        // Every change is recorded, a first resolution included; re-recording the same number is not.
+        if (!written || binding.SupplierAccountNum == supplierAccountNum) return;
+        var previous = binding.SupplierAccountNum?.ToString(CultureInfo.InvariantCulture) ?? "(unresolved)";
+        await audit.LogAsync(AuditAction.HoldedCreditorAccountNumChanged, HoldedCreditorAccount, userId,
+            $"Creditor account changed from {previous} to {supplierAccountNum} (Holded contact "
+            + $"{binding.HoldedContactId}), as Holded reported after the push",
+            jobName, userId, nameof(User));
     }
 
     public async Task<bool> ClearCreditorContactAsync(Guid userId, Guid actorUserId, CancellationToken ct = default)
