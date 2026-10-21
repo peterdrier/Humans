@@ -196,6 +196,8 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 
 - The `Events` GDPR export includes the person’s personal and camp submissions in every status, with authored content and schedule fields, alongside favourites and category preferences. The contributor resolves `AllUserIds` so archived merge sources are included throughout; submissions are filtered to those submitter IDs and unrelated members remain excluded. The existing `Preference` key retains its object/null shape for the requested account; `AdditionalPreferences` includes exclusions under the other identities in its merge chain. Internal moderator notes are excluded. Export reads do not alter rows.
 
+- Account merge (`IUserMerge`, carried by `CachingEventService`, which refreshes the approved-event cache afterwards) moves the source's submissions (`SubmitterUserId`, stamping `LastUpdatedAt`), favourites and category preference onto the survivor in one save. A source favourite the survivor already covers — same day, or either side whole-event — is deleted; the survivor's favourites are never changed. The survivor's preference wins: the source's row moves only when the survivor has none, otherwise it stays on the archived account as history (exported via `AdditionalPreferences`, erased with the merge chain). Moderation-action actors are history and stay put. Re-running the fold is a no-op; the merge orchestrator owns the audit entry.
+
 - Barrio bulk CSV uploads detect comma/semicolon separators from the first non-comment header line through CsvHelper’s quote-aware detector. Separators inside quoted working-column names cannot change the format; comments, reordered/extra columns and physical row numbers retain their existing behavior.
 - CSV header/cell refusals return keys and physical file-row arguments, with no importable rows on failure. The upload controller renders every refusal in the uploader's culture; unexpected parse/stream exceptions stay in logs and show generic feedback. Dependency `FormatException` text is never shown to members.
 
@@ -244,6 +246,7 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 - **Settings (edition settings)** — there is no `EventSettings` navigation. The linked edition is Settings' `settings_event` row, read through `ISettingsService.GetEventSettingsByIdAsync(EventGuideSettings.EventSettingsId)`, which returns an `EventSettingsInfo` DTO (identity, timezone, gate-opening date, build-calendar offsets, EE capacity); the Settings entity never crosses the section boundary. Settings-side saves arrive via `IEventSettingsChangeListener`, and the per-section `/Settings#event-guide` tab is contributed through `ISectionSettings`.
 - **Calendar**: `EventService` implements `ICalendarFeedContributor` to feed a user's favourited approved events into the personal iCal feed.
 - **Gdpr**: `CachingEventService` implements `IUserDataContributor` (export and erasure).
+- **Users**: `CachingEventService` implements `IUserMerge` (account-merge fold).
 - **Email**: `IEmailService` (injected into `EventService`) for submission confirmation and moderation outcome notifications.
 
 ## Architecture

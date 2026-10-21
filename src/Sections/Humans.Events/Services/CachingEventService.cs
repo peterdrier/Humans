@@ -12,6 +12,7 @@ using Microsoft.Extensions.Hosting;
 using NodaTime;
 using Humans.Events.Contracts;
 using Humans.Gdpr.Contracts;
+using Humans.Users.Contracts;
 
 namespace Humans.Events.Services;
 
@@ -41,7 +42,7 @@ namespace Humans.Events.Services;
 internal sealed class CachingEventService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingEventService> logger)
-    : IEventManagement, IUserDataContributor, IEventSettingsChangeListener, IHostedService
+    : IEventManagement, IUserDataContributor, IUserMerge, IEventSettingsChangeListener, IHostedService
 {
     /// <summary>
     /// DI service key under which the undecorated inner <see cref="IEventManagement"/>
@@ -476,6 +477,16 @@ internal sealed class CachingEventService(
         MutateAsync(async () =>
         {
             await WithInner(inner => inner.EraseForUserAsync(userId, ct));
+            await RefreshAllEventsAsync(ct);
+        });
+
+    // ── IUserMerge — account merge fold ──
+    // Carried by the decorator: the fold re-points SubmitterUserId on cached approved events.
+
+    public Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>
+        MutateAsync(async () =>
+        {
+            await WithInner(inner => inner.ReassignAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct));
             await RefreshAllEventsAsync(ct);
         });
 

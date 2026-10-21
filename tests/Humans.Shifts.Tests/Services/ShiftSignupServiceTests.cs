@@ -686,6 +686,33 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansTheory]
+    [InlineData(SignupStatus.Refused, "Shifts_Bail_NotActive")]
+    [InlineData(SignupStatus.Cancelled, "Shifts_Bail_NotActive")]
+    [InlineData(SignupStatus.NoShow, "Shifts_Bail_NotActive")]
+    [InlineData(SignupStatus.Bailed, "Shifts_Bail_AlreadyBailed")]
+    public async Task Bail_TerminalSignup_ReturnsLocalizedRefusalWithoutChangingHistory(
+        SignupStatus status, string key)
+    {
+        var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var userId = Guid.NewGuid();
+        var signup = SeedSignup(userId, shift.Id, status);
+        signup.StatusReason = "Previous decision";
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        _localizer[key].Returns(new LocalizedString(key, "translated rejection"));
+
+        var result = await _service.BailAsync(signup.Id, userId, "stale form");
+
+        result.Success.Should().BeFalse();
+        result.Error.Should().Be("translated rejection");
+        var stored = await ShiftsDb.ShiftSignups.FindAsync([signup.Id], TestContext.Current.CancellationToken);
+        stored!.Status.Should().Be(status);
+        stored.StatusReason.Should().Be("Previous decision");
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Notifier.ReceivedCalls().Should().BeEmpty();
+        _viewInvalidator.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData("refuse", 1000)]
     [InlineData("refuse", 1001)]
     [InlineData("bail", 1000)]
@@ -1217,6 +1244,92 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     // ============================================================
     // SignUpRange
     // ============================================================
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SignUpRange_OverlappingSelectedShifts_RejectsOrSkipsTheConflictingDay(bool skipConflicts)
+    {
+        var (_, rota, _) = SeedShiftScenario(SignupPolicy.Public);
+        rota.Period = RotaPeriod.Build;
+        SeedAllDayShift(rota, -3);
+        SeedAllDayShift(rota, -2);
+        SeedAllDayShift(rota, -2);
+        SeedAllDayShift(rota, -1);
+        var userId = Guid.NewGuid();
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.SignUpRangeAsync(userId, rota.Id, -3, -1,
+            flags: skipConflicts ? ShiftSignupRequestFlags.SkipConflicts : ShiftSignupRequestFlags.None);
+
+        var signups = await ShiftsDb.ShiftSignups.AsNoTracking()
+            .Where(s => s.UserId == userId).Include(s => s.Shift)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        if (skipConflicts)
+        {
+            result.Success.Should().BeTrue();
+            result.Warning.Should().Contain("Time conflict");
+            signups.Select(s => s.Shift.DayOffset).Order().Should().Equal(-3, -1);
+        }
+        else
+        {
+            result.Success.Should().BeFalse();
+            result.Error.Should().Contain("Time conflict");
+            signups.Should().BeEmpty();
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ApproveRange_OverlappingCommitments_ConfirmsWithWarning(bool overlapsWithinBlock)
+    {
+        var (_, rota, _) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        rota.Period = RotaPeriod.Build;
+        var userId = Guid.NewGuid();
+        var blockId = Guid.NewGuid();
+        for (var day = -3; day <= -1; day++)
+            SeedSignup(userId, SeedAllDayShift(rota, day).Id, SignupStatus.Pending).SignupBlockId = blockId;
+        if (overlapsWithinBlock)
+            SeedSignup(userId, SeedAllDayShift(rota, -2).Id, SignupStatus.Pending).SignupBlockId = blockId;
+        else
+        {
+            var (_, otherRota, _) = SeedShiftScenario(SignupPolicy.Public);
+            SeedSignup(userId, SeedAllDayShift(otherRota, -2).Id, SignupStatus.Confirmed);
+        }
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.ApproveRangeAsync(blockId, Guid.NewGuid());
+
+        result.Success.Should().BeTrue();
+        result.Warning.Should().Contain("Time conflict");
+        var block = await ShiftsDb.ShiftSignups.AsNoTracking()
+            .Where(s => s.SignupBlockId == blockId).ToListAsync(TestContext.Current.CancellationToken);
+        block.Should().AllSatisfy(s => s.Status.Should().Be(SignupStatus.Confirmed));
+    }
+
+    [HumansFact]
+    public async Task VoluntellRange_OverlappingSelectedShifts_SkipsTheConflictingDay()
+    {
+        var (_, rota, _) = SeedShiftScenario(SignupPolicy.Public);
+        rota.Period = RotaPeriod.Build;
+        SeedAllDayShift(rota, -3);
+        SeedAllDayShift(rota, -2);
+        SeedAllDayShift(rota, -2);
+        SeedAllDayShift(rota, -1);
+        var userId = Guid.NewGuid();
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.VoluntellRangeAsync(userId, rota.Id, -3, -1, Guid.NewGuid());
+
+        result.Success.Should().BeTrue();
+        result.Warning.Should().Contain("time conflicts");
+        var signups = await ShiftsDb.ShiftSignups.AsNoTracking()
+            .Where(s => s.UserId == userId).Include(s => s.Shift)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        signups.Select(s => s.Shift.DayOffset).Order().Should().Equal(-3, -1);
+        signups.Should().AllSatisfy(s => s.Status.Should().Be(SignupStatus.Confirmed));
+    }
 
     [HumansTheory]
     [InlineData(false)]
@@ -2227,6 +2340,50 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     // ============================================================
     // Account-merge fold — ShiftSignupReassigned
     // ============================================================
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SignupLifecycleMutation_RefreshesWarmDashboard(bool merging)
+    {
+        var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        SeedSignup(source, shift.Id, SignupStatus.Confirmed);
+        if (merging) SeedSignup(target, shift.Id, SignupStatus.Confirmed);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        (await _shiftMgmt.GetDashboardOverviewAsync(es.Id)).FilledSlots.Should().Be(merging ? 2 : 1);
+
+        if (merging)
+            await _service.ReassignAsync(source, target, Guid.NewGuid(), TestNow, TestContext.Current.CancellationToken);
+        else
+            await _service.CancelActiveSignupsForUserAsync(source, "Account deletion", TestContext.Current.CancellationToken);
+
+        (await _shiftMgmt.GetDashboardOverviewAsync(es.Id)).FilledSlots.Should().Be(merging ? 1 : 0);
+    }
+
+    [HumansFact]
+    public async Task BulkSignupDeletion_InvalidatesAffectedEventDashboards()
+    {
+        var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var user = Guid.NewGuid();
+        SeedSignup(user, shift.Id, SignupStatus.Confirmed);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        var repo = Substitute.For<IShiftManagementRepository>();
+        repo.GetForUsersAsync(Arg.Any<IReadOnlyCollection<Guid>>(), null, Arg.Any<CancellationToken>())
+            .Returns(c => _repo.GetForUsersAsync(c.Arg<IReadOnlyCollection<Guid>>(), ct: c.Arg<CancellationToken>()));
+        repo.DeleteAllForUsersAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(1);
+        var management = Substitute.For<IShiftManagement>();
+        var service = new ShiftSignupService(repo, Substitute.For<IVolunteerTrackingRepository>(), management,
+            NewCalendarResolver(), AuditLog, Notifier, AdminAuthorization, _viewInvalidator,
+            Substitute.For<IEarlyEntryInvalidator>(), new ServiceLocatorBuilder().Build(),
+            Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
+
+        await service.DeleteAllForUsersAsync([user], TestContext.Current.CancellationToken);
+
+        management.Received(1).InvalidateDashboardCaches(es.Id);
+    }
 
     [HumansFact]
     public async Task Reassign_WhenSourceHasSignups_WritesShiftSignupReassignedOnce()

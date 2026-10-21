@@ -37,6 +37,8 @@ internal sealed partial class PreapprovalService
         grant.DecidedByUserId = actorUserId;
         grant.DecidedAt = now;
         await repository.AddGrantsAsync([grant], ct);
+        // The grant committed; finish its audit and notices after the browser disconnects.
+        ct = CancellationToken.None;
 
         await AuditGrantAsync(AuditAction.PreapprovalGrantIssued, grant,
             $"Issued {Euros(grant.MaxAmount)} under \"{program.Name}\"{LabelSuffix(grant)} to {beneficiaryUserId}; claim by {program.ClaimBy.ToInvariantDate()}.",
@@ -70,6 +72,8 @@ internal sealed partial class PreapprovalService
             return g;
         }).ToList();
         await repository.AddGrantsAsync(grants, ct);
+        // The grant committed; finish its audit and notices after the browser disconnects.
+        ct = CancellationToken.None;
 
         foreach (var grant in grants)
         {
@@ -122,6 +126,8 @@ internal sealed partial class PreapprovalService
             pending.MaxAmount = amount;
             pending.UpdatedAt = now;
             await repository.UpdateGrantAsync(pending, ct);
+            // The grant committed; finish its audit and notices after the browser disconnects.
+            ct = CancellationToken.None;
             await AuditGrantAsync(AuditAction.PreapprovalGrantApplied, pending,
                 $"Application to \"{program.Name}\" edited: {Euros(amount)}.", applicantUserId);
             await ResolveRequestAsync(pending.Id, applicantUserId, ct);
@@ -133,6 +139,8 @@ internal sealed partial class PreapprovalService
         grant.ApplicationNote = Trimmed(note);
         grant.RequestedAmount = requestedAmount;
         await repository.AddGrantsAsync([grant], ct);
+        // The grant committed; finish its audit and notices after the browser disconnects.
+        ct = CancellationToken.None;
         await AuditGrantAsync(AuditAction.PreapprovalGrantApplied, grant,
             $"Applied to \"{program.Name}\": {Euros(amount)}.", applicantUserId);
         await AnnounceApplicationAsync(info, ToInfo(grant, program), ct);
@@ -162,6 +170,8 @@ internal sealed partial class PreapprovalService
         grant.DecidedAt = now;
         grant.UpdatedAt = now;
         await repository.UpdateGrantAsync(grant, ct);
+        // The grant committed; finish its audit and notices after the browser disconnects.
+        ct = CancellationToken.None;
 
         await AuditGrantAsync(AuditAction.PreapprovalGrantApproved, grant,
             $"Application to \"{program.Name}\" approved: {Euros(grant.MaxAmount)}" +
@@ -186,6 +196,8 @@ internal sealed partial class PreapprovalService
         grant.DecidedAt = now;
         grant.UpdatedAt = now;
         await repository.UpdateGrantAsync(grant, ct);
+        // The grant committed; finish its audit and notices after the browser disconnects.
+        ct = CancellationToken.None;
 
         var reason = Trimmed(note);
         await AuditGrantAsync(AuditAction.PreapprovalGrantDeclined, grant,
@@ -210,6 +222,8 @@ internal sealed partial class PreapprovalService
         grant.Status = GrantStatus.Revoked;
         grant.UpdatedAt = clock.GetCurrentInstant();
         await repository.UpdateGrantAsync(grant, ct);
+        // The grant committed; finish its audit and notices after the browser disconnects.
+        ct = CancellationToken.None;
 
         var why = Trimmed(reason);
         await AuditGrantAsync(AuditAction.PreapprovalGrantRevoked, grant,
@@ -241,6 +255,8 @@ internal sealed partial class PreapprovalService
         grant.MaxAmount = amount;
         grant.UpdatedAt = clock.GetCurrentInstant();
         await repository.UpdateGrantAsync(grant, ct);
+        // The grant committed; finish its audit and notices after the browser disconnects.
+        ct = CancellationToken.None;
 
         await AuditGrantAsync(AuditAction.PreapprovalGrantAmountChanged, grant,
             $"Amount under \"{program.Name}\"{LabelSuffix(grant)} changed {Euros(old)} → {Euros(amount)}" +

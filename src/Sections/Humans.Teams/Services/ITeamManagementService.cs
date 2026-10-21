@@ -104,18 +104,6 @@ internal interface ITeamManagementService : ITeamManagement
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets a team entity by its slug (Teams-internal use; external sections
-    /// should use <see cref="ITeamService.GetTeamBySlugAsync"/> for the
-    /// <see cref="TeamInfo"/> projection).
-    /// </summary>
-    Task<Team?> GetTeamEntityBySlugAsync(string slug, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets a team by its ID.
-    /// </summary>
-    Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Updates a team's details, returning expected validation or unique-constraint refusals.
     /// </summary>
     Task<TeamUpdateResult> UpdateTeamAsync(

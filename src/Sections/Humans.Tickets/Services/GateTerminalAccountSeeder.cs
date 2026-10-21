@@ -5,6 +5,7 @@ using Humans.Users.Contracts;
 using Humans.Base.Constants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 
 namespace Humans.Tickets.Services;
@@ -25,6 +26,7 @@ internal sealed record GateTerminalStatus(bool Provisioned, bool HasPassword, In
 /// </summary>
 internal sealed class GateTerminalAccountSeeder(
     UserManager<User> userManager,
+    IServiceScopeFactory scopeFactory,
     IProfileEditorService profileEditorService,
     IConsentWrite consentWrite,
     IUserInfoInvalidator userInfoInvalidator,
@@ -53,21 +55,32 @@ internal sealed class GateTerminalAccountSeeder(
     /// </summary>
     public async Task<IdentityResult> SetPasswordAsync(string password, Guid actorUserId)
     {
-        var user = await userManager.FindByIdAsync(SystemUserIds.GateTerminal.ToString())
-            ?? await ProvisionAsync(actorUserId);
+        var user = await userManager.FindByIdAsync(SystemUserIds.GateTerminal.ToString());
+        // No password means initial setup never completed. Resume it even when
+        // creating the User succeeded before a later provisioning step failed.
+        if (user is null || !await userManager.HasPasswordAsync(user))
+            user = await ProvisionAsync(user, actorUserId);
         if (user is null)
             return IdentityResult.Failed(new IdentityError { Description = "Gate account provisioning failed." });
+
+        // Profile/onboarding writes use their own contexts. A fresh Identity scope
+        // prevents its tracked pre-setup User from overwriting the saved names/state.
+        await using var credentialScope = scopeFactory.CreateAsyncScope();
+        var credentialManager = credentialScope.ServiceProvider.GetRequiredService<UserManager<User>>();
+        user = await credentialManager.FindByIdAsync(SystemUserIds.GateTerminal.ToString());
+        if (user is null)
+            return IdentityResult.Failed(new IdentityError { Description = "Gate account not found." });
 
         // Validate-then-replace: ResetPasswordAsync checks the new password against
         // the policy BEFORE touching the stored hash, so a rejected rotation leaves
         // the old password (and live gate sessions) intact. On success it bumps the
         // security stamp, signing out existing gate sessions.
-        var token = await userManager.GeneratePasswordResetTokenAsync(user);
-        var reset = await userManager.ResetPasswordAsync(user, token, password);
+        var token = await credentialManager.GeneratePasswordResetTokenAsync(user);
+        var reset = await credentialManager.ResetPasswordAsync(user, token, password);
         if (!reset.Succeeded)
             return reset;
 
-        await userManager.SetLockoutEnabledAsync(user, false);
+        await credentialManager.SetLockoutEnabledAsync(user, false);
 
         await auditLogService.LogAsync(
             AuditAction.GateTerminalPasswordSet,
@@ -80,23 +93,25 @@ internal sealed class GateTerminalAccountSeeder(
         return reset;
     }
 
-    private async Task<User?> ProvisionAsync(Guid actorUserId)
+    private async Task<User?> ProvisionAsync(User? user, Guid actorUserId)
     {
-        var now = clock.GetCurrentInstant();
-        var user = new User
+        if (user is null)
         {
-            Id = SystemUserIds.GateTerminal,
-            DisplayName = SystemUserIds.GateTerminalDisplayName,
-            BurnerName = SystemUserIds.GateTerminalDisplayName,
-            CreatedAt = now
-        };
+            user = new User
+            {
+                Id = SystemUserIds.GateTerminal,
+                DisplayName = SystemUserIds.GateTerminalDisplayName,
+                BurnerName = SystemUserIds.GateTerminalDisplayName,
+                CreatedAt = clock.GetCurrentInstant()
+            };
 
-        var created = await userManager.CreateAsync(user);
-        if (!created.Succeeded)
-        {
-            logger.LogError("Failed to create gate terminal account: {Errors}",
-                string.Join(", ", created.Errors.Select(e => e.Description)));
-            return null;
+            var created = await userManager.CreateAsync(user);
+            if (!created.Succeeded)
+            {
+                logger.LogError("Failed to create gate terminal account: {Errors}",
+                    string.Join(", ", created.Errors.Select(e => e.Description)));
+                return null;
+            }
         }
 
         // Names via the canonical profile path so UserStateClassifier yields Active
@@ -131,6 +146,7 @@ internal sealed class GateTerminalAccountSeeder(
         if (!consentResult.Success)
         {
             logger.LogWarning("Gate terminal consent-check clear failed: {ErrorKey}", consentResult.ErrorKey);
+            return null;
         }
 
         cache.InvalidateUserAccess(SystemUserIds.GateTerminal);

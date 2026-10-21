@@ -38,7 +38,6 @@ internal sealed class ApplicationDecisionService(
     ISystemTeamSync syncJob,
     IHumansMetrics metrics,
     INotificationMeterCacheInvalidator notificationMeter,
-    IVotingBadgeCacheInvalidator votingBadge,
     IMemoryCache cache,
     IClock clock,
     ILogger<ApplicationDecisionService> logger) : IGovernanceManagement, IUserDataContributor, IUserMerge
@@ -576,7 +575,7 @@ internal sealed class ApplicationDecisionService(
         var now = clock.GetCurrentInstant();
         await repository.UpsertBoardVoteAsync(applicationId, boardMemberUserId, vote, note, now, ct);
 
-        votingBadge.Invalidate(boardMemberUserId);
+        cache.Remove(VotingBadgeCacheKey(boardMemberUserId));
 
         logger.LogInformation(
             "Board member {UserId} voted {Vote} on application {ApplicationId}",
@@ -587,7 +586,7 @@ internal sealed class ApplicationDecisionService(
 
     public async Task<int> GetUnvotedApplicationCountAsync(
         Guid boardMemberUserId, CancellationToken ct = default) =>
-        await cache.GetOrCreateAsync(CacheKeys.VotingBadge(boardMemberUserId), async entry =>
+        await cache.GetOrCreateAsync(VotingBadgeCacheKey(boardMemberUserId), async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = BadgeCacheDuration;
             return await repository.GetUnvotedCountForBoardMemberAsync(boardMemberUserId, ct);
@@ -599,8 +598,11 @@ internal sealed class ApplicationDecisionService(
     private void InvalidateVotingBadges(IReadOnlyList<Guid> boardMemberIds)
     {
         foreach (var boardMemberId in boardMemberIds)
-            votingBadge.Invalidate(boardMemberId);
+            cache.Remove(VotingBadgeCacheKey(boardMemberId));
     }
+
+    /// <summary>One Board member's unvoted-application count; this service is its only reader and evicter.</summary>
+    internal static string VotingBadgeCacheKey(Guid boardMemberUserId) => $"NavBadge:Voting:{boardMemberUserId:N}";
 
     public Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default) =>
         repository.GetAdminStatsAsync(ct);

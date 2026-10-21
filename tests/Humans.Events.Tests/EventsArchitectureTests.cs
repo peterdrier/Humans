@@ -4,6 +4,7 @@ using NSubstitute;
 using NodaTime;
 using Humans.Base.Authorization;
 using Humans.Gdpr.Contracts;
+using Humans.Users.Contracts;
 using Humans.Events.Contracts;
 using Humans.Events.Controllers;
 using Humans.Events.Filters;
@@ -73,6 +74,22 @@ public class EventsArchitectureTests
         typeof(IUserDataContributor).IsAssignableFrom(typeof(CachingEventService))
             .Should().BeTrue(
                 because: "the section owns event_favourites and event_preferences (user-scoped tables) and must contribute to the GDPR Article 15 export; the decorator carries it because erasure edits rows the cache serves");
+    }
+
+    [HumansFact]
+    public void UserMerge_IsForwardedToTheDecorator()
+    {
+        // The merge fold re-points submitters the approved-event cache serves, so the
+        // account-merge fan-out must reach the decorator, not the inner service.
+        var services = Registrations();
+        services.Should().ContainSingle(d => d.ServiceType == typeof(IUserMerge));
+
+        services.AddLogging();
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+
+        scope.ServiceProvider.GetRequiredService<IUserMerge>()
+            .Should().BeSameAs(provider.GetRequiredService<CachingEventService>());
     }
 
     [HumansFact]
