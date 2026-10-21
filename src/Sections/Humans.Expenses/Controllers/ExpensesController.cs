@@ -228,9 +228,8 @@ internal sealed class ExpensesController(
 
             var isFinanceAdmin = await IsFinanceAdminAsync();
             var decisions = await ResolveDecisionsAsync(report);
-            var timeline = await AllowsAsync(report, ExpenseReportOperation.ViewHoldedTimeline)
-                ? await service.GetHoldedTimelineAsync(report, HttpContext.RequestAborted)
-                : null;
+            // Anyone who may view the report sees its whole Holded timeline; nothing in it is sensitive.
+            var timeline = await service.GetHoldedTimelineAsync(report, HttpContext.RequestAborted);
             var creditor = await GetCreditorBindingViewAsync(report.SubmitterUserId, isFinanceAdmin, HttpContext.RequestAborted);
             var grant = report.PreapprovalGrantId is { } grantId
                 ? await preapprovals.GetGrantAsync(grantId, HttpContext.RequestAborted)
