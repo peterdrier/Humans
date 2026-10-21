@@ -7,7 +7,7 @@ dismisses it, or resolves it.
 The endpoint lives in Backdoor, like every key-authed API: a personal Backdoor key
 (`X-Api-Key`, issued at `/Backdoor` to an Admin or Board member) authenticates as its owner,
 and a missing, unknown or revoked key is a 401. Notifications contributes only the read
-surface, `INotificationInboxRead` (`Contracts/`). Key lifecycle and eligibility are
+surface, `INotificationInboxRead` (`Humans.Notifications.Contracts`). Key lifecycle and eligibility are
 documented in [Backdoor](../../../Humans.Backdoor/Docs/Backdoor.md).
 
 ## Request

@@ -76,7 +76,7 @@ through an owning-service interface call.
 
 ### NotificationInboxRead (Scoped)
 
-No repository. Implements `INotificationInboxRead` (`Contracts/`), the
+No repository. Implements `INotificationInboxRead` (`Humans.Notifications.Contracts`), the
 snapshot Backdoor serves at `/api/backdoor/notifications`: the unread tab
 of `NotificationInboxService.GetInboxAsync` plus
 `NotificationMeterProvider.GetMetersForUserAsync`, both same-section.
