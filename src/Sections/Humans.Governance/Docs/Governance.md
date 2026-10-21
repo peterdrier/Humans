@@ -21,7 +21,7 @@ The Governance page’s tier totals and Colaborador prompts use active approved 
 - **Asociado** is a voting member with governance rights (assemblies, elections). Requires an application and Board vote. 2-year term. There is no code-enforced prerequisite of being a Colaborador first — the Application/Create UI defaults the radio to Asociado when the applicant is already an approved Colaborador, but the Submit endpoint accepts either tier from any volunteer.
 - **Application** is a formal request to become a Colaborador or Asociado. Never used for becoming a Volunteer.
 - **Membership tier** is the member's current tier (Volunteer, Colaborador or Asociado), one `governance_membership_tiers` row per member, written by the approval and by term expiry. `MembershipTier` sits on `Humans.Governance.Contracts`; every other section reads it through `IGovernanceService.GetMembershipTierAsync` / `GetMembershipTiersAsync` (Users decomposition commit 11; it used to be `profiles.MembershipTier`).
-- **Board Vote** is an individual Board member's vote on a tier application. Board votes are transient working data — they are deleted when the application is finalized, and only the collective decision note and meeting date are retained (GDPR data minimization).
+- **Board Vote** is an individual Board member's vote on a tier application. Board votes are transient working data — they are deleted when the application is approved, rejected or withdrawn, and only the collective decision note and meeting date are retained (GDPR data minimization).
 - **Term** — Colaborador and Asociado memberships have synchronized 2-year terms expiring on December 31 of odd years (2027, 2029, 2031...).
 - **Assembly Vote** is a binding vote of the association (statutes Art. 8.2 / Art. 10). Distinct from a **Board Vote**, which is the Board's internal vote on one tier application, and from a Surveys **Asociado vote**, which is a secret ballot. An assembly vote is a *recorded vote under embargo*: every ballot is attributable and changeable until close, the tally is invisible until close, and the result is part of the permanent record. Full design: [`features/assembly-votes.md`](features/assembly-votes.md).
 - **Roster** is the frozen list, snapshotted the instant a vote opens, of who was entitled to vote in it. It is the legal record of the electorate and the denominator for turnout, and is never recomputed.
@@ -83,7 +83,7 @@ Append-only per design-rules §12 — `IApplicationRepository` exposes no update
 
 ### BoardVote
 
-Individual Board member's vote on a tier application. **Transient working data** — records are deleted when the application is finalized (GDPR data minimization). Only the collective decision (`Application.DecisionNote`, `BoardMeetingDate`) is retained.
+Individual Board member's vote on a tier application. **Transient working data** — records are deleted when the application is approved, rejected or withdrawn (GDPR data minimization). Only the collective decision (`Application.DecisionNote`, `BoardMeetingDate`) is retained.
 
 **Table:** `board_votes`
 

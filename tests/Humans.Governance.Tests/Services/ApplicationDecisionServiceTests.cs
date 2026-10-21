@@ -531,6 +531,28 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task WithdrawAsync_DeletesBoardVotes()
+    {
+        var userId = Guid.NewGuid();
+        var app = await SeedSubmittedApplicationAsync(userId);
+        GovernanceDb.BoardVotes.Add(new BoardVote
+        {
+            Id = Guid.NewGuid(),
+            ApplicationId = app.Id,
+            BoardMemberUserId = Guid.NewGuid(),
+            Vote = VoteChoice.Yay,
+            Note = "Working note",
+            VotedAt = Clock.GetCurrentInstant()
+        });
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        await _service.WithdrawAsync(app.Id, userId, TestContext.Current.CancellationToken);
+
+        var votes = await GovernanceDb.BoardVotes.Where(v => v.ApplicationId == app.Id).ToListAsync(TestContext.Current.CancellationToken);
+        votes.Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task ApproveAsync_SyncsColaboradorTeam()
     {
         var userId = Guid.NewGuid();

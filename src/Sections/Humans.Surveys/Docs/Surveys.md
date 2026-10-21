@@ -280,7 +280,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 - **Users/Identity:** `IUserService` — resolve active-member ids and `LoggedInSince`-audience ids (`UserInfo.LastLoginAt`), and creator/respondent/recipient display names + preferred languages.
 - **Teams:** `ITeamService` — `Team`-audience member ids and team display data.
-- **Consent:** `IConsentService.GetConsentReviewAsync` / `GetConsentReviewsAsync` — the Consent Coordinator's approval, part of Asociado eligibility and the approved-members audience.
+- **Consent:** `IConsentService.GetConsentReviewsAsync` — the Consent Coordinator's approval, which gates the approved-members audience (it does not gate Asociado voting).
 - **Tickets:** `ITicketService` — `TicketHolders`-audience recipient ids.
 - **Shifts:** `IShiftView` — `ShiftParticipants`-audience recipient ids.
 - **Users/Identity:** `IUserEmailService` — effective notification target email per recipient when queueing invite/reminder mail.
