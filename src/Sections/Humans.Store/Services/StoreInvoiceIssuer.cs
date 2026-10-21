@@ -112,7 +112,7 @@ internal sealed class StoreInvoiceIssuer(
 
         if (balanceRefusal is not null) return Refuse(order, actorUserId, balanceRefusal);
 
-        var totalDue = totals.LinesSubtotalEur + totals.VatTotalEur + totals.DepositTotalEur;
+        var totalDue = totals.TotalDueEur;
         if (totalDue <= 0m)
             return Refuse(order, actorUserId, "Cannot invoice an order with a zero total.");
 

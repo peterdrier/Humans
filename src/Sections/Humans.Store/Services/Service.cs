@@ -1225,7 +1225,6 @@ internal sealed class Service(
         foreach (var o in campOrdersInYear)
         {
             var totals = totalsByOrder[o.Id];
-            var totalDue = totals.LinesSubtotalEur + totals.VatTotalEur + totals.DepositTotalEur;
             var sid = o.CampSeasonId!.Value;
             var campName = seasonsForYear[sid].Name;
             byCounterparty.Add(new OrderSummaryDto(
@@ -1234,7 +1233,7 @@ internal sealed class Service(
                 sid,
                 campName,
                 o.State,
-                totalDue,
+                totals.TotalDueEur,
                 totals.PaymentsTotalEur,
                 totals.BalanceEur));
         }
@@ -1249,7 +1248,7 @@ internal sealed class Service(
                 tid,
                 teamName,
                 o.State,
-                totals.LinesSubtotalEur + totals.VatTotalEur + totals.DepositTotalEur,
+                totals.TotalDueEur,
                 0m, // team orders never have payments
                 0m));
         }
