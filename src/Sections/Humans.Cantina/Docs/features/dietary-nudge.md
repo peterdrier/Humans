@@ -41,7 +41,7 @@ Both forms are exempt from `MembershipRequiredFilter` so a not-yet-Active member
 
 ### US-35.1: Things-to-do nudge
 **Acceptance Criteria:**
-- Cantina's `SectionThingsToDo` contributes a `"dietary"` item while `ICantinaService.ShouldPromptForDietaryAsync` holds: no dietary preference on file (falling back to the legacy profile columns until copied) and not declined.
+- Cantina's `SectionThingsToDo` contributes a `"dietary"` item while the `ICantinaService.GetDietaryProfileAsync` read shows no dietary preference on file (falling back to the legacy profile columns until copied) and not declined.
 - Title `Todo_DietaryMedical_Title`; description `Todo_DietaryMedical_Pending` when `IShiftService.HasQualifyingCantinaSignupAsync` is true, else `Todo_DietaryMedical_NoShift_Pending`; action `Todo_DietaryMedical_Action` → `CantinaProfile/Dietary`; icon `fa-solid fa-utensils`.
 - Any non-empty preference (including Omnivore with no allergies) or "I don't want to answer" removes it.
 - Self-signups and voluntold signups count alike (`Pending`/`Confirmed`, future, qualifying shift). No email or push.
@@ -57,7 +57,7 @@ Both forms are exempt from `MembershipRequiredFilter` so a not-yet-Active member
 
 ### US-35.3: Medical prompt (Users)
 **Acceptance Criteria:**
-- Users' `SectionThingsToDo` contributes a `"medical"` item (`Todo_Medical_Title`, `Todo_Medical_Pending`, `fa-solid fa-notes-medical`) → `Profile/Medical`, only while `MedicalConditions` is empty **and** `ShouldPromptForDietaryAsync` holds — it rides alongside the dietary nudge and disappears with it (an answer or a decline).
+- Users' `SectionThingsToDo` contributes a `"medical"` item (`Todo_Medical_Title`, `Todo_Medical_Pending`, `fa-solid fa-notes-medical`) → `Profile/Medical`, only while `MedicalConditions` is empty **and** Cantina's profile shows neither a preference nor `DeclinedToAnswer` (Users composes this itself) — it rides alongside the dietary nudge and disappears with it (an answer or a decline).
 - `/Profile/Me/Medical` is a free-text textarea (≤ 4000), trimmed, blank saves as null. Hint: only visible to the member and No-Info Admins.
 
 ### US-35.4: Edit later from profile
@@ -66,7 +66,7 @@ Both forms are exempt from `MembershipRequiredFilter` so a not-yet-Active member
 ### US-35.5: Gentle banner on /Shifts, never a gate
 **Acceptance Criteria:**
 - No signup path checks dietary info: every Sign-Up button stays enabled and `ToggleDay` signs up regardless (nobodies-collective/Humans#2104 retired the former hard gate, its disabled buttons and the post-save signup replay).
-- `DietaryMissingBannerViewComponent` on `/Shifts` and `/Shifts/Mine` shows an info banner while the member holds a qualifying signup **and** `ShouldPromptForDietaryAsync` holds.
+- `DietaryMissingBannerViewComponent` on `/Shifts` and `/Shifts/Mine` shows an info banner while the member holds a qualifying signup **and** Cantina's profile shows neither a preference nor `DeclinedToAnswer` (Shifts composes this itself).
 - The banner offers **Tell us now** (`/Cantina/Dietary?returnAction=shifts`) and **I don't want to answer** (a POST to `/Cantina/Dietary` with `DeclineToAnswer=true`, back to `/Shifts`), after which it no longer renders.
 
 ## Qualifying Shift
@@ -102,8 +102,8 @@ The legacy `profiles` food columns are read only by Cantina's fallback and the `
 
 ## Cross-section dependencies
 
-- **Shifts** → Cantina: `ICantinaService` for the banner (`ShouldPromptForDietaryAsync`), volunteer search and admin badges. Cantina → Shifts: `IShiftService.HasQualifyingCantinaSignupAsync` (nudge copy).
-- **Users** → Cantina: `ICantinaService.ShouldPromptForDietaryAsync` for the medical prompt's "dietary still open" check. Cantina → Users: `IUserService` for the merge chain and legacy fallback.
+- **Shifts** → Cantina: `ICantinaService` for the banner (`GetDietaryProfileAsync`), volunteer search and admin badges. Cantina → Shifts: `IShiftService.HasQualifyingCantinaSignupAsync` (nudge copy).
+- **Users** → Cantina: `ICantinaService.GetDietaryProfileAsync` for the medical prompt's "dietary still open" check. Cantina → Users: `IUserService` for the merge chain and legacy fallback.
 
 ## Negative access rules
 

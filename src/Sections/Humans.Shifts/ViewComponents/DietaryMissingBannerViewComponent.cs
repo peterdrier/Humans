@@ -6,8 +6,8 @@ namespace Humans.Shifts.ViewComponents;
 
 /// <summary>
 /// Renders a gentle dietary-info prompt on /Shifts and /Shifts/Mine when the user has a
-/// qualifying cantina signup and Cantina says to prompt (no preference, not opted out via
-/// "I don't want to answer"). It never blocks a signup. The visibility gate lives inside the
+/// qualifying cantina signup and Cantina has neither a preference nor an "I don't want to answer"
+/// on file. It never blocks a signup. The visibility gate lives inside the
 /// component so callers can invoke it unconditionally.
 /// Spec: src/Sections/Humans.Cantina/Docs/features/dietary-nudge.md
 /// </summary>
@@ -34,7 +34,8 @@ public sealed class DietaryMissingBannerViewComponent : ViewComponent
         {
             // The banner's copy speaks to a long shift, so it only shows with one booked.
             if (!await _shiftMgmt.HasQualifyingCantinaSignupAsync(userId, ct)) return Content(string.Empty);
-            if (!await _cantina.ShouldPromptForDietaryAsync(userId, ct)) return Content(string.Empty);
+            var dietary = await _cantina.GetDietaryProfileAsync(userId, ct);
+            if (dietary is { HasPreference: true } or { DeclinedToAnswer: true }) return Content(string.Empty);
 
             return View();
         }

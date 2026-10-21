@@ -33,12 +33,21 @@ public class DietaryMissingBannerViewComponentTests
         };
     }
 
-    [HumansFact]
-    public async Task Renders_WhenQualifyingSignupAndCantinaSaysPrompt()
+    private void StubDietary(Guid userId, string? dietary, bool declined = false) =>
+        _cantina.GetDietaryProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(dietary is null && !declined
+                ? null
+                : new DietaryProfileInfo(userId, dietary, [], null, [], null, declined));
+
+    [HumansTheory]
+    [InlineData(false)]  // nothing on file
+    [InlineData(true)]   // a row with no preference and no opt-out (e.g. allergies only)
+    public async Task Renders_WhenQualifyingSignupAndNoPreferenceOrOptOut(bool rowWithoutPreference)
     {
         var userId = Guid.NewGuid();
         _shiftMgmt.HasQualifyingCantinaSignupAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
-        _cantina.ShouldPromptForDietaryAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
+        _cantina.GetDietaryProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(rowWithoutPreference ? new DietaryProfileInfo(userId, null, ["Egg"], null, [], null) : null);
 
         var result = await _sut.InvokeAsync(userId);
 
@@ -46,14 +55,15 @@ public class DietaryMissingBannerViewComponentTests
     }
 
     [HumansTheory]
-    [InlineData(true, false)]   // answered, or opted out via "I don't want to answer"
-    [InlineData(false, true)]   // no qualifying signup
-    [InlineData(false, false)]  // neither
-    public async Task DoesNotRender_WhenGateMissed(bool hasQualifying, bool shouldPrompt)
+    [InlineData(true, "Vegan", false)]  // answered
+    [InlineData(true, null, true)]      // opted out via "I don't want to answer"
+    [InlineData(false, null, false)]    // no qualifying signup
+    [InlineData(false, "Vegan", false)] // neither
+    public async Task DoesNotRender_WhenGateMissed(bool hasQualifying, string? dietary, bool declined)
     {
         var userId = Guid.NewGuid();
         _shiftMgmt.HasQualifyingCantinaSignupAsync(userId, Arg.Any<CancellationToken>()).Returns(hasQualifying);
-        _cantina.ShouldPromptForDietaryAsync(userId, Arg.Any<CancellationToken>()).Returns(shouldPrompt);
+        StubDietary(userId, dietary, declined);
 
         var result = await _sut.InvokeAsync(userId);
 

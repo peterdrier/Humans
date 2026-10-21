@@ -67,7 +67,7 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). Mig
 ## Invariants
 
 - **Dietary info is opt-in and never blocks a shift signup** (nobodies-collective/Humans#2104). No signup path — the `/Shifts` day toggle, range signup, onboarding widget, Voluntell — consults Cantina. The roster tolerates humans with empty dietary fields (declined members count as unanswered).
-- **One prompt rule.** `ICantinaService.ShouldPromptForDietaryAsync` — no preference and not `DeclinedToAnswer` — is the only place that decides whether to ask. The dashboard nudge, Users' medical prompt and the `/Shifts` banner all call it; none recomputes it. See [`dietary-nudge`](features/dietary-nudge.md).
+- **Cantina reports facts; callers decide whether to ask.** `ICantinaService` exposes only the profile (`HasPreference`, `DeclinedToAnswer`); it has no "should prompt" read. Each prompt (Cantina's dashboard nudge, Users' medical prompt, the Shifts `/Shifts` banner) composes its own gate from those facts plus what it owns: today all three hide on a preference or a decline. See [`dietary-nudge`](features/dietary-nudge.md).
 - **`MedicalConditions` is never surfaced via this section, regardless of viewer role.** The Cantina plans around food, not medical history (GDPR Article 9 boundary). `MedicalConditions` lives on the cached `UserInfo`/`ProfileInfo`, but `CantinaRosterService` simply never reads it, and the output DTOs (`RosterPersonDto`, `DailyPersonRowDto`) have no `MedicalConditions` property. Medical data continues to flow only through the `_VolunteerProfileBadges` partial with `ShowMedical=true`, gated to NoInfoAdmin / Admin — not through Cantina.
 - "On site" is strictly defined as a Confirmed `ShiftSignup` on a Shift with matching `DayOffset`, **plus the arrival day** (`arrivalDay = firstConfirmedShiftDay − 1`). Refused, Bailed, Cancelled, NoShow, and Pending signups do not count. All-day shifts are single-day (one row per signup per day per shift, per Shifts §all-day-window).
 - Weekly aggregates (dietary preference roll-up, allergy / intolerance counters, total head count) are computed over **unique humans** for the week, not summed day-by-day. A human on site Mon + Wed counts once.
@@ -91,7 +91,7 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). Mig
 
 - View renders on each request; no cache, no background job, no scheduled invalidation. Data is live as of the request.
 - CSV export computes the same in-memory aggregate as the HTML view and streams it as `text/csv; charset=utf-8` with filename `cantina-roster-week-of-<yyyy-MM-dd>.csv`.
-- The dietary things-to-do (`SectionThingsToDo`, key `dietary`) shows while `ShouldPromptForDietaryAsync` holds; its copy switches on `IShiftService.HasQualifyingCantinaSignupAsync`. Saving a preference or choosing "I don't want to answer" clears it, Users' medical prompt and the `/Shifts` banner.
+- The dietary things-to-do (`SectionThingsToDo`, key `dietary`) shows while the member has neither a preference nor `DeclinedToAnswer`; its copy switches on `IShiftService.HasQualifyingCantinaSignupAsync`. Saving a preference or choosing "I don't want to answer" clears it, Users' medical prompt and the `/Shifts` banner.
 - Weekly/daily CSV callers pass their actor to the existing roster service, which audits after the personal rows are built. No notifications or outbox events.
 
 ## Cross-Section Dependencies

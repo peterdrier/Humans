@@ -185,27 +185,28 @@ public class DietaryProfileTests
     // ─── "I don't want to answer" (nobodies-collective/Humans#2104) ─────────────
 
     [HumansFact]
-    public async Task Prompt_ShowsWhileNothingIsOnFile_AndStopsAfterTheOptOut()
+    public async Task Decline_IsReadBackAsTheOptOutFact_WithNoPreference()
     {
         var id = Guid.NewGuid();
         SeedUser(id);
-        (await _sut.ShouldPromptForDietaryAsync(id, Ct)).Should().BeTrue();
+        (await _sut.GetDietaryProfileAsync(id, Ct)).Should().BeNull();
 
         await _sut.DeclineAsync(id, Ct);
 
-        (await _sut.ShouldPromptForDietaryAsync(id, Ct)).Should().BeFalse();
         var read = await _sut.GetDietaryProfileAsync(id, Ct);
         read!.DeclinedToAnswer.Should().BeTrue();
         read.HasPreference.Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task Prompt_IsOff_OnceAPreferenceIsOnFile_EvenOnlyOnTheLegacyProfile()
+    public async Task LegacyOnlyPreference_ReadsAsAPreference_NotAnOptOut()
     {
         var id = Guid.NewGuid();
         SeedUser(id, legacyPreference: "Omnivore");
 
-        (await _sut.ShouldPromptForDietaryAsync(id, Ct)).Should().BeFalse();
+        var read = await _sut.GetDietaryProfileAsync(id, Ct);
+        read!.HasPreference.Should().BeTrue();
+        read.DeclinedToAnswer.Should().BeFalse();
     }
 
     [HumansFact]

@@ -9,8 +9,8 @@ using Microsoft.Extensions.Localization;
 namespace Humans.Cantina;
 
 /// <summary>
-/// Cantina's entry on the member dashboard's things-to-do list: the dietary nudge, shown while
-/// <see cref="ICantinaService.ShouldPromptForDietaryAsync"/> holds (no preference, not opted out).
+/// Cantina's entry on the member dashboard's things-to-do list: the dietary nudge, shown while the
+/// member has neither a preference on file nor chose "I don't want to answer".
 /// Spec: Docs/features/dietary-nudge.md (US-35.1).
 /// </summary>
 internal sealed class SectionThingsToDo : ISectionThingsToDo
@@ -20,7 +20,8 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
         if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
             return [];
 
-        if (!await services.GetRequiredService<ICantinaService>().ShouldPromptForDietaryAsync(userId))
+        var profile = await services.GetRequiredService<ICantinaService>().GetDietaryProfileAsync(userId);
+        if (profile is { HasPreference: true } or { DeclinedToAnswer: true })
             return [];
 
         // Copy varies by whether a qualifying shift already needs feeding; the entry is the same either way.

@@ -90,9 +90,9 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
     }
 
     /// <summary>
-    /// Offers the optional medical-conditions form while the member's dietary nudge is open
-    /// (<c>ICantinaService.ShouldPromptForDietaryAsync</c>: no preference, not opted out) and they
-    /// have no medical conditions on file: the
+    /// Offers the optional medical-conditions form while the member's dietary nudge is open (no
+    /// preference on Cantina's record and not "I don't want to answer") and they have no medical
+    /// conditions on file: the
     /// window the combined dietary-and-medical form had before commit 10. MedicalConditions has no
     /// "answered" marker, so tying it to the dietary answer keeps it from nagging members with
     /// nothing to declare.
@@ -111,7 +111,8 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
 
         try
         {
-            if (!await services.GetRequiredService<ICantinaService>().ShouldPromptForDietaryAsync(userId))
+            var dietary = await services.GetRequiredService<ICantinaService>().GetDietaryProfileAsync(userId);
+            if (dietary is { HasPreference: true } or { DeclinedToAnswer: true })
             {
                 return null;
             }

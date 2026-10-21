@@ -48,9 +48,6 @@ internal sealed class DietaryProfileService(
         return result;
     }
 
-    public async Task<bool> ShouldPromptForDietaryAsync(Guid userId, CancellationToken ct = default) =>
-        await GetDietaryProfileAsync(userId, ct) is not { } p || (!p.HasPreference && !p.DeclinedToAnswer);
-
     public async Task<string?> SaveAsync(Guid userId, DietaryProfileInfo answers, CancellationToken ct = default)
     {
         // "Other" requires accompanying free text. The controller checks first, field-targeted;
