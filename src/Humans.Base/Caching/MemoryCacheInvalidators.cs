@@ -12,11 +12,6 @@ namespace Humans.Base.Caching;
 /// Application layer can describe their cross-section cache dependencies
 /// without coupling directly to <c>IMemoryCache</c>.
 /// </summary>
-public sealed class NotificationMeterCacheInvalidator(IMemoryCache cache) : INotificationMeterCacheInvalidator
-{
-    public void Invalidate() => cache.InvalidateNotificationMeters();
-}
-
 public sealed class RoleAssignmentClaimsCacheInvalidator(IMemoryCache cache) : IRoleAssignmentClaimsCacheInvalidator
 {
     public void Invalidate(Guid userId) => cache.InvalidateRoleAssignmentClaims(userId);

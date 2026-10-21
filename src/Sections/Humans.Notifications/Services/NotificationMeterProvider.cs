@@ -27,9 +27,10 @@ namespace Humans.Notifications.Services;
 /// <remarks>
 /// Notifications owns <c>notifications</c>/<c>notification_recipients</c> only —
 /// every other table is reached through its owning section's public service
-/// interface. The meter counts cache (<see cref="CacheKeys.NotificationMeters"/>)
-/// is a short-TTL request-acceleration cache; writes elsewhere invalidate it via
-/// <see cref="Humans.Base.Interfaces.Caching.INotificationMeterCacheInvalidator"/>.
+/// interface. The meter counts cache (<see cref="CountsCacheKey"/>) is a short-TTL
+/// request-acceleration cache this provider alone reads; nothing evicts it, it
+/// expires. Counts their owner already caches or holds in RAM (team join requests,
+/// per-member voting) bypass it, so the owner's own eviction keeps them fresh.
 /// </remarks>
 internal sealed class NotificationMeterProvider(
     IUserService userService,
@@ -44,6 +45,9 @@ internal sealed class NotificationMeterProvider(
     IStringLocalizer<NotificationsResource> localizer) : IOrchestrator
 {
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(2);
+
+    /// <summary>Cache key for the shared meter counts; this provider is its only reader and writer.</summary>
+    internal const string CountsCacheKey = "NotificationMeters";
 
     public async Task<IReadOnlyList<NotificationMeter>> GetMetersForUserAsync(
         ClaimsPrincipal user, CancellationToken cancellationToken = default)
@@ -123,12 +127,13 @@ internal sealed class NotificationMeterProvider(
 
         // Team join requests pending — Admin (visible to admins since coordinators
         // see their own team's requests on the team page)
-        if (isAdmin && counts.TeamJoinRequestsPending > 0)
+        var teamJoinRequestsPending = isAdmin ? await GetTeamJoinRequestsPendingAsync(cancellationToken) : 0;
+        if (teamJoinRequestsPending > 0)
         {
             meters.Add(new NotificationMeter
             {
                 Title = localizer["Notifications_Meter_TeamJoinRequestsPending"],
-                Count = counts.TeamJoinRequestsPending,
+                Count = teamJoinRequestsPending,
                 ActionUrl = "/Teams/Summary",
                 Priority = 5,
             });
@@ -210,7 +215,7 @@ internal sealed class NotificationMeterProvider(
 
     private async Task<MeterCounts> GetCachedCountsAsync(CancellationToken cancellationToken)
     {
-        var counts = await cache.GetOrCreateAsync(CacheKeys.NotificationMeters, async entry =>
+        var counts = await cache.GetOrCreateAsync(CountsCacheKey, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = CacheDuration;
 
@@ -232,7 +237,27 @@ internal sealed class NotificationMeterProvider(
         return counts!;
     }
 
-    // Caching lives in ApplicationDecisionService.GetUnvotedApplicationCountAsync (ApplicationDecisionService.VotingBadgeCacheKey).
+    // Read live: Teams' CachingTeamService holds every team in RAM and drops it on its own
+    // join-request writes, so a second cache here would only add staleness.
+    private async Task<int> GetTeamJoinRequestsPendingAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            return (await teamService.GetTeamsAsync(cancellationToken)).Values
+                .Sum(t => t.PendingRequestCount);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to compute team join request meter count");
+            return 0;
+        }
+    }
+
+        // Caching lives in ApplicationDecisionService.GetUnvotedApplicationCountAsync (ApplicationDecisionService.VotingBadgeCacheKey).
     private Task<int> GetPerUserVotingCountAsync(Guid boardMemberUserId, CancellationToken cancellationToken) =>
         applicationDecisionService.GetUnvotedApplicationCountAsync(boardMemberUserId, cancellationToken);
 
@@ -251,9 +276,6 @@ internal sealed class NotificationMeterProvider(
 
         var failedSyncEvents = await googleSyncService.GetFailedSyncEventCountAsync(cancellationToken);
 
-        var teamJoinRequestsPending = (await teamService.GetTeamsAsync(cancellationToken)).Values
-            .Sum(t => t.PendingRequestCount);
-
         var ticketSyncError = await ticketSyncService.IsInErrorStateAsync(cancellationToken);
 
         return new MeterCounts
@@ -261,7 +283,6 @@ internal sealed class NotificationMeterProvider(
             ConsentReviewsPending = consentReviewsPending,
             PendingDeletions = pendingDeletions,
             FailedSyncEvents = failedSyncEvents,
-            TeamJoinRequestsPending = teamJoinRequestsPending,
             TicketSyncError = ticketSyncError,
         };
     }
@@ -271,7 +292,6 @@ internal sealed class NotificationMeterProvider(
         public int ConsentReviewsPending { get; init; }
         public int PendingDeletions { get; init; }
         public int FailedSyncEvents { get; init; }
-        public int TeamJoinRequestsPending { get; init; }
         public bool TicketSyncError { get; init; }
     }
 }

@@ -3,7 +3,6 @@ namespace Humans.Base.Caching;
 public static class CacheKeys
 {
     public static string NotificationBadgeCounts(Guid userId) => $"NotificationBadge:{userId:N}";
-    public const string NotificationMeters = "NotificationMeters";
     public const string HoldedContacts = "HoldedContacts";
     public const string SepaStuckBankLines = "SepaStuckBankLines";
 

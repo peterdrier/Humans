@@ -77,7 +77,6 @@ public static class InfrastructureServiceCollectionExtensions
         // HumanLifecycleService left this list at G5 lane 4b-2d: it is Users' suspend/unsuspend
         // state machine and now registers from Humans.Users' Section.cs (Peter, 2026-08-14 —
         // Governance is governance only, never Users machinery).
-        services.AddScoped<INotificationMeterCacheInvalidator, NotificationMeterCacheInvalidator>();
 
         // Same call for Guide's section file: IGuideContentSource is a plain GitHub-markdown
         // fetcher (its signatures name only string) and three of its four consumers are not

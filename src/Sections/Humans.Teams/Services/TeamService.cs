@@ -28,7 +28,6 @@ internal sealed class TeamService(
     IAuditLogService auditLogService,
     INotificationEmitter notificationService,
     IShiftManagementService shiftManagementService,
-    INotificationMeterCacheInvalidator notificationMeterInvalidator,
     IShiftAuthorizationInvalidator shiftAuthInvalidator,
     IAdminAuthorizationService adminAuthorization,
     IEarlyEntryInvalidator earlyEntryInvalidator,
@@ -936,7 +935,6 @@ internal sealed class TeamService(
         if (!withdrew)
             return new TeamMembershipMutationResult(false, "Teams_RequestUnavailable");
 
-        notificationMeterInvalidator.Invalidate();
 
         logger.LogInformation("User {UserId} withdrew join request {RequestId}", userId, requestId);
         return new TeamMembershipMutationResult(true);
@@ -998,7 +996,6 @@ internal sealed class TeamService(
             approverUserId,
             relatedEntityId: request.UserId, relatedEntityType: nameof(User));
 
-        notificationMeterInvalidator.Invalidate();
 
         await SendAddedToTeamEmailAsync(request.UserId, request.Team, cancellationToken);
         await SendJoinRequestApprovedNotificationAsync(request.Team, member.UserId, cancellationToken);
@@ -1056,7 +1053,6 @@ internal sealed class TeamService(
             approverUserId,
             relatedEntityId: request.UserId, relatedEntityType: nameof(User));
 
-        notificationMeterInvalidator.Invalidate();
         await SendJoinRequestRejectedNotificationAsync(request.Team, request.UserId, cancellationToken);
     }
 
@@ -1905,7 +1901,6 @@ internal sealed class TeamService(
 
         // TeamJoinRequest fold.
         await repo.ReassignActiveJoinRequestsAsync(sourceUserId, targetUserId, cancellationToken);
-        notificationMeterInvalidator.Invalidate();
 
         // Early-entry grants fold.
         await repo.ReassignEarlyEntryGrantsAsync(sourceUserId, targetUserId, cancellationToken);
@@ -2001,7 +1996,6 @@ internal sealed class TeamService(
     {
         await RevokeAllMembershipsAsync(userId, ct);
         await repo.DeleteJoinRequestsForUserAsync(userId, ct);
-        notificationMeterInvalidator.Invalidate();
         await DeleteEarlyEntryGrantsForUserAsync(userId, ct);
 
         // No cache call here: this type is the inner service, where the invalidation

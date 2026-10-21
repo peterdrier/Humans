@@ -66,7 +66,7 @@ No repository. Pure read-aggregation over owning services.
 
 | Cache Key | TTL | Read | Write | Invalidate |
 |-----------|-----|------|-------|------------|
-| `NotificationMeters` | 2 min | yes | yes | (per `INotificationMeterCacheInvalidator` callers) |
+| `NotificationMeters` (`CountsCacheKey`) | 2 min | yes | yes | none (TTL only; team join-request count is read live from `ITeamService`) |
 
 Cross-section calls via `IUserService`, `IGoogleSyncService`,
 `ITeamService`, `ITicketSync`, `IGovernanceService`,
