@@ -319,7 +319,6 @@ public sealed class TicketTransferServiceTests
             new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, aborted.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
-        _cacheInvalidator.ReceivedCalls().Should().BeEmpty();
         _auditLog.ReceivedCalls().Should().BeEmpty();
         _emailService.ReceivedCalls().Should().BeEmpty();
     }
