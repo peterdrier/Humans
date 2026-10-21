@@ -430,8 +430,9 @@
             </div>
         }
 
-        @* Everyone who may view the report sees its payment progress; only the "owed to you"
-           clause is submitter-voiced, so it stays with the submitter. *@
+        @* Everyone who may view the report sees that it reached Holded (report-local). The rest is
+           derived from the submitter's whole creditor account and all their reports, so it stays
+           with the submitter and finance admins; "owed to you" is submitter-voiced. *@
         @if (Model.HoldedTimeline is { RegisteredInHolded: true } tl)
         {
             <div class="card mb-3">
@@ -450,14 +451,18 @@
                                 <span class="fw-semibold">&mdash; @Localizer["Expenses_Detail_OwedToYou", tl.OwedToMember.ToEuro()]</span>
                             }
                         </li>
-                        @if (tl.OtherAmount > 0)
+                        @if (Model.CanSeePayee && tl.OtherAmount > 0)
                         {
                             <li class="mb-2 text-muted">
                                 <i class="fa-solid fa-circle-info me-1"></i>
                                 @Localizer["Expenses_Detail_OtherAmount", tl.OtherAmount.ToEuro()]
                             </li>
                         }
-                        @if (tl.Paid)
+                        @if (!Model.CanSeePayee)
+                        {
+                            @* Paid / awaiting is the account balance, not this report's. *@
+                        }
+                        else if (tl.Paid)
                         {
                             <li class="mb-0">
                                 <i class="fa-solid fa-money-bill-wave text-success me-1"></i>
