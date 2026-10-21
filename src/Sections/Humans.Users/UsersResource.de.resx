@@ -728,7 +728,7 @@
 &lt;p&gt;Hallo {0},&lt;/p&gt;
 &lt;p&gt;Wir haben deine Anfrage zur Kontolöschung erhalten. Dein Konto und alle zugehorigen Daten werden am &lt;strong&gt;{1}&lt;/strong&gt; dauerhaft gelöscht.&lt;/p&gt;
 &lt;p&gt;Wenn du es dir anders überlegst, kannst du diese Anfrage vor dem Löschdatum stornieren:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}/User/Deletion"&gt;Löschungsanfrage stornieren&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}/Gdpr/Deletion"&gt;Löschungsanfrage stornieren&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Nach der Löschung kann diese Aktion nicht rückgängig gemacht werden und alle Daten werden dauerhaft entfernt.&lt;/p&gt;
 &lt;p&gt;Das Humans-Team&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = formatted deletion date, {2} = base URL</comment>

@@ -132,7 +132,7 @@ Presentation the section does *not* own: the rota tables on the shifts step are 
   `NameRequiredFilter` does not exempt `Guest`, so a profileless account asking for `/Guest` is
   sent to the name form. It can still reach Email's `Email/Guest/CommunicationPreferences`, which is
   `[AllowAnonymous]` — and that page's breadcrumb and back button, `GuestAccountController`'s
-  error and success redirects, and Gdpr's `Guest/DownloadData` all send it to `/Guest`, which
+  error and success redirects, and Gdpr's `Gdpr/Guest/DownloadData` all send it to `/Guest`, which
   bounces it again. Finding 1; the fix is Needs Peter.
 - **A cleared human can still be rejected; Flag stays withheld until a cross-section fix.**
   Settled by Peter on 2026-08-23: cause can surface after the fact, so the coordinator needs

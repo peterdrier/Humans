@@ -18,7 +18,7 @@
 
 ## Business Context
 
-The cantina feeds humans working shifts of 6+ hours. Meal preference, allergies and intolerances matter once someone signs up for a qualifying shift, so `/Profile/Me/ShiftInfo` (the preference wizard) does not collect them.
+The cantina feeds humans working shifts of 6+ hours. Meal preference, allergies and intolerances matter once someone signs up for a qualifying shift, so `/Shifts/ShiftInfo` (the preference wizard) does not collect them.
 
 The food answers are Cantina's (`cantina_dietary_profiles`, Users decomposition commit 10). Medical conditions stay on the Users `Profile` and have their own form; they are GDPR Art. 9 health data and never enter Cantina.
 

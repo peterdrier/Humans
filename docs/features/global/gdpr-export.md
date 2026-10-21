@@ -43,7 +43,7 @@
 GDPR Article 15 gives every human the right to obtain a copy of all personal
 data an organization holds about them. Humans satisfies this right through a
 self-service download at `/Gdpr/DownloadData` (for humans who already
-have a profile) and `/Guest/DownloadData` (for authenticated accounts that have
+have a profile) and `/Gdpr/Guest/DownloadData` (for authenticated accounts that have
 not yet completed onboarding). Both endpoints produce the same JSON document
 shape.
 

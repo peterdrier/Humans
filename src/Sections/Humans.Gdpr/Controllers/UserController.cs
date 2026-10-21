@@ -14,8 +14,8 @@ namespace Humans.Gdpr.Controllers;
 /// and the pending-deletion cancel screen. Exempt from <c>MembershipRequiredFilter</c> (these
 /// ARE the redirect targets), so each action self-checks the caller's state. Lives in Gdpr
 /// because the deletion lifecycle (request, grace period, cancel) is a subject right;
-/// the deletion work itself is Users' <see cref="IAccountDeletionService"/>. Routed under <c>/Gdpr</c>,
-/// except the cancel screen's <c>/User/Deletion</c>: the account-deletion email links it.
+/// the deletion work itself is Users' <see cref="IAccountDeletionService"/>. Routed under <c>/Gdpr</c>
+/// (<c>/Gdpr/Status</c>, <c>/Gdpr/Deletion</c>, <c>/Gdpr/Deletion/Cancel</c>).
 /// </summary>
 [Authorize]
 [Route("Gdpr")]
@@ -46,7 +46,7 @@ internal sealed class UserController(
         return View(viewModel);
     }
 
-    [HttpGet("/User/Deletion")]
+    [HttpGet("Deletion")]
     public async Task<IActionResult> Deletion()
     {
         var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);

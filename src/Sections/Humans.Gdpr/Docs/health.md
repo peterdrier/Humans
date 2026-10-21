@@ -33,7 +33,7 @@ category, what it deletes when the person asks to be forgotten and what it keeps
 | "Forget my portion of this person" | the orchestrator, of every data-owning section | `IUserDataContributor.EraseForUserAsync` |
 | "What do you keep when this person is forgotten, and why?" | the erasure-coverage gate, and the export's own check | `IUserDataContributor.ErasureDeclaration` |
 | "Which of you holds the identity itself?" | the erasure ordering | `IUserDataContributor.ErasesLast` |
-| "Let me download my own copy" (profileless account) | a person on the Guest dashboard | `GET /Guest/DownloadData` |
+| "Let me download my own copy" (profileless account) | a person on the Guest dashboard | `GET /Gdpr/Guest/DownloadData` |
 
 The vocabulary carrying answers between them is `UserDataSlice` (one portion, name plus
 payload) and `GdprExport` (the timestamped, account-stamped bag of portions). Each

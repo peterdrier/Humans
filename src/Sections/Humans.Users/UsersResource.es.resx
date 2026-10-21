@@ -728,7 +728,7 @@
 &lt;p&gt;Hola {0},&lt;/p&gt;
 &lt;p&gt;Hemos recibido tu solicitud para eliminar tu cuenta. Tu cuenta y todos los datos asociados serán eliminados permanentemente el &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
 &lt;p&gt;Si cambias de opinión, puedes cancelar esta solicitud antes de la fecha de eliminación visitando:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}/User/Deletion"&gt;Cancelar solicitud de eliminación&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}/Gdpr/Deletion"&gt;Cancelar solicitud de eliminación&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Después de la eliminación, esta acción no se puede deshacer y todos tus datos serán eliminados permanentemente.&lt;/p&gt;
 &lt;p&gt;El equipo de Humans&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = formatted deletion date, {2} = base URL</comment>

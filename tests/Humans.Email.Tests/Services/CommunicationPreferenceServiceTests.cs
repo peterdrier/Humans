@@ -272,10 +272,10 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     {
         var headers = _service.GenerateUnsubscribeHeaders(Guid.NewGuid(), MessageCategory.Marketing);
 
-        headers["List-Unsubscribe"].Should().StartWith("<https://test.example.com/Unsubscribe/OneClick?token=");
+        headers["List-Unsubscribe"].Should().StartWith("<https://test.example.com/Email/Unsubscribe/OneClick?token=");
         headers["List-Unsubscribe-Post"].Should().Be("List-Unsubscribe=One-Click");
         _service.GenerateBrowserUnsubscribeUrl(Guid.NewGuid(), MessageCategory.Marketing)
-            .Should().StartWith("https://test.example.com/Unsubscribe/");
+            .Should().StartWith("https://test.example.com/Email/Unsubscribe/");
     }
 
     // ─── Legacy fallback, write seed, cleared rows ───────────────────────────────

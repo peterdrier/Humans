@@ -728,7 +728,7 @@
 &lt;p&gt;Hola {0},&lt;/p&gt;
 &lt;p&gt;Hem rebut la teva sol·licitud per eliminar el teu compte. El teu compte i totes les dades associades s’eliminaran permanentment el &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
 &lt;p&gt;Si canvies d’opinió, pots cancel·lar aquesta sol·licitud abans de la data d’eliminació visitant:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}/User/Deletion"&gt;Cancel·la la sol·licitud d’eliminació&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}/Gdpr/Deletion"&gt;Cancel·la la sol·licitud d’eliminació&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Després de l’eliminació, aquesta acció no es podrà desfer i totes les teves dades s’eliminaran permanentment.&lt;/p&gt;
 &lt;p&gt;L’equip de Humans&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = formatted deletion date, {2} = base URL</comment>

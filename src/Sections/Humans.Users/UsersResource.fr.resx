@@ -728,7 +728,7 @@
 &lt;p&gt;Bonjour {0},&lt;/p&gt;
 &lt;p&gt;Nous avons reçu votre demande de suppression de compte. Votre compte et toutes les données associées seront définitivement supprimés le &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
 &lt;p&gt;Si vous changez d'avis, vous pouvez annuler cette demande avant la date de suppression :&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}/User/Deletion"&gt;Annuler la demande de suppression&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}/Gdpr/Deletion"&gt;Annuler la demande de suppression&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Après la suppression, cette action ne peut pas être annulée et toutes vos données seront définitivement supprimées.&lt;/p&gt;
 &lt;p&gt;L'équipe Humans&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = formatted deletion date, {2} = base URL</comment>

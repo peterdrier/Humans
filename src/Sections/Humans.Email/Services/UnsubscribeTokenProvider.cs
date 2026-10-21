@@ -63,8 +63,8 @@ internal sealed class UnsubscribeTokenProvider(
     public Dictionary<string, string> GenerateUnsubscribeHeaders(Guid userId, MessageCategory category)
     {
         var token = GenerateToken(userId, category);
-        var oneClickUrl = $"{_baseUrl}/Unsubscribe/OneClick?token={WebUtility.UrlEncode(token)}";
-        var browserUrl = $"{_baseUrl}/Unsubscribe/{Uri.EscapeDataString(token)}";
+        var oneClickUrl = $"{_baseUrl}/Email/Unsubscribe/OneClick?token={WebUtility.UrlEncode(token)}";
+        var browserUrl = $"{_baseUrl}/Email/Unsubscribe/{Uri.EscapeDataString(token)}";
 
         return new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -76,6 +76,6 @@ internal sealed class UnsubscribeTokenProvider(
     public string GenerateBrowserUnsubscribeUrl(Guid userId, MessageCategory category)
     {
         var token = GenerateToken(userId, category);
-        return $"{_baseUrl}/Unsubscribe/{token}";
+        return $"{_baseUrl}/Email/Unsubscribe/{token}";
     }
 }

@@ -15,7 +15,7 @@ from memory, because the whole register fits in memory and is kept there.
 
 People manage themselves under `/Profile/Me/*`; member admins manage people under
 `/Users/Admin/*`; a handful of one-off repair screens sit under `/Profile/Admin/*`;
-`/Unsubscribe/*` and `/Guest/*` (people with no session or no profile) are Email's and Gdpr's since
+`/Email/Unsubscribe/*` and `/Gdpr/Guest/*` (people with no session or no profile) are Email's and Gdpr's since
 Users decomposition commit 14.
 
 ## 2. The shapes

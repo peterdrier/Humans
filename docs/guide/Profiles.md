@@ -32,7 +32,7 @@ Each contact field has its own visibility setting, so you can share your Signal 
 - **My profile** (`/Profile/Me`) — view your own profile exactly as you see it
 - **Edit profile** (`/Profile/Me/Edit`) — update personal info, contact fields, picture, birthday
 - **Emails** (`/Profile/Me/Emails`) — add, verify, and manage your email addresses
-- **Shift info** (`/Profile/Me/ShiftInfo`) — preferences and availability info used for shift planning (a Shifts page under the profile URL)
+- **Shift info** (`/Shifts/ShiftInfo`) — preferences and availability info used for shift planning
 - **Communication preferences** (`/Email/CommunicationPreferences`) — per-category email preferences
 - **Privacy** (`/Consent/MyData`) — data export and account deletion
 - **Outbox** (`/Email/Outbox`) — the emails the system has sent to you
@@ -76,7 +76,7 @@ Go to `/Email/CommunicationPreferences`. Categories — Facilitated Messages, Ti
 
 ### Set shift preferences
 
-Go to `/Profile/Me/ShiftInfo` to record preferences and availability info used by shift planners.
+Go to `/Shifts/ShiftInfo` to record preferences and availability info used by shift planners.
 
 ### View another human's profile
 

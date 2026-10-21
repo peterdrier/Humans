@@ -12,14 +12,13 @@ namespace Humans.Shifts.Controllers;
 
 /// <summary>
 /// The volunteer's own shift-matching profile — skills, quirks and languages — at
-/// <c>/Profile/Me/ShiftInfo</c>.
+/// <c>/Shifts/ShiftInfo</c>.
 /// </summary>
 /// <remarks>
-/// Both actions read and write <c>volunteer_event_profiles</c>, a Shifts table, but keep
-/// the <c>[Route("Profile")]</c> prefix so the member-facing URLs do not change.
+/// Both actions read and write <c>volunteer_event_profiles</c>, a Shifts table.
 /// </remarks>
 [Authorize]
-[Route("Profile")]
+[Route("Shifts")]
 internal sealed class ShiftProfileController(
     IShiftManagement shiftMgmt,
     IShiftVolunteerProfiles shiftProfiles,
@@ -31,7 +30,7 @@ internal sealed class ShiftProfileController(
     IStringLocalizer<ShiftsResource> shiftsLocalizer,
     ILogger<ShiftProfileController> logger) : HumansControllerBase(userService)
 {
-    [HttpGet("Me/ShiftInfo")]
+    [HttpGet("ShiftInfo")]
     public async Task<IActionResult> ShiftInfo()
     {
         try
@@ -52,7 +51,7 @@ internal sealed class ShiftProfileController(
         }
     }
 
-    [HttpPost("Me/ShiftInfo")]
+    [HttpPost("ShiftInfo")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ShiftInfo(ShiftInfoViewModel model)
     {

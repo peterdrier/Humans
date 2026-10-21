@@ -4,14 +4,15 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Email.Controllers;
 
 /// <summary>
-/// The unsubscribe links in every outbound email (<c>/Unsubscribe/{token}</c> and the RFC 8058
-/// one-click <c>/Unsubscribe/OneClick</c>). Moved from Users in Users decomposition commit 14 with the
-/// same URLs; tokens minted before the move still validate (same Data Protection purposes and payload).
+/// The unsubscribe links in every outbound email (<c>/Email/Unsubscribe/{token}</c> and the RFC 8058
+/// one-click <c>/Email/Unsubscribe/OneClick</c>). Moved from Users in Users decomposition commit 14;
+/// tokens minted before the move still validate (same Data Protection purposes and payload).
 /// </summary>
+[Route("Email/Unsubscribe")]
 internal sealed class UnsubscribeController(IUnsubscribeService unsubscribeService, ILogger<UnsubscribeController> logger)
     : Controller
 {
-    [HttpGet("/Unsubscribe/{token:minlength(40)}")]
+    [HttpGet("{token:minlength(40)}")]
     public async Task<IActionResult> Index(string token)
     {
         var result = await unsubscribeService.ValidateTokenAsync(token, HttpContext.RequestAborted);
@@ -33,7 +34,7 @@ internal sealed class UnsubscribeController(IUnsubscribeService unsubscribeServi
         return View();
     }
 
-    [HttpPost("/Unsubscribe/{token:minlength(40)}")]
+    [HttpPost("{token:minlength(40)}")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Confirm(string token)
     {
@@ -56,7 +57,7 @@ internal sealed class UnsubscribeController(IUnsubscribeService unsubscribeServi
     }
 
     // RFC 8058 one-click — POSTed by email clients via List-Unsubscribe header; no AF token.
-    [HttpPost("/Unsubscribe/OneClick")]
+    [HttpPost("OneClick")]
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> OneClick([FromQuery] string token)
     {

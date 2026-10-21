@@ -12,7 +12,7 @@ When a controller writes a `CommunicationPreference` via Email's `CommunicationP
 | `"Profile"` | Signed-in user with a Profile | `/Email/CommunicationPreferences` |
 | `"Guest"` | Signed-in profileless user | `/Email/Guest/CommunicationPreferences` |
 | `"MagicLink"` | Anonymous, valid unsubscribe token | `/Email/Guest/CommunicationPreferences/Update?utoken=…` |
-| `"OneClick"` | Anonymous, RFC 8058 List-Unsubscribe-Post | `/Unsubscribe/OneClick` |
+| `"OneClick"` | Anonymous, RFC 8058 List-Unsubscribe-Post | `/Email/Unsubscribe/OneClick` |
 | `"Default"` | None — historical lazy seeding; no current writer | Historical first read |
 | `"DataMigration"` | Backfill | one-shot data migration |
 

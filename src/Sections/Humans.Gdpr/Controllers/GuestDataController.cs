@@ -18,7 +18,7 @@ namespace Humans.Gdpr.Controllers;
 /// the Article 15 data export and the Article 17 deletion request and its cancellation. The
 /// deletion actions moved here from Users' <c>GuestAccountController</c> in Users decomposition
 /// commit 14 and take Gdpr's <c>/Gdpr/Guest/*</c> URLs, beside their member counterparts on
-/// <see cref="MemberDataController"/>. The export keeps its older <c>/Guest/DownloadData</c>.
+/// <see cref="MemberDataController"/>. The export moved with them to <c>/Gdpr/Guest/DownloadData</c>.
 /// </summary>
 [Authorize]
 internal sealed class GuestDataController(
@@ -30,7 +30,7 @@ internal sealed class GuestDataController(
     IStringLocalizer<SharedResource> localizer,
     IStringLocalizer<GdprResource> gdprLocalizer) : HumansControllerBase(userService)
 {
-    [HttpGet("Guest/DownloadData")]
+    [HttpGet("Gdpr/Guest/DownloadData")]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public async Task<IActionResult> DownloadData(CancellationToken ct)
     {
