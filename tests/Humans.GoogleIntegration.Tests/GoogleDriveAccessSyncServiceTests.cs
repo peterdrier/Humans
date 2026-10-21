@@ -336,6 +336,26 @@ public sealed class GoogleDriveAccessSyncServiceTests
     }
 
     [HumansFact]
+    public async Task ReconcileOneAsync_DepartedFallbackMember_RemovalIsAttributedToThem()
+    {
+        var alice = Guid.NewGuid();
+        var service = CreateService(new StaticSource("folder-1"));
+        _identities.GetDriveEmailsAsync(Arg.Any<CancellationToken>()).Returns(
+            new Dictionary<Guid, DriveEmailOverride> { [alice] = new("alice+burn@example.org", "alice@example.org") });
+        StubFolder("folder-1", new DrivePermission("perm-1", "user", "writer", "alice@example.org", HasInheritedComponent: false));
+        _drivePermissions.DeletePermissionAsync("folder-1", "perm-1", Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionDeleteResult(DrivePermissionDeleteOutcome.Deleted, null));
+
+        await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessRevoked, Guid.Empty, Arg.Any<string>(),
+            nameof(GoogleDriveAccessSyncService), "alice@example.org", "MEMBER",
+            GoogleSyncSource.ScheduledSync, success: true, errorMessage: null, userId: alice,
+            ct: Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ReconcileOneAsync_RefusedPlusAndBaseAddress_ReportsTheOriginalFailure()
     {
         var alice = Guid.NewGuid();

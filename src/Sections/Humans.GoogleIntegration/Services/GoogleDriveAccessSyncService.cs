@@ -253,16 +253,21 @@ internal sealed class GoogleDriveAccessSyncService(
         var extraEmails = members.Where(m => m.State == MemberSyncState.Extra)
             .Select(m => m.Email).Distinct(GmailAliasEmailComparer.Instance).ToList();
         if (extraEmails.Count == 0) return;
-        var owners = UserEmailMatchOwner.ByEmail(await userEmailService.MatchByEmailsAsync(extraEmails, ct));
-        var users = await userService.GetUserInfosAsync(owners.Values.Select(m => m.UserId).Distinct().ToList(), ct);
+        var owners = UserEmailMatchOwner.ByEmail(await userEmailService.MatchByEmailsAsync(extraEmails, ct))
+            .ToDictionary(kv => kv.Key, kv => kv.Value.UserId, GmailAliasEmailComparer.Instance);
+        // A plus-address fallback grant is held under a base address no user_emails row claims;
+        // its recorded Drive address still attributes it (peterdrier/Humans#2037).
+        foreach (var (userId, drive) in await workspaceIdentities.GetDriveEmailsAsync(ct))
+            owners.TryAdd(drive.DriveEmail, userId);
+        var users = await userService.GetUserInfosAsync(owners.Values.Distinct().ToList(), ct);
         for (var i = 0; i < members.Count; i++)
         {
             var member = members[i];
-            if (member.State != MemberSyncState.Extra || !owners.TryGetValue(member.Email, out var owner))
+            if (member.State != MemberSyncState.Extra || !owners.TryGetValue(member.Email, out var ownerId))
                 continue;
-            members[i] = users.TryGetValue(owner.UserId, out var user)
-                ? member with { UserId = owner.UserId, DisplayName = user.BurnerName, ProfilePictureUrl = user.ProfilePictureUrl }
-                : member with { UserId = owner.UserId };
+            members[i] = users.TryGetValue(ownerId, out var user)
+                ? member with { UserId = ownerId, DisplayName = user.BurnerName, ProfilePictureUrl = user.ProfilePictureUrl }
+                : member with { UserId = ownerId };
         }
     }
 
