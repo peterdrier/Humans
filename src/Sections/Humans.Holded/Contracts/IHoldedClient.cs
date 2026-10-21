@@ -72,7 +72,8 @@ public interface IHoldedClient
     Task<IReadOnlyList<HoldedPurchaseDocListItemDto>> ListPurchaseDocumentsAsync(
         CancellationToken ct = default);
 
-    /// <summary>Creates or updates a contact; returns the contact id.</summary>
+    /// <summary>Creates a contact (POST) and returns its id. Never updates one: v2's contact PUT is a
+    /// full replacement that would reset the contact's creditor account.</summary>
     Task<string> UpsertContactAsync(HoldedContactInput input, CancellationToken ct = default);
 
     /// <summary>Creates a draft invoice or sales receipt; returns the new doc id. A draft books

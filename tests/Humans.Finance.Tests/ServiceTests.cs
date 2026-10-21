@@ -906,9 +906,9 @@ public class HoldedFinanceServiceTests
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(null, null, null, winner);
 
-        var run1 = MakeService().EnsureCreditorContactAsync(userId, "Maria Garcia", null, null, null, null, ct);
+        var run1 = MakeService().EnsureCreditorContactAsync(userId, "Maria Garcia", null, null, null, null, "TestJob", ct);
         while (Volatile.Read(ref posts) < 1) await Task.Yield();
-        var id2 = await MakeService().EnsureCreditorContactAsync(userId, "Maria Garcia", null, null, null, null, ct);
+        var id2 = await MakeService().EnsureCreditorContactAsync(userId, "Maria Garcia", null, null, null, null, "TestJob", ct);
         gate.SetResult();
         var id1 = await run1;
 
@@ -932,11 +932,15 @@ public class HoldedFinanceServiceTests
         _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("contact-A");
 
         var id = await MakeService().EnsureCreditorContactAsync(
-            userId, "Maria Garcia", null, null, null, null, TestContext.Current.CancellationToken);
+            userId, "Maria Garcia", null, null, null, null, "TestJob", TestContext.Current.CancellationToken);
 
         id.Should().Be("contact-B");
         await _client.Received(1).DeleteContactAsync("contact-A", Arg.Any<CancellationToken>());
         await _repo.DidNotReceiveWithAnyArgs().UpsertCreditorContactAsync(default!, default);
+        // An automated delete in Holded is the Board's to see, under the job that made it.
+        await _audit.Received(1).LogAsync(AuditAction.HoldedDuplicateRemoved, nameof(User), userId,
+            Arg.Is<string>(d => d.Contains("contact-A") && d.Contains("contact-B")), "TestJob",
+            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -951,7 +955,7 @@ public class HoldedFinanceServiceTests
             .Returns(false);
 
         var id = await MakeService().EnsureCreditorContactAsync(
-            userId, "Maria Garcia", null, null, null, null, TestContext.Current.CancellationToken);
+            userId, "Maria Garcia", null, null, null, null, "TestJob", TestContext.Current.CancellationToken);
 
         id.Should().Be("contact-B");
         await _client.Received(1).DeleteContactAsync("contact-A", Arg.Any<CancellationToken>());
@@ -966,10 +970,12 @@ public class HoldedFinanceServiceTests
         _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("contact-A");
 
         var id = await MakeService().EnsureCreditorContactAsync(
-            userId, "Maria Garcia", null, null, null, null, TestContext.Current.CancellationToken);
+            userId, "Maria Garcia", null, null, null, null, "TestJob", TestContext.Current.CancellationToken);
 
         id.Should().Be("contact-A");
         await _client.DidNotReceiveWithAnyArgs().DeleteContactAsync(default!);
+        await _audit.DidNotReceive().LogAsync(AuditAction.HoldedDuplicateRemoved, Arg.Any<string>(),
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -981,17 +987,17 @@ public class HoldedFinanceServiceTests
 
         var id = await MakeService().EnsureCreditorContactAsync(
             userId, "Maria Garcia", "Meri", "ES9121000418450200051332", null, null,
+            "TestJob",
             TestContext.Current.CancellationToken);
 
         id.Should().Be("new-contact");
-        // No binding/seed -> POST create (ExistingContactId null); legal->Name, burner->TradeName, userId->CustomId.
+        // No binding/seed -> create; legal->Name, burner->TradeName, userId->CustomId.
         await _client.Received(1).UpsertContactAsync(
             Arg.Is<HoldedContactInput>(i =>
                 i.Name == "Maria Garcia" &&
                 i.TradeName == "Meri" &&
                 i.CustomId == userId.ToString() &&
-                i.Type == "creditor" &&
-                i.ExistingContactId == null),
+                i.Type == "creditor"),
             Arg.Any<CancellationToken>());
         await _repo.Received(1).TryInsertCreditorContactAsync(
             Arg.Is<HoldedCreditorContact>(c =>
@@ -1009,6 +1015,7 @@ public class HoldedFinanceServiceTests
 
         await MakeService().EnsureCreditorContactAsync(
             userId, "Maria Garcia", "Maria Garcia", null, null, null,
+            "TestJob",
             TestContext.Current.CancellationToken);
 
         await _client.Received(1).UpsertContactAsync(
@@ -1034,6 +1041,7 @@ public class HoldedFinanceServiceTests
 
         var id = await MakeService().EnsureCreditorContactAsync(
             userId, "Peter Drier", null, "ES9121000418450200051332", null, null,
+            "TestJob",
             TestContext.Current.CancellationToken);
 
         id.Should().Be("existing-c");
@@ -1048,6 +1056,7 @@ public class HoldedFinanceServiceTests
 
         var id = await MakeService().EnsureCreditorContactAsync(
             userId, "Peter Drier", null, null, "seed-c", 40000004,
+            "TestJob",
             TestContext.Current.CancellationToken);
 
         // Lazy-seed from a prior pushed report -> the seeded contact as is: no create, no update.
@@ -1077,6 +1086,7 @@ public class HoldedFinanceServiceTests
 
         await MakeService().EnsureCreditorContactAsync(
             userId, "Daniela Marquez", null, null, null, 40000001,
+            "TestJob",
             TestContext.Current.CancellationToken);
 
         await _repo.Received(1).UpsertCreditorContactAsync(
@@ -1105,6 +1115,7 @@ public class HoldedFinanceServiceTests
 
         var id = await MakeService().EnsureCreditorContactAsync(
             userId, "Peter Drier", null, null, null, null,
+            "TestJob",
             TestContext.Current.CancellationToken);
 
         id.Should().Be("c1");
@@ -1132,6 +1143,7 @@ public class HoldedFinanceServiceTests
 
         await MakeService().EnsureCreditorContactAsync(
             userId, "Peter Drier", null, null, null, 40000004,
+            "TestJob",
             TestContext.Current.CancellationToken);
 
         await _repo.Received(1).UpsertCreditorContactAsync(
@@ -1160,6 +1172,7 @@ public class HoldedFinanceServiceTests
 
         var id = await MakeService().EnsureCreditorContactAsync(
             userId, "Peter Drier", null, null, null, 40000004,
+            "TestJob",
             TestContext.Current.CancellationToken);
 
         // Holded itself was still updated — only the local binding write is skipped.
@@ -1201,6 +1214,7 @@ public class HoldedFinanceServiceTests
         var id = await MakeService(logger)
             .EnsureCreditorContactAsync(
                 userId, "Peter Drier", null, null, null, 40000004,
+                "TestJob",
                 TestContext.Current.CancellationToken);
 
         id.Should().Be("c1");
@@ -1235,6 +1249,7 @@ public class HoldedFinanceServiceTests
         var id = await MakeService(logger)
             .EnsureCreditorContactAsync(
                 userId, "Peter Drier", null, null, null, null,
+                "TestJob",
                 TestContext.Current.CancellationToken);
 
         // The admin's bind stands; the contact this push minted is retracted, not left as a second one.
@@ -1262,7 +1277,7 @@ public class HoldedFinanceServiceTests
             });
 
         await MakeService().SetCreditorAccountNumAsync(
-            userId, 40000012, TestContext.Current.CancellationToken);
+            userId, 40000012, "TestJob", TestContext.Current.CancellationToken);
 
         await _repo.Received(1).UpsertCreditorContactAsync(
             Arg.Is<HoldedCreditorContact>(c =>
@@ -1270,6 +1285,58 @@ public class HoldedFinanceServiceTests
                 c.HoldedContactId == "new-contact" && c.SupplierAccountNum == 40000012 &&
                 c.Source == CreditorContactSource.Auto),
             FixedNow, Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(40000004, "40000004")]
+    [Xunit.InlineData(null, "(unresolved)")]
+    public async Task SetCreditorAccountNum_ChangedNumber_IsAuditedUnderTheCallingJob(int? before, string beforeText)
+    {
+        // 2026-09-21: Holded reset the contact's supplier_record and this write moved the member from
+        // 40000004 to 40000060 with only a log line. A change of the account a member is paid from is
+        // audited, naming the job, the member and both numbers.
+        var userId = Guid.NewGuid();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorContact
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                HoldedContactId = "c-member",
+                SupplierAccountNum = before,
+                Source = CreditorContactSource.Auto,
+            });
+        _repo.UpsertCreditorContactAsync(Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        await MakeService().SetCreditorAccountNumAsync(
+            userId, 40000060, "HoldedExpenseOutboxJob", TestContext.Current.CancellationToken);
+
+        await _audit.Received(1).LogAsync(AuditAction.HoldedCreditorAccountNumChanged, "HoldedCreditorAccount", userId,
+            Arg.Is<string>(d => d.Contains(beforeText) && d.Contains("40000060") && d.Contains("c-member")),
+            "HoldedExpenseOutboxJob", userId, nameof(User));
+    }
+
+    [HumansFact]
+    public async Task SetCreditorAccountNum_SameNumber_WritesNoAuditEntry()
+    {
+        var userId = Guid.NewGuid();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorContact
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                HoldedContactId = "c-member",
+                SupplierAccountNum = 40000012,
+                Source = CreditorContactSource.Auto,
+            });
+        _repo.UpsertCreditorContactAsync(Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        await MakeService().SetCreditorAccountNumAsync(
+            userId, 40000012, "TestJob", TestContext.Current.CancellationToken);
+
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(
+            default, default!, default, default!, default(string)!, default, default);
     }
 
     [HumansFact]
@@ -1291,10 +1358,12 @@ public class HoldedFinanceServiceTests
             (HoldedCreditorContact?)null); // re-check right before the write: admin unbound in between
 
         await MakeService().SetCreditorAccountNumAsync(
-            userId, 40000012, TestContext.Current.CancellationToken);
+            userId, 40000012, "TestJob", TestContext.Current.CancellationToken);
 
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
             Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(
+            default, default!, default, default!, default(string)!, default, default);
     }
 
     [HumansFact]
@@ -1324,7 +1393,7 @@ public class HoldedFinanceServiceTests
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
 
         await MakeService(logger)
-            .SetCreditorAccountNumAsync(userId, 40000012, TestContext.Current.CancellationToken);
+            .SetCreditorAccountNumAsync(userId, 40000012, "TestJob", TestContext.Current.CancellationToken);
 
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
             Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
@@ -1626,7 +1695,7 @@ public class HoldedFinanceServiceTests
         });
 
         await MakeService(logger)
-            .SetCreditorAccountNumAsync(userId, 40000012, TestContext.Current.CancellationToken);
+            .SetCreditorAccountNumAsync(userId, 40000012, "TestJob", TestContext.Current.CancellationToken);
 
         await _repo.Received(1).UpsertCreditorContactAsync(
             Arg.Is<HoldedCreditorContact>(c => c.UserId == userId && c.SupplierAccountNum == 40000012),
@@ -1656,7 +1725,7 @@ public class HoldedFinanceServiceTests
         });
 
         await MakeService(logger)
-            .SetCreditorAccountNumAsync(userId, 40000012, TestContext.Current.CancellationToken);
+            .SetCreditorAccountNumAsync(userId, 40000012, "TestJob", TestContext.Current.CancellationToken);
 
         await _repo.Received(1).UpsertCreditorContactAsync(
             Arg.Any<HoldedCreditorContact>(), FixedNow, Arg.Any<CancellationToken>());
@@ -1681,11 +1750,11 @@ public class HoldedFinanceServiceTests
         await MakeService(logger)
             .EnsureCreditorContactAsync(
                 userId, "Ana Ruiz", null, null, seedContactId: "c-theirs", seedAccountNum: 40000012,
+                "TestJob",
                 TestContext.Current.CancellationToken);
 
-        // No ExistingContactId => Holded POSTs a new contact, splitting the two members apart.
-        await _client.Received(1).UpsertContactAsync(
-            Arg.Is<HoldedContactInput>(i => i.ExistingContactId == null), Arg.Any<CancellationToken>());
+        // The refused seed is not reused: Holded gets a new contact, splitting the two members apart.
+        await _client.Received(1).UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).TryInsertCreditorContactAsync(
             Arg.Is<HoldedCreditorContact>(c =>
                 c.UserId == userId && c.HoldedContactId == "c-fresh" && c.SupplierAccountNum == null),
@@ -1712,10 +1781,10 @@ public class HoldedFinanceServiceTests
         await MakeService(logger)
             .EnsureCreditorContactAsync(
                 userId, "Ana Ruiz", null, null, seedContactId: "c-shared", seedAccountNum: null,
+                "TestJob",
                 TestContext.Current.CancellationToken);
 
-        await _client.Received(1).UpsertContactAsync(
-            Arg.Is<HoldedContactInput>(i => i.ExistingContactId == null), Arg.Any<CancellationToken>());
+        await _client.Received(1).UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
         logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Error)
             .Which.Message.Should().Contain("c-shared");
     }
@@ -1737,6 +1806,7 @@ public class HoldedFinanceServiceTests
 
         await MakeService().EnsureCreditorContactAsync(
             userId, "Ana Ruiz", null, null, seedContactId: "c-theirs", seedAccountNum: 40000012,
+            "TestJob",
             TestContext.Current.CancellationToken);
 
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
@@ -1757,6 +1827,7 @@ public class HoldedFinanceServiceTests
 
         var id = await MakeService().EnsureCreditorContactAsync(
             userId, "Ana Ruiz", null, null, seedContactId: "c-mine", seedAccountNum: 40000012,
+            "TestJob",
             TestContext.Current.CancellationToken);
 
         id.Should().Be("c-mine");
@@ -2251,6 +2322,78 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task ContributeForUser_BoundMember_ExportsTheMirroredCreditorLedger()
+    {
+        // Article 15 reaches the mirrored Holded journal lines of the bound account, free-text
+        // descriptions included — the same read the creditor statement uses.
+        var userId = Guid.NewGuid();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorContact { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = 40000004 });
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(
+            new List<HoldedCreditorContact> { new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = 40000004 } });
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<HoldedContactDto>());
+        _holded.GetLedgerLinesAsync(40000004, Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLineInfo>
+        {
+            new(7, 1, 40000004, Instant.FromUtc(2026, 4, 1, 0, 0), "purchase", "Gas for the truck", 0m, 45.50m),
+            new(9, 1, 40000004, Instant.FromUtc(2026, 4, 10, 0, 0), "payment", null, 45.50m, 0m),
+        });
+
+        var slices = await MakeService().ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
+
+        var lines = JsonSerializer.SerializeToElement(slices.Should()
+            .ContainSingle(s => s.SectionName == Service.CreditorLedger).Subject.Data);
+        lines.GetArrayLength().Should().Be(2);
+        using var scope = new AssertionScope();
+        lines[0].GetProperty("AccountNum").GetInt32().Should().Be(40000004);
+        lines[0].GetProperty("Date").GetString().Should().Be("2026-04-01T00:00:00Z");
+        lines[0].GetProperty("Description").GetString().Should().Be("Gas for the truck");
+        lines[0].GetProperty("Credit").GetDecimal().Should().Be(45.50m);
+        lines[0].GetProperty("RunningBalance").GetDecimal().Should().Be(45.50m);
+        lines[1].GetProperty("Debit").GetDecimal().Should().Be(45.50m);
+        lines[1].GetProperty("RunningBalance").GetDecimal().Should().Be(0m);
+    }
+
+    [HumansFact]
+    public async Task ContributeForUser_AccountSharedByTwoMembers_ExportsNeitherTheOthersLines()
+    {
+        // A collision the automatic paths write through: two members on one 400000xx. The lines carry
+        // no user id, so neither member's export may carry that account's ledger.
+        var alice = Guid.NewGuid();
+        var bob = Guid.NewGuid();
+        var aliceBinding = new HoldedCreditorContact { UserId = alice, HoldedContactId = "c1", SupplierAccountNum = 40000004 };
+        var bobBinding = new HoldedCreditorContact { UserId = bob, HoldedContactId = "c2", SupplierAccountNum = 40000004 };
+        _repo.GetCreditorContactByUserAsync(alice, Arg.Any<CancellationToken>()).Returns(aliceBinding);
+        _repo.GetCreditorContactByUserAsync(bob, Arg.Any<CancellationToken>()).Returns(bobBinding);
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(
+            new List<HoldedCreditorContact> { aliceBinding, bobBinding });
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<HoldedContactDto>());
+        _holded.GetLedgerLinesAsync(40000004, Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLineInfo>
+        {
+            new(7, 1, 40000004, Instant.FromUtc(2026, 4, 1, 0, 0), "purchase", "Bob's taxi", 0m, 30m),
+        });
+        var svc = MakeService();
+
+        foreach (var member in new[] { alice, bob })
+        {
+            var slices = await svc.ContributeForUserAsync(member, TestContext.Current.CancellationToken);
+            slices.Should().ContainSingle(s => s.SectionName == Service.CreditorLedger).Subject.Data.Should().BeNull();
+        }
+        await _holded.DidNotReceive().GetLedgerLinesAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ContributeForUser_UnboundMember_ExportsNoLedgerAndReadsNone()
+    {
+        _repo.GetCreditorContactByUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((HoldedCreditorContact?)null);
+
+        var slices = await MakeService().ContributeForUserAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        slices.Should().ContainSingle(s => s.SectionName == Service.CreditorLedger).Subject.Data.Should().BeNull();
+        await _holded.DidNotReceive().GetLedgerLinesAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task EraseForUser_DropsTheBindingAndDeclaresThePayoutsRetained()
     {
         // Article 17: the binding is erased in full; the payout files are the accounting record
@@ -2267,6 +2410,9 @@ public class HoldedFinanceServiceTests
             .WhoseValue.Should().BeNull("the binding is erased in full");
         svc.ErasureDeclaration.Should().ContainKey(Service.SepaPayouts)
             .WhoseValue.Should().Contain("Art. 17(3)(b)");
+        svc.ErasureDeclaration.Should().ContainKey(Service.CreditorLedger)
+            .WhoseValue.Should().StartWith("Retained").And.Contain("Art. 17(3)(b)",
+                "financial records are never erased for GDPR reasons");
     }
 
     // ─── Purchase-doc sync state, as the /Holded screen reads it ─────────────────

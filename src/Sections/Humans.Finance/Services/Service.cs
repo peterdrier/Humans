@@ -50,6 +50,7 @@ internal sealed class Service(
     internal const string HoldedCreditorAccount = "HoldedCreditorAccount";
     internal const string AdditionalHoldedCreditorAccounts = "AdditionalHoldedCreditorAccounts";
     internal const string SepaPayouts = "SepaPayouts";
+    internal const string CreditorLedger = "CreditorLedger";
 
     /// <summary>First number of the P&amp;L expense block both provisioning paths allocate from.</summary>
     internal const int ExpenseAccountBlockStart = 62900100;
@@ -899,7 +900,7 @@ internal sealed class Service(
 
     public async Task<string> EnsureCreditorContactAsync(
         Guid userId, string legalName, string? burnerName, string? iban,
-        string? seedContactId, int? seedAccountNum, CancellationToken ct = default)
+        string? seedContactId, int? seedAccountNum, string jobName, CancellationToken ct = default)
     {
         var binding = await repo.GetCreditorContactByUserAsync(userId, ct);
         var allBindings = await repo.GetCreditorContactsAsync(ct);
@@ -979,7 +980,7 @@ internal sealed class Service(
         {
             var bound = await repo.GetCreditorContactByUserAsync(userId, ct);
             if (bound is { HoldedContactId.Length: > 0 })
-                return await AdoptBoundContactAsync(userId, contactId, minted, bound, ct);
+                return await AdoptBoundContactAsync(userId, contactId, minted, bound, jobName, ct);
         }
         else if (!await BindingUnchangedAsync(nameof(EnsureCreditorContactAsync), userId, binding, ct))
             return contactId;
@@ -1006,15 +1007,17 @@ internal sealed class Service(
         var winner = await repo.GetCreditorContactByUserAsync(userId, ct)
             ?? throw new InvalidOperationException(
                 $"Creditor binding insert for member {userId} hit the unique index but no binding exists.");
-        return await AdoptBoundContactAsync(userId, contactId, minted, winner, ct);
+        return await AdoptBoundContactAsync(userId, contactId, minted, winner, jobName, ct);
     }
 
     /// <summary>The member is already bound to <paramref name="bound"/> — a concurrent run got there
     /// first. That binding is the one contact the member keeps, so a contact this call minted is
-    /// deleted from Holded rather than left as a second creditor. A failed delete is logged, not thrown:
-    /// the bound contact is still the right answer, and the orphan is named in the log for an admin.</summary>
+    /// deleted from Holded rather than left as a second creditor, and the delete is audited. A failed
+    /// delete is logged, not thrown: the bound contact is still the right answer, and the orphan is
+    /// named in the log and listed as an empty unbound contact on /Finance/HoldedDuplicates.</summary>
     private async Task<string> AdoptBoundContactAsync(
-        Guid userId, string contactId, bool minted, HoldedCreditorContact bound, CancellationToken ct)
+        Guid userId, string contactId, bool minted, HoldedCreditorContact bound, string jobName,
+        CancellationToken ct)
     {
         if (!minted || string.Equals(bound.HoldedContactId, contactId, StringComparison.Ordinal))
             return bound.HoldedContactId;
@@ -1022,6 +1025,10 @@ internal sealed class Service(
         try
         {
             await client.DeleteContactAsync(contactId, ct);
+            await audit.LogAsync(AuditAction.HoldedDuplicateRemoved, nameof(User), userId,
+                $"DELETED duplicate Holded contact {contactId} that a concurrent push created; kept "
+                + $"{bound.HoldedContactId}.",
+                jobName);
             logger.LogWarning(
                 "Member {UserId} was bound to Holded contact {BoundContactId} by a concurrent push; the " +
                 "contact {MintedContactId} this push created was deleted from Holded.",
@@ -1039,7 +1046,7 @@ internal sealed class Service(
     }
 
     public async Task SetCreditorAccountNumAsync(
-        Guid userId, int supplierAccountNum, CancellationToken ct = default)
+        Guid userId, int supplierAccountNum, string jobName, CancellationToken ct = default)
     {
         var binding = await repo.GetCreditorContactByUserAsync(userId, ct);
         if (binding is null) return;
@@ -1058,7 +1065,7 @@ internal sealed class Service(
         if (!await BindingUnchangedAsync(nameof(SetCreditorAccountNumAsync), userId, binding, ct)) return;
 
         var now = clock.GetCurrentInstant();
-        await repo.UpsertCreditorContactAsync(new HoldedCreditorContact
+        var written = await repo.UpsertCreditorContactAsync(new HoldedCreditorContact
         {
             Id = binding.Id,
             UserId = userId,
@@ -1068,6 +1075,16 @@ internal sealed class Service(
             CreatedAt = binding.CreatedAt,
             UpdatedAt = now,
         }, now, ct);
+
+        // Which account a member is paid from is the Board's business, and this write moves it on
+        // Holded's word alone — the 2026-09-21 reset (40000004 → 40000060) moved a member silently.
+        // Every change is recorded, a first resolution included; re-recording the same number is not.
+        if (!written || binding.SupplierAccountNum == supplierAccountNum) return;
+        var previous = binding.SupplierAccountNum?.ToString(CultureInfo.InvariantCulture) ?? "(unresolved)";
+        await audit.LogAsync(AuditAction.HoldedCreditorAccountNumChanged, HoldedCreditorAccount, userId,
+            $"Creditor account changed from {previous} to {supplierAccountNum} (Holded contact "
+            + $"{binding.HoldedContactId}), as Holded reported after the push",
+            jobName, userId, nameof(User));
     }
 
     public async Task<bool> ClearCreditorContactAsync(Guid userId, Guid actorUserId, CancellationToken ct = default)
@@ -1687,6 +1704,37 @@ internal sealed class Service(
                 bindings.Add(binding);
             payouts.AddRange(await repo.GetSepaPayoutsForUserAsync(id, ct));
         }
+        // The mirrored journal lines of every bound account, read the way the creditor statement
+        // reads them — free-text descriptions included, which are the member's data too.
+        var contacts = bindings.Count == 0
+            ? new Dictionary<string, HoldedContactDto>(StringComparer.Ordinal)
+            : await ContactsByIdAsync(ct);
+        var ledgerLines = new List<CreditorLedgerLine>();
+        if (bindings.Count > 0)
+        {
+            // Ledger lines carry no user id, so an account another member is also bound to (a collision
+            // the automatic paths write through) would leak their lines. Withheld until an admin resolves
+            // the duplicate row on /Finance/Creditors.
+            var ownIds = bindings.Select(b => b.UserId).ToHashSet();
+            var shared = (await repo.GetCreditorContactsAsync(ct))
+                .Where(b => !ownIds.Contains(b.UserId))
+                .Select(b => ResolveCreditorAccount(b, contacts))
+                .OfType<int>()
+                .ToHashSet();
+            foreach (var num in bindings.Select(b => ResolveCreditorAccount(b, contacts)).OfType<int>().Distinct())
+            {
+                if (shared.Contains(num))
+                {
+                    logger.LogWarning(
+                        "GDPR export for member {UserId} withheld the creditor ledger of account {AccountNum}: " +
+                        "another member is bound to it too. Resolve the collision on /Finance/Creditors.",
+                        userId, num);
+                    continue;
+                }
+                if (await GetCreditorLedgerAsync(num, ct) is { } ledger)
+                    ledgerLines.AddRange(ledger.Lines);
+            }
+        }
         var currentBinding = bindings.FirstOrDefault(binding => binding.UserId == userId);
         var additionalBindings = bindings.Where(binding => binding.UserId != userId).ToList();
         return
@@ -1723,6 +1771,19 @@ internal sealed class Service(
                 ReconciledAt = p.ReconciledAt?.ToIso8601(),
                 WithdrawnAt = p.WithdrawnAt?.ToIso8601(),
             })),
+
+            new UserDataSlice(CreditorLedger, ledgerLines.Count == 0 ? null : ledgerLines.Select(l => new
+            {
+                l.AccountNum,
+                Date = l.Date.ToIso8601(),
+                l.EntryNumber,
+                l.Line,
+                l.Type,
+                l.Description,
+                l.Debit,
+                l.Credit,
+                l.RunningBalance,
+            }).ToList()),
         ];
     }
 
@@ -1736,12 +1797,21 @@ internal sealed class Service(
         "(Código de Comercio Art. 30) and 4 years for tax purposes (Ley 58/2003 Art. 66), and a " +
         "payment order stripped of its payee is no longer evidence of the payment. GDPR Art. 17(3)(b).";
 
+    private const string LedgerRetention =
+        "Retained in full, nothing erased: the creditor ledger lines are Holded's journal entries for " +
+        "the member's creditor account (amounts, dates and their free-text descriptions), mirrored here " +
+        "from the books. Spanish law requires the books and their supporting documents be kept 6 years " +
+        "(Código de Comercio Art. 30) and 4 years for tax purposes (Ley 58/2003 Art. 66). The lines carry " +
+        "no user id: once the creditor binding is erased they are no longer linkable to the person " +
+        "through this system. GDPR Art. 17(3)(b).";
+
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
             [HoldedCreditorAccount] = null,
             [AdditionalHoldedCreditorAccounts] = null,
-            [SepaPayouts] = PayoutRetention
+            [SepaPayouts] = PayoutRetention,
+            [CreditorLedger] = LedgerRetention
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;

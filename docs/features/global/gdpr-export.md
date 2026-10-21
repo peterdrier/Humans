@@ -76,11 +76,14 @@ change.
 │                                                 │
 │   foreach contributor in IEnumerable<IUDC>      │
 │       slices += contributor.ContributeForUser() │
+│       slices += contributor                     │
+│           .ContributeForIdentityChain()         │
 │   return { ExportedAt, UserId,                  │
 │            MergedFromUserIds, ...merged slices }│
 └──────┬──────────────────────────────────────────┘
        │
-       ▼  ContributeForUserAsync(userId)
+       ▼  ContributeForUserAsync(userId), then
+       ▼  ContributeForIdentityChainAsync(userId, allUserIds)
 ┌─────────────────────────────────────────────────┐
 │  Every section service that owns user-scoped    │
 │  tables, each implementing IUserDataContributor │
@@ -207,6 +210,7 @@ archived account and the survivor.
 | `GateScans` | `GateService` | Array of `{ OccurredAt, Verdict, Role, LaneId }` — the user's own gate activity, as guest or as scanner (`Role` is "Guest" or "Scanner"). Data-minimized: no barcode, no other person's identifiers. |
 | `GoogleSyncLog` | `GoogleSyncLogService` | Array of `{ Action, OccurredAt, Description, ResourceName, UserEmail, Role, Source, Success, ErrorMessage }` — every Workspace sync row attributed to the human, merge tombstones followed. |
 | `EmailOutbox` | `EmailOutboxService` | Array of `{ RecipientEmail, RecipientName, Subject, HtmlBody, TemplateName, Status, CreatedAt, SentAt }` — the same per-user outbox history the human reads at `/Email/Outbox`. |
+| `EmailOutboxMergedAccounts` | `EmailOutboxService` | Same shape as `EmailOutbox` — rows still keyed to archived accounts merged into this one (merges before peterdrier/Humans#1999), read from the chain Gdpr passes in; only present for a merged account. Erased in full. |
 | `BackdoorApiKeys` | `BackdoorApiKeyService` | Array of `{ Label, DisplayPrefix, CreatedAt, LastUsedAt, RevokedAt }` — the machine-API keys allocated to the human; null when they hold none. The stored hash is never exported: it is the credential itself. |
 | `RideshareTrips` | `CachingRideshareService` | Array of `{ Id, Year, Direction, MemberPlaceLabel, MemberLatitude, MemberLongitude, Waypoints[], DepartureDate, ExpectedDurationDays, OvernightPlan, VehicleType, SeatsOffered, LuggageCapacity, CapacityNote, Restrictions, WillingToDetour, CostSharing, CostNote, LinkedTripId, Status, CreatedAt, UpdatedAt }` — the human's ride offers, oldest first. |
 | `RideshareRequests` | `CachingRideshareService` | Array of `{ Id, Year, Direction, PickupPlaceLabel, PickupLatitude, PickupLongitude, DesiredDate, PartySize, LuggageLoad, CanContributeToFuel, Notes, Status, CreatedAt, UpdatedAt }` — the human's ride requests, oldest first. |

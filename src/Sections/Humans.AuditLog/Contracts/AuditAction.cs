@@ -251,8 +251,9 @@ public enum AuditAction
     // and no matcher pairs it again. Same entity type as the generation entry.
     SepaPayoutTransferWithdrawn,
     // One per Holded purchase document or contact deleted by /Finance/HoldedDuplicates because the
-    // expense push created it twice. Written by Finance; names the member, the amount and the
-    // document that was kept.
+    // expense push created it twice, or by the push itself when it retracts a creditor contact it
+    // minted after a concurrent push bound the member first. Written by Finance; names the member,
+    // the amount and the document or contact that was kept.
     HoldedDuplicateRemoved,
 
     // City Planning settings writes. These decide who may move barrios and containers on the
@@ -370,6 +371,9 @@ public enum AuditAction
     // A Finance admin bound or unbound a member's Holded creditor account, deciding who gets paid.
     HoldedCreditorBound,
     HoldedCreditorUnbound,
+    // The expense push recorded a different 400000xx on a member's creditor binding than it held
+    // (Holded assigned one, or reassigned it). Written by Finance under the pushing job's name.
+    HoldedCreditorAccountNumChanged,
     // A Finance admin provisioned a Holded expense account for a budget category from /Finance/HoldedAccounts.
     HoldedCategoryAccountProvisioned,
 

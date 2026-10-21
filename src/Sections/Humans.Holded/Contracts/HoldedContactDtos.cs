@@ -1,14 +1,15 @@
 namespace Humans.Holded.Contracts;
 
-/// <summary>Create/update payload for a Holded contact (creditor/supplier).</summary>
+/// <summary>Create payload for a Holded contact (creditor/supplier/client). There is no update
+/// payload: v2's contact PUT is a full replacement, so Humans never updates a Holded contact.</summary>
 public sealed record HoldedContactInput
 {
     /// <summary>Legal name — the official identity (accountant / SEPA / tax). Never the burner.</summary>
     public required string Name { get; init; }
     /// <summary>Burner/display name. Only ever set alongside a legal <see cref="Name"/>.</summary>
     public string? TradeName { get; init; }
-    /// <summary>Our stable handle — the Humans UserId. Not sent to Holded: v2's contacts POST/PUT
-    /// have no `custom_id` field (it is read-only on GET). Kept on the DTO for now since nothing
+    /// <summary>Our stable handle — the Humans UserId. Not sent to Holded: v2's contacts POST
+    /// has no `custom_id` field (it is read-only on GET). Kept on the DTO for now since nothing
     /// reads it back for lookup; no functional loss.</summary>
     public string? CustomId { get; init; }
     /// <summary>Holded contact type, which decides the account series Holded mints on create:
@@ -26,8 +27,6 @@ public sealed record HoldedContactInput
     public string? Address { get; init; }
     /// <summary>ISO 3166-1 alpha-2 — sent as `bill_address.country_code`.</summary>
     public string? CountryCode { get; init; }
-    /// <summary>When set, update this existing contact rather than create a new one.</summary>
-    public string? ExistingContactId { get; init; }
 }
 
 /// <summary>A Holded contact as returned by GET contacts/{id}.</summary>

@@ -48,12 +48,12 @@ internal interface IApplicationRepository : IRepository
 
     /// <summary>
     /// Does NOT delete BoardVotes — see <see cref="FinalizeAsync"/> for the
-    /// approve/reject transactional commit.
+    /// approve/reject/withdraw transactional commit.
     /// </summary>
     Task UpdateAsync(MemberApplication application, CancellationToken ct = default);
 
     /// <summary>
-    /// Atomic finalize for approve/reject: persists the already-mutated
+    /// Atomic finalize for approve/reject/withdraw: persists the already-mutated
     /// <paramref name="application"/> (state, history row, term expiry,
     /// decision note) AND bulk-deletes every <c>BoardVote</c> row for this
     /// application, all in one <c>SaveChangesAsync</c>. Call

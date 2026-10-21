@@ -29,12 +29,16 @@ public interface IHoldedFinanceWrite : IApplicationService
     /// <summary>Ensures the member has a Holded creditor contact and binding, returning the contact id.
     /// Reuses the existing binding, else the seed from a prior report, else creates a new contact. A
     /// linked contact is never updated in Holded (its PUT is a full replacement that resets the
-    /// creditor account). A Manual binding is never downgraded to Auto.</summary>
+    /// creditor account). A Manual binding is never downgraded to Auto. A contact this call creates and
+    /// then retracts, because a concurrent push bound the member first, is audited under
+    /// <paramref name="jobName"/>, the background job making the call.</summary>
     [ExternalWrite]
     Task<string> EnsureCreditorContactAsync(
         Guid userId, string legalName, string? burnerName, string? iban,
-        string? seedContactId, int? seedAccountNum, CancellationToken ct = default);
+        string? seedContactId, int? seedAccountNum, string jobName, CancellationToken ct = default);
 
-    /// <summary>Records the resolved 400000xx number on the member's binding (once the payable exists).</summary>
-    Task SetCreditorAccountNumAsync(Guid userId, int supplierAccountNum, CancellationToken ct = default);
+    /// <summary>Records the resolved 400000xx number on the member's binding (once the payable exists).
+    /// A number that differs from the binding's is audited under <paramref name="jobName"/>, the
+    /// background job making the call.</summary>
+    Task SetCreditorAccountNumAsync(Guid userId, int supplierAccountNum, string jobName, CancellationToken ct = default);
 }

@@ -91,7 +91,7 @@ public class HoldedOutboxDuplicateGuardTests
         var writes = Substitute.For<IHoldedFinanceWrite>();
         writes.EnsureCreditorContactAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
-                Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+                Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns("contact-1");
         return new ExpenseReportBackgroundProcessor(
             _repo, Substitute.For<IFileStorage>(), Substitute.For<IUserService>(), _holded,
