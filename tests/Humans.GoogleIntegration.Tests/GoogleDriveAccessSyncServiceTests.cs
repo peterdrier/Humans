@@ -207,6 +207,27 @@ public sealed class GoogleDriveAccessSyncServiceTests
     }
 
     [HumansFact]
+    public async Task ReconcileOneAsync_TransientCreateFailureThenAlreadyExists_LogsGrant()
+    {
+        var alice = Guid.NewGuid();
+        var service = CreateService(new StaticSource("folder-1", (alice, DrivePermissionLevel.Contributor)));
+        StubUsers((alice, "Alice", "alice@example.org"));
+        StubFolder("folder-1");
+        _drivePermissions.CreatePermissionAsync("folder-1", "alice@example.org", "writer", Arg.Any<CancellationToken>())
+            .Returns(
+                new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Failed, new GoogleClientError(503, "Backend Error")),
+                new DrivePermissionMutationResult(DrivePermissionCreateOutcome.AlreadyExists, null));
+
+        await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessGranted, Guid.Empty, Arg.Any<string>(),
+            nameof(GoogleDriveAccessSyncService), "alice@example.org", "writer",
+            GoogleSyncSource.ScheduledSync, success: true, errorMessage: null, userId: alice,
+            ct: Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ReconcileOneAsync_PersistentTransientCreateFailure_GivesUpAfterBoundedAttempts()
     {
         var alice = Guid.NewGuid();
