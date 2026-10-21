@@ -16,5 +16,6 @@ Repo-local instructions for Codex sessions in this repository.
 
 ## Related Rules
 
+- Follow `REVIEW.md` (tiers, security pass, output format, and its hard rules).
 - See `docs/architecture/code-review-rules.md` for the detailed code-review reject rules.
 - See `memory/INDEX.md` for atomic project rules (one rule per file under `memory/<bucket>/`). `docs/architecture/coding-rules.md` is now a stub redirecting here. Scan INDEX descriptions; fetch the atom body when a description's trigger matches the change under review.

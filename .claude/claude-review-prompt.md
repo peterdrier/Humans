@@ -75,6 +75,8 @@ checkout):
   - memory/INDEX.md (atomic project rules; fetch ONLY the atoms whose
     description matches the change under review — do not read the whole
     atom set)
+  - REVIEW.md (review policy; a breach of its "Hard rules" section is a
+    `BLOCK —` finding)
   - docs/architecture/code-review-rules.md
   - docs/architecture/design-rules.md
 

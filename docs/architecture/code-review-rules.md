@@ -17,7 +17,7 @@
 
 # Code Review Rules
 
-Hard rules for code review. Every item here is a **reject** — if any of these are violated, the review must flag it as CRITICAL regardless of context. These rules are passed verbatim to all reviewers (Claude, Codex, Gemini) via `/code-review`.
+Hard rules for code review. Every item here is a **reject** — if any of these are violated, the review must flag it as CRITICAL regardless of context. These rules are passed verbatim to all reviewers (Claude, Codex, Gemini) via `/code-review`. The review process itself (tiers, security pass, output) and the review hard rules live in [`REVIEW.md`](../../REVIEW.md).
 
 Rules are ordered by historical frequency — the patterns that have caused the most bugs in this codebase appear first.
 
