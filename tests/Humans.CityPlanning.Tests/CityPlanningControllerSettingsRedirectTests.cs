@@ -84,9 +84,17 @@ public sealed class CityPlanningControllerSettingsRedirectTests : CityPlanningTe
     }
 
     [HumansFact]
-    public async Task UpdatePlacementDates_RedirectsToTheSettingsPageCityPlanningTab()
+    public async Task FollowPlacementSchedule_RedirectsToTheSettingsPageCityPlanningTab()
     {
-        var result = await _controller.UpdatePlacementDates(null, null, TestContext.Current.CancellationToken);
+        var result = await _controller.FollowPlacementSchedule(TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#city-planning");
+    }
+
+    [HumansFact]
+    public async Task UpdatePlacementSchedule_RedirectsToTheSettingsPageCityPlanningTab()
+    {
+        var result = await _controller.UpdatePlacementSchedule(-30, -10, -5, TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#city-planning");
     }

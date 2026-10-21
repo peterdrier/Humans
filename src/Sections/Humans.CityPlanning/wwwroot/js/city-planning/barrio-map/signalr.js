@@ -30,7 +30,7 @@ export function initSignalR() {
     });
 
     appState.connection.on('CursorMoved', (connectionId, userName, lat, lng) => {
-        if (!CONFIG.IS_PLACEMENT_OPEN) return;
+        if (!CONFIG.IS_PLACEMENT_OPEN && !CONFIG.IS_PLACEMENT_CHANGEABLE) return;
         if (!appState.remoteCursors[connectionId]) {
             const el = document.createElement('div');
             el.className = 'remote-cursor';
@@ -49,7 +49,7 @@ export function initSignalR() {
 
     appState.connection.start().catch(console.error);
 
-    if (CONFIG.IS_PLACEMENT_OPEN) {
+    if (CONFIG.IS_PLACEMENT_OPEN || CONFIG.IS_PLACEMENT_CHANGEABLE) {
         // Throttle to ~15Hz — mousemove fires at 60-120Hz, but the cursor
         // marker only needs to feel live to humans on the other end. With N
         // peers, cursor fanout is O(N²); the throttle puts a real ceiling on it.

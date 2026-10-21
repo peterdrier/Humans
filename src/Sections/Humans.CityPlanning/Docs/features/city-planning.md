@@ -20,7 +20,7 @@
 City Planning organizes the physical layout of the event site across these phases and screens:
 
 1. **Main map** (`/CityPlanning`) — read-only overview available to all authenticated users. Shows official zones, barrio polygons, and optionally containers and the limit zone (both togglable).
-2. **Barrio placement map** (`/CityPlanning/BarrioMap`) — collaborative real-time tool for barrio leads and map admins to draw and adjust camp polygons. Only meaningful while the barrio placement phase is open.
+2. **Barrio placement map** (`/CityPlanning/BarrioMap`) — collaborative real-time tool for barrio leads and map admins to draw and adjust camp polygons. Only meaningful while barrio placement is Open (or Changeable, for adjusting an existing polygon).
 3. **Container placement** (`/CityPlanning/ContainerMap/{year}`) — map where barrio leads and admins place physical containers on the site. Containers are first created and managed (with description and photos) via a list view, then geo-placed during the container placement phase.
 
 **Goals:**
@@ -34,18 +34,18 @@ City Planning organizes the physical layout of the event site across these phase
 
 ### Main map
 - **US-38.1: Read-only overview** — Any authenticated user sees official zones and barrio polygons always visible. Containers and barrio zones (limit zone) can be toggled on/off. Measure tool available.
-- **US-38.2: Navigation shortcuts** — Map admins always see links to the barrio placement map and container placement map. Barrio leads see the barrio placement link when `IsPlacementOpen`, and the container placement link when `IsContainerPlacementOpen`.
+- **US-38.2: Navigation shortcuts** — Map admins always see links to the barrio placement map and container placement map. Barrio leads see the barrio placement link while barrio placement is Open or Changeable, and the container placement link when `IsContainerPlacementOpen`.
 
 ### Barrio placement map
 - **US-38.3: View the Barrio Map** — Barrio leads and map admins see all placed barrios on a full-screen aerial map, color-coded by sound zone, with name labels and warning indicators
-- **US-38.4: Place My Barrio** — Camp leads draw their polygon during the placement phase; area and edge lengths shown in real time
-- **US-38.5: Adjust an Existing Barrio** — Camp leads (own polygon, while open) and map admins (any polygon, always) can edit vertices, reposition, and reshape
+- **US-38.4: Place My Barrio** — Camp leads draw their polygon while barrio placement is Open; area and edge lengths shown in real time
+- **US-38.5: Adjust an Existing Barrio** — Camp leads (own polygon, while Open or Changeable) and map admins (any polygon, always) can edit vertices, reposition, and reshape
 - **US-38.6: Out-of-Bounds and Overlap Warnings** — Red crosshatch when outside the limit zone; orange stripes when overlapping another barrio; ⚠️ prepended to labels
 - **US-38.7: View Polygon History** — Full version history per polygon; map admins can restore any past version
 - **US-38.8: Real-Time Collaborative View** — Remote cursors visible live; polygon saves broadcast to all connected clients via SignalR
-- **US-38.9: Placement Phase Card** — Shows open/closed status badge and a help modal with scheduled dates (informational, Spain time)
-- **US-38.10: Admin — Manage Placement Phase** — Toggle barrio placement open/closed from `/Settings#city-planning`; timestamps recorded
-- **US-38.11: Admin — Set Placement Dates** — Set informational open/close datetimes shown in the help modal from `/Settings#city-planning`; not enforced
+- **US-38.9: Placement Phase Card** — Shows the Open / Adjustments only / Closed badge and a help modal with the schedule's calendar dates (opening day, last day to place, last day to adjust), also on the Camp Details page
+- **US-38.10: Admin — Override the Placement Window** — From `/Settings#city-planning`, Force open / Force closed override the schedule; Follow schedule clears the override. Each is audited and timestamped (peterdrier/Humans#2102)
+- **US-38.11: Admin — Set the Placement Schedule** — From `/Settings#city-planning`, set three day offsets from the active event's gate opening (opens, closes, changeable until); the tab shows each one's calendar date and the current effective state. The schedule drives placement automatically — no button press needed (peterdrier/Humans#2102)
 - **US-38.12: Admin — Upload/Delete Limit Zone** — GeoJSON boundary for allowed placement area; rendered as dashed colored outline (color-coded by sound zone); download/delete supported
 - **US-38.13: Admin — Upload/Delete Official Zones** — Read-only named overlay (dark gray, labeled); each Feature requires a `name` property; download/delete supported
 - **US-38.14: Admin — Export All Placements** — Download all polygons as a GeoJSON FeatureCollection
@@ -60,7 +60,7 @@ City Planning organizes the physical layout of the event site across these phase
 - **US-38.20: Placed Badge** — Container list views show a "Placed" badge next to containers that have a location set.
 - **US-38.21: Export Containers as GeoJSON** — Map admins can download all placed containers for the year as a GeoJSON FeatureCollection. Barrio leads download only their own camp's containers.
 - **US-38.22: Place Containers on Map** — During the container placement phase, barrio leads (own containers) and map admins (all containers) place containers on the map by dragging from the sidebar. Containers are represented as rotatable rectangles with configurable dimensions.
-- **US-38.23: Admin — Manage Container Placement Phase** — Toggle container placement open/closed independently of barrio placement.
+- **US-38.23: Admin — Manage Container Placement Phase** — Toggle container placement open/closed independently of barrio placement. Stays manual: the barrio schedule does not drive it.
 - **US-38.25: Placement Notes and Sketch** — Whoever may place a container can also attach free-text placement notes and one sketch image to that year's placement (replaceable and removable). Stored on `ContainerPlacement`, separate from the container's own photo.
 
 ## Data Model
@@ -97,11 +97,13 @@ closed defaults and writes nothing; the first admin settings write creates the r
 CityPlanningSettings
 ├── Id: Guid
 ├── Year: int [unique]
-├── IsPlacementOpen: bool
-├── OpenedAt: Instant?
-├── ClosedAt: Instant?
-├── PlacementOpensAt: LocalDateTime? (informational scheduled open; not enforced)
-├── PlacementClosesAt: LocalDateTime? (informational scheduled close; not enforced)
+├── PlacementOverride: bool? (null = follow the schedule, true = forced open, false = forced closed; column "IsPlacementOpen")
+├── OpenedAt: Instant? (last forced open)
+├── ClosedAt: Instant? (last forced closed)
+├── PlacementOpensOffset: int? (first open day, days from gate opening)
+├── PlacementClosesOffset: int? (last open day)
+├── PlacementChangeableUntilOffset: int? (last day a lead may adjust an existing polygon)
+├── PlacementOpensAt / PlacementClosesAt: LocalDateTime? (retired by #2102; [Obsolete], unread, column drop pending approval)
 ├── IsContainerPlacementOpen: bool
 ├── ContainerPlacementOpenedAt: Instant?
 ├── ContainerPlacementClosedAt: Instant?
@@ -200,12 +202,13 @@ Full-screen map with a sidebar listing placed/unplaced containers. Containers ar
 |--------|----------|
 | View main map | Authenticated |
 | View barrio placement map | Authenticated |
-| Place / edit own barrio polygon | Authenticated + own camp season exists + `IsPlacementOpen` |
+| Place / edit own barrio polygon | Authenticated + own camp season exists + barrio placement Open |
+| Edit own existing barrio polygon | Authenticated + own camp season's polygon exists + barrio placement Open or Changeable |
 | Edit any barrio polygon | Map admin |
 | Restore polygon version | Map admin |
 | Export barrio GeoJSON | Map admin |
 | Admin panel (zone uploads, exports, containers) | Map admin |
-| Placement toggle, placement dates, registration info (`/Settings#city-planning`) | Map admin |
+| Placement override, placement schedule, registration info (`/Settings#city-planning`) | Map admin |
 | View container placement map | Map admin, or barrio lead + `IsContainerPlacementOpen` |
 | Manage containers (create/edit/delete/image) | Map admin (all), barrio lead (own camp) |
 | Place / remove containers on map, edit placement notes/sketch | Map admin (all), barrio lead (own camp) + `IsContainerPlacementOpen` — enforced by `ContainerOperationRequirement.Place` |
@@ -221,12 +224,13 @@ Map admin = the `CityPlanningMapAdmin` policy: `Admin` or `CampAdmin`, **or** me
 |-------|-------------|
 | `GET /CityPlanning` | Read-only overview map |
 | `GET /CityPlanning/BarrioMap` | Barrio placement map |
-| `GET /CityPlanning/BarrioMap/Admin` | Admin settings panel — zone uploads, exports, container admin; placement toggle, dates, and registration info live on `/Settings#city-planning` |
-| `POST /CityPlanning/BarrioMap/Admin/OpenPlacement` | Open barrio placement phase (posted from `/Settings#city-planning`) |
-| `POST /CityPlanning/BarrioMap/Admin/ClosePlacement` | Close barrio placement phase (posted from `/Settings#city-planning`) |
+| `GET /CityPlanning/BarrioMap/Admin` | Admin settings panel — zone uploads, exports, container admin; placement override, schedule, and registration info live on `/Settings#city-planning` |
+| `POST /CityPlanning/BarrioMap/Admin/OpenPlacement` | Force barrio placement open — override (posted from `/Settings#city-planning`) |
+| `POST /CityPlanning/BarrioMap/Admin/ClosePlacement` | Force barrio placement closed — override (posted from `/Settings#city-planning`) |
+| `POST /CityPlanning/BarrioMap/Admin/FollowPlacementSchedule` | Clear the override; follow the schedule (posted from `/Settings#city-planning`) |
 | `POST /CityPlanning/BarrioMap/Admin/OpenContainerPlacement` | Open container placement phase |
 | `POST /CityPlanning/BarrioMap/Admin/CloseContainerPlacement` | Close container placement phase |
-| `POST /CityPlanning/BarrioMap/Admin/UpdatePlacementDates` | Set informational open/close datetimes (posted from `/Settings#city-planning`) |
+| `POST /CityPlanning/BarrioMap/Admin/UpdatePlacementSchedule` | Set the barrio schedule's day offsets (posted from `/Settings#city-planning`) |
 | `POST /CityPlanning/BarrioMap/Admin/UploadLimitZone` | Upload limit zone GeoJSON |
 | `GET /CityPlanning/BarrioMap/Admin/DownloadLimitZone` | Download limit zone GeoJSON |
 | `POST /CityPlanning/BarrioMap/Admin/DeleteLimitZone` | Delete limit zone |

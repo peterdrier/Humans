@@ -9,7 +9,7 @@ using Humans.CityPlanning.Domain;
 using Humans.Settings.Contracts;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using NodaTime.Text;
+using System.Globalization;
 using System.Text.Json;
 using Humans.Users.Contracts;
 
@@ -156,21 +156,73 @@ internal sealed class CityPlanningService(
         _ => null
     };
 
-    private static CityPlanningSettingsDto ToDto(CityPlanningSettings settings) => new(
-        settings.Id,
-        settings.Year,
-        settings.IsPlacementOpen,
-        settings.OpenedAt,
-        settings.ClosedAt,
-        settings.PlacementOpensAt,
-        settings.PlacementClosesAt,
-        settings.RegistrationInfo,
-        settings.LimitZoneGeoJson,
-        settings.OfficialZonesGeoJson,
-        settings.IsContainerPlacementOpen,
-        settings.ContainerPlacementOpenedAt,
-        settings.ContainerPlacementClosedAt,
-        settings.UpdatedAt);
+    /// <summary>
+    /// Projects a settings row, resolving its barrio placement window against
+    /// <paramref name="scheduleAnchor"/> — the active event, when the row is that event's year.
+    /// Any other year has no gate opening to count from, so only its override decides.
+    /// </summary>
+    private CityPlanningSettingsDto ToDto(CityPlanningSettings settings, EventSettingsInfo? scheduleAnchor)
+    {
+        var gateOpening = scheduleAnchor?.GateOpeningDate;
+        var opensOn = DayFromGate(gateOpening, settings.PlacementOpensOffset);
+        var closesOn = DayFromGate(gateOpening, settings.PlacementClosesOffset);
+        var changeableUntilOn = DayFromGate(gateOpening, settings.PlacementChangeableUntilOffset);
+
+        return new CityPlanningSettingsDto(
+            settings.Id,
+            settings.Year,
+            GetPlacementState(settings.PlacementOverride, opensOn, closesOn, changeableUntilOn, scheduleAnchor),
+            settings.PlacementOverride,
+            settings.OpenedAt,
+            settings.ClosedAt,
+            settings.PlacementOpensOffset,
+            settings.PlacementClosesOffset,
+            settings.PlacementChangeableUntilOffset,
+            opensOn,
+            closesOn,
+            changeableUntilOn,
+            settings.RegistrationInfo,
+            settings.LimitZoneGeoJson,
+            settings.OfficialZonesGeoJson,
+            settings.IsContainerPlacementOpen,
+            settings.ContainerPlacementOpenedAt,
+            settings.ContainerPlacementClosedAt,
+            settings.UpdatedAt);
+    }
+
+    private static LocalDate? DayFromGate(LocalDate? gateOpening, int? offset) =>
+        gateOpening is { } gate && offset is { } days ? gate.PlusDays(days) : null;
+
+    /// <summary>
+    /// The barrio placement window in effect now. A manual override wins outright. Otherwise the
+    /// schedule decides, by today's date in the event's time zone: open from the opening day through
+    /// the closing day (inclusive), then adjust-only through the changeable-until day, then closed.
+    /// No opening day — or no event to count from — means closed.
+    /// </summary>
+    private BarrioPlacementState GetPlacementState(
+        bool? placementOverride,
+        LocalDate? opensOn,
+        LocalDate? closesOn,
+        LocalDate? changeableUntilOn,
+        EventSettingsInfo? scheduleAnchor)
+    {
+        if (placementOverride is { } forced)
+            return forced ? BarrioPlacementState.Open : BarrioPlacementState.Closed;
+
+        if (scheduleAnchor is null || opensOn is not { } opens)
+            return BarrioPlacementState.Closed;
+
+        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(scheduleAnchor.TimeZoneId) ?? DateTimeZone.Utc;
+        var today = clock.GetCurrentInstant().InZone(zone).Date;
+
+        if (today < opens)
+            return BarrioPlacementState.Closed;
+        if (closesOn is not { } closes || today <= closes)
+            return BarrioPlacementState.Open;
+        if (changeableUntilOn is { } until && today <= until)
+            return BarrioPlacementState.Changeable;
+        return BarrioPlacementState.Closed;
+    }
 
     public async Task<List<CampPolygonHistoryEntryDto>> GetCampPolygonHistoryAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default)
@@ -324,7 +376,7 @@ internal sealed class CityPlanningService(
         if (await IsCityPlanningTeamMemberAsync(userId, cancellationToken)) return true;
 
         var settings = await GetSettingsAsync(cancellationToken);
-        if (settings is not { IsPlacementOpen: true }) return false;
+        if (settings is null || settings.PlacementState == BarrioPlacementState.Closed) return false;
 
         var season = await campService.GetCampSeasonByIdAsync(campSeasonId, cancellationToken);
         if (season is null) return false;
@@ -332,7 +384,11 @@ internal sealed class CityPlanningService(
 
         var camp = (await campService.GetCampsForYearAsync(settings.Year, cancellationToken))
             .FirstOrDefault(c => c.Id == season.CampId);
-        return camp?.IsLead(userId) == true;
+        if (camp?.IsLead(userId) != true) return false;
+
+        // After the open window a lead may still adjust the polygon they placed, never create one.
+        return settings.PlacementState == BarrioPlacementState.Open
+            || (await repo.GetCampSeasonIdsWithPolygonAsync([campSeasonId], cancellationToken)).Count > 0;
     }
 
     // --- Settings ---
@@ -340,25 +396,28 @@ internal sealed class CityPlanningService(
     public async Task<CityPlanningSettingsDto?> GetSettingsAsync(
         CancellationToken cancellationToken = default, int? year = null)
     {
-        if ((year ?? await GetCurrentYearAsync(cancellationToken)) is not { } settingsYear)
+        var activeEvent = await settingsService.GetActiveEventSettingsAsync(cancellationToken) is { Year: > 0 } active
+            ? active
+            : null;
+        if ((year ?? activeEvent?.Year) is not { } settingsYear)
             return null;
 
         // Side-effect free: a year nobody has configured yet reads as the defaults, unpersisted
         // (Id = Guid.Empty). The first admin write creates the row.
         var settings = await repo.GetSettingsAsync(settingsYear, cancellationToken)
             ?? new CityPlanningSettings { Id = Guid.Empty, Year = settingsYear };
-        return ToDto(settings);
+        return ToDto(settings, activeEvent?.Year == settingsYear ? activeEvent : null);
     }
 
     public Task OpenPlacementAsync(Guid userId, CancellationToken cancellationToken = default) =>
         MutateSettingsAndAuditAsync(
             (s, now) =>
             {
-                s.IsPlacementOpen = true;
+                s.PlacementOverride = true;
                 s.OpenedAt = now;
             },
             AuditAction.CityPlanningPlacementOpened,
-            "Opened barrio placement",
+            "Forced barrio placement open (manual override of the schedule)",
             userId,
             cancellationToken);
 
@@ -366,11 +425,20 @@ internal sealed class CityPlanningService(
         MutateSettingsAndAuditAsync(
             (s, now) =>
             {
-                s.IsPlacementOpen = false;
+                s.PlacementOverride = false;
                 s.ClosedAt = now;
             },
             AuditAction.CityPlanningPlacementClosed,
-            "Closed barrio placement",
+            "Forced barrio placement closed (manual override of the schedule)",
+            userId,
+            cancellationToken);
+
+    /// <summary>Drops the manual override so barrio placement follows the day-offset schedule again.</summary>
+    public Task ClearPlacementOverrideAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        MutateSettingsAndAuditAsync(
+            (s, _) => s.PlacementOverride = null,
+            AuditAction.CityPlanningPlacementOverrideCleared,
+            "Cleared the barrio placement override — placement follows the schedule",
             userId,
             cancellationToken);
 
@@ -471,47 +539,48 @@ internal sealed class CityPlanningService(
             userId,
             cancellationToken);
 
-    public async Task<PlacementDateUpdateResult> UpdatePlacementDatesAsync(
-        string? opensAt, string? closesAt, Guid userId, CancellationToken cancellationToken = default)
+    /// <summary>Furthest a schedule day may sit from gate opening, either side.</summary>
+    internal const int MaxPlacementOffsetDays = 366;
+
+    /// <summary>
+    /// Sets the barrio placement schedule as day offsets from the active event's gate opening
+    /// (negative = before). Null clears that marker. The days must run open ≤ close ≤ changeable-until,
+    /// and a changeable-until day needs a closing day to follow.
+    /// </summary>
+    public async Task<PlacementScheduleUpdateResult> UpdatePlacementScheduleAsync(
+        int? opensOffset, int? closesOffset, int? changeableUntilOffset,
+        Guid userId, CancellationToken cancellationToken = default)
     {
-        var pattern = DateFormattingExtensions.PlacementDateTimePattern;
-
-        var opensResult = ParsePlacementDate(opensAt, pattern);
-        if (!opensResult.Success)
-            return new PlacementDateUpdateResult(false, "InvalidOpensAt");
-
-        var closesResult = ParsePlacementDate(closesAt, pattern);
-        if (!closesResult.Success)
-            return new PlacementDateUpdateResult(false, "InvalidClosesAt");
+        if (new[] { opensOffset, closesOffset, changeableUntilOffset }
+            .Any(o => o is { } days && Math.Abs(days) > MaxPlacementOffsetDays))
+            return new PlacementScheduleUpdateResult(false, "OutOfRange");
+        if (opensOffset is { } opens && closesOffset is { } closes && closes < opens)
+            return new PlacementScheduleUpdateResult(false, "ClosesBeforeOpens");
+        if (changeableUntilOffset is { } until)
+        {
+            if (closesOffset is not { } closesDay)
+                return new PlacementScheduleUpdateResult(false, "ChangeableWithoutClose");
+            if (until < closesDay)
+                return new PlacementScheduleUpdateResult(false, "ChangeableBeforeCloses");
+        }
 
         await MutateSettingsAndAuditAsync(
             (s, _) =>
             {
-                s.PlacementOpensAt = opensResult.Value;
-                s.PlacementClosesAt = closesResult.Value;
+                s.PlacementOpensOffset = opensOffset;
+                s.PlacementClosesOffset = closesOffset;
+                s.PlacementChangeableUntilOffset = changeableUntilOffset;
             },
             AuditAction.CityPlanningPlacementDatesUpdated,
-            $"Set the placement dates: opens {FormatPlacementDate(opensResult.Value, pattern)}, closes {FormatPlacementDate(closesResult.Value, pattern)}",
+            $"Set the barrio placement schedule (days from gate opening): opens {FormatOffset(opensOffset)}, " +
+            $"closes {FormatOffset(closesOffset)}, changeable until {FormatOffset(changeableUntilOffset)}",
             userId,
             cancellationToken);
-        return new PlacementDateUpdateResult(true);
+        return new PlacementScheduleUpdateResult(true);
     }
 
-    private static (bool Success, LocalDateTime? Value) ParsePlacementDate(
-        string? input,
-        LocalDateTimePattern pattern)
-    {
-        if (input is not { Length: > 0 })
-            return (true, null);
-
-        var result = pattern.Parse(input);
-        return result.Success
-            ? (true, result.Value)
-            : (false, null);
-    }
-
-    private static string FormatPlacementDate(LocalDateTime? value, LocalDateTimePattern pattern) =>
-        value is { } date ? pattern.Format(date) : "unset";
+    private static string FormatOffset(int? offset) =>
+        offset is { } days ? days.ToString("+0;-0;0", CultureInfo.InvariantCulture) : "unset";
 
     public async Task<string?> GetRegistrationInfoAsync(CancellationToken cancellationToken = default)
     {

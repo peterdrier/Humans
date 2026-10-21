@@ -245,6 +245,7 @@
   <data name="Enum_AuditAction_SepaBankLineSkipped" xml:space="preserve"><value>Línea bancaria SEPA omitida</value></data>
   <data name="Enum_AuditAction_CityPlanningPlacementOpened" xml:space="preserve"><value>Periodo de asignación urbanística abierto</value></data>
   <data name="Enum_AuditAction_CityPlanningPlacementClosed" xml:space="preserve"><value>Periodo de asignación urbanística cerrado</value></data>
+  <data name="Enum_AuditAction_CityPlanningPlacementOverrideCleared" xml:space="preserve"><value>Anulación manual de la asignación urbanística retirada</value></data>
   <data name="Enum_AuditAction_CityPlanningContainerPlacementOpened" xml:space="preserve"><value>Periodo de ubicación urbanística de contenedores abierto</value></data>
   <data name="Enum_AuditAction_CityPlanningContainerPlacementClosed" xml:space="preserve"><value>Periodo de ubicación urbanística de contenedores cerrado</value></data>
   <data name="Enum_AuditAction_CityPlanningLimitZoneUpdated" xml:space="preserve"><value>Zona límite urbanística actualizada</value></data>

@@ -259,15 +259,18 @@ public enum AuditAction
     // site map and what the published ground truth is, and every one of them is an organiser
     // acting on the members' behalf. The settings row records when a phase changed but not
     // who changed it, so the actor lives here.
+    // Opened/Closed are the admins' manual override of the barrio placement schedule (forced open
+    // or forced closed); OverrideCleared hands placement back to the schedule (peterdrier/Humans#2102).
     CityPlanningPlacementOpened,
     CityPlanningPlacementClosed,
+    CityPlanningPlacementOverrideCleared,
     CityPlanningContainerPlacementOpened,
     CityPlanningContainerPlacementClosed,
     CityPlanningLimitZoneUpdated,
     CityPlanningLimitZoneDeleted,
     CityPlanningOfficialZonesUpdated,
     CityPlanningOfficialZonesDeleted,
-    // The informational placement open/close dates and the barrio registration page copy.
+    // The barrio placement schedule (day offsets from gate opening) and the barrio registration page copy.
     CityPlanningPlacementDatesUpdated,
     CityPlanningRegistrationInfoUpdated,
 

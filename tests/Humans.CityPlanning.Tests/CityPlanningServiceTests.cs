@@ -62,7 +62,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var settings = new CityPlanningSettings
         {
             Year = year,
-            IsPlacementOpen = placementOpen,
+            PlacementOverride = placementOpen ? true : null,
             UpdatedAt = Clock.GetCurrentInstant()
         };
         CityPlanningDb.CityPlanningSettings.Add(settings);
@@ -186,28 +186,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         saved.GeoJson.Should().Be(geoJson);
         (await CityPlanningDb.CampPolygons.SingleAsync(TestContext.Current.CancellationToken)).GeoJson.Should().Be(geoJson);
         (await CityPlanningDb.CampPolygonHistories.SingleAsync(TestContext.Current.CancellationToken)).GeoJson.Should().Be(geoJson);
-    }
-
-    [HumansFact]
-    public async Task UpdatePlacementDatesAsync_StringInputs_ParsesAndPersists()
-    {
-        await SeedMapSettingsAsync();
-
-        var result = await _sut.UpdatePlacementDatesAsync("2026-06-01T08:30", "2026-06-02T18:45", NewUserId(), TestContext.Current.CancellationToken);
-
-        result.Success.Should().BeTrue();
-        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
-        settings.PlacementOpensAt.Should().Be(new LocalDateTime(2026, 6, 1, 8, 30));
-        settings.PlacementClosesAt.Should().Be(new LocalDateTime(2026, 6, 2, 18, 45));
-    }
-
-    [HumansFact]
-    public async Task UpdatePlacementDatesAsync_InvalidOpenString_ReturnsError()
-    {
-        var result = await _sut.UpdatePlacementDatesAsync("not-a-date", null, NewUserId(), TestContext.Current.CancellationToken);
-
-        result.Success.Should().BeFalse();
-        result.ErrorKey.Should().Be("InvalidOpensAt");
     }
 
     [HumansFact]
@@ -387,34 +365,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             AuditAction.CityPlanningPlacementClosed,
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), userId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
-    }
-
-    [HumansFact]
-    public async Task UpdatePlacementDatesAsync_WritesAuditEntry_NamingTheActorAndTheDates()
-    {
-        var settings = await SeedMapSettingsAsync();
-        var userId = NewUserId();
-
-        await _sut.UpdatePlacementDatesAsync("2026-06-01T08:30", null, userId, TestContext.Current.CancellationToken);
-
-        await _auditLog.Received(1).LogAsync(
-            AuditAction.CityPlanningPlacementDatesUpdated,
-            nameof(CityPlanningSettings),
-            settings.Id,
-            Arg.Is<string>(d => d.Contains("2026-06-01T08:30", StringComparison.Ordinal) && d.Contains("unset", StringComparison.Ordinal)),
-            userId,
-            Arg.Any<Guid?>(),
-            Arg.Any<string?>());
-    }
-
-    [HumansFact]
-    public async Task UpdatePlacementDatesAsync_RejectedInput_WritesNoAuditEntry()
-    {
-        await SeedMapSettingsAsync();
-
-        await _sut.UpdatePlacementDatesAsync("not-a-date", null, NewUserId(), TestContext.Current.CancellationToken);
-
-        _auditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -739,10 +689,11 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         settings.Should().NotBeNull();
         settings!.Id.Should().Be(Guid.Empty);
         settings.Year.Should().Be(2026);
-        settings.IsPlacementOpen.Should().BeFalse();
+        settings.PlacementState.Should().Be(BarrioPlacementState.Closed);
+        settings.PlacementOverride.Should().BeNull();
         settings.IsContainerPlacementOpen.Should().BeFalse();
-        settings.PlacementOpensAt.Should().BeNull();
-        settings.PlacementClosesAt.Should().BeNull();
+        settings.PlacementOpensOffset.Should().BeNull();
+        settings.PlacementOpensOn.Should().BeNull();
         (await CityPlanningDb.CityPlanningSettings.AsNoTracking().CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
@@ -765,7 +716,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         CityPlanningDb.CityPlanningSettings.Add(new CityPlanningSettings
         {
             Year = 2027,
-            IsPlacementOpen = true,
+            PlacementOverride = true,
             UpdatedAt = Clock.GetCurrentInstant()
         });
         await CityPlanningDb.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -773,7 +724,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var settings = await _sut.GetSettingsAsync(TestContext.Current.CancellationToken);
 
         settings!.Year.Should().Be(2027);
-        settings.IsPlacementOpen.Should().BeTrue();
+        settings.PlacementState.Should().Be(BarrioPlacementState.Open);
     }
 
     [HumansFact]
@@ -796,7 +747,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
         var row = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         row.Year.Should().Be(2027);
-        row.IsPlacementOpen.Should().BeTrue();
+        row.PlacementOverride.Should().BeTrue();
         (await _sut.GetSettingsAsync(TestContext.Current.CancellationToken))!.Id.Should().Be(row.Id);
     }
 
@@ -819,7 +770,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var result = (await _sut.GetSettingsAsync(TestContext.Current.CancellationToken))!;
 
         result.Id.Should().Be(existing.Id);
-        result.IsPlacementOpen.Should().BeTrue();
+        result.PlacementState.Should().Be(BarrioPlacementState.Open);
         (await CityPlanningDb.CityPlanningSettings.AsNoTracking().CountAsync(TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
@@ -834,12 +785,12 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
         result.Id.Should().Be(existing.Id);
         result.Year.Should().Be(2025);
-        result.IsPlacementOpen.Should().BeFalse();
+        result.PlacementState.Should().Be(BarrioPlacementState.Closed);
         (await CityPlanningDb.CityPlanningSettings.AsNoTracking().CountAsync(TestContext.Current.CancellationToken)).Should().Be(2);
     }
 
     [HumansFact]
-    public async Task OpenPlacementAsync_SetsIsPlacementOpenTrue()
+    public async Task OpenPlacementAsync_ForcesTheOverrideOpen()
     {
         await SeedMapSettingsAsync(placementOpen: false);
         var adminId = NewUserId();
@@ -847,12 +798,12 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         await _sut.OpenPlacementAsync(adminId, TestContext.Current.CancellationToken);
 
         var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
-        settings.IsPlacementOpen.Should().BeTrue();
+        settings.PlacementOverride.Should().BeTrue();
         settings.OpenedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
     [HumansFact]
-    public async Task ClosePlacementAsync_SetsIsPlacementOpenFalse()
+    public async Task ClosePlacementAsync_ForcesTheOverrideClosed()
     {
         await SeedMapSettingsAsync(placementOpen: true);
         var adminId = NewUserId();
@@ -860,7 +811,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         await _sut.ClosePlacementAsync(adminId, TestContext.Current.CancellationToken);
 
         var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
-        settings.IsPlacementOpen.Should().BeFalse();
+        settings.PlacementOverride.Should().BeFalse();
         settings.ClosedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
@@ -1034,26 +985,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var polygons = await _sut.GetCampPolygonsAsync(2026, TestContext.Current.CancellationToken);
 
         polygons.Single().SoundZone.Should().BeNull();
-    }
-
-    // --- UpdatePlacementDatesAsync ---
-
-    [HumansFact]
-    public async Task UpdatePlacementDatesAsync_ClearsDates_WhenNull()
-    {
-        await SeedMapSettingsAsync();
-        var seeded = await CityPlanningDb.CityPlanningSettings.SingleAsync(TestContext.Current.CancellationToken);
-        seeded.PlacementOpensAt = new LocalDateTime(2026, 4, 10, 18, 0);
-        seeded.PlacementClosesAt = new LocalDateTime(2026, 4, 20, 23, 59);
-        await CityPlanningDb.SaveChangesAsync(TestContext.Current.CancellationToken);
-        CityPlanningDb.Entry(seeded).State = EntityState.Detached;
-
-        var result = await _sut.UpdatePlacementDatesAsync(null, null, NewUserId(), TestContext.Current.CancellationToken);
-
-        result.Success.Should().BeTrue();
-        var updated = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
-        updated.PlacementOpensAt.Should().BeNull();
-        updated.PlacementClosesAt.Should().BeNull();
     }
 
     // --- UpdateOfficialZonesAsync / DeleteOfficialZonesAsync ---

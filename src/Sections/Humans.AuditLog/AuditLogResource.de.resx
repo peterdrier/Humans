@@ -245,6 +245,7 @@
   <data name="Enum_AuditAction_SepaBankLineSkipped" xml:space="preserve"><value>Sepa-Bankzeile übersprungen</value></data>
   <data name="Enum_AuditAction_CityPlanningPlacementOpened" xml:space="preserve"><value>Platzierungszeitraum der Stadtplanung eröffnet</value></data>
   <data name="Enum_AuditAction_CityPlanningPlacementClosed" xml:space="preserve"><value>Platzierungszeitraum der Stadtplanung geschlossen</value></data>
+  <data name="Enum_AuditAction_CityPlanningPlacementOverrideCleared" xml:space="preserve"><value>Manuelle Übersteuerung der Stadtplanungs-Platzierung aufgehoben</value></data>
   <data name="Enum_AuditAction_CityPlanningContainerPlacementOpened" xml:space="preserve"><value>Zeitraum für Containerplatzierung eröffnet</value></data>
   <data name="Enum_AuditAction_CityPlanningContainerPlacementClosed" xml:space="preserve"><value>Zeitraum für Containerplatzierung geschlossen</value></data>
   <data name="Enum_AuditAction_CityPlanningLimitZoneUpdated" xml:space="preserve"><value>Grenzzone der Stadtplanung aktualisiert</value></data>

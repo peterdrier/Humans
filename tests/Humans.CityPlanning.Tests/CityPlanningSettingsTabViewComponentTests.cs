@@ -19,8 +19,11 @@ public sealed class CityPlanningSettingsTabViewComponentTests
     {
         var service = Substitute.For<ICityPlanningService>();
         var settings = new CityPlanningSettingsDto(
-            Id: Guid.NewGuid(), Year: 2026, IsPlacementOpen: true, OpenedAt: null, ClosedAt: null,
-            PlacementOpensAt: null, PlacementClosesAt: null, RegistrationInfo: "unused-year-scoped-field",
+            Id: Guid.NewGuid(), Year: 2026, PlacementState: BarrioPlacementState.Open, PlacementOverride: true,
+            OpenedAt: null, ClosedAt: null,
+            PlacementOpensOffset: null, PlacementClosesOffset: null, PlacementChangeableUntilOffset: null,
+            PlacementOpensOn: null, PlacementClosesOn: null, PlacementChangeableUntilOn: null,
+            RegistrationInfo: "unused-year-scoped-field",
             LimitZoneGeoJson: null, OfficialZonesGeoJson: null, IsContainerPlacementOpen: false,
             ContainerPlacementOpenedAt: null, ContainerPlacementClosedAt: null,
             UpdatedAt: Instant.FromUtc(2026, 1, 1, 0, 0));

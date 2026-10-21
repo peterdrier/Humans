@@ -45,7 +45,7 @@ internal sealed record CampPolygonHistoryEntryDto(
 /// </summary>
 internal sealed record CampPolygonSaveResult(string GeoJson, double AreaSqm);
 
-internal sealed record PlacementDateUpdateResult(
+internal sealed record PlacementScheduleUpdateResult(
     bool Success,
     string? ErrorKey = null);
 

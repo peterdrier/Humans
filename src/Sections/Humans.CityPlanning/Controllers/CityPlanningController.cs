@@ -52,7 +52,7 @@ internal sealed class CityPlanningController(
             Year = settings.Year,
             IsMapAdmin = isMapAdmin,
             IsBarrioLead = userSeasonId.HasValue,
-            IsPlacementOpen = settings.IsPlacementOpen,
+            PlacementState = settings.PlacementState,
             IsContainerPlacementOpen = settings.IsContainerPlacementOpen,
         });
     }
@@ -72,13 +72,12 @@ internal sealed class CityPlanningController(
         return View(new CityPlanningBarrioMapViewModel
         {
             Year = settings.Year,
-            IsPlacementOpen = settings.IsPlacementOpen,
+            PlacementState = settings.PlacementState,
             IsMapAdmin = isMapAdmin,
             UserCampSeasonId = userSeasonId?.ToString() ?? string.Empty,
             CurrentUserId = user.Id,
             SeasonsWithoutCampPolygon = seasonsWithout.ToList(),
-            PlacementOpensAt = settings.PlacementOpensAt,
-            PlacementClosesAt = settings.PlacementClosesAt,
+            PlacementSchedule = (settings.PlacementOpensOn, settings.PlacementClosesOn, settings.PlacementChangeableUntilOn),
         });
     }
 
@@ -102,7 +101,7 @@ internal sealed class CityPlanningController(
         if (error is not null) return error;
 
         await cityPlanningService.OpenPlacementAsync(user!.Id, cancellationToken);
-        SetSuccess("Placement phase opened.");
+        SetSuccess("Placement forced open — the schedule is overridden until you follow it again.");
         return Redirect("/Settings#city-planning");
     }
 
@@ -114,7 +113,19 @@ internal sealed class CityPlanningController(
         if (error is not null) return error;
 
         await cityPlanningService.ClosePlacementAsync(user!.Id, cancellationToken);
-        SetSuccess("Placement phase closed.");
+        SetSuccess("Placement forced closed — the schedule is overridden until you follow it again.");
+        return Redirect("/Settings#city-planning");
+    }
+
+    [HttpPost("BarrioMap/Admin/FollowPlacementSchedule")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> FollowPlacementSchedule(CancellationToken cancellationToken)
+    {
+        var (error, user) = await RequireMapAdminAsync(cancellationToken);
+        if (error is not null) return error;
+
+        await cityPlanningService.ClearPlacementOverrideAsync(user!.Id, cancellationToken);
+        SetSuccess("Placement now follows the schedule.");
         return Redirect("/Settings#city-planning");
     }
 
@@ -176,21 +187,30 @@ internal sealed class CityPlanningController(
     public Task<IActionResult> DeleteOfficialZones(CancellationToken cancellationToken) =>
         DeleteAdminResourceAsync("Official zones", cityPlanningService.DeleteOfficialZonesAsync, cancellationToken);
 
-    [HttpPost("BarrioMap/Admin/UpdatePlacementDates")]
+    [HttpPost("BarrioMap/Admin/UpdatePlacementSchedule")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdatePlacementDates(string? opensAt, string? closesAt, CancellationToken cancellationToken)
+    public async Task<IActionResult> UpdatePlacementSchedule(
+        int? opensOffset, int? closesOffset, int? changeableUntilOffset, CancellationToken cancellationToken)
     {
         var (error, user) = await RequireMapAdminAsync(cancellationToken);
         if (error is not null) return error;
 
-        var result = await cityPlanningService.UpdatePlacementDatesAsync(opensAt, closesAt, user!.Id, cancellationToken);
-        if (!result.Success)
+        // A non-numeric field binds as null; refuse it rather than silently clearing that day.
+        if (!ModelState.IsValid)
         {
-            SetError(PlacementDateErrorMessage(result.ErrorKey));
+            SetError("Schedule days must be whole numbers.");
             return Redirect("/Settings#city-planning");
         }
 
-        SetSuccess("Placement dates updated.");
+        var result = await cityPlanningService.UpdatePlacementScheduleAsync(
+            opensOffset, closesOffset, changeableUntilOffset, user!.Id, cancellationToken);
+        if (!result.Success)
+        {
+            SetError(PlacementScheduleErrorMessage(result.ErrorKey));
+            return Redirect("/Settings#city-planning");
+        }
+
+        SetSuccess("Placement schedule updated.");
         return Redirect("/Settings#city-planning");
     }
 
@@ -206,11 +226,13 @@ internal sealed class CityPlanningController(
         return Redirect("/Settings#city-planning");
     }
 
-    private static string PlacementDateErrorMessage(string? errorKey) => errorKey switch
+    private static string PlacementScheduleErrorMessage(string? errorKey) => errorKey switch
     {
-        "InvalidOpensAt" => "Invalid opens-at date format.",
-        "InvalidClosesAt" => "Invalid closes-at date format.",
-        _ => "Invalid placement date format.",
+        "OutOfRange" => $"Schedule days must be within {CityPlanningService.MaxPlacementOffsetDays} days of gate opening.",
+        "ClosesBeforeOpens" => "The closing day must not come before the opening day.",
+        "ChangeableWithoutClose" => "Set a closing day before a changeable-until day.",
+        "ChangeableBeforeCloses" => "The changeable-until day must not come before the closing day.",
+        _ => "Invalid placement schedule.",
     };
 
     /// <summary>Shared GeoJSON upload (LimitZone / OfficialZones); callers differ only by label and service method.

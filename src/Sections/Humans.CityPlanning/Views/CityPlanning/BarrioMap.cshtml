@@ -4,13 +4,13 @@
     ViewData["BodyClass"] = "city-map-fullscreen";
     // Full-screen map: the member layout for everyone, admin shell or not.
     Layout = "_Layout";
-    var isPlacementOpen = Model.IsPlacementOpen;
+    // Open: a lead may place and edit their barrio. Changeable: only adjust an existing polygon.
+    var isPlacementOpen = Model.PlacementState == BarrioPlacementState.Open;
+    var isPlacementChangeable = Model.PlacementState == BarrioPlacementState.Changeable;
     var isMapAdmin = Model.IsMapAdmin;
     var userCampSeasonId = Model.UserCampSeasonId;
     var seasonsWithout = Model.SeasonsWithoutCampPolygon;
     var showMainToolbar = isMapAdmin && seasonsWithout.Any();
-    var placementOpensAt = Model.PlacementOpensAt;
-    var placementClosesAt = Model.PlacementClosesAt;
 }
 
 @section Styles {
@@ -35,6 +35,7 @@
     <div id="map" class="city-map-canvas"
          data-user-camp-season-id="@userCampSeasonId"
          data-is-placement-open="@(isPlacementOpen ? "true" : "false")"
+         data-is-placement-changeable="@(isPlacementChangeable ? "true" : "false")"
          data-is-map-admin="@(isMapAdmin ? "true" : "false")"
          data-save-failed="@Localizer["CityPlanning_PolygonSaveFailed"].Value"
          data-discard-confirm="@Localizer["CityPlanning_DiscardChangesConfirm"].Value"
@@ -69,6 +70,10 @@
                     {
                         <span class="badge bg-success">@Localizer["CityPlanning_StatusOpen"]</span>
                     }
+                    else if (isPlacementChangeable)
+                    {
+                        <span class="badge bg-info text-dark">@Localizer["CityPlanning_StatusChangeable"]</span>
+                    }
                     else
                     {
                         <span class="badge bg-secondary">@Localizer["CityPlanning_StatusClosed"]</span>
@@ -93,7 +98,7 @@
 
     <!-- Toolbars -->
     <div class="position-absolute bottom-0 start-50 translate-middle-x mb-3 d-flex flex-row gap-2">
-        @if (isPlacementOpen || isMapAdmin)
+        @if (isPlacementOpen || isPlacementChangeable || isMapAdmin)
         {
         <div id="main-toolbar" class="card @(showMainToolbar ? "" : "d-none")">
             <div class="card-body d-flex flex-row gap-2 align-items-center">
@@ -130,7 +135,7 @@
     </div>
 </div>
 
-@await Html.PartialAsync("_PlacementHelpModal", (placementOpensAt, placementClosesAt))
+@await Html.PartialAsync("_PlacementHelpModal", Model.PlacementSchedule)
 
 @await Html.PartialAsync("_HistoryOffcanvas")
 

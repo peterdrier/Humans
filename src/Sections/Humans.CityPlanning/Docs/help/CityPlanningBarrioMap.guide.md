@@ -4,9 +4,13 @@ The barrio placement map is the interactive editor where camp leads draw their b
 
 ### Placement Phase
 
-Editing is controlled by the **placement phase**, opened and closed by a Map Admin. Barrio leads can only draw or edit their own polygon while the phase is **open**. Map Admins can edit any polygon at any time.
+Editing is controlled by the **placement phase**, which follows a schedule set relative to the event's gate opening:
 
-Organisers can set dates showing when placement is expected to open and close, but the phase itself still opens and closes only when a Map Admin does it by hand.
+- **Open** — from the opening day through the last day to place: barrio leads can draw their polygon and edit it.
+- **Adjustments only** — after that, until the last day to adjust: leads can still edit a polygon they already placed, but not draw a new one.
+- **Closed** — leads can no longer change anything.
+
+The help button on the map shows the dates. A Map Admin can also force placement open or closed by hand, overriding the schedule. Map Admins can edit any polygon at any time.
 
 ### Drawing Your Barrio
 
@@ -19,7 +23,7 @@ Only the **Barrio Lead** of a camp can edit that camp's polygon.
 
 ### Editing an Existing Polygon
 
-Click your barrio's polygon on the map. A popup appears with an **Edit** button (visible when placement is open or you are a Map Admin). Click it to enter edit mode — drag vertices to reshape, or drag an edge midpoint to add a new vertex. Click **Save** to commit.
+Click your barrio's polygon on the map. A popup appears with an **Edit** button (visible when placement is open or in adjustments only, or you are a Map Admin). Click it to enter edit mode — drag vertices to reshape, or drag an edge midpoint to add a new vertex. Click **Save** to commit.
 
 ### Polygon History
 
@@ -31,9 +35,9 @@ Click the **Measure** button (ruler icon) to enter measurement mode, then click 
 
 ### For Map Admins
 
-**Map Admin** is not a standalone role. You are a Map Admin if you hold the `CampAdmin` role **or** belong to the `city-planning` team. Map Admins can edit any polygon at any time (regardless of placement phase), open/close placement, upload overlays, and export GeoJSON.
+**Map Admin** is not a standalone role. You are a Map Admin if you hold the `CampAdmin` role **or** belong to the `city-planning` team. Map Admins can edit any polygon at any time (regardless of placement phase), force placement open or closed, upload overlays, and export GeoJSON.
 
-Open and close placement, and set the announced placement dates, from the City Planning tab in Settings.
+Set the placement schedule (days from gate opening), force placement open or closed, or hand it back to the schedule, from the City Planning tab in Settings.
 
 The Admin panel provides:
 

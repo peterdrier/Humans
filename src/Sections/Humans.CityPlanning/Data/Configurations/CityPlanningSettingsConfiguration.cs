@@ -12,6 +12,10 @@ internal sealed class CityPlanningSettingsConfiguration : IEntityTypeConfigurati
 
         builder.HasIndex(s => s.Year).IsUnique();
 
+        // The override reuses the old manual IsPlacementOpen column (now nullable), so every
+        // existing row's true/false survives as a forced open/closed with no data migration.
+        builder.Property(s => s.PlacementOverride).HasColumnName("IsPlacementOpen");
+
         builder.Property(s => s.RegistrationInfo).HasColumnType("text");
         builder.Property(s => s.LimitZoneGeoJson).HasColumnType("text");
         builder.Property(s => s.OfficialZonesGeoJson).HasColumnType("text");

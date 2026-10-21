@@ -106,7 +106,7 @@ internal interface ICityPlanningRepository : IRepository
 
     /// <summary>
     /// Returns the <see cref="CityPlanningSettings"/> row for the given year,
-    /// creating a new one (with <c>IsPlacementOpen = false</c>) if it does not
+    /// creating a new one (no override, no schedule) if it does not
     /// exist yet. Always returns a detached, up-to-date row. Write paths only —
     /// reads use <see cref="GetSettingsAsync"/>.
     /// </summary>

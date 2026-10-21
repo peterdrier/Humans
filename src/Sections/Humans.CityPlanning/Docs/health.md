@@ -35,7 +35,7 @@ structural item below follows from this table.
 | **See the site** | What is placed where, this year? | `GET /CityPlanning/`, `GET /api/city-planning/state`, `GET /api/city-planning/containers/{year}` |
 | **Claim a barrio** | Where is my camp, and what was it before? | `GET /CityPlanning/BarrioMap`, `PUT /api/city-planning/camp-polygons/{campSeasonId}`, `GET …/history`, `POST …/restore/{historyId}` |
 | **Place a container** | Where does this box go, and what should it look like? | `GET /CityPlanning/ContainerMap/{year}`, `PUT/DELETE /api/city-planning/containers/{id}/placement/{year}`, `PUT …/notes` |
-| **Run the phases** | Is placement open, when, and who may act now? | The `/Settings#city-planning` tab (`CityPlanningSettingsTabViewComponent`) posting to `OpenPlacement`, `ClosePlacement`, `UpdatePlacementDates`; container phase posts `OpenContainerPlacement` / `CloseContainerPlacement` from the containers page; `ICityPlanningService.GetSettingsAsync` |
+| **Run the phases** | Is placement open, when, and who may act now? | The `/Settings#city-planning` tab (`CityPlanningSettingsTabViewComponent`) posting to `OpenPlacement`, `ClosePlacement`, `FollowPlacementSchedule` (the override) and `UpdatePlacementSchedule` (the day-offset schedule); container phase posts `OpenContainerPlacement` / `CloseContainerPlacement` from the containers page; `ICityPlanningService.GetSettingsAsync` |
 | **Write the registration blurb** | What do barrio leads read before they register? | `UpdateRegistrationInfo` on the settings tab **and** on Camps' own admin page (`CampAdminController.UpdateRegistrationInfo`), both through `CityPlanningService.UpdateRegistrationInfoAsync` (section-internal); read by `GetRegistrationInfoAsync` |
 | **Publish the ground truth** | What is the boundary and what are the named zones? | `GET /CityPlanning/BarrioMap/Admin`, the upload, download and delete posts for the limit zone and the official zones |
 | **Bulk-load barrios** | Here is the surveyor's file — match it to camps and apply it. | `wwwroot/js/city-planning/barrio-map/admin-import.js` on the admin page: reads `GET …/state`, matches features to camps by name or slug, then `PUT`s each match |
@@ -95,7 +95,7 @@ Stated so a violation is recognisable:
    it never rewinds history. A history id that is not the season's restores nothing and answers
    404 (`Controllers/CityPlanningApiController.cs:126`). The note on an ordinary save is whatever the caller sends,
    falling back to `Saved` (`Controllers/CityPlanningApiController.cs:104`).
-4. A camp lead may edit their own polygon only while `IsPlacementOpen`, and only a season of the
+4. A camp lead may create or edit their own polygon only while placement is Open (only edit an existing one while Changeable — #2102), and only a season of the
    settings year (`Services/CityPlanningService.cs:265`). City-planning team members
    (`Services/CityPlanningService.cs:258`) and `CampAdmin`/`Admin`
    (`Controllers/CityPlanningApiController.cs:91`) are exempt from the phase and the ownership check.

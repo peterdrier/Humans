@@ -1,5 +1,9 @@
 # Section debt ledger for Humans.CityPlanning. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 8
-inbox: []
+next_id: 9
+inbox:
+  - added: 2026-10-21
+    id: CITYPLANNING-8
+    what: "city_planning_settings.PlacementOpensAt / PlacementClosesAt (CityPlanningSettings, [Obsolete]) are dead since peterdrier/Humans#2102 replaced the display-only dates with day offsets; the columns were kept because a drop needs Peter's per-case approval (memory/architecture/no-drops-until-prod-verified.md). Drop them in their own auto-generated migration PR once approved, then delete the properties."
+    review: panel

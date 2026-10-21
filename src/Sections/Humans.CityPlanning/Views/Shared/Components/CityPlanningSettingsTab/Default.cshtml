@@ -10,7 +10,14 @@
     <div class="alert alert-info">No active event. City planning takes its year from the active event — set one in the Event tab first.</div>
 }
 
+@functions {
+    private static string ScheduleDay(NodaTime.LocalDate? date) =>
+        date is { } d ? d.ToString("ddd d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture) : "—";
+}
+
 <div class="row g-4">
+    @* Barrio placement: the effective window, the manual override, and the day-offset schedule
+       (peterdrier/Humans#2102). New text is plain strings — admin-exempt. *@
     @if (settings is not null)
     {
     <div class="col-md-6">
@@ -19,43 +26,73 @@
                 <i class="fa-solid fa-door-open me-1"></i> @Localizer["CityPlanning_Admin_PlacementPhaseCard"] (@settings.Year)
             </div>
             <div class="card-body">
-                <p class="mb-3">
+                <p class="mb-2">
                     @Localizer["CityPlanning_Admin_Status"]
-                    @if (settings.IsPlacementOpen)
+                    @switch (settings.PlacementState)
                     {
-                        <span class="badge bg-success fs-6">@Localizer["CityPlanning_StatusOpen"]</span>
+                        case BarrioPlacementState.Open:
+                            <span class="badge bg-success fs-6">@Localizer["CityPlanning_StatusOpen"]</span>
+                            break;
+                        case BarrioPlacementState.Changeable:
+                            <span class="badge bg-info text-dark fs-6">@Localizer["CityPlanning_StatusChangeable"]</span>
+                            break;
+                        default:
+                            <span class="badge bg-secondary fs-6">@Localizer["CityPlanning_StatusClosed"]</span>
+                            break;
+                    }
+                </p>
+                <p class="small mb-3">
+                    @if (settings.PlacementOverride == true)
+                    {
+                        <span class="text-warning-emphasis fw-semibold">Manual override: forced open.</span>
                         if (settings.OpenedAt.HasValue)
                         {
-                            <span class="text-muted ms-2 small">@string.Format(Localizer["CityPlanning_Admin_OpenedAt"].Value, settings.OpenedAt.Value.ToString("g", null))</span>
+                            <span class="text-muted ms-1">@string.Format(Localizer["CityPlanning_Admin_OpenedAt"].Value, settings.OpenedAt.Value.ToString("g", null))</span>
+                        }
+                    }
+                    else if (settings.PlacementOverride == false)
+                    {
+                        <span class="text-warning-emphasis fw-semibold">Manual override: forced closed.</span>
+                        if (settings.ClosedAt.HasValue)
+                        {
+                            <span class="text-muted ms-1">@string.Format(Localizer["CityPlanning_Admin_ClosedAt"].Value, settings.ClosedAt.Value.ToString("g", null))</span>
                         }
                     }
                     else
                     {
-                        <span class="badge bg-secondary fs-6">@Localizer["CityPlanning_StatusClosed"]</span>
-                        if (settings.ClosedAt.HasValue)
-                        {
-                            <span class="text-muted ms-2 small">@string.Format(Localizer["CityPlanning_Admin_ClosedAt"].Value, settings.ClosedAt.Value.ToString("g", null))</span>
-                        }
+                        <span class="text-muted">No override — placement follows the schedule.</span>
                     }
                 </p>
-                @if (settings.IsPlacementOpen)
-                {
-                    <form method="post" action="/CityPlanning/BarrioMap/Admin/ClosePlacement">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-warning">
-                            <i class="fa-solid fa-lock me-1"></i> @Localizer["CityPlanning_Admin_ClosePlacement"]
-                        </button>
-                    </form>
-                }
-                else
-                {
-                    <form method="post" action="/CityPlanning/BarrioMap/Admin/OpenPlacement">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-success">
-                            <i class="fa-solid fa-lock-open me-1"></i> @Localizer["CityPlanning_Admin_OpenPlacement"]
-                        </button>
-                    </form>
-                }
+                <div class="d-flex flex-wrap gap-2">
+                    @if (settings.PlacementOverride != true)
+                    {
+                        <form method="post" action="/CityPlanning/BarrioMap/Admin/OpenPlacement">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-success btn-sm">
+                                <i class="fa-solid fa-lock-open me-1"></i> Force open
+                            </button>
+                        </form>
+                    }
+                    @if (settings.PlacementOverride != false)
+                    {
+                        <form method="post" action="/CityPlanning/BarrioMap/Admin/ClosePlacement">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-warning btn-sm">
+                                <i class="fa-solid fa-lock me-1"></i> Force closed
+                            </button>
+                        </form>
+                    }
+                    @if (settings.PlacementOverride.HasValue)
+                    {
+                        <form method="post" action="/CityPlanning/BarrioMap/Admin/FollowPlacementSchedule">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-primary btn-sm">
+                                <i class="fa-solid fa-calendar-check me-1"></i> Follow schedule
+                            </button>
+                        </form>
+                    }
+                </div>
+                <p class="text-muted small mt-3 mb-0">Force open/closed overrides the schedule until you choose Follow schedule.</p>
             </div>
         </div>
     </div>
@@ -63,24 +100,40 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header fw-semibold">
-                <i class="fa-solid fa-calendar me-1"></i> @Localizer["CityPlanning_Admin_PlacementDatesCard"] (@settings.Year)
+                <i class="fa-solid fa-calendar me-1"></i> Placement schedule (@settings.Year)
             </div>
             <div class="card-body">
-                <p class="text-muted small mb-3">@Localizer["CityPlanning_Admin_PlacementDatesHint"]</p>
-                <form method="post" action="/CityPlanning/BarrioMap/Admin/UpdatePlacementDates">
+                <p class="text-muted small mb-3">
+                    Days relative to gate opening (negative = before; 0 = gate opening day), in the event's time zone.
+                    Leads may place and edit their barrio from the opening day through the closing day, then only adjust an
+                    existing polygon through the changeable-until day. Leave a field empty to unset it; with no opening day
+                    placement stays closed unless forced open.
+                </p>
+                <form method="post" action="/CityPlanning/BarrioMap/Admin/UpdatePlacementSchedule">
                     @Html.AntiForgeryToken()
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold">@Localizer["CityPlanning_Admin_OpensAt"]</label>
-                        <input type="datetime-local" name="opensAt" class="form-control form-control-sm"
-                               value="@(settings.PlacementOpensAt is { } opensAt ? DateFormattingExtensions.PlacementDateTimePattern.Format(opensAt) : string.Empty)" />
+                        <label for="cp-opens-offset" class="form-label small fw-semibold">Opens (first day)</label>
+                        <div class="input-group input-group-sm">
+                            <input id="cp-opens-offset" type="number" step="1" name="opensOffset" class="form-control" value="@settings.PlacementOpensOffset" />
+                            <span class="input-group-text">@ScheduleDay(settings.PlacementOpensOn)</span>
+                        </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold">@Localizer["CityPlanning_Admin_ClosesAt"]</label>
-                        <input type="datetime-local" name="closesAt" class="form-control form-control-sm"
-                               value="@(settings.PlacementClosesAt is { } closesAt ? DateFormattingExtensions.PlacementDateTimePattern.Format(closesAt) : string.Empty)" />
+                        <label for="cp-closes-offset" class="form-label small fw-semibold">Closes (last day to place)</label>
+                        <div class="input-group input-group-sm">
+                            <input id="cp-closes-offset" type="number" step="1" name="closesOffset" class="form-control" value="@settings.PlacementClosesOffset" />
+                            <span class="input-group-text">@ScheduleDay(settings.PlacementClosesOn)</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="cp-changeable-offset" class="form-label small fw-semibold">Changeable until (last day to adjust an existing polygon)</label>
+                        <div class="input-group input-group-sm">
+                            <input id="cp-changeable-offset" type="number" step="1" name="changeableUntilOffset" class="form-control" value="@settings.PlacementChangeableUntilOffset" />
+                            <span class="input-group-text">@ScheduleDay(settings.PlacementChangeableUntilOn)</span>
+                        </div>
                     </div>
                     <button type="submit" class="btn btn-primary btn-sm">
-                        <i class="fa-solid fa-save me-1"></i> @Localizer["CityPlanning_Admin_SaveDates"]
+                        <i class="fa-solid fa-save me-1"></i> Save schedule
                     </button>
                 </form>
             </div>

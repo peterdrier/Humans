@@ -5,7 +5,9 @@ const el = document.getElementById('map');
 
 export const CONFIG = {
     USER_CAMP_SEASON_ID: el.dataset.userCampSeasonId,
+    // Open: a lead may place and edit their barrio. Changeable: only adjust an existing polygon.
     IS_PLACEMENT_OPEN:   el.dataset.isPlacementOpen === 'true',
+    IS_PLACEMENT_CHANGEABLE: el.dataset.isPlacementChangeable === 'true',
     IS_MAP_ADMIN:        el.dataset.isMapAdmin === 'true',
 
     SAVE_FAILED: el.dataset.saveFailed,

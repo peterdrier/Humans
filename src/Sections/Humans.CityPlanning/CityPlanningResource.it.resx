@@ -44,6 +44,9 @@
   <data name="CityPlanning_StatusClosed" xml:space="preserve">
     <value>Chiusa</value>
   </data>
+  <data name="CityPlanning_StatusChangeable" xml:space="preserve">
+    <value>Solo modifiche</value>
+  </data>
   <data name="CityPlanning_HelpButton" xml:space="preserve">
     <value>Aiuto</value>
   </data>
@@ -103,27 +106,6 @@
   </data>
   <data name="CityPlanning_Admin_ClosedAt" xml:space="preserve">
     <value>Chiusa {0}</value>
-  </data>
-  <data name="CityPlanning_Admin_ClosePlacement" xml:space="preserve">
-    <value>Chiudi fase</value>
-  </data>
-  <data name="CityPlanning_Admin_OpenPlacement" xml:space="preserve">
-    <value>Apri fase</value>
-  </data>
-  <data name="CityPlanning_Admin_PlacementDatesCard" xml:space="preserve">
-    <value>Date di posizionamento</value>
-  </data>
-  <data name="CityPlanning_Admin_PlacementDatesHint" xml:space="preserve">
-    <value>Solo informativo — mostrato nel modal di aiuto (ora spagnola). Non apre né chiude la fase automaticamente.</value>
-  </data>
-  <data name="CityPlanning_Admin_OpensAt" xml:space="preserve">
-    <value>Apre il</value>
-  </data>
-  <data name="CityPlanning_Admin_ClosesAt" xml:space="preserve">
-    <value>Chiude il</value>
-  </data>
-  <data name="CityPlanning_Admin_SaveDates" xml:space="preserve">
-    <value>Salva date</value>
   </data>
   <data name="CityPlanning_Admin_LimitZoneCard" xml:space="preserve">
     <value>Zona limite dei barrios</value>
@@ -278,11 +260,11 @@
   <data name="CityPlanning_Help_Opens" xml:space="preserve">
     <value>Apre:</value>
   </data>
-  <data name="CityPlanning_Help_Closes" xml:space="preserve">
-    <value>Chiude:</value>
+  <data name="CityPlanning_Help_LastDayToPlace" xml:space="preserve">
+    <value>Ultimo giorno per posizionare il tuo barrio:</value>
   </data>
-  <data name="CityPlanning_Help_SpainTime" xml:space="preserve">
-    <value>(ora spagnola)</value>
+  <data name="CityPlanning_Help_ChangeableUntil" xml:space="preserve">
+    <value>I barrio già posizionati si possono modificare fino al:</value>
   </data>
   <data name="CityPlanning_Help_WhenPlaceholder" xml:space="preserve">
     <value>La fase di posizionamento dura un tempo limitato — le date esatte saranno presto indicate qui. Posiziona il tuo barrio prima della chiusura!</value>

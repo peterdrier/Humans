@@ -44,6 +44,9 @@
   <data name="CityPlanning_StatusClosed" xml:space="preserve">
     <value>Geschlossen</value>
   </data>
+  <data name="CityPlanning_StatusChangeable" xml:space="preserve">
+    <value>Nur Anpassungen</value>
+  </data>
   <data name="CityPlanning_HelpButton" xml:space="preserve">
     <value>Hilfe</value>
   </data>
@@ -103,27 +106,6 @@
   </data>
   <data name="CityPlanning_Admin_ClosedAt" xml:space="preserve">
     <value>Geschlossen {0}</value>
-  </data>
-  <data name="CityPlanning_Admin_ClosePlacement" xml:space="preserve">
-    <value>Phase schließen</value>
-  </data>
-  <data name="CityPlanning_Admin_OpenPlacement" xml:space="preserve">
-    <value>Phase öffnen</value>
-  </data>
-  <data name="CityPlanning_Admin_PlacementDatesCard" xml:space="preserve">
-    <value>Platzierungsdaten</value>
-  </data>
-  <data name="CityPlanning_Admin_PlacementDatesHint" xml:space="preserve">
-    <value>Nur informativ — wird im Hilfe-Modal angezeigt (Spanische Zeit). Öffnet oder schließt die Phase nicht automatisch.</value>
-  </data>
-  <data name="CityPlanning_Admin_OpensAt" xml:space="preserve">
-    <value>Öffnet am</value>
-  </data>
-  <data name="CityPlanning_Admin_ClosesAt" xml:space="preserve">
-    <value>Schließt am</value>
-  </data>
-  <data name="CityPlanning_Admin_SaveDates" xml:space="preserve">
-    <value>Daten speichern</value>
   </data>
   <data name="CityPlanning_Admin_LimitZoneCard" xml:space="preserve">
     <value>Barrio-Grenzzone</value>
@@ -278,11 +260,11 @@
   <data name="CityPlanning_Help_Opens" xml:space="preserve">
     <value>Öffnet:</value>
   </data>
-  <data name="CityPlanning_Help_Closes" xml:space="preserve">
-    <value>Schließt:</value>
+  <data name="CityPlanning_Help_LastDayToPlace" xml:space="preserve">
+    <value>Letzter Tag, um dein Barrio zu platzieren:</value>
   </data>
-  <data name="CityPlanning_Help_SpainTime" xml:space="preserve">
-    <value>(Spanische Zeit)</value>
+  <data name="CityPlanning_Help_ChangeableUntil" xml:space="preserve">
+    <value>Bereits platzierte Barrios können angepasst werden bis:</value>
   </data>
   <data name="CityPlanning_Help_WhenPlaceholder" xml:space="preserve">
     <value>Die Platzierungsphase läuft für begrenzte Zeit — genaue Daten werden hier bald angezeigt. Platziere dein Barrio vor dem Ende!</value>

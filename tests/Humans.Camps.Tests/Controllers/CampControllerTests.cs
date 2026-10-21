@@ -1075,7 +1075,8 @@ public class CampControllerTests
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
         _cityPlanning.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<CityPlanningSettingsDto?>(new CityPlanningSettingsDto(
-                Guid.NewGuid(), 2026, false, null, null, null, null, null, null, null, false, null, null,
+                Guid.NewGuid(), 2026, BarrioPlacementState.Closed, null, null, null, null, null, null, null, null, null,
+                null, null, null, false, null, null,
                 Instant.FromUtc(2026, 1, 1, 0, 0))));
         _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(new CampRolesPanelData(call.ArgAt<Guid>(0), [])));
@@ -1107,7 +1108,8 @@ public class CampControllerTests
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
         _cityPlanning.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<CityPlanningSettingsDto?>(new CityPlanningSettingsDto(
-                Guid.NewGuid(), 2026, false, null, null, null, null, null, null, null, false, null, null,
+                Guid.NewGuid(), 2026, BarrioPlacementState.Closed, null, null, null, null, null, null, null, null, null,
+                null, null, null, false, null, null,
                 Instant.FromUtc(2026, 1, 1, 0, 0))));
         _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(new CampRolesPanelData(call.ArgAt<Guid>(0), [])));
@@ -1155,7 +1157,8 @@ public class CampControllerTests
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
         _cityPlanning.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<CityPlanningSettingsDto?>(new CityPlanningSettingsDto(
-                Guid.NewGuid(), 2026, false, null, null, null, null, null, null, null, false, null, null,
+                Guid.NewGuid(), 2026, BarrioPlacementState.Closed, null, null, null, null, null, null, null, null, null,
+                null, null, null, false, null, null,
                 Instant.FromUtc(2026, 1, 1, 0, 0))));
         _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(new CampRolesPanelData(call.ArgAt<Guid>(0), [])));

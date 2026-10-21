@@ -1,4 +1,6 @@
-@model (NodaTime.LocalDateTime? OpensAt, NodaTime.LocalDateTime? ClosesAt)
+@* The schedule's calendar days (event time zone), each null when unset. A tuple so Camps' Details page,
+   which sees only CityPlanning's contracts, can render this partial too. *@
+@model (NodaTime.LocalDate? OpensOn, NodaTime.LocalDate? ClosesOn, NodaTime.LocalDate? ChangeableUntilOn)
 <div class="modal fade" id="placement-help-modal" tabindex="-1">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
@@ -9,26 +11,24 @@
             <div class="modal-body">
                 <h6>@Localizer["CityPlanning_Help_WhenIsIt"]</h6>
                 @{
-                    var placementOpensAt = Model.OpensAt;
-                    var placementClosesAt = Model.ClosesAt;
-                    const string dtFmt = "d MMMM 'at' HH:mm";
+                    const string dateFmt = "d MMMM";
                 }
-                @if (placementOpensAt.HasValue || placementClosesAt.HasValue)
+                @if (Model.OpensOn.HasValue || Model.ClosesOn.HasValue || Model.ChangeableUntilOn.HasValue)
                 {
-                    <p class="text-muted small">
-                        @if (placementOpensAt.HasValue && placementClosesAt.HasValue)
+                    <ul class="text-muted small ps-3">
+                        @if (Model.OpensOn is { } opensOn)
                         {
-                            <span>@Localizer["CityPlanning_Help_Opens"] <strong>@placementOpensAt.Value.ToString(dtFmt, null)</strong> &middot; @Localizer["CityPlanning_Help_Closes"] <strong>@placementClosesAt.Value.ToString(dtFmt, null)</strong> @Localizer["CityPlanning_Help_SpainTime"]</span>
+                            <li>@Localizer["CityPlanning_Help_Opens"] <strong>@opensOn.ToString(dateFmt, null)</strong></li>
                         }
-                        else if (placementOpensAt.HasValue)
+                        @if (Model.ClosesOn is { } closesOn)
                         {
-                            <span>@Localizer["CityPlanning_Help_Opens"] <strong>@placementOpensAt.Value.ToString(dtFmt, null)</strong> @Localizer["CityPlanning_Help_SpainTime"]</span>
+                            <li>@Localizer["CityPlanning_Help_LastDayToPlace"] <strong>@closesOn.ToString(dateFmt, null)</strong></li>
                         }
-                        else
+                        @if (Model.ChangeableUntilOn is { } changeableUntilOn)
                         {
-                            <span>@Localizer["CityPlanning_Help_Closes"] <strong>@placementClosesAt!.Value.ToString(dtFmt, null)</strong> @Localizer["CityPlanning_Help_SpainTime"]</span>
+                            <li>@Localizer["CityPlanning_Help_ChangeableUntil"] <strong>@changeableUntilOn.ToString(dateFmt, null)</strong></li>
                         }
-                    </p>
+                    </ul>
                 }
                 else
                 {

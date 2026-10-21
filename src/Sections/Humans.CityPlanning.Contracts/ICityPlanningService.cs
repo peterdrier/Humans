@@ -34,15 +34,27 @@ public interface ICityPlanningService : IApplicationService
 /// <summary>
 /// The per-year City Planning settings row as callers see it. Lives on the contracts leaf
 /// because it is the return type of <see cref="ICityPlanningService.GetSettingsAsync"/>.
+/// <para>Barrio placement (peterdrier/Humans#2102): <c>PlacementState</c> is the window in effect now —
+/// the manual <c>PlacementOverride</c> when set (true = forced open, false = forced closed), else the
+/// schedule evaluated in the active event's time zone. <c>OpenedAt</c>/<c>ClosedAt</c> are when an admin
+/// last forced it open/closed. The three <c>*Offset</c> values are days from gate opening (negative =
+/// before): the first day open, the last day open, and the last day a lead may still adjust an existing
+/// polygon. The matching <c>*On</c> dates are those days on the calendar — null when the offset is unset
+/// or the row's year is not the active event's.</para>
 /// </summary>
 public record CityPlanningSettingsDto(
     Guid Id,
     int Year,
-    bool IsPlacementOpen,
+    BarrioPlacementState PlacementState,
+    bool? PlacementOverride,
     Instant? OpenedAt,
     Instant? ClosedAt,
-    LocalDateTime? PlacementOpensAt,
-    LocalDateTime? PlacementClosesAt,
+    int? PlacementOpensOffset,
+    int? PlacementClosesOffset,
+    int? PlacementChangeableUntilOffset,
+    LocalDate? PlacementOpensOn,
+    LocalDate? PlacementClosesOn,
+    LocalDate? PlacementChangeableUntilOn,
     string? RegistrationInfo,
     string? LimitZoneGeoJson,
     string? OfficialZonesGeoJson,
@@ -50,3 +62,19 @@ public record CityPlanningSettingsDto(
     Instant? ContainerPlacementOpenedAt,
     Instant? ContainerPlacementClosedAt,
     Instant UpdatedAt);
+
+/// <summary>
+/// Where the barrio placement window stands for a camp lead. City-planning team members and
+/// CampAdmin/Admin edit regardless.
+/// </summary>
+public enum BarrioPlacementState
+{
+    /// <summary>No lead may create or change a polygon.</summary>
+    Closed,
+
+    /// <summary>A lead may place their own camp season's polygon and edit it.</summary>
+    Open,
+
+    /// <summary>A lead may still adjust their existing polygon but not create a new one.</summary>
+    Changeable,
+}

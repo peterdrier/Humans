@@ -199,17 +199,25 @@
             @* Placement data (visible to leads, CampAdmins, and city planning team) *@
             @if (Model.IsCurrentUserLead || Model.IsCurrentUserCampAdmin || isCityPlanningMember)
             {
-                var isPlacementOpen = ViewBag.PlacementIsOpen as bool? ?? false;
-                NodaTime.LocalDateTime? placementOpensAt = ViewBag.PlacementOpensAt;
-                NodaTime.LocalDateTime? placementClosesAt = ViewBag.PlacementClosesAt;
+                var placementState = ViewBag.PlacementState as Humans.CityPlanning.Contracts.BarrioPlacementState?
+                    ?? Humans.CityPlanning.Contracts.BarrioPlacementState.Closed;
+                (NodaTime.LocalDate? OpensOn, NodaTime.LocalDate? ClosesOn, NodaTime.LocalDate? ChangeableUntilOn) placementSchedule =
+                    ViewBag.PlacementSchedule ?? ((NodaTime.LocalDate?)null, (NodaTime.LocalDate?)null, (NodaTime.LocalDate?)null);
                 <div class="card mb-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span><i class="fa-solid fa-map-location-dot me-1"></i> @Localizer["Camps_PlacementHeading"]</span>
                         <div class="d-flex align-items-center gap-2">
                             <span class="text-muted small">@CityPlanningLocalizer["CityPlanning_PlacementPhase"]:</span>
-                            @if (isPlacementOpen)
+                            @if (placementState != Humans.CityPlanning.Contracts.BarrioPlacementState.Closed)
                             {
-                                <span class="badge bg-success">@CityPlanningLocalizer["CityPlanning_StatusOpen"]</span>
+                                @if (placementState == Humans.CityPlanning.Contracts.BarrioPlacementState.Open)
+                                {
+                                    <span class="badge bg-success">@CityPlanningLocalizer["CityPlanning_StatusOpen"]</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-info text-dark">@CityPlanningLocalizer["CityPlanning_StatusChangeable"]</span>
+                                }
                                 <a asp-controller="CityPlanning" asp-action="BarrioMap" class="btn btn-sm btn-outline-primary">
                                     <i class="fa-solid fa-map me-1"></i> @CityPlanningLocalizer["CityPlanning_GoToPlacementMap"]
                                 </a>
@@ -261,7 +269,7 @@
                 </div>
                 @* By name, not by path: the partial moved into the City Planning RCL's Views/Shared,
                    and a name lookup searches every application part. *@
-                @await Html.PartialAsync("_PlacementHelpModal", (placementOpensAt, placementClosesAt))
+                @await Html.PartialAsync("_PlacementHelpModal", placementSchedule)
             }
         }
     </div>

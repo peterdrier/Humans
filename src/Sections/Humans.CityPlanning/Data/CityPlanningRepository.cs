@@ -186,7 +186,6 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
             settings = new CityPlanningSettings
             {
                 Year = year,
-                IsPlacementOpen = false,
                 UpdatedAt = now,
             };
             ctx.CityPlanningSettings.Add(settings);
@@ -212,7 +211,6 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
             settings = new CityPlanningSettings
             {
                 Year = year,
-                IsPlacementOpen = false,
                 UpdatedAt = now,
             };
             ctx.CityPlanningSettings.Add(settings);

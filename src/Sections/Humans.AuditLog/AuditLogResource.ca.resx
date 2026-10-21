@@ -245,6 +245,7 @@
   <data name="Enum_AuditAction_SepaBankLineSkipped" xml:space="preserve"><value>Línia bancària SEPA omesa</value></data>
   <data name="Enum_AuditAction_CityPlanningPlacementOpened" xml:space="preserve"><value>Període d’assignació urbanística obert</value></data>
   <data name="Enum_AuditAction_CityPlanningPlacementClosed" xml:space="preserve"><value>Període d’assignació urbanística tancat</value></data>
+  <data name="Enum_AuditAction_CityPlanningPlacementOverrideCleared" xml:space="preserve"><value>S’ha retirat el forçament manual de l’assignació urbanística</value></data>
   <data name="Enum_AuditAction_CityPlanningContainerPlacementOpened" xml:space="preserve"><value>Període d’ubicació urbanística de contenidors obert</value></data>
   <data name="Enum_AuditAction_CityPlanningContainerPlacementClosed" xml:space="preserve"><value>Període d’ubicació urbanística de contenidors tancat</value></data>
   <data name="Enum_AuditAction_CityPlanningLimitZoneUpdated" xml:space="preserve"><value>Zona límit urbanística actualitzada</value></data>

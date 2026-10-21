@@ -245,6 +245,7 @@
   <data name="Enum_AuditAction_SepaBankLineSkipped" xml:space="preserve"><value>Ligne bancaire SEPA ignorée</value></data>
   <data name="Enum_AuditAction_CityPlanningPlacementOpened" xml:space="preserve"><value>Période d’affectation urbaine ouverte</value></data>
   <data name="Enum_AuditAction_CityPlanningPlacementClosed" xml:space="preserve"><value>Période d’affectation urbaine fermée</value></data>
+  <data name="Enum_AuditAction_CityPlanningPlacementOverrideCleared" xml:space="preserve"><value>Forçage manuel de l’affectation urbaine retiré</value></data>
   <data name="Enum_AuditAction_CityPlanningContainerPlacementOpened" xml:space="preserve"><value>Période d’installation urbaine des conteneurs ouverte</value></data>
   <data name="Enum_AuditAction_CityPlanningContainerPlacementClosed" xml:space="preserve"><value>Période d’installation urbaine des conteneurs fermée</value></data>
   <data name="Enum_AuditAction_CityPlanningLimitZoneUpdated" xml:space="preserve"><value>Zone limite d’urbanisme mise à jour</value></data>

@@ -34,7 +34,7 @@ export function onCampPolygonClick(e) {
     const props = e.features[0].properties;
     const campSeasonId = props.campSeasonId;
     const isOwn = props.campSeasonId === CONFIG.USER_CAMP_SEASON_ID;
-    const canEdit = CONFIG.IS_MAP_ADMIN || (CONFIG.IS_PLACEMENT_OPEN && isOwn);
+    const canEdit = CONFIG.IS_MAP_ADMIN || ((CONFIG.IS_PLACEMENT_OPEN || CONFIG.IS_PLACEMENT_CHANGEABLE) && isOwn);
 
     const area         = props.areaSqm   ? `<div class="text-muted small">${Math.round(props.areaSqm).toLocaleString()} m²</div>` : '';
     const warning      = props.outsideZone ? `<div class="text-danger small">⚠️ ${escHtml(CONFIG.OUTSIDE_LIMITS)}</div>` : '';

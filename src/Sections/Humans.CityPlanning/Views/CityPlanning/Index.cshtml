@@ -5,7 +5,7 @@
     // Full-screen map: the member layout for everyone, admin shell or not.
     Layout = "_Layout";
     var year = Model.Year;
-    var showBarrioMapLink = Model.IsMapAdmin || (Model.IsBarrioLead && Model.IsPlacementOpen);
+    var showBarrioMapLink = Model.IsMapAdmin || (Model.IsBarrioLead && Model.PlacementState != BarrioPlacementState.Closed);
     var showContainerMapLink = Model.IsMapAdmin || (Model.IsBarrioLead && Model.IsContainerPlacementOpen);
 }
 

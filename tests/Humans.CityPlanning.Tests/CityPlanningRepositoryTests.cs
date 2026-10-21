@@ -214,7 +214,7 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
         var result = await _repo.GetOrCreateSettingsAsync(2027, now, Xunit.TestContext.Current.CancellationToken);
 
         result.Year.Should().Be(2027);
-        result.IsPlacementOpen.Should().BeFalse();
+        result.PlacementOverride.Should().BeNull();
         result.UpdatedAt.Should().Be(now);
         (await CityPlanningDb.CityPlanningSettings.AsNoTracking().CountAsync(s => s.Year == 2027, Xunit.TestContext.Current.CancellationToken))
             .Should().Be(1);
@@ -236,10 +236,10 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
     {
         var now = Clock.GetCurrentInstant();
 
-        await _repo.MutateSettingsAsync(2028, s => s.IsPlacementOpen = true, now, Xunit.TestContext.Current.CancellationToken);
+        await _repo.MutateSettingsAsync(2028, s => s.PlacementOverride = true, now, Xunit.TestContext.Current.CancellationToken);
 
         var result = await _repo.GetOrCreateSettingsAsync(2028, now, Xunit.TestContext.Current.CancellationToken);
-        result.IsPlacementOpen.Should().BeTrue();
+        result.PlacementOverride.Should().BeTrue();
         result.UpdatedAt.Should().Be(now);
     }
 
@@ -249,7 +249,6 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
         CityPlanningDb.CityPlanningSettings.Add(new CityPlanningSettings
         {
             Year = 2026,
-            IsPlacementOpen = false,
             UpdatedAt = Clock.GetCurrentInstant()
         });
         await CityPlanningDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
@@ -261,13 +260,13 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
             2026,
             s =>
             {
-                s.IsPlacementOpen = true;
+                s.PlacementOverride = true;
                 s.OpenedAt = now;
             },
             now, Xunit.TestContext.Current.CancellationToken);
 
         var result = await _repo.GetOrCreateSettingsAsync(2026, now, Xunit.TestContext.Current.CancellationToken);
-        result.IsPlacementOpen.Should().BeTrue();
+        result.PlacementOverride.Should().BeTrue();
         result.OpenedAt.Should().Be(now);
         result.UpdatedAt.Should().Be(now);
     }

@@ -18,12 +18,12 @@ namespace Humans.CityPlanning.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Humans.Domain.Entities.CampPolygon", b =>
+            modelBuilder.Entity("Humans.CityPlanning.Domain.CampPolygon", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -53,7 +53,7 @@ namespace Humans.CityPlanning.Data.Migrations
                     b.ToTable("camp_polygons", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.CampPolygonHistory", b =>
+            modelBuilder.Entity("Humans.CityPlanning.Domain.CampPolygonHistory", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -87,7 +87,7 @@ namespace Humans.CityPlanning.Data.Migrations
                     b.ToTable("camp_polygon_histories", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.CityPlanningSettings", b =>
+            modelBuilder.Entity("Humans.CityPlanning.Domain.CityPlanningSettings", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -105,9 +105,6 @@ namespace Humans.CityPlanning.Data.Migrations
                     b.Property<bool>("IsContainerPlacementOpen")
                         .HasColumnType("boolean");
 
-                    b.Property<bool>("IsPlacementOpen")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("LimitZoneGeoJson")
                         .HasColumnType("text");
 
@@ -117,11 +114,24 @@ namespace Humans.CityPlanning.Data.Migrations
                     b.Property<Instant?>("OpenedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int?>("PlacementChangeableUntilOffset")
+                        .HasColumnType("integer");
+
                     b.Property<LocalDateTime?>("PlacementClosesAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<int?>("PlacementClosesOffset")
+                        .HasColumnType("integer");
+
                     b.Property<LocalDateTime?>("PlacementOpensAt")
                         .HasColumnType("timestamp without time zone");
+
+                    b.Property<int?>("PlacementOpensOffset")
+                        .HasColumnType("integer");
+
+                    b.Property<bool?>("PlacementOverride")
+                        .HasColumnType("boolean")
+                        .HasColumnName("IsPlacementOpen");
 
                     b.Property<string>("RegistrationInfo")
                         .HasColumnType("text");

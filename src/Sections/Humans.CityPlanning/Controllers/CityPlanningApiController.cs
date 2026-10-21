@@ -3,6 +3,7 @@ using Microsoft.Extensions.Localization;
 using Humans.Base.Authorization;
 using System.Text.Json;
 using Humans.Camps.Contracts;
+using Humans.CityPlanning.Contracts;
 using Humans.CityPlanning.Services;
 using Humans.Containers.Contracts;
 using Humans.Base.Extensions;
@@ -56,7 +57,7 @@ internal sealed class CityPlanningApiController(
 
         return Ok(new
         {
-            isPlacementOpen = settings.IsPlacementOpen,
+            placementState = settings.PlacementState.ToString(),
             limitZoneGeoJson = settings.LimitZoneGeoJson,
             officialZonesGeoJson = settings.OfficialZonesGeoJson,
             campPolygons,

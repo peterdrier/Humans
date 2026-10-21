@@ -36,6 +36,7 @@
   <data name="CityPlanning_PlacementPhase" xml:space="preserve"><value>Placement phase</value></data>
   <data name="CityPlanning_StatusOpen" xml:space="preserve"><value>Open</value></data>
   <data name="CityPlanning_StatusClosed" xml:space="preserve"><value>Closed</value></data>
+  <data name="CityPlanning_StatusChangeable" xml:space="preserve"><value>Adjustments only</value></data>
   <data name="CityPlanning_HelpButton" xml:space="preserve"><value>Help</value></data>
   <data name="CityPlanning_AddMyBarrioButton" xml:space="preserve"><value>Add my barrio on the map</value></data>
   <data name="CityPlanning_AddABarrioOption" xml:space="preserve"><value>Add a barrio…</value></data>
@@ -56,13 +57,6 @@
   <data name="CityPlanning_Admin_Status" xml:space="preserve"><value>Status:</value></data>
   <data name="CityPlanning_Admin_OpenedAt" xml:space="preserve"><value>Opened {0}</value><comment>{0} = timestamp</comment></data>
   <data name="CityPlanning_Admin_ClosedAt" xml:space="preserve"><value>Closed {0}</value><comment>{0} = timestamp</comment></data>
-  <data name="CityPlanning_Admin_ClosePlacement" xml:space="preserve"><value>Close Placement</value></data>
-  <data name="CityPlanning_Admin_OpenPlacement" xml:space="preserve"><value>Open Placement</value></data>
-  <data name="CityPlanning_Admin_PlacementDatesCard" xml:space="preserve"><value>Placement Dates</value></data>
-  <data name="CityPlanning_Admin_PlacementDatesHint" xml:space="preserve"><value>Informational only — shown in the help modal (Spain time). Does not automatically open or close placement.</value></data>
-  <data name="CityPlanning_Admin_OpensAt" xml:space="preserve"><value>Opens at</value></data>
-  <data name="CityPlanning_Admin_ClosesAt" xml:space="preserve"><value>Closes at</value></data>
-  <data name="CityPlanning_Admin_SaveDates" xml:space="preserve"><value>Save dates</value></data>
   <data name="CityPlanning_Admin_LimitZoneCard" xml:space="preserve"><value>Barrios Limit Zone</value></data>
   <data name="CityPlanning_Admin_LimitZoneUploaded" xml:space="preserve"><value>Limit zone uploaded</value></data>
   <data name="CityPlanning_Admin_LimitZoneDeleteConfirm" xml:space="preserve"><value>Delete the limit zone?</value></data>
@@ -114,8 +108,8 @@
   <data name="CityPlanning_Loading" xml:space="preserve"><value>Loading…</value></data>
   <data name="CityPlanning_Help_WhenIsIt" xml:space="preserve"><value>When is it?</value></data>
   <data name="CityPlanning_Help_Opens" xml:space="preserve"><value>Opens:</value></data>
-  <data name="CityPlanning_Help_Closes" xml:space="preserve"><value>Closes:</value></data>
-  <data name="CityPlanning_Help_SpainTime" xml:space="preserve"><value>(Spain time)</value></data>
+  <data name="CityPlanning_Help_LastDayToPlace" xml:space="preserve"><value>Last day to place your barrio:</value></data>
+  <data name="CityPlanning_Help_ChangeableUntil" xml:space="preserve"><value>Already placed barrios can be adjusted until:</value></data>
   <data name="CityPlanning_Help_WhenPlaceholder" xml:space="preserve"><value>The placement phase runs for a limited time — exact dates will be shown here soon. Place your barrio before it closes!</value></data>
   <data name="CityPlanning_Help_PlacingTitle" xml:space="preserve"><value>Placing your barrio</value></data>
   <data name="CityPlanning_Help_PlacingBody" xml:space="preserve"><value>Click {0} to start drawing. Then click on the map to drop points that define your space — each click adds a corner. Close the shape by clicking back on the first point.</value><comment>{0} = "Add my barrio on the map" button label in bold</comment></data>
