@@ -40,6 +40,7 @@ internal sealed partial class GrantService : IUserDataContributor, IUserMerge
             Program = g.Program.Name,
             g.Program.Year,
             g.Program.Entitles,
+            g.SourceRef,
             ExpiresOn = (g.ExpiresOn ?? g.Program.GrantsExpireOn)?.ToInvariantDate(),
             IssuedAt = g.IssuedAt.ToIso8601(),
             NotifiedAt = g.NotifiedAt.ToIso8601(),
