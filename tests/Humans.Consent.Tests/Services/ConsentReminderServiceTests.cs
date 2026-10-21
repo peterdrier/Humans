@@ -45,7 +45,11 @@ public sealed class ConsentReminderServiceTests : IDisposable
         var info = UserInfo.Create(
             new User
             {
-                Id = id, BurnerName = "Ana", CreatedAt = Now, LastConsentReminderSentAt = legacy, MergedAt = mergedAt,
+                Id = id,
+                BurnerName = "Ana",
+                CreatedAt = Now,
+                LastConsentReminderSentAt = legacy,
+                MergedAt = mergedAt,
                 Email = erased ? $"deleted-{id:N}@deleted.local" : null,
             },
             [], [], [], null, []);
