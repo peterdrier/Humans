@@ -3,6 +3,8 @@ using Humans.Base.Enums;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Teams.Services;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NSubstitute;
 
@@ -22,6 +24,18 @@ public class TeamMessageOptionsProviderTests
     public TeamMessageOptionsProviderTests()
     {
         _provider = new TeamMessageOptionsProvider(_teamService, _teamResourceService);
+    }
+
+    // The profile page's TeamMessageButtonsViewComponent injects the provider, so a missing
+    // registration 500s every profile render — which only an integration test caught.
+    [HumansFact]
+    public void Section_RegistersTheProvider()
+    {
+        var services = new ServiceCollection();
+        new Section().Register(services, new ConfigurationBuilder().Build());
+
+        services.Should().ContainSingle(d => d.ServiceType == typeof(ITeamMessageOptionsProvider))
+            .Which.ImplementationType.Should().Be<TeamMessageOptionsProvider>();
     }
 
     [HumansFact]
