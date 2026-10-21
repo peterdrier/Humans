@@ -128,6 +128,12 @@ internal sealed class FeedbackService(
             return FeedbackMutationResult.Missing;
         }
 
+        if (issueNumber is <= 0)
+        {
+            logger.LogWarning("Feedback report {ReportId} rejected nonpositive GitHub issue number {IssueNumber}", id, issueNumber);
+            return new(true, Rejection: "GitHub issue numbers must be positive.");
+        }
+
         report.GitHubIssueNumber = issueNumber;
         report.UpdatedAt = clock.GetCurrentInstant();
 

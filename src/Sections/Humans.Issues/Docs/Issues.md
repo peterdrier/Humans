@@ -45,7 +45,7 @@ In-app issue tracker (bugs, features, questions) with screenshots, role-routed t
 | ScreenshotStoragePath | string? | `IFileStorage` key `uploads/issues/{issueId}/{guid}.{ext}` (max 512); bytes are read only through `GET /Issues/{id}/Screenshot`, never as a static URL |
 | ScreenshotContentType | string? | MIME type (`image/jpeg`, `image/png`, `image/webp`) (max 64) |
 | Status | IssueStatus | Triage (default), Open, InProgress, Resolved, WontFix, Duplicate. Stored as string (max 32). |
-| GitHubIssueNumber | int? | Linked GitHub issue (org-scoped) |
+| GitHubIssueNumber | int? | Positive linked GitHub issue number (org-scoped), or null to clear. Nonpositive numbers are refused before writes or link-change audit entries, preserving the current link. |
 | DueDate | LocalDate? | Optional handler-set deadline |
 | AssigneeUserId | Guid? | No FK, no nav property — bare column. |
 | CreatedAt | Instant | Submission timestamp |

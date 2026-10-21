@@ -569,6 +569,26 @@ public sealed class FeedbackServiceTests
     }
 
     [HumansTheory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task SetGitHubIssueNumberAsync_RejectsNonpositiveNumbersWithoutChangingLink(int number)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var report = await CreateTestReport();
+        await _service.SetGitHubIssueNumberAsync(report.Id, 123, Guid.NewGuid(), ct);
+        _auditLog.ClearReceivedCalls();
+
+        var result = await _service.SetGitHubIssueNumberAsync(report.Id, number, Guid.NewGuid(), ct);
+
+        result.Found.Should().BeTrue();
+        result.Succeeded.Should().BeFalse();
+        result.Rejection.Should().Contain("positive");
+        (await FeedbackDb.FeedbackReports.AsNoTracking().SingleAsync(r => r.Id == report.Id, ct))
+            .GitHubIssueNumber.Should().Be(123);
+        _auditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData("Browser/1.0", "Roles: Volunteer", false)]
     [InlineData(null, null, false)]
     [InlineData("Browser/1.0", "Roles: Volunteer", true)]

@@ -677,6 +677,12 @@ internal sealed class IssuesService(
     {
         return MutateAsync(issueId, viewer, "SetGitHubIssueNumber", "Failed to link GitHub issue.", async issue =>
         {
+            if (githubIssueNumber is <= 0)
+            {
+                logger.LogWarning("Issue {IssueId} rejected nonpositive GitHub issue number {IssueNumber}", issueId, githubIssueNumber);
+                return IssueMutationResult.Refused("GitHub issue numbers must be positive.");
+            }
+
             if (issue.GitHubIssueNumber == githubIssueNumber) return IssueMutationResult.Success();
 
             issue.GitHubIssueNumber = githubIssueNumber;

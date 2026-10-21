@@ -1547,7 +1547,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task SetGitHubIssueNumberAsync_returns_success_when_link_updates()
+    public async Task SetGitHubIssueNumberAsync_returns_success_when_link_updates_or_clears()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
 
@@ -1555,6 +1555,33 @@ public sealed class IssuesServiceTests
 
         result.Succeeded.Should().BeTrue();
         result.NotFound.Should().BeFalse();
+
+        var cleared = await _service.SetGitHubIssueNumberAsync(issueId, Admin, null, Admin.UserId,
+            Xunit.TestContext.Current.CancellationToken);
+        cleared.Succeeded.Should().BeTrue();
+        (await _issuesDb.Issues.AsNoTracking().SingleAsync(i => i.Id == issueId,
+            Xunit.TestContext.Current.CancellationToken)).GitHubIssueNumber.Should().BeNull();
+    }
+
+    [HumansTheory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task SetGitHubIssueNumberAsync_RejectsNonpositiveNumbersWithoutChangingLink(int number)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
+        await _service.SetGitHubIssueNumberAsync(issueId, Admin, 123, Admin.UserId, ct);
+        AuditLog.ClearReceivedCalls();
+
+        var result = await _service.SetGitHubIssueNumberAsync(issueId, Admin, number, Admin.UserId, ct);
+
+        result.NotFound.Should().BeFalse();
+        result.Rejected.Should().BeTrue();
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("positive");
+        (await _issuesDb.Issues.AsNoTracking().SingleAsync(i => i.Id == issueId, ct))
+            .GitHubIssueNumber.Should().Be(123);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

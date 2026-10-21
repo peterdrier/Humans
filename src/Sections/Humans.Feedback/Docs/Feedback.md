@@ -47,7 +47,7 @@ Historical in-app feedback reports (bugs, feature requests, questions) with scre
 | ScreenshotStoragePath | string? | `IFileStorage` key of the screenshot blob (max 512); historical uploads landed under `uploads/feedback/` |
 | ScreenshotContentType | string? | MIME type (`image/jpeg`, `image/png`, `image/webp`) (max 64) |
 | Status | FeedbackStatus | Open, Acknowledged, Resolved, WontFix |
-| GitHubIssueNumber | int? | Linked GitHub issue |
+| GitHubIssueNumber | int? | Positive linked GitHub issue number, or null to clear. Nonpositive numbers are refused before writes or link-change audit entries, preserving the current link. |
 | LastReporterMessageAt | Instant? | Timestamp of the most recent reporter message (drives "needs reply") |
 | LastAdminMessageAt | Instant? | Timestamp of the most recent admin message (drives "needs reply") |
 | AssignedToUserId | Guid? | Bare cross-section Guid column — **no FK constraint, no nav property** |
