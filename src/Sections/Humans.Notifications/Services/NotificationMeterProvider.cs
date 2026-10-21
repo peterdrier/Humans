@@ -170,45 +170,42 @@ internal sealed class NotificationMeterProvider(
         return meters;
     }
 
+    // Not cached here: Camps already holds these reads in RAM (CachingCampService) and
+    // drops that projection on its own writes, so a second cache would only add staleness.
     private async Task<int> GetPerCampLeadPendingCountAsync(Guid userId, CancellationToken cancellationToken)
     {
-        var cacheKey = CacheKeys.CampLeadJoinRequestsBadge(userId);
-        return await cache.GetOrCreateAsync(cacheKey, async entry =>
+        try
         {
-            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
-            try
-            {
-                var settings = await campService.GetSettingsAsync(cancellationToken);
-                var years = settings.OpenSeasons
-                    .Append(settings.PublicYear)
-                    .Distinct()
-                    .OrderBy(year => year);
+            var settings = await campService.GetSettingsAsync(cancellationToken);
+            var years = settings.OpenSeasons
+                .Append(settings.PublicYear)
+                .Distinct()
+                .OrderBy(year => year);
 
-                var pendingCount = 0;
-                foreach (var year in years)
-                {
-                    var camps = await campService.GetCampsForYearAsync(year, cancellationToken);
-                    pendingCount += camps
-                        .SelectMany(camp => camp.Seasons)
-                        .Where(season =>
-                            season.Year == year &&
-                            season.Status is CampSeasonStatus.Active or CampSeasonStatus.Full &&
-                            season.IsLead(userId))
-                        .Sum(season => season.PendingMembers.Count);
-                }
+            var pendingCount = 0;
+            foreach (var year in years)
+            {
+                var camps = await campService.GetCampsForYearAsync(year, cancellationToken);
+                pendingCount += camps
+                    .SelectMany(camp => camp.Seasons)
+                    .Where(season =>
+                        season.Year == year &&
+                        season.Status is CampSeasonStatus.Active or CampSeasonStatus.Full &&
+                        season.IsLead(userId))
+                    .Sum(season => season.PendingMembers.Count);
+            }
 
-                return pendingCount;
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to compute camp lead pending-request count for {UserId}", userId);
-                return 0;
-            }
-        });
+            return pendingCount;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to compute camp lead pending-request count for {UserId}", userId);
+            return 0;
+        }
     }
 
     private async Task<MeterCounts> GetCachedCountsAsync(CancellationToken cancellationToken)

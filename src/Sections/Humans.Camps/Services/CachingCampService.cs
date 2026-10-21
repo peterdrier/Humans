@@ -1,7 +1,7 @@
-using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.EarlyEntry.Contracts;
+using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Camps.Services;
@@ -10,12 +10,15 @@ namespace Humans.Camps.Services;
 /// Singleton caching decorator for <see cref="ICampManagement"/>. Per-camp
 /// <see cref="CampInfo"/> dict plus a single-slot <see cref="CampSettingsInfo"/>.
 /// Year-keyed reads are filtered snapshots, not separate cache entries.
+/// It also carries <see cref="ICampRoleService"/> and <see cref="IUserDataContributor"/>:
+/// role writes and GDPR erasure change rows the projection serves, so the cache
+/// owner drops it on those writes itself.
 /// </summary>
 internal sealed class CachingCampService(
     IServiceScopeFactory scopeFactory,
     IClock clock,
     ILogger<CachingCampService> logger) : TrackedCache<Guid, CampInfo>("Camp.CampInfo", warmOnStartup: true, logger),
-    ICampManagement, ICampLeadDirectory, ICampSeeding, ICampRoleCampAccess, IUserMerge, ICampInfoInvalidator, IEarlyEntryProvider
+    ICampManagement, ICampLeadDirectory, ICampSeeding, ICampRoleCampAccess, IUserMerge, ICampRoleService, IUserDataContributor, IEarlyEntryProvider
 {
     /// <summary>DI key for the undecorated inner <see cref="ICampManagement"/>.</summary>
     public const string InnerServiceKey = "camp-inner";
@@ -477,41 +480,109 @@ internal sealed class CachingCampService(
             RefreshAll();
         });
 
-    // ICampInfoInvalidator
+    // ICampRoleService — role-definition edits and assignment changes reshape the cached
+    // role projection, so each write that changed something drops it. Reads pass through.
 
-    /// <inheritdoc cref="ICampInfoInvalidator.InvalidateCampAsync" />
-    public Task InvalidateCampAsync(Guid campId, CancellationToken ct = default) =>
-        InvalidateCampAsync(campId, memberName: string.Empty, filePath: string.Empty);
+    Task<IReadOnlyList<CampRoleDefinitionInfo>> ICampRoleService.ListDefinitionsAsync(
+        bool includeDeactivated, CancellationToken ct) =>
+        WithInnerRoles(inner => inner.ListDefinitionsAsync(includeDeactivated, ct));
 
-    /// <inheritdoc cref="ICampInfoInvalidator.InvalidateSeasonAsync" />
-    public Task InvalidateSeasonAsync(Guid campSeasonId, CancellationToken ct = default) =>
-        InvalidateBySeasonAsync(campSeasonId, ct);
+    Task<CampRoleDefinitionInfo?> ICampRoleService.GetDefinitionByIdAsync(Guid id, CancellationToken ct) =>
+        WithInnerRoles(inner => inner.GetDefinitionByIdAsync(id, ct));
 
-    /// <inheritdoc cref="ICampInfoInvalidator.InvalidateAllAsync" />
-    public Task InvalidateAllAsync(CancellationToken ct = default)
+    Task<CampRoleDefinitionInfo?> ICampRoleService.GetDefinitionBySlugAsync(string slug, CancellationToken ct) =>
+        WithInnerRoles(inner => inner.GetDefinitionBySlugAsync(slug, ct));
+
+    string ICampRoleService.BuildGroupKey(int year, string slug)
     {
-        RefreshAll();
-        return Task.CompletedTask;
+        using var scope = scopeFactory.CreateScope();
+        return scope.ServiceProvider.GetRequiredKeyedService<ICampRoleService>(InnerServiceKey)
+            .BuildGroupKey(year, slug);
     }
+
+    Task<CampRoleDrillDownData?> ICampRoleService.BuildDrillDownAsync(
+        Guid roleDefinitionId, int year, CancellationToken ct) =>
+        WithInnerRoles(inner => inner.BuildDrillDownAsync(roleDefinitionId, year, ct));
+
+    // A new definition has no assignments yet, so nothing cached changes.
+    Task<CampRoleDefinition> ICampRoleService.CreateDefinitionAsync(
+        CreateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct) =>
+        WithInnerRoles(inner => inner.CreateDefinitionAsync(input, actorUserId, ct));
+
+    // Name/SortOrder are baked into the role projection of every camp that assigns the
+    // definition, and (de)activation drops or restores it there: no single camp to target.
+    Task<UpdateCampRoleDefinitionResult> ICampRoleService.UpdateDefinitionAsync(
+        Guid id, UpdateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct) =>
+        MutateRolesAsync(
+            inner => inner.UpdateDefinitionAsync(id, input, actorUserId, ct),
+            result => result.Status == UpdateCampRoleDefinitionStatus.Updated);
+
+    Task<bool> ICampRoleService.DeactivateDefinitionAsync(Guid id, Guid actorUserId, CancellationToken ct) =>
+        MutateRolesAsync(inner => inner.DeactivateDefinitionAsync(id, actorUserId, ct), changed => changed);
+
+    Task<bool> ICampRoleService.ReactivateDefinitionAsync(Guid id, Guid actorUserId, CancellationToken ct) =>
+        MutateRolesAsync(inner => inner.ReactivateDefinitionAsync(id, actorUserId, ct), changed => changed);
+
+    Task<CampRolesPanelData> ICampRoleService.BuildPanelAsync(Guid campSeasonId, CancellationToken ct) =>
+        WithInnerRoles(inner => inner.BuildPanelAsync(campSeasonId, ct));
+
+    Task<AssignCampRoleOutcome> ICampRoleService.AssignAsync(
+        Guid campSeasonId, Guid roleDefinitionId, Guid campMemberId, Guid actorUserId, CancellationToken ct) =>
+        MutateRolesAsync(
+            inner => inner.AssignAsync(campSeasonId, roleDefinitionId, campMemberId, actorUserId, ct),
+            outcome => outcome == AssignCampRoleOutcome.Assigned);
+
+    Task<CampRoleAssignmentInfo?> ICampRoleService.GetAssignmentByIdAsync(Guid assignmentId, CancellationToken ct) =>
+        WithInnerRoles(inner => inner.GetAssignmentByIdAsync(assignmentId, ct));
+
+    Task<bool> ICampRoleService.UnassignAsync(Guid assignmentId, Guid actorUserId, CancellationToken ct) =>
+        MutateRolesAsync(inner => inner.UnassignAsync(assignmentId, actorUserId, ct), deleted => deleted);
+
+    // Also the Leave/Withdraw/Remove cascade: CampService reaches it through this decorator.
+    Task<int> ICampRoleService.RemoveAllForMemberAsync(Guid campMemberId, Guid actorUserId, CancellationToken ct) =>
+        MutateRolesAsync(inner => inner.RemoveAllForMemberAsync(campMemberId, actorUserId, ct), deleted => deleted > 0);
+
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>>
+        ICampRoleService.GetDirectoryRoleSummariesAsync(int year, CancellationToken ct) =>
+        WithInnerRoles(inner => inner.GetDirectoryRoleSummariesAsync(year, ct));
+
+    Task<CampComplianceMatrixData> ICampRoleService.BuildComplianceMatrixAsync(int year, CancellationToken ct) =>
+        WithInnerRoles(inner => inner.BuildComplianceMatrixAsync(year, ct));
+
+    // Seeding creates definitions only; no assignment, so nothing cached changes.
+    Task<int> ICampRoleService.SeedSystemRolesAsync(Guid actorUserId, CancellationToken ct) =>
+        WithInnerRoles(inner => inner.SeedSystemRolesAsync(actorUserId, ct));
+
+    Task<IReadOnlyList<CampSpecialRole>> ICampRoleService.GetMissingSpecialRolesAsync(CancellationToken ct) =>
+        WithInnerRoles(inner => inner.GetMissingSpecialRolesAsync(ct));
+
+    // IUserDataContributor — erasure empties the rosters the projection carries. The user's
+    // camps span an unbounded set and the delete does not hand back their ids: RefreshAll.
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => CampService.Erasure;
+
+    public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
+        WithInner(inner => inner.ContributeForUserAsync(userId, ct));
+
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
+        MutateAsync(async () =>
+        {
+            await WithInner(inner => inner.EraseForUserAsync(userId, ct));
+            RefreshAll();
+        });
 
     // Per-camp precision is aspirational: today every invalidation — per-camp
     // included — drops the whole projection (RefreshAll). campId feeds the debug
     // log and keeps call sites naming the camp that changed, so a narrower rebuild
     // can land here without touching them (nobodies-collective/Humans#805).
-    private Task InvalidateCampAsync(
-        Guid campId,
-        [CallerMemberName] string memberName = "",
-        [CallerFilePath] string filePath = "")
+    private Task InvalidateCampAsync(Guid campId, CancellationToken ct)
     {
-        logger.LogDebug(
-            "CampInfo invalidate campId={CampId} caller={CallerMember} file={CallerFile}",
-            campId, memberName, Path.GetFileName(filePath));
+        logger.LogDebug("CampInfo invalidate campId={CampId}", campId);
         RefreshAll();
         return Task.CompletedTask;
     }
 
-    /// <inheritdoc cref="ICampInfoInvalidator.InvalidateSettingsAsync" />
-    public async Task InvalidateSettingsAsync(CancellationToken ct = default)
+    private async Task InvalidateSettingsAsync(CancellationToken ct)
     {
         await _settingsLock.WaitAsync(ct);
         try
@@ -651,6 +722,22 @@ internal sealed class CachingCampService(
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserMerge>(InnerServiceKey);
         await work(inner);
     }
+
+    private async Task<T> WithInnerRoles<T>(Func<ICampRoleService, Task<T>> work)
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<ICampRoleService>(InnerServiceKey);
+        return await work(inner);
+    }
+
+    // Drops the projection after a role write that changed something.
+    private Task<T> MutateRolesAsync<T>(Func<ICampRoleService, Task<T>> write, Func<T, bool> changed) =>
+        MutateAsync(async () =>
+        {
+            var result = await WithInnerRoles(write);
+            if (changed(result)) RefreshAll();
+            return result;
+        });
     // ==========================================================================
     // Leaf carves. The decorator is the registered Singleton for the section's service, so it
     // carries these too; both are pass-throughs to the inner service (a §15 decorator may not

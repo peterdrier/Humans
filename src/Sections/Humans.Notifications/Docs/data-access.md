@@ -67,12 +67,13 @@ No repository. Pure read-aggregation over owning services.
 | Cache Key | TTL | Read | Write | Invalidate |
 |-----------|-----|------|-------|------------|
 | `NotificationMeters` | 2 min | yes | yes | (per `INotificationMeterCacheInvalidator` callers) |
-| `NavBadge:CampLeadJoinRequests:{userId}` | 2 min | yes | yes | (per `ICampLeadJoinRequestsBadgeCacheInvalidator`) |
 
 Cross-section calls via `IUserService`, `IGoogleSyncService`,
 `ITeamService`, `ITicketSync`, `IGovernanceService`,
 `ICampService`. **No direct DB access** — every counter fans out
-through an owning-service interface call.
+through an owning-service interface call. The per-lead camp join-request
+count is not cached here: it reads Camps' in-RAM `CampInfo` projection,
+which Camps evicts on its own writes.
 
 ### NotificationInboxRead (Scoped)
 

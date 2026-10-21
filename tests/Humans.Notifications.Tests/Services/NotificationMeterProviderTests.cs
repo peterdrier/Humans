@@ -201,7 +201,7 @@ public class NotificationMeterProviderTests : IDisposable
         var expected = keys.Select(key => localizer["Notifications_Meter_" + key]).ToList();
         expected.Should().OnlyContain(value => !value.ResourceNotFound);
         meters.Select(m => m.Title).Should().Equal(expected.Select(value => value.Value));
-        _cache.Remove(CacheKeys.CampLeadJoinRequestsBadge(userId));
+        // No per-user cache over the camp reads: a changed roster shows on the next call.
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns([MakeCampInfoWithPendingRequest(userId), MakeCampInfoWithPendingRequest(userId)]);
         meters = await _provider.GetMetersForUserAsync(principal, TestContext.Current.CancellationToken);
@@ -394,7 +394,7 @@ public class NotificationMeterProviderTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetMetersForUserAsync_CancelledDuringCampLeadCount_ThrowsAndCachesNothing()
+    public async Task GetMetersForUserAsync_CancelledDuringCampLeadCount_Throws()
     {
         var leadUserId = Guid.NewGuid();
         using var cts = new CancellationTokenSource();
@@ -410,7 +410,6 @@ public class NotificationMeterProviderTests : IDisposable
         var act = () => _provider.GetMetersForUserAsync(CreatePrincipalWithId(leadUserId), cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
-        _cache.TryGetValue(CacheKeys.CampLeadJoinRequestsBadge(leadUserId), out _).Should().BeFalse();
     }
 
     private static ClaimsPrincipal CreatePrincipal(params string[] roles)

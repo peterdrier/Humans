@@ -14,8 +14,6 @@ public static class CacheKeys
 
     public static string ShiftAuthorization(Guid userId) => $"shift-auth:{userId:N}";
 
-    public static string CampLeadJoinRequestsBadge(Guid userId) => $"NavBadge:CampLeadJoinRequests:{userId:N}";
-
     public static string LegalDocument(string slug) => $"Legal:{slug}";
 
     // Magic link sentinel keys (rate limiting and replay prevention)

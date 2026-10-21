@@ -17,12 +17,6 @@ public sealed class NotificationMeterCacheInvalidator(IMemoryCache cache) : INot
     public void Invalidate() => cache.InvalidateNotificationMeters();
 }
 
-public sealed class CampLeadJoinRequestsBadgeCacheInvalidator(IMemoryCache cache)
-    : ICampLeadJoinRequestsBadgeCacheInvalidator
-{
-    public void Invalidate(Guid userId) => cache.InvalidateCampLeadJoinRequestsBadge(userId);
-}
-
 public sealed class RoleAssignmentClaimsCacheInvalidator(IMemoryCache cache) : IRoleAssignmentClaimsCacheInvalidator
 {
     public void Invalidate(Guid userId) => cache.InvalidateRoleAssignmentClaims(userId);

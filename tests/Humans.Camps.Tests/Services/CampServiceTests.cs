@@ -29,11 +29,9 @@ public sealed class CampServiceTests : CampsTestHarness
     private static readonly Guid TestActorId = Guid.NewGuid();
     private readonly CampService _service;
     private readonly InMemoryFileStorage _fileStorage;
-    private readonly ICampLeadJoinRequestsBadgeCacheInvalidator _leadBadgeInvalidator = Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>();
     private readonly ICampRoleService _campRoleService;
     private readonly ICityPlanningWrite _cityPlanningService;
     private readonly IEarlyEntryInvalidator _earlyEntryInvalidator;
-    private readonly ICampInfoInvalidator _campInfoInvalidator = Substitute.For<ICampInfoInvalidator>();
     private readonly ISettingsService _settingsService;
     private readonly IUserService _userService = Substitute.For<IUserService>();
 
@@ -65,11 +63,9 @@ public sealed class CampServiceTests : CampsTestHarness
             Substitute.For<ISystemTeamSync>(),
             _fileStorage,
             Notifier,
-            _leadBadgeInvalidator,
             new Lazy<ICampRoleService>(() => _campRoleService),
             new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
             _earlyEntryInvalidator,
-            _campInfoInvalidator,
             _userService,
             Substitute.For<Humans.Tickets.Contracts.ITicketService>(),
             _settingsService,
@@ -220,7 +216,7 @@ public sealed class CampServiceTests : CampsTestHarness
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task MembershipFoldOrErasure_EvictsOtherLeadsPendingRequestBadge(bool merge)
+    public async Task MembershipFoldOrErasure_LeavesOnePendingRequest(bool merge)
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
@@ -232,14 +228,6 @@ public sealed class CampServiceTests : CampsTestHarness
         await SeedUserAsync(target, "Target");
         await _service.RequestCampMembershipAsync(camp.Id, source, ct);
         await _service.RequestCampMembershipAsync(camp.Id, target, ct);
-        var lead = camp.CreatedByUserId;
-        using var cache = new MemoryCache(new MemoryCacheOptions());
-        var invalidator = new CampLeadJoinRequestsBadgeCacheInvalidator(cache);
-        _leadBadgeInvalidator.When(x => x.Invalidate(Arg.Any<Guid>()))
-            .Do(call => invalidator.Invalidate(call.Arg<Guid>()));
-        var badgeKey = CacheKeys.CampLeadJoinRequestsBadge(lead);
-        cache.Set(badgeKey, 2);
-
         if (merge)
             await _service.ReassignAsync(source, target, Guid.NewGuid(), Clock.GetCurrentInstant(), ct);
         else
@@ -247,7 +235,6 @@ public sealed class CampServiceTests : CampsTestHarness
 
         (await CampsDb.CampMembers.AsNoTracking().CountAsync(m => m.Status == CampMemberStatus.Pending, ct))
             .Should().Be(1);
-        cache.TryGetValue<int>(badgeKey, out _).Should().BeFalse();
     }
 
     // ==========================================================================
@@ -2194,10 +2181,9 @@ public sealed class CampServiceTests : CampsTestHarness
         });
         var service = new CampService(
             new CampRepository(CampsDbFactory), AuditLog, Substitute.For<ISystemTeamSync>(), storage, Notifier,
-            Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
             new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
-            _earlyEntryInvalidator, _campInfoInvalidator, _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
+            _earlyEntryInvalidator, _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
             Clock, NullLogger<CampService>.Instance);
 
         if (deleteCamp)
@@ -2267,10 +2253,9 @@ public sealed class CampServiceTests : CampsTestHarness
                 : Task.FromResult(committed));
         var service = new CampService(
             repo, AuditLog, Substitute.For<ISystemTeamSync>(), _fileStorage, Notifier,
-            Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
             new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
-            _earlyEntryInvalidator, _campInfoInvalidator, _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
+            _earlyEntryInvalidator, _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
             Clock, NullLogger<CampService>.Instance);
         await using var image = new MemoryStream([1, 2, 3]);
 
@@ -2691,7 +2676,7 @@ public sealed class CampServiceTests : CampsTestHarness
         removed.GetProperty("RemovedByUserId").GetGuid().Should().Be(actorId);
         removed.GetProperty("ConfirmedAt").GetString().Should().Be("2026-03-13T12:00:00Z");
         removed.GetProperty("RemovedAt").GetString().Should().Be("2026-03-13T12:00:00Z");
-        _service.ErasureDeclaration.Should().ContainKey(CampService.CampMemberships).WhoseValue.Should().BeNull();
+        CampService.Erasure.Should().ContainKey(CampService.CampMemberships).WhoseValue.Should().BeNull();
 
         await _service.EraseForUserAsync(userId, ct);
 
@@ -2785,10 +2770,9 @@ public sealed class CampServiceTests : CampsTestHarness
             System.Transactions.Transaction.Current.Should().BeNull("the delete transaction must finish before reads can refill"));
         var service = new CampService(
             repo, AuditLog, Substitute.For<ISystemTeamSync>(), _fileStorage, Notifier,
-            Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
             new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
-            _earlyEntryInvalidator, _campInfoInvalidator, _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
+            _earlyEntryInvalidator, _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
             Clock, NullLogger<CampService>.Instance);
 
         var deletion = service.DeleteCampAsync(camp.Id, actorUserId: TestActorId, TestContext.Current.CancellationToken);
