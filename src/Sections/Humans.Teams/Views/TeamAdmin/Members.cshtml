@@ -282,7 +282,7 @@ else
 
 <div class="mt-3">
     <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-secondary">@Localizer["Teams_TeamAdmin_BackToTeam"]</a>
-    <a asp-action="Resources" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-info">@Localizer["Teams_TeamAdmin_ManageResources"]</a>
+    <a asp-controller="TeamResources" asp-action="Index" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-info">@Localizer["Teams_TeamAdmin_ManageResources"]</a>
 </div>
 
 @if (Model.IsSensitive)

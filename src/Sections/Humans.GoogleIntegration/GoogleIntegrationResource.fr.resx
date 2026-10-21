@@ -125,4 +125,31 @@
     <value>Vérifiez d'abord</value>
   </data>
   <data name="GoogleIntegration_Identity_Locked" xml:space="preserve"><value>Verrouillé par la ligne d'e-mail Workspace</value></data>
+  <data name="GoogleIntegration_TeamResources_Heading" xml:space="preserve"><value>Gérer les ressources</value></data>
+  <data name="GoogleIntegration_TeamResources_Team" xml:space="preserve"><value>Équipe</value></data>
+  <data name="GoogleIntegration_TeamResources_Name" xml:space="preserve"><value>Nom</value></data>
+  <data name="GoogleIntegration_TeamResources_Type" xml:space="preserve"><value>Type</value></data>
+  <data name="GoogleIntegration_TeamResources_Actions" xml:space="preserve"><value>Actions</value></data>
+  <data name="GoogleIntegration_TeamResources_BackToTeam" xml:space="preserve"><value>Retour à l'équipe</value></data>
+  <data name="GoogleIntegration_TeamResources_ManageMembers" xml:space="preserve"><value>Gérer les membres</value></data>
+  <data name="GoogleIntegration_TeamResources_Title" xml:space="preserve"><value>Gérer les ressources - {0}</value><comment>{0} = team name</comment></data>
+  <data name="GoogleIntegration_TeamResources_Breadcrumb" xml:space="preserve"><value>Ressources</value></data>
+  <data name="GoogleIntegration_TeamResources_ServiceAccountTitle" xml:space="preserve"><value>Compte de service</value></data>
+  <data name="GoogleIntegration_TeamResources_ShareWithServiceAccount" xml:space="preserve"><value>Pour lier une ressource Google, vous devez d'abord la partager avec le compte de service :</value></data>
+  <data name="GoogleIntegration_TeamResources_Copy" xml:space="preserve"><value>Copier</value></data>
+  <data name="GoogleIntegration_TeamResources_DriveFolders" xml:space="preserve"><value>Dossiers Drive</value></data>
+  <data name="GoogleIntegration_TeamResources_DriveFoldersHelp" xml:space="preserve"><value>Partagez le dossier avec cet e-mail en tant qu'Éditeur</value></data>
+  <data name="GoogleIntegration_TeamResources_GoogleGroups" xml:space="preserve"><value>Google Groups</value></data>
+  <data name="GoogleIntegration_TeamResources_GoogleGroupsHelp" xml:space="preserve"><value>Ajoutez cet e-mail en tant que Gestionnaire du groupe</value></data>
+  <data name="GoogleIntegration_TeamResources_LinkedResources" xml:space="preserve"><value>Ressources liées</value></data>
+  <data name="GoogleIntegration_TeamResources_LastSynced" xml:space="preserve"><value>Dernière synchronisation</value></data>
+  <data name="GoogleIntegration_TeamResources_NoResources" xml:space="preserve"><value>Aucune ressource liée à cette équipe pour le moment. Utilisez les formulaires ci-dessous pour lier un dossier Google Drive ou un Google Group.</value></data>
+  <data name="GoogleIntegration_TeamResources_InvalidDriveUrl" xml:space="preserve"><value>Veuillez saisir une URL valide de dossier Google Drive.</value></data>
+  <data name="GoogleIntegration_TeamResources_InvalidGroupEmail" xml:space="preserve"><value>Veuillez saisir une adresse e-mail valide de Google Group.</value></data>
+  <data name="GoogleIntegration_TeamResources_GroupLinked" xml:space="preserve"><value>Google Group « {0} » lié avec succès.</value><comment>{0} = group name</comment></data>
+  <data name="GoogleIntegration_TeamResources_GroupLinkFailed" xml:space="preserve"><value>Échec de la liaison du Google Group.</value></data>
+  <data name="GoogleIntegration_TeamResources_ResourceUnlinked" xml:space="preserve"><value>Ressource déliée de l'équipe.</value></data>
+  <data name="GoogleIntegration_TeamResources_ResourceSynced" xml:space="preserve"><value>Permissions de la ressource synchronisées avec succès.</value></data>
+  <data name="GoogleIntegration_TeamResources_ResourceSyncFailed" xml:space="preserve"><value>Échec de la synchronisation des permissions de la ressource : {0}</value><comment>{0} = error message</comment></data>
+  <data name="GoogleIntegration_TeamResources_ServiceAccount" xml:space="preserve"><value>Compte de service : {0}</value><comment>{0} = service account email</comment></data>
 </root>

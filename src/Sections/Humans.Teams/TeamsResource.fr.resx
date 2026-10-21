@@ -234,33 +234,6 @@
   <data name="Teams_TeamAdmin_MemberRemoved" xml:space="preserve">
     <value>Membre retiré de l'équipe.</value>
   </data>
-  <data name="Teams_TeamAdmin_InvalidDriveUrl" xml:space="preserve">
-    <value>Veuillez saisir une URL valide de dossier Google Drive.</value>
-  </data>
-  <data name="Teams_TeamAdmin_ServiceAccount" xml:space="preserve">
-    <value>Compte de service : {0}</value>
-    <comment>{0} = service account email</comment>
-  </data>
-  <data name="Teams_TeamAdmin_InvalidGroupEmail" xml:space="preserve">
-    <value>Veuillez saisir une adresse e-mail valide de Google Group.</value>
-  </data>
-  <data name="Teams_TeamAdmin_GroupLinked" xml:space="preserve">
-    <value>Google Group « {0} » lié avec succès.</value>
-    <comment>{0} = group name</comment>
-  </data>
-  <data name="Teams_TeamAdmin_GroupLinkFailed" xml:space="preserve">
-    <value>Échec de la liaison du Google Group.</value>
-  </data>
-  <data name="Teams_TeamAdmin_ResourceUnlinked" xml:space="preserve">
-    <value>Ressource déliée de l'équipe.</value>
-  </data>
-  <data name="Teams_TeamAdmin_ResourceSynced" xml:space="preserve">
-    <value>Permissions de la ressource synchronisées avec succès.</value>
-  </data>
-  <data name="Teams_TeamAdmin_ResourceSyncFailed" xml:space="preserve">
-    <value>Échec de la synchronisation des permissions de la ressource : {0}</value>
-    <comment>{0} = error message</comment>
-  </data>
   <data name="Teams_AdminTeams_Title" xml:space="preserve">
     <value>Administration des équipes</value>
   </data>
@@ -388,39 +361,6 @@
   <data name="Teams_TeamAdmin_RejectionReason" xml:space="preserve">
     <value>Motif du refus (obligatoire)</value>
   </data>
-  <data name="Teams_TeamAdmin_Resources" xml:space="preserve">
-    <value>Ressources</value>
-  </data>
-  <data name="Teams_TeamAdmin_ServiceAccountTitle" xml:space="preserve">
-    <value>Compte de service</value>
-  </data>
-  <data name="Teams_TeamAdmin_ShareWithServiceAccount" xml:space="preserve">
-    <value>Pour lier une ressource Google, vous devez d'abord la partager avec le compte de service :</value>
-  </data>
-  <data name="Teams_TeamAdmin_Copy" xml:space="preserve">
-    <value>Copier</value>
-  </data>
-  <data name="Teams_TeamAdmin_DriveFolders" xml:space="preserve">
-    <value>Dossiers Drive</value>
-  </data>
-  <data name="Teams_TeamAdmin_DriveFoldersHelp" xml:space="preserve">
-    <value>Partagez le dossier avec cet e-mail en tant qu'Éditeur</value>
-  </data>
-  <data name="Teams_TeamAdmin_GoogleGroups" xml:space="preserve">
-    <value>Google Groups</value>
-  </data>
-  <data name="Teams_TeamAdmin_GoogleGroupsHelp" xml:space="preserve">
-    <value>Ajoutez cet e-mail en tant que Gestionnaire du groupe</value>
-  </data>
-  <data name="Teams_TeamAdmin_LinkedResources" xml:space="preserve">
-    <value>Ressources liées</value>
-  </data>
-  <data name="Teams_TeamAdmin_LastSynced" xml:space="preserve">
-    <value>Dernière synchronisation</value>
-  </data>
-  <data name="Teams_TeamAdmin_NoResources" xml:space="preserve">
-    <value>Aucune ressource liée à cette équipe pour le moment. Utilisez les formulaires ci-dessous pour lier un dossier Google Drive ou un Google Group.</value>
-  </data>
   <data name="Teams_TeamDetail_TeamCoordinators" xml:space="preserve">
     <value>Coordinateurs</value>
   </data>
@@ -534,10 +474,6 @@
   <data name="Teams_Tree_Subtitle" xml:space="preserve"><value>Chaque département et les équipes qui le composent.</value></data>
   <data name="Teams_SyncStatus" xml:space="preserve"><value>État de synchronisation</value></data>
   <data name="Teams_SystemTeams" xml:space="preserve"><value>Équipes système</value></data>
-  <data name="Teams_TeamAdminResources_Title" xml:space="preserve">
-    <value>Gérer les ressources - {0}</value>
-    <comment>{0} = team name</comment>
-  </data>
   <data name="Teams_TeamAdminMembers_Title" xml:space="preserve">
     <value>Gérer les membres - {0}</value>
     <comment>{0} = team name</comment>

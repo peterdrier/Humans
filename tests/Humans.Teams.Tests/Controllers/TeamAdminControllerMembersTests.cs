@@ -1,8 +1,3 @@
-using System.Globalization;
-using Microsoft.AspNetCore.Mvc.Controllers;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
-using Microsoft.Extensions.Primitives;
-using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
@@ -57,7 +52,7 @@ public class TeamAdminControllerMembersTests
         };
         if (ajax) http.Request.Headers.XRequestedWith = "XMLHttpRequest";
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
-            Substitute.For<ITeamResourceWrite>(), Substitute.For<IGoogleSyncWrite>(), users,
+            users,
             Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
             Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>())
         {
@@ -108,7 +103,7 @@ public class TeamAdminControllerMembersTests
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
         };
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
-            Substitute.For<ITeamResourceWrite>(), Substitute.For<IGoogleSyncWrite>(), users, provisioning, authorization,
+            users, provisioning, authorization,
             NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>(),
             Substitute.For<ITicketService>())
         {
@@ -122,159 +117,6 @@ public class TeamAdminControllerMembersTests
         controller.TempData[TempDataKeys.InfoMessage].Should().Be(warning);
         controller.TempData[TempDataKeys.SuccessMessage].Should().BeNull();
         controller.TempData[TempDataKeys.ErrorMessage].Should().BeNull();
-    }
-
-    [HumansTheory]
-    [InlineData("permission", "foreign")]
-    [InlineData("permission", "missing")]
-    [InlineData("permission", "own")]
-    [InlineData("permission", "denied")]
-    [InlineData("restriction", "foreign")]
-    [InlineData("restriction", "missing")]
-    [InlineData("restriction", "own")]
-    [InlineData("restriction", "denied")]
-    [InlineData("unlink", "foreign")]
-    [InlineData("unlink", "missing")]
-    [InlineData("unlink", "own")]
-    [InlineData("unlink", "denied")]
-    [InlineData("sync", "foreign")]
-    [InlineData("sync", "missing")]
-    [InlineData("sync", "own")]
-    [InlineData("sync", "denied")]
-    public async Task ResourceMutation_RequiresResourceFromAuthorizedTeam(string action, string scenario)
-    {
-        var userId = Guid.NewGuid();
-        var resourceId = Guid.NewGuid();
-        var teams = Substitute.For<ITeamManagementService>();
-        var users = Substitute.For<IUserService>();
-        var team = new Team { Id = Guid.NewGuid(), Name = "Team", Slug = "team" };
-        var resources = Substitute.For<ITeamResourceService>();
-        var resourceWrite = Substitute.For<ITeamResourceWrite>();
-        var sync = Substitute.For<IGoogleSyncWrite>();
-        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
-        teams.GetTeamEntityBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(team);
-        resources.CanManageTeamResourcesAsync(team.Id, userId, Arg.Any<CancellationToken>())
-            .Returns(!string.Equals(scenario, "denied", StringComparison.Ordinal));
-        if (!string.Equals(scenario, "missing", StringComparison.Ordinal))
-            resources.GetResourceByIdAsync(resourceId, Arg.Any<CancellationToken>()).Returns(
-                new GoogleResourceSnapshot(resourceId,
-                    string.Equals(scenario, "foreign", StringComparison.Ordinal) ? Guid.NewGuid() : team.Id,
-                    "google-id", "Folder", GoogleResourceType.DriveFolder, null));
-        resourceWrite.SetRestrictInheritedAccessWithResultAsync(resourceId, false, userId, CancellationToken.None)
-            .Returns(TeamResourceMutationResult.Success());
-        sync.SyncSingleResourceAsync(resourceId, SyncAction.Execute, CancellationToken.None)
-            .Returns(new ResourceSyncDiff { ResourceId = resourceId });
-        var http = new DefaultHttpContext
-        {
-            User = new ClaimsPrincipal(new ClaimsIdentity(
-                [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
-        };
-        var localizer = Substitute.For<IStringLocalizer<TeamsResource>>();
-        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
-        var controller = new TeamAdminController(teams, resources, resourceWrite, sync, users,
-            Substitute.For<IEmailProvisioningService>(), Substitute.For<IAuthorizationService>(),
-            NullLogger<TeamAdminController>.Instance, localizer,
-            Substitute.For<ITicketService>())
-        {
-            ControllerContext = new ControllerContext { HttpContext = http },
-            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
-            Url = Substitute.For<IUrlHelper>()
-        };
-        var result = action switch
-        {
-            "permission" => await controller.UpdatePermissionLevel(team.Slug, resourceId, DrivePermissionLevel.Viewer),
-            "restriction" => await controller.ToggleRestrictInheritedAccess(team.Slug, resourceId, false),
-            "unlink" => await controller.UnlinkResource(team.Slug, resourceId),
-            _ => await controller.SyncResource(team.Slug, resourceId)
-        };
-        if (string.Equals(scenario, "denied", StringComparison.Ordinal)) Assert.IsType<ForbidResult>(result);
-        else if (!string.Equals(scenario, "own", StringComparison.Ordinal)) Assert.IsType<NotFoundResult>(result);
-        else Assert.IsType<RedirectToActionResult>(result);
-        var mutationCalls = resourceWrite.ReceivedCalls();
-        if (string.Equals(scenario, "own", StringComparison.Ordinal))
-        {
-            if (string.Equals(action, "sync", StringComparison.Ordinal)) Assert.Single(sync.ReceivedCalls());
-            else Assert.Single(mutationCalls);
-        }
-        else
-        {
-            Assert.Empty(mutationCalls);
-            Assert.Empty(sync.ReceivedCalls());
-        }
-    }
-
-    [HumansTheory]
-    [InlineData(true, true, false)]
-    [InlineData(false, true, false)]
-    [InlineData(true, false, false)]
-    [InlineData(true, false, true)]
-    [InlineData(false, false, true)]
-    public async Task InheritedAccess_InvalidOrMissingChoice_DoesNotDispatch(bool allowed, bool invalidBinding, bool missingChoice)
-    {
-        var userId = Guid.NewGuid();
-        var resourceId = Guid.NewGuid();
-        var teams = Substitute.For<ITeamManagementService>();
-        var users = Substitute.For<IUserService>();
-        var team = new Team { Id = Guid.NewGuid(), Name = "Team", Slug = "team" };
-        var resources = Substitute.For<ITeamResourceService>();
-        var resourceWrite = Substitute.For<ITeamResourceWrite>();
-        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
-        teams.GetTeamEntityBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(team);
-        resources.GetResourceByIdAsync(resourceId, Arg.Any<CancellationToken>()).Returns(
-            new GoogleResourceSnapshot(resourceId, team.Id, "google-id", "Folder", GoogleResourceType.DriveFolder, null));
-        resources.CanManageTeamResourcesAsync(team.Id, userId, Arg.Any<CancellationToken>()).Returns(allowed);
-        resourceWrite.SetRestrictInheritedAccessWithResultAsync(resourceId, false, userId, CancellationToken.None)
-            .Returns(TeamResourceMutationResult.Success());
-        var http = new DefaultHttpContext
-        {
-            User = new ClaimsPrincipal(new ClaimsIdentity(
-                [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
-        };
-        var controller = new TeamAdminController(teams, resources, resourceWrite, Substitute.For<IGoogleSyncWrite>(), users,
-            Substitute.For<IEmailProvisioningService>(), Substitute.For<IAuthorizationService>(),
-            NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>(),
-            Substitute.For<ITicketService>())
-        {
-            ControllerContext = new ControllerContext { HttpContext = http },
-            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
-            Url = Substitute.For<IUrlHelper>()
-        };
-        if (invalidBinding) controller.ModelState.AddModelError("restrict", "Not a boolean.");
-        var registrations = new ServiceCollection().AddLogging();
-        registrations.AddControllers();
-        using var services = registrations.BuildServiceProvider();
-        if (missingChoice)
-        {
-            http.RequestServices = services;
-            var parameter = typeof(TeamAdminController).GetMethod("ToggleRestrictInheritedAccess")!.GetParameters()[2];
-            var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
-            var descriptor = new ControllerParameterDescriptor
-            {
-                Name = "restrict",
-                ParameterType = parameter.ParameterType,
-                ParameterInfo = parameter
-            };
-            var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
-            {
-                Metadata = metadata,
-                CacheToken = parameter
-            });
-            await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
-                new FormValueProvider(BindingSource.Form, new FormCollection(new Dictionary<string, StringValues>(StringComparer.Ordinal)), CultureInfo.InvariantCulture),
-                descriptor, metadata, value: null);
-        }
-
-        var result = await controller.ToggleRestrictInheritedAccess(team.Slug, resourceId, false);
-
-        if (!allowed) Assert.IsType<ForbidResult>(result);
-        else if (invalidBinding || missingChoice) Assert.IsType<BadRequestObjectResult>(result);
-        else Assert.IsType<RedirectToActionResult>(result);
-        if (!allowed || invalidBinding || missingChoice)
-            await resourceWrite.DidNotReceive().SetRestrictInheritedAccessWithResultAsync(
-                Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
-        else await resourceWrite.Received(1).SetRestrictInheritedAccessWithResultAsync(resourceId, false, userId, CancellationToken.None);
     }
 
     [HumansTheory]
@@ -315,7 +157,7 @@ public class TeamAdminControllerMembersTests
         var localizer = Substitute.For<IStringLocalizer<TeamsResource>>();
         localizer["Teams_RemoveMember_Permission"].Returns(new LocalizedString("Teams_RemoveMember_Permission", reason));
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
-            Substitute.For<ITeamResourceWrite>(), Substitute.For<IGoogleSyncWrite>(), users, Substitute.For<IEmailProvisioningService>(), authorization,
+            users, Substitute.For<IEmailProvisioningService>(), authorization,
             logger, localizer, Substitute.For<ITicketService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -349,63 +191,6 @@ public class TeamAdminControllerMembersTests
     }
 
     [HumansTheory]
-    [InlineData("viewer")]
-    [InlineData("team")]
-    [InlineData("permission")]
-    [InlineData("resources")]
-    [InlineData("account")]
-    public async Task Resources_ObservesRequestCancellationAtEveryRead(string boundary)
-    {
-        using var aborted = new CancellationTokenSource();
-        await aborted.CancelAsync();
-        var userId = Guid.NewGuid();
-        var teams = Substitute.For<ITeamManagementService>();
-        var users = Substitute.For<IUserService>();
-        var team = new Team { Id = Guid.NewGuid(), Name = "Team", Slug = "team" };
-        var resources = Substitute.For<ITeamResourceService>();
-        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(
-            new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], [], null, [])));
-        teams.GetTeamEntityBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(team);
-        resources.CanManageTeamResourcesAsync(team.Id, userId, Arg.Any<CancellationToken>()).Returns(true);
-        resources.GetTeamResourcesAsync(team.Id, Arg.Any<CancellationToken>()).Returns([]);
-        resources.GetServiceAccountEmailAsync(Arg.Any<CancellationToken>()).Returns("service@example.com");
-        switch (boundary)
-        {
-            case "viewer":
-                users.GetUserInfoAsync(userId, aborted.Token).Returns(ValueTask.FromCanceled<UserInfo?>(aborted.Token));
-                break;
-            case "team":
-                teams.GetTeamEntityBySlugAsync(team.Slug, aborted.Token).Returns(Task.FromCanceled<Team?>(aborted.Token));
-                break;
-            case "permission":
-                resources.CanManageTeamResourcesAsync(team.Id, userId, aborted.Token).Returns(Task.FromCanceled<bool>(aborted.Token));
-                break;
-            case "resources":
-                resources.GetTeamResourcesAsync(team.Id, aborted.Token)
-                    .Returns(Task.FromCanceled<IReadOnlyList<GoogleResourceSnapshot>>(aborted.Token));
-                break;
-            case "account":
-                resources.GetServiceAccountEmailAsync(aborted.Token).Returns(Task.FromCanceled<string>(aborted.Token));
-                break;
-        }
-        var controller = new TeamAdminController(teams, resources, Substitute.For<ITeamResourceWrite>(), Substitute.For<IGoogleSyncWrite>(), users,
-            Substitute.For<IEmailProvisioningService>(), Substitute.For<IAuthorizationService>(),
-            NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>())
-        {
-            ControllerContext = new ControllerContext
-            {
-                HttpContext = new DefaultHttpContext
-                {
-                    RequestAborted = aborted.Token,
-                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "Test")),
-                }
-            },
-        };
-        var act = () => controller.Resources(team.Slug);
-        await act.Should().ThrowAsync<OperationCanceledException>();
-    }
-
-    [HumansTheory]
     [InlineData(int.MaxValue, 0, int.MaxValue)]
     [InlineData(int.MinValue, 1, 1)]
     [InlineData(0, 1, 1)]
@@ -429,7 +214,7 @@ public class TeamAdminControllerMembersTests
             .Returns(AuthorizationResult.Success());
         var resources = Substitute.For<ITeamResourceService>();
         resources.GetTeamResourcesAsync(team.Id, Arg.Any<CancellationToken>()).Returns([]);
-        var controller = new TeamAdminController(teams, resources, Substitute.For<ITeamResourceWrite>(), Substitute.For<IGoogleSyncWrite>(), users,
+        var controller = new TeamAdminController(teams, resources, users,
             Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
             Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>())
         {

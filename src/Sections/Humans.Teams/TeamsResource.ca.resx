@@ -234,33 +234,6 @@
   <data name="Teams_TeamAdmin_MemberRemoved" xml:space="preserve">
     <value>Membre eliminat de l'equip.</value>
   </data>
-  <data name="Teams_TeamAdmin_InvalidDriveUrl" xml:space="preserve">
-    <value>Si us plau, introdueix una URL vàlida de carpeta de Google Drive.</value>
-  </data>
-  <data name="Teams_TeamAdmin_ServiceAccount" xml:space="preserve">
-    <value>Compte de servei: {0}</value>
-    <comment>{0} = service account email</comment>
-  </data>
-  <data name="Teams_TeamAdmin_InvalidGroupEmail" xml:space="preserve">
-    <value>Si us plau, introdueix una adreça de correu vàlida de Google Group.</value>
-  </data>
-  <data name="Teams_TeamAdmin_GroupLinked" xml:space="preserve">
-    <value>Google Group "{0}" vinculat correctament.</value>
-    <comment>{0} = group name</comment>
-  </data>
-  <data name="Teams_TeamAdmin_GroupLinkFailed" xml:space="preserve">
-    <value>No s'ha pogut vincular el Google Group.</value>
-  </data>
-  <data name="Teams_TeamAdmin_ResourceUnlinked" xml:space="preserve">
-    <value>Recurs desvinculat de l'equip.</value>
-  </data>
-  <data name="Teams_TeamAdmin_ResourceSynced" xml:space="preserve">
-    <value>Permisos del recurs sincronitzats correctament.</value>
-  </data>
-  <data name="Teams_TeamAdmin_ResourceSyncFailed" xml:space="preserve">
-    <value>Error al sincronitzar els permisos del recurs: {0}</value>
-    <comment>{0} = error message</comment>
-  </data>
   <data name="Teams_AdminTeams_Title" xml:space="preserve">
     <value>Administració d'equips</value>
   </data>
@@ -388,39 +361,6 @@
   <data name="Teams_TeamAdmin_RejectionReason" xml:space="preserve">
     <value>Motiu del rebuig (obligatori)</value>
   </data>
-  <data name="Teams_TeamAdmin_Resources" xml:space="preserve">
-    <value>Recursos</value>
-  </data>
-  <data name="Teams_TeamAdmin_ServiceAccountTitle" xml:space="preserve">
-    <value>Compte de servei</value>
-  </data>
-  <data name="Teams_TeamAdmin_ShareWithServiceAccount" xml:space="preserve">
-    <value>Per vincular un recurs de Google, primer has de compartir-lo amb el compte de servei:</value>
-  </data>
-  <data name="Teams_TeamAdmin_Copy" xml:space="preserve">
-    <value>Copia</value>
-  </data>
-  <data name="Teams_TeamAdmin_DriveFolders" xml:space="preserve">
-    <value>Carpetes de Drive</value>
-  </data>
-  <data name="Teams_TeamAdmin_DriveFoldersHelp" xml:space="preserve">
-    <value>Comparteix la carpeta amb aquest correu com a Editor</value>
-  </data>
-  <data name="Teams_TeamAdmin_GoogleGroups" xml:space="preserve">
-    <value>Google Groups</value>
-  </data>
-  <data name="Teams_TeamAdmin_GoogleGroupsHelp" xml:space="preserve">
-    <value>Afegeix aquest correu com a Administrador del grup</value>
-  </data>
-  <data name="Teams_TeamAdmin_LinkedResources" xml:space="preserve">
-    <value>Recursos vinculats</value>
-  </data>
-  <data name="Teams_TeamAdmin_LastSynced" xml:space="preserve">
-    <value>Última sincronització</value>
-  </data>
-  <data name="Teams_TeamAdmin_NoResources" xml:space="preserve">
-    <value>Encara no hi ha recursos vinculats a aquest equip. Fes servir els formularis de sota per vincular una carpeta de Google Drive o un Google Group.</value>
-  </data>
   <data name="Teams_TeamDetail_TeamCoordinators" xml:space="preserve">
     <value>Coordinadors</value>
   </data>
@@ -534,10 +474,6 @@
   <data name="Teams_Tree_Subtitle" xml:space="preserve"><value>Cada departament i els equips que el formen.</value></data>
   <data name="Teams_SyncStatus" xml:space="preserve"><value>Estat de sincronització</value></data>
   <data name="Teams_SystemTeams" xml:space="preserve"><value>Equips del sistema</value></data>
-  <data name="Teams_TeamAdminResources_Title" xml:space="preserve">
-    <value>Gestionar recursos - {0}</value>
-    <comment>{0} = team name</comment>
-  </data>
   <data name="Teams_TeamAdminMembers_Title" xml:space="preserve">
     <value>Gestiona membres - {0}</value>
     <comment>{0} = team name</comment>
