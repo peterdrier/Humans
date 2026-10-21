@@ -323,18 +323,6 @@ internal sealed class Service(
         return null;
     }
 
-    public async Task<IReadOnlyList<OrderDto>> GetOrdersForCampSeasonAsync(Guid campSeasonId, CancellationToken ct = default)
-    {
-        var orders = await repo.GetOrdersForCampSeasonAsync(campSeasonId, ct);
-        var productIds = orders.SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList();
-        var productNames = await LoadProductNamesAsync(productIds, ct);
-        var currentPrices = await LoadCurrentPricesAsync(ct);
-        var result = new List<OrderDto>(orders.Count);
-        foreach (var o in orders)
-            result.Add(await MapOrderAsync(o, productNames, currentPrices, ct));
-        return result;
-    }
-
     public async Task<OrderDto?> GetOrderAsync(Guid orderId, CancellationToken ct = default)
     {
         var o = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);

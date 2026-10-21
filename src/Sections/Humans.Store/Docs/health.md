@@ -87,35 +87,35 @@ is left to repair the page says so and nothing else in the section depends on it
 ## 4. Invariants
 
 - An order has exactly one counterparty: `CampSeasonId` xor `TeamId`, set only at create —
-  `Services/Service.cs:456` (camp) and `Services/Service.cs:521` (team).
+  `Services/Service.cs:444` (camp) and `Services/Service.cs:509` (team).
 - Team orders are non-billable at every privilege level: the service refuses counterparty edits,
-  checkout, payment recording and issuance (`Services/Service.cs:624`, `Services/Service.cs:675`,
-  `Services/Service.cs:732`, `Services/Service.cs:786`, `Services/Service.cs:1150`), and the
+  checkout, payment recording and issuance (`Services/Service.cs:612`, `Services/Service.cs:663`,
+  `Services/Service.cs:720`, `Services/Service.cs:774`, `Services/Service.cs:1138`), and the
   handler never grants a billing operation on one, even to a store admin
-  (`Authorization/OrderAuthorizationHandler.cs:62`).
+  (`Authorization/OrderAuthorizationHandler.cs:63`).
 - At most one order per camp season, tested for *any* existing order, never for one matching the
-  season's year — `Services/Service.cs:449`.
+  season's year — `Services/Service.cs:437`.
 - At most one team order per department per year, departments only —
-  `Services/Service.cs:507` and `Services/Service.cs:513`.
+  `Services/Service.cs:495` and `Services/Service.cs:501`.
 - Camp orders run `Open → InvoiceIssued`, one way — the only writer of the state is
   `StoreInvoiceIssuer.CommitInvoiceAsync`, behind the open-only guard at
   `Services/StoreInvoiceIssuer.cs:55`.
 - An `Open` order is priced at the live catalog, an `InvoiceIssued` one at its frozen line
-  snapshots — `Services/BalanceCalculator.cs:53`. Issuance rewrites the snapshots from the live
+  snapshots — `Services/BalanceCalculator.cs:57`. Issuance rewrites the snapshots from the live
   price first — `Services/StoreInvoiceIssuer.cs:75`.
-- Lines change only while `Open` (`Services/Service.cs:550`, `Services/Service.cs:602`), and for
+- Lines change only while `Open` (`Services/Service.cs:538`, `Services/Service.cs:590`), and for
   everyone but a store admin only up to the product's `OrderableUntil`
-  (`Authorization/OrderAuthorizationHandler.cs:211`).
+  (`Authorization/OrderAuthorizationHandler.cs:212`).
 - Money records outlive their order: an order holding any payment row cannot be deleted —
-  `Services/Service.cs:484`.
-- Only `Paid` money counts toward a balance — `Services/BalanceCalculator.cs:80`; a `Pending`
-  payment blocks starting another — `Services/Service.cs:686`.
+  `Services/Service.cs:472`.
+- Only `Paid` money counts toward a balance — `Services/BalanceCalculator.cs:84`; a `Pending`
+  payment blocks starting another — `Services/Service.cs:674`.
 - Payment ingestion is idempotent on the Stripe PaymentIntent id whichever path records it —
-  `Services/Service.cs:727`, backed by the filtered unique index at
-  `Data/Configurations/PaymentConfiguration.cs:29`.
+  `Services/Service.cs:715`, backed by the filtered unique index at
+  `Data/Configurations/PaymentConfiguration.cs:25`.
 - Deposit returns never add up to more than the order's deposits —
-  `Services/Service.cs:803`; a refund is stored negative and needs a reference —
-  `Services/Service.cs:781`.
+  `Services/Service.cs:791`; a refund is stored negative and needs a reference —
+  `Services/Service.cs:769`.
 - Issuance is idempotent locally and remotely: the open-only guard runs before any Holded call
   (`Services/StoreInvoiceIssuer.cs:55`), Holded is searched by tag first
   (`Services/StoreInvoiceIssuer.cs:83`), and adoption is refused when totals differ
@@ -130,7 +130,7 @@ is left to repair the page says so and nothing else in the section depends on it
 - The accounting export selects orders by their persisted year, never through the counterparty,
   so an order whose camp or team has since gone still exports — `Data/Repository.cs:155`.
 - A legacy order's year is only ever written from its own camp season, and each write is audited
-  — `Services/Service.cs:420`.
+  — `Services/Service.cs:408`.
 
 ## 5. Seams — specified but not built
 

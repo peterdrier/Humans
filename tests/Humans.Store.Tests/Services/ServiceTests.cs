@@ -248,37 +248,6 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetOrdersForCampSeasonAsync_maps_orders_with_balance()
-    {
-        var product = MakeProduct(name: "Tent", price: 50m, vat: 21m);
-        var campSeasonId = Guid.NewGuid();
-        var orderId = Guid.NewGuid();
-        var order = new Order
-        {
-            Id = orderId,
-            CampSeasonId = campSeasonId,
-            State = OrderState.Open,
-            Lines = new List<OrderLine>
-            {
-                new() { Id = Guid.NewGuid(), OrderId = orderId, ProductId = product.Id, Qty = 2,
-                        UnitPriceSnapshot = 50m, VatRateSnapshot = 21m }
-            }
-        };
-        _repo.GetOrdersForCampSeasonAsync(campSeasonId, Arg.Any<CancellationToken>())
-            .Returns([order]);
-        _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new List<Product> { product });
-
-        var result = await _service.GetOrdersForCampSeasonAsync(campSeasonId, TestContext.Current.CancellationToken);
-
-        result.Should().HaveCount(1);
-        result[0].LinesSubtotalEur.Should().Be(100m);
-        result[0].VatTotalEur.Should().Be(21m);
-        result[0].BalanceEur.Should().Be(121m);
-        result[0].Lines[0].ProductName.Should().Be("Tent");
-    }
-
-    [HumansFact]
     public async Task GetOrderAsync_returns_null_when_missing()
     {
         _repo.GetOrderWithLinesAndPaymentsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
