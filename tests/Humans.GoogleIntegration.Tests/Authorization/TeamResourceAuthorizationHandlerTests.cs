@@ -6,6 +6,7 @@ using Humans.GoogleIntegration.Authorization;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Teams.Contracts;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using NodaTime;
 using NSubstitute;
 using Xunit;
@@ -77,7 +78,7 @@ public sealed class TeamResourceAuthorizationHandlerTests
 
     private async Task<bool> EvaluateAsync(ClaimsPrincipal user, TeamInfo team)
     {
-        var handler = new TeamResourceAuthorizationHandler(_resources);
+        var handler = new TeamResourceAuthorizationHandler(_resources, new HttpContextAccessor());
         var context = new AuthorizationHandlerContext([TeamResourceManageRequirement.Instance], user, team);
         await handler.HandleAsync(context);
         return context.HasSucceeded;

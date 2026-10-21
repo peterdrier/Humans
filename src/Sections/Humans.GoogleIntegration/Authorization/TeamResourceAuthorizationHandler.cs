@@ -3,6 +3,7 @@ using Humans.Base.Authorization;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Teams.Contracts;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 
 namespace Humans.GoogleIntegration.Authorization;
 
@@ -11,9 +12,12 @@ namespace Humans.GoogleIntegration.Authorization;
 /// TeamsAdmin, Board and Admin manage any team. Everyone else needs
 /// <see cref="ITeamResourceService.CanManageTeamResourcesAsync"/> on the team's department:
 /// a sub-team is checked at its parent, so sub-team coordinators do not pass.
-/// Deny-by-default: only the explicit Succeed paths grant access.
+/// Deny-by-default: only the explicit Succeed paths grant access. The manager read observes the
+/// request's cancellation, since handlers receive no token of their own.
 /// </summary>
-internal sealed class TeamResourceAuthorizationHandler(ITeamResourceService teamResources)
+internal sealed class TeamResourceAuthorizationHandler(
+    ITeamResourceService teamResources,
+    IHttpContextAccessor httpContextAccessor)
     : AuthorizationHandler<TeamResourceManageRequirement, TeamInfo>
 {
     protected override async Task HandleRequirementAsync(
@@ -31,7 +35,8 @@ internal sealed class TeamResourceAuthorizationHandler(ITeamResourceService team
             return;
 
         var departmentId = resource.ParentTeamId ?? resource.Id;
-        if (await teamResources.CanManageTeamResourcesAsync(departmentId, userId))
+        if (await teamResources.CanManageTeamResourcesAsync(
+                departmentId, userId, httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None))
             context.Succeed(requirement);
     }
 }

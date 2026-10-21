@@ -259,6 +259,7 @@ public class TeamResourcesControllerTests
     [HumansTheory]
     [InlineData("viewer")]
     [InlineData("team")]
+    [InlineData("permission")]
     [InlineData("resources")]
     [InlineData("account")]
     public async Task Index_ObservesRequestCancellationAtEveryRead(string boundary)
@@ -273,6 +274,9 @@ public class TeamResourcesControllerTests
                 break;
             case "team":
                 _teams.GetTeamBySlugAsync(_team.Slug, aborted.Token).Returns(Task.FromCanceled<TeamInfo?>(aborted.Token));
+                break;
+            case "permission":
+                _resources.CanManageTeamResourcesAsync(_team.Id, _userId, aborted.Token).Returns(Task.FromCanceled<bool>(aborted.Token));
                 break;
             case "resources":
                 _resources.GetTeamResourcesAsync(_team.Id, aborted.Token)
@@ -321,7 +325,8 @@ public class TeamResourcesControllerTests
         var authorization = new ServiceCollection()
             .AddLogging()
             .AddAuthorizationCore()
-            .AddSingleton<IAuthorizationHandler>(new TeamResourceAuthorizationHandler(_resources))
+            .AddSingleton<IAuthorizationHandler>(new TeamResourceAuthorizationHandler(
+                _resources, new HttpContextAccessor { HttpContext = http }))
             .BuildServiceProvider()
             .GetRequiredService<IAuthorizationService>();
         return new TeamResourcesController(_users, _teams, _resources, authorization, _sync,
