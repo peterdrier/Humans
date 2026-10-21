@@ -76,15 +76,6 @@ public interface IUserWrite
     // ---- Profile storage commands ----
 
     /// <summary>
-    /// Updates <c>Profile.MembershipTier</c> on the user's profile.
-    /// Returns false when no profile exists.
-    /// </summary>
-    Task<bool> SetMembershipTierAsync(
-        Guid userId,
-        MembershipTier tier,
-        CancellationToken ct = default);
-
-    /// <summary>
     /// Applies a consolidated onboarding/profile-state mutation to the user's
     /// profile. Audit/logging policy remains with the caller.
     /// </summary>
@@ -92,18 +83,6 @@ public interface IUserWrite
         Guid userId,
         UserProfileOnboardingCommand command,
         CancellationToken ct = default);
-
-    /// <summary>
-    /// Downgrades expired membership tiers and returns each user id with the
-    /// tier that was written.
-    /// </summary>
-    Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>>
-        DowngradeMembershipTierForExpiredAsync(
-            MembershipTier currentTier,
-            IReadOnlyCollection<Guid> userIdsToKeep,
-            IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
-            Instant now,
-            CancellationToken ct = default);
 
     // ---- Consent-reminder storage command ----
 

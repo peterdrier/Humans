@@ -7,6 +7,7 @@ using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Services;
 using Humans.Base;
 using Humans.Base.Authorization;
+using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Onboarding.Controllers;
@@ -35,8 +36,8 @@ internal sealed class OnboardingReviewController(
 
         var viewModel = new OnboardingReviewIndexViewModel
         {
-            PendingReviews = data.Pending.Select(u => MapToItem(u, data.PendingAppUserIds, data.ConsentProgress)).ToList(),
-            FlaggedReviews = data.Flagged.Select(u => MapToItem(u, data.PendingAppUserIds, data.ConsentProgress)).ToList()
+            PendingReviews = data.Pending.Select(u => MapToItem(u, data.PendingAppUserIds, data.ConsentProgress, data.Tiers)).ToList(),
+            FlaggedReviews = data.Flagged.Select(u => MapToItem(u, data.PendingAppUserIds, data.ConsentProgress, data.Tiers)).ToList()
         };
 
         return View(viewModel);
@@ -234,7 +235,8 @@ internal sealed class OnboardingReviewController(
     private static OnboardingReviewItemViewModel MapToItem(
         UserInfo info,
         HashSet<Guid> pendingAppUserIds,
-        Dictionary<Guid, ConsentProgressInfo> consentProgress)
+        Dictionary<Guid, ConsentProgressInfo> consentProgress,
+        IReadOnlyDictionary<Guid, MembershipTier> tiers)
     {
         var progress = consentProgress.GetValueOrDefault(info.Id);
         var profile = info.Profile!;
@@ -244,7 +246,7 @@ internal sealed class OnboardingReviewController(
             LegalName = profile.FullName,
             Email = info.Email ?? string.Empty,
             ConsentCheckStatus = profile.ConsentCheckStatus,
-            MembershipTier = profile.MembershipTier,
+            MembershipTier = tiers.GetValueOrDefault(info.Id, MembershipTier.Volunteer),
             ProfileCreatedAt = profile.CreatedAt.ToDateTimeUtc(),
             HasPendingApplication = pendingAppUserIds.Contains(info.Id),
             ConsentCount = progress?.Signed ?? 0,

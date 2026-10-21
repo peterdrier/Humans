@@ -61,7 +61,7 @@ Board voting only applies to tier applications (Colaborador and Asociado). Volun
 - On approve:
   - Application.Status → Approved
   - Application.TermExpiresAt set (Dec 31 of appropriate odd year)
-  - Profile.MembershipTier updated
+  - Membership tier row granted (`governance_membership_tiers`)
   - Added to Colaboradors/Asociados system team
   - Approval email attempted best-effort, including recipient lookup; email failure does not skip the in-app notice.
 - On reject:
@@ -204,7 +204,7 @@ Admin finalizes decision
     │   ├── Application.TermExpiresAt = Dec 31 of appropriate odd year
     │   ├── Application.BoardMeetingDate = entered date
     │   ├── Application.DecisionNote = entered note
-    │   ├── Profile.MembershipTier → Application's tier
+    │   ├── Membership tier row → Application's tier
     │   ├── Add to Colaboradors/Asociados system team
     │   ├── Delete all BoardVote records for this Application
     │   └── Send approval notification email

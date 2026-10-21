@@ -193,13 +193,6 @@ public class AccountProvisioningServiceTests
         public Task<IReadOnlySet<Guid>> SuspendManyAsync(
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>> DowngradeTierForExpiredAsync(
-            MembershipTier currentTier,
-            IReadOnlyCollection<Guid> userIdsToKeep,
-            IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
-            Instant now,
-            CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<(Guid ProfileId, string? ContentType, string? StorageKey)?> ReassignSubAggregatesToUserAsync(
             Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) =>
             throw new NotSupportedException();

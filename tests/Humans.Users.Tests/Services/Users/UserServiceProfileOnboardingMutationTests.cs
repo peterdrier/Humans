@@ -992,32 +992,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         remaining.IsGoogle.Should().BeTrue();
     }
 
-    [HumansFact]
-    public async Task SetMembershipTierAsync_UpdatesTierAndUpdatedAt()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId);
-        Clock.Advance(NodaTime.Duration.FromHours(1));
-
-        await _service.SetMembershipTierAsync(userId, MembershipTier.Colaborador, TestContext.Current.CancellationToken);
-
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
-        profile.MembershipTier.Should().Be(MembershipTier.Colaborador);
-        profile.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
-    }
-
-    [HumansFact]
-    public async Task SetMembershipTierAsync_UnknownUser_NoOps()
-    {
-        var unknownUserId = Guid.NewGuid();
-
-        var updated = await _service.SetMembershipTierAsync(unknownUserId, MembershipTier.Asociado, TestContext.Current.CancellationToken);
-
-        updated.Should().BeFalse();
-        var profileExists = await Db.Profiles.AsNoTracking().AnyAsync(p => p.UserId == unknownUserId, TestContext.Current.CancellationToken);
-        profileExists.Should().BeFalse();
-    }
-
     [HumansTheory]
     [InlineData(false, false, true)]
     [InlineData(true, false, true)]
@@ -1096,7 +1070,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 
     private async Task<Guid> SeedUserWithProfileAsync(
         Guid userId,
-        MembershipTier tier = MembershipTier.Volunteer,
+        LegacyMembershipTier tier = LegacyMembershipTier.Volunteer,
         bool isApproved = false)
     {
         SeedUser(userId);

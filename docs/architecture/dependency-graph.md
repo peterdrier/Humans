@@ -239,6 +239,7 @@ graph LR
 
     %% Agent
     AgentSvc --> User
+    AgentSvc --> AppDec
     AgentSettings --> Audit
 
     %% Users
@@ -266,6 +267,7 @@ graph LR
     DupAcct --> Team
     DupAcct --> Role
     DupAcct --> Audit
+    DupAcct --> AppDec
     ExtLogin --> MagicLink
     UsersAudience --> TicketQ
     HumanLifecycle --> NotifEmitter
@@ -387,6 +389,7 @@ graph LR
     TicketQ --> Team
     TicketQ --> SettingsSvc
     TicketQ --> Audit
+    TicketQ --> AppDec
     TicketSync --> TicketTailor
     TicketSync --> Stripe
     TicketSync --> User
@@ -618,6 +621,7 @@ graph LR
     Survey --> UEmail
     Survey --> Email
     Survey --> GTrans
+    Survey --> AppDec
     SurveyPrevEmail --> UEmail
     SurveyPrevEmail --> User
     SurveyPrevEmail --> Email

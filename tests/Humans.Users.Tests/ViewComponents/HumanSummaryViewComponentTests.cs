@@ -1,3 +1,4 @@
+using Humans.Governance.Contracts;
 using AwesomeAssertions;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
@@ -19,7 +20,7 @@ public sealed class HumanSummaryViewComponentTests
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(Arg.Any<Guid>(), aborted.Token)
             .Returns(_ => ValueTask.FromException<UserInfo?>(new OperationCanceledException(aborted.Token)));
-        var component = new HumanSummaryViewComponent(users, Substitute.For<ITeamService>())
+        var component = new HumanSummaryViewComponent(users, Substitute.For<ITeamService>(), Substitute.For<IGovernanceService>())
         {
             ViewComponentContext = new ViewComponentContext
             {

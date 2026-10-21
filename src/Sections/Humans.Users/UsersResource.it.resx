@@ -103,12 +103,6 @@
   <data name="Profile_NotificationTargetShort" xml:space="preserve">
     <value>Notifiche</value>
   </data>
-  <data name="Profile_Motivation" xml:space="preserve">
-    <value>Motivazione</value>
-  </data>
-  <data name="Profile_AdditionalInfo" xml:space="preserve">
-    <value>Informazioni aggiuntive (facoltativo)</value>
-  </data>
   <data name="Profile_BurnerCV" xml:space="preserve">
     <value>Burner CV</value>
   </data>
@@ -237,15 +231,6 @@
   </data>
   <data name="ProfileEdit_TierLocked" xml:space="preserve">
     <value>La tua categoria è bloccata perché hai una domanda attiva o in sospeso.</value>
-  </data>
-  <data name="ProfileEdit_ApplicationSection" xml:space="preserve">
-    <value>Domanda</value>
-  </data>
-  <data name="ProfileEdit_ApplicationDescription" xml:space="preserve">
-    <value>Raccontaci della tua motivazione. Questo verrà esaminato dal Consiglio insieme al tuo profilo.</value>
-  </data>
-  <data name="ProfileEdit_MotivationPlaceholder" xml:space="preserve">
-    <value>Perché vuoi diventare Colaborador/Asociado? Cosa speri di contribuire?</value>
   </data>
   <data name="ProfileEdit_MotivationHelp" xml:space="preserve">
     <value>Minimo 50 caratteri. Questo aiuta il Consiglio a comprendere i tuoi obiettivi.</value>
@@ -946,4 +931,5 @@
   <data name="Users_Profile_DietaryLink" xml:space="preserve"><value>Informazioni alimentari</value></data>
   <data name="Users_Medical_Saved" xml:space="preserve"><value>Le tue informazioni mediche sono state salvate.</value></data>
   <data name="Users_Medical_SaveFailed" xml:space="preserve"><value>Impossibile salvare le informazioni mediche.</value></data>
+  <data name="ProfileEdit_TierApplyLink" xml:space="preserve"><value>Candidati come Colaborador o Asociado</value></data>
 </root>

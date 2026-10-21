@@ -136,12 +136,10 @@ Two parallel tracks (either order):
 **Trigger:** User visits profile for the first time (onboarding mode)
 **Actions:**
 - General Info: name, pronouns, location, bio, contact fields
-- Tier selection: Volunteer (default), Colaborador, Asociado
-- If Colaborador/Asociado → application form appears inline (motivation, etc.)
+- Tier descriptions with a link to `/Governance/Applications/Create` (new tab); no tier fields on the profile form
 - Emergency contact, Board notes (optional)
 - On submit:
-  - Profile saved (MembershipTier set)
-  - If Colaborador/Asociado → Application entity created (Status = Submitted)
+  - Profile saved
 - **After initial onboarding, profile edit shows profile fields only — no tier selector or application form**
 
 The default Volunteer flow uses the **onboarding widget** (Names → Shifts → Consents) — see "Onboarding Widget (Low-Friction Variant)" below. The full one-shot form remains the path for Colaborador/Asociado applicants because it surfaces the application fields inline.

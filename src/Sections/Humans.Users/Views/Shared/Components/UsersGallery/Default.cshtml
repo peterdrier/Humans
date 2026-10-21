@@ -179,24 +179,3 @@
         <div class="wg-variant-render"><vc:nobodies-email-badge user-id="@Model.CurrentUserId" mode="detail" /></div>
     </div>
 </div>
-
-<div class="wg-card">
-    <div class="wg-card-header">
-        <div>
-            <span class="wg-card-name">&lt;vc:membership-tier-badge&gt;</span>
-            <span class="wg-card-kind kind-vc">ViewComponent</span>
-        </div>
-        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/MembershipTierBadgeViewComponent.cs</span>
-    </div>
-    <div class="wg-card-note">
-        The member's Colaborador/Asociado tier badge beside their name on the dashboard. Renders
-        nothing for a plain Volunteer, which is nearly everyone — so it's empty here unless your
-        account holds a tier.
-    </div>
-    @ParamsBlock(
-        ("userId", "<code>Guid</code> — required")
-    )
-    <div class="wg-card-example">
-        <vc:membership-tier-badge user-id="@Model.CurrentUserId" />
-    </div>
-</div>

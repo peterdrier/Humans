@@ -10,6 +10,7 @@ internal static class AdminHumanDetailViewModelBuilder
     public static AdminHumanDetailViewModel Build(
         UserInfo info,
         IReadOnlyList<UserApplicationSnapshot> applications,
+        MembershipTier membershipTier,
         IReadOnlyList<UserEmailRowSnapshot> userEmails,
         int consentCount,
         Instant now,
@@ -36,7 +37,7 @@ internal static class AdminHumanDetailViewModelBuilder
             State = info.State,
             AdminNotes = profile?.AdminNotes,
             PreferredLanguage = info.PreferredLanguage,
-            MembershipTier = profile?.MembershipTier ?? MembershipTier.Volunteer,
+            MembershipTier = membershipTier,
             ConsentCheckStatus = profile?.ConsentCheckStatus,
             RejectionReason = profile?.RejectionReason,
             RejectedAt = profile?.RejectedAt?.ToDateTimeUtc(),

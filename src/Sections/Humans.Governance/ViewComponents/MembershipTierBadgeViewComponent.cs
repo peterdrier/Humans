@@ -1,18 +1,17 @@
-using Humans.Users.Contracts;
+using Humans.Governance.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Humans.Users.ViewComponents;
+namespace Humans.Governance.ViewComponents;
 
 /// <summary>
 /// The member's tier badge beside their name on the dashboard. Renders nothing for a plain
 /// Volunteer, which is nearly everyone.
 /// </summary>
-public sealed class MembershipTierBadgeViewComponent(IUserService userService) : ViewComponent
+public sealed class MembershipTierBadgeViewComponent(IGovernanceService governanceService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)
     {
-        var tier = (await userService.GetUserInfoAsync(userId, HttpContext.RequestAborted))?.Profile?.MembershipTier
-            ?? MembershipTier.Volunteer;
+        var tier = await governanceService.GetMembershipTierAsync(userId, HttpContext.RequestAborted);
 
         return tier == MembershipTier.Volunteer ? Content(string.Empty) : View(tier);
     }

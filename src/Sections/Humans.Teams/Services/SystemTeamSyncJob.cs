@@ -28,7 +28,6 @@ namespace Humans.Teams.Services;
 internal sealed class SystemTeamSyncJob(
     ITeamManagementService teamService,
     IUserService userService,
-    IUserWrite userWrite,
     ICampLeadDirectory campLeadDirectory,
     IServiceProvider serviceProvider,
     IGoogleSyncWrite googleSyncService,
@@ -46,6 +45,9 @@ internal sealed class SystemTeamSyncJob(
 
     private IGovernanceService ApplicationDecisionService =>
         serviceProvider.GetRequiredService<IGovernanceService>();
+
+    private IGovernanceWrite GovernanceWrite =>
+        serviceProvider.GetRequiredService<IGovernanceWrite>();
 
     private IRoleAssignmentService RoleAssignmentService =>
         serviceProvider.GetRequiredService<IRoleAssignmentService>();
@@ -305,13 +307,9 @@ internal sealed class SystemTeamSyncJob(
             userIds, teamId, cancellationToken);
         var eligibleUserIds = eligibleSet.ToList();
 
-        // Downgrade tier for users whose approved application expired; honor a still-active other-tier application.
-        var todayInstant = clock.GetCurrentInstant();
-        var otherTierByUser = await ApplicationDecisionService
-            .GetOtherActiveTierAssignmentsAsync(tier, today, cancellationToken);
-
-        var downgrades = await userWrite.DowngradeMembershipTierForExpiredAsync(
-            tier, applicationUserIds, otherTierByUser, todayInstant, cancellationToken);
+        // Downgrade tier for users whose approved application expired; Governance honors a still-active
+        // other-tier application. The audit stays here: this job is the automation that ran it.
+        var downgrades = await GovernanceWrite.ExpireMembershipTiersAsync(tier, today, cancellationToken);
 
         if (downgrades.Count > 0)
         {

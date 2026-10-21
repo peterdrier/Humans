@@ -400,108 +400,29 @@
                 </div>
             </div>
 
-            @* --- Section 3: Application --- *@
+            @* --- Section 3: Membership tier --- *@
+            @* Tier applications are Governance's: this card explains the tiers and links to
+               /Governance/Applications/Create (Users decomposition commit 11). Volunteer
+               admission never waits on it. *@
             @if (Model.IsInitialSetup)
             {
                 <div class="card mb-4">
                     <div class="card-body">
                         <h3>@SharedLocalizer["Profile_MembershipTier"]</h3>
-                        <p class="text-muted small mb-3">@SharedLocalizer["ProfileEdit_TierDescription"]</p>
-
-                        @{
-                            var isVolunteer = Model.SelectedTier == MembershipTier.Volunteer;
-                            var isColaborador = Model.SelectedTier == MembershipTier.Colaborador;
-                            var isAsociado = Model.SelectedTier == MembershipTier.Asociado;
+                        <ul class="list-unstyled mb-3">
+                            <li class="mb-2"><strong>Volunteer</strong> — <span class="text-muted">@Localizer["ProfileEdit_TierVolunteerDesc"]</span></li>
+                            <li class="mb-2"><strong>Colaborador</strong> — <span class="text-muted">@SharedLocalizer["ProfileEdit_TierColaboradorDesc"]</span></li>
+                            <li class="mb-2"><strong>Asociado</strong> <span class="text-muted">(@SharedLocalizer["ProfileEdit_TierAsociadoSubtitle"])</span> — <span class="text-muted">@SharedLocalizer["ProfileEdit_TierAsociadoDesc"]</span></li>
+                        </ul>
+                        <p class="text-muted small"><em>@Localizer["ProfileEdit_TierChangeNote"]</em></p>
+                        @if (Model.IsTierLocked)
+                        {
+                            <div class="form-text text-warning">@Localizer["ProfileEdit_TierLocked"]</div>
                         }
-                        <div class="mb-3">
-                            @if (Model.IsTierLocked)
-                            {
-                                <input type="hidden" asp-for="SelectedTier" />
-                            }
-                            <div class="form-check mb-3">
-                                @if (Model.IsTierLocked)
-                                {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Volunteer" id="tierVolunteer" checked="@(isVolunteer ? "checked" : null)" disabled />
-                                }
-                                else
-                                {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Volunteer" id="tierVolunteer" checked="@(isVolunteer ? "checked" : null)" />
-                                }
-                                <label class="form-check-label" for="tierVolunteer">
-                                    <strong>Volunteer</strong> — <span class="text-muted">@Localizer["ProfileEdit_TierVolunteerDesc"]</span>
-                                </label>
-                            </div>
-                            <div class="form-check mb-3">
-                                @if (Model.IsTierLocked)
-                                {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Colaborador" id="tierColaborador" checked="@(isColaborador ? "checked" : null)" disabled />
-                                }
-                                else
-                                {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Colaborador" id="tierColaborador" checked="@(isColaborador ? "checked" : null)" />
-                                }
-                                <label class="form-check-label" for="tierColaborador">
-                                    <strong>Colaborador</strong> — <span class="text-muted">@SharedLocalizer["ProfileEdit_TierColaboradorDesc"]</span>
-                                </label>
-                            </div>
-                            <div class="form-check mb-3">
-                                @if (Model.IsTierLocked)
-                                {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Asociado" id="tierAsociado" checked="@(isAsociado ? "checked" : null)" disabled />
-                                }
-                                else
-                                {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Asociado" id="tierAsociado" checked="@(isAsociado ? "checked" : null)" />
-                                }
-                                <label class="form-check-label" for="tierAsociado">
-                                    <strong>Asociado</strong> <span class="text-muted">(@SharedLocalizer["ProfileEdit_TierAsociadoSubtitle"])</span> — <span class="text-muted">@SharedLocalizer["ProfileEdit_TierAsociadoDesc"]</span>
-                                </label>
-                            </div>
-                            <p class="text-muted small mb-0"><em>@Localizer["ProfileEdit_TierChangeNote"]</em></p>
-                            @if (Model.IsTierLocked)
-                            {
-                                <div class="form-text text-warning mt-2">@Localizer["ProfileEdit_TierLocked"]</div>
-                            }
-                        </div>
-
-                        <div id="applicationSection" style="display: @(Model.SelectedTier != MembershipTier.Volunteer ? "block" : "none");">
-                            <div class="card bg-light mb-3">
-                                <div class="card-body">
-                                    <h6>@Localizer["ProfileEdit_ApplicationSection"]</h6>
-                                    <p class="text-muted small mb-3">@Localizer["ProfileEdit_ApplicationDescription"]</p>
-
-                                    <div class="mb-3">
-                                        <label asp-for="ApplicationMotivation" class="form-label">@Localizer["Profile_Motivation"]</label>
-                                        <textarea asp-for="ApplicationMotivation" minlength="50" class="form-control" rows="4" placeholder="@Localizer["ProfileEdit_MotivationPlaceholder"].Value"></textarea>
-                                        <span asp-validation-for="ApplicationMotivation" class="text-danger"></span>
-                                        <div class="form-text">@Localizer["ProfileEdit_MotivationHelp"]</div>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label asp-for="ApplicationAdditionalInfo" class="form-label">@Localizer["Profile_AdditionalInfo"]</label>
-                                        <textarea asp-for="ApplicationAdditionalInfo" class="form-control" rows="3"></textarea>
-                                        <span asp-validation-for="ApplicationAdditionalInfo" class="text-danger"></span>
-                                    </div>
-
-                                    <div id="asociadoQuestionsInline" style="display: @(Model.SelectedTier == MembershipTier.Asociado ? "block" : "none");">
-                                        <hr />
-                                        <h6>@SharedLocalizer["Application_AsociadoQuestionsHeader"]</h6>
-
-                                        <div class="mb-3">
-                                            <label asp-for="ApplicationSignificantContribution" class="form-label">@SharedLocalizer["Application_SignificantContribution"]</label>
-                                            <textarea asp-for="ApplicationSignificantContribution" class="form-control" rows="4" placeholder="@SharedLocalizer["Application_SignificantContributionPlaceholder"].Value"></textarea>
-                                            <span asp-validation-for="ApplicationSignificantContribution" class="text-danger"></span>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label asp-for="ApplicationRoleUnderstanding" class="form-label">@SharedLocalizer["Application_RoleUnderstanding"]</label>
-                                            <textarea asp-for="ApplicationRoleUnderstanding" class="form-control" rows="4" placeholder="@SharedLocalizer["Application_RoleUnderstandingPlaceholder"].Value"></textarea>
-                                            <span asp-validation-for="ApplicationRoleUnderstanding" class="text-danger"></span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        else
+                        {
+                            <a asp-controller="GovernanceApplications" asp-action="Create" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">@Localizer["ProfileEdit_TierApplyLink"]</a>
+                        }
                     </div>
                 </div>
             }
@@ -987,28 +908,6 @@
                 container.appendChild(row);
                 setupLanguageRow(row);
                 row.querySelector('.language-code-select').focus();
-            });
-        })();
-    </script>
-    <script nonce="@Context.Items["CspNonce"]">
-        // Tier selection show/hide for application section and Asociado questions
-        (function() {
-            const tierRadios = document.querySelectorAll('input[name="SelectedTier"]');
-            const appSection = document.getElementById('applicationSection');
-            const asociadoQuestions = document.getElementById('asociadoQuestionsInline');
-            if (!appSection || tierRadios.length === 0) return;
-
-            tierRadios.forEach(radio => {
-                radio.addEventListener('change', function() {
-                    appSection.style.display = this.value === 'Volunteer' ? 'none' : 'block';
-                    if (asociadoQuestions) {
-                        asociadoQuestions.style.display = this.value === 'Asociado' ? 'block' : 'none';
-                        // Clear hidden fields so stale values aren't submitted
-                        if (this.value !== 'Asociado') {
-                            asociadoQuestions.querySelectorAll('textarea').forEach(t => t.value = '');
-                        }
-                    }
-                });
             });
         })();
     </script>

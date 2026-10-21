@@ -1,3 +1,4 @@
+using Humans.Governance.Contracts;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using Humans.Holded.Contracts;
@@ -105,6 +106,9 @@ internal sealed class WorkgroupPageViewModel
 
     /// <summary>Burner names and tiers for the roster and the log's attributions.</summary>
     public required IReadOnlyDictionary<Guid, UserInfo> People { get; init; }
+
+    /// <summary>Non-Volunteer membership tiers (Governance), for the roster's tier badge.</summary>
+    public IReadOnlyDictionary<Guid, MembershipTier> Tiers { get; init; } = new Dictionary<Guid, MembershipTier>();
 
     /// <summary>Board-team membership, for the roster's Board badge.</summary>
     public required IReadOnlySet<Guid> BoardUserIds { get; init; }

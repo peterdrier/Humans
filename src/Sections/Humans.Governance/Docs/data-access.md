@@ -4,21 +4,22 @@
 
 Project: `src/Sections/Humans.Governance`; services under `Services/`,
 repository under `Data/`. **DbContext:**
-`GovernanceDbContext`. `ApplicationRepository` and
-`AssemblyVoteRepository` inject
+`GovernanceDbContext`. `ApplicationRepository`,
+`AssemblyVoteRepository` and `MembershipTierRepository` inject
 `IDbContextFactory<GovernanceDbContext>` directly. Owns
-`Applications`, `ApplicationStateHistories`, `BoardVotes`,
+`Applications`, `MembershipTiers` (`governance_membership_tiers`), `ApplicationStateHistories`, `BoardVotes`,
 `AssemblyVotes`, `AssemblyVoteOptions`, `AssemblyVoteRosterEntries`,
 `AssemblyBallots`, `AssemblyBallotHistories`, `AssemblyVotePeeks`.
 
-Both repositories are registered **Singleton** (`Section.cs:28`, `:41`); they hold no state
+All three repositories are registered **Singleton** in `Section.cs`; they hold no state
 and take an `IDbContextFactory`. The services below are Scoped.
 
 `IGovernanceManagement` (internal) extends the public `IGovernanceService` (reads)
-and `IGovernanceWrite` (validate-submission, submit, update-draft). Every reader outside
-this section injects `IGovernanceService` — `OnboardingService`, `NotificationMeterProvider`,
-`SystemTeamSyncJob` and `UsersAdminController`. `ProfileController` is the one writer: it
-injects `IGovernanceService` and `IGovernanceWrite` because it submits and updates drafts.
+and `IGovernanceWrite` (membership-tier expiry only). Readers outside this section inject
+`IGovernanceService` — tier reads from Users (popover, human summary, admin detail, duplicate
+accounts), Onboarding, Workgroups, Tickets, Surveys, Agent and Teams. `SystemTeamSyncJob` is the
+one writer: it calls `IGovernanceWrite.ExpireMembershipTiersAsync` and records the
+`TierDowngraded` audit itself.
 
 Cross-section reads inside the section go through the read surfaces
 (`IUserService`, `ITeamService`, `IConsentService`).
@@ -42,7 +43,7 @@ Repository: `IApplicationRepository`.
 | `FeedbackBadgeCount` (`INavBadgeCacheInvalidator`) | yes |
 | `NotificationMeters` (`INotificationMeterCacheInvalidator`) | yes |
 
-Cross-section calls via `IUserService`, `IUserWrite` (`SetMembershipTierAsync`),
+Cross-section calls via `IUserService`,
 `IRoleAssignmentService`, `IEmailService`, `IUserEmailService`, `INotificationEmitter`,
 `ISystemTeamSync`, `IAuditLogService`, `IHumansMetrics`,
 and the section's own `GovernanceEmails` builder. Implements `IGovernanceManagement` (which
@@ -53,6 +54,26 @@ contribution, role understanding) and reviewer prose on `Applications` and
 `ApplicationStateHistories`, plus notes on `BoardVotes` the user cast as a
 Board member — the tier/status/date skeleton stays (Ley Orgánica 1/2002
 Art. 14, GDPR Art. 17(3)(b)).
+
+Tier reads, the grant on approval, term-expiry sync and expiry downgrades
+delegate to `MembershipTierService`.
+
+### MembershipTierService (Scoped, internal)
+
+Repositories: `IMembershipTierRepository`, plus `IApplicationRepository` (read-only — grant
+and term data for the copy, in-term sets for expiry).
+
+| Table | R/W |
+|-------|-----|
+| MembershipTiers | R/W |
+| Applications | R |
+
+Cross-section reads: `IUserService` (legacy `ProfileInfo.MembershipTier` fallback while a
+user has no row; read only in `LegacyTier`, inside `#pragma warning disable HUM_PROFILE_TIER`).
+Implements `IUserDataContributor` (slice `MembershipTier`; erasure retains the row — register
+of members, Ley Orgánica 1/2002 Art. 14, GDPR Art. 17(3)(b)) and `IUserMerge` (survivor's tier
+wins). Data migration `governance.profile-tier` (`SectionDataMigrations`) copies legacy
+non-Volunteer profile tiers into rows.
 
 ### AssemblyVoteService (Scoped)
 

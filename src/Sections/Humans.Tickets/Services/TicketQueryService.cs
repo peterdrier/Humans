@@ -13,6 +13,7 @@ using Humans.Tickets.Data;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Services.Dtos;
 using Humans.Gdpr.Contracts;
+using Humans.Governance.Contracts;
 
 namespace Humans.Tickets.Services;
 
@@ -27,6 +28,7 @@ internal sealed class TicketQueryService(
     IUserService userService,
     IUserEmailService userEmailService,
     ITeamService teamService,
+    IGovernanceService governanceService,
     ISettingsService settingsService,
     ITicketCacheInvalidator cacheInvalidator,
     IAuditLogService auditLog,
@@ -613,6 +615,7 @@ internal sealed class TicketQueryService(
         }
 
         var usersById = allUsers.ToDictionary(u => u.Id);
+        var tiers = await governanceService.GetMembershipTiersAsync(ct);
 
         var rows = candidateIds
             .Where(id => usersById.TryGetValue(id, out var u) && u.Profile is not null)
@@ -629,7 +632,7 @@ internal sealed class TicketQueryService(
                     Name = user.BurnerName,
                     Email = email ?? string.Empty,
                     TeamNames = teamNames ?? [],
-                    Tier = user.Profile!.MembershipTier,
+                    Tier = tiers.GetValueOrDefault(id, MembershipTier.Volunteer),
                 };
             })
             .ToList();

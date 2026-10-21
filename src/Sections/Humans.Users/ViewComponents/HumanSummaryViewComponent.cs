@@ -1,3 +1,4 @@
+using Humans.Governance.Contracts;
 using Humans.Users.Controllers;
 using Humans.Users.Models;
 using Humans.Base.Helpers;
@@ -15,7 +16,8 @@ namespace Humans.Users.ViewComponents;
 /// (e.g. ticket-transfer detail) where the reviewer needs identity context
 /// without having to hover.
 /// </summary>
-public sealed class HumanSummaryViewComponent(IUserService userService, ITeamService teamService) : ViewComponent
+public sealed class HumanSummaryViewComponent(
+    IUserService userService, ITeamService teamService, IGovernanceService governanceService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)
     {
@@ -68,6 +70,7 @@ public sealed class HumanSummaryViewComponent(IUserService userService, ITeamSer
             : info.ProfilePictureUrl;
 
         var isSuspended = info.IsSuspended;
+        var tier = await governanceService.GetMembershipTierAsync(userId, ct);
 
         var vm = new ProfileSummaryViewModel
         {
@@ -76,7 +79,7 @@ public sealed class HumanSummaryViewComponent(IUserService userService, ITeamSer
             Email = info.Email,
             ProfilePictureUrl = effectivePictureUrl,
             PreferredLanguage = info.PreferredLanguage,
-            MembershipTier = profile.MembershipTier.ToString(),
+            MembershipTier = tier.ToString(),
             MembershipStatus = isSuspended ? "Suspended"
                 : profile.IsApproved ? "Active" : "Pending",
             City = profile.City,

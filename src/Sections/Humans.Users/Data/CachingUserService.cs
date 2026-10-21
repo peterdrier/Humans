@@ -631,16 +631,6 @@ internal sealed class CachingUserService(
         return created;
     }
 
-    public async Task<bool> SetMembershipTierAsync(
-        Guid userId,
-        MembershipTier tier,
-        CancellationToken ct = default)
-    {
-        var updated = await WithInnerAsync(inner => inner.SetMembershipTierAsync(userId, tier, ct));
-        if (updated) await RefreshEntryAsync(userId);
-        return updated;
-    }
-
     public async Task<OnboardingResult> ApplyProfileOnboardingMutationAsync(
         Guid userId,
         UserProfileOnboardingCommand command,
@@ -709,22 +699,6 @@ internal sealed class CachingUserService(
         foreach (var userId in mutated)
             await RefreshEntryAsync(userId);
         return mutated;
-    }
-
-    public async Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>>
-        DowngradeMembershipTierForExpiredAsync(
-            MembershipTier currentTier,
-            IReadOnlyCollection<Guid> userIdsToKeep,
-            IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
-            Instant now,
-            CancellationToken ct = default)
-    {
-        var downgrades = await WithInnerAsync(inner =>
-            inner.DowngradeMembershipTierForExpiredAsync(
-                currentTier, userIdsToKeep, fallbackTierByUser, now, ct));
-        foreach (var (userId, _) in downgrades)
-            await RefreshEntryAsync(userId);
-        return downgrades;
     }
 
     public async Task<UserEmailAddResult> AddUserEmailAsync(

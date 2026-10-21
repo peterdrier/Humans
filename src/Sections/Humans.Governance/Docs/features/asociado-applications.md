@@ -215,22 +215,11 @@ Abstain = 3  // No position
 
 ## Application Creation
 
-### During Initial Signup (Inline)
-```
-Profile Setup → Tier selection → Application form inline → Submit
-    │
-    ├── Profile saved (MembershipTier = selected tier)
-    └── Application created (Status = Submitted)
-    │
-    ▼
-Both proceed through pipelines:
-  - Profile → Consents → Volunteer access (name + consents)
-  - Application → Board Voting → Tier enrollment (parallel)
-```
+Initial profile setup links to the dedicated route; the application runs in parallel with Volunteer access and never gates it.
 
-### After Onboarding (Dedicated Route)
+### Dedicated Route
 ```
-Active Volunteer/Colaborador → /Governance/Applications/Create → Fill form → Submit
+Volunteer/Colaborador → /Governance/Applications/Create → Fill form → Submit
     │
     ▼
 Application created → Board Voting → Approve/Reject
@@ -251,7 +240,7 @@ When an Application is approved:
 2. `Application.TermExpiresAt` = Dec 31 of appropriate odd year
 3. `Application.BoardMeetingDate` = entered meeting date
 4. `Application.DecisionNote` = Board's collective note
-5. `Profile.MembershipTier` → Application's tier
+5. Membership tier row (`governance_membership_tiers`) → Application's tier
 6. User added to Colaboradors or Asociados system team
 7. Individual BoardVote records deleted
 8. Approval email attempted best-effort, including recipient lookup; email failure does not skip the in-app notice.

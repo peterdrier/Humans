@@ -51,6 +51,7 @@ internal sealed class ProfileViewController(
     IStringLocalizer<SharedResource> sharedLocalizer,
     ITeamService teamService,
     ICampService campService,
+    IGovernanceService governanceService,
     IAuthorizationService authorizationService) : HumansControllerBase(userService)
 {
     private readonly IUserManagement _userService = userService;
@@ -222,7 +223,8 @@ internal sealed class ProfileViewController(
             .ToList();
         // Camp + roles for the active season; rendered admin-only in the view.
         var camp = await campService.GetCampUserInfoAsync(id, ct);
-        var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(info, memberships, camp);
+        var tier = await governanceService.GetMembershipTierAsync(id, ct);
+        var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(info, memberships, tier, camp);
 
         return PartialView("_HumanPopover", vm);
     }

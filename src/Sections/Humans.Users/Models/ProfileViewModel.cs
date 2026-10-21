@@ -144,7 +144,7 @@ internal sealed class ProfileViewModel
 
     /// <summary>
     /// Whether this is the user's initial profile setup (no profile yet or not approved).
-    /// Controls visibility of tier selection and inline application sections.
+    /// Controls visibility of the membership-tier card.
     /// </summary>
     public bool IsInitialSetup { get; set; }
 
@@ -161,46 +161,10 @@ internal sealed class ProfileViewModel
     public bool NoPriorBurnExperience { get; set; }
 
     /// <summary>
-    /// Selected membership tier. During initial setup, the user can choose Colaborador/Asociado.
-    /// Defaults to Volunteer if not specified.
-    /// </summary>
-    public MembershipTier SelectedTier { get; set; } = MembershipTier.Volunteer;
-
-    /// <summary>
-    /// Whether the tier has been locked (approved or has active application).
+    /// The member already has a pending or approved tier application, so the initial-setup
+    /// tier card shows a note instead of the link to <c>/Governance/Applications/Create</c>.
     /// </summary>
     public bool IsTierLocked { get; set; }
-
-    // Inline application fields (only used during initial setup for Colaborador/Asociado)
-
-    /// <summary>
-    /// Motivation statement for Colaborador/Asociado application.
-    /// Required when SelectedTier is not Volunteer during initial setup.
-    /// </summary>
-    [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
-    [DataType(DataType.MultilineText)]
-    public string? ApplicationMotivation { get; set; }
-
-    /// <summary>
-    /// Additional information for the application.
-    /// </summary>
-    [StringLength(1000, ErrorMessage = "Validation_MaxLength")]
-    [DataType(DataType.MultilineText)]
-    public string? ApplicationAdditionalInfo { get; set; }
-
-    /// <summary>
-    /// Asociado-only: significant contribution to Nowhere or another Burn.
-    /// </summary>
-    [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
-    [DataType(DataType.MultilineText)]
-    public string? ApplicationSignificantContribution { get; set; }
-
-    /// <summary>
-    /// Asociado-only: understanding of the asociado role and why they want it.
-    /// </summary>
-    [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
-    [DataType(DataType.MultilineText)]
-    public string? ApplicationRoleUnderstanding { get; set; }
 
     public string? EffectiveProfilePictureUrl => HasCustomProfilePicture
         ? CustomProfilePictureUrl

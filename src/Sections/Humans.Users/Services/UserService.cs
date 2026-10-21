@@ -345,25 +345,6 @@ internal sealed class UserService(
         return true;
     }
 
-    public async Task<bool> SetMembershipTierAsync(
-        Guid userId,
-        MembershipTier tier,
-        CancellationToken ct = default)
-    {
-        var profile = await repo.GetByUserIdAsync(userId, ct);
-        if (profile is null)
-        {
-            logger.LogWarning(
-                "Cannot set membership tier for user {UserId} - no profile exists", userId);
-            return false;
-        }
-
-        profile.MembershipTier = tier;
-        profile.UpdatedAt = clock.GetCurrentInstant();
-        await repo.UpdateAsync(profile, ct);
-        return true;
-    }
-
     public async Task<OnboardingResult> ApplyProfileOnboardingMutationAsync(
         Guid userId,
         UserProfileOnboardingCommand command,
@@ -660,16 +641,6 @@ internal sealed class UserService(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken ct = default) =>
         repo.SuspendManyAsync(userIds, ct);
-
-    public Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>>
-        DowngradeMembershipTierForExpiredAsync(
-            MembershipTier currentTier,
-            IReadOnlyCollection<Guid> userIdsToKeep,
-            IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
-            Instant now,
-            CancellationToken ct = default) =>
-        repo.DowngradeTierForExpiredAsync(
-            currentTier, userIdsToKeep, fallbackTierByUser, now, ct);
 
     public async Task<UserEmailAddResult> AddUserEmailAsync(
         Guid userId,
@@ -1142,6 +1113,8 @@ internal sealed class UserService(
             profile.Pronouns,
             profile.ContributionInterests,
             profile.BoardNotes,
+            // Frozen legacy column, still held here until the governance.profile-tier retirement drops
+            // it; the live tier is Governance's MembershipTier slice (Users decomposition commit 11).
             profile.MembershipTier,
             profile.IsApproved,
             // JSON key pinned per memory/code/no-rename-serialized-fields.md (GDPR export stability).

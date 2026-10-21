@@ -45,7 +45,7 @@ public class ProfileTests
     {
         var profile = CreateProfile();
 
-        profile.MembershipTier.Should().Be(MembershipTier.Volunteer);
+        profile.MembershipTier.Should().Be(LegacyMembershipTier.Volunteer);
     }
 
     [HumansFact]
@@ -104,10 +104,10 @@ public class ProfileTests
     }
 
     [HumansTheory]
-    [InlineData(MembershipTier.Volunteer)]
-    [InlineData(MembershipTier.Colaborador)]
-    [InlineData(MembershipTier.Asociado)]
-    public void Profile_CanSetMembershipTier(MembershipTier tier)
+    [InlineData(LegacyMembershipTier.Volunteer)]
+    [InlineData(LegacyMembershipTier.Colaborador)]
+    [InlineData(LegacyMembershipTier.Asociado)]
+    public void Profile_CanSetMembershipTier(LegacyMembershipTier tier)
     {
         var profile = CreateProfile();
 

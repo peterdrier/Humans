@@ -1,3 +1,4 @@
+using Humans.Governance.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
 using Humans.AuditLog.Data;

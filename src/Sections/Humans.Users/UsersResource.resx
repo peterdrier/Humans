@@ -54,8 +54,6 @@
   <data name="Profile_AddSome" xml:space="preserve"><value>Add some</value></data>
   <data name="Profile_NotificationTarget" xml:space="preserve"><value>System notifications are sent to this address</value></data>
   <data name="Profile_NotificationTargetShort" xml:space="preserve"><value>Notifications</value></data>
-  <data name="Profile_Motivation" xml:space="preserve"><value>Motivation</value></data>
-  <data name="Profile_AdditionalInfo" xml:space="preserve"><value>Additional Information (optional)</value></data>
   <data name="Profile_BurnerCV" xml:space="preserve"><value>Burner CV</value></data>
   <data name="Profile_NoCVEntries" xml:space="preserve"><value>No entries yet.</value></data>
   <data name="Profile_AddFirstEntry" xml:space="preserve"><value>Add your first entry</value></data>
@@ -109,9 +107,6 @@
   <data name="ProfileEdit_TierVolunteerDesc" xml:space="preserve"><value>You want to come to the event, contribute your energy, work a shift or join a team. No formal commitment to the association's governance. Most people fall here and that's completely valid.</value></data>
   <data name="ProfileEdit_TierChangeNote" xml:space="preserve"><value>Note: You can always apply to change this later on.</value></data>
   <data name="ProfileEdit_TierLocked" xml:space="preserve"><value>Your tier is locked because you have an active or pending application.</value></data>
-  <data name="ProfileEdit_ApplicationSection" xml:space="preserve"><value>Application</value></data>
-  <data name="ProfileEdit_ApplicationDescription" xml:space="preserve"><value>Tell us about your motivation. This will be reviewed by the Board alongside your profile.</value></data>
-  <data name="ProfileEdit_MotivationPlaceholder" xml:space="preserve"><value>Why do you want to become a Colaborador/Asociado? What do you hope to contribute?</value></data>
   <data name="ProfileEdit_MotivationHelp" xml:space="preserve"><value>Minimum 50 characters. This helps the Board understand your goals.</value></data>
   <data name="ProfileEdit_BurnerNamePlaceholder" xml:space="preserve"><value>The name you go by</value></data>
   <data name="ProfileEdit_BurnerNameHelp" xml:space="preserve"><value>This is your public display name, visible to everyone.</value></data>
@@ -477,4 +472,5 @@
   <data name="Users_Profile_DietaryLink" xml:space="preserve"><value>Dietary info</value></data>
   <data name="Users_Medical_Saved" xml:space="preserve"><value>Your medical info has been saved.</value></data>
   <data name="Users_Medical_SaveFailed" xml:space="preserve"><value>Failed to save medical info.</value></data>
+  <data name="ProfileEdit_TierApplyLink" xml:space="preserve"><value>Apply for Colaborador or Asociado</value></data>
 </root>

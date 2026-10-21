@@ -4,7 +4,6 @@ using Humans.Base.Models.Tables;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
 using Humans.Base.Controllers;
-using System.Globalization;
 using System.Web;
 using AngleSharp.Dom;
 using Humans.Users.Authorization;
@@ -53,11 +52,10 @@ internal sealed class ProfileController(
     ConfigurationRegistry configRegistry,
     ILogger<ProfileController> logger,
     IStringLocalizer<UsersResource> localizer,
-    // The tier-application copy and the generic Common_/Validation_ strings this controller
-    // formats stayed in SharedResource at the Users carve — Governance renders the same form.
+    // The generic Common_/Validation_/Profile_ strings this controller formats stayed in
+    // SharedResource at the Users carve.
     IStringLocalizer<SharedResource> sharedLocalizer,
     IGovernanceService governanceService,
-    IGovernanceWrite governanceWrite,
     IAccountDeletionService accountDeletionService,
     IMembershipCalculator membershipCalculator) : HumansControllerBase(userService)
 {
@@ -190,10 +188,6 @@ internal sealed class ProfileController(
         if (burnerCvResult is not null)
             return burnerCvResult;
 
-        var tierValidationResult = ValidateTierApplicationOrNull(model, isInitialSetup);
-        if (tierValidationResult is not null)
-            return tierValidationResult;
-
         var pictureUpload = await TryReadProfilePictureUploadAsync(model);
         if (!pictureUpload.Success)
         {
@@ -205,11 +199,11 @@ internal sealed class ProfileController(
         if (saveResult is not null)
             return saveResult;
 
-        // Cross-section peer calls (consent-check trigger, tier-application
-        // submit/update, pending-deletion cancel) stay controller-side per
+        // Cross-section peer calls (consent-check trigger, pending-deletion
+        // cancel) stay controller-side per
         // no-leaf-to-director-callbacks — the controller is the director,
         // services are peers/leaves that must not call each other back.
-        await RunPostProfileSaveOrchestrationAsync(user, model, isInitialSetup);
+        await RunPostProfileSaveOrchestrationAsync(user, isInitialSetup);
 
         await SaveEditedContactFieldsAsync(model, profileId);
 
@@ -272,68 +266,6 @@ internal sealed class ProfileController(
         return null;
     }
 
-    // Maps IGovernanceWrite's tier-application field rules onto localized,
-    // form-field-targeted ModelState errors — the same error keys, and the same mapping
-    // shape, GovernanceApplicationsController uses on the submit path. The rules
-    // themselves live in the service that owns tier-application state; this runs them
-    // before any persistence so a bad submit can't half-save. Returns the rerender
-    // result when invalid, null to continue.
-    private IActionResult? ValidateTierApplicationOrNull(ProfileViewModel model, bool isInitialSetup)
-    {
-        if (!isInitialSetup || model.SelectedTier == MembershipTier.Volunteer)
-            return null;
-
-        var result = governanceWrite.ValidateSubmission(
-            model.SelectedTier, model.ApplicationMotivation,
-            model.ApplicationSignificantContribution, model.ApplicationRoleUnderstanding, model.ApplicationAdditionalInfo);
-
-        if (result.Success)
-            return null;
-
-        logger.LogWarning("Profile tier application validation refused for tier {Tier}: {ErrorKey}", model.SelectedTier, result.ErrorKey);
-        switch (result.ErrorKey)
-        {
-            case "MotivationRequired":
-                ModelState.AddModelError(nameof(model.ApplicationMotivation),
-                    sharedLocalizer["Profile_MotivationRequired"].Value);
-                break;
-            case "SignificantContributionRequired":
-                ModelState.AddModelError(nameof(model.ApplicationSignificantContribution),
-                    sharedLocalizer["Application_SignificantContributionRequired"].Value);
-                break;
-            case "RoleUnderstandingRequired":
-                ModelState.AddModelError(nameof(model.ApplicationRoleUnderstanding),
-                    sharedLocalizer["Application_RoleUnderstandingRequired"].Value);
-                break;
-            case "MotivationLength":
-                ModelState.AddModelError(nameof(model.ApplicationMotivation),
-                    sharedLocalizer["Application_MotivationLength"].Value);
-                break;
-            case "AdditionalInfoTooLong":
-                ModelState.AddModelError(nameof(model.ApplicationAdditionalInfo),
-                    sharedLocalizer["Application_AdditionalInfoTooLong"].Value);
-                break;
-            case "SignificantContributionTooLong":
-                ModelState.AddModelError(nameof(model.ApplicationSignificantContribution),
-                    sharedLocalizer["Application_SignificantContributionTooLong"].Value);
-                break;
-            case "RoleUnderstandingTooLong":
-                ModelState.AddModelError(nameof(model.ApplicationRoleUnderstanding),
-                    sharedLocalizer["Application_RoleUnderstandingTooLong"].Value);
-                break;
-            default:
-                ModelState.AddModelError(string.Empty, sharedLocalizer["Application_InvalidTier"].Value);
-                break;
-        }
-
-        model.IsInitialSetup = true;
-        model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
-            && string.IsNullOrEmpty(model.LastName)
-            && string.IsNullOrEmpty(model.EmergencyContactName);
-        ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
-        return View(model);
-    }
-
     // CV: existing rows keep Id/CreatedAt; new rows post Guid.Empty and get fresh Id.
     private static ProfileSaveRequest BuildProfileSaveRequest(
         ProfileViewModel model, (bool Success, byte[]? Data, string? ContentType) pictureUpload)
@@ -393,41 +325,10 @@ internal sealed class ProfileController(
         return (Guid.Empty, View(model));
     }
 
-    private async Task RunPostProfileSaveOrchestrationAsync(UserInfo user, ProfileViewModel model, bool isInitialSetup)
+    private async Task RunPostProfileSaveOrchestrationAsync(UserInfo user, bool isInitialSetup)
     {
         // Peer-call into Onboarding; ProfileEditorService doesn't.
         await onboardingService.SetConsentCheckPendingIfEligibleAsync(user.Id);
-
-        // Initial-setup tier-app: form's `isTierLocked` guard + ApplicationDecisionService AlreadyPending backstop.
-        if (isInitialSetup && model.SelectedTier != MembershipTier.Volunteer)
-        {
-            var existingApps = await governanceService.GetUserApplicationsAsync(user.Id);
-            var existingDraft = existingApps.FirstOrDefault(a =>
-                a.Status == ApplicationStatus.Submitted);
-            var hasApprovedApp = existingApps.Any(a =>
-                a.Status == ApplicationStatus.Approved);
-
-            if (existingDraft is not null)
-            {
-                await governanceWrite.UpdateDraftApplicationAsync(
-                    existingDraft.Id,
-                    model.SelectedTier,
-                    model.ApplicationMotivation!,
-                    model.ApplicationAdditionalInfo,
-                    model.SelectedTier == MembershipTier.Asociado ? model.ApplicationSignificantContribution : null,
-                    model.SelectedTier == MembershipTier.Asociado ? model.ApplicationRoleUnderstanding : null);
-            }
-            else if (!hasApprovedApp)
-            {
-                await governanceWrite.SubmitAsync(
-                    user.Id, model.SelectedTier,
-                    model.ApplicationMotivation!,
-                    model.ApplicationAdditionalInfo,
-                    model.SelectedTier == MembershipTier.Asociado ? model.ApplicationSignificantContribution : null,
-                    model.SelectedTier == MembershipTier.Asociado ? model.ApplicationRoleUnderstanding : null,
-                    CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
-            }
-        }
 
         // Route pending-deletion cancel through IAccountDeletionService, not raw UserManager.
         if (isInitialSetup && user.IsDeletionPending)

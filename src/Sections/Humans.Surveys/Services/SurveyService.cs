@@ -4,6 +4,7 @@ using Humans.Base.Threading;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
+using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 using Humans.Surveys.Data;
 using Humans.Shifts.Contracts;
@@ -29,6 +30,7 @@ internal sealed class SurveyService(
     ILogger<SurveyService> logger,
     ITeamService teamService,
     IUserService userService,
+    IGovernanceService governanceService,
     ITicketService ticketService,
     IShiftView shiftView,
     IUserEmailService userEmailService,
@@ -916,7 +918,8 @@ internal sealed class SurveyService(
         // id resolves to an eligible survivor, but answering under the archived id would let one
         // Asociado hold two ballots, so eligibility requires the stored id to be the live one.
         var info = await userService.GetUserInfoAsync(userId, ct);
-        return info is not null && info.Id == userId && IsEligibleAsociado(info);
+        return info is not null && info.Id == userId && IsEligibleAsociado(info)
+            && await governanceService.GetMembershipTierAsync(userId, ct) == MembershipTier.Asociado;
     }
 
     public async Task<Guid> StartIdentifiedDraftAsync(
@@ -2308,10 +2311,14 @@ internal sealed class SurveyService(
                 return (await ActiveMemberIdsAsync(ct)).ToHashSet();
 
             case SurveyAudienceType.Asociados:
-                return (await userService.GetAllUserInfosAsync(ct))
-                    .Where(IsEligibleAsociado)
-                    .Select(user => user.Id)
-                    .ToHashSet();
+                {
+                    var tiers = await governanceService.GetMembershipTiersAsync(ct);
+                    return (await userService.GetAllUserInfosAsync(ct))
+                        .Where(user => IsEligibleAsociado(user)
+                            && tiers.GetValueOrDefault(user.Id) == MembershipTier.Asociado)
+                        .Select(user => user.Id)
+                        .ToHashSet();
+                }
 
             case SurveyAudienceType.TicketHolders:
                 {
@@ -2370,11 +2377,12 @@ internal sealed class SurveyService(
             .ToList();
     }
 
+    /// <summary>The account half of Asociado eligibility; the tier half is Governance's
+    /// (<see cref="IGovernanceService.GetMembershipTierAsync"/>).</summary>
     private static bool IsEligibleAsociado(UserInfo? user)
         => user is
         {
             IsApproved: true,
-            Profile.MembershipTier: MembershipTier.Asociado,
             IsGdprAnonymized: false,
             IsDeletionPending: false,
             IsMerged: false,

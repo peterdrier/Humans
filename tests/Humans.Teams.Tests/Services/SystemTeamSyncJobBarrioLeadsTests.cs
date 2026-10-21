@@ -60,7 +60,6 @@ public class SystemTeamSyncJobBarrioLeadsTests
         return new SystemTeamSyncJob(
             _teamService,
             _userService,
-            Substitute.For<IUserWrite>(),
             _campRepository,
             provider,
             _googleSyncService,
@@ -118,7 +117,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
             BoardNotes: null,
             Iban: null,
             IsApproved: false,
-            MembershipTier: MembershipTier.Volunteer,
+            MembershipTier: LegacyMembershipTier.Volunteer,
             ConsentCheckStatus: null,
             ConsentCheckAt: null,
             ConsentCheckedByUserId: null,

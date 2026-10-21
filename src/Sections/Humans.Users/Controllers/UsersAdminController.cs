@@ -94,6 +94,7 @@ internal sealed class UsersAdminController(
             return NotFound();
 
         var applications = await applicationDecisionService.GetUserApplicationsAsync(id, ct);
+        var membershipTier = await applicationDecisionService.GetMembershipTierAsync(id, ct);
         var userEmails = await userEmailService.GetEntitiesByUserIdAsync(id, ct);
         var consentCount = await consentService.GetConsentRecordCountAsync(id, ct);
 
@@ -104,6 +105,7 @@ internal sealed class UsersAdminController(
         var viewModel = AdminHumanDetailViewModelBuilder.Build(
             info,
             applications,
+            membershipTier,
             userEmails,
             consentCount,
             clock.GetCurrentInstant(),

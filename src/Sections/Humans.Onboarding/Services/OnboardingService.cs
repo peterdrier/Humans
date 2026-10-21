@@ -62,7 +62,9 @@ internal sealed class OnboardingService(
         // ReviewQueueData types PendingAppUserIds as HashSet<Guid>; Governance returns IReadOnlySet.
         var pendingAppHashSet = pendingAppUserIds.ToHashSet();
 
-        return new ReviewQueueData(pending, flagged, pendingAppHashSet, consentProgress);
+        var tiers = await applicationDecisionService.GetMembershipTiersAsync(ct);
+
+        return new ReviewQueueData(pending, flagged, pendingAppHashSet, consentProgress, tiers);
     }
 
     // Who is in the queue, in one place. Bulk clear's eligibility is *defined* as "a row in the
@@ -95,6 +97,7 @@ internal sealed class OnboardingService(
 
         var pendingApp = await applicationDecisionService
             .GetSubmittedApplicationForUserAsync(userId, ct);
+        var tier = await applicationDecisionService.GetMembershipTierAsync(userId, ct);
 
         return new ReviewDetailData(
             new ReviewProfileDetail(
@@ -102,7 +105,7 @@ internal sealed class OnboardingService(
                 profile.LastName,
                 profile.City,
                 profile.CountryCode,
-                profile.MembershipTier,
+                tier,
                 profile.ConsentCheckStatus,
                 profile.ConsentCheckNotes,
                 profile.CreatedAt),

@@ -20,9 +20,6 @@ internal static class ProfileEditViewModelBuilder
 
         var isTierLocked = profile is not null && applications.Any(a =>
             a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.Approved);
-        var pendingApplication = profile is null || !profile.IsApproved
-            ? applications.FirstOrDefault(a => a.Status == ApplicationStatus.Submitted)
-            : null;
         var hasCustomPicture = profile?.HasCustomPicture == true;
         var isInitialSetup = profile is null || !profile.IsApproved || preview;
 
@@ -56,12 +53,7 @@ internal static class ProfileEditViewModelBuilder
             EmergencyContactRelationship = profile?.EmergencyContactRelationship,
             CanViewLegalName = true,
             IsInitialSetup = isInitialSetup,
-            SelectedTier = profile?.MembershipTier ?? MembershipTier.Volunteer,
             IsTierLocked = isTierLocked,
-            ApplicationMotivation = pendingApplication?.Motivation,
-            ApplicationAdditionalInfo = pendingApplication?.AdditionalInfo,
-            ApplicationSignificantContribution = pendingApplication?.SignificantContribution,
-            ApplicationRoleUnderstanding = pendingApplication?.RoleUnderstanding,
             NoPriorBurnExperience = profile?.NoPriorBurnExperience ?? false,
             ShowPrivateFirst = string.IsNullOrEmpty(profile?.FirstName)
                 && string.IsNullOrEmpty(profile?.LastName)

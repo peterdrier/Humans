@@ -1,3 +1,4 @@
+using Humans.Governance.Contracts;
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Primitives;
@@ -513,7 +514,7 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         _localizer[Arg.Any<string>(), Arg.Any<object[]>()]
             .Returns(call => new LocalizedString(call.ArgAt<string>(0), call.ArgAt<string>(0)));
         var controller = new WorkgroupsController(
-            service ?? NewService(), Users, Teams,
+            service ?? NewService(), Users, Teams, Governance,
             _localizer,
             Clock,
             provider.GetRequiredService<IAuthorizationService>(),

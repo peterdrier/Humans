@@ -1,4 +1,4 @@
-namespace Humans.Users.Contracts;
+namespace Humans.Governance.Contracts;
 
 /// <summary>
 /// Membership tier indicating the level of organizational involvement.

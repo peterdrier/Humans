@@ -531,7 +531,7 @@ public class CachingUserServiceTests
             LastName = "Tables",
             DateOfBirth = new LocalDate(1990, 7, 4),
             IsApproved = true,
-            MembershipTier = MembershipTier.Asociado,
+            MembershipTier = LegacyMembershipTier.Asociado,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 2, 0, 0),
         };

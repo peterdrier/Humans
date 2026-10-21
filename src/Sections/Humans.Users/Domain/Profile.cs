@@ -124,8 +124,12 @@ internal sealed class Profile
     /// <summary>Auto-set when consent check clears.</summary>
     public bool IsApproved { get; set; }
 
-    /// <summary>Default Volunteer; updated to Colaborador/Asociado on approved tier application.</summary>
-    public MembershipTier MembershipTier { get; set; }
+    /// <summary>
+    /// Frozen legacy column: no longer written. The live tier is Governance's
+    /// <c>governance_membership_tiers</c> (Users decomposition commit 11); kept until the
+    /// <c>governance.profile-tier</c> copy reports done in production and a drop PR removes it.
+    /// </summary>
+    public LegacyMembershipTier MembershipTier { get; set; }
 
     /// <summary>Null until all required consents are signed; cleared triggers auto-approve.</summary>
     public ConsentCheckStatus? ConsentCheckStatus { get; set; }

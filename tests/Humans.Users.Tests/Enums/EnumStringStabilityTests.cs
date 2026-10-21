@@ -6,7 +6,7 @@ namespace Humans.Users.Tests.Enums;
 
 /// <summary>
 /// Users' share of the string-stored-enum guard:
-/// <see cref="MembershipTier"/>, <see cref="ConsentCheckStatus"/>, <see cref="MessageCategory"/>,
+/// <see cref="LegacyMembershipTier"/>, <see cref="ConsentCheckStatus"/>, <see cref="MessageCategory"/>,
 /// <see cref="ContactFieldType"/> and <see cref="ContactFieldVisibility"/> live on
 /// <c>Humans.Users.Contracts</c>, so the guard belongs to the section that owns them.
 /// </summary>
@@ -34,7 +34,7 @@ public class EnumStringStabilityTests
     public static TheoryData<Type, string[]> StringStoredEnumData => new()
     {
         {
-            typeof(MembershipTier), ["Volunteer", "Colaborador", "Asociado"]
+            typeof(LegacyMembershipTier), ["Volunteer", "Colaborador", "Asociado"]
         },
         {
             typeof(ConsentCheckStatus), ["Pending", "Cleared", "Flagged"]

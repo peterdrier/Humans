@@ -1,3 +1,4 @@
+using Humans.Governance.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base.Helpers;
@@ -12,6 +13,7 @@ internal sealed class DuplicateAccountService(
     IUserManagement userService,
     ITeamService teamService,
     IRoleAssignmentService roleAssignmentService,
+    IGovernanceService governanceService,
     IAuditLogService auditLogService) : IDuplicateAccountService
 {
     /// <summary>
@@ -75,6 +77,8 @@ internal sealed class DuplicateAccountService(
         var infoMap = users.Where(u => involvedUserSet.Contains(u.Id))
             .ToDictionary(u => u.Id);
 
+        var tiers = await governanceService.GetMembershipTiersAsync(ct);
+
         // Per-user team counts (active only).
         var teamCounts = new Dictionary<Guid, int>();
         var roleAssignmentCounts = new Dictionary<Guid, int>();
@@ -118,10 +122,10 @@ internal sealed class DuplicateAccountService(
                         [
                             BuildAccountInfo(id1,
                                 entries.Where(e => e.UserId == id1).Select(e => e.Source).ToList(),
-                                infoMap, teamCounts, roleAssignmentCounts),
+                                infoMap, tiers, teamCounts, roleAssignmentCounts),
                             BuildAccountInfo(id2,
                                 entries.Where(e => e.UserId == id2).Select(e => e.Source).ToList(),
-                                infoMap, teamCounts, roleAssignmentCounts)
+                                infoMap, tiers, teamCounts, roleAssignmentCounts)
                         ]
                     };
                 }
@@ -161,6 +165,7 @@ internal sealed class DuplicateAccountService(
         Guid userId,
         List<string> emailSources,
         Dictionary<Guid, UserInfo> infoMap,
+        IReadOnlyDictionary<Guid, MembershipTier> tiers,
         Dictionary<Guid, int> teamCounts,
         Dictionary<Guid, int> roleAssignmentCounts)
     {
@@ -174,7 +179,7 @@ internal sealed class DuplicateAccountService(
 
         if (info is not null && profile is not null)
         {
-            membershipTier = profile.MembershipTier.ToString();
+            membershipTier = tiers.GetValueOrDefault(userId, MembershipTier.Volunteer).ToString();
             membershipStatus = info.IsSuspended ? "Suspended"
                 : profile.IsApproved ? "Active" : "Pending";
             isProfileComplete = !string.IsNullOrEmpty(profile.FirstName) &&

@@ -436,8 +436,9 @@ should end is the Board's decision, taken on the register in front of them.
 
 ## Cross-Section Dependencies
 
-- **Users**: `IUserService` — names, `MembershipTier`, approved-profile check;
+- **Users**: `IUserService` — names, approved-profile check;
   `IUserEmailService` — notification target addresses for lifecycle emails.
+- **Governance**: `IGovernanceService.GetMembershipTiersAsync` — roster tier badges and the budget-visibility tier check.
 - **Auth**: `IRoleAssignmentService` — active holders of the Board role, the recipients of Board emails.
 - **Teams**: `ITeamService` — `SystemTeamIds.Board` membership for badges (controller) and the root Drive readers (Drive source).
 - **Calendar**: implements `ICalendarFeedContributor` (inbound) — per-user meetings of

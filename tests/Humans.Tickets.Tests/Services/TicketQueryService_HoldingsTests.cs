@@ -1,3 +1,4 @@
+using Humans.Governance.Contracts;
 using Humans.AuditLog.Contracts;
 using AwesomeAssertions;
 using Humans.Budget.Contracts;
@@ -43,6 +44,7 @@ public sealed class TicketQueryService_HoldingsTests
             _users,
             Substitute.For<IUserEmailService>(),
             Substitute.For<ITeamService>(),
+            Substitute.For<IGovernanceService>(),
             Substitute.For<ISettingsService>(),
             Substitute.For<ITicketCacheInvalidator>(),
             Substitute.For<IAuditLogService>(),

@@ -107,7 +107,8 @@ public sealed record ProfileInfo(
     [property: Obsolete("Moved to Finance's finance_payment_details (Users decomposition commit 1). Read IFinanceService.GetIbanAsync; the one reader left is Finance's legacy fallback and the finance.iban-to-payment-details copy.", DiagnosticId = "HUM_PROFILE_IBAN")]
     string? Iban,
     bool IsApproved,
-    MembershipTier MembershipTier,
+    [property: Obsolete("Moved to Governance's governance_membership_tiers (Users decomposition commit 11). Read IGovernanceService.GetMembershipTierAsync / GetMembershipTiersAsync; the one reader left is Governance's legacy fallback and the governance.profile-tier copy.", DiagnosticId = "HUM_PROFILE_TIER")]
+    LegacyMembershipTier MembershipTier,
     ConsentCheckStatus? ConsentCheckStatus,
     Instant? ConsentCheckAt,
     Guid? ConsentCheckedByUserId,

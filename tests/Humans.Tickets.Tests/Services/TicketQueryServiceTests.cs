@@ -1,3 +1,4 @@
+using Humans.Governance.Contracts;
 using Humans.Tickets.Models;
 using Humans.Tickets.Controllers;
 using Microsoft.AspNetCore.Http;
@@ -54,6 +55,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             _userService,
             _userEmailService,
             _teamService,
+            Substitute.For<IGovernanceService>(),
             _shiftManagementService,
             _cacheInvalidator,
             _auditLog,
@@ -181,7 +183,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             default: throw new ArgumentOutOfRangeException(nameof(boundary));
         }
         var service = new TicketQueryService(repository, _transferRepo, _budgetService, _campaignService,
-            _userService, _userEmailService, _teamService, _shiftManagementService, _cacheInvalidator, _auditLog, Clock);
+            _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(), _shiftManagementService, _cacheInvalidator, _auditLog, Clock);
 
         if (cancel)
         {
@@ -1353,7 +1355,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(
                 allUsers.Select(u => u.ToUserInfo(
                     profile: UserFixtures.Profile(
-                        membershipTier: MembershipTier.Volunteer))).ToList()));
+                        membershipTier: LegacyMembershipTier.Volunteer))).ToList()));
 
         _teamService.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(VolunteersTeam(userIds));

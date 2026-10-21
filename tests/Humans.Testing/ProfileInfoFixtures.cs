@@ -67,7 +67,7 @@ public static class UserFixtures
         string? boardNotes = null,
         string? iban = null,
         bool isApproved = false,
-        MembershipTier membershipTier = MembershipTier.Volunteer,
+        LegacyMembershipTier membershipTier = LegacyMembershipTier.Volunteer,
         ConsentCheckStatus? consentCheckStatus = null,
         Instant? consentCheckAt = null,
         Guid? consentCheckedByUserId = null,
