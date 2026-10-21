@@ -10,11 +10,6 @@
     <div class="alert alert-info">No active event. City planning takes its year from the active event — set one in the Event tab first.</div>
 }
 
-@functions {
-    private static string ScheduleDay(NodaTime.LocalDate? date) =>
-        date is { } d ? d.ToString("ddd d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture) : "—";
-}
-
 <div class="row g-4">
     @* Barrio placement: the effective window, the manual override, and the day-offset schedule
        (peterdrier/Humans#2102). New text is plain strings — admin-exempt. *@
@@ -47,7 +42,7 @@
                         <span class="text-warning-emphasis fw-semibold">Manual override: forced open.</span>
                         if (settings.OpenedAt.HasValue)
                         {
-                            <span class="text-muted ms-1">@string.Format(Localizer["CityPlanning_Admin_OpenedAt"].Value, settings.OpenedAt.Value.ToString("g", null))</span>
+                            <span class="text-muted ms-1">@string.Format(Localizer["CityPlanning_Admin_OpenedAt"].Value, settings.OpenedAt.Value.ToDateTime())</span>
                         }
                     }
                     else if (settings.PlacementOverride == false)
@@ -55,7 +50,7 @@
                         <span class="text-warning-emphasis fw-semibold">Manual override: forced closed.</span>
                         if (settings.ClosedAt.HasValue)
                         {
-                            <span class="text-muted ms-1">@string.Format(Localizer["CityPlanning_Admin_ClosedAt"].Value, settings.ClosedAt.Value.ToString("g", null))</span>
+                            <span class="text-muted ms-1">@string.Format(Localizer["CityPlanning_Admin_ClosedAt"].Value, settings.ClosedAt.Value.ToDateTime())</span>
                         }
                     }
                     else
@@ -115,21 +110,21 @@
                         <label for="cp-opens-offset" class="form-label small fw-semibold">Opens (first day)</label>
                         <div class="input-group input-group-sm">
                             <input id="cp-opens-offset" type="number" step="1" name="opensOffset" class="form-control" value="@settings.PlacementOpensOffset" />
-                            <span class="input-group-text">@ScheduleDay(settings.PlacementOpensOn)</span>
+                            <span class="input-group-text">@(settings.PlacementOpensOn.ToDate() ?? "—")</span>
                         </div>
                     </div>
                     <div class="mb-3">
                         <label for="cp-closes-offset" class="form-label small fw-semibold">Closes (last day to place)</label>
                         <div class="input-group input-group-sm">
                             <input id="cp-closes-offset" type="number" step="1" name="closesOffset" class="form-control" value="@settings.PlacementClosesOffset" />
-                            <span class="input-group-text">@ScheduleDay(settings.PlacementClosesOn)</span>
+                            <span class="input-group-text">@(settings.PlacementClosesOn.ToDate() ?? "—")</span>
                         </div>
                     </div>
                     <div class="mb-3">
                         <label for="cp-changeable-offset" class="form-label small fw-semibold">Changeable until (last day to adjust an existing polygon)</label>
                         <div class="input-group input-group-sm">
                             <input id="cp-changeable-offset" type="number" step="1" name="changeableUntilOffset" class="form-control" value="@settings.PlacementChangeableUntilOffset" />
-                            <span class="input-group-text">@ScheduleDay(settings.PlacementChangeableUntilOn)</span>
+                            <span class="input-group-text">@(settings.PlacementChangeableUntilOn.ToDate() ?? "—")</span>
                         </div>
                     </div>
                     <button type="submit" class="btn btn-primary btn-sm">

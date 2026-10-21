@@ -29,7 +29,7 @@ Weekly roster surface for the food-service team — who is on site each day of t
 | `DietaryPreference` | `varchar(200)?`, free text (the UI offers `DietaryOptions.DietaryPreferences`) |
 | `Allergies`, `Intolerances` | `jsonb` lists, filtered against `DietaryOptions` on save |
 | `AllergyOtherText`, `IntoleranceOtherText` | `varchar(500)?`, kept only while "Other" is selected |
-| `DeclinedToAnswer` | `bool`, default `false`. True after "I don't want to answer": every food field is then empty. Saving answers resets it. |
+| `DeclinedToAnswer` | `bool?`, null = unanswered. True after "I don't want to answer": every food field is then empty. Saving answers resets it. |
 | `UpdatedAt` | `Instant` |
 
 Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). Migration `CantinaDietaryProfiles` creates the table empty and `CantinaDietaryDeclinedToAnswer` adds `DeclinedToAnswer` (nobodies-collective/Humans#2104); the data-migration registry entry `cantina.profile-dietary` copies the legacy `profiles` food columns for members without a row (idempotent).
