@@ -103,7 +103,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             Substitute.For<IShiftViewInvalidator>(),
             new EventCalendarResolver(NewSettingsServiceBackedByShiftsDb()),
             Clock,
-            NSubstitute.Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         // Shift-auth invalidation: production path uses IShiftAuthorizationInvalidator
         // (backed by ShiftManagementService in DI). In tests we redirect it to the
@@ -121,7 +121,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
             Substitute.For<INotificationMeterCacheInvalidator>(),
             ShiftAuthInvalidator,
             AdminAuthorization,
-            EarlyEntryInvalidator,
             serviceProvider,
             Clock,
             NullLogger<TeamService>.Instance);
@@ -672,7 +671,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             repo, Substitute.For<IAuditLogService>(), Notifier,
             Substitute.For<IShiftManagementService>(),
             Substitute.For<INotificationMeterCacheInvalidator>(), ShiftAuthInvalidator,
-            AdminAuthorization, Substitute.For<IEarlyEntryInvalidator>(),
+            AdminAuthorization,
             new ServiceLocatorBuilder().Build(), Clock, NullLogger<TeamService>.Instance);
 
         var result = await service.UpdateTeamPageContentAsync(
@@ -1204,7 +1203,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var provider = new ServiceLocatorBuilder().Build();
         TeamService NewService() => new(repository, AuditLog, Notifier,
             Substitute.For<IShiftManagementService>(), Substitute.For<INotificationMeterCacheInvalidator>(),
-            ShiftAuthInvalidator, AdminAuthorization, EarlyEntryInvalidator, provider, Clock,
+            ShiftAuthInvalidator, AdminAuthorization, provider, Clock,
             NullLogger<TeamService>.Instance);
         var userId = Guid.NewGuid();
         var first = NewService().JoinTeamAsync(team.Id, userId, "Pick me", ct);

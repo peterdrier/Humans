@@ -8,10 +8,6 @@
   src/Sections/Humans.Shifts/SectionPolicies.cs
   src/Sections/Humans.Shifts/Services/VolunteerTrackingExportService.cs
   src/Sections/Humans.Shifts/Services/ShiftEarlyEntryProjection.cs
-  src/Sections/Humans.Shifts/Services/ShiftSignupService.cs
-  src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
-  src/Sections/Humans.Settings/Contracts/IEventSettingsChangeListener.cs
-  src/Sections/Humans.Settings/Services/Service.cs
   src/Sections/Humans.Teams/Section.cs
   src/Sections/Humans.Teams/Services/TeamService.cs
   src/Sections/Humans.Teams/Services/TeamEarlyEntryProjection.cs
@@ -49,28 +45,21 @@ redundant slot can be given to someone else.
 | **Everyone's early entry** | Who holds early entry, from when, and why — all of them, live? | `GET /Shifts/Admin/EarlyEntry`; `IEarlyEntryService.GetRosterAsync` |
 | **One person's early entry** | Does this person hold early entry, from when, and why? | `IEarlyEntryService.GetForUserAsync` (Gate card, Scanner card, the ticket-stub surfaces) |
 | **Here is what I grant** | A contributing section's grants for the active event. | `IEarlyEntryProvider.GetEarlyEntriesAsync` (Camps, Shifts, Teams) |
-| **Someone's grant changed** | Forget what you remembered about this person / about everyone. | `IEarlyEntryInvalidator.InvalidateUser` / `InvalidateAll` (called by Camps, Shifts, Teams) |
-| **The event's dates moved** | An event-settings save shifted every derived date. | `IEventSettingsChangeListener.EventSettingsChanged` (Settings' fan-out; this section listens) |
 
 The first two are the same collapse — earliest date, distinct reasons — applied to all
-people or to one. The rest are inbound: other sections supply grants or say when to
-forget.
+people or to one, both computed live. The third is inbound: other sections supply grants.
 
 ## 3. Structure
 
 A read-side aggregator with no storage of its own. Written fresh:
 
-- **The contracts in one folder.** The read service, the provider, and the invalidator, in
+- **The contracts in one folder.** The read service and the provider, in
   `Contracts/`, with the small records they carry (a grant; a roster row; one person's
   entry). Contributors and readers reference the section project and see nothing else, because
   everything outside `Contracts/` is internal.
 - **An orchestrator** holding the whole business rule: fan out over every registered
   provider, collapse per person. Both read methods are the same collapse over a different
   subset. It injects the providers and nothing else.
-- **A caching decorator**, Singleton, over the orchestrator, remembering the per-person
-  answer — including "none" — and forgetting it when a contributor says so or when Settings
-  reports an event-settings save. The roster is never remembered. The decorator resolves the
-  scoped orchestrator per call through a keyed registration.
 - **A controller and an admin view**: sort the roster, stitch the legal name from Users,
   render a table. No business rule.
 
@@ -89,14 +78,10 @@ whether `Sources.Count > 1`.
   `EarlyEntryServiceTests.Source_labels_differing_only_in_case_are_two_sources`); **more than
   one reason** is what "multiple" means
   (`src/Sections/Humans.EarlyEntry/Services/EarlyEntryService.cs:20`).
-- `GetRosterAsync` is live on every call
-  (`src/Sections/Humans.EarlyEntry/Services/CachingEarlyEntryService.cs:50`). `GetForUserAsync`
-  is cached per person, negative answers included
-  (`src/Sections/Humans.EarlyEntry/Services/CachingEarlyEntryService.cs:30`), and only eviction
-  refreshes it; a load begun before an eviction never writes its answer back
-  (`src/Sections/Humans.EarlyEntry/Services/CachingEarlyEntryService.cs:40`).
-- Every event-settings save evicts every cached answer
-  (`src/Sections/Humans.EarlyEntry/Services/CachingEarlyEntryService.cs:76`).
+- Both reads are live on every call; nothing is cached, so no write in any contributing
+  section has to signal this one (`src/Sections/Humans.EarlyEntry/Section.cs:16`; pinned:
+  `EarlyEntryArchitectureTests.SectionRegistersOnlyTheUncachedOrchestrator`,
+  `EarlyEntryServiceTests.GetForUserAsync_ReadsTheProvidersOnEveryCall`).
 - The transfer wizard asks for the signed-in user's own early entry
   (`src/Sections/Humans.Tickets/Controllers/TicketTransferController.cs:30`); the gate card asks
   for the scanned attendee's (`src/Sections/Humans.Gate/Services/GateService.cs:74`). The stub
@@ -115,23 +100,19 @@ whether `Sources.Count > 1`.
   take a `ProjectReference` on the whole section, so what stops them reaching past the
   contracts today is that everything outside `Contracts/` is `internal` — accessibility, not a
   project boundary. Treat the current shape as debt, never as precedent.
-- **`IEarlyEntryInvalidator` is a grandfathered HUM0028 invalidator**
-  (nobodies-collective/Humans#805): contributors flush this section's cache, so a contributor
-  write path that forgets to call it leaves a stale answer. Peter's ruling (`debt-ledger.yml`)
-  is to leave it until the invalidator family is replaced.
 
 ## 6. Deliberately not done
 
 - **No per-user provider method.** `GetForUserAsync` gathers every contributor's full list to
-  answer for one person. The dataset is a few hundred grants; the per-person cache is what
-  makes the holder surfaces cheap, not a narrower query.
+  answer for one person. The dataset is a few hundred grants; one full pass is cheap.
 - **No parallel fan-out.** Sequential is the house shape for contributor orchestrators
   (Gdpr, Calendar) and a simplicity choice, not a thread-safety requirement (design-rules §8b);
   nothing here is slow enough to justify a second shape.
 - **No batch legal-name read on the roster.** One `IUserService` lookup per row through
   `HumansControllerBase`, served from the Users cache; tens of rows, not thousands.
-- **No warmup, no expiry, no size bound on the per-person cache.** Eviction is the contract;
-  the key space is the user table.
+- **No cache.** A per-person cache stays true only if every contributing section evicts it
+  on its writes, which is how stale answers crept in before; one provider pass per read (a
+  few small queries) costs less than that coupling at this scale.
 - **No localized copy.** The roster is an admin page with inline English
   ([`localization-admin-exempt`](../../../../memory/code/localization-admin-exempt.md)).
 
@@ -144,16 +125,6 @@ whether `Sources.Count > 1`.
   (design-rules §8b): Camps projects from its cached snapshot, the other two read the
   repository per call. Registering a decorator that does not serve the read adds a hop and
   no cache.
-- **Negative results are cached by hand** (`TryGet` / `Set`), because `TrackedCache.GetAsync`
-  never stores a null. "This person has no early entry" is the common answer and must be
-  remembered (design-rules §15).
-- **The Singleton decorator resolves the Scoped orchestrator per call via a keyed
-  registration** (`CachingEarlyEntryService.InnerServiceKey`). Unkeyed, the decorator would
-  resolve itself.
-- **The decorator references the Settings section** to implement its
-  `IEventSettingsChangeListener`. Settings fans its saves out over that listener and names no
-  consumer, so the gate date, the build offset and `EarlyEntryStartOffset` evict this cache
-  without Settings knowing early entry exists.
 - **Shifts derives one grant per person from their earliest confirmed build shift**, entry date
   = that shift's local day minus one, so a shift-derived date is never later than the day
   before the person's first shift. Camps grants a single global date, resolved from

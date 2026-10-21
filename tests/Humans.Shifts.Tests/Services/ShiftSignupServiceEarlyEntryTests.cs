@@ -52,7 +52,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
             Clock,
-            Substitute.For<IEarlyEntryInvalidator>(), NullLogger<ShiftManagementService>.Instance);
+            NullLogger<ShiftManagementService>.Instance);
 
         _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         var users = Substitute.For<IUserService>();
@@ -73,7 +73,6 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
             Substitute.For<INotificationEmitter>(),
             AdminAuthorization,
             Substitute.For<IShiftViewInvalidator>(),
-            Substitute.For<IEarlyEntryInvalidator>(),
             serviceProvider,
             Clock,
             NullLogger<ShiftSignupService>.Instance,
