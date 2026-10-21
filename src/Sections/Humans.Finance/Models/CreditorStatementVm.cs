@@ -12,6 +12,6 @@ internal sealed record CreditorStatementVm(
     public decimal OwedBalance => -Ledger.Balance;
 }
 
-/// <summary>One statement row: the journal line plus the owed balance (positive = owed to the
-/// member) after it, accumulated from the account's first line.</summary>
-internal sealed record CreditorStatementLineVm(CreditorLedgerLine Line, decimal RunningBalance);
+/// <summary>One statement row: the journal line, the owed balance (positive = owed to the
+/// member) after it, accumulated from the account's first line, and the description to show.</summary>
+internal sealed record CreditorStatementLineVm(CreditorLedgerLine Line, decimal RunningBalance, string? Description);

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Humans.Finance.Contracts;
 using Humans.Finance.Models;
 using Humans.Finance.Services;
 using Humans.Base.Authorization;
@@ -338,13 +339,25 @@ internal sealed class FinanceController(
 
         // The running balance is the service's (CreditorLedgerLine.RunningBalance); the page
         // shows newest activity first, lines within an entry in order.
+        var memberName = string.IsNullOrWhiteSpace(ledger.Contact?.Name) ? "member" : ledger.Contact.Name;
         var lines = ledger.Lines
-            .Select(l => new CreditorStatementLineVm(l, l.RunningBalance))
+            .Select(l => new CreditorStatementLineVm(l, l.RunningBalance, StatementDescription(l, memberName)))
             .OrderByDescending(r => r.Line.Date)
             .ThenByDescending(r => r.Line.EntryNumber)
             .ThenBy(r => r.Line.Line)
             .ToList();
         return View(new CreditorStatementVm(ledger, lines));
+    }
+
+    // Holded labels a payment with the purchase it settles; shown that way, a payment reads like a
+    // second purchase. A payment shows as money moving between the association and the member.
+    private static string? StatementDescription(CreditorLedgerLine line, string memberName)
+    {
+        if (!string.Equals(line.Type, "payment", StringComparison.OrdinalIgnoreCase))
+            return line.Description;
+        return line.Debit > 0
+            ? $"Payment: NCA → {memberName}"
+            : $"Payment: {memberName} → NCA";
     }
 
     [HttpPost("Creditors/Bind")]

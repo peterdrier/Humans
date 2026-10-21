@@ -500,6 +500,26 @@ public class FinanceControllerTests
             .Should().BeOfType<CreditorStatementVm>().Subject.OwedBalance.Should().Be(-25m);
     }
 
+    [HumansFact]
+    public async Task CreditorStatement_PaymentLines_ShowTheMoneyMovement_NotThePurchaseText()
+    {
+        var day = Instant.FromUtc(2026, 3, 1, 0, 0);
+        _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorLedger(40000002, 0m, 0m,
+            [
+                Ledger(entry: 1, line: 1, day) with { Type = "purchase", Description = "Tent pegs" },
+                Ledger(entry: 2, line: 1, day) with { Type = "payment", Description = "Tent pegs", Credit = 0m, Debit = 1m },
+                Ledger(entry: 3, line: 1, day) with { Type = "payment", Description = "Tent pegs" },
+            ],
+            new HoldedContactInfo("Ana López", null, null, null, null, null, null, null)));
+
+        var model = (await MakeController().CreditorStatement(40000002))
+            .Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<CreditorStatementVm>().Subject;
+
+        model.Lines.Select(r => (r.Line.EntryNumber, r.Description)).Should().Equal(
+            (3, "Payment: Ana López → NCA"), (2, "Payment: NCA → Ana López"), (1, "Tent pegs"));
+    }
+
     // ─── Connector index ─────────────────────────────────────────────────────────
 
     [HumansFact]

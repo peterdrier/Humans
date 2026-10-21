@@ -102,7 +102,7 @@
                 var l = row.Line;
                 <tr>
                     <td class="text-nowrap">@l.Date.InZone(madrid).ToDateTimeUnspecified().ToInvariantDate()</td>
-                    <td>@l.Description</td>
+                    <td>@row.Description</td>
                     <td class="text-muted small">@l.Type</td>
                     <td class="text-end">@(l.Credit > 0 ? l.Credit.ToEuro() : "")</td>
                     <td class="text-end">@(l.Debit > 0 ? l.Debit.ToEuro() : "")</td>
