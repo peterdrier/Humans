@@ -77,11 +77,6 @@ public static class InfrastructureServiceCollectionExtensions
         // HumanLifecycleService left this list at G5 lane 4b-2d: it is Users' suspend/unsuspend
         // state machine and now registers from Humans.Users' Section.cs (Peter, 2026-08-14 —
         // Governance is governance only, never Users machinery).
-        // Base's own nav-badge invalidator, sitting beside its siblings in Humans.Base.
-        // Its registration lived in CampsSectionExtensions because Camps is the only consumer;
-        // the section that owns the file is not always the section that owns the line
-        // (design §15 step 4), and Section.Register may not register another layer's type.
-        services.AddScoped<ICampLeadJoinRequestsBadgeCacheInvalidator, CampLeadJoinRequestsBadgeCacheInvalidator>();
         services.AddScoped<INotificationMeterCacheInvalidator, NotificationMeterCacheInvalidator>();
         services.AddScoped<IVotingBadgeCacheInvalidator, VotingBadgeCacheInvalidator>();
 

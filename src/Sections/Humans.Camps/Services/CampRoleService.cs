@@ -13,7 +13,6 @@ namespace Humans.Camps.Services;
 internal sealed class CampRoleService(
     ICampRepository repo,
     ICampRoleCampAccess campAccess,
-    ICampInfoInvalidator campInfoInvalidator,
     IGoogleIntegrationService googleIdentities,
     IUserService userService,
     IAuditLogService auditLog,
@@ -166,10 +165,6 @@ internal sealed class CampRoleService(
             $"Updated camp role definition '{input.Name}'.",
             actorUserId);
 
-        // Name/SortOrder are baked into the cached CampInfo role projection across
-        // every camp that assigns this definition — flush the whole projection.
-        await campInfoInvalidator.InvalidateAllAsync(ct);
-
         return UpdateCampRoleDefinitionResult.Updated(input.Name);
     }
 
@@ -196,10 +191,6 @@ internal sealed class CampRoleService(
             AuditAction.CampRoleDefinitionDeactivated,
             nameof(CampRoleDefinition), id,
             "Deactivated camp role definition.", actorUserId);
-
-        // Deactivated definitions drop from the cached role projection (the fetch
-        // filters DeactivatedAt == null) — flush so the role disappears now.
-        await campInfoInvalidator.InvalidateAllAsync(ct);
         return true;
     }
 
@@ -217,10 +208,6 @@ internal sealed class CampRoleService(
             AuditAction.CampRoleDefinitionReactivated,
             nameof(CampRoleDefinition), id,
             "Reactivated camp role definition.", actorUserId);
-
-        // Reactivated definitions re-enter the cached role projection — flush so the
-        // role reappears now rather than at the next unrelated camp invalidation.
-        await campInfoInvalidator.InvalidateAllAsync(ct);
         return true;
     }
 
@@ -294,8 +281,6 @@ internal sealed class CampRoleService(
             actorUserId,
             relatedEntityId: campMemberId, relatedEntityType: nameof(CampMember));
 
-        await campInfoInvalidator.InvalidateSeasonAsync(campSeasonId, ct);
-
         try
         {
             var culture = CultureInfo.GetCultureInfo("en");
@@ -362,14 +347,11 @@ internal sealed class CampRoleService(
             relatedEntityId: assignment.CampMemberId,
             relatedEntityType: nameof(CampMember));
 
-        await campInfoInvalidator.InvalidateSeasonAsync(assignment.CampSeasonId, ct);
-
         return true;
     }
 
     public async Task<int> RemoveAllForMemberAsync(Guid campMemberId, Guid actorUserId, CancellationToken ct = default)
     {
-        var memberLookup = await campAccess.GetCampMemberStatusAsync(campMemberId, ct);
         var deleted = await repo.DeleteAllForMemberAsync(campMemberId, ct);
         if (deleted > 0)
         {
@@ -378,11 +360,6 @@ internal sealed class CampRoleService(
                 nameof(CampMember), campMemberId,
                 $"Cascade-removed {deleted} role assignment(s) for camp member.",
                 actorUserId);
-
-            if (memberLookup is not null)
-            {
-                await campInfoInvalidator.InvalidateSeasonAsync(memberLookup.CampSeasonId, ct);
-            }
         }
         return deleted;
     }

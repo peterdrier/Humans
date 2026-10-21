@@ -1,3 +1,4 @@
+using Humans.Gdpr.Contracts;
 using AwesomeAssertions;
 using Humans.EarlyEntry.Contracts;
 using Humans.Base.Enums;
@@ -30,6 +31,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     private static readonly Guid TestActorId = Guid.NewGuid();
     private readonly ServiceProvider _serviceProvider;
     private readonly ICampManagement _innerSubstitute;
+    private readonly ICampRoleService _roleInner = Substitute.For<ICampRoleService>();
     private readonly ISettingsService _settingsService;
     private readonly CachingCampService _service;
 
@@ -41,11 +43,10 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         var inner = new CampService(
             repo, AuditLog, Substitute.For<Humans.Teams.Contracts.ISystemTeamSync>(),
             new InMemoryFileStorage(), Notifier,
-            Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => Substitute.For<ICampRoleService>()),
             new Lazy<Humans.CityPlanning.Contracts.ICityPlanningWrite>(() =>
                 Substitute.For<Humans.CityPlanning.Contracts.ICityPlanningWrite>()),
-            Substitute.For<IEarlyEntryInvalidator>(), Substitute.For<ICampInfoInvalidator>(),
+            Substitute.For<IEarlyEntryInvalidator>(),
             Substitute.For<Humans.Users.Contracts.IUserService>(),
             Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
             Clock, NullLogger<CampService>.Instance);
@@ -70,6 +71,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         services.AddKeyedScoped<IUserMerge>(
             CachingCampService.InnerServiceKey,
             (_, _) => (IUserMerge)_innerSubstitute);
+        services.AddKeyedScoped<ICampRoleService>(CachingCampService.InnerServiceKey, (_, _) => _roleInner);
         _serviceProvider = services.BuildServiceProvider();
 
         _service = new CachingCampService(
@@ -205,15 +207,14 @@ public sealed class CachingCampServiceTests : CampsTestHarness
             because: "warmup loads Seasons.Members and projects the active-EE count");
 
         // Now flip an existing member's HasEarlyEntry directly in the db and
-        // call InvalidateCampAsync — this is the exact path the decorator's
-        // write methods (SetEarlyEntryAsync, RemoveCampMemberAsync, …) take:
-        // InvalidateCampAsync → _repo.GetByIdAsync → projection.
+        // run a per-camp write verb — the same InvalidateCampAsync path the
+        // decorator's other write methods (SetEarlyEntryAsync, RemoveCampMemberAsync, …) take.
         var third = CampsDb.CampMembers
             .First(m => m.CampSeasonId == season.Id && !m.HasEarlyEntry);
         third.HasEarlyEntry = true;
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        await _service.InvalidateCampAsync(camp.Id, TestContext.Current.CancellationToken);
+        await _service.ReorderImagesAsync(camp.Id, [], TestContext.Current.CancellationToken);
 
         var refreshed = await _service.GetCampsForYearAsync(2026, TestContext.Current.CancellationToken);
         var refreshedSeason = refreshed
@@ -573,7 +574,48 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         { nameof(ICampManagement.SetEarlyEntryAsync), (t, c, se, ct) => t._service.SetEarlyEntryAsync(c, Guid.NewGuid(), true, Guid.NewGuid(), ct) },
         { nameof(ICampManagement.SetCampSeasonEeSlotCountAsync), (t, c, se, ct) => t._service.SetCampSeasonEeSlotCountAsync(se, 3, Guid.NewGuid(), ct) },
         { nameof(IUserMerge.ReassignAsync), (t, c, se, ct) => ((IUserMerge)t._service).ReassignAsync(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Instant.FromUtc(2026, 3, 13, 12, 0), ct) },
+        { nameof(IUserDataContributor.EraseForUserAsync), (t, c, se, ct) => ((IUserDataContributor)t._service).EraseForUserAsync(Guid.NewGuid(), ct) },
+        { nameof(ICampRoleService.UpdateDefinitionAsync), (t, c, se, ct) => ((ICampRoleService)t._service).UpdateDefinitionAsync(Guid.NewGuid(), RoleInput, TestActorId, ct) },
+        { nameof(ICampRoleService.DeactivateDefinitionAsync), (t, c, se, ct) => ((ICampRoleService)t._service).DeactivateDefinitionAsync(Guid.NewGuid(), TestActorId, ct) },
+        { nameof(ICampRoleService.ReactivateDefinitionAsync), (t, c, se, ct) => ((ICampRoleService)t._service).ReactivateDefinitionAsync(Guid.NewGuid(), TestActorId, ct) },
+        { nameof(ICampRoleService.AssignAsync), (t, c, se, ct) => ((ICampRoleService)t._service).AssignAsync(se, Guid.NewGuid(), Guid.NewGuid(), TestActorId, ct) },
+        { nameof(ICampRoleService.UnassignAsync), (t, c, se, ct) => ((ICampRoleService)t._service).UnassignAsync(Guid.NewGuid(), TestActorId, ct) },
+        { nameof(ICampRoleService.RemoveAllForMemberAsync), (t, c, se, ct) => ((ICampRoleService)t._service).RemoveAllForMemberAsync(Guid.NewGuid(), TestActorId, ct) },
     };
+
+    private static readonly UpdateCampRoleDefinitionInput RoleInput =
+        new("Role", "role", null, SlotCount: 1, MinimumRequired: 0, SortOrder: 0);
+
+    /// <summary>
+    /// Role writes that changed nothing (refused assignment, missing row) leave the
+    /// snapshot alone, as they did when CampRoleService signalled the cache itself.
+    /// </summary>
+    [HumansFact]
+    public async Task RoleWriteThatChangedNothing_KeepsTheCampSnapshot()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        var (_, season) = await SeedCampWithSeasonAsync(year: 2026);
+        _roleInner.AssignAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(AssignCampRoleOutcome.SlotCapReached);
+        _roleInner.UpdateDefinitionAsync(Arg.Any<Guid>(), Arg.Any<UpdateCampRoleDefinitionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(UpdateCampRoleDefinitionResult.NotFound);
+        var roles = (ICampRoleService)_service;
+
+        _ = await _service.GetCampsForYearAsync(2026, ct);
+        _innerSubstitute.ClearReceivedCalls();
+
+        await roles.AssignAsync(season.Id, Guid.NewGuid(), Guid.NewGuid(), TestActorId, ct);
+        await roles.UpdateDefinitionAsync(Guid.NewGuid(), RoleInput, TestActorId, ct);
+        await roles.UnassignAsync(Guid.NewGuid(), TestActorId, ct);
+        await roles.RemoveAllForMemberAsync(Guid.NewGuid(), TestActorId, ct);
+        await roles.DeactivateDefinitionAsync(Guid.NewGuid(), TestActorId, ct);
+
+        _ = await _service.GetCampsForYearAsync(2026, ct);
+        _innerSubstitute.ReceivedCalls()
+            .Count(call => string.Equals(call.GetMethodInfo().Name, nameof(ICampManagement.GetCampsForYearAsync), StringComparison.Ordinal))
+            .Should().Be(0, because: "a role write that changed no row must not drop the snapshot");
+    }
 
     /// <summary>
     /// Pins "every mutating path invalidates" over the whole write surface: after any
@@ -674,7 +716,8 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         var settings = await CampsDb.CampSettings.SingleAsync(ct);
         settings.OpenSeasons = [2026, 2027];
         await SaveAllAsync(ct);
-        await _service.InvalidateSettingsAsync(ct);
+        // A settings write verb is the decorator's own settings-slot eviction path.
+        await _service.OpenSeasonAsync(2027, TestActorId, ct);
         (await _service.GetSettingsAsync(ct)).OpenSeasons.Should().Contain(2027);
         release.SetResult();
         await warmup.WaitAsync(ct);
@@ -768,6 +811,14 @@ public sealed class CachingCampServiceTests : CampsTestHarness
                 Arg.Any<CampSeasonData>(), Arg.Any<List<string>?>(), Arg.Any<int>(),
                 Arg.Any<CancellationToken>())
             .Returns(new CampWriteResult<Camp>(camp));
+        _roleInner.UpdateDefinitionAsync(Arg.Any<Guid>(), Arg.Any<UpdateCampRoleDefinitionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(UpdateCampRoleDefinitionResult.Updated("Role"));
+        _roleInner.DeactivateDefinitionAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
+        _roleInner.ReactivateDefinitionAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
+        _roleInner.AssignAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(AssignCampRoleOutcome.Assigned);
+        _roleInner.UnassignAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
+        _roleInner.RemoveAllForMemberAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(1);
     }
 
     private async Task<(Camp camp, CampSeason season)> SeedCampWithSeasonAsync(

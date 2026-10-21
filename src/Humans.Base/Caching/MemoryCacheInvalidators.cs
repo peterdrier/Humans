@@ -22,12 +22,6 @@ public sealed class VotingBadgeCacheInvalidator(IMemoryCache cache) : IVotingBad
     public void Invalidate(Guid userId) => cache.InvalidateVotingBadge(userId);
 }
 
-public sealed class CampLeadJoinRequestsBadgeCacheInvalidator(IMemoryCache cache)
-    : ICampLeadJoinRequestsBadgeCacheInvalidator
-{
-    public void Invalidate(Guid userId) => cache.InvalidateCampLeadJoinRequestsBadge(userId);
-}
-
 public sealed class RoleAssignmentClaimsCacheInvalidator(IMemoryCache cache) : IRoleAssignmentClaimsCacheInvalidator
 {
     public void Invalidate(Guid userId) => cache.InvalidateRoleAssignmentClaims(userId);
