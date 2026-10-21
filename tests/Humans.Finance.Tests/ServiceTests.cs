@@ -2283,6 +2283,34 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task ContributeForUser_AccountSharedByTwoMembers_ExportsNeitherTheOthersLines()
+    {
+        // A collision the automatic paths write through: two members on one 400000xx. The lines carry
+        // no user id, so neither member's export may carry that account's ledger.
+        var alice = Guid.NewGuid();
+        var bob = Guid.NewGuid();
+        var aliceBinding = new HoldedCreditorContact { UserId = alice, HoldedContactId = "c1", SupplierAccountNum = 40000004 };
+        var bobBinding = new HoldedCreditorContact { UserId = bob, HoldedContactId = "c2", SupplierAccountNum = 40000004 };
+        _repo.GetCreditorContactByUserAsync(alice, Arg.Any<CancellationToken>()).Returns(aliceBinding);
+        _repo.GetCreditorContactByUserAsync(bob, Arg.Any<CancellationToken>()).Returns(bobBinding);
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(
+            new List<HoldedCreditorContact> { aliceBinding, bobBinding });
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<HoldedContactDto>());
+        _holded.GetLedgerLinesAsync(40000004, Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLineInfo>
+        {
+            new(7, 1, 40000004, Instant.FromUtc(2026, 4, 1, 0, 0), "purchase", "Bob's taxi", 0m, 30m),
+        });
+        var svc = MakeService();
+
+        foreach (var member in new[] { alice, bob })
+        {
+            var slices = await svc.ContributeForUserAsync(member, TestContext.Current.CancellationToken);
+            slices.Should().ContainSingle(s => s.SectionName == Service.CreditorLedger).Subject.Data.Should().BeNull();
+        }
+        await _holded.DidNotReceive().GetLedgerLinesAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ContributeForUser_UnboundMember_ExportsNoLedgerAndReadsNone()
     {
         _repo.GetCreditorContactByUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())

@@ -1694,10 +1694,30 @@ internal sealed class Service(
             ? new Dictionary<string, HoldedContactDto>(StringComparer.Ordinal)
             : await ContactsByIdAsync(ct);
         var ledgerLines = new List<CreditorLedgerLine>();
-        foreach (var num in bindings.Select(b => ResolveCreditorAccount(b, contacts)).OfType<int>().Distinct())
+        if (bindings.Count > 0)
         {
-            if (await GetCreditorLedgerAsync(num, ct) is { } ledger)
-                ledgerLines.AddRange(ledger.Lines);
+            // Ledger lines carry no user id, so an account another member is also bound to (a collision
+            // the automatic paths write through) would leak their lines. Withheld until an admin resolves
+            // the duplicate row on /Finance/Creditors.
+            var ownIds = bindings.Select(b => b.UserId).ToHashSet();
+            var shared = (await repo.GetCreditorContactsAsync(ct))
+                .Where(b => !ownIds.Contains(b.UserId))
+                .Select(b => ResolveCreditorAccount(b, contacts))
+                .OfType<int>()
+                .ToHashSet();
+            foreach (var num in bindings.Select(b => ResolveCreditorAccount(b, contacts)).OfType<int>().Distinct())
+            {
+                if (shared.Contains(num))
+                {
+                    logger.LogWarning(
+                        "GDPR export for member {UserId} withheld the creditor ledger of account {AccountNum}: " +
+                        "another member is bound to it too. Resolve the collision on /Finance/Creditors.",
+                        userId, num);
+                    continue;
+                }
+                if (await GetCreditorLedgerAsync(num, ct) is { } ledger)
+                    ledgerLines.AddRange(ledger.Lines);
+            }
         }
         var currentBinding = bindings.FirstOrDefault(binding => binding.UserId == userId);
         var additionalBindings = bindings.Where(binding => binding.UserId != userId).ToList();
