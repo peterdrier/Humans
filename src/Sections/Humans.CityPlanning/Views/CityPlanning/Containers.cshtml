@@ -9,7 +9,10 @@
         FormController = "CityPlanning",
         EditAction = "EditContainer",
         DeleteAction = "DeleteContainer",
-        ExtraRouteValues = new Dictionary<string, string>(StringComparer.Ordinal),
+        ExtraRouteValues = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["year"] = Model.Year.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        },
     };
 }
 
@@ -98,7 +101,7 @@
                     <h5 class="modal-title">@string.Format(Localizer["CityPlanning_Admin_AddBarrioContainer"], group.CampName)</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <form asp-action="CreateBarrioContainer" asp-route-campId="@group.CampId"
+                <form asp-action="CreateBarrioContainer" asp-route-year="@Model.Year" asp-route-campId="@group.CampId"
                       method="post" enctype="multipart/form-data">
                     @Html.AntiForgeryToken()
                     <div class="modal-body">

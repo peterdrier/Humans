@@ -19,7 +19,7 @@ Interactive map surface: a read-only overview, barrio polygon editing, and conta
 - **City Planning** is an interactive map for camp barrio placement. Camp leads draw polygons to claim their barrio's physical footprint on the site.
 - **CityPlanningSettings** is a per-year singleton controlling the barrio placement phase (open/closed), the container placement phase (open/closed), site boundary (limit zone), and informational overlays (official zones).
 - Container creation delegates real-camp validation to Containers. A missing camp returns the owner’s localized refusal before files or rows are written, including from the map-admin route.
-- **Container placement phase** gates whether barrio leads can place, annotate or clear containers for their camp. Container CRUD uses the separate Manage operation and is not phase-gated. Toggled by map admins from the containers admin sub-page. Placement writes authorize against the route year’s settings and camp leads; the container list’s edit flags use the same year. Camp admins and city planning team members are always exempt.
+- **Container placement phase** gates whether barrio leads can place, annotate or clear containers for their camp. The container map page gate reads the route year’s settings, the same year its placement writes authorize against. Container CRUD uses the separate Manage operation and is not phase-gated; the admin create/edit/delete posts carry the route year and redirect back to that year’s list. Toggled by map admins from the containers admin sub-page. Placement writes authorize against the route year’s settings and camp leads; the container list’s edit flags use the same year. Camp admins and city planning team members are always exempt.
 - **CampPolygon** is a single polygon per CampSeason representing the camp's placed area.
 - **CampPolygonHistory** is an append-only audit trail of polygon edits and restores.
 
@@ -109,9 +109,9 @@ Admin sub-pages hosted on `CityPlanningController` under `/CityPlanning/BarrioMa
 | `POST /CityPlanning/BarrioMap/Admin/UploadOfficialZones` | Upload official zones GeoJSON |
 | `GET /CityPlanning/BarrioMap/Admin/DownloadOfficialZones` | Download official zones GeoJSON |
 | `POST /CityPlanning/BarrioMap/Admin/DeleteOfficialZones` | Delete official zones |
-| `POST /CityPlanning/BarrioMap/Admin/Containers/Barrios/{campId}/Create` | Create a container for a barrio |
-| `POST /CityPlanning/BarrioMap/Admin/Containers/{id}/Edit` | Edit a container |
-| `POST /CityPlanning/BarrioMap/Admin/Containers/{id}/Delete` | Delete a container |
+| `POST /CityPlanning/BarrioMap/Admin/Containers/{year}/Barrios/{campId}/Create` | Create a container for a barrio |
+| `POST /CityPlanning/BarrioMap/Admin/Containers/{year}/{id}/Edit` | Edit a container |
+| `POST /CityPlanning/BarrioMap/Admin/Containers/{year}/{id}/Delete` | Delete a container |
 
 The admin page also carries a **bulk polygon import**: `barrio-map/admin-import.js` reads
 `GET /api/city-planning/state`, matches the uploaded FeatureCollection's features to camps by

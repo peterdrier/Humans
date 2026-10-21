@@ -2232,11 +2232,11 @@ public sealed class TeamServiceTests : TeamsTestHarness
     // EF provider used in this harness does not support transactions. Cover it in Integration tests.
 
     // ==========================================================================
-    // GetTeamEntityBySlugAsync
+    // GetTeamBySlugAsync (TeamInfo? â€” ITeamService surface)
     // ==========================================================================
 
     [HumansFact]
-    public async Task GetTeamEntityBySlugAsync_ExistingSlug_ReturnsTeamWithActiveMembers()
+    public async Task GetTeamBySlugAsync_ExistingSlug_ReturnsTeamWithActiveMembers()
     {
         var user = SeedUser();
         var team = SeedTeam("Alpha");
@@ -2245,43 +2245,12 @@ public sealed class TeamServiceTests : TeamsTestHarness
             leftAt: Clock.GetCurrentInstant() - Duration.FromDays(1));
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetTeamEntityBySlugAsync("alpha", Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().NotBeNull();
-        result.Name.Should().Be("Alpha");
-        result.Members.Should().ContainSingle();
-    }
-
-    [HumansFact]
-    public async Task GetTeamEntityBySlugAsync_NonExistentSlug_ReturnsNull()
-    {
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _service.GetTeamEntityBySlugAsync("non-existent", Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeNull();
-    }
-
-    // ==========================================================================
-    // GetTeamBySlugAsync (TeamInfo? â€” ITeamService surface)
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task GetTeamBySlugAsync_ExistingSlug_ReturnsSameTeamAsEntityVersion()
-    {
-        var user = SeedUser();
-        var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var info = await _service.GetTeamBySlugAsync("alpha", Xunit.TestContext.Current.CancellationToken);
-        var entity = await _service.GetTeamEntityBySlugAsync("alpha", Xunit.TestContext.Current.CancellationToken);
+        var info = await _service.GetTeamBySlugAsync("ALPHA", Xunit.TestContext.Current.CancellationToken);
 
         info.Should().NotBeNull();
-        entity.Should().NotBeNull();
-        info.Id.Should().Be(entity.Id);
-        info.Slug.Should().Be(entity.Slug);
-        info.Name.Should().Be(entity.Name);
+        info.Id.Should().Be(team.Id);
+        info.Name.Should().Be("Alpha");
+        info.Members.Should().ContainSingle().Which.UserId.Should().Be(user.Id);
     }
 
     [HumansFact]
@@ -2295,11 +2264,11 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     // ==========================================================================
-    // GetTeamByIdAsync
+    // GetTeamAsync
     // ==========================================================================
 
     [HumansFact]
-    public async Task GetTeamByIdAsync_ExistingId_ReturnsTeamWithActiveMembers()
+    public async Task GetTeamAsync_ExistingId_ReturnsTeamWithActiveMembers()
     {
         var user = SeedUser();
         var team = SeedTeam("Alpha");
@@ -2308,16 +2277,16 @@ public sealed class TeamServiceTests : TeamsTestHarness
             leftAt: Clock.GetCurrentInstant() - Duration.FromDays(1));
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetTeamByIdAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetTeamAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Members.Should().ContainSingle();
     }
 
     [HumansFact]
-    public async Task GetTeamByIdAsync_NonExistentId_ReturnsNull()
+    public async Task GetTeamAsync_NonExistentId_ReturnsNull()
     {
-        var result = await _service.GetTeamByIdAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetTeamAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }

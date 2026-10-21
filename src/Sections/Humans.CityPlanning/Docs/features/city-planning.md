@@ -231,9 +231,9 @@ Map admin = the `CityPlanningMapAdmin` policy: `Admin` or `CampAdmin`, **or** me
 | `POST /CityPlanning/BarrioMap/Admin/DeleteOfficialZones` | Delete official zones |
 | `POST /CityPlanning/BarrioMap/Admin/UpdateRegistrationInfo` | Set the barrio registration page's markdown (posted from `/Settings#city-planning`) |
 | `GET /CityPlanning/BarrioMap/Admin/Containers/{year}` | Admin container list |
-| `POST /CityPlanning/BarrioMap/Admin/Containers/Barrios/{campId}/Create` | Create container for a camp (admin) |
-| `POST /CityPlanning/BarrioMap/Admin/Containers/{id}/Edit` | Edit container |
-| `POST /CityPlanning/BarrioMap/Admin/Containers/{id}/Delete` | Delete container |
+| `POST /CityPlanning/BarrioMap/Admin/Containers/{year}/Barrios/{campId}/Create` | Create container for a camp (admin) |
+| `POST /CityPlanning/BarrioMap/Admin/Containers/{year}/{id}/Edit` | Edit container |
+| `POST /CityPlanning/BarrioMap/Admin/Containers/{year}/{id}/Delete` | Delete container |
 | `GET /CityPlanning/ContainerMap/{year}` | Container placement map |
 | `GET /Camp/{slug}/Containers` | Barrio lead container list |
 | `POST /Camp/{slug}/Containers/Create` | Create container (barrio lead) |

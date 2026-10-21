@@ -47,17 +47,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         return await db.Teams.FindAsync([teamId], ct);
     }
 
-    public async Task<Team?> GetBySlugWithRelationsAsync(string normalizedSlug, CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-        return await db.Teams
-            .AsNoTracking()
-            .Include(t => t.Members.Where(m => m.LeftAt == null))
-            .Include(t => t.ParentTeam)
-            .Include(t => t.ChildTeams)
-            .FirstOrDefaultAsync(t => t.Slug == normalizedSlug || t.CustomSlug == normalizedSlug, ct);
-    }
-
     public async Task<bool> SlugExistsAsync(string slug, Guid? excludingTeamId, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
@@ -533,13 +522,11 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         Guid teamId, string lowerName, Guid? excludingId, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
-        var q = db.Set<TeamRoleDefinition>()
-#pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
-            .Where(d => d.TeamId == teamId && d.Name.ToLower() == lowerName);
-#pragma warning restore MA0011
+        var q = db.Set<TeamRoleDefinition>().Where(d => d.TeamId == teamId);
         if (excludingId.HasValue)
             q = q.Where(d => d.Id != excludingId.Value);
-        return await q.AnyAsync(ct);
+        var names = await q.Select(d => d.Name).ToListAsync(ct);
+        return names.Exists(n => string.Equals(n, lowerName, StringComparison.OrdinalIgnoreCase));
     }
 
     public async Task<bool> OtherRoleHasIsManagementAsync(

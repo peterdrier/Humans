@@ -628,13 +628,9 @@ internal sealed class TeamAdminController(
         if (teamError is not null)
             return teamError;
 
-        var teamEntity = await _teamService.GetTeamByIdAsync(team.Id);
-        if (teamEntity is null)
-            return NotFound();
+        var canBePublic = !team.IsSystemTeam && !team.ParentTeamId.HasValue;
 
-        var canBePublic = !teamEntity.IsSystemTeam && !teamEntity.ParentTeamId.HasValue;
-
-        var ctas = (teamEntity.CallsToAction ?? [])
+        var ctas = (team.CallsToAction ?? [])
             .Select(c => new CallToActionViewModel { Text = c.Text, Url = c.Url, Style = c.Style })
             .ToList();
         while (ctas.Count < 3)
@@ -642,13 +638,13 @@ internal sealed class TeamAdminController(
 
         var viewModel = new EditTeamPageViewModel
         {
-            TeamId = teamEntity.Id,
-            Slug = teamEntity.Slug,
-            TeamName = teamEntity.DisplayName,
-            IsPublicPage = teamEntity.IsPublicPage,
-            ShowCoordinatorsOnPublicPage = teamEntity.ShowCoordinatorsOnPublicPage,
+            TeamId = team.Id,
+            Slug = team.Slug,
+            TeamName = await GetTeamDisplayNameAsync(team),
+            IsPublicPage = team.IsPublicPage,
+            ShowCoordinatorsOnPublicPage = team.ShowCoordinatorsOnPublicPage,
             CanBePublic = canBePublic,
-            PageContent = teamEntity.PageContent,
+            PageContent = team.PageContent,
             CallsToAction = ctas
         };
 
@@ -665,10 +661,7 @@ internal sealed class TeamAdminController(
 
         if (!ModelState.IsValid)
         {
-            var teamEntity = await _teamService.GetTeamByIdAsync(team.Id);
-            if (teamEntity is null)
-                return NotFound();
-            PopulateEditTeamPageModel(model, teamEntity);
+            await PopulateEditTeamPageModelAsync(model, team);
             return View(model);
         }
 
@@ -689,10 +682,7 @@ internal sealed class TeamAdminController(
         }
 
         ModelState.AddModelError("", result.ErrorMessage ?? "Failed to update team page.");
-        var teamEntityAfterFailure = await _teamService.GetTeamByIdAsync(team.Id);
-        if (teamEntityAfterFailure is null)
-            return NotFound();
-        PopulateEditTeamPageModel(model, teamEntityAfterFailure);
+        await PopulateEditTeamPageModelAsync(model, team);
         return View(model);
     }
 
@@ -940,10 +930,18 @@ internal sealed class TeamAdminController(
         return Json(combined);
     }
 
-    private static void PopulateEditTeamPageModel(EditTeamPageViewModel model, Team team)
+    private async Task PopulateEditTeamPageModelAsync(EditTeamPageViewModel model, TeamInfo team)
     {
         model.Slug = team.Slug;
-        model.TeamName = team.DisplayName;
+        model.TeamName = await GetTeamDisplayNameAsync(team);
         model.CanBePublic = !team.IsSystemTeam && !team.ParentTeamId.HasValue;
+    }
+
+    private async Task<string> GetTeamDisplayNameAsync(TeamInfo team)
+    {
+        var parent = team.ParentTeamId is { } parentId
+            ? await _teamService.GetTeamAsync(parentId, HttpContext.RequestAborted)
+            : null;
+        return parent is not null ? $"{parent.Name} - {team.Name}" : team.Name;
     }
 }
