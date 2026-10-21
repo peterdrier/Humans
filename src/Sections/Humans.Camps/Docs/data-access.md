@@ -47,13 +47,9 @@ Repository: `ICampRepository`.
 | `Camp.CampInfo` TrackedCache + settings slot (`ICampInfoInvalidator`) | yes |
 | `NavBadge:CampLeadJoinRequests:{userId}` (`ICampLeadJoinRequestsBadgeCacheInvalidator`) | yes |
 
-| Cache (via invalidators) — cont. | Invalidate |
-|-------------------------|------------|
-| `EarlyEntry.UserEarlyEntry` TrackedCache (`IEarlyEntryInvalidator`) | yes (camp-lead grant changes) |
-
 Cross-section calls via `IUserService`, `ITicketService` (has the member entered the event),
 `IAuditLogService`, `ISystemTeamSync`, `IFileStorage`, `INotificationEmitter`,
-`IEarlyEntryInvalidator`, `ISettingsService` (active event settings), plus
+`ISettingsService` (active event settings), plus
 `Lazy<ICampRoleService>` and `Lazy<ICityPlanningWrite>` (camp deletion removes
 the camp's polygon/history rows) to break DI cycles. Implements `ICampLeadDirectory`, `IEarlyEntryProvider` (via `ICampManagement`),
 `IUserDataContributor` (all-year/all-status memberships and role assignments, with deletion for both slices), `IUserMerge`. All caching lives in the decorator

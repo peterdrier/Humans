@@ -242,8 +242,8 @@ public sealed class HoldedLedgerSyncTests
     public async Task Manual_sync_propagates_request_abort_with_a_stack_free_warning()
     {
         using var cancellation = new CancellationTokenSource();
-        var finance = Substitute.For<Humans.Finance.Contracts.IHoldedFinanceWrite>();
-        finance.SyncAsync(cancellation.Token).Returns<Humans.Finance.Contracts.HoldedSyncResult>(_ =>
+        var holded = Substitute.For<IHoldedService>();
+        holded.SyncLedgerAsync(false, cancellation.Token).Returns<bool>(_ =>
         {
             cancellation.Cancel();
             throw new OperationCanceledException(cancellation.Token);
@@ -251,8 +251,8 @@ public sealed class HoldedLedgerSyncTests
         var logger = new CapturingLogger<Humans.Holded.Controllers.HoldedController>();
         var controller = new Humans.Holded.Controllers.HoldedController(
             Substitute.For<Humans.Users.Contracts.IUserService>(),
-            Substitute.For<IHoldedAdminService>(), Substitute.For<IHoldedService>(),
-            Substitute.For<Humans.Finance.Contracts.IHoldedFinanceService>(), finance, logger)
+            Substitute.For<IHoldedAdminService>(), holded,
+            Substitute.For<Humans.Finance.Contracts.IHoldedFinanceService>(), logger)
         {
             TempData = new Microsoft.AspNetCore.Mvc.ViewFeatures.TempDataDictionary(
                 new Microsoft.AspNetCore.Http.DefaultHttpContext(),

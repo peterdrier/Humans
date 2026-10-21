@@ -49,4 +49,20 @@ internal static class SymbolExtensions
             t = t.ContainingType;
         return t;
     }
+
+    /// <summary>
+    /// The ordinary method containing an operation. Walks out of lambdas and
+    /// local functions so a call inside <c>await Task.Run(() =&gt; …)</c> is still
+    /// attributed to the action.
+    /// </summary>
+    public static IMethodSymbol? EnclosingOrdinaryMethod(this ISymbol? symbol)
+    {
+        for (var current = symbol; current is not null; current = current.ContainingSymbol)
+        {
+            if (current is IMethodSymbol { MethodKind: MethodKind.Ordinary } method)
+                return method;
+        }
+
+        return null;
+    }
 }

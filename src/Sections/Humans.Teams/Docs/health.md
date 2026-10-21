@@ -53,7 +53,7 @@ The shapes imply:
 - **One inner service** owning every business rule, behind the internal management
   interface, talking only to `ITeamRepository` for its own tables and to other
   sections through their interfaces (audit, notifications, Google outbox, shifts auth
-  eviction, early-entry eviction, user read model).
+  eviction, user read model).
 - **One singleton caching decorator** over the same interface holding the canonical
   `TeamInfo` graph, serving every read shape from memory, and clearing wholesale on every
   write so the next read re-warms the whole graph — no per-mutation diffing. Pending-request
@@ -90,7 +90,7 @@ The shapes imply:
   (on a change to the flag, so a caller passing its current value is not a write).
 - An early-entry grant may be created only while its team has `EarlyEntryEnabled`; disabling
   keeps the grants already issued but hides them from the roster; every grant mutation is
-  audited and evicts the user's EE cache.
+  audited.
 - Every membership add/remove made one at a time is audit-logged and mirrored to Google (add
   inline, remove via the nightly reconciliation); the outbox append commits with the team write.
   Deactivating a team is the exception: `DeleteTeamAsync` closes its live memberships in bulk

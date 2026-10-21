@@ -47,7 +47,7 @@ cantina-style). `ITeamRepository` has an EE-grant surface
 `FindEarlyEntryGrantForMutationAsync`, `Add/Update/RemoveEarlyEntryGrantAsync`,
 `ReassignEarlyEntryGrantsAsync`, `RemoveEarlyEntryGrantsForUserAsync`),
 backed by the `team_early_entry_grants` table that `TeamRepository` owns.
-`TeamService` injects `IEarlyEntryInvalidator` and contributes a GDPR slice
+`TeamService` contributes a GDPR slice
 under the export key declared as `TeamService.TeamEarlyEntry`; the
 `IUserMerge` path reassigns grants across the merge.
 
@@ -80,11 +80,9 @@ Repository: `ITeamRepository`.
 | Cache (via invalidators) | Invalidate |
 |-------------------------|------------|
 | `NotificationMeters` (`INotificationMeterCacheInvalidator`) | yes |
-| `EarlyEntry.UserEarlyEntry` TrackedCache (`IEarlyEntryInvalidator`) | yes (per-user on grant writes / merge; `InvalidateAll` on team EE-flag flip) |
 
 Cross-section calls via `IAuditLogService`, `INotificationEmitter`,
 `IShiftService`, `IAdminAuthorizationService`,
-`IEarlyEntryInvalidator`,
 `INotificationMeterCacheInvalidator`; lazy-resolved via `IServiceProvider` for
 cycle-breaking: `IGoogleSyncOutboxService` (transactional outbox appends),
 `IGoogleSyncWrite`, `ITeamResourceService`, `IRoleAssignmentService`,

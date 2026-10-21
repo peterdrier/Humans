@@ -30,7 +30,6 @@ internal sealed class TeamService(
     IShiftService shiftManagementService,
     INotificationMeterCacheInvalidator notificationMeterInvalidator,
     IAdminAuthorizationService adminAuthorization,
-    IEarlyEntryInvalidator earlyEntryInvalidator,
     IServiceProvider serviceProvider,
     IClock clock,
     ILogger<TeamService> logger) : ITeamManagementService, ITeamSeeding, IGoogleGroupMembershipSource, IUserMerge, IEarlyEntryProvider
@@ -297,7 +296,6 @@ internal sealed class TeamService(
         team.Name = name;
         team.Description = description;
         team.RequiresApproval = requiresApproval;
-        var activeChanged = team.IsActive != isActive;
         team.IsActive = isActive;
         team.ParentTeamId = parentTeamId;
         team.GoogleGroupPrefix = googleGroupPrefix;
@@ -317,12 +315,8 @@ internal sealed class TeamService(
         }
         if (isPromotedToDirectory.HasValue)
             team.IsPromotedToDirectory = isPromotedToDirectory.Value;
-        var earlyEntryChanged = activeChanged || nameChanged;
-        if (earlyEntryEnabled is { } eeFlag && eeFlag != team.EarlyEntryEnabled)
-        {
+        if (earlyEntryEnabled is { } eeFlag)
             team.EarlyEntryEnabled = eeFlag;
-            earlyEntryChanged = true;
-        }
         if (team.IsSystemTeam || parentTeamId.HasValue)
         {
             team.IsPublicPage = false;
@@ -330,17 +324,8 @@ internal sealed class TeamService(
         }
         team.UpdatedAt = clock.GetCurrentInstant();
 
-        try
-        {
-            var conflict = await repo.UpdateTeamAsync(team, cancellationToken);
-            if (conflict != TeamUpdateConflict.None) return new(Conflict: conflict);
-        }
-        finally
-        {
-            // Evict after the save attempt: a read during it still sees the old grant data.
-            // A failed completion can also follow a committed write.
-            if (earlyEntryChanged) earlyEntryInvalidator.InvalidateAll();
-        }
+        var updateConflict = await repo.UpdateTeamAsync(team, cancellationToken);
+        if (updateConflict != TeamUpdateConflict.None) return new(Conflict: updateConflict);
 
         if (managementUserIds.Count > 0)
         {
@@ -526,16 +511,7 @@ internal sealed class TeamService(
 
         var now = clock.GetCurrentInstant();
 
-        IReadOnlyList<Guid> closedUsers;
-        try
-        {
-            closedUsers = await repo.DeactivateTeamAsync(teamId, now, cancellationToken);
-        }
-        finally
-        {
-            // Inactive teams grant no Early Entry; evict even on uncertain completion.
-            earlyEntryInvalidator.InvalidateAll();
-        }
+        var closedUsers = await repo.DeactivateTeamAsync(teamId, now, cancellationToken);
         foreach (var userId in closedUsers)
         {
             await auditLogService.LogAsync(
@@ -1790,14 +1766,7 @@ internal sealed class TeamService(
         if (resources.Count > 0)
             throw new InvalidOperationException("Cannot permanently delete a team that has Google resources linked. Unlink resources first.");
 
-        try
-        {
-            return await repo.PermanentlyDeleteTeamAsync(teamId, cancellationToken);
-        }
-        finally
-        {
-            earlyEntryInvalidator.InvalidateAll();
-        }
+        return await repo.PermanentlyDeleteTeamAsync(teamId, cancellationToken);
     }
 
     public Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
@@ -1860,8 +1829,6 @@ internal sealed class TeamService(
 
         // Early-entry grants fold.
         await repo.ReassignEarlyEntryGrantsAsync(sourceUserId, targetUserId, cancellationToken);
-        earlyEntryInvalidator.InvalidateUser(sourceUserId);
-        earlyEntryInvalidator.InvalidateUser(targetUserId);
         // Always retry both reconciles, even when a previous pass already ended every
         // source membership before failing here.
         await SystemTeamSync.SyncMembershipForUserAsync(sourceUserId, SystemTeamType.Coordinators, cancellationToken);
@@ -1981,7 +1948,6 @@ internal sealed class TeamService(
             CreatedByUserId = actorUserId,
         };
         await repo.AddEarlyEntryGrantAsync(grant, ct);
-        earlyEntryInvalidator.InvalidateUser(userId);
         await auditLogService.LogAsync(AuditAction.EarlyEntryGranted, nameof(TeamEarlyEntryGrant), grant.Id,
             $"EE granted to {userId} on {entryDate} for \"{grant.ProjectName}\" (team {teamId})", actorUserId);
     }
@@ -1995,7 +1961,6 @@ internal sealed class TeamService(
         grant.ProjectName = projectName.Trim();
         grant.UpdatedAt = clock.GetCurrentInstant();
         await repo.UpdateEarlyEntryGrantAsync(grant, ct);
-        earlyEntryInvalidator.InvalidateUser(grant.UserId);
         await auditLogService.LogAsync(AuditAction.EarlyEntryUpdated, nameof(TeamEarlyEntryGrant), grant.Id,
             $"EE updated for {grant.UserId}: {entryDate}, \"{grant.ProjectName}\"", actorUserId);
     }
@@ -2005,7 +1970,6 @@ internal sealed class TeamService(
         var grant = await repo.FindEarlyEntryGrantForMutationAsync(grantId, ct);
         if (grant is null || grant.TeamId != teamId) return; // idempotent / not found on this team
         await repo.RemoveEarlyEntryGrantAsync(grantId, ct);
-        earlyEntryInvalidator.InvalidateUser(grant.UserId);
         await auditLogService.LogAsync(AuditAction.EarlyEntryRevoked, nameof(TeamEarlyEntryGrant), grantId,
             $"EE revoked for {grant.UserId} (team {grant.TeamId})", actorUserId);
     }
@@ -2015,7 +1979,6 @@ internal sealed class TeamService(
         var grants = await repo.GetEarlyEntryGrantsForUserAsync(userId, ct);
         if (grants.Count == 0) return;
         await repo.RemoveEarlyEntryGrantsForUserAsync(userId, ct);
-        earlyEntryInvalidator.InvalidateUser(userId);
     }
 
     private async Task<IReadOnlyDictionary<Guid, TeamInfo>> LoadTeamsByIdAsync(CancellationToken ct = default)

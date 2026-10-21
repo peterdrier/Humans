@@ -79,7 +79,7 @@ Development is a pure consumer and depends on more sections than any other:
 
 | Section | Surface used |
 |---------|--------------|
-| Users / Profiles | `UserManager<User>` and `SignInManager<User>` (the §2a Identity exception, see [`Users.md`](../../Humans.Users/Docs/Users.md)), `IUserService`, `IUserWrite`, `IUserEmailService`, `IProfileEditorService`, `IContactFieldService`, `IUserInfoInvalidator`, `IHumanLifecycleService` |
+| Users / Profiles | `UserManager<User>` and `SignInManager<User>` (the §2a Identity exception, see [`Users.md`](../../Humans.Users/Docs/Users.md)), `IUserService`, `IUserWrite`, `IUserEmailService`, `IProfileEditorService`, `IContactFieldService`, `IHumanLifecycleService` |
 | Auth | `IRoleAssignmentService` for login eligibility; `IRoleAssignmentWrite` for persona role seeding |
 | Teams | `ITeamService`, `ITeamWrite`, `ITeamSeeding`, `ISystemTeamSync` |
 | Camps | `ICampService`, `ICampSeeding`, `ICampRoleSeeding` |

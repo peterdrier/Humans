@@ -59,7 +59,7 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
             new ShiftViewProbe().Cache,
             NewCalendarResolver(),
             Clock,
-            Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
     }
 
     // ============================================================

@@ -1,4 +1,3 @@
-using Humans.EarlyEntry.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Shifts.Services.Dtos;
 using Humans.Base.Extensions;
@@ -36,7 +35,6 @@ internal sealed class ShiftManagementService(
     CachingShiftViewService viewInvalidator,
     EventCalendarResolver calendarResolver,
     IClock clock,
-    IEarlyEntryInvalidator earlyEntryInvalidator,
     ILogger<ShiftManagementService> logger) : IShiftManagement, IUserMerge
 {
     private static readonly TimeSpan DashboardCacheTtl = TimeSpan.FromMinutes(5);
@@ -198,7 +196,6 @@ internal sealed class ShiftManagementService(
         {
             EvictDashboardCaches(eventSettingsId);
             viewInvalidator.InvalidateAll();
-            earlyEntryInvalidator.InvalidateAll();
         }
     }
 
@@ -283,7 +280,6 @@ internal sealed class ShiftManagementService(
         await repo.UpdateRotaTeamAssignmentAsync(
             rota.Id, input.TargetTeamId, clock.GetCurrentInstant());
         viewInvalidator.InvalidateRota(rota.Id);
-        earlyEntryInvalidator.InvalidateAll();
 
         await auditLogService.LogAsync(
             AuditAction.RotaMovedToTeam, nameof(Rota), rota.Id,
@@ -761,7 +757,6 @@ internal sealed class ShiftManagementService(
 
         await repo.SaveShiftAsync(shift, EntityMutationMode.Update);
         viewInvalidator.InvalidateShift(shift.Id);
-        earlyEntryInvalidator.InvalidateAll();
         return ShiftMutationResult.Success("Shift updated.", shift.Id);
     }
 

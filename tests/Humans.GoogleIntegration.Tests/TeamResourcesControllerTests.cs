@@ -3,11 +3,13 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
+using Humans.GoogleIntegration.Authorization;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Controllers;
 using Humans.GoogleIntegration.Services;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
@@ -144,6 +146,17 @@ public class TeamResourcesControllerTests
         result.Should().BeOfType<ForbidResult>();
         _resources.ReceivedCalls().Where(c => !IsRead(c.GetMethodInfo().Name)).Should().BeEmpty();
         await _resources.DidNotReceive().GetTeamResourcesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public void EveryPostAction_CarriesItsOwnAuthorizeAttribute()
+    {
+        var posts = typeof(TeamResourcesController).GetMethods()
+            .Where(m => m.GetCustomAttributes(typeof(HttpPostAttribute), inherit: false).Length > 0)
+            .ToList();
+
+        posts.Should().HaveCount(6);
+        posts.Should().OnlyContain(m => m.GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false).Length > 0);
     }
 
     [HumansFact]
@@ -309,7 +322,14 @@ public class TeamResourcesControllerTests
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, _userId.ToString()) };
         if (role is not null) claims.Add(new Claim(ClaimTypes.Role, role));
         var http = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(claims, "test")) };
-        return new TeamResourcesController(_users, _teams, _resources, _sync,
+        var authorization = new ServiceCollection()
+            .AddLogging()
+            .AddAuthorizationCore()
+            .AddSingleton<IAuthorizationHandler>(new TeamResourceAuthorizationHandler(
+                _resources, new HttpContextAccessor { HttpContext = http }))
+            .BuildServiceProvider()
+            .GetRequiredService<IAuthorizationService>();
+        return new TeamResourcesController(_users, _teams, _resources, authorization, _sync,
             NullLogger<TeamResourcesController>.Instance, localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },

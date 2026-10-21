@@ -145,7 +145,7 @@ public class GoogleControllerSyncCancellationTests
     }
 
     [HumansFact]
-    public async Task SyncPreview_still_forwards_the_request_token_because_it_only_reads()
+    public async Task SyncPreview_does_not_forward_the_request_token_because_it_can_write()
     {
         var received = new Box();
         _syncService
@@ -160,8 +160,8 @@ public class GoogleControllerSyncCancellationTests
 
         await controller.SyncPreview(GoogleResourceType.DriveFolder);
 
-        received.Value.IsCancellationRequested.Should().BeTrue(
-            "abandoning a read for a page nobody is viewing is the desired behaviour");
+        received.Value.IsCancellationRequested.Should().BeFalse(
+            "a preview stamps resource errors, so it is a POST and finishes once started (HUM0038)");
     }
 
     private Box CaptureSingleResourceToken()

@@ -235,7 +235,6 @@ public class DevLoginControllerTests
         _userEmails,
         Substitute.For<IContactFieldService>(),
         Substitute.For<IRoleAssignmentWrite>(),
-        Substitute.For<IUserInfoInvalidator>(),
         Substitute.For<ITeamService>(),
         Substitute.For<ITeamWrite>(),
         Substitute.For<ITeamSeeding>(),

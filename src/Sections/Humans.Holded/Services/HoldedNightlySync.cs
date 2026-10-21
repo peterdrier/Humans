@@ -1,15 +1,13 @@
-using Humans.Finance.Contracts;
 using Humans.Holded.Contracts;
 using Microsoft.Extensions.Options;
 
 namespace Humans.Holded.Services;
 
 /// <summary>
-/// Nightly Holded pull wrapper. It calls through to Finance for doc sync before running the local
-/// ledger mirror pass.
+/// Nightly ledger-mirror sweep. Finance's purchase-doc sync is Finance's own job
+/// (<c>HoldedDocSyncJob</c>); the sweep reads none of its output.
 /// </summary>
 internal sealed class HoldedNightlySync(
-    IHoldedFinanceWrite finance,
     IHoldedService holded,
     IOptions<HoldedClientOptions> holdedOptions,
     ILogger<HoldedNightlySync> logger) : IHoldedNightlySync
@@ -23,8 +21,6 @@ internal sealed class HoldedNightlySync(
             logger.LogInformation("HOLDED_API_KEY_V2 not configured — skipping Holded sync.");
             return;
         }
-
-        await finance.SyncAsync(ct);
 
         // The sweep gate is non-blocking: a sweep already in flight (an admin's Sync now, or a
         // full resync still rebuilding) makes this one return false rather than queue. Tonight's

@@ -5,6 +5,7 @@ using Humans.Auth.Contracts;
 using NodaTime;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
+using Humans.Users.Data;
 using Humans.Base.Enums;
 using Humans.Teams.Contracts;
 
@@ -18,7 +19,7 @@ internal sealed class ContactFieldService(
     IUserService userService,
     ITeamService teamService,
     IRoleAssignmentService roleAssignmentService,
-    IUserInfoInvalidator userInfoInvalidator,
+    IUserInfoSliceRefresher userInfoRefresher,
     IClock clock,
     ILogger<ContactFieldService> logger,
     IStringLocalizer<UsersResource> localizer) : IContactFieldService, IUserMerge
@@ -124,7 +125,7 @@ internal sealed class ContactFieldService(
         {
             try
             {
-                await userInfoInvalidator.InvalidateAsync(ownerUserId.Value, cancellationToken);
+                await userInfoRefresher.RefreshAsync(ownerUserId.Value, cancellationToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {

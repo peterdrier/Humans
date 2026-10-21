@@ -81,7 +81,7 @@ Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`.
 Cross-section calls via `IShiftManagement`, `ISettingsService` (via
 `EventCalendarResolver`, nobodies-collective/Humans#1630),
 `IAuditLogService`, `INotificationEmitter`, `IAdminAuthorizationService`,
-`CachingShiftViewService`, `IEarlyEntryInvalidator`, plus `IServiceProvider`
+`CachingShiftViewService`, plus `IServiceProvider`
 (lazy-resolves `ITeamService` for coordinator/team-name lookups).
 Implements `IUserDataContributor`, `IUserMerge`, `ICalendarFeedContributor`
 (personal iCal feed contributor — the user's Confirmed and Pending shift

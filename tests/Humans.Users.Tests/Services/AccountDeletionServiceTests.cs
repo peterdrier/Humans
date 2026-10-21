@@ -1,4 +1,5 @@
 using Humans.Base.Extensions;
+using Humans.Users.Data;
 using Humans.Auth.Contracts;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
@@ -31,7 +32,7 @@ public class AccountDeletionServiceTests
     private readonly IRoleAssignmentWrite _roleAssignmentService = Substitute.For<IRoleAssignmentWrite>();
     private readonly IGdprService _gdprService = Substitute.For<IGdprService>();
     private readonly ITicketService _ticketQueryService = Substitute.For<ITicketService>();
-    private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
+    private readonly IUserInfoSliceRefresher _userInfoRefresher = Substitute.For<IUserInfoSliceRefresher>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly UsersEmails _emailMessages = TestUsersEmails.Create();
@@ -52,7 +53,7 @@ public class AccountDeletionServiceTests
             _roleAssignmentService,
             _gdprService,
             _ticketQueryService,
-            _userInfoInvalidator,
+            _userInfoRefresher,
             _auditLogService,
             _emailService,
             _emailMessages,
@@ -308,7 +309,7 @@ public class AccountDeletionServiceTests
         await _gdprService.Received(1).EraseForUserAsync(mergedIn, Arg.Any<CancellationToken>());
         await _gdprService.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
         // The archived id's cache entry too, or its tombstone name stays searchable.
-        await _userInfoInvalidator.Received(1).InvalidateAsync(
+        await _userInfoRefresher.Received(1).RefreshAsync(
             mergedIn, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
@@ -369,7 +370,7 @@ public class AccountDeletionServiceTests
         // Parity with AnonymizeExpiredAccountAsync: per-user caches that key
         // off identity must also drop on admin purge. The UserInfo entry first —
         // contributors run against the inner UserService.
-        await _userInfoInvalidator.Received(1).InvalidateAsync(
+        await _userInfoRefresher.Received(1).RefreshAsync(
             userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
@@ -426,7 +427,7 @@ public class AccountDeletionServiceTests
 
         await _gdprService.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
 
-        await _userInfoInvalidator.Received(1).InvalidateAsync(
+        await _userInfoRefresher.Received(1).RefreshAsync(
             userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
@@ -445,7 +446,7 @@ public class AccountDeletionServiceTests
         var act = () => _service.AnonymizeExpiredAccountAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
-        await _userInfoInvalidator.DidNotReceive().InvalidateAsync(
+        await _userInfoRefresher.DidNotReceive().RefreshAsync(
             userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
@@ -467,7 +468,7 @@ public class AccountDeletionServiceTests
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         await _gdprService.Received(1).EraseForUserAsync(archived, Arg.Any<CancellationToken>());
-        await _userInfoInvalidator.Received(1).InvalidateAsync(
+        await _userInfoRefresher.Received(1).RefreshAsync(
             archived, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 

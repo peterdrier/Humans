@@ -34,7 +34,6 @@ internal sealed class DevPersonaSeeder(
     IUserEmailService userEmailService,
     IContactFieldService contactFieldService,
     IRoleAssignmentWrite roleAssignmentService,
-    IUserInfoInvalidator userInfoInvalidator,
     ITeamService teamService,
     ITeamWrite teamWrite,
     ITeamSeeding teamSeeding,
@@ -191,8 +190,6 @@ internal sealed class DevPersonaSeeder(
         // them are suspended by the nightly SuspendNonCompliantMembersJob once a
         // document's grace period lapses (#867).
         await EnsureActiveAsync(id);
-
-        await userInfoInvalidator.InvalidateAsync(id);
 
         logger.LogInformation(
             "DEV: seeded persona {Email} with roles [{Roles}]",
@@ -571,8 +568,6 @@ internal sealed class DevPersonaSeeder(
 
         if (changed)
         {
-            // Team membership changes ripple into UserInfo (active-teams shape)
-            await userInfoInvalidator.InvalidateAsync(coordinatorUserId);
             logger.LogInformation(
                 "DEV: ensured coordinator teams — department {DeptId}, sub-team {SubTeamId}",
                 department.Id, subTeam.Id);
@@ -612,7 +607,6 @@ internal sealed class DevPersonaSeeder(
             return;
         }
 
-        var changed = false;
         var team = await teamService.GetTeamBySlugAsync(teamSlug);
         if (team is null)
         {
@@ -628,17 +622,10 @@ internal sealed class DevPersonaSeeder(
                 "City Planning",
                 "Dev-seeded city planning team",
                 requiresApproval: false);
-            changed = true;
             logger.LogInformation("DEV: seeded city planning team {Slug}", teamSlug);
         }
 
-        changed |= await EnsureSeededTeamMembershipAsync(team.Id, userId, TeamMemberRole.Coordinator, clock.GetCurrentInstant());
-
-        if (changed)
-        {
-            // Team membership changes ripple into UserInfo (active-teams shape)
-            await userInfoInvalidator.InvalidateAsync(userId);
-        }
+        await EnsureSeededTeamMembershipAsync(team.Id, userId, TeamMemberRole.Coordinator, clock.GetCurrentInstant());
     }
 
     /// <summary>

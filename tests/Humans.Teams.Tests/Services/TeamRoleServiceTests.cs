@@ -74,7 +74,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             new CachingShiftViewService(Substitute.For<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<CachingShiftViewService>.Instance),
             new EventCalendarResolver(Substitute.For<ISettingsService>()),
             Clock,
-            Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), NullLogger<ShiftManagementService>.Instance);
+            NullLogger<ShiftManagementService>.Instance);
         _service = new TeamService(
             new TeamRepository(TeamsDbFactory),
             AuditLog,
@@ -82,7 +82,6 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             shiftManagementService,
             Substitute.For<INotificationMeterCacheInvalidator>(),
             AdminAuthorization,
-            EarlyEntryInvalidator,
             serviceProvider,
             Clock,
             NullLogger<TeamService>.Instance);

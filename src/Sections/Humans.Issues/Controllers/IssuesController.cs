@@ -55,8 +55,8 @@ internal sealed class IssuesController(
         // Wider than the nav badge, which counts Open + Triage only.
         var statuses = viewMode switch
         {
-            IssueViewMode.Open => new[] { IssueStatus.Triage, IssueStatus.Open, IssueStatus.InProgress },
-            IssueViewMode.Closed => new[] { IssueStatus.Resolved, IssueStatus.WontFix, IssueStatus.Duplicate },
+            IssueViewMode.Open => Enum.GetValues<IssueStatus>().Where(s => !s.IsTerminal()).ToArray(),
+            IssueViewMode.Closed => Enum.GetValues<IssueStatus>().Where(s => s.IsTerminal()).ToArray(),
             _ => null
         };
 
@@ -204,17 +204,17 @@ internal sealed class IssuesController(
         var viewer = ViewerFor(user.Id);
         var issue = await issues.GetIssueByIdAsync(id, viewer, HttpContext.RequestAborted);
 
-        // "Not found" and "no access" indistinguishable. Partial → inline notice; full nav → redirect to Index.
-        var canHandle = issue is not null
-            && (await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)).Succeeded;
-        var isReporter = issue is not null && issue.ReporterUserId == user.Id;
-
-        if (issue is null || (!canHandle && !isReporter))
+        // "Not found" and "no access" indistinguishable (the service returns null for both).
+        // Partial → inline notice; full nav → redirect to Index.
+        if (issue is null)
         {
             return isPartial
                 ? PartialView("_DetailUnavailable")
                 : RedirectToAction(nameof(Index));
         }
+
+        var canHandle = (await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)).Succeeded;
+        var isReporter = issue.ReporterUserId == user.Id;
 
         var thread = await issues.GetThreadAsync(id, viewer, HttpContext.RequestAborted);
         var displayUsers = await GetIssueDisplayUsersAsync(issue, HttpContext.RequestAborted);
@@ -297,12 +297,11 @@ internal sealed class IssuesController(
         if (userMissing is not null) return userMissing;
 
         var viewer = ViewerFor(user.Id);
+        // Null for gone and for out of reach alike: only a handler or the reporter sees an issue.
         var issue = await issues.GetIssueByIdAsync(id, viewer);
         if (issue is null) return NotFound();
 
         var canHandle = (await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)).Succeeded;
-        var isReporter = issue.ReporterUserId == user.Id;
-        if (!canHandle && !isReporter) return NotFound();
 
         if (!ModelState.IsValid)
         {

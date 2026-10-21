@@ -157,6 +157,8 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
         _views.Evictions.Should().Be(0);
     }
 
+    private static readonly Guid Coordinator = Guid.NewGuid();
+
     [HumansFact]
     public async Task SetDayAvailability_AddsOffset_PreservingExisting()
     {
@@ -166,12 +168,15 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
         await _service.SetAvailabilityAsync(userId, esId, [-3]);
 
         var changed = await _service.SetDayAvailabilityAsync(
-            userId, esId, -2, true, Xunit.TestContext.Current.CancellationToken);
+            userId, esId, -2, true, Coordinator, Xunit.TestContext.Current.CancellationToken);
 
         changed.Should().BeTrue();
         var rec = await ShiftsDb.GeneralAvailability.AsNoTracking()
             .FirstAsync(g => g.UserId == userId && g.EventSettingsId == esId, Xunit.TestContext.Current.CancellationToken);
         rec.AvailableDayOffsets.Should().BeEquivalentTo([-3, -2]);
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.VolunteerAvailabilitySet, nameof(GeneralAvailability), userId,
+            "DayOffset=-2; marked available by coordinator", Coordinator);
     }
 
     [HumansTheory]
@@ -187,12 +192,15 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
         await _repo.UpsertAvailabilityAsync(userId, esId, [-3, dayOffset], TestNow);
 
         var changed = await _service.SetDayAvailabilityAsync(
-            userId, esId, dayOffset, false, Xunit.TestContext.Current.CancellationToken);
+            userId, esId, dayOffset, false, Coordinator, Xunit.TestContext.Current.CancellationToken);
 
         changed.Should().BeTrue();
         var rec = await ShiftsDb.GeneralAvailability.AsNoTracking()
             .FirstAsync(g => g.UserId == userId && g.EventSettingsId == esId, Xunit.TestContext.Current.CancellationToken);
         rec.AvailableDayOffsets.Should().BeEquivalentTo([-3]);
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.VolunteerAvailabilityCleared, nameof(GeneralAvailability), userId,
+            $"DayOffset={dayOffset}; availability cleared by coordinator", Coordinator);
     }
 
     [HumansTheory]
@@ -205,7 +213,7 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var changed = await _service.SetDayAvailabilityAsync(
-            userId, esId, dayOffset, true, Xunit.TestContext.Current.CancellationToken);
+            userId, esId, dayOffset, true, Coordinator, Xunit.TestContext.Current.CancellationToken);
 
         changed.Should().BeTrue();
         var rec = await ShiftsDb.GeneralAvailability.AsNoTracking()
@@ -226,7 +234,7 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var changed = await _service.SetDayAvailabilityAsync(
-            userId, esId, dayOffset, true, Xunit.TestContext.Current.CancellationToken);
+            userId, esId, dayOffset, true, Coordinator, Xunit.TestContext.Current.CancellationToken);
 
         changed.Should().BeFalse();
         var rec = await ShiftsDb.GeneralAvailability.AsNoTracking()
@@ -243,9 +251,12 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
         await _service.SetAvailabilityAsync(userId, esId, [-2]);
 
         var changed = await _service.SetDayAvailabilityAsync(
-            userId, esId, -2, true, Xunit.TestContext.Current.CancellationToken);
+            userId, esId, -2, true, Coordinator, Xunit.TestContext.Current.CancellationToken);
 
         changed.Should().BeFalse();
+        await AuditLog.DidNotReceive().LogAsync(
+            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Coordinator,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -257,9 +268,12 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
         await _service.SetAvailabilityAsync(userId, esId, [-3]);
 
         var changed = await _service.SetDayAvailabilityAsync(
-            userId, esId, -2, false, Xunit.TestContext.Current.CancellationToken);
+            userId, esId, -2, false, Coordinator, Xunit.TestContext.Current.CancellationToken);
 
         changed.Should().BeFalse();
+        await AuditLog.DidNotReceive().LogAsync(
+            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Coordinator,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     private Guid SeedEventSettings()

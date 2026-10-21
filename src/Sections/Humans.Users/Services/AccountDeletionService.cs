@@ -6,6 +6,7 @@ using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
+using Humans.Users.Data;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Interfaces;
@@ -22,7 +23,7 @@ internal sealed class AccountDeletionService(
     IRoleAssignmentWrite roleAssignmentService,
     IGdprService gdprService,
     ITicketService ticketQueryService,
-    IUserInfoInvalidator userInfoInvalidator,
+    IUserInfoSliceRefresher userInfoRefresher,
     IAuditLogService auditLogService,
     IEmailService emailService,
     UsersEmails emailMessages,
@@ -142,7 +143,7 @@ internal sealed class AccountDeletionService(
         // Match AnonymizeExpiredAccountAsync's invalidation surface — contributors
         // run against the inner UserService, so nothing behind the caching
         // decorator has seen the collapse yet.
-        await userInfoInvalidator.InvalidateAsync(userId, ct);
+        await userInfoRefresher.RefreshAsync(userId, ct);
 
         // GDPR audit — right-of-access reads from the audit log. Like the scheduled
         // path, the description must not name the human: the audit log survives
@@ -184,7 +185,7 @@ internal sealed class AccountDeletionService(
         // The UserInfo entry first: contributors are registered against the inner
         // UserService, so nothing behind the caching decorator has seen these writes
         // and admin search would keep matching the erased human by their real name.
-        await userInfoInvalidator.InvalidateAsync(userId, ct);
+        await userInfoRefresher.RefreshAsync(userId, ct);
 
         return summary;
     }
@@ -219,7 +220,7 @@ internal sealed class AccountDeletionService(
             // inner UserService, and the callers only invalidate the survivor. A stale entry
             // would keep the merge tombstone's name searchable after it was erased.
             if (subjectId != userId)
-                await userInfoInvalidator.InvalidateAsync(subjectId, ct);
+                await userInfoRefresher.RefreshAsync(subjectId, ct);
         }
     }
 

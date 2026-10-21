@@ -81,7 +81,7 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 | `/Google/Sync` | GET | TeamsAdmin, Board, Admin | Resource sync status dashboard |
 | `/Google/Resource/{id}` | GET | Board, Admin | Sync history for one resource |
 | `/Google/Human/{id}` | GET | HumanAdmin, Board, Admin | Sync history for one human |
-| `/Google/Sync/Preview/{resourceType}` | GET | TeamsAdmin, Board, Admin | AJAX: drift preview for resource type |
+| `/Google/Sync/Preview/{resourceType}` | POST | TeamsAdmin, Board, Admin | AJAX: drift preview for resource type |
 | `/Google/Sync/Execute/{resourceId}` | POST | Admin | Execute sync for one resource |
 | `/Google/Sync/ExecuteAll/{resourceType}` | POST | Admin | Execute sync for all resources of a type |
 | `/Google/SyncOutbox` | GET | Admin | Recent outbox events with user/team/resource display |
@@ -242,7 +242,7 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 - `ISyncSettingsRepository`, `IGoogleSyncOutboxRepository`, `IGoogleSyncLogRepository`, `IGoogleResourceRepository`, `IWorkspaceIdentityRepository` (all `internal`, in `src/Sections/Humans.GoogleIntegration/Data/`) are the only code paths that touch this section's tables via `DbContext`. They are unreachable from outside the section assembly, which is what retired the old `check-google-resource-ownership.sh` grep guard.
 - **Decorator decision** — no caching decorator. All Google Integration services are either request-scoped admin operations or background-job processors; no hot bulk-read path warrants a `ConcurrentDictionary` projection.
 - **Cross-domain navs** — none remain. `SyncServiceSettings.UpdatedByUserId`, `GoogleResource.TeamId`, and `GoogleSyncOutboxEvent.TeamId`/`UserId` are all bare Guid columns with no nav and no FK constraint. Team deletion is guarded instead by a pre-check in `TeamService.PermanentlyDeleteTeamAsync`.
-- **Cross-section calls** — `ITeamService`, `ITeamWrite`, `IUserService`, `IUserEmailService`, `IEmailService`, `ILegacyGoogleSyncAuditReader`, `IAuditLogService` (write path — `GoogleController` logs requeue/link/remediate actions; `IAuditLogRepository` itself is `internal` to the AuditLog section and not reachable cross-section).
+- **Cross-section calls** — `ITeamService`, `ITeamWrite`, `IUserService`, `IUserEmailService`, `IEmailService`, `ILegacyGoogleSyncAuditReader`, `IAuditLogService` (write path — `IGoogleSyncManagement` logs outbox requeue and per-human rerun, `GoogleController` logs link/remediate actions; `IAuditLogRepository` itself is `internal` to the AuditLog section and not reachable cross-section).
 - **Architecture tests** (`tests/Humans.GoogleIntegration.Tests/Architecture/`) — `GoogleWorkspaceSyncBridgeArchitectureTests.cs` sweeps every type in `Humans.GoogleIntegration.Services` for Google SDK types in its signatures and pins the four sync bridge interfaces' namespace and shape-neutrality; `GoogleWorkspaceUserArchitectureTests.cs` pins `IWorkspaceUserDirectoryClient`; `TeamResourceArchitectureTests.cs` pins `ITeamResourceGoogleClient`.
 
 ### `<vc:google-sync-log>` — the sync-log render path

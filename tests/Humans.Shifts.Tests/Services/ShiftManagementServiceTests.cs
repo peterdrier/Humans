@@ -72,7 +72,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             new ShiftViewProbe().Cache,
             NewCalendarResolver(),
             Clock,
-            EarlyEntryInvalidator, Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
     }
 
     private static TeamInfo ToTeamInfo(Team team) =>
@@ -125,7 +125,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         var service = new ShiftManagementService(
             repo, AuditLog, AdminAuthorization, new ServiceLocatorBuilder().With(_teamService).Build(),
             cache, views.Cache, NewCalendarResolver(), Clock,
-            Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
         Func<Task> mutate = () => create
             ? service.CreateRotaAsync(rota, [Guid.NewGuid()])
             : service.UpdateRotaAsync(new UpdateRotaInput(
@@ -142,24 +142,22 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task DeleteEvent_EvictsEarlyEntryAfterDeleteCompletion(bool saveFails)
+    public async Task DeleteEvent_EvictsCachesAfterDeleteCompletion(bool saveFails)
     {
         var eventId = Guid.NewGuid();
         var repo = Substitute.For<IShiftManagementRepository>();
         var pending = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
         repo.DeleteEventCascadeAsync(eventId, Arg.Any<CancellationToken>()).Returns(pending.Task);
-        var ee = Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>();
         var views = new ShiftViewProbe();
         await views.PrimeUserAsync(Guid.NewGuid());
         await views.PrimeRotaAsync(Guid.NewGuid());
         using var cache = new MemoryCache(new MemoryCacheOptions());
         cache.Set(ShiftManagementService.OverviewCacheKey(eventId, null), new object());
         var service = new ShiftManagementService(repo, AuditLog, AdminAuthorization,
-            new ServiceLocatorBuilder().Build(), cache, views.Cache, NewCalendarResolver(), Clock, ee, Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+            new ServiceLocatorBuilder().Build(), cache, views.Cache, NewCalendarResolver(), Clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
         var failure = new IOException("Delete completion is uncertain");
 
         var deletion = service.DeleteEventAsync(eventId, Xunit.TestContext.Current.CancellationToken);
-        ee.DidNotReceive().InvalidateAll();
         views.Evictions.Should().Be(0);
         cache.TryGetValue(ShiftManagementService.OverviewCacheKey(eventId, null), out _).Should().BeTrue();
         if (saveFails) pending.SetException(failure);
@@ -170,7 +168,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         catch (Exception ex) { error = ex; }
         if (saveFails) error.Should().BeSameAs(failure);
         else { error.Should().BeNull(); (await deletion).Should().Be(1); }
-        ee.Received(1).InvalidateAll();
         views.Cache.UserCacheStats.BulkInvalidations.Should().Be(1);
         views.Cache.RotaCacheStats.BulkInvalidations.Should().Be(1);
         cache.TryGetValue(ShiftManagementService.OverviewCacheKey(eventId, null), out _).Should().BeFalse();
@@ -203,7 +200,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             new ShiftViewProbe().Cache,
             NewCalendarResolver(),
             Clock,
-            Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         var deleted = await service.DeleteEventAsync(eventId, Xunit.TestContext.Current.CancellationToken);
 
@@ -347,7 +344,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         updated.MaxVolunteers.Should().Be(6);
         updated.AdminOnly.Should().BeTrue();
         updated.UpdatedAt.Should().Be(TestNow);
-        EarlyEntryInvalidator.Received(1).InvalidateAll();
     }
 
     [HumansFact]
@@ -557,7 +553,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             new ServiceLocatorBuilder().With(_teamService).Build(), Cache,
             new ShiftViewProbe().Cache,
             new EventCalendarResolver(Substitute.For<Humans.Settings.Contracts.ISettingsService>()), Clock,
-            EarlyEntryInvalidator, Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         var found = await service.GetShiftByIdAsync(shift.Id, Xunit.TestContext.Current.CancellationToken);
 
@@ -1405,7 +1401,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         result.Succeeded.Should().BeTrue();
         result.Message.Should().Be("Rota 'Test Rota' moved to Target Department.");
         result.RedirectSlug.Should().Be("target-dept");
-        EarlyEntryInvalidator.Received(1).InvalidateAll();
 
         // Assert: audit entry written with action=RotaMovedToTeam, related team=target.
         await AuditLog.Received(1).LogAsync(
@@ -1475,5 +1470,5 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             Cache,
             new ShiftViewProbe().Cache,
             NewCalendarResolver(),
-            Clock, Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+            Clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 }

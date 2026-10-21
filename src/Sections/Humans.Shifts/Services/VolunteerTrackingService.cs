@@ -3,6 +3,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Shifts.Domain;
 using Humans.Settings.Contracts;
 using NodaTime;
+using NodaTime.Text;
 using Humans.Shifts.Data;
 using Humans.Shifts.Services.Dtos;
 using Humans.Tickets.Contracts;
@@ -53,7 +54,7 @@ internal sealed class VolunteerTrackingService(
 
     public async Task<bool> SetDayAvailabilityAsync(
         Guid userId, Guid eventSettingsId, int dayOffset, bool available,
-        CancellationToken ct = default)
+        Guid coordinatorUserId, CancellationToken ct = default)
     {
         if (available)
         {
@@ -78,6 +79,13 @@ internal sealed class VolunteerTrackingService(
 
         offsets.Sort();
         await trackingRepo.UpsertAvailabilityAsync(userId, eventSettingsId, offsets, clock.GetCurrentInstant(), ct).ConfigureAwait(false);
+        await (available
+            ? audit.LogAsync(
+                AuditAction.VolunteerAvailabilitySet, nameof(GeneralAvailability), userId,
+                $"DayOffset={dayOffset}; marked available by coordinator", coordinatorUserId)
+            : audit.LogAsync(
+                AuditAction.VolunteerAvailabilityCleared, nameof(GeneralAvailability), userId,
+                $"DayOffset={dayOffset}; availability cleared by coordinator", coordinatorUserId)).ConfigureAwait(false);
         viewInvalidator.InvalidateUser(userId);
         return true;
     }
@@ -353,6 +361,25 @@ internal sealed class VolunteerTrackingService(
             setupOffsetThreshold: setupOffset,
             ct).ConfigureAwait(false);
 
+        await audit.LogAsync(
+            AuditAction.VolunteerCampSetupSet,
+            nameof(VolunteerBuildStatus),
+            targetUserId,
+            $"BarrioSetupStartDate set to {LocalDatePattern.Iso.Format(barrioSetupStartDate)}; notes={notes ?? "—"}",
+            coordinatorUserId).ConfigureAwait(false);
+
+        if (trimmed is { Count: > 0 })
+        {
+            // Fresh DbContext per call → safe to fan out concurrently.
+            await Task.WhenAll(trimmed.Select(dayOffset =>
+                audit.LogAsync(
+                    AuditAction.VolunteerDayOffCleared,
+                    nameof(VolunteerBuildStatus),
+                    targetUserId,
+                    $"DayOffset={dayOffset}; auto-cleared by camp-setup change",
+                    coordinatorUserId))).ConfigureAwait(false);
+        }
+
         viewInvalidator.InvalidateUser(targetUserId);
         return new SetCampSetupResult(true, null, trimmed);
     }
@@ -370,6 +397,12 @@ internal sealed class VolunteerTrackingService(
             setAt: null,
             setupOffsetThreshold: null,
             ct).ConfigureAwait(false);
+        await audit.LogAsync(
+            AuditAction.VolunteerCampSetupCleared,
+            nameof(VolunteerBuildStatus),
+            targetUserId,
+            "BarrioSetupStartDate cleared",
+            coordinatorUserId).ConfigureAwait(false);
         viewInvalidator.InvalidateUser(targetUserId);
     }
 
@@ -405,6 +438,12 @@ internal sealed class VolunteerTrackingService(
             MarkedAt: clock.GetCurrentInstant());
 
         await trackingRepo.UpsertDayOffAsync(targetUserId, es.Id, entry, ct).ConfigureAwait(false);
+        await audit.LogAsync(
+            AuditAction.VolunteerDayOffMarked,
+            nameof(VolunteerBuildStatus),
+            targetUserId,
+            $"DayOffset={dayOffset}; reason={(string.IsNullOrWhiteSpace(reason) ? "—" : reason)}",
+            coordinatorUserId).ConfigureAwait(false);
         viewInvalidator.InvalidateUser(targetUserId);
         return new SetDayOffResult(true, null);
     }
@@ -418,7 +457,15 @@ internal sealed class VolunteerTrackingService(
             .RemoveDayOffAsync(targetUserId, es.Id, dayOffset, ct)
             .ConfigureAwait(false);
         if (removed)
+        {
+            await audit.LogAsync(
+                AuditAction.VolunteerDayOffCleared,
+                nameof(VolunteerBuildStatus),
+                targetUserId,
+                $"DayOffset={dayOffset}; cleared by coordinator",
+                coordinatorUserId).ConfigureAwait(false);
             viewInvalidator.InvalidateUser(targetUserId);
+        }
         return new ClearDayOffResult(removed);
     }
 

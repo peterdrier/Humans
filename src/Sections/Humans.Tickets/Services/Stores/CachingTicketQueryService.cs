@@ -1,6 +1,9 @@
 using Humans.Base.Caching;
 using Humans.Base.Interfaces.Caching;
+using Humans.Gdpr.Contracts;
 using Humans.Tickets.Contracts;
+using Humans.Tickets.Domain;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NodaTime;
@@ -12,7 +15,16 @@ namespace Humans.Tickets.Services.Stores;
 /// Singleton caching decorator for Tickets. Internally it keeps two tracked
 /// slices: orders keyed by order id, and user holdings keyed by user id.
 /// </summary>
-internal sealed class CachingTicketQueryService : ITicketManagement, ITicketCacheInvalidator, IHostedService
+/// <remarks>
+/// The cached rows are written by the sync, transfer, contact-import and GDPR
+/// erasure paths and by the account-merge fold, so the decorator fronts each of
+/// those interfaces too: a write delegates to its keyed inner and evicts in a
+/// <c>finally</c>, the original failure still reaching the caller. Nothing outside
+/// this class evicts the slices.
+/// </remarks>
+internal sealed class CachingTicketQueryService
+    : ITicketManagement, ITicketSyncService, ITicketTransferService, IAttendeeContactImportService,
+        IUserDataContributor, IUserMerge, IHostedService
 {
     public const string InnerServiceKey = "ticket-query-inner";
 
@@ -119,34 +131,102 @@ internal sealed class CachingTicketQueryService : ITicketManagement, ITicketCach
     public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetOrderDriftAsync(ct));
 
-    public void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId)
-    {
-        _orders.Clear();
-        _userHoldings.Invalidate(senderUserId);
-        if (receiverUserId is { } receiver)
-        {
-            _userHoldings.Invalidate(receiver);
-        }
-    }
+    // ── IUserDataContributor: GDPR export + erasure ─────────────────────────
 
-    public void InvalidateAfterContactImport()
-    {
-        _orders.Clear();
-        _userHoldings.Clear();
-    }
+    // Static table: the erasure-coverage architecture test reads it from an
+    // uninitialized instance.
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => TicketQueryService.Erasure;
 
-    public void InvalidateAll()
-    {
-        _orders.Clear();
-        _userHoldings.Clear();
-    }
+    public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
+        WithInnerAsync(inner => inner.ContributeForUserAsync(userId, ct));
 
-    public void InvalidateAfterUserMerge(Guid sourceUserId, Guid targetUserId)
-    {
-        _orders.Clear();
-        _userHoldings.Invalidate(sourceUserId);
-        _userHoldings.Invalidate(targetUserId);
-    }
+    // The order projection is warmed with no TTL and carries the buyer/attendee names
+    // and emails just tombstoned; without this the erased identity keeps being served.
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
+        MutateAsync<ITicketManagement>(inner => inner.EraseForUserAsync(userId, ct), ClearAll);
+
+    // ── ITicketSyncService + IUserMerge ─────────────────────────────────────
+
+    // A later sync stage can fail after orders/attendees have committed.
+    public Task<TicketSyncResult> SyncOrdersAndAttendeesAsync(CancellationToken ct = default) =>
+        MutateAsync<ITicketSyncService, TicketSyncResult>(inner => inner.SyncOrdersAndAttendeesAsync(ct), ClearAll);
+
+    public Task<bool> IsInErrorStateAsync(CancellationToken ct = default) =>
+        WithInnerAsync<ITicketSyncService, bool>(inner => inner.IsInErrorStateAsync(ct));
+
+    public Task ResetSyncStateForFullResyncAsync() =>
+        WithInnerAsync<ITicketSyncService>(inner => inner.ResetSyncStateForFullResyncAsync());
+
+    // Both users' holdings move with the fold; without the per-user eviction a merged
+    // user's tickets card lags up to the holdings TTL behind it.
+    public Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>
+        MutateAsync<ITicketSyncService>(
+            inner => inner.ReassignAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct),
+            () =>
+            {
+                _orders.Clear();
+                _userHoldings.Invalidate(mergedFromUserId);
+                _userHoldings.Invalidate(mergedToUserId);
+            });
+
+    // ── ITicketTransferService ──────────────────────────────────────────────
+
+    // Pendency is stamped into holdings ("transfer pending") and decisions change the
+    // order projection's TransferredToName/TransferredAt, so every transfer mutation evicts.
+    public Task<TicketTransferMutationResult> CreateRequestAsync(
+        TicketTransferRequestDto dto, Guid senderUserId, CancellationToken ct = default) =>
+        MutateTransferAsync(inner => inner.CreateRequestAsync(dto, senderUserId, ct));
+
+    public Task<TicketTransferMutationResult> CancelAsync(Guid transferRequestId, Guid senderUserId, CancellationToken ct = default) =>
+        MutateTransferAsync(inner => inner.CancelAsync(transferRequestId, senderUserId, ct));
+
+    public Task<TicketTransferMutationResult> ApproveAsync(
+        Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default) =>
+        MutateTransferAsync(inner => inner.ApproveAsync(transferRequestId, adminUserId, adminNotes, ct));
+
+    public Task<TicketTransferMutationResult> ProcessTransferAsync(
+        Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default) =>
+        MutateTransferAsync(inner => inner.ProcessTransferAsync(transferRequestId, adminUserId, adminNotes, ct));
+
+    public Task<TicketTransferMutationResult> RetryReissueAsync(
+        Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default) =>
+        MutateTransferAsync(inner => inner.RetryReissueAsync(transferRequestId, adminUserId, adminNotes, ct));
+
+    public Task<TicketTransferMutationResult> RejectAsync(
+        Guid transferRequestId, Guid adminUserId, string reason, CancellationToken ct = default) =>
+        MutateTransferAsync(inner => inner.RejectAsync(transferRequestId, adminUserId, reason, ct));
+
+    public Task<IReadOnlyList<MyAttendeeRowDto>> GetMyAttendeesAsync(Guid userId, CancellationToken ct = default) =>
+        WithInnerAsync<ITicketTransferService, IReadOnlyList<MyAttendeeRowDto>>(inner => inner.GetMyAttendeesAsync(userId, ct));
+
+    public Task<TicketTransferConfirmDto?> GetConfirmationAsync(
+        Guid attendeeId, Guid receiverUserId, Guid senderUserId, CancellationToken ct = default) =>
+        WithInnerAsync<ITicketTransferService, TicketTransferConfirmDto?>(
+            inner => inner.GetConfirmationAsync(attendeeId, receiverUserId, senderUserId, ct));
+
+    public Task<IReadOnlyList<TicketTransferRowDto>> GetByStatusAsync(
+        TicketTransferStatus status, CancellationToken ct = default) =>
+        WithInnerAsync<ITicketTransferService, IReadOnlyList<TicketTransferRowDto>>(inner => inner.GetByStatusAsync(status, ct));
+
+    public Task<IReadOnlyList<TicketTransferRowDto>> GetBySenderAsync(Guid userId, CancellationToken ct = default) =>
+        WithInnerAsync<ITicketTransferService, IReadOnlyList<TicketTransferRowDto>>(inner => inner.GetBySenderAsync(userId, ct));
+
+    public Task<TicketTransferDetailDto?> GetDetailAsync(Guid transferRequestId, CancellationToken ct = default) =>
+        WithInnerAsync<ITicketTransferService, TicketTransferDetailDto?>(inner => inner.GetDetailAsync(transferRequestId, ct));
+
+    public Task<int> CountPendingAsync(CancellationToken ct = default) =>
+        WithInnerAsync<ITicketTransferService, int>(inner => inner.CountPendingAsync(ct));
+
+    // ── IAttendeeContactImportService ───────────────────────────────────────
+
+    public Task<AttendeeImportPlan> BuildPlanAsync(CancellationToken ct = default) =>
+        WithInnerAsync<IAttendeeContactImportService, AttendeeImportPlan>(inner => inner.BuildPlanAsync(ct));
+
+    // Matches land on attendee rows across many users, so both slices clear.
+    public Task<AttendeeImportResult> ApplyAsync(
+        AttendeeImportPlan plan, IReadOnlySet<Guid> selectedAttendeeIds, Guid actorUserId, CancellationToken ct = default) =>
+        MutateAsync<IAttendeeContactImportService, AttendeeImportResult>(
+            inner => inner.ApplyAsync(plan, selectedAttendeeIds, actorUserId, ct), ClearAll);
 
     async Task IHostedService.StartAsync(CancellationToken ct)
     {
@@ -156,10 +236,57 @@ internal sealed class CachingTicketQueryService : ITicketManagement, ITicketCach
 
     Task IHostedService.StopAsync(CancellationToken ct) => Task.CompletedTask;
 
-    private async Task<TResult> WithInnerAsync<TResult>(Func<ITicketManagement, Task<TResult>> action)
+    // ── Inner-service plumbing ──────────────────────────────────────────────
+
+    private void ClearAll()
+    {
+        _orders.Clear();
+        _userHoldings.Clear();
+    }
+
+    private Task<TicketTransferMutationResult> MutateTransferAsync(
+        Func<ITicketTransferService, Task<TicketTransferMutationResult>> work) =>
+        MutateAsync<ITicketTransferService, TicketTransferMutationResult>(work, ClearAll);
+
+    private Task MutateAsync<TInner>(Func<TInner, Task> work, Action evict) where TInner : notnull =>
+        MutateAsync<TInner, bool>(async inner =>
+        {
+            await work(inner);
+            return true;
+        }, evict);
+
+    // A repository write can commit before a later step fails, so eviction runs in a
+    // finally and the original failure still reaches the caller.
+    private async Task<TResult> MutateAsync<TInner, TResult>(Func<TInner, Task<TResult>> work, Action evict)
+        where TInner : notnull
+    {
+        try
+        {
+            return await WithInnerAsync<TInner, TResult>(work);
+        }
+        finally
+        {
+            evict();
+        }
+    }
+
+    private Task<TResult> WithInnerAsync<TResult>(Func<ITicketManagement, Task<TResult>> action) =>
+        WithInnerAsync<ITicketManagement, TResult>(action);
+
+    private Task WithInnerAsync<TInner>(Func<TInner, Task> action) where TInner : notnull =>
+        WithInnerAsync<TInner, bool>(async inner =>
+        {
+            await action(inner);
+            return true;
+        });
+
+    // Every inner (query, sync, transfer, contact import) is keyed under the same
+    // InnerServiceKey on its own interface; the unkeyed interface resolves to this decorator.
+    private async Task<TResult> WithInnerAsync<TInner, TResult>(Func<TInner, Task<TResult>> action)
+        where TInner : notnull
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<ITicketManagement>(InnerServiceKey);
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<TInner>(InnerServiceKey);
         return await action(inner);
     }
 

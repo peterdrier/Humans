@@ -117,10 +117,10 @@ public sealed class RequestScopedCancellationOnExternalWriteAnalyzer : Diagnosti
         INamedTypeSymbol? grandfatheredAttribute)
     {
         var op = (IInvocationOperation)context.Operation;
-        if (!IsExternalWrite(op.TargetMethod, externalWriteAttribute))
+        if (!ExternalWriteCheck.IsExternalWrite(op.TargetMethod, externalWriteAttribute))
             return;
 
-        var action = EnclosingMethod(context.ContainingSymbol);
+        var action = context.ContainingSymbol.EnclosingOrdinaryMethod();
         if (action is null || !IsStateChangingAction(action))
             return;
 
@@ -139,61 +139,6 @@ public sealed class RequestScopedCancellationOnExternalWriteAnalyzer : Diagnosti
                 messageArgs: [action.Name, op.TargetMethod.Name]));
             return;
         }
-    }
-
-    /// <summary>
-    /// True when the invoked method — or, for a call made through a concrete
-    /// class, an interface member it implements — carries <c>[ExternalWrite]</c>.
-    /// </summary>
-    private static bool IsExternalWrite(IMethodSymbol method, INamedTypeSymbol attribute)
-    {
-        if (HasAttribute(method, attribute))
-            return true;
-
-        foreach (var iface in method.ContainingType.AllInterfaces)
-        {
-            foreach (var member in iface.GetMembers(method.Name))
-            {
-                if (member is not IMethodSymbol ifaceMethod)
-                    continue;
-
-                var impl = method.ContainingType.FindImplementationForInterfaceMember(ifaceMethod);
-                if (SymbolEqualityComparer.Default.Equals(impl, method) &&
-                    HasAttribute(ifaceMethod, attribute))
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private static bool HasAttribute(ISymbol symbol, INamedTypeSymbol attribute)
-    {
-        foreach (var attr in symbol.GetAttributes())
-        {
-            if (SymbolEqualityComparer.Default.Equals(attr.AttributeClass, attribute))
-                return true;
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    /// The ordinary method containing the operation. Walks out of lambdas and
-    /// local functions so a call inside <c>await Task.Run(() =&gt; …)</c> is still
-    /// attributed to the action.
-    /// </summary>
-    private static IMethodSymbol? EnclosingMethod(ISymbol? symbol)
-    {
-        for (var current = symbol; current is not null; current = current.ContainingSymbol)
-        {
-            if (current is IMethodSymbol { MethodKind: MethodKind.Ordinary } method)
-                return method;
-        }
-
-        return null;
     }
 
     private static bool IsStateChangingAction(IMethodSymbol method)

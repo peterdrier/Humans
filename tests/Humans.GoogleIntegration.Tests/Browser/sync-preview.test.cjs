@@ -63,6 +63,8 @@ test('drive and group previews update independently', async () => {
     ui.load('DriveFolder'); ui.load('Group');
     assert.equal(ui.requests[0].url, '/Google/Sync/Preview/0');
     assert.equal(ui.requests[1].url, '/Google/Sync/Preview/2');
+    assert.equal(ui.requests[0].options.method, 'POST');
+    assert.equal(ui.requests[0].options.headers.RequestVerificationToken, 'token');
     ui.reply(1, 'groups'); ui.reply(0, 'drives'); await flush();
     assert.equal(ui.panes.DriveFolder.innerHTML, 'drives');
     assert.equal(ui.panes.Group.innerHTML, 'groups');

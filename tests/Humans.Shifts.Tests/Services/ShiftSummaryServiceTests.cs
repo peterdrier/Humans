@@ -138,7 +138,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
             new ShiftViewProbe().Cache,
             NewCalendarResolver(),
             Clock,
-            Substitute.For<Humans.EarlyEntry.Contracts.IEarlyEntryInvalidator>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
     }
 
     [HumansFact]
@@ -156,7 +156,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
         var service = new ShiftManagementService(
             repo, AuditLog, AdminAuthorization, services, Cache,
             new ShiftViewProbe().Cache, NewCalendarResolver(), Clock,
-            EarlyEntryInvalidator, Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         var summary = await service.BuildSummaryAsync(_burn, "power", _rPower, cancellation.Token);
 
