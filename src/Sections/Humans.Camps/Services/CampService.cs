@@ -1,7 +1,5 @@
-using System.Text;
 using System.Globalization;
 using System.Resources;
-using Humans.Base.Extensions;
 using System.Transactions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces.Caching;

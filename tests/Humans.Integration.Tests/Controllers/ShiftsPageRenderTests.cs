@@ -189,7 +189,7 @@ public class ShiftsPageRenderTests(HumansTestDatabase database) : IntegrationTes
         token.Should().NotBeNullOrEmpty();
         await Client.PostAsync("/Language/SetLanguage", new FormUrlEncodedContent(
             [
-                new KeyValuePair<string, string>("__RequestVerificationToken", token!),
+                new KeyValuePair<string, string>("__RequestVerificationToken", token),
                 new KeyValuePair<string, string>("culture", "es"),
             ]), ct);
 
@@ -298,7 +298,7 @@ public class ShiftsPageRenderTests(HumansTestDatabase database) : IntegrationTes
         root.Should().NotBeNull("the test must be able to find the repo root to scan sources");
 
         var stale = Directory
-            .EnumerateFiles(Path.Combine(root!.FullName, "src"), "*.*", SearchOption.AllDirectories)
+            .EnumerateFiles(Path.Combine(root.FullName, "src"), "*.*", SearchOption.AllDirectories)
             .Where(f => f.EndsWith(".cshtml", StringComparison.OrdinalIgnoreCase)
                         || f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
             .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)

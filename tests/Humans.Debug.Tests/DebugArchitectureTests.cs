@@ -39,7 +39,7 @@ public class DebugArchitectureTests
         {
             var authorize = controller.GetCustomAttribute<AuthorizeAttribute>();
             authorize.Should().NotBeNull(because: $"{controller.Name} is admin-only");
-            authorize!.Policy.Should().Be(PolicyNames.AdminOnly, because: $"{controller.Name} is admin-only");
+            authorize.Policy.Should().Be(PolicyNames.AdminOnly, because: $"{controller.Name} is admin-only");
         }
 
         var anonymousActions = adminControllers

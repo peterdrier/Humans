@@ -52,8 +52,8 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
         var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         var serviceProvider = new ServiceLocatorBuilder()
             .With(teamService)
-            .With<ITeamService>(teamService)
-            .With<IRoleAssignmentService>(roleAssignmentService)
+            .With(teamService)
+            .With(roleAssignmentService)
             .With(_users)
             .Build();
 
@@ -68,7 +68,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
             Substitute.For<IShiftViewInvalidator>(),
             NewCalendarResolver(),
             Clock,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+            NullLogger<ShiftManagementService>.Instance);
 
         _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();

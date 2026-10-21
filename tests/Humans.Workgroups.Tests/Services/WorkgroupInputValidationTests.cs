@@ -152,7 +152,7 @@ public sealed class WorkgroupInputValidationTests : WorkgroupsTestHarness
 
         var refusal = (await act()).Refusal;
         refusal.Should().NotBeNull();
-        refusal!.Key.Should().Be(WorkgroupErrorKeys.TextTooLong);
+        refusal.Key.Should().Be(WorkgroupErrorKeys.TextTooLong);
         refusal.Args.Should().Equal(16000);
         await using var ctx = OpenContext();
         var entries = await ctx.LogEntries.Where(e => e.WorkgroupId == group.Id).ToListAsync(Ct);
@@ -180,7 +180,7 @@ public sealed class WorkgroupInputValidationTests : WorkgroupsTestHarness
 
         var refusal = (await act()).Refusal;
         refusal.Should().NotBeNull();
-        refusal!.Key.Should().Be(WorkgroupErrorKeys.TextTooLong);
+        refusal.Key.Should().Be(WorkgroupErrorKeys.TextTooLong);
         refusal.Args.Should().Equal(4000);
         await using var ctx = OpenContext();
         var stored = await ctx.Workgroups.SingleAsync(w => w.Id == group.Id, Ct);
@@ -298,7 +298,7 @@ public sealed class WorkgroupInputValidationTests : WorkgroupsTestHarness
 
         var refusal = (await act()).Refusal;
         refusal.Should().NotBeNull();
-        refusal!.Key.Should().Be(WorkgroupErrorKeys.TextTooLong);
+        refusal.Key.Should().Be(WorkgroupErrorKeys.TextTooLong);
         refusal.Args.Should().Equal(2000);
         await using var ctx = OpenContext();
         var meetings = await ctx.Meetings.Where(m => m.WorkgroupId == group.Id).ToListAsync(Ct);

@@ -4,7 +4,6 @@ using System.Globalization;
 using System.Security.Claims;
 using Humans.Base.Constants;
 using Humans.Base.Extensions;
-using Humans.Teams.Domain;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.Extensions.DependencyInjection;
@@ -64,7 +63,7 @@ public class TeamControllerPageContentTests
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
 
-        var result = await controller.Roster("Important", "Open", "Event", Xunit.TestContext.Current.CancellationToken);
+        var result = await controller.Roster("Important", "Open", "Event", TestContext.Current.CancellationToken);
 
         var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<RosterSummaryViewModel>().Which;
         model.Slots.Select(slot => (slot.TeamName, slot.RoleName, slot.SlotNumber)).Should().Equal(
@@ -76,18 +75,18 @@ public class TeamControllerPageContentTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("create", false, false)]
-    [Xunit.InlineData("edit", false, false)]
-    [Xunit.InlineData("delete", false, false)]
-    [Xunit.InlineData("create", true, false)]
-    [Xunit.InlineData("edit", true, false)]
-    [Xunit.InlineData("edit-database", true, false)]
-    [Xunit.InlineData("edit-dependency", true, false)]
-    [Xunit.InlineData("edit-slug", false, false)]
-    [Xunit.InlineData("edit-custom", false, false)]
-    [Xunit.InlineData("edit-group", false, false)]
-    [Xunit.InlineData("delete", true, false)]
-    [Xunit.InlineData("delete", false, true)]
+    [InlineData("create", false, false)]
+    [InlineData("edit", false, false)]
+    [InlineData("delete", false, false)]
+    [InlineData("create", true, false)]
+    [InlineData("edit", true, false)]
+    [InlineData("edit-database", true, false)]
+    [InlineData("edit-dependency", true, false)]
+    [InlineData("edit-slug", false, false)]
+    [InlineData("edit-custom", false, false)]
+    [InlineData("edit-group", false, false)]
+    [InlineData("delete", true, false)]
+    [InlineData("delete", false, true)]
     public async Task TeamMutation_RejectionsKeepReasonWithoutStack_AndUnexpectedHandling(
         string action, bool unexpected, bool actorMissing)
     {
@@ -154,7 +153,7 @@ public class TeamControllerPageContentTests
         if (actorMissing)
         {
             (await controller.DeleteTeam(teamId)).Should().BeOfType<UnauthorizedResult>();
-            await teams.DidNotReceiveWithAnyArgs().DeleteTeamAsync(default, default, default);
+            await teams.DidNotReceiveWithAnyArgs().DeleteTeamAsync(default, default);
             return;
         }
 
@@ -340,12 +339,12 @@ public class TeamControllerPageContentTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("birthdays", "viewer")]
-    [Xunit.InlineData("my", "viewer")]
-    [Xunit.InlineData("my", "requests")]
-    [Xunit.InlineData("join", "viewer")]
-    [Xunit.InlineData("join", "team")]
-    [Xunit.InlineData("join", "pending")]
+    [InlineData("birthdays", "viewer")]
+    [InlineData("my", "viewer")]
+    [InlineData("my", "requests")]
+    [InlineData("join", "viewer")]
+    [InlineData("join", "team")]
+    [InlineData("join", "pending")]
     public async Task Member_gets_cancel_at_each_read_boundary(string action, string boundary)
     {
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
@@ -434,12 +433,12 @@ public class TeamControllerPageContentTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("Join", false)]
-    [Xunit.InlineData("Join", true)]
-    [Xunit.InlineData("Leave", false)]
-    [Xunit.InlineData("Leave", true)]
-    [Xunit.InlineData("Withdraw", false)]
-    [Xunit.InlineData("Withdraw", true)]
+    [InlineData("Join", false)]
+    [InlineData("Join", true)]
+    [InlineData("Leave", false)]
+    [InlineData("Leave", true)]
+    [InlineData("Withdraw", false)]
+    [InlineData("Withdraw", true)]
     public async Task MemberActionErrors_UseSpanishResourcesAndUnknownFailureFallback(string action, bool unknown)
     {
         var originalCulture = CultureInfo.CurrentUICulture;
@@ -515,12 +514,12 @@ public class TeamControllerPageContentTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("en")]
-    [Xunit.InlineData("es")]
-    [Xunit.InlineData("de")]
-    [Xunit.InlineData("it")]
-    [Xunit.InlineData("fr")]
-    [Xunit.InlineData("ca")]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
     public async Task Join_InvalidMessageReturnsTheFormWithoutSubmittingARequest(string culture)
     {
         using var cultureScope = new CultureScope(culture);
@@ -635,7 +634,7 @@ public class TeamControllerPageContentTests
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
 
-        var result = await controller.Details("test", Xunit.TestContext.Current.CancellationToken);
+        var result = await controller.Details("test", TestContext.Current.CancellationToken);
 
         var model = result.Should().BeOfType<ViewResult>().Subject.Model
             .Should().BeOfType<TeamDetailViewModel>().Subject;

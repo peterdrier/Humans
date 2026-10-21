@@ -46,7 +46,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
             new Lazy<Humans.CityPlanning.Contracts.ICityPlanningWrite>(() =>
                 Substitute.For<Humans.CityPlanning.Contracts.ICityPlanningWrite>()),
             Substitute.For<ICampInfoInvalidator>(),
-            Substitute.For<Humans.Users.Contracts.IUserService>(),
+            Substitute.For<IUserService>(),
             Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
             Clock, NullLogger<CampService>.Instance);
         _innerSubstitute.GetActiveYearAsync(Arg.Any<CancellationToken>())
@@ -572,7 +572,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         { nameof(ICampManagement.LeaveCampAsync), (t, c, se, ct) => t._service.LeaveCampAsync(Guid.NewGuid(), Guid.NewGuid(), ct) },
         { nameof(ICampManagement.SetEarlyEntryAsync), (t, c, se, ct) => t._service.SetEarlyEntryAsync(c, Guid.NewGuid(), true, Guid.NewGuid(), ct) },
         { nameof(ICampManagement.SetCampSeasonEeSlotCountAsync), (t, c, se, ct) => t._service.SetCampSeasonEeSlotCountAsync(se, 3, Guid.NewGuid(), ct) },
-        { nameof(IUserMerge.ReassignAsync), (t, c, se, ct) => ((IUserMerge)t._service).ReassignAsync(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Instant.FromUtc(2026, 3, 13, 12, 0), ct) },
+        { nameof(IUserMerge.ReassignAsync), (t, c, se, ct) => (t._service).ReassignAsync(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Instant.FromUtc(2026, 3, 13, 12, 0), ct) },
     };
 
     /// <summary>
@@ -666,7 +666,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         {
             started.SetResult();
             await release.Task.WaitAsync(ct);
-            return (IReadOnlyList<CampInfo>)[];
+            return [];
         });
         var warmup = _service.GetCampsForYearAsync(2026, ct);
         await started.Task.WaitAsync(ct);

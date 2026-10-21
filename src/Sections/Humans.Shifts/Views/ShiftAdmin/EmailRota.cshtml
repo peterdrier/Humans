@@ -27,7 +27,7 @@
 
                         <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
 
-                        @await Html.PartialAsync("_EmailComposer", new Humans.Base.Models.EmailComposerViewModel
+                        @await Html.PartialAsync("_EmailComposer", new EmailComposerViewModel
                         {
                             BodyName = "Message",
                             BodyValue = Model.Message,

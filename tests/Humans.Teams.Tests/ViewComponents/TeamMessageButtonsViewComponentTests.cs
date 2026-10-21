@@ -8,7 +8,6 @@ using Humans.Teams.ViewComponents;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
-using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using NodaTime;
 using NSubstitute;
@@ -67,7 +66,7 @@ public sealed class TeamMessageButtonsViewComponentTests
         var result = await Build(_viewerId).InvokeAsync(_viewerId, ProfileCardViewMode.Self);
 
         AssertEmpty(result);
-        await _options.DidNotReceiveWithAnyArgs().GetOptionsAsync(default, default);
+        await _options.DidNotReceiveWithAnyArgs().GetOptionsAsync(default);
     }
 
     [HumansFact]
@@ -78,7 +77,7 @@ public sealed class TeamMessageButtonsViewComponentTests
         var result = await Build(_viewerId).InvokeAsync(_targetId, ProfileCardViewMode.Public);
 
         AssertEmpty(result);
-        await _options.DidNotReceiveWithAnyArgs().GetOptionsAsync(default, default);
+        await _options.DidNotReceiveWithAnyArgs().GetOptionsAsync(default);
     }
 
     [HumansFact]
@@ -93,7 +92,7 @@ public sealed class TeamMessageButtonsViewComponentTests
     public async Task RendersNothing_ForAnAnonymousViewer()
     {
         AssertEmpty(await Build(null).InvokeAsync(_targetId, ProfileCardViewMode.Public));
-        await _options.DidNotReceiveWithAnyArgs().GetOptionsAsync(default, default);
+        await _options.DidNotReceiveWithAnyArgs().GetOptionsAsync(default);
     }
 
     private static void AssertEmpty(Microsoft.AspNetCore.Mvc.IViewComponentResult result) =>

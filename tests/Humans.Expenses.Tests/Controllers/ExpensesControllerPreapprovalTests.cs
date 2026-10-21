@@ -178,7 +178,7 @@ public sealed class ExpensesControllerPreapprovalTests
         var result = await controller.New(new ExpenseNewViewModel());
 
         result.Should().BeOfType<ViewResult>();
-        await _reports.DidNotReceiveWithAnyArgs().CreateDraftAsync(default, default, default, default, default, default);
+        await _reports.DidNotReceiveWithAnyArgs().CreateDraftAsync(default, default, default, default);
     }
 
     [HumansFact]

@@ -266,6 +266,8 @@ internal sealed class TicketSyncService(
             PaymentMethodDetail = existing?.PaymentMethodDetail,
             StripeFee = existing?.StripeFee,
             ApplicationFee = existing?.ApplicationFee,
+            FeeTax = existing?.FeeTax,
+            WithheldTax = existing?.WithheldTax,
             VatAmount = existing?.VatAmount ?? 0m,
         };
     }
@@ -355,6 +357,8 @@ internal sealed class TicketSyncService(
                 order.PaymentMethodDetail = details.PaymentMethodDetail;
                 order.StripeFee = details.StripeFee;
                 order.ApplicationFee = details.ApplicationFee;
+                order.FeeTax = details.FeeTax;
+                order.WithheldTax = details.WithheldTax;
                 updated.Add(order);
             }
             catch (Exception ex)

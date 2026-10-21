@@ -1,5 +1,4 @@
 using Humans.Governance.Contracts;
-using Humans.Users.Contracts;
 using System.Net;
 using AwesomeAssertions;
 using Humans.Governance.Data;
@@ -254,7 +253,7 @@ public class GovernancePageRenderTests(HumansTestDatabase database) : Integratio
         token.Should().NotBeNullOrEmpty();
         await Client.PostAsync("/Language/SetLanguage", new FormUrlEncodedContent(
             [
-                new KeyValuePair<string, string>("__RequestVerificationToken", token!),
+                new KeyValuePair<string, string>("__RequestVerificationToken", token),
                 new KeyValuePair<string, string>("culture", "es"),
             ]), ct);
 

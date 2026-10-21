@@ -5,7 +5,6 @@ using Humans.Email.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Domain;
 using Humans.Email.Services;
-using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
@@ -388,7 +387,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
 
         var row = (await RowsAsync(copied)).Single();
         (row.Category, row.OptedOut, row.InboxEnabled, row.UpdateSource, row.SubscribedAt)
-            .Should().Be((MessageCategory.Marketing, (bool?)false, false, "MailerLiteSync", (Instant?)subscribed));
+            .Should().Be((MessageCategory.Marketing, false, false, "MailerLiteSync", subscribed));
         (await RowsAsync(written)).Single().UpdateSource.Should().Be("OneClick");
     }
 

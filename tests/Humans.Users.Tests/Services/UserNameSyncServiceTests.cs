@@ -60,7 +60,7 @@ public sealed class UserNameSyncServiceTests : IDisposable
         var userId = await SeedLegacyPairAsync("Sparkle", "Ada", "Lovelace");
 
         _audit.LogAsync(AuditAction.UserNamesBackfilled, nameof(User), userId,
-            Arg.Any<string>(), _actorId, null, null).Returns(async _ =>
+            Arg.Any<string>(), _actorId).Returns(async _ =>
             {
                 var saved = await _dbContext.Users.AsNoTracking().SingleAsync(u => u.Id == userId,
                     Xunit.TestContext.Current.CancellationToken);
@@ -78,7 +78,7 @@ public sealed class UserNameSyncServiceTests : IDisposable
 
         await _audit.Received(1).LogAsync(AuditAction.UserNamesBackfilled, nameof(User), userId,
             Arg.Is<string>(description => !description.Contains("Lovelace", StringComparison.Ordinal)),
-            _actorId, null, null);
+            _actorId);
 
         // Re-running reports nothing left and moves nothing.
         (await _service.GetUnsyncedAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeEmpty();

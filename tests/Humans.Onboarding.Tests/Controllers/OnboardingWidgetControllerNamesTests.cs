@@ -148,7 +148,7 @@ public class OnboardingWidgetControllerNamesTests
         var view = Assert.IsType<ViewResult>(result);
         Assert.Equal("Burner", Assert.IsType<NamesViewModel>(view.Model).BurnerName);
         Assert.Equal("Onboarding_ProfileSaveFailed", Assert.Single(ctrl.ModelState[string.Empty]!.Errors).ErrorMessage);
-        await _onboardingService.DidNotReceiveWithAnyArgs().SetConsentCheckPendingIfEligibleAsync(default, default);
+        await _onboardingService.DidNotReceiveWithAnyArgs().SetConsentCheckPendingIfEligibleAsync(default);
     }
 
     [HumansFact]

@@ -53,8 +53,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             .Returns(call => UserInfoStubHelpers.MakeUserInfo(call.Arg<Guid>()) with { State = UserState.Active });
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
-            .With<ITeamService>(_teamService)
-            .With<IRoleAssignmentService>(_roleAssignmentService)
+            .With(_teamService)
+            .With(_roleAssignmentService)
             .With<ITicketService>()
             .With(_users)
             .With<ICampService>()
@@ -224,7 +224,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         pause.Armed = true;
         await using var firstDb = new ShiftsDbContext(options);
         await using var secondDb = new ShiftsDbContext(options);
-        var services = new ServiceLocatorBuilder().With<ITeamService>(_teamService).Build();
+        var services = new ServiceLocatorBuilder().With(_teamService).Build();
         ShiftSignupService NewService(ShiftsDbContext db) => new(
             new ShiftRepository(factory, db, Clock), new VolunteerTrackingRepository(db),
             Substitute.For<IShiftManagement>(), NewCalendarResolver(), AuditLog, Notifier,
@@ -1778,8 +1778,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         var settings = Substitute.For<Humans.Settings.Contracts.ISettingsService>();
         var serviceProvider = new ServiceLocatorBuilder()
-            .With(_teamService).With<ITeamService>(_teamService)
-            .With<IRoleAssignmentService>(_roleAssignmentService).With(_users).Build();
+            .With(_teamService).With(_teamService)
+            .With(_roleAssignmentService).With(_users).Build();
         var service = new ShiftSignupService(
             _repo, Substitute.For<IVolunteerTrackingRepository>(), _shiftMgmt, new EventCalendarResolver(settings),
             AuditLog, Notifier, AdminAuthorization, _viewInvalidator,

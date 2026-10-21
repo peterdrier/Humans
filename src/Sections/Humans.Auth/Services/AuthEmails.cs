@@ -3,7 +3,6 @@ using System.Net;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Microsoft.Extensions.Localization;
-using Microsoft.Extensions.Logging;
 
 namespace Humans.Auth.Services;
 

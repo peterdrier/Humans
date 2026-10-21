@@ -25,7 +25,7 @@ internal static class ConsentReviewStubs
                 ? review
                 : ConsentReviewInfo.None(call.Arg<Guid>()));
         service.GetConsentReviewsAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => (IReadOnlyDictionary<Guid, ConsentReviewInfo>)reviews.ToDictionary());
+            .Returns(_ => reviews.ToDictionary());
     }
 
     public static ConsentReviewInfo Approved(Guid userId) =>

@@ -75,6 +75,12 @@ internal sealed class TicketOrderConfiguration : IEntityTypeConfiguration<Ticket
         builder.Property(o => o.ApplicationFee)
             .HasPrecision(10, 2);
 
+        builder.Property(o => o.FeeTax)
+            .HasPrecision(10, 2);
+
+        builder.Property(o => o.WithheldTax)
+            .HasPrecision(10, 2);
+
         builder.Property(o => o.DiscountAmount)
             .HasPrecision(10, 2);
 

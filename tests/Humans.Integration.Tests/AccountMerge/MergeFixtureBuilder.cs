@@ -1,4 +1,3 @@
-using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Data;
 using Humans.Shifts.Domain;

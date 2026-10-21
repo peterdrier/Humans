@@ -6,7 +6,6 @@ using Humans.Tickets.Contracts;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
-using Humans.Testing;
 using Xunit;
 
 namespace Humans.MailerLite.Tests.Audiences;
@@ -26,7 +25,7 @@ public class TicketNoShiftsAudienceTests
             ticketHolders: [userA, userB, userD],
             shiftCommitted: [userB, userD]);
 
-        var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
+        var members = await audience.ComputeMemberUserIdsAsync(TestContext.Current.CancellationToken);
 
         members.Should().BeEquivalentTo([userA]);
     }
@@ -38,7 +37,7 @@ public class TicketNoShiftsAudienceTests
             ticketHolders: [],
             shiftCommitted: []);
 
-        var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
+        var members = await audience.ComputeMemberUserIdsAsync(TestContext.Current.CancellationToken);
 
         members.Should().BeEmpty();
     }
@@ -74,7 +73,7 @@ public class TicketNoShiftsAudienceTests
             shiftCommitted: [],
             summaryOverrides: new Dictionary<Guid, ShiftUserSummary> { [userA] = summary });
 
-        var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
+        var members = await audience.ComputeMemberUserIdsAsync(TestContext.Current.CancellationToken);
 
         members.Should().BeEquivalentTo([userA]);
     }

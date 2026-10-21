@@ -124,7 +124,7 @@ public sealed class TeamMessageControllerTests
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("ViewProfile");
         _controller.TempData.Should().ContainKey(Humans.Base.Constants.TempDataKeys.ErrorMessage);
-        await _teamOptions.DidNotReceiveWithAnyArgs().GetOptionsAsync(default, default);
+        await _teamOptions.DidNotReceiveWithAnyArgs().GetOptionsAsync(default);
     }
 
     [HumansFact]
@@ -134,8 +134,8 @@ public sealed class TeamMessageControllerTests
             Guid.NewGuid(), _targetId, new TeamSendMessageViewModel { Message = "Hello" }, Ct);
 
         result.Should().BeOfType<ForbidResult>();
-        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
-        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid), default, default);
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -147,8 +147,8 @@ public sealed class TeamMessageControllerTests
             _teamId, _targetId, new TeamSendMessageViewModel { Message = "Hello" }, Ct);
 
         result.Should().BeOfType<RedirectToActionResult>();
-        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
-        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid), default, default);
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -158,7 +158,7 @@ public sealed class TeamMessageControllerTests
             _teamId, _viewerId, new TeamSendMessageViewModel { Message = "Hello" }, Ct);
 
         result.Should().BeOfType<RedirectToActionResult>();
-        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
     }
 
     [HumansFact]
@@ -170,7 +170,7 @@ public sealed class TeamMessageControllerTests
 
         result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TeamSendMessageViewModel>()
             .Which.TeamReplyToEmail.Should().Be("infra@nobodies.team");
-        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
     }
 
     [HumansTheory]

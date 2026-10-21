@@ -3,7 +3,6 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base;
 using Humans.Consent.Contracts;
-using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
@@ -111,10 +110,10 @@ public class UsersAdminControllerPurgeTests
             .Returns(new Dictionary<Guid, string> { [userId] = "member@example.org" });
 
         var controller = BuildController();
-        var cleanResult = await controller.AdminList(search.Trim(), null, ct: Xunit.TestContext.Current.CancellationToken);
+        var cleanResult = await controller.AdminList(search.Trim(), null, ct: TestContext.Current.CancellationToken);
         cleanResult.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<AdminHumanListViewModel>()
             .Subject.Humans.Should().ContainSingle().Which.UserId.Should().Be(userId);
-        var result = await controller.AdminList(search, null, ct: Xunit.TestContext.Current.CancellationToken);
+        var result = await controller.AdminList(search, null, ct: TestContext.Current.CancellationToken);
 
         var model = result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<AdminHumanListViewModel>().Subject;
         model.Humans.Should().ContainSingle().Which.UserId.Should().Be(userId);

@@ -46,8 +46,8 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
 
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
-            .With<ITeamService>(_teamService)
-            .With<IRoleAssignmentService>(roleAssignmentService)
+            .With(_teamService)
+            .With(roleAssignmentService)
             .Build();
 
         var shiftRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);

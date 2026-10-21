@@ -223,7 +223,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
         token.Should().NotBeNullOrEmpty();
         await Client.PostAsync("/Language/SetLanguage", new FormUrlEncodedContent(
             [
-                new KeyValuePair<string, string>("__RequestVerificationToken", token!),
+                new KeyValuePair<string, string>("__RequestVerificationToken", token),
                 new KeyValuePair<string, string>("culture", "es"),
             ]), ct);
 
@@ -374,7 +374,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
         var leadDefinitionId = await roleSeeding.GetDefinitionIdBySlugAsync(CampSeedRoles.CampLeadSlug, ct);
         leadDefinitionId.Should().NotBeNull("the Camp Lead role definition must exist after seeding system roles");
         await seeding.AddMemberAndAssignRoleInActiveSeasonAsync(
-            camp.Id, leadDefinitionId!.Value, userId, userId, ct);
+            camp.Id, leadDefinitionId.Value, userId, userId, ct);
 
         return CampName;
     }

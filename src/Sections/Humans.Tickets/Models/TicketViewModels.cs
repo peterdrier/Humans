@@ -19,6 +19,8 @@ internal sealed class TicketDashboardViewModel
 
     public decimal TotalStripeFees { get; set; }
     public decimal TotalApplicationFees { get; set; }
+    public decimal TotalFeeTax { get; set; }
+    public decimal TotalWithheldTax { get; set; }
     public decimal NetRevenue { get; set; }
 
     public List<FeeBreakdownByMethod> FeesByPaymentMethod { get; set; } = [];

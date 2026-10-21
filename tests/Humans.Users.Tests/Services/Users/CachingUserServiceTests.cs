@@ -10,10 +10,8 @@ using Humans.Users.Contracts;
 using Humans.Users.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using Humans.AuditLog.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Tests.Infrastructure;
-using NodaTime.Testing;
 
 namespace Humans.Users.Tests.Services.Users;
 

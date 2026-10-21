@@ -5,7 +5,6 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Users.Services;
-using Humans.Base.Enums;
 using Humans.Base.Helpers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -509,7 +508,7 @@ public class AccountProvisioningServiceTests
         await act.Should().ThrowAsync<InvalidOperationException>();
         _userEmailFake.All.Should().Contain(row);
         _userEmailFake.All.Should().HaveCount(string.Equals(change, "Ambiguous", StringComparison.Ordinal) ? 2 : 1);
-        await _userEmailService.DidNotReceiveWithAnyArgs().DeleteEmailAsync(default, default, default);
+        await _userEmailService.DidNotReceiveWithAnyArgs().DeleteEmailAsync(default, default);
         await _userManager.DidNotReceiveWithAnyArgs().CreateAsync(default!);
     }
 
@@ -785,14 +784,14 @@ public class AccountProvisioningServiceTests
         var ct = Xunit.TestContext.Current.CancellationToken;
         _userEmailFake.ThrowOnAddProvisioned = !profileFailure;
         _userService.EnsureStubProfileAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>(), null)
+            Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(profileFailure
                 ? Task.FromException<bool>(new InvalidOperationException("profile save unavailable"))
                 : Task.FromResult(true));
         _userInfoRefresher.RefreshAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
             .Returns(call => { Transaction.Current.Should().BeNull(); return Task.CompletedTask; });
         _audit.LogAsync(AuditAction.ContactCreated, nameof(User), Arg.Any<Guid>(), Arg.Any<string>(),
-            nameof(AccountProvisioningService), null, null).Returns(_ =>
+            nameof(AccountProvisioningService)).Returns(_ =>
             {
                 Transaction.Current.Should().BeNull();
                 _userRepo.All.Should().ContainSingle();
@@ -810,7 +809,7 @@ public class AccountProvisioningServiceTests
         await _userInfoRefresher.Received(1).RefreshAsync(Arg.Any<Guid>(), CancellationToken.None, Arg.Any<string>(), Arg.Any<string>());
         _userEmailFake.ThrowOnAddProvisioned = false;
         _userService.EnsureStubProfileAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>(), null).Returns(true);
+            Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(true);
 
         var retry = await _service.FindOrCreateUserByEmailAsync("atomic@example.org", "Imported", ContactSource.MailerLite, ct);
 
@@ -844,7 +843,7 @@ public class AccountProvisioningServiceTests
         var attempts = 0;
         var profiles = new HashSet<Guid>();
         _userService.EnsureStubProfileAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>(), null).Returns(call =>
+            Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(call =>
             {
                 if (attempts++ == 0)
                     return Task.FromException<bool>(new InvalidOperationException("profile save unavailable"));
@@ -871,10 +870,10 @@ public class AccountProvisioningServiceTests
         await _userManager.Received(imported ? 0 : 1).CreateAsync(Arg.Any<User>());
         if (imported)
             await _audit.Received(1).LogAsync(AuditAction.StubProfileBackfilled, nameof(User), persistedUser.Id,
-                Arg.Any<string>(), nameof(AccountProvisioningService), null, null);
+                Arg.Any<string>(), nameof(AccountProvisioningService));
         else
             await _audit.Received(1).LogAsync(AuditAction.StubProfileBackfilled, nameof(User), persistedUser.Id,
-                Arg.Any<string>(), persistedUser.Id, null, null);
+                Arg.Any<string>(), persistedUser.Id);
         await ProvisionAsync();
         profiles.Should().ContainSingle();
         _audit.ReceivedCalls().Should().HaveCount(1);

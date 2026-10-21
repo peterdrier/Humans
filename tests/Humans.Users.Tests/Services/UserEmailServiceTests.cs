@@ -1415,7 +1415,7 @@ public class UserEmailServiceTests
             userId, rowBId, "token-issued-for-A", Xunit.TestContext.Current.CancellationToken);
 
         result.ErrorKey.Should().Be("Profile_InvalidVerificationLink");
-        await _userService.DidNotReceiveWithAnyArgs().UpdateUserEmailAsync(default, default, default!, default);
+        await _userService.DidNotReceiveWithAnyArgs().UpdateUserEmailAsync(default, default, default!);
         rowB.IsVerified.Should().BeFalse();
     }
 
@@ -1441,7 +1441,7 @@ public class UserEmailServiceTests
         var result = await _service.VerifyEmailAsync(userId, rowId, "any-token", Xunit.TestContext.Current.CancellationToken);
 
         result.ErrorKey.Should().Be("Profile_InvalidVerificationLink");
-        await _userService.DidNotReceiveWithAnyArgs().UpdateUserEmailAsync(default, default, default!, default);
+        await _userService.DidNotReceiveWithAnyArgs().UpdateUserEmailAsync(default, default, default!);
     }
 
     [HumansFact]
@@ -1469,7 +1469,7 @@ public class UserEmailServiceTests
         var result = await _service.VerifyEmailAsync(userId, rowId, "any-token", Xunit.TestContext.Current.CancellationToken);
 
         result.ErrorKey.Should().Be("Profile_InvalidVerificationLink");
-        await _userService.DidNotReceiveWithAnyArgs().UpdateUserEmailAsync(default, default, default!, default);
+        await _userService.DidNotReceiveWithAnyArgs().UpdateUserEmailAsync(default, default, default!);
     }
 
     [HumansTheory]

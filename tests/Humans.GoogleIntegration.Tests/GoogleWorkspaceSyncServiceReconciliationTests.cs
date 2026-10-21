@@ -38,7 +38,7 @@ namespace Humans.GoogleIntegration.Tests;
 /// speculative test infra the actual method can't exercise.
 /// </para>
 /// </summary>
-public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructure.GoogleIntegrationTestHarness
+public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleIntegrationTestHarness
 {
     private readonly StubGoogleDrivePermissionsClient _drivePermissions =
         new(NullLogger<StubGoogleDrivePermissionsClient>.Instance);
@@ -250,7 +250,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
         var teamId = Guid.NewGuid();
 
         var googleId = CreateGoogleFolder("Folder");
-        var folderResourceId = SeedDriveResource(teamId, googleId, "Folder", GoogleResourceType.DriveFolder);
+        var folderResourceId = SeedDriveResource(teamId, googleId, "Folder");
         var groupResourceId = SeedDriveResource(teamId, "group-id", "Group", GoogleResourceType.Group);
         var driveFileResourceId = SeedDriveResource(teamId, "file-id", "File", GoogleResourceType.DriveFile);
         await SaveAllAsync(ct);
@@ -387,7 +387,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : Infrastructu
         var permissions = await _drivePermissions.ListPermissionsAsync(googleId, ct);
         permissions.Permissions.Should().ContainSingle(p => p.EmailAddress == email && p.Role == "writer");
         await _removalNotifications.DidNotReceiveWithAnyArgs().NotifyRemovalAsync(
-            default!, default, default, default, default, default);
+            default!, default, default, default, default);
     }
 
     // ==========================================================================

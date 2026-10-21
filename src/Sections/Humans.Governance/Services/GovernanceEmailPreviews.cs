@@ -1,6 +1,5 @@
 using Humans.Governance.Contracts;
 using Humans.Email.Contracts;
-using Humans.Users.Contracts;
 using NodaTime;
 
 namespace Humans.Governance.Services;

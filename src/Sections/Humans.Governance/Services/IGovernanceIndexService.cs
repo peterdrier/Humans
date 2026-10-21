@@ -1,4 +1,3 @@
-using Humans.Users.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Governance.Contracts;
 using NodaTime;

@@ -18,7 +18,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
-using Humans.Users.Contracts;
 
 namespace Humans.Gate.Tests;
 
@@ -272,7 +271,7 @@ public class GateServiceTests
         StubTicket(matchedUserId: GuestId);
         StubActiveEvent();
         _users.SetParticipationFromTicketSyncAsync(
-                default, default, default, default, default)
+                default, default, default, default)
             .ThrowsAsyncForAnyArgs(new InvalidOperationException("unique index collision"));
 
         (await Record(idConfirmed: true)).Verdict.Should().Be(GateVerdict.Admitted);

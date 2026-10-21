@@ -66,7 +66,7 @@ public abstract class RideshareTestHarness : IDisposable
 
         RouteProvider = Substitute.For<IRouteProvider>();
         RouteProvider.GeocodeAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns((GeoPoint?)DefaultPoint);
+            .Returns(DefaultPoint);
         RouteProvider.GetRouteGeoJsonAsync(Arg.Any<IReadOnlyList<GeoPoint>>(), Arg.Any<CancellationToken>())
             .Returns(DefaultRouteJson);
 

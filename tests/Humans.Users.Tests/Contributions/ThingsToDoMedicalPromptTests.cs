@@ -2,7 +2,6 @@ using Humans.Users.Services;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base;
-using Humans.Base.Interfaces;
 using Humans.Cantina.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
@@ -86,7 +85,7 @@ public class ThingsToDoMedicalPromptTests
         var entries = await _sut.EntriesAsync(_services, Principal(userId));
 
         entries.Should().NotContain(e => e.Key == "medical");
-        await _cantina.DidNotReceiveWithAnyArgs().GetDietaryProfileAsync(default, default);
+        await _cantina.DidNotReceiveWithAnyArgs().GetDietaryProfileAsync(default);
     }
 
     [HumansFact]

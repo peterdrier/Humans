@@ -1,4 +1,3 @@
-using Humans.Base.Enums;
 using Humans.Base.Helpers;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Users.Contracts;
