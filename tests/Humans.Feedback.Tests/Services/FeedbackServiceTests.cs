@@ -65,6 +65,7 @@ public sealed class FeedbackServiceTests
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
     private readonly IFeedbackRepository _repository;
     private readonly FeedbackServiceImpl _service;
+    private readonly FeedbackReplyDelivery _delivery;
 
     public FeedbackServiceTests()
     {
@@ -106,9 +107,11 @@ public sealed class FeedbackServiceTests
 
         _repository = new FeedbackRepository(FeedbackDbFactory);
 
+        _delivery = new FeedbackReplyDelivery(
+            _repository, userService, userEmailService, _emailService, _emailMessages,
+            _notificationService, _auditLog, NullLogger<FeedbackReplyDelivery>.Instance);
         _service = new FeedbackServiceImpl(
-            _repository, userService, userEmailService, teamService,
-            _emailService, _emailMessages, _notificationService,
+            _repository, userService, teamService, _delivery,
             _auditLog, new NavBadgeCacheInvalidator(_cache),
             _fileStorage, _cache, Clock,
             NullLogger<FeedbackServiceImpl>.Instance);
@@ -154,8 +157,7 @@ public sealed class FeedbackServiceTests
             var brokenRepo = Substitute.For<IFeedbackRepository>();
             brokenRepo.FindForMutationAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
                 .ThrowsAsync(new InvalidOperationException("Provider not found; database unavailable"));
-            service = new FeedbackServiceImpl(brokenRepo, users, Substitute.For<IUserEmailService>(), teams,
-                _emailService, _emailMessages, _notificationService, _auditLog,
+            service = new FeedbackServiceImpl(brokenRepo, users, teams, _delivery, _auditLog,
                 new NavBadgeCacheInvalidator(_cache), _fileStorage, _cache, Clock,
                 NullLogger<FeedbackServiceImpl>.Instance);
         }
@@ -387,8 +389,8 @@ public sealed class FeedbackServiceTests
         (await FeedbackDb.FeedbackMessages.AsNoTracking().SingleAsync(ct)).EmailEnqueuePending.Should().BeTrue();
         (await FeedbackDb.FeedbackReports.AsNoTracking().SingleAsync(ct)).LastAdminMessageAt.Should().NotBeNull();
 
-        await _service.ExecuteAsync(ct);
-        await _service.ExecuteAsync(ct);
+        await _delivery.ExecuteAsync(ct);
+        await _delivery.ExecuteAsync(ct);
         var reply = await FeedbackDb.FeedbackMessages.AsNoTracking().SingleAsync(ct);
         reply.EmailEnqueuePending.Should().BeFalse();
         await _emailService.Received(2).SendAsync(
@@ -409,8 +411,8 @@ public sealed class FeedbackServiceTests
         result.Succeeded.Should().BeTrue();
         result.Message!.EmailEnqueuePending.Should().BeTrue();
         _failure.FailModified = false;
-        await _service.ExecuteAsync(ct);
-        await _service.ExecuteAsync(ct);
+        await _delivery.ExecuteAsync(ct);
+        await _delivery.ExecuteAsync(ct);
         var reply = await FeedbackDb.FeedbackMessages.AsNoTracking().SingleAsync(ct);
         reply.EmailEnqueuePending.Should().BeFalse();
         await _emailService.Received(2).SendAsync(
@@ -434,7 +436,7 @@ public sealed class FeedbackServiceTests
             CreatedAt = Clock.GetCurrentInstant()
         });
         await FeedbackDb.SaveChangesAsync(ct);
-        await _service.ExecuteAsync(ct);
+        await _delivery.ExecuteAsync(ct);
         await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
     }
 
@@ -450,7 +452,7 @@ public sealed class FeedbackServiceTests
         var report = await SeedReportAsync(userId, "Test", "/test");
         var result = await _service.PostMessageAsync(report.Id, Guid.NewGuid(), "reply", ct);
         result.Message!.EmailEnqueuePending.Should().BeFalse();
-        await _service.ExecuteAsync(ct);
+        await _delivery.ExecuteAsync(ct);
         await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
         (await FeedbackDb.FeedbackMessages.AsNoTracking().SingleAsync(ct)).EmailEnqueuePending.Should().BeFalse();
         _notificationService.ReceivedCalls().Should().BeEmpty();
@@ -472,7 +474,7 @@ public sealed class FeedbackServiceTests
         });
         var posted = _service.PostMessageAsync(report.Id, Guid.NewGuid(), "reply", ct);
         await entered.Task.WaitAsync(ct);
-        var retry = _service.ExecuteAsync(ct);
+        var retry = _delivery.ExecuteAsync(ct);
         retry.IsCompleted.Should().BeFalse();
         release.SetResult();
         await Task.WhenAll(posted, retry);
