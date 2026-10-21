@@ -840,6 +840,26 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task GetCreditorLedger_running_balance_accumulates_oldest_first_and_keeps_mirror_order()
+    {
+        var day1 = Instant.FromUtc(2026, 3, 1, 0, 0);
+        var day2 = Instant.FromUtc(2026, 3, 2, 0, 0);
+        _holded.GetLedgerLinesAsync(40000004, Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLineInfo>
+        {
+            Line(9, 1, 40000004, day2, debit: 50m),   // paid out 50
+            Line(5, 1, 40000004, day1, credit: 100m), // owed 100
+            Line(7, 1, 40000004, day2, debit: 20m),   // paid out 20
+        });
+
+        var ledger = await MakeService().GetCreditorLedgerAsync(40000004, TestContext.Current.CancellationToken);
+
+        // Chronological: +100 → 100, −20 → 80, −50 → 30; lines stay in the mirror's order.
+        ledger.Should().NotBeNull();
+        ledger.Lines.Select(l => (l.EntryNumber, l.RunningBalance)).Should().Equal((9, 30m), (5, 100m), (7, 80m));
+        ledger.OwedToMember.Should().Be(30m);
+    }
+
+    [HumansFact]
     public async Task GetCreditorLedger_returns_null_when_no_lines()
     {
         _holded.GetLedgerLinesAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
