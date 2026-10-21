@@ -1155,10 +1155,11 @@ internal sealed class CampController(
         ViewBag.IsCityPlanningTeamMember =
             await cityPlanningService.IsCityPlanningTeamMemberAsync(currentUser.Id, cancellationToken);
 
+        // Null when no event is active: placement reads as closed, with no scheduled dates.
         var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
-        ViewBag.PlacementIsOpen = settings.IsPlacementOpen;
-        ViewBag.PlacementOpensAt = settings.PlacementOpensAt;
-        ViewBag.PlacementClosesAt = settings.PlacementClosesAt;
+        ViewBag.PlacementIsOpen = settings?.IsPlacementOpen ?? false;
+        ViewBag.PlacementOpensAt = settings?.PlacementOpensAt;
+        ViewBag.PlacementClosesAt = settings?.PlacementClosesAt;
     }
 
     private static CampSeasonData MapToSeasonData(CampRegisterViewModel model)

@@ -4,6 +4,13 @@
     var settings = Model.Settings;
 }
 
+@* Admin/operator-only tab (memory/code/localization-admin-exempt.md): plain string, no resx key. *@
+@if (settings is null)
+{
+    <div class="alert alert-info">No active event. City planning takes its year from the active event — set one in the Event tab first.</div>
+    return;
+}
+
 <div class="row g-4">
     <div class="col-md-6">
         <div class="card">

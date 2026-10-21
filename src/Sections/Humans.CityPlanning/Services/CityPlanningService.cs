@@ -6,6 +6,7 @@ using Humans.Camps.Contracts;
 using Humans.CityPlanning.Data;
 using Humans.Teams.Contracts;
 using Humans.CityPlanning.Domain;
+using Humans.Settings.Contracts;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Text;
@@ -18,8 +19,8 @@ namespace Humans.CityPlanning.Services;
 /// The City Planning section service. Implements the cross-section surface
 /// (<see cref="ICityPlanningService"/> and <see cref="ICityPlanningWrite"/> on the contracts leaf) and, beyond it, the polygon,
 /// placement-phase, zone and export operations the section's own controllers call directly.
-/// Cross-section reads via ICampService/ITeamService/IUserService; settings
-/// writes record their actor through the Audit crosscut.
+/// Cross-section reads via ICampService/ITeamService/IUserService; the current year is the
+/// active event's (ISettingsService); settings writes record their actor through the Audit crosscut.
 /// </summary>
 internal sealed class CityPlanningService(
     ICityPlanningRepository repo,
@@ -28,12 +29,23 @@ internal sealed class CityPlanningService(
     ICampService campService,
     ITeamService teamService,
     IUserService userService,
-    IAuditLogService auditLog) : ICityPlanningService, ICityPlanningWrite
+    IAuditLogService auditLog,
+    ISettingsService settingsService) : ICityPlanningService, ICityPlanningWrite
 {
     private const long MaxGeoJsonUploadBytes = 10 * 1024 * 1024;
 
+    /// <summary>The current city-planning year: the active event's. Null when no event is active.</summary>
+    private async Task<int?> GetCurrentYearAsync(CancellationToken cancellationToken) =>
+        await settingsService.GetActiveEventSettingsAsync(cancellationToken) is { Year: > 0 } activeEvent
+            ? activeEvent.Year
+            : null;
+
+    private async Task<int> RequireCurrentYearAsync(CancellationToken cancellationToken) =>
+        await GetCurrentYearAsync(cancellationToken)
+        ?? throw new InvalidOperationException("No active event: city planning has no current year to write to.");
+
     /// <summary>
-    /// Applies a settings change for the public year and records who made it. Every caller is
+    /// Applies a settings change for the active event's year and records who made it. Every caller is
     /// an organiser acting on the members' behalf, and <c>CityPlanningSettings</c> stores only
     /// when a value changed — the actor exists nowhere but the audit log.
     ///
@@ -46,8 +58,9 @@ internal sealed class CityPlanningService(
     /// actor record does not. Everything up to that point stays cancellable, because abandoning it
     /// writes no value change worth an entry.</para>
     ///
-    /// <para>Both repository calls create the row on demand, and nothing deletes it, so the id read
-    /// here is the id the mutation writes.</para>
+    /// <para>Both repository calls create the row on demand — the first admin write is what
+    /// persists a year's row; reads never do — and nothing deletes it, so the id read here is the
+    /// id the mutation writes.</para>
     /// </summary>
     private async Task MutateSettingsAndAuditAsync(
         Action<CityPlanningSettings, Instant> mutate,
@@ -56,13 +69,13 @@ internal sealed class CityPlanningService(
         Guid userId,
         CancellationToken cancellationToken)
     {
-        var campSettings = await campService.GetSettingsAsync(cancellationToken);
+        var year = await RequireCurrentYearAsync(cancellationToken);
         var now = clock.GetCurrentInstant();
 
-        var settings = await repo.GetOrCreateSettingsAsync(campSettings.PublicYear, now, cancellationToken);
+        var settings = await repo.GetOrCreateSettingsAsync(year, now, cancellationToken);
 
         await repo.MutateSettingsAsync(
-            campSettings.PublicYear, s => mutate(s, now), now, CancellationToken.None);
+            year, s => mutate(s, now), now, CancellationToken.None);
 
         await auditLog.LogAsync(
             action, nameof(CityPlanningSettings), settings.Id, description, userId);
@@ -311,7 +324,7 @@ internal sealed class CityPlanningService(
         if (await IsCityPlanningTeamMemberAsync(userId, cancellationToken)) return true;
 
         var settings = await GetSettingsAsync(cancellationToken);
-        if (!settings.IsPlacementOpen) return false;
+        if (settings is not { IsPlacementOpen: true }) return false;
 
         var season = await campService.GetCampSeasonByIdAsync(campSeasonId, cancellationToken);
         if (season is null) return false;
@@ -324,12 +337,16 @@ internal sealed class CityPlanningService(
 
     // --- Settings ---
 
-    public async Task<CityPlanningSettingsDto> GetSettingsAsync(
+    public async Task<CityPlanningSettingsDto?> GetSettingsAsync(
         CancellationToken cancellationToken = default, int? year = null)
     {
-        var settingsYear = year ?? (await campService.GetSettingsAsync(cancellationToken)).PublicYear;
-        var settings = await repo.GetOrCreateSettingsAsync(
-            settingsYear, clock.GetCurrentInstant(), cancellationToken);
+        if ((year ?? await GetCurrentYearAsync(cancellationToken)) is not { } settingsYear)
+            return null;
+
+        // Side-effect free: a year nobody has configured yet reads as the defaults, unpersisted
+        // (Id = Guid.Empty). The first admin write creates the row.
+        var settings = await repo.GetSettingsAsync(settingsYear, cancellationToken)
+            ?? new CityPlanningSettings { Id = Guid.Empty, Year = settingsYear };
         return ToDto(settings);
     }
 
@@ -498,16 +515,17 @@ internal sealed class CityPlanningService(
 
     public async Task<string?> GetRegistrationInfoAsync(CancellationToken cancellationToken = default)
     {
-        var targetYear = await GetRegistrationTargetYearAsync(cancellationToken);
-        var settings = await repo.GetOrCreateSettingsAsync(
-            targetYear, clock.GetCurrentInstant(), cancellationToken);
-        return settings.RegistrationInfo;
+        if (await GetRegistrationTargetYearAsync(cancellationToken) is not { } targetYear)
+            return null;
+
+        return (await repo.GetSettingsAsync(targetYear, cancellationToken))?.RegistrationInfo;
     }
 
     public async Task UpdateRegistrationInfoAsync(
         string? registrationInfo, Guid userId, CancellationToken cancellationToken = default)
     {
-        var targetYear = await GetRegistrationTargetYearAsync(cancellationToken);
+        var targetYear = await GetRegistrationTargetYearAsync(cancellationToken)
+            ?? throw new InvalidOperationException("No open season and no active event: registration info has no year to write to.");
         var trimmed = string.IsNullOrWhiteSpace(registrationInfo) ? null : registrationInfo.Trim();
         var now = clock.GetCurrentInstant();
         // Same ordering as MutateSettingsAndAuditAsync, but keyed to the registration target year.
@@ -520,13 +538,14 @@ internal sealed class CityPlanningService(
             userId);
     }
 
-    // Key registration-info to the highest open season (Register page targets it), not PublicYear.
-    private async Task<int> GetRegistrationTargetYearAsync(CancellationToken ct)
+    // Key registration-info to the highest open season (Register page targets it), else the
+    // active event's year. Null when neither exists.
+    private async Task<int?> GetRegistrationTargetYearAsync(CancellationToken ct)
     {
         var campSettings = await campService.GetSettingsAsync(ct);
         return campSettings.OpenSeasons.Count > 0
             ? campSettings.OpenSeasons.Max()
-            : campSettings.PublicYear;
+            : await GetCurrentYearAsync(ct);
     }
 
     // --- Export ---

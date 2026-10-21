@@ -14,6 +14,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.CityPlanning.Tests;
@@ -24,6 +25,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
     private readonly IAuditLogService _auditLog;
+    private readonly ISettingsService _settingsService = ActiveEvent(2026);
     private readonly CityPlanningService _sut;
     private readonly CityPlanningOptions _options = new() { CityPlanningTeamSlug = "city-planning" };
 
@@ -37,16 +39,22 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var repo = new CityPlanningRepository(CityPlanningDbFactory);
         _sut = new CityPlanningService(
             repo, Clock, Options.Create(_options),
-            _campService, _teamService, _userService, _auditLog);
+            _campService, _teamService, _userService, _auditLog, _settingsService);
     }
 
     // --- Helpers ---
 
+    /// <summary>Camps' public year and the active event's year — city planning's current year — both <paramref name="publicYear"/>.</summary>
     private void SetupCampSettings(int publicYear = 2026)
     {
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(publicYear, []));
+        SetActiveEventYear(publicYear);
     }
+
+    private void SetActiveEventYear(int? year) =>
+        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(year is { } y ? BurnFixtures.Burn(year: y) : null);
 
     private async Task<CityPlanningSettings> SeedMapSettingsAsync(int year = 2026, bool placementOpen = false)
     {
@@ -511,7 +519,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
         var sut = new CityPlanningService(
             repo, Clock, Options.Create(_options),
-            _campService, _teamService, _userService, _auditLog);
+            _campService, _teamService, _userService, _auditLog, _settingsService);
 
         await sut.OpenPlacementAsync(userId, cts.Token);
 
@@ -558,7 +566,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
         var sut = new CityPlanningService(
             repo, Clock, Options.Create(_options),
-            _campService, _teamService, _userService, _auditLog);
+            _campService, _teamService, _userService, _auditLog, _settingsService);
 
         await sut.OpenPlacementAsync(userId, cts.Token);
 
@@ -720,16 +728,87 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         result.Should().BeFalse();
     }
 
+    // peterdrier/Humans#2102: a GET used to create the year's row. Reads are side-effect free.
     [HumansFact]
-    public async Task GetSettingsAsync_CreatesRowIfMissing()
+    public async Task GetSettingsAsync_NoRow_ReturnsUnpersistedDefaultsAndWritesNothing()
     {
         SetupCampSettings(publicYear: 2026);
 
         var settings = await _sut.GetSettingsAsync(TestContext.Current.CancellationToken);
 
+        settings.Should().NotBeNull();
+        settings!.Id.Should().Be(Guid.Empty);
         settings.Year.Should().Be(2026);
         settings.IsPlacementOpen.Should().BeFalse();
-        (await CityPlanningDb.CityPlanningSettings.AsNoTracking().CountAsync(TestContext.Current.CancellationToken)).Should().Be(1);
+        settings.IsContainerPlacementOpen.Should().BeFalse();
+        settings.PlacementOpensAt.Should().BeNull();
+        settings.PlacementClosesAt.Should().BeNull();
+        (await CityPlanningDb.CityPlanningSettings.AsNoTracking().CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task GetRegistrationInfoAsync_NoRow_WritesNothing()
+    {
+        SetupCampSettings(publicYear: 2026);
+
+        (await _sut.GetRegistrationInfoAsync(TestContext.Current.CancellationToken)).Should().BeNull();
+
+        (await CityPlanningDb.CityPlanningSettings.AsNoTracking().CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task GetSettingsAsync_YearFollowsTheActiveEvent_NotCampsPublicYear()
+    {
+        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new CampSettingsInfo(2026, []));
+        SetActiveEventYear(2027);
+        CityPlanningDb.CityPlanningSettings.Add(new CityPlanningSettings
+        {
+            Year = 2027,
+            IsPlacementOpen = true,
+            UpdatedAt = Clock.GetCurrentInstant()
+        });
+        await CityPlanningDb.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var settings = await _sut.GetSettingsAsync(TestContext.Current.CancellationToken);
+
+        settings!.Year.Should().Be(2027);
+        settings.IsPlacementOpen.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GetSettingsAsync_NoActiveEvent_ReturnsNullAndWritesNothing()
+    {
+        SetActiveEventYear(null);
+
+        (await _sut.GetSettingsAsync(TestContext.Current.CancellationToken)).Should().BeNull();
+
+        (await CityPlanningDb.CityPlanningSettings.AsNoTracking().CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task OpenPlacementAsync_NoRow_FirstWriteCreatesTheActiveEventYearsRow()
+    {
+        SetupCampSettings(publicYear: 2026);
+        SetActiveEventYear(2027);
+
+        await _sut.OpenPlacementAsync(NewUserId(), TestContext.Current.CancellationToken);
+
+        var row = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
+        row.Year.Should().Be(2027);
+        row.IsPlacementOpen.Should().BeTrue();
+        (await _sut.GetSettingsAsync(TestContext.Current.CancellationToken))!.Id.Should().Be(row.Id);
+    }
+
+    [HumansFact]
+    public async Task OpenPlacementAsync_NoActiveEvent_ThrowsAndWritesNothing()
+    {
+        SetActiveEventYear(null);
+
+        var act = () => _sut.OpenPlacementAsync(NewUserId(), TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>();
+
+        (await CityPlanningDb.CityPlanningSettings.AsNoTracking().CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansFact]
@@ -737,7 +816,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     {
         var existing = await SeedMapSettingsAsync(year: 2026, placementOpen: true);
 
-        var result = await _sut.GetSettingsAsync(TestContext.Current.CancellationToken);
+        var result = (await _sut.GetSettingsAsync(TestContext.Current.CancellationToken))!;
 
         result.Id.Should().Be(existing.Id);
         result.IsPlacementOpen.Should().BeTrue();
@@ -745,13 +824,13 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task GetSettingsAsync_ExplicitYear_ReturnsThatYearsPhaseInsteadOfPublicYear()
+    public async Task GetSettingsAsync_ExplicitYear_ReturnsThatYearsPhaseInsteadOfTheActiveEventYear()
     {
         SetupCampSettings(publicYear: 2026);
         await SeedMapSettingsAsync(year: 2026, placementOpen: true);
         var existing = await SeedMapSettingsAsync(year: 2025, placementOpen: false);
 
-        var result = await _sut.GetSettingsAsync(TestContext.Current.CancellationToken, 2025);
+        var result = (await _sut.GetSettingsAsync(TestContext.Current.CancellationToken, 2025))!;
 
         result.Id.Should().Be(existing.Id);
         result.Year.Should().Be(2025);
@@ -1009,10 +1088,10 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         updated.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
-    // --- RegistrationInfo: keyed to the highest open season, not PublicYear ---
+    // --- RegistrationInfo: keyed to the highest open season, else the active event's year ---
 
     [HumansFact]
-    public async Task UpdateRegistrationInfoAsync_WritesToHighestOpenSeason_NotPublicYear()
+    public async Task UpdateRegistrationInfoAsync_WritesToHighestOpenSeason_NotTheActiveEventYear()
     {
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(2026, [2026, 2028, 2027]));
@@ -1026,7 +1105,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task UpdateRegistrationInfoAsync_FallsBackToPublicYear_WhenNoOpenSeasons()
+    public async Task UpdateRegistrationInfoAsync_FallsBackToTheActiveEventYear_WhenNoOpenSeasons()
     {
         SetupCampSettings();
 
@@ -1057,7 +1136,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
         await _sut.UpdateRegistrationInfoAsync("Open-season blurb", NewUserId(), TestContext.Current.CancellationToken);
 
-        // A row keyed to PublicYear must not shadow the open-season one.
+        // A row keyed to the active event's year must not shadow the open-season one.
         CityPlanningDb.CityPlanningSettings.Add(new CityPlanningSettings
         {
             Year = 2026,

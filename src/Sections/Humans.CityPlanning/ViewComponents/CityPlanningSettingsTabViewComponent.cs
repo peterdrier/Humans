@@ -23,5 +23,6 @@ internal sealed class CityPlanningSettingsTabViewComponent(ICityPlanningService 
     }
 }
 
+/// <summary>The tab's model. <c>Settings</c> is null when no event is active — the tab then says so instead of showing the cards.</summary>
 internal sealed record CityPlanningSettingsTabViewModel(
-    CityPlanningSettingsDto Settings, string? RegistrationInfo);
+    CityPlanningSettingsDto? Settings, string? RegistrationInfo);

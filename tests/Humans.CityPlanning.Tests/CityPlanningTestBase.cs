@@ -7,6 +7,8 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using NodaTime;
 using NodaTime.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.Settings.Contracts;
+using NSubstitute;
 
 namespace Humans.CityPlanning.Tests;
 
@@ -37,6 +39,18 @@ public abstract class CityPlanningTestBase : IDisposable
         CityPlanningDb = new CityPlanningDbContext(_dbOptions);
         CityPlanningDbFactory = new TestDbContextFactory<CityPlanningDbContext>(_dbOptions);
         Clock = new FakeClock(now ?? Instant.FromUtc(2026, 3, 1, 12, 0));
+    }
+
+    /// <summary>
+    /// An <see cref="ISettingsService"/> whose active event is <paramref name="year"/>'s —
+    /// city planning's current year. Null means no active event.
+    /// </summary>
+    private protected static ISettingsService ActiveEvent(int? year = 2026)
+    {
+        var settings = Substitute.For<ISettingsService>();
+        settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(year is { } y ? BurnFixtures.Burn(year: y) : null);
+        return settings;
     }
 
     /// <summary>

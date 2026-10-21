@@ -99,9 +99,16 @@ internal interface ICityPlanningRepository : IRepository
     // ==========================================================================
 
     /// <summary>
+    /// Returns the <see cref="CityPlanningSettings"/> row for the given year, detached,
+    /// or null when none exists. Never writes — the read path's lookup.
+    /// </summary>
+    Task<CityPlanningSettings?> GetSettingsAsync(int year, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the <see cref="CityPlanningSettings"/> row for the given year,
     /// creating a new one (with <c>IsPlacementOpen = false</c>) if it does not
-    /// exist yet. Always returns a detached, up-to-date row.
+    /// exist yet. Always returns a detached, up-to-date row. Write paths only —
+    /// reads use <see cref="GetSettingsAsync"/>.
     /// </summary>
     Task<CityPlanningSettings> GetOrCreateSettingsAsync(
         int year, Instant now, CancellationToken ct = default);

@@ -89,6 +89,10 @@ CampPolygonHistory
 ```
 
 ### CityPlanningSettings (singleton per year)
+
+The current year is the active event's (global event settings). Reading a year with no row returns
+closed defaults and writes nothing; the first admin settings write creates the row.
+
 ```
 CityPlanningSettings
 ├── Id: Guid

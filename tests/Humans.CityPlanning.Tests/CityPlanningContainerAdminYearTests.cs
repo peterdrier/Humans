@@ -49,7 +49,7 @@ public sealed class CityPlanningContainerAdminYearTests : CityPlanningTestBase
         _service = new CityPlanningService(
             new CityPlanningRepository(CityPlanningDbFactory), Clock,
             Options.Create(new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" }),
-            _campService, Substitute.For<ITeamService>(), _userService, Substitute.For<IAuditLogService>());
+            _campService, Substitute.For<ITeamService>(), _userService, Substitute.For<IAuditLogService>(), ActiveEvent(PublicYear));
 
         var testUser = new User { Id = _userId, UserName = "test@test.com", Email = "test@test.com", DisplayName = "Test User", BurnerName = "Test User" };
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())

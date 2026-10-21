@@ -12,14 +12,16 @@ namespace Humans.CityPlanning.Contracts;
 public interface ICityPlanningService : IApplicationService
 {
     /// <summary>
-    /// Gets the per-year City Planning settings (creates the row on demand for
-    /// the requested year, or current PublicYear when omitted).
+    /// Gets the per-year City Planning settings for the requested year, or the active
+    /// event's year when omitted. Side-effect free: a year with no row yet reads as the
+    /// unpersisted defaults (<c>Id</c> = <see cref="Guid.Empty"/>). Null only when the
+    /// year is omitted and no event is active.
     /// </summary>
-    Task<CityPlanningSettingsDto> GetSettingsAsync(CancellationToken cancellationToken = default, int? year = null);
+    Task<CityPlanningSettingsDto?> GetSettingsAsync(CancellationToken cancellationToken = default, int? year = null);
 
     /// <summary>
     /// Gets the registration-info markdown keyed to the highest open season
-    /// (falls back to PublicYear).
+    /// (falls back to the active event's year). Never writes.
     /// </summary>
     Task<string?> GetRegistrationInfoAsync(CancellationToken cancellationToken = default);
 

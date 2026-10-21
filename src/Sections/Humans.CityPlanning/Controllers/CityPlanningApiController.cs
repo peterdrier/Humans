@@ -50,6 +50,7 @@ internal sealed class CityPlanningApiController(
     public async Task<IActionResult> GetState(CancellationToken cancellationToken)
     {
         var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
+        if (settings is null) return NotFound(); // no active event
         var campPolygons = await cityPlanningService.GetCampPolygonsAsync(settings.Year, cancellationToken);
         var seasonsWithout = await cityPlanningService.GetCampSeasonsWithoutCampPolygonAsync(settings.Year, cancellationToken);
 
@@ -180,8 +181,8 @@ internal sealed class CityPlanningApiController(
             return Forbid();
         }
 
-        var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
-        var exportYear = year ?? settings.Year;
+        if ((year ?? (await cityPlanningService.GetSettingsAsync(cancellationToken))?.Year) is not { } exportYear)
+            return NotFound(); // no year given and no active event
         var geoJson = await cityPlanningService.ExportAsGeoJsonAsync(exportYear, cancellationToken);
 
         return Content(geoJson, "application/geo+json");

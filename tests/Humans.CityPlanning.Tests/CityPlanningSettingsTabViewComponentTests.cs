@@ -37,7 +37,7 @@ public sealed class CityPlanningSettingsTabViewComponentTests
         var result = await sut.InvokeAsync();
         var model = (CityPlanningSettingsTabViewModel)((ViewViewComponentResult)result).ViewData!.Model!;
 
-        model.Settings.Year.Should().Be(2026);
+        model.Settings!.Year.Should().Be(2026);
         model.RegistrationInfo.Should().Be("Bring water.");
     }
 }

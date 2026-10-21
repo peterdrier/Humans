@@ -1074,7 +1074,7 @@ public class CampControllerTests
         _users.GetUserInfoAsync(leadUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
         _cityPlanning.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new CityPlanningSettingsDto(
+            .Returns(Task.FromResult<CityPlanningSettingsDto?>(new CityPlanningSettingsDto(
                 Guid.NewGuid(), 2026, false, null, null, null, null, null, null, null, false, null, null,
                 Instant.FromUtc(2026, 1, 1, 0, 0))));
         _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -1106,7 +1106,7 @@ public class CampControllerTests
         _users.GetUserInfoAsync(leadUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
         _cityPlanning.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new CityPlanningSettingsDto(
+            .Returns(Task.FromResult<CityPlanningSettingsDto?>(new CityPlanningSettingsDto(
                 Guid.NewGuid(), 2026, false, null, null, null, null, null, null, null, false, null, null,
                 Instant.FromUtc(2026, 1, 1, 0, 0))));
         _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -1154,7 +1154,7 @@ public class CampControllerTests
         _users.GetUserInfoAsync(leadUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
         _cityPlanning.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new CityPlanningSettingsDto(
+            .Returns(Task.FromResult<CityPlanningSettingsDto?>(new CityPlanningSettingsDto(
                 Guid.NewGuid(), 2026, false, null, null, null, null, null, null, null, false, null, null,
                 Instant.FromUtc(2026, 1, 1, 0, 0))));
         _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
