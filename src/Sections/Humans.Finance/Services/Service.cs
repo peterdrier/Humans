@@ -1418,8 +1418,9 @@ internal sealed class Service(
     /// kept. The line id is the one Guid in the story; Holded ids are strings and go in the text.</summary>
     private const string ExpenseLineEntityType = "ExpenseLine";
 
-    /// <summary>The nightly check: the same matching the page runs, over every linked line, said
-    /// once in the log. Zero means zero. A failure here never fails the document sync.</summary>
+    /// <summary>The nightly check: the list-level rule the page starts from (description and total,
+    /// no notes GET), over every linked line, said once in the log. Zero means zero; a false
+    /// positive only refuses a payout. A failure here never fails the document sync.</summary>
     private async Task LogDuplicateDocumentsAsync(IReadOnlyList<HoldedPurchaseDocListItemDto> docs, CancellationToken ct)
     {
         try
@@ -1503,7 +1504,9 @@ internal sealed class Service(
     }
 
     /// <summary>The dry run, from live Holded reads: never a stored plan, so Apply judges what Holded
-    /// holds at the moment it runs.</summary>
+    /// holds at the moment it runs. The list names the candidates (description and total); each one
+    /// that is not already refused is fetched once, and only a document whose notes are exactly the
+    /// push's can be deleted. A failed fetch fails the whole plan: nothing is judged, nothing deleted.</summary>
     private async Task<HoldedDuplicatesVm> BuildDuplicatePlanAsync(CancellationToken ct)
     {
         var docs = await client.ListPurchaseDocumentsAsync(ct);
@@ -1516,22 +1519,33 @@ internal sealed class Service(
         var docsByContact = docs.Where(d => !string.IsNullOrEmpty(d.ContactId))
             .ToLookup(d => d.ContactId!, StringComparer.Ordinal);
 
+        var linesByMatch = new Dictionary<HoldedDuplicateMatcher.Match, HoldedDuplicateLine>(ReferenceEqualityComparer.Instance);
+        foreach (var m in matches)
+        {
+            var deletable = new List<string>();
+            var refused = new List<HoldedDuplicateRefusal>();
+            foreach (var d in m.Duplicates)
+            {
+                if (DeleteRefusal(d) is { } why)
+                {
+                    refused.Add(new HoldedDuplicateRefusal(d.Id, d.Total, why));
+                    continue;
+                }
+                var notes = (await client.GetPurchaseDocumentAsync(d.Id, ct)).Notes;
+                if (string.Equals(notes, m.Booking.Notes, StringComparison.Ordinal)) deletable.Add(d.Id);
+                else refused.Add(new HoldedDuplicateRefusal(d.Id, d.Total, "notes do not match the push — judge it by hand"));
+            }
+            linesByMatch[m] = new HoldedDuplicateLine(
+                m.Booking.ExpenseReportId, m.Booking.LineId, m.Booking.Description,
+                m.Booking.BookedAmount, m.Kept.Id, deletable, refused);
+        }
+
         var members = matches
             .GroupBy(m => m.Booking.CreditorUserId)
             .Select(g =>
             {
                 var binding = bindingByUser.GetValueOrDefault(g.Key);
-                var lines = g.Select(m =>
-                {
-                    var deletable = new List<string>();
-                    var refused = new List<HoldedDuplicateRefusal>();
-                    foreach (var d in m.Duplicates)
-                        if (DeleteRefusal(d) is { } why) refused.Add(new HoldedDuplicateRefusal(d.Id, d.Total, why));
-                        else deletable.Add(d.Id);
-                    return new HoldedDuplicateLine(
-                        m.Booking.ExpenseReportId, m.Booking.LineId, m.Booking.Description,
-                        m.Booking.BookedAmount, m.Kept.Id, deletable, refused);
-                }).ToList();
+                var lines = g.Select(m => linesByMatch[m]).ToList();
 
                 // A contact the race created beside the bound one holds nothing but duplicates; once
                 // they are gone it is empty, and goes too. The bound contact is never one of these.

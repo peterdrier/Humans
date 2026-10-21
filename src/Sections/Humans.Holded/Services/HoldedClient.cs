@@ -147,6 +147,7 @@ internal sealed class HoldedClient : IHoldedClient
                 PaymentsTotal = ReadDecimalV2(Prop(node, "payments_total")),
                 PaymentsPending = ReadDecimalV2(Prop(node, "payments_pending")),
                 ApprovedAt = ParseApprovedAt(Prop(node, "approved_at")?.GetValue<string>()),
+                Notes = Prop(node, "notes")?.GetValue<string>() is { Length: > 0 } notes ? notes : null,
                 Tags = ReadTags(Prop(node, "tags")),
                 Payments = ReadPaymentsDetail(Prop(node, "payments_detail")),
             };

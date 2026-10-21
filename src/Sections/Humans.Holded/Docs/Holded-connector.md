@@ -16,9 +16,10 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 
 - A **Purchase Document** in Holded is the org's incoming invoice/expense record. Expenses
   creates one per approved expense report, **booked to its 629 expense account at creation**
-  (`items[].account`); tags are never written (dead v1 workaround). The list read carries
-  `notes` (null when absent or blank) so Finance can tell a document the push wrote twice from
-  a legitimately repeated line; `DeletePurchaseDocumentAsync` and `DeleteContactAsync` are the
+  (`items[].account`); tags are never written (dead v1 workaround). Only the single GET
+  (`GetPurchaseDocumentAsync`) returns `notes` (null when absent or blank) — the v2 list never
+  does (verified live 2026-10-21) — which is how Finance confirms a document the push wrote
+  twice before deleting it; `DeletePurchaseDocumentAsync` and `DeleteContactAsync` are the
   two deletes, used only by Finance: both by its duplicate removal, and the contact delete also
   to retract a creditor contact minted by a run that lost the member's binding race.
 - A **Sales Document** is the org's outgoing revenue record, in two kinds behind one

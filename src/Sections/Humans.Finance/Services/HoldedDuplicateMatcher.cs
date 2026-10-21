@@ -6,12 +6,14 @@ namespace Humans.Finance.Services;
 /// <summary>
 /// Finds Holded purchase documents the expense push created twice (the outbox race of
 /// 2026-10-18). Line-to-document: for each expense line that links to a document, every other
-/// document on the member's contacts that carries the same description, the same notes and the
-/// line's booked total is a duplicate of it. Two lines with identical values legitimately produce
-/// two documents, each the kept document of its own line, so a document some line links to is never
-/// anyone's duplicate, and an extra document matching several identical lines is the duplicate of
-/// the first of them only, so it is counted and deleted once. Pure, so the nightly check, the page
-/// and the apply all run the same rule.
+/// document on the member's contacts that carries the same description and the line's booked total
+/// is a candidate duplicate of it. Notes are not part of this rule: the v2 purchase list never
+/// returns them (verified live 2026-10-21), so the page and the apply confirm each candidate's
+/// notes with a single GET before it can be deleted. Two lines with identical values legitimately
+/// produce two documents, each the kept document of its own line, so a document some line links to
+/// is never anyone's duplicate, and an extra document matching several identical lines is the
+/// duplicate of the first of them only, so it is counted and deleted once. Pure, so the nightly
+/// check, the payout gate, the page and the apply all run the same rule.
 /// </summary>
 internal static class HoldedDuplicateMatcher
 {
@@ -21,13 +23,12 @@ internal static class HoldedDuplicateMatcher
         HoldedPurchaseDocListItemDto Kept,
         IReadOnlyList<HoldedPurchaseDocListItemDto> Duplicates);
 
-    /// <summary>Whether <paramref name="doc"/> carries exactly what the push wrote for
-    /// <paramref name="booking"/>. The push always writes notes, so a document without them is not
-    /// the push's and never matches: a match can end in a delete.</summary>
+    /// <summary>Whether <paramref name="doc"/> carries what the list shows of the push's write for
+    /// <paramref name="booking"/>: description and total. A false positive here only refuses a
+    /// payout; a delete needs the notes confirmed by the single GET first.</summary>
     internal static bool Matches(ExpenseHoldedBooking booking, HoldedPurchaseDocListItemDto doc) =>
         string.Equals(doc.Description, booking.Description, StringComparison.Ordinal)
-        && doc.Total == booking.BookedAmount
-        && string.Equals(doc.Notes, booking.Notes, StringComparison.Ordinal);
+        && doc.Total == booking.BookedAmount;
 
     /// <summary>Every line with at least one duplicate. <paramref name="contactsByUser"/> widens
     /// the search from the line's own contact to every contact the member holds (the race also

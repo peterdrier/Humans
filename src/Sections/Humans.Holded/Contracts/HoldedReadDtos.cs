@@ -68,7 +68,9 @@ public sealed record HoldedPurchaseDocListItemDto
     /// <summary>`description` — the doc's internal description ("Add an internal description" in
     /// Holded's UI). Null when blank.</summary>
     public string? Description { get; init; }
-    /// <summary>`notes` — the doc's notes field. Null when blank or absent.</summary>
+    /// <summary>`notes` — the doc's notes field. Always null in practice: the v2 purchase list
+    /// carries no `notes` field at all (verified live 2026-10-21); only the single GET
+    /// (<see cref="HoldedPurchaseDocumentDto.Notes"/>) returns it. Kept in case Holded adds it.</summary>
     public string? Notes { get; init; }
     public required Instant Date { get; init; }        // doc `date` (ISO yyyy-MM-dd, Madrid midnight)
     public required decimal Subtotal { get; init; }

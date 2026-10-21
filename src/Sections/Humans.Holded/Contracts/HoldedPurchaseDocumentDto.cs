@@ -12,6 +12,9 @@ public sealed record HoldedPurchaseDocumentDto
     public required decimal PaymentsTotal { get; init; }
     public required decimal PaymentsPending { get; init; }
     public Instant? ApprovedAt { get; init; }
+    /// <summary><c>notes</c> — the doc's notes field, null when blank or absent. Only this single
+    /// GET returns it; the v2 purchase list never does (verified live 2026-10-21).</summary>
+    public string? Notes { get; init; }
     public IReadOnlyList<string> Tags { get; init; } = [];
     /// <summary><c>payments_detail</c>: one entry per payment recorded on the document, in Holded's
     /// order. The only place a payment's id can be read — <c>POST purchases/{id}/payments</c> answers
