@@ -66,7 +66,7 @@ internal sealed class CachingRoleAssignmentService
     protected override async Task WarmAllAsync(CancellationToken ct)
     {
         var now = _clock.GetCurrentInstant();
-        var (items, _) = await WithInner(inner => inner.GetFilteredAsync(
+        var (items, _) = await WithInnerAsync(inner => inner.GetFilteredAsync(
             roleFilter: null,
             activeOnly: false,
             page: 1,
@@ -89,47 +89,47 @@ internal sealed class CachingRoleAssignmentService
     public Task<(IReadOnlyList<RoleAssignmentSummarySnapshot> Items, int TotalCount)> GetFilteredAsync(
         string? roleFilter, bool activeOnly, int page, int pageSize, Instant now,
         CancellationToken ct = default) =>
-        WithInner(inner => inner.GetFilteredAsync(roleFilter, activeOnly, page, pageSize, now, ct));
+        WithInnerAsync(inner => inner.GetFilteredAsync(roleFilter, activeOnly, page, pageSize, now, ct));
 
     public Task<RoleAssignmentDetailSnapshot?> GetByIdAsync(Guid assignmentId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetByIdAsync(assignmentId, ct));
+        WithInnerAsync(inner => inner.GetByIdAsync(assignmentId, ct));
 
     public Task<IReadOnlyList<RoleAssignmentSummarySnapshot>> GetByUserIdAsync(Guid userId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetByUserIdAsync(userId, ct));
+        WithInnerAsync(inner => inner.GetByUserIdAsync(userId, ct));
 
     public Task<RoleAssignmentResult> AssignRoleAsync(
         Guid userId, string roleName, Guid assignerId, string? notes,
         CancellationToken ct = default) =>
-        WithInner(inner => inner.AssignRoleAsync(userId, roleName, assignerId, notes, ct));
+        WithInnerAsync(inner => inner.AssignRoleAsync(userId, roleName, assignerId, notes, ct));
 
     public Task<RoleAssignmentResult> EndRoleAsync(
         Guid assignmentId, Guid enderId, string? notes,
         CancellationToken ct = default) =>
-        WithInner(inner => inner.EndRoleAsync(assignmentId, enderId, notes, ct));
+        WithInnerAsync(inner => inner.EndRoleAsync(assignmentId, enderId, notes, ct));
 
     public Task<bool> IsUserAdminAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.IsUserAdminAsync(userId, cancellationToken));
+        WithInnerAsync(inner => inner.IsUserAdminAsync(userId, cancellationToken));
 
     public Task<bool> IsUserBoardMemberAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.IsUserBoardMemberAsync(userId, cancellationToken));
+        WithInnerAsync(inner => inner.IsUserBoardMemberAsync(userId, cancellationToken));
 
     public Task<bool> IsUserTeamsAdminAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.IsUserTeamsAdminAsync(userId, cancellationToken));
+        WithInnerAsync(inner => inner.IsUserTeamsAdminAsync(userId, cancellationToken));
 
     public Task<bool> HasActiveRoleAsync(Guid userId, string roleName, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.HasActiveRoleAsync(userId, roleName, cancellationToken));
+        WithInnerAsync(inner => inner.HasActiveRoleAsync(userId, roleName, cancellationToken));
 
     public Task<bool> HasAnyActiveAssignmentAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.HasAnyActiveAssignmentAsync(userId, cancellationToken));
+        WithInnerAsync(inner => inner.HasAnyActiveAssignmentAsync(userId, cancellationToken));
 
     public Task<IReadOnlyList<Guid>> GetUserIdsWithActiveAssignmentsAsync(CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetUserIdsWithActiveAssignmentsAsync(cancellationToken));
+        WithInnerAsync(inner => inner.GetUserIdsWithActiveAssignmentsAsync(cancellationToken));
 
     public Task<int> RevokeAllActiveAsync(Guid userId, CancellationToken ct = default) =>
-        WithInner(inner => inner.RevokeAllActiveAsync(userId, ct));
+        WithInnerAsync(inner => inner.RevokeAllActiveAsync(userId, ct));
 
     public Task<IReadOnlyList<Guid>> GetActiveUserIdsInRoleAsync(string roleName, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetActiveUserIdsInRoleAsync(roleName, ct));
+        WithInnerAsync(inner => inner.GetActiveUserIdsInRoleAsync(roleName, ct));
 
     public async Task<IReadOnlyList<RoleAssignmentSnapshot>> GetActiveForUserAsync(Guid userId, CancellationToken ct = default)
     {
@@ -142,7 +142,7 @@ internal sealed class CachingRoleAssignmentService
             .ToList();
     }
 
-    private async Task<TResult> WithInner<TResult>(Func<IRoleAssignmentManagement, Task<TResult>> action)
+    private async Task<TResult> WithInnerAsync<TResult>(Func<IRoleAssignmentManagement, Task<TResult>> action)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider

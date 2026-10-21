@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Users.Services;
+using Humans.Application.Services.Users.AccountLifecycle;
 
 namespace Humans.Users.Controllers;
 
@@ -219,28 +220,24 @@ internal sealed class UsersAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> PurgeHuman(Guid id)
     {
-        if (environment.IsProduction())
-            return NotFound();
-
-        var user = await _userService.GetRawUserInfoAsync(id);
-        if (user is null)
-            return NotFound();
-
+        // Captured before the purge collapses the identity.
+        var displayName = (await _userService.GetRawUserInfoAsync(id))?.BurnerName;
         var currentUser = await GetCurrentUserInfoAsync();
-        if (user.Id == currentUser?.Id)
+
+        // AccountDeletionService.PurgeAsync owns the production and self-purge refusals.
+        var result = await accountDeletionService.PurgeAsync(id, currentUser?.Id);
+        if (string.Equals(result.ErrorKey, AccountDeletionService.PurgeRefusedSelf, StringComparison.Ordinal))
         {
             SetError("You cannot purge your own account.");
             return RedirectToAction(nameof(AdminDetail), new { id });
         }
 
-        var displayName = user.BurnerName;
-        logger.LogWarning(
-            "Admin {AdminId} purging human {HumanId} ({DisplayName}) in {Environment}",
-            currentUser?.Id, id, displayName, environment.EnvironmentName);
-
-        var result = await accountDeletionService.PurgeAsync(id, currentUser?.Id);
         if (!result.Success)
             return NotFound();
+
+        logger.LogWarning(
+            "Admin {AdminId} purged human {HumanId} ({DisplayName}) in {Environment}",
+            currentUser?.Id, id, displayName, environment.EnvironmentName);
 
         SetSuccess($"Purged {displayName}. They will get a fresh account on next login.");
         return RedirectToAction(nameof(AdminList));

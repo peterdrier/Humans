@@ -50,7 +50,12 @@ internal sealed record CampaignSendWavePageDto(
     CampaignAdminSummary Campaign,
     IReadOnlyList<CampaignTeamOptionDto> Teams,
     Guid? SelectedTeamId,
-    WaveSendPreview? Preview);
+    WaveSendPreview? Preview)
+{
+    /// <summary>Waves go out only while the campaign is Active — the rule <c>SendWaveAsync</c>
+    /// refuses with <c>NotActive</c>.</summary>
+    public bool CanSendWave => Campaign.Status == CampaignStatus.Active;
+}
 
 internal sealed record WaveSendPreview(
     int EligibleCount,

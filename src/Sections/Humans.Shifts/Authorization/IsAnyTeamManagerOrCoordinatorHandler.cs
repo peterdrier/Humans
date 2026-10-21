@@ -12,10 +12,10 @@ namespace Humans.Shifts.Authorization;
 /// role-holder on any team or sub-team. Encodes the OR inside the handler so
 /// <see cref="PolicyNames.ShiftDepartmentManager"/> can express role-or-team-coord
 /// as a single requirement (multiple requirements on a policy AND together).
-/// Reads the coordinator-team-ids list through <see cref="IShiftManagementService.GetCoordinatorTeamIdsAsync"/>
+/// Reads the coordinator-team-ids list through <see cref="IShiftService.GetCoordinatorTeamIdsAsync"/>
 /// which Teams answers from its in-RAM team read model, so no request hits the DB.
 /// </summary>
-internal sealed class IsAnyTeamManagerOrCoordinatorHandler(IShiftManagementService shiftManagement)
+internal sealed class IsAnyTeamManagerOrCoordinatorHandler(IShiftService shiftManagement)
     : AuthorizationHandler<IsAnyTeamManagerOrCoordinatorRequirement>
 {
     protected override async Task HandleRequirementAsync(

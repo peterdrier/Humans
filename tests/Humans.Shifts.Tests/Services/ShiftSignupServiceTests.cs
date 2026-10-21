@@ -230,7 +230,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             Substitute.For<IShiftManagement>(), NewCalendarResolver(), AuditLog, Notifier,
             AdminAuthorization, _views.Cache, EarlyEntryInvalidator, services, Clock,
             NullLogger<ShiftSignupService>.Instance, _users, _localizer);
-        Task<SignupResult> Enroll(ShiftSignupService service, string path, Guid userId) => path switch
+        Task<SignupResult> EnrollAsync(ShiftSignupService service, string path, Guid userId) => path switch
         {
             "signup" => service.SignUpAsync(userId, shift.Id),
             "range" => service.SignUpRangeAsync(userId, rota.Id, 1, 1),
@@ -239,14 +239,14 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             "approve" => service.ApproveAsync(pendingId, Guid.NewGuid()),
             _ => service.ApproveRangeAsync(blockId, Guid.NewGuid())
         };
-        var first = Enroll(NewService(firstDb), firstPath, firstUserId);
+        var first = EnrollAsync(NewService(firstDb), firstPath, firstUserId);
         Task<SignupResult> second;
         try
         {
             await Task.WhenAny(first, pause.Entered.Task).WaitAsync(TimeSpan.FromSeconds(10), ct);
             if (first.IsCompleted) await first;
             pause.Entered.Task.IsCompleted.Should().BeTrue("the first enrollment save must be paused");
-            second = Enroll(NewService(secondDb), secondPath, secondUserId);
+            second = EnrollAsync(NewService(secondDb), secondPath, secondUserId);
         }
         finally
         {
@@ -1097,7 +1097,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var result = await _service.VoluntellAsync(volunteerId, shift.Id, enrollerId);
 
         result.Success.Should().BeTrue();
-        await AssertShiftAssignedSent(Notifier, 1);
+        await AssertShiftAssignedSentAsync(Notifier, 1);
     }
 
     [HumansFact]
@@ -1120,7 +1120,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         Saved(result).Status.Should().Be(SignupStatus.Confirmed);
 
         // Volunteer-facing ShiftAssigned must NOT be sent for a past shift...
-        await AssertShiftAssignedNotSent(Notifier);
+        await AssertShiftAssignedNotSentAsync(Notifier);
 
         // ...but the audit entry is still written.
         await AuditLog.Received().LogAsync(
@@ -2061,7 +2061,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var result = await _service.VoluntellRangeAsync(volunteerId, rota.Id, -3, -1, enrollerId);
 
         result.Success.Should().BeTrue();
-        await AssertShiftAssignedNotSent(Notifier);
+        await AssertShiftAssignedNotSentAsync(Notifier);
     }
 
     [HumansFact]
@@ -2081,7 +2081,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var result = await _service.VoluntellRangeAsync(volunteerId, rota.Id, -3, -1, enrollerId);
 
         result.Success.Should().BeTrue();
-        await AssertShiftAssignedSent(Notifier, 1);
+        await AssertShiftAssignedSentAsync(Notifier, 1);
     }
 
     // ============================================================
@@ -2179,7 +2179,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var result = await _service.SignUpAsync(userId, shift.Id);
 
         result.Success.Should().BeTrue();
-        await AssertShiftSignupChangeSent(coordinatorId);
+        await AssertShiftSignupChangeSentAsync(coordinatorId);
     }
 
     [HumansFact]
@@ -2195,7 +2195,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var result = await _service.ApproveAsync(signup.Id, Guid.NewGuid());
 
         result.Success.Should().BeTrue();
-        await AssertShiftSignupChangeSent(coordinatorId);
+        await AssertShiftSignupChangeSentAsync(coordinatorId);
     }
 
     [HumansFact]
@@ -2211,7 +2211,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var result = await _service.RefuseAsync(signup.Id, Guid.NewGuid(), "not needed");
 
         result.Success.Should().BeTrue();
-        await AssertShiftSignupChangeSent(coordinatorId);
+        await AssertShiftSignupChangeSentAsync(coordinatorId);
     }
 
     [HumansFact]
@@ -2228,7 +2228,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var result = await _service.BailAsync(signup.Id, userId, null);
 
         result.Success.Should().BeTrue();
-        await AssertShiftSignupChangeSent(coordinatorId);
+        await AssertShiftSignupChangeSentAsync(coordinatorId);
     }
 
     [HumansFact]
@@ -2244,10 +2244,10 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var result = await _service.RemoveSignupAsync(signup.Id, Guid.NewGuid(), null);
 
         result.Success.Should().BeTrue();
-        await AssertShiftSignupChangeSent(coordinatorId);
+        await AssertShiftSignupChangeSentAsync(coordinatorId);
     }
 
-    private async Task AssertShiftSignupChangeSent(Guid coordinatorId) =>
+    private async Task AssertShiftSignupChangeSentAsync(Guid coordinatorId) =>
         await Notifier.Received(1).SendAsync(
             NotificationSource.ShiftSignupChange,
             Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
@@ -2623,7 +2623,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         return signup;
     }
 
-    private static async Task AssertShiftAssignedSent(INotificationEmitter n, int times) =>
+    private static async Task AssertShiftAssignedSentAsync(INotificationEmitter n, int times) =>
         await n.Received(times).SendAsync(
             NotificationSource.ShiftAssigned,
             Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
@@ -2631,7 +2631,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
 
-    private static async Task AssertShiftAssignedNotSent(INotificationEmitter n) =>
+    private static async Task AssertShiftAssignedNotSentAsync(INotificationEmitter n) =>
         await n.DidNotReceive().SendAsync(
             NotificationSource.ShiftAssigned,
             Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),

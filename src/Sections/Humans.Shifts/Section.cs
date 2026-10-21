@@ -44,7 +44,7 @@ public sealed class Section : ISection, IIssueQueueOwner
 
         // The three cross-section halves of IShiftManagement, registered onto the
         // same Scoped instance.
-        services.AddScoped<IShiftManagementService>(sp => sp.GetRequiredService<ShiftManagementService>());
+        services.AddScoped<IShiftService>(sp => sp.GetRequiredService<ShiftManagementService>());
         services.AddScoped<IShiftVolunteerProfiles>(sp => sp.GetRequiredService<ShiftManagementService>());
         services.AddScoped<IShiftSeeding>(sp => sp.GetRequiredService<ShiftManagementService>());
 

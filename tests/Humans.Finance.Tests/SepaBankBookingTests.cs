@@ -706,7 +706,7 @@ public class SepaBankBookingTests
 
         await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     [HumansFact]
@@ -717,7 +717,7 @@ public class SepaBankBookingTests
 
         await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     [HumansFact]
@@ -727,7 +727,7 @@ public class SepaBankBookingTests
 
         await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     // ─── The pairing the service re-validates, whoever posted it ────────────────
@@ -744,7 +744,7 @@ public class SepaBankBookingTests
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("already booked another transfer");
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     [HumansFact]
@@ -756,7 +756,7 @@ public class SepaBankBookingTests
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("not the 30.00 EUR this transfer pays");
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     [HumansFact]
@@ -768,7 +768,7 @@ public class SepaBankBookingTests
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("already reconciled");
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     // ─── The sweep itself ───────────────────────────────────────────────────────
@@ -974,7 +974,7 @@ public class SepaBankBookingTests
 
         await _client.DidNotReceiveWithAnyArgs().ListBankMovementsAsync(
             default!, default, default);
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     // ─── peterdrier/Humans#1946: one stuck line cannot block the feed forever ───
@@ -1008,7 +1008,7 @@ public class SepaBankBookingTests
 
         await RunSweepAsync(2);
 
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
         await _audit.DidNotReceive().LogAsync(
             AuditAction.SepaBankLineSkipped, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
             Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -1020,7 +1020,7 @@ public class SepaBankBookingTests
         SeedStuckFeed("stuck-1");
 
         await RunSweepAsync(2);
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
         await RunSweepAsync(1);
 
         await _repo.Received(1).SaveSepaTransferBookingAsync(
@@ -1072,7 +1072,7 @@ public class SepaBankBookingTests
 
         await RunSweepAsync(2);
 
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
         SeedStuckFeed("stuck-2");
         await RunSweepAsync(1);
         await _repo.Received(1).SaveSepaTransferBookingAsync(
@@ -1352,7 +1352,7 @@ public class SepaBankBookingTests
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("2 unbooked transfers match");
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     [HumansFact]
@@ -1364,7 +1364,7 @@ public class SepaBankBookingTests
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("2 Sabadell lines could each have paid this transfer");
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     [HumansFact]
@@ -1392,7 +1392,7 @@ public class SepaBankBookingTests
         booking.Message.Should().Contain("could be a whole file's debit");
         process.Succeeded.Should().BeFalse();
         process.Message.Should().Contain("could be a single transfer's debit");
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     [HumansFact]
@@ -1402,7 +1402,7 @@ public class SepaBankBookingTests
 
         await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     // ─── The editable tolerance: days either side of the file date ──────────────
@@ -1448,7 +1448,7 @@ public class SepaBankBookingTests
         var service = MakeService();
 
         var strict = await service.BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
         var wide = await service.BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid(), toleranceDays: 7);
 
         strict.Succeeded.Should().BeFalse();
@@ -1479,7 +1479,7 @@ public class SepaBankBookingTests
         rows.Should().OnlyContain(r => !r.CanBook);
         unmatched.Should().HaveCount(2);
         booking.Succeeded.Should().BeFalse();
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     [HumansFact]
@@ -1580,7 +1580,7 @@ public class SepaBankBookingTests
         unmatched.Should().ContainSingle().Which.Reason.Should().Contain("2 unbooked transfers are for");
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("1 of the file's 2 unbooked transfers have no Sabadell line");
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     // ─── Withdrawn transfers: cancelled at the bank, out of every matcher ──────────
@@ -1637,7 +1637,7 @@ public class SepaBankBookingTests
 
         await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
         await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
             default, default, default, default!, default, default);
     }
@@ -1652,7 +1652,7 @@ public class SepaBankBookingTests
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("was withdrawn");
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     [HumansFact]
@@ -1666,7 +1666,7 @@ public class SepaBankBookingTests
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("already booked or withdrawn");
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     [HumansFact]
@@ -1695,7 +1695,7 @@ public class SepaBankBookingTests
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("1 of the file's 2 unbooked transfers have no Sabadell line")
             .And.Contain(OtherAccount.ToString());
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     [HumansFact]
@@ -1711,7 +1711,7 @@ public class SepaBankBookingTests
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("could not be read").And.Contain("Holded 503");
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     [HumansFact]
@@ -1763,7 +1763,7 @@ public class SepaBankBookingTests
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("does not match this transfer");
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     [HumansFact]
@@ -1788,7 +1788,7 @@ public class SepaBankBookingTests
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("already partial");
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     [HumansFact]
@@ -1811,7 +1811,7 @@ public class SepaBankBookingTests
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("2 Sabadell lines could each have paid this transfer");
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     [HumansFact]
@@ -1834,7 +1834,7 @@ public class SepaBankBookingTests
 
         await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     // ─── Review round 5: an unconfirmed entry, and the feed window's date slack ──
@@ -2021,7 +2021,7 @@ public class SepaBankBookingTests
             .And.OnlyContain(m => m.Reason.Contains("matches that file's total too"));
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("2 Sabadell lines could each be this file's debit");
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     [HumansFact]
@@ -2040,7 +2040,7 @@ public class SepaBankBookingTests
         rows.Single(r => r.TransferId == Batch[0].Id).CandidateBankMovementId.Should().Be("mov-own");
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("has a Sabadell line of its own");
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     [HumansFact]
@@ -2115,7 +2115,7 @@ public class SepaBankBookingTests
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("not the 100.00 EUR this file totals");
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     [HumansFact]
@@ -2135,7 +2135,7 @@ public class SepaBankBookingTests
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("40000014");
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     [HumansFact]
@@ -2169,12 +2169,12 @@ public class SepaBankBookingTests
 
         await MakeService().RunAsync(TestContext.Current.CancellationToken);
 
-        await AssertNothingPosted();
+        await AssertNothingPostedAsync();
     }
 
     // ─── Seeding ────────────────────────────────────────────────────────────────
 
-    private async Task AssertNothingPosted()
+    private async Task AssertNothingPostedAsync()
     {
         await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
             default!, default, default, default, default!);

@@ -218,16 +218,16 @@ internal sealed class CachingTeamService(
     // invalidation. Pure pass-throughs.
 
     public Task<IReadOnlyList<TeamEarlyEntryGrantInfo>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default)
-        => WithInner(inner => inner.GetEarlyEntryGrantsForTeamAsync(teamId, ct));
+        => WithInnerAsync(inner => inner.GetEarlyEntryGrantsForTeamAsync(teamId, ct));
 
     public Task AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
-        => WithInner(inner => inner.AddEarlyEntryGrantAsync(teamId, userId, entryDate, projectName, actorUserId, ct));
+        => WithInnerAsync(inner => inner.AddEarlyEntryGrantAsync(teamId, userId, entryDate, projectName, actorUserId, ct));
 
     public Task EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
-        => WithInner(inner => inner.EditEarlyEntryGrantAsync(teamId, grantId, entryDate, projectName, actorUserId, ct));
+        => WithInnerAsync(inner => inner.EditEarlyEntryGrantAsync(teamId, grantId, entryDate, projectName, actorUserId, ct));
 
     public Task RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default)
-        => WithInner(inner => inner.RemoveEarlyEntryGrantAsync(teamId, grantId, actorUserId, ct));
+        => WithInnerAsync(inner => inner.RemoveEarlyEntryGrantAsync(teamId, grantId, actorUserId, ct));
 
     public Task DeleteTeamAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.DeleteTeamAsync(teamId, actorUserId, cancellationToken));
@@ -269,17 +269,17 @@ internal sealed class CachingTeamService(
     public Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForTeamAsync(
         Guid teamId,
         CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetPendingRequestsForTeamAsync(teamId, cancellationToken));
+        WithInnerAsync(inner => inner.GetPendingRequestsForTeamAsync(teamId, cancellationToken));
 
     public Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetPendingRequestsForUserAsync(userId, cancellationToken));
+        WithInnerAsync(inner => inner.GetPendingRequestsForUserAsync(userId, cancellationToken));
 
     public Task<TeamJoinRequestSnapshot?> GetUserPendingRequestAsync(
         Guid teamId,
         Guid userId,
         CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetUserPendingRequestAsync(teamId, userId, cancellationToken));
+        WithInnerAsync(inner => inner.GetUserPendingRequestAsync(teamId, userId, cancellationToken));
 
     public async Task<bool> IsUserCoordinatorOfTeamAsync(
         Guid teamId,
@@ -329,7 +329,7 @@ internal sealed class CachingTeamService(
         int page,
         int pageSize,
         CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetAdminTeamListAsync(page, pageSize, cancellationToken));
+        WithInnerAsync(inner => inner.GetAdminTeamListAsync(page, pageSize, cancellationToken));
 
     public Task<TeamMember> AddMemberToTeamAsync(
         Guid teamId,
@@ -464,7 +464,7 @@ internal sealed class CachingTeamService(
     public Task EnqueueGoogleResyncForUserTeamsAsync(
         Guid userId,
         CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.EnqueueGoogleResyncForUserTeamsAsync(userId, cancellationToken));
+        WithInnerAsync(inner => inner.EnqueueGoogleResyncForUserTeamsAsync(userId, cancellationToken));
 
     /// <inheritdoc />
     public async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsWithParentsAsync(
@@ -614,7 +614,7 @@ internal sealed class CachingTeamService(
 
     public Task<IReadOnlyList<TeamRoleReconciliationMembership>> GetActiveMembershipsForRoleReconciliationAsync(
         CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetActiveMembershipsForRoleReconciliationAsync(cancellationToken));
+        WithInnerAsync(inner => inner.GetActiveMembershipsForRoleReconciliationAsync(cancellationToken));
 
     public Task<int> ApplyMemberRoleChangesAsync(
         IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes,
@@ -639,7 +639,7 @@ internal sealed class CachingTeamService(
     {
         try
         {
-            await WithInnerMerge(inner => inner.ReassignAsync(
+            await WithInnerMergeAsync(inner => inner.ReassignAsync(
                 mergedFromUserId, mergedToUserId, actorUserId, now, ct));
         }
         finally
@@ -664,7 +664,7 @@ internal sealed class CachingTeamService(
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
     public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
-        WithInner(inner => inner.ContributeForUserAsync(userId, ct));
+        WithInnerAsync(inner => inner.ContributeForUserAsync(userId, ct));
 
     /// <summary>
     /// Erasure ends the human's memberships, role assignments and join requests, so the
@@ -688,7 +688,7 @@ internal sealed class CachingTeamService(
     /// </summary>
     protected override async Task WarmAllAsync(CancellationToken ct)
     {
-        var teams = await WithInner(inner => inner.GetTeamsAsync(ct));
+        var teams = await WithInnerAsync(inner => inner.GetTeamsAsync(ct));
 
         // No defensive Clear() — InvalidateTeamsCache already emptied the cache
         // before flipping the warmed flag to false (or the cache is empty on first
@@ -719,7 +719,7 @@ internal sealed class CachingTeamService(
         var invalidate = true;
         try
         {
-            var result = await WithInner(action);
+            var result = await WithInnerAsync(action);
             invalidate = changed?.Invoke(result) ?? true;
             return result;
         }
@@ -734,7 +734,7 @@ internal sealed class CachingTeamService(
     {
         try
         {
-            await WithInner(action);
+            await WithInnerAsync(action);
         }
         finally
         {
@@ -742,21 +742,21 @@ internal sealed class CachingTeamService(
         }
     }
 
-    private async Task<TResult> WithInner<TResult>(Func<ITeamManagementService, Task<TResult>> action)
+    private async Task<TResult> WithInnerAsync<TResult>(Func<ITeamManagementService, Task<TResult>> action)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ITeamManagementService>(InnerServiceKey);
         return await action(inner);
     }
 
-    private async Task WithInner(Func<ITeamManagementService, Task> action)
+    private async Task WithInnerAsync(Func<ITeamManagementService, Task> action)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ITeamManagementService>(InnerServiceKey);
         await action(inner);
     }
 
-    private async Task WithInnerMerge(Func<IUserMerge, Task> action)
+    private async Task WithInnerMergeAsync(Func<IUserMerge, Task> action)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserMerge>(InnerServiceKey);

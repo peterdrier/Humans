@@ -42,7 +42,7 @@
 | P5. Last-verified-sign-in-method invariant before unlink (verifiedAfter < 1 → block); service `UnlinkAsync` has **no** guard, so programmatic unlink can lock a user out | `ProfileController.cs:960-969` | clear | `IUserEmailService.UnlinkAsync` — enforce verified-count floor internally |
 | P6. Always-on category guard (`IsAlwaysOn()` → BadRequest) only in controller | `ProfileController.cs:1698-1699` | clear | `ICommunicationPreferenceService.UpdatePreferenceAsync` throws; controller maps. No new method |
 | P7. Dietary-save → shift-signup replay workflow (incl. privileged-flag computation) | `ProfileController.cs:1613-1659` | borderline | possibly `IShiftSignupService.TryReplayShiftSignupAfterDietarySaveAsync`; one call site — Peter's call |
-| P8. `ShiftInfoViewModel.MergeSkills/MergePersistedQuirks/MergeLanguages` — canonical storage-encoding rules ("Other: <text>", legacy-value preservation) live on a Web VM | `ProfileController.cs:1511-1517` | clear | `IShiftManagementService.UpdateShiftPreferencesAsync(userId, skills, timePreference, quirks, languages)` — merge+encode inside; VM helpers deleted |
+| P8. `ShiftInfoViewModel.MergeSkills/MergePersistedQuirks/MergeLanguages` — canonical storage-encoding rules ("Other: <text>", legacy-value preservation) live on a Web VM | `ProfileController.cs:1511-1517` | clear | `IShiftService.UpdateShiftPreferencesAsync(userId, skills, timePreference, quirks, languages)` — merge+encode inside; VM helpers deleted |
 | P9. Workspace-lock predicate (Provider=Google AND @workspace-domain) recomputed in Web | `ProfileController.cs:2122-2130` | borderline | `IUserEmailService` — `IsWorkspaceCanonical` computed flag on `UserEmailEditDto` |
 | P10. `CanUnlink` per-row computation (same invariant as P5) | `ProfileController.cs:2160-2177` | clear | with P5 — batch-aware `CanUnlink` on `UserEmailEditDto` |
 
@@ -115,7 +115,7 @@ Notes: StoreAdmin 21% Spanish VAT form-default const in controller — worth a d
 |---|---|---|---|
 | S1. Dietary signup gate (`QualifiesForCantinaMeal` + empty DietaryPreference → block signup) enforced pre-call in controller | `ShiftsController.cs:190-195, 295-300` | clear | `SignUpAsync` returns `DietaryRequired` result code; controller pattern-matches to redirect |
 | S2. **ToggleDay semantics** (grandfathered HUM0031): active-signup resolution by status set + signup-vs-bail branch | `ShiftsController.cs:186-213` | clear | `IShiftSignupService.ToggleDayAsync(userId, shiftId, flags)` — typed result absorbing S1 too |
-| S3. "Signups blocked by missing dietary" derived predicate used ×3 | `ShiftsController.cs:289-293` | clear | `IShiftManagementService.IsSignupBlockedByMissingDietaryAsync(...)` (extends existing surface) |
+| S3. "Signups blocked by missing dietary" derived predicate used ×3 | `ShiftsController.cs:289-293` | clear | `IShiftService.IsSignupBlockedByMissingDietaryAsync(...)` (extends existing surface) |
 | S4. iCal token lazy-provisioning (`if null → new Guid → persist`) in Mine | `ShiftsController.cs:393-400` | clear | `IUserService.GetOrCreateICalTokenAsync(userId)`; `RegenerateIcal`'s deliberate reset stays |
 | S5. CreateRota constructs full entity incl. `Guid.NewGuid()` + `clock` stamp | `ShiftAdminController.cs:86-100` | borderline | `CreateRotaInput` DTO (mirrors `CreateShiftInput`); controller loses its `IClock` |
 | S6. ToggleVisibility flips entity field directly then generic update | `ShiftAdminController.cs:286-293` | borderline | `ToggleRotaVisibilityAsync(rotaId)` returning new value |
@@ -187,7 +187,7 @@ Note: `FindUserLeadSeasonIdAsync`/`FindUserLeadCampIdAsync` duplicated verbatim 
 
 | Finding | Where | Conf. | Owning service → surface change |
 |---|---|---|---|
-| X1. Active-event-year resolution + `Year > 0` validity rule in private helper used by attendance actions | `HomeController.cs:157-167` | clear | `IShiftManagementService.GetActiveEventYearAsync()` (Shifts owns `EventSettings`) |
+| X1. Active-event-year resolution + `Year > 0` validity rule in private helper used by attendance actions | `HomeController.cs:157-167` | clear | `IShiftService.GetActiveEventYearAsync()` (Shifts owns `EventSettings`) |
 | X2. Undo-not-attending `false` interpreted as "locked by ticket sync" — domain reason encoded only in a controller string | `HomeController.cs:169-178` | borderline | richer result type from `UndoNotAttendingAsync` (Success + Reason) |
 | X3. "Resolved filter incompatible with unread tab" coercion | `NotificationsController.cs:26-27` | borderline | normalize inside `GetInboxAsync` / typed query record |
 | X4. Campaign code CSV tokenization rules (split/trim/drop-blank) — any import job would need them | `CampaignController.cs:138-144` | clear | `ImportCodesFromCsvAsync(campaignId, stream)` overload owning tokenization |

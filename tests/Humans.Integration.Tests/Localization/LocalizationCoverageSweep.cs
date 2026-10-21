@@ -57,7 +57,7 @@ public sealed class LocalizationCoverageSweep(
         foreach (var route in catalog.Crawlable)
         {
             var client = route.Audience == Audience.Public ? publicClient : adminClient;
-            results.Add(await ScanRoute(client, route));
+            results.Add(await ScanRouteAsync(client, route));
         }
 
         var report = SweepReport.Build(results, catalog.SkippedParamRoutes);
@@ -79,7 +79,7 @@ public sealed class LocalizationCoverageSweep(
         return location.IsAbsoluteUri ? location.PathAndQuery : location.OriginalString;
     }
 
-    private static async Task<RouteScanResult> ScanRoute(HttpClient client, RouteCandidate route)
+    private static async Task<RouteScanResult> ScanRouteAsync(HttpClient client, RouteCandidate route)
     {
         HttpResponseMessage response;
         try

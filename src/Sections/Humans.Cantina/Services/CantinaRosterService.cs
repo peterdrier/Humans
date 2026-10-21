@@ -13,7 +13,7 @@ namespace Humans.Cantina.Services;
 /// <summary>
 /// Application-layer implementation of <see cref="ICantinaRosterService"/>.
 /// The on-site cohort (who is around each day) comes from
-/// <see cref="IShiftManagementService.GetOnSiteUserIdsForDayAsync"/>; the display
+/// <see cref="IShiftService.GetOnSiteUserIdsForDayAsync"/>; the display
 /// name comes off the cross-section <see cref="IUserService"/>'s <see cref="UserInfo"/>,
 /// already resolved, and the dietary data (preference, allergies, intolerances) from this
 /// section's own <see cref="ICantinaService"/>. The service unions the days into a
@@ -24,7 +24,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
 {
     private const int DaysPerWeek = 7;
 
-    private readonly IShiftManagementService _shiftMgmt;
+    private readonly IShiftService _shiftMgmt;
     private readonly ISettingsService _settingsService;
     private readonly IUserService _userRead;
     private readonly ICantinaService _dietary;
@@ -36,7 +36,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
     private static readonly string UnansweredKey = "Unanswered";
 
     public CantinaRosterService(
-        IShiftManagementService shiftMgmt,
+        IShiftService shiftMgmt,
         ISettingsService settingsService,
         IUserService userRead,
         ICantinaService dietary,

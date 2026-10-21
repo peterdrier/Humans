@@ -14,6 +14,7 @@ using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Hosting;
 using NSubstitute;
 using Xunit;
 
@@ -74,6 +75,7 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
             Substitute.For<IEmailService>(),
             TestUsersEmails.Create(),
             Clock,
+            Substitute.For<IHostEnvironment>(),
             NullLogger<AccountDeletionService>.Instance);
     }
 

@@ -6,8 +6,8 @@ namespace Humans.Governance.Contracts;
 /// <summary>
 /// Cross-section read surface for the Governance section: tier-application
 /// counts, stats, snapshots, and active-tier eligibility lookups. External
-/// sections inject this interface; the submit-path writes they make live on
-/// <see cref="IGovernanceWrite"/>. Returns are scalars, enums,
+/// sections inject this interface; Governance publishes no write contract, so every
+/// write stays inside the section. Returns are scalars, enums,
 /// Guid sets, and section read DTOs — no EF entities. See
 /// <c>memory/architecture/section-public-contract.md</c>.
 /// </summary>

@@ -662,7 +662,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         }
         var service = new TeamService(
             repo, Substitute.For<IAuditLogService>(), Notifier,
-            Substitute.For<IShiftManagementService>(),
+            Substitute.For<IShiftService>(),
             Substitute.For<INotificationMeterCacheInvalidator>(),
             AdminAuthorization, Substitute.For<IEarlyEntryInvalidator>(),
             new ServiceLocatorBuilder().Build(), Clock, NullLogger<TeamService>.Instance);
@@ -1175,7 +1175,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         }
         var provider = new ServiceLocatorBuilder().Build();
         TeamService NewService() => new(repository, AuditLog, Notifier,
-            Substitute.For<IShiftManagementService>(), Substitute.For<INotificationMeterCacheInvalidator>(),
+            Substitute.For<IShiftService>(), Substitute.For<INotificationMeterCacheInvalidator>(),
             AdminAuthorization, EarlyEntryInvalidator, provider, Clock,
             NullLogger<TeamService>.Instance);
         var userId = Guid.NewGuid();

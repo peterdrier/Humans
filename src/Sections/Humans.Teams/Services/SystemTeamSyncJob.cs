@@ -45,9 +45,6 @@ internal sealed class SystemTeamSyncJob(
     private IGovernanceService ApplicationDecisionService =>
         serviceProvider.GetRequiredService<IGovernanceService>();
 
-    private IGovernanceWrite GovernanceWrite =>
-        serviceProvider.GetRequiredService<IGovernanceWrite>();
-
     private IRoleAssignmentService RoleAssignmentService =>
         serviceProvider.GetRequiredService<IRoleAssignmentService>();
 
@@ -309,27 +306,6 @@ internal sealed class SystemTeamSyncJob(
         var eligibleSet = await MembershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
             userIds, teamId, cancellationToken);
         var eligibleUserIds = eligibleSet.ToList();
-
-        // Downgrade tier for users whose approved application expired; Governance honors a still-active
-        // other-tier application. The audit stays here: this job is the automation that ran it.
-        var downgrades = await GovernanceWrite.ExpireMembershipTiersAsync(tier, today, cancellationToken);
-
-        if (downgrades.Count > 0)
-        {
-            var downgradeUserIds = downgrades.Select(d => d.UserId).ToList();
-            var downgradeUsersById = await userService.GetUserInfosAsync(downgradeUserIds, cancellationToken);
-
-            foreach (var (downgradeUserId, newTier) in downgrades)
-            {
-                var displayName = downgradeUsersById.TryGetValue(downgradeUserId, out var u)
-                    ? u.BurnerName : "Unknown";
-                await auditLogService.LogAsync(
-                    AuditAction.TierDowngraded, "Profile", downgradeUserId,
-                    $"Membership tier changed to {newTier} for {displayName} due to {tier} term expiry",
-                    nameof(SystemTeamSyncJob),
-                    relatedEntityId: downgradeUserId, relatedEntityType: nameof(User));
-            }
-        }
 
         await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, step: step);
         report?.Steps.Add(step);

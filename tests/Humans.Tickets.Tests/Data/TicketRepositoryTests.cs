@@ -69,7 +69,7 @@ public sealed class TicketRepositoryTests : IDisposable
             SyncedAt = now,
         });
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-        async Task<(int Count, int Total)> ReadPage(int page)
+        async Task<(int Count, int Total)> ReadPageAsync(int page)
         {
             if (attendees)
             {
@@ -81,8 +81,8 @@ public sealed class TicketRepositoryTests : IDisposable
                 Xunit.TestContext.Current.CancellationToken);
             return (orders.Rows.Count, orders.TotalCount);
         }
-        (await ReadPage(1)).Should().Be((1, 1));
-        (await ReadPage(int.MaxValue)).Should().Be((0, 1));
+        (await ReadPageAsync(1)).Should().Be((1, 1));
+        (await ReadPageAsync(int.MaxValue)).Should().Be((0, 1));
     }
 
     [HumansFact]

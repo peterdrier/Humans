@@ -16,7 +16,7 @@ internal sealed class SearchService(
     IUserService userService,
     ITeamService teamService,
     ICampService campService,
-    IShiftManagementService shiftService,
+    IShiftService shiftService,
     IEventService eventService,
     IConfiguration configuration) : ISearchService
 {

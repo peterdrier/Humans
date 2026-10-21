@@ -165,7 +165,7 @@ public sealed class CachingTicketQueryServiceTests
     [HumansFact]
     public async Task InvalidateAfterTransfer_DropsProjectionAndBothUsersPerUserEntries()
     {
-        await SeedTwoUserHoldings();
+        await SeedTwoUserHoldingsAsync();
 
         _decorator.InvalidateAfterTransfer(senderUserId: UserA, receiverUserId: UserB);
 
@@ -181,7 +181,7 @@ public sealed class CachingTicketQueryServiceTests
     [HumansFact]
     public async Task InvalidateAfterTransfer_NullReceiver_LeavesOtherUsersAlone()
     {
-        await SeedTwoUserHoldings();
+        await SeedTwoUserHoldingsAsync();
 
         _decorator.InvalidateAfterTransfer(senderUserId: UserA, receiverUserId: null);
 
@@ -195,7 +195,7 @@ public sealed class CachingTicketQueryServiceTests
     [HumansFact]
     public async Task InvalidateAfterUserMerge_DropsProjectionAndBothUsersPerUserEntries()
     {
-        await SeedTwoUserHoldings();
+        await SeedTwoUserHoldingsAsync();
 
         _decorator.InvalidateAfterUserMerge(sourceUserId: UserA, targetUserId: UserB);
 
@@ -211,7 +211,7 @@ public sealed class CachingTicketQueryServiceTests
     [HumansFact]
     public async Task InvalidateAll_DropsProjectionAndPerUserEntries()
     {
-        await SeedOneUserHolding();
+        await SeedOneUserHoldingAsync();
 
         _decorator.InvalidateAll();
 
@@ -225,7 +225,7 @@ public sealed class CachingTicketQueryServiceTests
     [HumansFact]
     public async Task InvalidateAfterContactImport_DropsProjectionAndAllUserHoldings()
     {
-        await SeedTwoUserHoldings();
+        await SeedTwoUserHoldingsAsync();
 
         _decorator.InvalidateAfterContactImport();
 
@@ -238,7 +238,7 @@ public sealed class CachingTicketQueryServiceTests
         await _inner.Received(1).GetUserTicketHoldingsAsync(UserB, Arg.Any<CancellationToken>());
     }
 
-    private async Task SeedTwoUserHoldings()
+    private async Task SeedTwoUserHoldingsAsync()
     {
         SeedOrders(
             MakeOrder(Guid.NewGuid(), matchedUserId: UserA, attendees: [
@@ -256,7 +256,7 @@ public sealed class CachingTicketQueryServiceTests
         _inner.ClearReceivedCalls();
     }
 
-    private async Task SeedOneUserHolding()
+    private async Task SeedOneUserHoldingAsync()
     {
         SeedOrders(MakeOrder(Guid.NewGuid(), matchedUserId: UserA, attendees: [
             MakeAttendee(matchedUserId: UserA, status: TicketAttendeeStatus.Valid),

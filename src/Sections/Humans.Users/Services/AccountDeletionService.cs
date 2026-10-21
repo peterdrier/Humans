@@ -9,6 +9,7 @@ using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Interfaces;
+using Microsoft.Extensions.Hosting;
 using NodaTime;
 
 namespace Humans.Application.Services.Users.AccountLifecycle;
@@ -26,8 +27,15 @@ internal sealed class AccountDeletionService(
     IEmailService emailService,
     UsersEmails emailMessages,
     IClock clock,
+    IHostEnvironment environment,
     ILogger<AccountDeletionService> logger) : IAccountDeletionService, IOrchestrator
 {
+    /// <summary><see cref="PurgeAsync"/> refusal: purge is a dev/QA tool, never run in production.</summary>
+    internal const string PurgeRefusedInProduction = "Production";
+
+    /// <summary><see cref="PurgeAsync"/> refusal: an admin may not purge their own account.</summary>
+    internal const string PurgeRefusedSelf = "Self";
+
     // --- User-initiated deletion request (30-day scheduled) ---
 
     public async Task<DeletionRequestResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default)
@@ -109,8 +117,20 @@ internal sealed class AccountDeletionService(
 
     public async Task<OnboardingResult> PurgeAsync(Guid userId, Guid? actorId = null, CancellationToken ct = default)
     {
+        if (environment.IsProduction())
+        {
+            logger.LogWarning("Purge of {UserId} refused: purge never runs in production", userId);
+            return new OnboardingResult(false, PurgeRefusedInProduction);
+        }
+
         if (await userService.GetRawUserInfoAsync(userId, ct) is null)
             return new OnboardingResult(false, "NotFound");
+
+        if (actorId == userId)
+        {
+            logger.LogWarning("Purge of {UserId} refused: an admin may not purge their own account", userId);
+            return new OnboardingResult(false, PurgeRefusedSelf);
+        }
 
         // Same Article 17 fan-out as the expiry path — an admin purge must not
         // erase less than the scheduled job does. The Account contributor inside

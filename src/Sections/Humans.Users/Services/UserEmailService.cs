@@ -42,6 +42,7 @@ internal sealed class UserEmailService(
 
         var emailIds = info.UserEmails.Select(e => e.Id).ToList();
         var mergePendingSet = await MergeService.GetPendingEmailIdsAsync(emailIds, cancellationToken);
+        var verifiedCount = info.UserEmails.Count(e => e.IsVerified);
 
         return info.UserEmails.Select(e => new UserEmailEditDto(
             e.Id,
@@ -52,7 +53,9 @@ internal sealed class UserEmailService(
             e.IsPrimary,
             e.Visibility,
             IsPendingVerification: !e.IsVerified && e.VerificationSentAt.HasValue,
-            IsMergePending: mergePendingSet.Contains(e.Id)
+            IsMergePending: mergePendingSet.Contains(e.Id),
+            CanUnlink: !string.IsNullOrEmpty(e.Provider) && !string.IsNullOrEmpty(e.ProviderKey)
+                && verifiedCount - (e.IsVerified ? 1 : 0) >= 1
         )).ToList();
     }
 

@@ -16,7 +16,7 @@ namespace Humans.Shifts.ViewComponents;
 /// rows costs no query once warm.
 /// </remarks>
 public sealed class ShiftsSearchResultViewComponent(
-    IShiftManagementService shifts,
+    IShiftService shifts,
     ITeamService teams) : ViewComponent
 {
     /// <summary>Renders the row, or nothing when the rota no longer resolves.</summary>

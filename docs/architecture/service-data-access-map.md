@@ -166,8 +166,7 @@ Every table is owned by exactly one repository; there are no HUM0025
    (`IRoleAssignmentWrite`), `IConsentService`,
    `ICampService`, `ITicketService`, `IGoogleSyncService`
    (consumed by `NotificationMeterProvider` for failed-sync-event counts;
-   foreign writes go through `IGoogleSyncWrite`), `ITeamResourceService`
-   (writes via `ITeamResourceWrite`), `IHoldedFinanceService`
+   foreign writes go through `IGoogleSyncWrite`), `ITeamResourceService`, `IHoldedFinanceService`
    (writes via `IHoldedFinanceWrite`),
    `ICampaignService` (consumed by `TicketQueryService`; writes via
    `ICampaignWrite`),
@@ -178,7 +177,7 @@ Every table is owned by exactly one repository; there are no HUM0025
    consumers are Web-layer controllers/handlers, no Application-layer
    service consumer yet), and
    the Governance pair `IGovernanceService` / `IMembershipCalculator`
-   (foreign writes via `IGovernanceWrite`).
+   (no foreign writes).
    Several of these are the Singleton caching decorators re-cast
    to a narrow surface; the Governance read interfaces are plain
    read-only contracts the section's services implement directly. All keep
@@ -317,7 +316,7 @@ Every table is owned by exactly one repository; there are no HUM0025
     `IShiftManagement` — all §15-compliant service-interface calls.
     Its one cross-section **write** — projecting an admit onto the guest's
     participation record as `Attended` — goes through the
-    owning `ITicketWrite.SetParticipationFromTicketSyncAsync` (Tickets), so no
+    owning `ITicketWrite.RecordParticipationAsync` (Tickets), so no
     design-rule violation. `IGateRepository` reads/writes only the three
     Gate-owned tables. The section deliberately has **no caching
     decorator**: admission verdicts must be live.

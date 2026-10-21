@@ -25,7 +25,7 @@ public class AgentServiceTests
     {
         var userId = Guid.NewGuid();
         var otherUserId = Guid.NewGuid();
-        var (service, client) = await BuildService(settings => settings.Enabled = true);
+        var (service, client) = await BuildServiceAsync(settings => settings.Enabled = true);
         foreach (var ownerId in new[] { userId, otherUserId })
         {
             client.EnqueueTurn(new AgentTurnToken("Answer", null, null),
@@ -64,7 +64,7 @@ public class AgentServiceTests
             UserInfo.Create(new User { Id = survivorId, BurnerName = "Survivor" }, [], [], [], null, [])
                 with
             { MergedUserIds = [sourceId] });
-        var (service, client) = await BuildService(settings => settings.Enabled = true, users: users);
+        var (service, client) = await BuildServiceAsync(settings => settings.Enabled = true, users: users);
         foreach (var (ownerId, question) in new[]
         {
             (survivorId, "Survivor question"), (sourceId, "Before merge question"), (strangerId, "Other person's secret")
@@ -93,7 +93,7 @@ public class AgentServiceTests
     [Xunit.InlineData("ca")]
     public async Task Ask_localizes_the_abuse_refusal_in_the_requested_culture(string locale)
     {
-        var (svc, _) = await BuildService(s => s.Enabled = true);
+        var (svc, _) = await BuildServiceAsync(s => s.Enabled = true);
         var tokens = new List<AgentTurnToken>();
         await foreach (var token in svc.AskAsync(new AgentTurnRequest(
             ConversationId: Guid.Empty, UserId: Guid.NewGuid(), Message: "hurt myself", Locale: locale),
@@ -115,7 +115,7 @@ public class AgentServiceTests
         for (var h = 0; h < 30; h++)
             store.Record(userId, new LocalDate(2026, 4, 21), hour: h, messagesDelta: 1, tokensDelta: 0);
 
-        var (svc, _) = await BuildService(s =>
+        var (svc, _) = await BuildServiceAsync(s =>
         {
             s.Enabled = true;
             s.DailyMessageCap = 30;
@@ -149,8 +149,8 @@ public class AgentServiceTests
             if (cap == 1) settings.HourlyMessageCap = 1;
             if (cap == 2) settings.DailyTokenCap = 1;
         }
-        var (first, firstClient) = await BuildService(Configure, rateLimitStore: store);
-        var (second, secondClient) = await BuildService(Configure, rateLimitStore: store);
+        var (first, firstClient) = await BuildServiceAsync(Configure, rateLimitStore: store);
+        var (second, secondClient) = await BuildServiceAsync(Configure, rateLimitStore: store);
         foreach (var client in new[] { firstClient, secondClient })
             client.EnqueueTurn(new AgentTurnToken("Answer", null, null),
                 new AgentTurnToken(null, null, new AgentTurnFinalizer(2, 1, 0, 0, "test-model", "end_turn")));
@@ -159,7 +159,7 @@ public class AgentServiceTests
         await using var active = first.AskAsync(new AgentTurnRequest(Guid.Empty, userId, "First", "en"), ct)
             .GetAsyncEnumerator(ct);
         (await active.MoveNextAsync()).Should().BeTrue();
-        var pending = ReadSecond();
+        var pending = ReadSecondAsync();
         var secondReachedProviderBeforeFirstFinished = secondClient.LastRequest is not null;
         while (await active.MoveNextAsync()) { }
         var secondResult = await pending;
@@ -168,7 +168,7 @@ public class AgentServiceTests
         secondClient.LastRequest.Should().BeNull();
         secondResult.Last().Finalizer!.StopReason.Should().Be("rate_limited");
 
-        async Task<List<AgentTurnToken>> ReadSecond()
+        async Task<List<AgentTurnToken>> ReadSecondAsync()
         {
             var result = new List<AgentTurnToken>();
             await foreach (var token in second.AskAsync(
@@ -183,8 +183,8 @@ public class AgentServiceTests
     {
         var userId = Guid.NewGuid();
         var store = new AgentRateLimitStore();
-        var (first, firstClient) = await BuildService(s => s.Enabled = true, rateLimitStore: store);
-        var (second, secondClient) = await BuildService(s => s.Enabled = true, rateLimitStore: store);
+        var (first, firstClient) = await BuildServiceAsync(s => s.Enabled = true, rateLimitStore: store);
+        var (second, secondClient) = await BuildServiceAsync(s => s.Enabled = true, rateLimitStore: store);
         firstClient.EnqueueTurn(new AgentTurnToken("Partial answer", null, null));
         secondClient.EnqueueTurn(new AgentTurnToken("Other user", null, null),
             new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "test-model", "end_turn")));
@@ -225,7 +225,7 @@ public class AgentServiceTests
     public async Task Ask_finalizer_carries_conversation_id_so_the_client_can_continue_the_thread()
     {
         var userId = Guid.NewGuid();
-        var (svc, client) = await BuildService(s => s.Enabled = true);
+        var (svc, client) = await BuildServiceAsync(s => s.Enabled = true);
 
         client.EnqueueTurn(
             new AgentTurnToken("hello!", null, null),
@@ -248,7 +248,7 @@ public class AgentServiceTests
     public async Task Ask_replays_prior_user_and_assistant_turns_to_the_model_when_the_conversation_continues()
     {
         var userId = Guid.NewGuid();
-        var (svc, client) = await BuildService(s => s.Enabled = true);
+        var (svc, client) = await BuildServiceAsync(s => s.Enabled = true);
 
         // Turn 1 — establishes the conversation.
         client.EnqueueTurn(
@@ -289,7 +289,7 @@ public class AgentServiceTests
     public async Task Ask_with_unknown_conversation_id_starts_a_new_conversation_instead_of_throwing()
     {
         var userId = Guid.NewGuid();
-        var (svc, client) = await BuildService(s => s.Enabled = true);
+        var (svc, client) = await BuildServiceAsync(s => s.Enabled = true);
 
         client.EnqueueTurn(
             new AgentTurnToken("hi back", null, null),
@@ -314,7 +314,7 @@ public class AgentServiceTests
     {
         var victimId = Guid.NewGuid();
         var attackerId = Guid.NewGuid();
-        var (svc, client) = await BuildService(s => s.Enabled = true);
+        var (svc, client) = await BuildServiceAsync(s => s.Enabled = true);
         client.EnqueueTurn(
             new AgentTurnToken("Hi.", null, null),
             new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
@@ -353,7 +353,7 @@ public class AgentServiceTests
         for (var h = 0; h < 30; h++)
             store.Record(attackerId, new LocalDate(2026, 4, 21), hour: h, messagesDelta: 1, tokensDelta: 0);
 
-        var (svc, _) = await BuildService(s =>
+        var (svc, _) = await BuildServiceAsync(s =>
         {
             s.Enabled = true;
             s.DailyMessageCap = 30;
@@ -384,10 +384,10 @@ public class AgentServiceTests
     public async Task PromptPreview_reports_system_prompt_token_count_from_count_tokens()
     {
         var userId = Guid.NewGuid();
-        var (svc, client) = await BuildService(s => s.Enabled = true);
+        var (svc, client) = await BuildServiceAsync(s => s.Enabled = true);
         client.CountTokensResult = 4096;
 
-        var conversationId = await StartConversation(svc, client, userId);
+        var conversationId = await StartConversationAsync(svc, client, userId);
 
         var preview = await svc.GetPromptPreviewForAdminAsync(
             conversationId, Xunit.TestContext.Current.CancellationToken);
@@ -400,9 +400,9 @@ public class AgentServiceTests
     public async Task PromptPreview_renders_without_a_token_count_when_count_tokens_fails()
     {
         var userId = Guid.NewGuid();
-        var (svc, client) = await BuildService(s => s.Enabled = true);
+        var (svc, client) = await BuildServiceAsync(s => s.Enabled = true);
 
-        var conversationId = await StartConversation(svc, client, userId);
+        var conversationId = await StartConversationAsync(svc, client, userId);
 
         client.CountTokensThrows = true;
         var preview = await svc.GetPromptPreviewForAdminAsync(
@@ -417,8 +417,8 @@ public class AgentServiceTests
     public async Task PromptPreview_propagates_cancellation_during_token_counting()
     {
         var logger = Substitute.For<ILogger<AgentService>>();
-        var (service, client) = await BuildService(settings => settings.Enabled = true, logger: logger);
-        var conversationId = await StartConversation(service, client, Guid.NewGuid());
+        var (service, client) = await BuildServiceAsync(settings => settings.Enabled = true, logger: logger);
+        var conversationId = await StartConversationAsync(service, client, Guid.NewGuid());
         using var cancellation = new CancellationTokenSource();
         client.CountTokensStarted = token =>
         {
@@ -442,7 +442,7 @@ public class AgentServiceTests
             .Returns(ci => new AnthropicToolResult(
                 ci.Arg<AnthropicToolCall>().Id, "guide content", IsError: false));
         var rateLimitStore = new AgentRateLimitStore();
-        var (svc, client) = await BuildService(s => s.Enabled = true,
+        var (svc, client) = await BuildServiceAsync(s => s.Enabled = true,
             rateLimitStore: rateLimitStore, toolDispatcher: dispatcher);
 
         // Iteration 1: the model burns the whole tool budget (MaxToolCallsPerTurn = 3).
@@ -507,10 +507,10 @@ public class AgentServiceTests
         dispatcher.DispatchAsync(Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(new AnthropicToolResult(
                 call.Arg<AnthropicToolCall>().Id, "Proposal queued.", IsError: false)));
-        var (svc, client) = await BuildService(s => s.Enabled = true, toolDispatcher: dispatcher);
+        var (svc, client) = await BuildServiceAsync(s => s.Enabled = true, toolDispatcher: dispatcher);
 
         // Turn 1 — plain answer, no handoff. Must NOT match the handoffs filter.
-        await StartConversation(svc, client, Guid.NewGuid());
+        await StartConversationAsync(svc, client, Guid.NewGuid());
 
         // Turn 2 — the agent hands off via route_to_issue.
         client.EnqueueTurn(
@@ -551,7 +551,7 @@ public class AgentServiceTests
         dispatcher.DispatchAsync(Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(new AnthropicToolResult(
                 call.Arg<AnthropicToolCall>().Id, "Malformed tool arguments (expected JSON object).", IsError: true)));
-        var (svc, client) = await BuildService(s => s.Enabled = true, toolDispatcher: dispatcher);
+        var (svc, client) = await BuildServiceAsync(s => s.Enabled = true, toolDispatcher: dispatcher);
 
         client.EnqueueTurn(
             new AgentTurnToken(null, new AnthropicToolCall(
@@ -594,7 +594,7 @@ public class AgentServiceTests
             .Returns(ci => new AnthropicToolResult(
                 ci.Arg<AnthropicToolCall>().Id, "guide content", IsError: false));
         var logger = Substitute.For<ILogger<AgentService>>();
-        var (svc, client) = await BuildService(s => s.Enabled = true,
+        var (svc, client) = await BuildServiceAsync(s => s.Enabled = true,
             toolDispatcher: dispatcher, logger: logger);
 
         // Iteration 1: the model burns the whole tool budget (MaxToolCallsPerTurn = 3) with no prose at all.
@@ -658,7 +658,7 @@ public class AgentServiceTests
         dispatcher.DispatchAsync(Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(new AnthropicToolResult(
                 call.Arg<AnthropicToolCall>().Id, "Proposal queued.", IsError: false)));
-        var (svc, client) = await BuildService(s => s.Enabled = true, toolDispatcher: dispatcher);
+        var (svc, client) = await BuildServiceAsync(s => s.Enabled = true, toolDispatcher: dispatcher);
 
         var titlePrefix = new string('t', 199);
         var descriptionPrefix = new string('d', 4999);
@@ -703,7 +703,7 @@ public class AgentServiceTests
         // bubble and must receive the same fallback as truly zero-length output.
         var userId = Guid.NewGuid();
         var logger = Substitute.For<ILogger<AgentService>>();
-        var (svc, client) = await BuildService(s => s.Enabled = true, logger: logger);
+        var (svc, client) = await BuildServiceAsync(s => s.Enabled = true, logger: logger);
 
         client.EnqueueTurn(
             new AgentTurnToken(" \n\n ", null, null),
@@ -747,7 +747,7 @@ public class AgentServiceTests
         dispatcher.DispatchAsync(Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(new AnthropicToolResult(
                 call.Arg<AnthropicToolCall>().Id, "Malformed tool arguments (expected JSON object).", IsError: true)));
-        var (svc, client) = await BuildService(s => s.Enabled = true, toolDispatcher: dispatcher);
+        var (svc, client) = await BuildServiceAsync(s => s.Enabled = true, toolDispatcher: dispatcher);
 
         // Iteration 1: max_tokens hits mid tool-call JSON.
         client.EnqueueTurn(
@@ -804,7 +804,7 @@ public class AgentServiceTests
             .Returns(call => new AnthropicToolResult(call.Arg<AnthropicToolCall>().Id, "guide", IsError: false));
         var logger = Substitute.For<ILogger<AgentService>>();
         var store = new AgentRateLimitStore();
-        var (service, client) = await BuildService(settings => settings.Enabled = true,
+        var (service, client) = await BuildServiceAsync(settings => settings.Enabled = true,
             rateLimitStore: store, toolDispatcher: dispatcher, logger: logger);
         if (afterToolIteration)
         {
@@ -857,7 +857,7 @@ public class AgentServiceTests
             .Returns<Task<AnthropicToolResult>>(_ => throw new InvalidOperationException("simulated dispatch failure"));
         var logger = Substitute.For<ILogger<AgentService>>();
         var store = new AgentRateLimitStore();
-        var (svc, client) = await BuildService(s => s.Enabled = true, rateLimitStore: store,
+        var (svc, client) = await BuildServiceAsync(s => s.Enabled = true, rateLimitStore: store,
             toolDispatcher: dispatcher, logger: logger);
 
         client.EnqueueTurn(
@@ -935,7 +935,7 @@ public class AgentServiceTests
                 return new AnthropicToolResult(
                     call.Arg<AnthropicToolCall>().Id, "Proposal queued.", IsError: false);
             });
-        var (svc, client) = await BuildService(s => s.Enabled = true, toolDispatcher: dispatcher);
+        var (svc, client) = await BuildServiceAsync(s => s.Enabled = true, toolDispatcher: dispatcher);
 
         client.EnqueueTurn(
             new AgentTurnToken(null, new AnthropicToolCall(
@@ -975,7 +975,7 @@ public class AgentServiceTests
         // user message with a matching assistant trace.
         var userId = Guid.NewGuid();
         var store = new AgentRateLimitStore();
-        var (svc, client) = await BuildService(s => s.Enabled = true, rateLimitStore: store);
+        var (svc, client) = await BuildServiceAsync(s => s.Enabled = true, rateLimitStore: store);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Xunit.TestContext.Current.CancellationToken);
 
         client.EnqueueTurn(
@@ -1023,7 +1023,7 @@ public class AgentServiceTests
         // its finalizer only after AppendMessageAsync, so a disconnect while writing that last
         // frame would otherwise stack a bogus "error" trace on top of a perfectly good answer.
         var userId = Guid.NewGuid();
-        var (svc, client) = await BuildService(s => s.Enabled = true);
+        var (svc, client) = await BuildServiceAsync(s => s.Enabled = true);
 
         client.EnqueueTurn(
             new AgentTurnToken(null, null, null, Usage: new AgentTurnFinalizer(40, 1, 5, 3, "claude-sonnet-4-6", null)),
@@ -1058,16 +1058,16 @@ public class AgentServiceTests
         for (var h = 0; h < 30; h++)
             store.Record(userId, new LocalDate(2026, 4, 21), hour: h, messagesDelta: 1, tokensDelta: 0);
 
-        var (svc, client) = await BuildService(s =>
+        var (svc, client) = await BuildServiceAsync(s =>
         {
             s.Enabled = true;
             s.DailyMessageCap = 30;
         }, rateLimitStore: store);
 
         // A second user with a normal, non-refused conversation. Must NOT match the filter.
-        await StartConversation(svc, client, Guid.NewGuid());
+        await StartConversationAsync(svc, client, Guid.NewGuid());
 
-        // The capped user trips the rate limit — PersistRefusal writes RefusalReason.
+        // The capped user trips the rate limit — PersistRefusalAsync writes RefusalReason.
         await foreach (var _ in svc.AskAsync(
             new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "hi", Locale: "es"),
             Xunit.TestContext.Current.CancellationToken))
@@ -1084,7 +1084,7 @@ public class AgentServiceTests
             "the API's RefusalCount projects from RefusalReason");
     }
 
-    private static async Task<Guid> StartConversation(
+    private static async Task<Guid> StartConversationAsync(
         IAgentService svc, AnthropicClientFake client, Guid userId)
     {
         client.EnqueueTurn(
@@ -1101,7 +1101,7 @@ public class AgentServiceTests
         return conversationId;
     }
 
-    private static async Task<(IAgentService Svc, AnthropicClientFake Client)> BuildService(
+    private static async Task<(IAgentService Svc, AnthropicClientFake Client)> BuildServiceAsync(
         Action<AgentSettings> tune,
         IAgentRateLimitStore? rateLimitStore = null,
         IAgentToolDispatcher? toolDispatcher = null,

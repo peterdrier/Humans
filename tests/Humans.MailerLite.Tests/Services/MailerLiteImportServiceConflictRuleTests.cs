@@ -34,7 +34,7 @@ public class MailerLiteImportServiceConflictRuleTests
         var plan = MakePlan("user@x.com", "bounced", SubscriberOutcome.VerifiedFlipToOptOut, userId);
         await harness.Service.ApplyAsync(plan, Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
 
-        await harness.Prefs.AssertUpdated(userId, MessageCategory.Marketing, optedOut: true, source: "MailerLiteSync");
+        await harness.Prefs.AssertUpdatedAsync(userId, MessageCategory.Marketing, optedOut: true, source: "MailerLiteSync");
     }
 
     // (b) Keeps Humans state when user-action AND newer.
@@ -60,7 +60,7 @@ public class MailerLiteImportServiceConflictRuleTests
         var plan = MakePlan("user@x.com", "unsubscribed", SubscriberOutcome.VerifiedKeepHumansPref, userId);
         await harness.Service.ApplyAsync(plan, Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
 
-        await harness.Prefs.AssertNotUpdated(userId, MessageCategory.Marketing);
+        await harness.Prefs.AssertNotUpdatedAsync(userId, MessageCategory.Marketing);
     }
 
     // (c) Overwrites Humans state when sync-source OR older.
@@ -86,7 +86,7 @@ public class MailerLiteImportServiceConflictRuleTests
         var plan = MakePlan("user@x.com", "unsubscribed", SubscriberOutcome.VerifiedFlipToOptOut, userId);
         await harness.Service.ApplyAsync(plan, Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
 
-        await harness.Prefs.AssertUpdated(userId, MessageCategory.Marketing, optedOut: true, source: "MailerLiteSync");
+        await harness.Prefs.AssertUpdatedAsync(userId, MessageCategory.Marketing, optedOut: true, source: "MailerLiteSync");
     }
 
     private static ImportPlan MakePlan(string email, string status, SubscriberOutcome outcome, Guid? userId)
@@ -189,13 +189,13 @@ internal sealed class ApplyHarness
 /// </summary>
 internal sealed class PrefsVerifier(ICommunicationPreferenceWrite mock)
 {
-    public async Task AssertUpdated(Guid userId, MessageCategory category, bool optedOut, string source)
+    public async Task AssertUpdatedAsync(Guid userId, MessageCategory category, bool optedOut, string source)
     {
         await mock.Received(1).UpdatePreferenceAsync(
             userId, category, optedOut, source, Arg.Any<CancellationToken>());
     }
 
-    public async Task AssertNotUpdated(Guid userId, MessageCategory category)
+    public async Task AssertNotUpdatedAsync(Guid userId, MessageCategory category)
     {
         await mock.DidNotReceive().UpdatePreferenceAsync(
             userId, category, Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<CancellationToken>());

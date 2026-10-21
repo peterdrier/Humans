@@ -12,14 +12,14 @@ internal sealed class SectionAdminNav : ISectionAdminNav
     [
         new("Issues", [
             new("Feedback queue", "Feedback", "Index", null, null, "fa-solid fa-comment-dots", PolicyNames.AdminOnly, Weight: 10,
-                 PillCount: PillCounts.FeedbackQueue)
+                 PillCount: PillCounts.FeedbackQueueAsync)
         ])
     ];
 }
 
 internal static class PillCounts
 {
-    public static async ValueTask<int?> FeedbackQueue(IServiceProvider sp)
+    public static async ValueTask<int?> FeedbackQueueAsync(IServiceProvider sp)
     {
         var feedback = sp.GetRequiredService<FeedbackService>();
         var count = await feedback.GetActionableCountAsync(CancellationToken.None);

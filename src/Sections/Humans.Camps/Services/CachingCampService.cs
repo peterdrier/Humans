@@ -33,7 +33,7 @@ internal sealed class CachingCampService(
         var normalizedSlug = slug.ToLowerInvariant();
         var cached = Values.FirstOrDefault(camp =>
             string.Equals(camp.Slug, normalizedSlug, StringComparison.Ordinal));
-        return cached ?? await WithInner(inner => inner.GetCampBySlugAsync(slug, cancellationToken));
+        return cached ?? await WithInnerAsync(inner => inner.GetCampBySlugAsync(slug, cancellationToken));
     }
 
     public async Task<CampInfo?> GetCampByIdAsync(Guid campId, CancellationToken cancellationToken = default)
@@ -42,7 +42,7 @@ internal sealed class CachingCampService(
         await EnsureWarmedAsync(cancellationToken);
         return TryGet(campId, out var cached)
             ? cached
-            : await WithInner(inner => inner.GetCampByIdAsync(campId, cancellationToken));
+            : await WithInnerAsync(inner => inner.GetCampByIdAsync(campId, cancellationToken));
     }
 
     public async Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(
@@ -53,7 +53,7 @@ internal sealed class CachingCampService(
         // that pass arbitrary years still get correct results.
         if (!IsWarmYear(year))
         {
-            return await WithInner(inner => inner.GetCampsForYearAsync(year, cancellationToken));
+            return await WithInnerAsync(inner => inner.GetCampsForYearAsync(year, cancellationToken));
         }
 
         var snapshot = Values;
@@ -84,10 +84,10 @@ internal sealed class CachingCampService(
     }
 
     public Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct) =>
-        WithInner(inner => inner.GetEarlyEntriesAsync(ct));
+        WithInnerAsync(inner => inner.GetEarlyEntriesAsync(ct));
 
     public Task<int> GetActiveYearAsync(CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetActiveYearAsync(cancellationToken));
+        WithInnerAsync(inner => inner.GetActiveYearAsync(cancellationToken));
 
     public async Task<CampUserInfo> GetCampUserInfoAsync(Guid userId, CancellationToken cancellationToken = default)
     {
@@ -102,7 +102,7 @@ internal sealed class CachingCampService(
 
     public Task<CampEditData?> GetCampEditDataAsync(
         Guid campId, int? preferredYear = null, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetCampEditDataAsync(campId, preferredYear, cancellationToken));
+        WithInnerAsync(inner => inner.GetCampEditDataAsync(campId, preferredYear, cancellationToken));
 
     // A camp surfaces in global search only when its public-year season is publicly visible.
     private static readonly CampSeasonStatus[] PublicCampSeasonStatuses =
@@ -162,11 +162,11 @@ internal sealed class CachingCampService(
             if (season is not null) return season;
         }
 
-        return await WithInner(inner => inner.GetCampSeasonByIdAsync(campSeasonId, cancellationToken));
+        return await WithInnerAsync(inner => inner.GetCampSeasonByIdAsync(campSeasonId, cancellationToken));
     }
 
     public Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetCampMemberStatusAsync(campMemberId, cancellationToken));
+        WithInnerAsync(inner => inner.GetCampMemberStatusAsync(campMemberId, cancellationToken));
 
     public async Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId,
             CampSeasonStatus Status, int TargetMemberCount, int? JoinedMemberCount)>>
@@ -196,7 +196,7 @@ internal sealed class CachingCampService(
         CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            var camp = await WithInner(inner => inner.CreateCampAsync(
+            var camp = await WithInnerAsync(inner => inner.CreateCampAsync(
                 createdByUserId, name, contactEmail, contactPhone, webOrSocialUrl,
                 links, isSwissCamp, timesAtNowhere, seasonData, historicalNames, year,
                 cancellationToken));
@@ -208,7 +208,7 @@ internal sealed class CachingCampService(
         Guid campId, int year, Guid? actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            var result = await WithInner(inner => inner.OptInToSeasonAsync(campId, year, actorUserId: actorUserId, cancellationToken));
+            var result = await WithInnerAsync(inner => inner.OptInToSeasonAsync(campId, year, actorUserId: actorUserId, cancellationToken));
             await InvalidateCampAsync(campId, cancellationToken);
             return result;
         });
@@ -217,7 +217,7 @@ internal sealed class CachingCampService(
         Guid scopedCampId, Guid seasonId, CampSeasonData data, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            var result = await WithInner(inner => inner.UpdateSeasonAsync(scopedCampId, seasonId, data, actorUserId: actorUserId, cancellationToken));
+            var result = await WithInnerAsync(inner => inner.UpdateSeasonAsync(scopedCampId, seasonId, data, actorUserId: actorUserId, cancellationToken));
             await InvalidateBySeasonAsync(seasonId, cancellationToken);
             return result;
         });
@@ -226,7 +226,7 @@ internal sealed class CachingCampService(
         Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.ApproveSeasonAsync(seasonId, reviewedByUserId, notes, cancellationToken));
+            await WithInnerAsync(inner => inner.ApproveSeasonAsync(seasonId, reviewedByUserId, notes, cancellationToken));
             await InvalidateBySeasonAsync(seasonId, cancellationToken);
         });
 
@@ -234,7 +234,7 @@ internal sealed class CachingCampService(
         Guid seasonId, Guid reviewedByUserId, string notes, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.RejectSeasonAsync(seasonId, reviewedByUserId, notes, cancellationToken));
+            await WithInnerAsync(inner => inner.RejectSeasonAsync(seasonId, reviewedByUserId, notes, cancellationToken));
             await InvalidateBySeasonAsync(seasonId, cancellationToken);
         });
 
@@ -242,7 +242,7 @@ internal sealed class CachingCampService(
         Guid scopedCampId, Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            var result = await WithInner(inner => inner.WithdrawSeasonAsync(scopedCampId, seasonId, actorUserId: actorUserId, cancellationToken));
+            var result = await WithInnerAsync(inner => inner.WithdrawSeasonAsync(scopedCampId, seasonId, actorUserId: actorUserId, cancellationToken));
             await InvalidateBySeasonAsync(seasonId, cancellationToken);
             return result;
         });
@@ -250,7 +250,7 @@ internal sealed class CachingCampService(
     public Task ReactivateSeasonAsync(Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.ReactivateSeasonAsync(seasonId, actorUserId: actorUserId, cancellationToken));
+            await WithInnerAsync(inner => inner.ReactivateSeasonAsync(seasonId, actorUserId: actorUserId, cancellationToken));
             await InvalidateBySeasonAsync(seasonId, cancellationToken);
         });
 
@@ -258,7 +258,7 @@ internal sealed class CachingCampService(
         Guid scopedCampId, Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            var result = await WithInner(inner => inner.MarkSeasonFullAsync(scopedCampId, seasonId, actorUserId: actorUserId, cancellationToken));
+            var result = await WithInnerAsync(inner => inner.MarkSeasonFullAsync(scopedCampId, seasonId, actorUserId: actorUserId, cancellationToken));
             await InvalidateBySeasonAsync(seasonId, cancellationToken);
             return result;
         });
@@ -267,7 +267,7 @@ internal sealed class CachingCampService(
         CampUpdateInput input, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            var result = await WithInner(inner => inner.UpdateCampAsync(input, actorUserId: actorUserId, cancellationToken));
+            var result = await WithInnerAsync(inner => inner.UpdateCampAsync(input, actorUserId: actorUserId, cancellationToken));
             // The inner can report failure after committing camp fields.
             await InvalidateCampAsync(input.CampId, cancellationToken);
             return result;
@@ -276,7 +276,7 @@ internal sealed class CachingCampService(
     public Task DeleteCampAsync(Guid campId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.DeleteCampAsync(campId, actorUserId: actorUserId, cancellationToken));
+            await WithInnerAsync(inner => inner.DeleteCampAsync(campId, actorUserId: actorUserId, cancellationToken));
             // Tombstone without flipping warmth — preserves the all-rows invariant.
             DeleteKey(campId);
         });
@@ -285,7 +285,7 @@ internal sealed class CachingCampService(
         Guid campId, string name, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            var result = await WithInner(inner => inner.AddHistoricalNameAsync(campId, name, cancellationToken));
+            var result = await WithInnerAsync(inner => inner.AddHistoricalNameAsync(campId, name, cancellationToken));
             await InvalidateCampAsync(campId, cancellationToken);
             return result;
         });
@@ -294,7 +294,7 @@ internal sealed class CachingCampService(
         Guid scopedCampId, Guid historicalNameId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            var result = await WithInner(inner => inner.RemoveHistoricalNameAsync(scopedCampId, historicalNameId, cancellationToken));
+            var result = await WithInnerAsync(inner => inner.RemoveHistoricalNameAsync(scopedCampId, historicalNameId, cancellationToken));
             await InvalidateCampAsync(scopedCampId, cancellationToken);
             return result;
         });
@@ -304,7 +304,7 @@ internal sealed class CachingCampService(
         Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            var result = await WithInner(inner => inner.UploadImageAsync(
+            var result = await WithInnerAsync(inner => inner.UploadImageAsync(
                 campId, fileStream, fileName, contentType, length, actorUserId: actorUserId, cancellationToken));
             if (result.Succeeded)
                 await InvalidateCampAsync(campId, cancellationToken);
@@ -315,7 +315,7 @@ internal sealed class CachingCampService(
         Guid scopedCampId, Guid imageId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            var result = await WithInner(inner => inner.DeleteImageAsync(scopedCampId, imageId, actorUserId: actorUserId, cancellationToken));
+            var result = await WithInnerAsync(inner => inner.DeleteImageAsync(scopedCampId, imageId, actorUserId: actorUserId, cancellationToken));
             await InvalidateCampAsync(scopedCampId, cancellationToken);
             return result;
         });
@@ -324,21 +324,21 @@ internal sealed class CachingCampService(
         Guid campId, List<Guid> imageIdsInOrder, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.ReorderImagesAsync(campId, imageIdsInOrder, cancellationToken));
+            await WithInnerAsync(inner => inner.ReorderImagesAsync(campId, imageIdsInOrder, cancellationToken));
             await InvalidateCampAsync(campId, cancellationToken);
         });
 
     public Task OpenSeasonAsync(int year, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.OpenSeasonAsync(year, actorUserId, cancellationToken));
+            await WithInnerAsync(inner => inner.OpenSeasonAsync(year, actorUserId, cancellationToken));
             await InvalidateSettingsAsync(cancellationToken);
         });
 
     public Task CloseSeasonAsync(int year, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.CloseSeasonAsync(year, actorUserId, cancellationToken));
+            await WithInnerAsync(inner => inner.CloseSeasonAsync(year, actorUserId, cancellationToken));
             await InvalidateSettingsAsync(cancellationToken);
         });
 
@@ -346,7 +346,7 @@ internal sealed class CachingCampService(
         int year, LocalDate lockDate, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.SetNameLockDateAsync(year, lockDate, actorUserId, cancellationToken));
+            await WithInnerAsync(inner => inner.SetNameLockDateAsync(year, lockDate, actorUserId, cancellationToken));
             // Touches every season in the year — RefreshAll.
             RefreshAll();
             await InvalidateSettingsAsync(cancellationToken);
@@ -356,7 +356,7 @@ internal sealed class CachingCampService(
         Guid scopedCampId, Guid seasonId, string newName, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            var result = await WithInner(inner => inner.ChangeSeasonNameAsync(scopedCampId, seasonId, newName, actorUserId: actorUserId, cancellationToken));
+            var result = await WithInnerAsync(inner => inner.ChangeSeasonNameAsync(scopedCampId, seasonId, newName, actorUserId: actorUserId, cancellationToken));
             await InvalidateBySeasonAsync(seasonId, cancellationToken);
             return result;
         });
@@ -367,7 +367,7 @@ internal sealed class CachingCampService(
         Guid campId, Guid userId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            var result = await WithInner(inner => inner.RequestCampMembershipAsync(campId, userId, cancellationToken));
+            var result = await WithInnerAsync(inner => inner.RequestCampMembershipAsync(campId, userId, cancellationToken));
             await InvalidateCampAsync(campId, cancellationToken);
             return result;
         });
@@ -377,7 +377,7 @@ internal sealed class CachingCampService(
         CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            var result = await WithInner(inner => inner.ApproveCampMemberAsync(scopedCampId, campMemberId, approvedByUserId, cancellationToken));
+            var result = await WithInnerAsync(inner => inner.ApproveCampMemberAsync(scopedCampId, campMemberId, approvedByUserId, cancellationToken));
             await InvalidateCampAsync(scopedCampId, cancellationToken);
             return result;
         });
@@ -387,7 +387,7 @@ internal sealed class CachingCampService(
         CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            var result = await WithInner(inner => inner.RejectCampMemberAsync(scopedCampId, campMemberId, rejectedByUserId, cancellationToken));
+            var result = await WithInnerAsync(inner => inner.RejectCampMemberAsync(scopedCampId, campMemberId, rejectedByUserId, cancellationToken));
             await InvalidateCampAsync(scopedCampId, cancellationToken);
             return result;
         });
@@ -397,7 +397,7 @@ internal sealed class CachingCampService(
         CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            var result = await WithInner(inner => inner.RemoveCampMemberAsync(scopedCampId, campMemberId, removedByUserId, cancellationToken));
+            var result = await WithInnerAsync(inner => inner.RemoveCampMemberAsync(scopedCampId, campMemberId, removedByUserId, cancellationToken));
             await InvalidateCampAsync(scopedCampId, cancellationToken);
             return result;
         });
@@ -407,7 +407,7 @@ internal sealed class CachingCampService(
         CancellationToken cancellationToken = default, int? year = null) =>
         MutateAsync(async () =>
         {
-            var result = await WithInner(inner => inner.AddCampMemberToActiveSeasonAsync(
+            var result = await WithInnerAsync(inner => inner.AddCampMemberToActiveSeasonAsync(
                 campId, userId, actorUserId, cancellationToken, year));
             await InvalidateCampAsync(campId, cancellationToken);
             return result;
@@ -418,7 +418,7 @@ internal sealed class CachingCampService(
         CancellationToken cancellationToken = default, int? year = null) =>
         MutateAsync(async () =>
         {
-            var result = await WithInner(inner => inner.AddMemberAndAssignRoleInActiveSeasonAsync(
+            var result = await WithInnerAsync(inner => inner.AddMemberAndAssignRoleInActiveSeasonAsync(
                 campId, roleDefinitionId, userId, actorUserId, cancellationToken, year));
             await InvalidateCampAsync(campId, cancellationToken);
             return result;
@@ -429,7 +429,7 @@ internal sealed class CachingCampService(
         MutateAsync(async () =>
         {
             // No campId on the API surface — RefreshAll.
-            var result = await WithInner(inner => inner.WithdrawCampMembershipRequestAsync(campMemberId, userId, cancellationToken));
+            var result = await WithInnerAsync(inner => inner.WithdrawCampMembershipRequestAsync(campMemberId, userId, cancellationToken));
             RefreshAll();
             return result;
         });
@@ -439,7 +439,7 @@ internal sealed class CachingCampService(
         MutateAsync(async () =>
         {
             // No campId on the API surface; can move EeGrantedCount — RefreshAll on success.
-            var result = await WithInner(inner => inner.LeaveCampAsync(campMemberId, userId, cancellationToken));
+            var result = await WithInnerAsync(inner => inner.LeaveCampAsync(campMemberId, userId, cancellationToken));
             if (result.Succeeded)
                 RefreshAll();
             return result;
@@ -450,7 +450,7 @@ internal sealed class CachingCampService(
         CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInner(inner => inner.SetCampSeasonEeSlotCountAsync(campSeasonId, slotCount, actorUserId, cancellationToken));
+            await WithInnerAsync(inner => inner.SetCampSeasonEeSlotCountAsync(campSeasonId, slotCount, actorUserId, cancellationToken));
             await InvalidateBySeasonAsync(campSeasonId, cancellationToken);
         });
 
@@ -459,7 +459,7 @@ internal sealed class CachingCampService(
         CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            var result = await WithInner(inner => inner.SetEarlyEntryAsync(
+            var result = await WithInnerAsync(inner => inner.SetEarlyEntryAsync(
                 scopedCampId, campMemberId, granted, actorUserId, cancellationToken));
             await InvalidateCampAsync(scopedCampId, cancellationToken);
             return result;
@@ -472,7 +472,7 @@ internal sealed class CachingCampService(
         CancellationToken ct) =>
         MutateAsync(async () =>
         {
-            await WithInnerMerge(inner => inner.ReassignAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct));
+            await WithInnerMergeAsync(inner => inner.ReassignAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct));
             // Lead reassignment can touch any camp — RefreshAll.
             RefreshAll();
         });
@@ -540,7 +540,7 @@ internal sealed class CachingCampService(
         var campIds = new HashSet<Guid>();
         foreach (var year in years)
         {
-            var camps = await WithInner(inner => inner.GetCampsForYearAsync(year, ct));
+            var camps = await WithInnerAsync(inner => inner.GetCampsForYearAsync(year, ct));
             foreach (var camp in camps)
             {
                 campIds.Add(camp.Id);
@@ -551,7 +551,7 @@ internal sealed class CachingCampService(
         {
             // Slug/id reads also authorize leads from earlier seasons. A year-filtered
             // projection cannot serve as the canonical camp, even on a warm cache hit.
-            var camp = await WithInner(inner => inner.GetCampByIdAsync(campId, ct));
+            var camp = await WithInnerAsync(inner => inner.GetCampByIdAsync(campId, ct));
             if (camp is not null) Set(campId, camp);
         }
 
@@ -574,7 +574,7 @@ internal sealed class CachingCampService(
         try
         {
             if (_settings is not null) return _settings;
-            _settings = await WithInner(inner => inner.GetSettingsAsync(ct));
+            _settings = await WithInnerAsync(inner => inner.GetSettingsAsync(ct));
             return _settings;
         }
         finally
@@ -593,7 +593,7 @@ internal sealed class CachingCampService(
                 return;
             }
         }
-        var season = await WithInner(inner => inner.GetCampSeasonByIdAsync(seasonId, ct));
+        var season = await WithInnerAsync(inner => inner.GetCampSeasonByIdAsync(seasonId, ct));
         if (season is not null)
             await InvalidateCampAsync(season.CampId, ct);
     }
@@ -631,21 +631,21 @@ internal sealed class CachingCampService(
             return true;
         });
 
-    private async Task<T> WithInner<T>(Func<ICampManagement, Task<T>> work)
+    private async Task<T> WithInnerAsync<T>(Func<ICampManagement, Task<T>> work)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ICampManagement>(InnerServiceKey);
         return await work(inner);
     }
 
-    private async Task WithInner(Func<ICampManagement, Task> work)
+    private async Task WithInnerAsync(Func<ICampManagement, Task> work)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ICampManagement>(InnerServiceKey);
         await work(inner);
     }
 
-    private async Task WithInnerMerge(Func<IUserMerge, Task> work)
+    private async Task WithInnerMergeAsync(Func<IUserMerge, Task> work)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserMerge>(InnerServiceKey);
@@ -659,11 +659,11 @@ internal sealed class CachingCampService(
 
     /// <inheritdoc />
     public Task<IReadOnlyList<Guid>> GetActiveLeadUserIdsAsync(CancellationToken cancellationToken = default) =>
-        WithInnerLeadDirectory(inner => inner.GetActiveLeadUserIdsAsync(cancellationToken));
+        WithInnerLeadDirectoryAsync(inner => inner.GetActiveLeadUserIdsAsync(cancellationToken));
 
     /// <inheritdoc />
     public Task<bool> IsLeadAnywhereAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        WithInnerLeadDirectory(inner => inner.IsLeadAnywhereAsync(userId, cancellationToken));
+        WithInnerLeadDirectoryAsync(inner => inner.IsLeadAnywhereAsync(userId, cancellationToken));
 
     /// <inheritdoc />
     /// <remarks>
@@ -704,7 +704,7 @@ internal sealed class CachingCampService(
         await AddMemberAndAssignRoleInActiveSeasonAsync(
             campId, roleDefinitionId, userId, actorUserId, cancellationToken);
 
-    private async Task<T> WithInnerLeadDirectory<T>(Func<ICampLeadDirectory, Task<T>> work)
+    private async Task<T> WithInnerLeadDirectoryAsync<T>(Func<ICampLeadDirectory, Task<T>> work)
     {
         using var scope = scopeFactory.CreateScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ICampManagement>(InnerServiceKey);

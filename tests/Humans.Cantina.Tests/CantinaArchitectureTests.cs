@@ -20,7 +20,7 @@ public class CantinaArchitectureTests
         var paramTypes = typeof(CantinaRosterService).GetConstructors().Single()
             .GetParameters().Select(p => p.ParameterType).ToList();
 
-        paramTypes.Should().Contain(typeof(IShiftManagementService));
+        paramTypes.Should().Contain(typeof(IShiftService));
         paramTypes.Should().Contain(typeof(IUserService));
         paramTypes.Should().Contain(typeof(ICantinaService));
     }

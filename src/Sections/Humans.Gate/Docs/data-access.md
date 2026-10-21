@@ -29,12 +29,12 @@ Repository: `IGateRepository`.
 | gate_scan_events | R/W (append-only verdict log; admit dedupe via unique index on `AdmitDedupeKey`; retention purge; merge reassignment) |
 | gate_settings | R/W (singleton row — general-entry cutoff, minor-age threshold) |
 | gate_staff_pins | R/W (per-staffer PIN hash via `IPasswordHasher<GateStaffPin>`; `AdminEnrolled` flag gates override authority) |
-| tickets_event_participations | W via `ITicketWrite.SetParticipationFromTicketSyncAsync` (**not** a foreign table access — an admit projects an `Attended` participation row through the owning Tickets service, so consumed camp EE can't be revoked) |
+| tickets_event_participations | W via `ITicketWrite.RecordParticipationAsync` (**not** a foreign table access — an admit projects an `Attended` participation row through the owning Tickets service, so consumed camp EE can't be revoked) |
 
 Cross-section calls via `ITicketService` (barcode → attendee resolved by
 filtering the cached orders projection in memory — no new interface method),
 `IEarlyEntryService` (cached per-user EE for the too-early rule),
-`ISettingsService` (event timezone / active event), `IShiftManagementService`
+`ISettingsService` (event timezone / active event), `IShiftService`
 (gate-crew shift roster for the claim screen, via
 `GetBrowseShiftsAsync`), `IRoleAssignmentService` (server-verified supervisor
 roles for overrides), `ITicketWrite` (participation projection),

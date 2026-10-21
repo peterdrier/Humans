@@ -1,4 +1,3 @@
-using Humans.Consent.Contracts;
 using Humans.Base.Controllers;
 using Humans.Users.Contracts;
 using Humans.Base.Extensions;
@@ -14,7 +13,6 @@ namespace Humans.Users.Controllers;
 [Route("api/profiles")]
 internal sealed class ProfileApiController(
     IUserService userService,
-    IConsentService consentService,
     IContactFieldService contactFieldService,
     IUserEmailService userEmailService) : ApiControllerBase(userService)
 {
@@ -59,8 +57,7 @@ internal sealed class ProfileApiController(
             Guid? matchedUserId = owners[0];
 
             var matchedInfo = await _userService.GetUserInfoAsync(matchedUserId.Value, ct);
-            if (matchedInfo?.Profile is null
-                || (await consentService.GetConsentReviewAsync(matchedInfo.Id, ct)).IsRejected)
+            if (matchedInfo is not { IsSearchable: true })
                 return Ok(Array.Empty<HumanLookupSearchResult>());
 
             var emailDetail = await GetSharedDetailAsync(matchedUserId.Value, viewerUserId, ct);
@@ -124,7 +121,7 @@ internal sealed class ProfileApiController(
         var viewerUserId = viewer.Id;
 
         var info = await _userService.GetUserInfoAsync(userId, ct);
-        if (info?.Profile is null || (await consentService.GetConsentReviewAsync(info.Id, ct)).IsRejected)
+        if (info is not { IsSearchable: true })
             return NotFound();
         userId = info.Id; // a merged-away id answers as its survivor
 

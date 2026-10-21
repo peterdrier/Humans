@@ -865,11 +865,20 @@ internal sealed class Service(
         }
 
         var balance = LedgerBalance(lines);
+        // Running owed balance accumulates oldest-first from the account's first line (credit =
+        // owed to the member, debit = paid out); the lines keep the mirror's order.
+        var runningBalances = new decimal[lines.Count];
+        var running = 0m;
+        foreach (var i in Enumerable.Range(0, lines.Count)
+                     .OrderBy(i => lines[i].Date)
+                     .ThenBy(i => lines[i].EntryNumber)
+                     .ThenBy(i => lines[i].Line))
+            runningBalances[i] = running += lines[i].Credit - lines[i].Debit;
         return new HoldedCreditorLedger(
             SupplierAccountNum: supplierAccountNum,
             Balance: balance,
             OwedToMember: Math.Max(0m, -balance),
-            Lines: lines.Select(l => new CreditorLedgerLine
+            Lines: lines.Select((l, i) => new CreditorLedgerLine
             {
                 EntryNumber = l.EntryNumber,
                 Line = l.Line,
@@ -879,6 +888,7 @@ internal sealed class Service(
                 Credit = l.Credit,
                 Type = l.Type,
                 Description = l.Description,
+                RunningBalance = runningBalances[i],
             }).ToList(),
             Contact: contact is null
                 ? null

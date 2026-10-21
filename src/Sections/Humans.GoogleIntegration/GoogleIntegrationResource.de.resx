@@ -125,4 +125,31 @@
     <value>Zuerst verifizieren</value>
   </data>
   <data name="GoogleIntegration_Identity_Locked" xml:space="preserve"><value>Gesperrt durch die Workspace-E-Mail-Zeile</value></data>
+  <data name="GoogleIntegration_TeamResources_Heading" xml:space="preserve"><value>Ressourcen verwalten</value></data>
+  <data name="GoogleIntegration_TeamResources_Team" xml:space="preserve"><value>Team</value></data>
+  <data name="GoogleIntegration_TeamResources_Name" xml:space="preserve"><value>Name</value></data>
+  <data name="GoogleIntegration_TeamResources_Type" xml:space="preserve"><value>Typ</value></data>
+  <data name="GoogleIntegration_TeamResources_Actions" xml:space="preserve"><value>Aktionen</value></data>
+  <data name="GoogleIntegration_TeamResources_BackToTeam" xml:space="preserve"><value>Zurück zum Team</value></data>
+  <data name="GoogleIntegration_TeamResources_ManageMembers" xml:space="preserve"><value>Mitglieder verwalten</value></data>
+  <data name="GoogleIntegration_TeamResources_Title" xml:space="preserve"><value>Ressourcen verwalten - {0}</value><comment>{0} = team name</comment></data>
+  <data name="GoogleIntegration_TeamResources_Breadcrumb" xml:space="preserve"><value>Ressourcen</value></data>
+  <data name="GoogleIntegration_TeamResources_ServiceAccountTitle" xml:space="preserve"><value>Dienstkonto</value></data>
+  <data name="GoogleIntegration_TeamResources_ShareWithServiceAccount" xml:space="preserve"><value>Um eine Google-Ressource zu verknüpfen, müssen Sie sie zunächst mit dem Dienstkonto teilen:</value></data>
+  <data name="GoogleIntegration_TeamResources_Copy" xml:space="preserve"><value>Kopieren</value></data>
+  <data name="GoogleIntegration_TeamResources_DriveFolders" xml:space="preserve"><value>Drive-Ordner</value></data>
+  <data name="GoogleIntegration_TeamResources_DriveFoldersHelp" xml:space="preserve"><value>Teilen Sie den Ordner mit dieser E-Mail als Bearbeiter</value></data>
+  <data name="GoogleIntegration_TeamResources_GoogleGroups" xml:space="preserve"><value>Google Groups</value></data>
+  <data name="GoogleIntegration_TeamResources_GoogleGroupsHelp" xml:space="preserve"><value>Fügen Sie diese E-Mail als Manager der Gruppe hinzu</value></data>
+  <data name="GoogleIntegration_TeamResources_LinkedResources" xml:space="preserve"><value>Verknüpfte Ressourcen</value></data>
+  <data name="GoogleIntegration_TeamResources_LastSynced" xml:space="preserve"><value>Letzte Synchronisierung</value></data>
+  <data name="GoogleIntegration_TeamResources_NoResources" xml:space="preserve"><value>Noch keine Ressourcen mit diesem Team verknüpft. Verwenden Sie die folgenden Formulare, um einen Google Drive-Ordner oder eine Google Group zu verknüpfen.</value></data>
+  <data name="GoogleIntegration_TeamResources_InvalidDriveUrl" xml:space="preserve"><value>Bitte geben Sie eine gültige Google Drive-Ordner-URL ein.</value></data>
+  <data name="GoogleIntegration_TeamResources_InvalidGroupEmail" xml:space="preserve"><value>Bitte geben Sie eine gültige Google Group-E-Mail-Adresse ein.</value></data>
+  <data name="GoogleIntegration_TeamResources_GroupLinked" xml:space="preserve"><value>Google Group „{0}" erfolgreich verknüpft.</value><comment>{0} = group name</comment></data>
+  <data name="GoogleIntegration_TeamResources_GroupLinkFailed" xml:space="preserve"><value>Verknüpfung der Google Group fehlgeschlagen.</value></data>
+  <data name="GoogleIntegration_TeamResources_ResourceUnlinked" xml:space="preserve"><value>Ressourcenverknüpfung mit dem Team aufgehoben.</value></data>
+  <data name="GoogleIntegration_TeamResources_ResourceSynced" xml:space="preserve"><value>Ressourcenberechtigungen erfolgreich synchronisiert.</value></data>
+  <data name="GoogleIntegration_TeamResources_ResourceSyncFailed" xml:space="preserve"><value>Synchronisierung der Ressourcenberechtigungen fehlgeschlagen: {0}</value><comment>{0} = error message</comment></data>
+  <data name="GoogleIntegration_TeamResources_ServiceAccount" xml:space="preserve"><value>Dienstkonto: {0}</value><comment>{0} = service account email</comment></data>
 </root>

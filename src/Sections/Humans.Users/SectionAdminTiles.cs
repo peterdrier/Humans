@@ -19,13 +19,13 @@ internal sealed class SectionAdminTiles : ISectionAdminTiles
 
     private static async ValueTask<AdminTileValue?> TotalAsync(IServiceProvider sp, CancellationToken ct)
     {
-        var count = (await Snapshot(sp, ct)).Count;
+        var count = (await SnapshotAsync(sp, ct)).Count;
         return new AdminTileValue(count.ToString(CultureInfo.CurrentCulture), Summary: $"{count} users");
     }
 
     private static async ValueTask<AdminTileValue?> ProfilesAsync(IServiceProvider sp, CancellationToken ct)
     {
-        var count = (await Snapshot(sp, ct)).Count(u => u.IsActive);
+        var count = (await SnapshotAsync(sp, ct)).Count(u => u.IsActive);
         return new AdminTileValue(count.ToString(CultureInfo.CurrentCulture), Summary: $"{count} with profile");
     }
 
@@ -35,13 +35,13 @@ internal sealed class SectionAdminTiles : ISectionAdminTiles
         var count = 0;
         if (activeEvent is { Year: > 0 })
         {
-            var living = (await Snapshot(sp, ct)).Select(u => u.Id).ToHashSet();
+            var living = (await SnapshotAsync(sp, ct)).Select(u => u.Id).ToHashSet();
             count = (await sp.GetRequiredService<ITicketService>().GetAllParticipationsAsync(ct))
                 .Count(p => p.Year == activeEvent.Year && p.HasTicket && living.Contains(p.UserId));
         }
         return new AdminTileValue(count.ToString(CultureInfo.CurrentCulture), Summary: $"{count} with ticket");
     }
 
-    private static async Task<IReadOnlyCollection<UserInfo>> Snapshot(IServiceProvider sp, CancellationToken ct) =>
+    private static async Task<IReadOnlyCollection<UserInfo>> SnapshotAsync(IServiceProvider sp, CancellationToken ct) =>
         await sp.GetRequiredService<IUserService>().GetAllUserInfosAsync(ct);
 }

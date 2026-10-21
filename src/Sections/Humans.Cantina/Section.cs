@@ -17,7 +17,7 @@ namespace Humans.Cantina;
 /// <remarks>
 /// Two lanes: the members' dietary profiles (<c>cantina_dietary_profiles</c>, its own context,
 /// repository and service, which also answers export/erase and account merge) and the roster
-/// service, which composes over <c>IShiftManagementService</c>, <c>ISettingsService</c>,
+/// service, which composes over <c>IShiftService</c>, <c>ISettingsService</c>,
 /// <c>IUserService</c> and the dietary profiles. Access is the <c>CantinaAdminOrAdmin</c> policy,
 /// registered by this section's own <see cref="SectionPolicies"/> via <c>ISectionPolicies</c> —
 /// not in the Shell. (The G5 split design's §8 parked policy registration in Shell's

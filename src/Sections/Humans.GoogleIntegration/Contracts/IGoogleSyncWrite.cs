@@ -6,7 +6,7 @@ namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
 /// The Google provisioning writes other sections make, alongside the read-only
-/// <see cref="IGoogleSyncService"/>: team-resource grants and removals, single-resource sync,
+/// <see cref="IGoogleSyncService"/>: team-resource grants and removals,
 /// team group provisioning, and Drive subfolder creation and sync requests. Everything else the
 /// sync service does is internal to <c>Humans.GoogleIntegration</c>.
 /// </summary>
@@ -33,16 +33,6 @@ public interface IGoogleSyncWrite : IApplicationService
     /// </summary>
     [ExternalWrite]
     Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Syncs a single Google resource by ID. Drive resources are reconciled here;
-    /// Google Group resources are routed through <see cref="IGoogleGroupSync"/>.
-    /// </summary>
-    [ExternalWrite]
-    Task<ResourceSyncDiff> SyncSingleResourceAsync(
-        Guid resourceId,
-        SyncAction action,
-        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Creates a new Drive subfolder named <paramref name="name"/> directly
