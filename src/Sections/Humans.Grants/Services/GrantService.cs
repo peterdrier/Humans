@@ -28,7 +28,7 @@ internal sealed partial class GrantService(
     IClock clock,
     ILogger<GrantService> logger) : IGrantManagement
 {
-    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    internal static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
     public LocalDate Today => clock.GetCurrentInstant().InZone(MadridZone).Date;
 

@@ -160,7 +160,8 @@ internal sealed class GrantRepository(IDbContextFactory<GrantsDbContext> factory
         foreach (var grant in sourceGrants)
             grant.UserId = targetUserId;
 
-        // Manager rows: a survivor already managing the same program keeps one row.
+        // Manager rows: a survivor already managing the same program keeps one row. The new row is
+        // re-keyed here: the actor-column pass below queries the store and never sees it.
         var sourceManagers = await ctx.Managers.Where(m => m.UserId == sourceUserId).ToListAsync(ct);
         var targetPrograms = await ctx.Managers.Where(m => m.UserId == targetUserId)
             .Select(m => m.ProgramId).ToListAsync(ct);
@@ -172,7 +173,7 @@ internal sealed class GrantRepository(IDbContextFactory<GrantsDbContext> factory
                 {
                     ProgramId = row.ProgramId,
                     UserId = targetUserId,
-                    AddedByUserId = row.AddedByUserId,
+                    AddedByUserId = row.AddedByUserId == sourceUserId ? targetUserId : row.AddedByUserId,
                     AddedAt = row.AddedAt
                 });
         }

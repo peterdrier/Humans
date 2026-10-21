@@ -26,11 +26,15 @@ internal sealed class MyGrantsViewComponent(IGrantManagement grants) : ViewCompo
 
         var today = grants.Today;
         var mine = (await grants.GetGrantsForUserAsync(userId, HttpContext.RequestAborted))
-            .Where(g => g.State(today) == GrantState.Active || g.Year >= today.Year)
+            .Where(g => g.State(today) == GrantState.Active || EndedIn(g) >= today.Year)
             .OrderBy(g => g.State(today)).ThenByDescending(g => g.IssuedAt)
             .ToList();
         if (mine.Count == 0) return Content(string.Empty);
 
         return View(new GrantsCardViewModel(mine, today, new HashSet<Guid>()));
     }
+
+    /// <summary>The year a grant that is no longer active ended: its revocation, else its expiry.</summary>
+    private static int? EndedIn(GrantInfo grant) =>
+        grant.RevokedAt is { } revoked ? revoked.InZone(GrantService.MadridZone).Year : grant.ExpiresOn?.Year;
 }

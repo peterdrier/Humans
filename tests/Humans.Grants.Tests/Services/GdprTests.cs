@@ -91,6 +91,26 @@ public sealed class GdprTests : GrantsTestHarness
     }
 
     [HumansFact]
+    public async Task Merge_ReKeysAManagerRowTheMergedAccountBothHoldsAndAdded()
+    {
+        var from = SeedUser("From");
+        var to = SeedUser("To");
+        var program = await SeedProgramAsync(managers: from);
+        await using (var db = OpenContext())
+        {
+            (await db.Managers.SingleAsync(Ct)).AddedByUserId = from;
+            await db.SaveChangesAsync(Ct);
+        }
+
+        IUserMerge merge = NewService();
+        await merge.ReassignAsync(from, to, SeedUser("Admin"), Clock.GetCurrentInstant(), Ct);
+
+        await using var read = OpenContext();
+        var row = await read.Managers.SingleAsync(Ct);
+        (row.ProgramId, row.UserId, row.AddedByUserId).Should().Be((program.Id, to, to));
+    }
+
+    [HumansFact]
     public async Task Merge_ReKeysGrants_RevokesTheDuplicateLiveGrant_Audits()
     {
         var from = SeedUser("From");
