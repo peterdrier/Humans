@@ -113,7 +113,7 @@ internal sealed class PreapprovalsAdminController(
         var (program, forbidden) = await AuthorizedAsync(programId, ProgramOperationRequirement.Administer, ct);
         if (forbidden is not null) return forbidden;
         model.Id = programId;
-        model.KindLocked = program!.Grants.Count > 0;
+        model.KindLocked = program!.KindLocked;
         if (!ModelState.IsValid) return View("Form", await FillAsync(model, ct));
 
         var result = await preapprovals.UpdateProgramAsync(programId, model.ToSave(), user.Id, ct);

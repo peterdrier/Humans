@@ -1,7 +1,6 @@
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
-using Humans.Users.Contracts;
 using Humans.Onboarding.Services;
 using Humans.Onboarding.Tests.Infrastructure;
 

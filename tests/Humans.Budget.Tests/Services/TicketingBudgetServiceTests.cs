@@ -182,6 +182,39 @@ public class TicketingBudgetServiceTests
     }
 
     [HumansFact]
+    public async Task SyncActualsAsync_SumsStripeFeeTax_AndTracksFeesOfUnknownTax()
+    {
+        var purchasedAt = Instant.FromUtc(2026, 3, 3, 10, 0); // inside completed week Mon 2 Mar
+        _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<TicketOrderInfo>
+            {
+                BuildOrder(purchasedAt, 100m, stripeFee: 2m, applicationFee: 1m, TicketAttendeeStatus.Valid)
+                    with { FeeTax = 0.42m, WithheldTax = 0.10m },
+                BuildOrder(purchasedAt, 50m, stripeFee: 1m, applicationFee: 0.5m, TicketAttendeeStatus.Valid),
+                BuildOrder(purchasedAt, 50m, stripeFee: 0.7m, applicationFee: 0.5m, TicketAttendeeStatus.Valid)
+                    with { FeeTax = 0m },
+            });
+
+        List<TicketingWeeklyActuals>? capturedActuals = null;
+        _budgetService.SyncTicketingActualsAsync(
+                Arg.Any<Guid>(),
+                Arg.Do<IReadOnlyList<TicketingWeeklyActuals>>(a => capturedActuals = a.ToList()),
+                Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(1);
+
+        var sut = CreateSut();
+
+        await sut.SyncActualsAsync(_yearId, actorUserId: null, Xunit.TestContext.Current.CancellationToken);
+
+        capturedActuals.Should().NotBeNull().And.ContainSingle();
+        capturedActuals![0].StripeFees.Should().Be(3.7m);
+        capturedActuals[0].StripeFeeTax.Should().Be(0.42m);
+        capturedActuals[0].StripeFeesTaxUnknown.Should().Be(1m, because: "null FeeTax means unknown, not zero");
+        capturedActuals[0].StripeFeesUntaxed.Should().Be(0.7m);
+    }
+
+    [HumansFact]
     public async Task SyncActualsAsync_ProducesEmptyActuals_WhenNoCompletedWeeks()
     {
         // Only orders inside the current week: nothing should be synced.

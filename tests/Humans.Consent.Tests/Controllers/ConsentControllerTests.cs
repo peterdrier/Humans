@@ -252,25 +252,27 @@ public sealed class ConsentControllerTests
     }
 
     [HumansFact]
-    public async Task Submit_Post_StubProfile_RedirectsToProfileEdit_AndDoesNotSubmit()
+    public async Task Submit_Post_ServiceRefusesStubProfile_RedirectsToProfileEdit()
     {
         var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(userId, StubProfile()));
+        _consentService.SubmitConsentAsync(userId, versionId, true, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ConsentSubmitResult(false, ErrorKey: "StubProfile"));
         var ctrl = BuildSut(userId);
 
         var result = await ctrl.Submit(new ConsentSubmitModel
         {
-            DocumentVersionId = Guid.NewGuid(),
+            DocumentVersionId = versionId,
             ExplicitConsent = true,
         });
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal("Edit", redirect.ActionName);
         Assert.Equal("Profile", redirect.ControllerName);
-        await _consentService.DidNotReceive().SubmitConsentAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(),
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _onboardingService.DidNotReceive().SetConsentCheckPendingIfEligibleAsync(
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

@@ -7,7 +7,6 @@ using Humans.Gdpr.Models;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 

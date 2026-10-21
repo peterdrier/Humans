@@ -111,7 +111,7 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
         (await _outboxRepository.GetProcessingBatchAsync(10, 10, ct)).Should().BeEmpty();
         _metrics.Received(1).RecordSyncOperation("permanent_failure");
         _metrics.DidNotReceive().RecordSyncOperation("success");
-        await _identities.DidNotReceiveWithAnyArgs().SetStatusFromSyncAsync(default, default!, default, default);
+        await _identities.DidNotReceiveWithAnyArgs().SetStatusFromSyncAsync(default, default!, default);
         var stored = await _dbContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync(ct);
         stored.LastError.Should().Be("HTTP 403 — service account lacks access");
     }

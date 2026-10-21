@@ -1,7 +1,6 @@
 using Humans.Shifts.Domain;
 using Humans.Shifts.Services;
 using AwesomeAssertions;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Services.Dtos;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;

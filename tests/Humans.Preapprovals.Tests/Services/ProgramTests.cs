@@ -69,8 +69,10 @@ public sealed class ProgramTests : PreapprovalsTestHarness
     public async Task Edit_KindLockedOnceGrantsExist()
     {
         var program = await SeedProgramAsync();
+        (await NewService().GetProgramAsync(program.Id, Ct))!.KindLocked.Should().BeFalse();
         await SeedGrantAsync(program);
 
+        (await NewService().GetProgramAsync(program.Id, Ct))!.KindLocked.Should().BeTrue();
         var result = await NewService().UpdateProgramAsync(program.Id, Save(kind: ProgramKind.PerGrantAmount, perPerson: null), SeedUser(), Ct);
 
         result.Refusal!.Key.Should().Be(PreapprovalErrorKeys.KindLocked);
@@ -116,7 +118,7 @@ public sealed class ProgramTests : PreapprovalsTestHarness
         await NewService().UpdateProgramAsync(program.Id, Save(ceiling: 2000m), actor, Ct);
 
         await AuditLog.Received(1).LogAsync(AuditAction.PreapprovalProgramEdited, AuditEntityTypes.Program, program.Id,
-            Arg.Is<string>(s => s.Contains("ceiling 1,000.00 € → 2,000.00 €")), actor, null, null);
+            Arg.Is<string>(s => s.Contains("ceiling 1,000.00 € → 2,000.00 €")), actor);
     }
 
     [HumansFact]
@@ -128,7 +130,7 @@ public sealed class ProgramTests : PreapprovalsTestHarness
 
         await NewService().UpdateProgramAsync(program.Id, Save(status: ProgramStatus.Closed), actor, Ct);
 
-        await AuditLog.Received(1).LogAsync(AuditAction.PreapprovalProgramClosed, AuditEntityTypes.Program, program.Id, Arg.Any<string>(), actor, null, null);
+        await AuditLog.Received(1).LogAsync(AuditAction.PreapprovalProgramClosed, AuditEntityTypes.Program, program.Id, Arg.Any<string>(), actor);
         var after = await ReadGrantAsync(grant.Id);
         after.Status.Should().Be(GrantStatus.Open);
         after.MaxAmount.Should().Be(300m);
@@ -148,7 +150,7 @@ public sealed class ProgramTests : PreapprovalsTestHarness
         using var request = new CancellationTokenSource();
         if (cancelAfterSave)
             AuditLog.LogAsync(AuditAction.PreapprovalProgramEdited,
-                    AuditEntityTypes.Program, program.Id, Arg.Any<string>(), actor, null, null)
+                    AuditEntityTypes.Program, program.Id, Arg.Any<string>(), actor)
                 .Returns(async _ => await request.CancelAsync());
         Email.SendAsync(Arg.Any<Humans.Email.Contracts.EmailMessage>(), Arg.Any<CancellationToken>())
             .Returns(call => { call.Arg<CancellationToken>().ThrowIfCancellationRequested(); return Task.CompletedTask; });

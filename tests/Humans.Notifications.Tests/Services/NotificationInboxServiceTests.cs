@@ -133,7 +133,7 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task ResolveAsync_RejectsInformationalWithoutResolvingIt()
     {
-        var notification = await CreateNotification(NotificationClass.Informational);
+        var notification = await CreateNotification();
 
         var result = await _service.ResolveAsync(notification.Id, _userId, Xunit.TestContext.Current.CancellationToken);
 

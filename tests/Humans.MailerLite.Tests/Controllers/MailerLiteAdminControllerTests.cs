@@ -2,7 +2,6 @@ using Humans.Email.Contracts;
 using System.Security.Claims;
 using System.Text.Json;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
 using Humans.MailerLite.Controllers;
 using Humans.MailerLite.Models;
 using Humans.MailerLite.Services;

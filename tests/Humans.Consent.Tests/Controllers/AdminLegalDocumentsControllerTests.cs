@@ -8,7 +8,6 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
-using NodaTime;
 using NSubstitute;
 using Xunit;
 
@@ -36,7 +35,7 @@ public sealed class AdminLegalDocumentsControllerTests
                 : new ClaimsPrincipal()
         };
         var controller = new AdminLegalDocumentsController(Substitute.For<IUserService>(), documents,
-            Substitute.For<ITeamService>(), SystemClock.Instance, NullLogger<AdminLegalDocumentsController>.Instance)
+            Substitute.For<ITeamService>(), NullLogger<AdminLegalDocumentsController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -82,11 +81,11 @@ public sealed class AdminLegalDocumentsControllerTests
             .Returns(Array.Empty<AdminLegalDocumentListItem>());
         documents.GetLegalDocumentWithVersionsAsync(id, Arg.Any<CancellationToken>())
             .Returns(new AdminLegalDocumentEditDetail(
-                id, "Conduct", teamId, true, true, 30, null, default, []));
+                id, "Conduct", teamId, true, true, 30, null, default, null, []));
         teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
         var controller = new AdminLegalDocumentsController(
-            Substitute.For<IUserService>(), documents, teams, SystemClock.Instance,
+            Substitute.For<IUserService>(), documents, teams,
             NullLogger<AdminLegalDocumentsController>.Instance)
         {
             ControllerContext = new ControllerContext

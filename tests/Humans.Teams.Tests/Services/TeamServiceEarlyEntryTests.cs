@@ -6,7 +6,6 @@ using Humans.Base.Interfaces.Caching;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.EarlyEntry.Contracts;
-using Humans.Gdpr.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Shifts.Contracts;
@@ -79,7 +78,7 @@ public sealed class TeamServiceEarlyEntryTests
             Id = Guid.NewGuid(),
             Name = "Alpha",
             Slug = "alpha",
-            SystemTeamType = system ? Humans.Base.Enums.SystemTeamType.Volunteers : Humans.Base.Enums.SystemTeamType.None
+            SystemTeamType = system ? SystemTeamType.Volunteers : SystemTeamType.None
         };
         _repo.FindForMutationAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
         _repo.UpdateTeamAsync(team, Arg.Any<CancellationToken>()).Returns(conflict);

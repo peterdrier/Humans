@@ -121,7 +121,8 @@ internal sealed class TicketQueryService(
         var totalStripeFees = totals.TotalStripeFees;
         var totalAppFees = totals.TotalApplicationFees;
         var ticketsSold = totals.TicketsSold;
-        var netRevenue = revenue - totalStripeFees - totalAppFees;
+        // Fee VAT and withheld tax are kept by Stripe like the fees, so they reduce the payout too.
+        var netRevenue = revenue - totalStripeFees - totalAppFees - totals.TotalFeeTax - totals.TotalWithheldTax;
         var grossAvgPrice = ticketsSold > 0 ? revenue / ticketsSold : 0;
         var unmatchedCount = totals.UnmatchedOrderCount;
 
@@ -188,6 +189,8 @@ internal sealed class TicketQueryService(
             Revenue = revenue,
             TotalStripeFees = totalStripeFees,
             TotalApplicationFees = totalAppFees,
+            TotalFeeTax = totals.TotalFeeTax,
+            TotalWithheldTax = totals.TotalWithheldTax,
             NetRevenue = netRevenue,
             GrossAveragePrice = grossAvgPrice,
             UnmatchedOrderCount = unmatchedCount,
@@ -398,6 +401,8 @@ internal sealed class TicketQueryService(
                     StripeFees = paid.Sum(o => o.StripeFee ?? 0m) + refundedRows.Sum(r => r.StripeFee ?? 0m),
                     ApplicationFees = paid.Sum(o => o.ApplicationFee ?? 0m)
                                       + refundedRows.Sum(r => r.ApplicationFee ?? 0m),
+                    FeeTax = paid.Sum(o => o.FeeTax ?? 0m) + refundedRows.Sum(r => r.FeeTax ?? 0m),
+                    WithheldTax = paid.Sum(o => o.WithheldTax ?? 0m) + refundedRows.Sum(r => r.WithheldTax ?? 0m),
                     RefundedGross = refundedRows.Sum(r => r.TotalAmount),
                 };
             })
@@ -917,7 +922,9 @@ internal sealed class TicketQueryService(
                 CheckedInAt: a.CheckedInAt);
         }).ToList(),
         StripeFee: o.StripeFee,
-        ApplicationFee: o.ApplicationFee);
+        ApplicationFee: o.ApplicationFee,
+        FeeTax: o.FeeTax,
+        WithheldTax: o.WithheldTax);
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(
         Guid userId, CancellationToken ct)

@@ -6,7 +6,7 @@
     </div>
     <div class="card-body p-0">
         @{
-            Func<Humans.Campaigns.Contracts.CampaignGrantSummary, IHtmlContent> redeemedCell =
+            Func<CampaignGrantSummary, IHtmlContent> redeemedCell =
                 @<text>
                     @if (item.RedeemedAt.HasValue)
                     {

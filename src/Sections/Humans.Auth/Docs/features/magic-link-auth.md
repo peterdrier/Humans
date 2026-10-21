@@ -131,7 +131,7 @@ Google OAuth callback
   ├── User found by provider key → sign in (existing flow)
   │
   └── No user by provider key
-        ├── User found by verified UserEmail match (IMagicLinkService.FindUserByVerifiedEmailAsync)
+        ├── User found by verified UserEmail match (IUserEmailService.FindByAddressAsync)
         │     └── Link Google login (AddLoginAsync) → sign in
         │
         └── No user by email → create new user (existing flow)
@@ -195,7 +195,7 @@ No `userId` in the URL because the user doesn't exist yet. The encrypted email i
 
 The DataProtection token carries no server-side state, so single-use is enforced separately, and both link types enforce it the same way: at the moment of redemption, `IMagicLinkRateLimiter.TryConsumeTokenAsync` reserves the token (keyed on a SHA-256 digest of the complete token string) in `IMemoryCache` for the remainder of its 15-minute lifetime. A second attempt with the same token finds the reservation already held and fails. Login and signup tokens come from different protector purposes, so their strings never collide in that cache.
 
-**Login tokens (existing users):** consumed inside `VerifyLoginTokenAsync`, on the POST to `/Account/MagicLink`.
+**Login tokens (existing users):** consumed inside `VerifyLoginTokenAsync`, on the POST to `/Account/MagicLink`. It returns `bool`, not the user; `AccountController` loads the Identity user by id (`UserManager.FindByIdAsync`) for `SignInManager`, as it does for the signup result's `UserId`.
 
 **Signup tokens (new users):** consumed inside `VerifyAndConsumeSignupTokenAsync`, called from `AccountController.CompleteSignup`. Two placement rules matter:
 
@@ -236,7 +236,7 @@ The decision ladder now lives in `ExternalLoginService.CompleteExternalLoginAsyn
 
 ```
 no user by provider key
-  → check UserEmails for verified match (IMagicLinkService.FindUserByVerifiedEmailAsync)
+  → check UserEmails for verified match (IUserEmailService.FindByAddressAsync, aliased, verified-only)
   → if found: AddLoginAsync + sign in (same user)
   → else: create new user
 ```

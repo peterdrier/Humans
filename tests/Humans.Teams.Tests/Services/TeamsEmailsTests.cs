@@ -4,7 +4,6 @@ using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Teams.Services;
 using Humans.Teams.Tests.Infrastructure;
-using Humans.Users.Contracts;
 
 namespace Humans.Teams.Tests.Services;
 

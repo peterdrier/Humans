@@ -1,4 +1,3 @@
-using Humans.Users.Contracts;
 using Humans.Governance.Contracts;
 using NodaTime;
 
@@ -23,4 +22,8 @@ internal sealed record ApplicationUserDetailDto(
     Instant? ResolvedAt,
     string? ReviewerName,
     string? ReviewNotes,
-    IReadOnlyList<ApplicationStateHistoryDto> History);
+    IReadOnlyList<ApplicationStateHistoryDto> History)
+{
+    /// <summary>Only a Submitted application can be withdrawn — the rule <c>WithdrawAsync</c> enforces.</summary>
+    public bool CanWithdraw => Status == ApplicationStatus.Submitted;
+}

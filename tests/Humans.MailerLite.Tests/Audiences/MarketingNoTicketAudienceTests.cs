@@ -1,4 +1,3 @@
-using Humans.Email.Contracts;
 using AwesomeAssertions;
 using Humans.Tickets.Contracts;
 using Humans.MailerLite.Tests.Infrastructure;

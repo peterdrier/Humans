@@ -23,9 +23,9 @@ internal static class WorkspaceIdentityFakes
     {
         var real = Create(users, new InMemoryWorkspaceIdentityRepository());
         var fake = Substitute.For<IWorkspaceIdentityManagement>();
-        fake.GetWorkspaceIdentityAsync(default, default)
+        fake.GetWorkspaceIdentityAsync(default)
             .ReturnsForAnyArgs(ci => real.GetWorkspaceIdentityAsync(ci.Arg<Guid>(), ci.Arg<CancellationToken>()));
-        fake.GetWorkspaceIdentitiesAsync(default!, default)
+        fake.GetWorkspaceIdentitiesAsync(default!)
             .ReturnsForAnyArgs(ci => real.GetWorkspaceIdentitiesAsync(
                 ci.Arg<IReadOnlyCollection<Guid>>(), ci.Arg<CancellationToken>()));
         fake.GetDriveEmailsAsync(default)

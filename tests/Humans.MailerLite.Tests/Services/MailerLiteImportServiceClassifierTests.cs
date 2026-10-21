@@ -188,7 +188,7 @@ public class MailerLiteImportServiceClassifierTests
         var replacement = harness.Provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
             oldUserId, oldEmailId, "pending@x.com", null, ContactSource.MailerLite, ct);
         if (fails) replacement.ThrowsAsync(new InvalidOperationException("Provisioning failed"));
-        else replacement.Returns(new AccountProvisioningResult(new User { Id = Guid.NewGuid() }, Created: true));
+        else replacement.Returns(new AccountProvisioningResult(Guid.NewGuid(), Created: true));
         var plan = await harness.Service.BuildPlanAsync(ct);
 
         var result = await harness.Service.ApplyAsync(plan, Guid.NewGuid(), ct: ct);
@@ -196,7 +196,7 @@ public class MailerLiteImportServiceClassifierTests
         result.HumansCreated.Should().Be(fails ? 0 : 1);
         result.UnverifiedEmailsReplaced.Should().Be(fails ? 0 : 1);
         result.Errors.Should().Be(fails ? 1 : 0);
-        await harness.UserEmails.DidNotReceiveWithAnyArgs().DeleteEmailAsync(default, default, default);
+        await harness.UserEmails.DidNotReceiveWithAnyArgs().DeleteEmailAsync(default, default);
         await harness.Provisioning.Received(1).ReplaceUnverifiedEmailAndProvisionAsync(
             oldUserId, oldEmailId, "pending@x.com", null, ContactSource.MailerLite, ct);
     }

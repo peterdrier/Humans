@@ -2,7 +2,6 @@ using System.Reflection;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Finance.Services;
-using Humans.Users.Contracts;
 using NodaTime;
 
 namespace Humans.Finance.Tests;

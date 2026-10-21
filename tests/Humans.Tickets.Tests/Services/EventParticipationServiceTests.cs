@@ -10,7 +10,6 @@ using Humans.Tickets.Contracts;
 using Humans.Tickets.Controllers;
 using Humans.Tickets.Data;
 using Humans.Tickets.Services;
-using Humans.Testing;
 using Humans.Tickets.ViewComponents;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
@@ -186,7 +185,7 @@ public sealed class EventParticipationServiceTests : IDisposable
 
         await _audit.Received(1).LogAsync(AuditAction.ParticipationBackfilled, nameof(User), user.Id,
             Arg.Is<string>(d => d.Contains("NoShow", StringComparison.Ordinal) && d.Contains("2025", StringComparison.Ordinal)),
-            actorId, null, null);
+            actorId);
         _audit.ReceivedCalls().Should().HaveCount(1);
         (await _sut.GetParticipationsAsync(attended.Id, Ct)).Single().Status.Should().Be(ParticipationStatus.Attended);
 
@@ -392,7 +391,7 @@ public sealed class EventParticipationServiceTests : IDisposable
 
         await controller.DeclareNotAttending();
 
-        await participations.DidNotReceiveWithAnyArgs().DeclareNotAttendingAsync(default, default, default);
+        await participations.DidNotReceiveWithAnyArgs().DeclareNotAttendingAsync(default, default);
         controller.TempData[TempDataKeys.ErrorMessage].Should().Be("Tickets_NotAttending_NoActiveEvent");
     }
 

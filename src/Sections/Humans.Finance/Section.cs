@@ -1,6 +1,5 @@
 using Humans.Base.Caching;
 using Humans.Base.Interfaces.Caching;
-using Microsoft.Extensions.Logging;
 using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
 using Humans.Finance.Contracts;

@@ -34,7 +34,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
             .Returns(SyncMode.AddAndRemove);
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
-                (IReadOnlyDictionary<Guid, UserInfo>)new Dictionary<Guid, UserInfo>()));
+                new Dictionary<Guid, UserInfo>()));
     }
 
     [HumansFact]
@@ -172,7 +172,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
         await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         await _identities.DidNotReceiveWithAnyArgs()
-            .SetStatusFromSyncAsync(default, default!, default, default);
+            .SetStatusFromSyncAsync(default, default!, default);
         await _drivePermissions.Received(2)
             .CreatePermissionAsync("folder-1", "alice@example.org", "writer", Arg.Any<CancellationToken>());
     }
@@ -496,9 +496,9 @@ public sealed class GoogleDriveAccessSyncServiceTests
         await _drivePermissions.Received(1)
             .UpdatePermissionAsync("folder-1", "perm-1", expectedRole, Arg.Any<CancellationToken>());
         await _drivePermissions.DidNotReceiveWithAnyArgs()
-            .DeletePermissionAsync(default!, default!, default);
+            .DeletePermissionAsync(default!, default!);
         await _drivePermissions.DidNotReceiveWithAnyArgs()
-            .CreatePermissionAsync(default!, default!, default!, default);
+            .CreatePermissionAsync(default!, default!, default!);
     }
 
     [HumansFact]
@@ -582,7 +582,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
         member.CurrentRole.Should().Be("organizer");
         member.ExpectedRole.Should().Be("writer");
         diff.IsInSync.Should().BeFalse();
-        await _drivePermissions.DidNotReceiveWithAnyArgs().UpdatePermissionAsync(default!, default!, default!, default);
+        await _drivePermissions.DidNotReceiveWithAnyArgs().UpdatePermissionAsync(default!, default!, default!);
     }
 
     [HumansFact]
@@ -596,7 +596,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
         await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         await _drivePermissions.Received(1).UpdatePermissionAsync("folder-1", "perm-1", "writer", Arg.Any<CancellationToken>());
-        await _drivePermissions.DidNotReceiveWithAnyArgs().DeletePermissionAsync(default!, default!, default);
+        await _drivePermissions.DidNotReceiveWithAnyArgs().DeletePermissionAsync(default!, default!);
         await _googleSyncLog.Received(1).LogAsync(
             GoogleSyncLogAction.AccessRevoked, Guid.Empty, Arg.Is<string>(s => s.Contains("from organizer to writer")),
             nameof(GoogleDriveAccessSyncService), "alice@nobodies.team", "writer",
@@ -616,7 +616,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
 
         await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
-        await _drivePermissions.DidNotReceiveWithAnyArgs().UpdatePermissionAsync(default!, default!, default!, default);
+        await _drivePermissions.DidNotReceiveWithAnyArgs().UpdatePermissionAsync(default!, default!, default!);
     }
 
     [HumansFact]
@@ -632,8 +632,8 @@ public sealed class GoogleDriveAccessSyncServiceTests
         var result = await service.ReconcileAllAsync(SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         result.Diffs.Should().ContainSingle().Which.ErrorMessage.Should().Contain("skipped");
-        await _drivePermissions.DidNotReceiveWithAnyArgs().UpdatePermissionAsync(default!, default!, default!, default);
-        await _drivePermissions.DidNotReceiveWithAnyArgs().DeletePermissionAsync(default!, default!, default);
+        await _drivePermissions.DidNotReceiveWithAnyArgs().UpdatePermissionAsync(default!, default!, default!);
+        await _drivePermissions.DidNotReceiveWithAnyArgs().DeletePermissionAsync(default!, default!);
     }
 
     [HumansFact]
@@ -689,7 +689,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
         result.Diffs.Should().ContainSingle().Which.ErrorMessage.Should().Contain("source failed");
         await _resources.Received(1).SetErrorMessageManyAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(resource.Id)), Arg.Any<string>(), ct);
-        await _resources.DidNotReceiveWithAnyArgs().MarkSyncedManyAsync(default!, default, default);
+        await _resources.DidNotReceiveWithAnyArgs().MarkSyncedManyAsync(default!, default);
     }
 
     [HumansFact]
@@ -716,7 +716,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
         result.Diffs.Should().ContainSingle().Which.ErrorMessage.Should().Contain("source failed");
         await _resources.Received(1).SetErrorMessageManyAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(resource.Id)), Arg.Any<string>(), ct);
-        await _resources.DidNotReceiveWithAnyArgs().MarkSyncedManyAsync(default!, default, default);
+        await _resources.DidNotReceiveWithAnyArgs().MarkSyncedManyAsync(default!, default);
     }
 
     [HumansFact]
@@ -1003,10 +1003,10 @@ public sealed class GoogleDriveAccessSyncServiceTests
 
         await _drivePermissions.Received(1)
             .UpdatePermissionAsync("folder-1", "perm-1", inheritedRole, Arg.Any<CancellationToken>());
-        await _drivePermissions.DidNotReceiveWithAnyArgs().DeletePermissionAsync(default!, default!, default);
-        await _drivePermissions.DidNotReceiveWithAnyArgs().CreatePermissionAsync(default!, default!, default!, default);
+        await _drivePermissions.DidNotReceiveWithAnyArgs().DeletePermissionAsync(default!, default!);
+        await _drivePermissions.DidNotReceiveWithAnyArgs().CreatePermissionAsync(default!, default!, default!);
         await _removalNotifications.DidNotReceiveWithAnyArgs().NotifyRemovalAsync(
-            default!, default, default, default!, default, default);
+            default!, default, default, default!, default);
     }
 
     [HumansTheory]
@@ -1077,10 +1077,10 @@ public sealed class GoogleDriveAccessSyncServiceTests
             errorMessage: Arg.Is<string>(text => text.Contains("403", StringComparison.Ordinal)),
             userId: departed ? null : alice, ct: Arg.Any<CancellationToken>());
         _googleSyncLog.ReceivedCalls().Should().ContainSingle();
-        await _drivePermissions.DidNotReceiveWithAnyArgs().DeletePermissionAsync(default!, default!, default);
-        await _drivePermissions.DidNotReceiveWithAnyArgs().CreatePermissionAsync(default!, default!, default!, default);
+        await _drivePermissions.DidNotReceiveWithAnyArgs().DeletePermissionAsync(default!, default!);
+        await _drivePermissions.DidNotReceiveWithAnyArgs().CreatePermissionAsync(default!, default!, default!);
         await _removalNotifications.DidNotReceiveWithAnyArgs().NotifyRemovalAsync(
-            default!, default, default, default!, default, default);
+            default!, default, default, default!, default);
     }
 
     [HumansFact]
@@ -1189,12 +1189,12 @@ public sealed class GoogleDriveAccessSyncServiceTests
         diff.ErrorMessage.Should().Contain(message);
         await _resources.Received(1).SetErrorMessageManyAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(resource.Id)), Arg.Is<string>(error => error.Contains(message)), ct);
-        await _resources.DidNotReceiveWithAnyArgs().MarkSyncedManyAsync(default!, default, default);
+        await _resources.DidNotReceiveWithAnyArgs().MarkSyncedManyAsync(default!, default);
         if (rejected)
             await _identities.Received(1).SetStatusFromSyncAsync(
                 userId, "alice@nobodies.team", GoogleEmailStatus.Rejected, ct);
         else
-            await _identities.DidNotReceiveWithAnyArgs().SetStatusFromSyncAsync(default, default!, default, default);
+            await _identities.DidNotReceiveWithAnyArgs().SetStatusFromSyncAsync(default, default!, default);
         await _googleSyncLog.Received(1).LogAsync(GoogleSyncLogAction.AccessGranted, resource.Id,
             Arg.Any<string>(), nameof(GoogleDriveAccessSyncService), "alice@nobodies.team", "writer",
             GoogleSyncSource.ManualSync, success: false, errorMessage: Arg.Any<string?>(), userId: userId, ct: ct);

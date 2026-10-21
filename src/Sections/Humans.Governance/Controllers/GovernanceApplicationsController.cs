@@ -32,8 +32,8 @@ internal sealed class GovernanceApplicationsController(
 
         var applications = await applicationDecisionService.GetUserApplicationsAsync(user.Id, HttpContext.RequestAborted);
 
-        var hasPendingApplication = applications.Any(a =>
-            a.Status == ApplicationStatus.Submitted);
+        var pendingApplication = await applicationDecisionService.GetSubmittedApplicationForUserAsync(
+            user.Id, HttpContext.RequestAborted);
 
         var isApprovedColaborador = await applicationDecisionService.HasActiveApprovedTierAsync(
             user.Id, MembershipTier.Colaborador, clock.GetCurrentInstant().InUtc().Date, HttpContext.RequestAborted);
@@ -52,7 +52,7 @@ internal sealed class GovernanceApplicationsController(
                     TermExpiresAt = a.TermExpiresAt,
                     StatusBadgeClass = EnumBadgeMap.For(a.Status)
                 }).ToList(),
-            CanSubmitNew = !hasPendingApplication,
+            CanSubmitNew = pendingApplication is null,
             IsApprovedColaborador = isApprovedColaborador
         };
 
@@ -179,7 +179,7 @@ internal sealed class GovernanceApplicationsController(
             ResolvedAt = application.ResolvedAt?.ToDateTimeUtc(),
             ReviewerName = application.ReviewerName,
             ReviewNotes = application.ReviewNotes,
-            CanWithdraw = application.Status == ApplicationStatus.Submitted,
+            CanWithdraw = application.CanWithdraw,
             History = application.History
                 .Select(h => new ApplicationHistoryViewModel
                 {
@@ -308,7 +308,7 @@ internal sealed class GovernanceApplicationsController(
             ReviewStartedAt = application.ReviewStartedAt?.ToDateTimeUtc(),
             ReviewerName = application.ReviewerName,
             ReviewNotes = application.ReviewNotes,
-            CanApproveReject = application.Status == ApplicationStatus.Submitted,
+            CanApproveReject = application.CanApproveReject,
             History = application.History
                 .Select(h => new ApplicationHistoryViewModel
                 {

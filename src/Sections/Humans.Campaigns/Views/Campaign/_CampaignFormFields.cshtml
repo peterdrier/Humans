@@ -10,7 +10,7 @@
     <markdown-editor name="description" id="description" value="@Model.Description" rows="3" />
 </div>
 
-@await Html.PartialAsync("_EmailComposer", new Humans.Base.Models.EmailComposerViewModel
+@await Html.PartialAsync("_EmailComposer", new EmailComposerViewModel
 {
     SubjectName = "emailSubject",
     SubjectValue = Model.EmailSubject,

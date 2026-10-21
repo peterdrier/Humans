@@ -44,7 +44,12 @@ internal interface IShiftSignupService : IShiftSignupSeeding, IApplicationServic
 
     Task<BailRangeResult> BailRangeAsync(Guid signupBlockId, Guid actorUserId, string? reason = null);
 
-    Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null, CancellationToken ct = default);
+    /// <summary>
+    /// The user's signups across every event (or only <paramref name="eventSettingsId"/>'s),
+    /// each resolved against its own event's calendar. Signups whose shift, rota or
+    /// calendar is missing are dropped.
+    /// </summary>
+    Task<IReadOnlyList<ShiftSignupSummary>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null, CancellationToken ct = default);
 
     /// <summary>
     /// Gets signup team ownership data for admin authorization checks.

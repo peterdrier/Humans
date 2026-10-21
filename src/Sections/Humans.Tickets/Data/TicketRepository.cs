@@ -359,6 +359,8 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 t.PaymentMethodDetail = order.PaymentMethodDetail;
                 t.StripeFee = order.StripeFee;
                 t.ApplicationFee = order.ApplicationFee;
+                t.FeeTax = order.FeeTax;
+                t.WithheldTax = order.WithheldTax;
             }
         }
 
@@ -480,6 +482,8 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         var revenue = await paidOrders.SumAsync(o => o.TotalAmount, ct);
         var totalStripeFees = await paidOrders.SumAsync(o => o.StripeFee ?? 0m, ct);
         var totalAppFees = await paidOrders.SumAsync(o => o.ApplicationFee ?? 0m, ct);
+        var totalFeeTax = await paidOrders.SumAsync(o => o.FeeTax ?? 0m, ct);
+        var totalWithheldTax = await paidOrders.SumAsync(o => o.WithheldTax ?? 0m, ct);
         var unmatchedCount = await paidOrders.CountAsync(o => o.MatchedUserId == null, ct);
 
         return new TicketDashboardTotals
@@ -488,6 +492,8 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
             GrossRevenue = revenue,
             TotalStripeFees = totalStripeFees,
             TotalApplicationFees = totalAppFees,
+            TotalFeeTax = totalFeeTax,
+            TotalWithheldTax = totalWithheldTax,
             UnmatchedOrderCount = unmatchedCount,
         };
     }
@@ -576,6 +582,8 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 DiscountAmount = o.DiscountAmount ?? 0m,
                 StripeFee = o.StripeFee,
                 ApplicationFee = o.ApplicationFee,
+                FeeTax = o.FeeTax,
+                WithheldTax = o.WithheldTax,
             })
             .ToListAsync(ct);
     }
@@ -593,6 +601,8 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 TotalAmount = o.TotalAmount,
                 StripeFee = o.StripeFee,
                 ApplicationFee = o.ApplicationFee,
+                FeeTax = o.FeeTax,
+                WithheldTax = o.WithheldTax,
             })
             .ToListAsync(ct);
     }
@@ -674,7 +684,8 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
 
         var totalCount = await query.CountAsync(ct);
 
-        query = ApplyOrderSorting(query, sortBy, sortDesc);
+        // arch:db-sort-ok pagination tie-breaker: equal sort keys must not repeat/skip across pages
+        query = ApplyOrderSorting(query, sortBy, sortDesc).ThenBy(o => o.Id);
 
         var rows = await query
             .Skip((int)Math.Clamp(((long)page - 1) * pageSize, 0, int.MaxValue))
@@ -774,7 +785,8 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
 
         var totalCount = await query.CountAsync(ct);
 
-        query = ApplyAttendeeSorting(query, sortBy, sortDesc);
+        // arch:db-sort-ok pagination tie-breaker: equal sort keys must not repeat/skip across pages
+        query = ApplyAttendeeSorting(query, sortBy, sortDesc).ThenBy(a => a.Id);
 
         var rows = await query
             .Skip((int)Math.Clamp(((long)page - 1) * pageSize, 0, int.MaxValue))
@@ -804,8 +816,6 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         return await ctx.TicketAttendees
             .AsNoTracking()
             .Include(a => a.TicketOrder)
-            // arch:db-sort-ok export stable order over unbounded attendees
-            .OrderBy(a => a.AttendeeName)
             .Select(a => new AttendeeExportRow
             {
                 AttendeeName = a.AttendeeName,
@@ -825,8 +835,6 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         var orders = await ctx.TicketOrders
             .AsNoTracking()
             .Include(o => o.Attendees)
-            // arch:db-sort-ok export stable order over unbounded orders
-            .OrderByDescending(o => o.PurchasedAt)
             .ToListAsync(ct);
 
         return orders.Select(o =>
@@ -849,6 +857,8 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 PaymentMethod = method,
                 StripeFee = o.StripeFee,
                 ApplicationFee = o.ApplicationFee,
+                FeeTax = o.FeeTax,
+                WithheldTax = o.WithheldTax,
                 PaymentStatus = o.PaymentStatus.ToString(),
                 VendorOrderId = o.VendorOrderId,
                 PurchasedAt = o.PurchasedAt,
@@ -976,38 +986,36 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         await ctx.SaveChangesAsync(ct);
     }
 
-    private static IQueryable<TicketOrder> ApplyOrderSorting(
+    private static IOrderedQueryable<TicketOrder> ApplyOrderSorting(
         IQueryable<TicketOrder> query, string? sortBy, bool sortDesc)
     {
-        // arch:db-sort-ok admin page window over unbounded ticket orders
         if (string.Equals(sortBy, "amount", StringComparison.OrdinalIgnoreCase))
-            return sortDesc ? query.OrderByDescending(o => o.TotalAmount) : query.OrderBy(o => o.TotalAmount);
+            return sortDesc ? query.OrderByDescending(o => o.TotalAmount) : query.OrderBy(o => o.TotalAmount); // arch:db-sort-ok paged grid: sort precedes SQL Skip/Take
 
         if (string.Equals(sortBy, "name", StringComparison.OrdinalIgnoreCase))
-            return sortDesc ? query.OrderByDescending(o => o.BuyerName) : query.OrderBy(o => o.BuyerName);
+            return sortDesc ? query.OrderByDescending(o => o.BuyerName) : query.OrderBy(o => o.BuyerName); // arch:db-sort-ok paged grid: sort precedes SQL Skip/Take
 
         if (string.Equals(sortBy, "tickets", StringComparison.OrdinalIgnoreCase))
-            return sortDesc ? query.OrderByDescending(o => o.Attendees.Count) : query.OrderBy(o => o.Attendees.Count);
+            return sortDesc ? query.OrderByDescending(o => o.Attendees.Count) : query.OrderBy(o => o.Attendees.Count); // arch:db-sort-ok paged grid: sort precedes SQL Skip/Take
 
-        return sortDesc ? query.OrderByDescending(o => o.PurchasedAt) : query.OrderBy(o => o.PurchasedAt);
+        return sortDesc ? query.OrderByDescending(o => o.PurchasedAt) : query.OrderBy(o => o.PurchasedAt); // arch:db-sort-ok paged grid: sort precedes SQL Skip/Take
     }
 
-    private static IQueryable<TicketAttendee> ApplyAttendeeSorting(
+    private static IOrderedQueryable<TicketAttendee> ApplyAttendeeSorting(
         IQueryable<TicketAttendee> query, string? sortBy, bool sortDesc)
     {
-        // arch:db-sort-ok admin page window over unbounded ticket attendees
         if (string.Equals(sortBy, "type", StringComparison.OrdinalIgnoreCase))
-            return sortDesc ? query.OrderByDescending(a => a.TicketTypeName) : query.OrderBy(a => a.TicketTypeName);
+            return sortDesc ? query.OrderByDescending(a => a.TicketTypeName) : query.OrderBy(a => a.TicketTypeName); // arch:db-sort-ok paged grid: sort precedes SQL Skip/Take
 
         if (string.Equals(sortBy, "price", StringComparison.OrdinalIgnoreCase))
-            return sortDesc ? query.OrderByDescending(a => a.Price) : query.OrderBy(a => a.Price);
+            return sortDesc ? query.OrderByDescending(a => a.Price) : query.OrderBy(a => a.Price); // arch:db-sort-ok paged grid: sort precedes SQL Skip/Take
 
         if (string.Equals(sortBy, "status", StringComparison.OrdinalIgnoreCase))
-            return sortDesc ? query.OrderByDescending(a => a.Status) : query.OrderBy(a => a.Status);
+            return sortDesc ? query.OrderByDescending(a => a.Status) : query.OrderBy(a => a.Status); // arch:db-sort-ok paged grid: sort precedes SQL Skip/Take
 
         if (string.Equals(sortBy, "email", StringComparison.OrdinalIgnoreCase))
-            return sortDesc ? query.OrderByDescending(a => a.AttendeeEmail) : query.OrderBy(a => a.AttendeeEmail);
+            return sortDesc ? query.OrderByDescending(a => a.AttendeeEmail) : query.OrderBy(a => a.AttendeeEmail); // arch:db-sort-ok paged grid: sort precedes SQL Skip/Take
 
-        return sortDesc ? query.OrderByDescending(a => a.AttendeeName) : query.OrderBy(a => a.AttendeeName);
+        return sortDesc ? query.OrderByDescending(a => a.AttendeeName) : query.OrderBy(a => a.AttendeeName); // arch:db-sort-ok paged grid: sort precedes SQL Skip/Take
     }
 }

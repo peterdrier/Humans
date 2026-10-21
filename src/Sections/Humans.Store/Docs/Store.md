@@ -22,7 +22,6 @@ Per-camp catalog ordering, multi-method payments, and consolidated Holded factur
 - A **Store Order Line** is a line on an order that snapshots the product's price, VAT, and deposit at the time the line was added — later catalog edits never mutate existing lines.
 - A **Store Payment** is a payment against a camp order, recorded with one of five methods (`Stripe`, `BankTransfer`, `Manual`, `DepositReturn`, `Refund`) and a `Status` (`Paid` / `Pending` / `Failed`) reflecting what Stripe has confirmed about the money — a captured debit mandate is `Pending`, not `Paid`. Only `Paid` rows count toward the order balance. A `DepositReturn` (positive) credits a returned deposit back to the order; a `Refund` (negative) books money sent back to the camp. A negative balance is an overage owed to the camp. Team orders never have payments.
 - A **Store Invoice** is the consolidated Holded factura issued for a camp order. One invoice per order, written once at issuance. Team orders never receive invoices.
-- A **Store Treasury Sync State** is the singleton cursor row a treasury-sync job would use to track its last successful Holded poll. The table ships; no such job exists and no code reads or writes the row.
 
 ## Data Model
 
@@ -132,19 +131,6 @@ One per order; written once at issuance.
 
 **Constraints:** `OrderId` — intra-section FK to `store_orders` (one-to-one, `OnDelete=Restrict`); unique implicit. `HoldedDocId` — unique index.
 
-### TreasurySyncState
-
-Singleton cursor row (`Id = 1`).
-
-**Table:** `store_treasury_sync_state`
-
-| Property | Type | Notes |
-|----------|------|-------|
-| Id | int | Always 1 |
-| LastSyncAt | Instant? | Cursor for next poll |
-| SyncStatus | TreasurySyncStatus (int) | Idle (0) / Running (1) / Failed (2) |
-| LastError | string(2000)? | Last error message |
-
 ### OrderState
 
 | Value | Int | Description |
@@ -159,7 +145,7 @@ Stored as int via `HasConversion<int>()`.
 | Value | Int | Description |
 |-------|-----|-------------|
 | Stripe | 0 | From the Stripe webhook |
-| BankTransfer | 1 | Reserved for treasury sync; no code writes this value today (treasury sync is not built) |
+| BankTransfer | 1 | No code writes this value today (bank-transfer entry is not built) |
 | Manual | 2 | Reserved; no code writes this value |
 | DepositReturn | 3 | Store admin credits a returned deposit (full or partial) to the order. Stored positive. |
 | Refund | 4 | Store admin books money sent back by hand from the Stripe dashboard. Stored negative. |
@@ -269,7 +255,6 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 - Reconciliation marks a paid Stripe session as Recorded only when its local payment is Paid. Local Pending and Failed rows remain visible as settlement and terminal-state discrepancies; existing rows are never auto-recorded again. The success banner requires a successful Stripe read with no missing, unmatched, pending, failed or orphan payments.
 - Stripe webhook ingestion and direct/reconciliation payment recording share a process-local lock around their fresh PI-id/status reads and writes. Concurrent completed/settlement deliveries create one payment and preserve its terminal state; settlement cannot be acknowledged as a duplicate while leaving a concurrently inserted Pending row unchanged. Expiry handling shares the same boundary. Existing terminal-state anomaly rules and audit actions remain unchanged.
 - **Reconciliation is the recovery path when the webhook misses a payment** (e.g. `STRIPE_STORE_WEBHOOK_SECRET` unset → webhook 503s). `RecordMissingStripePaymentsAsync` lists Store Checkout Sessions, and records only those that are `payment_status == paid`, resolve to an existing **billable** (non-Team) order via `humans_store_order_id` metadata, and are not already recorded. Amount + PaymentIntent id come **from Stripe** — never fabricated. Idempotent (same PI-id guard as the webhook), so it is safe to re-run. Unmatched sessions and orphan recorded payments are surfaced read-only, never auto-recorded or auto-deleted.
-- Treasury sync is not built: `store_treasury_sync_state` ships with no job, reader, or writer (`Docs/debt.yml` STORE-2).
 - Resource-based authorization per design-rules §11: `OrderAuthorizationHandler` + `OrderOperationRequirement` gate Camp Lead writes against the order's parent camp-season. Operations: `View`, `Create`, `AddLine`, `RemoveLine`, `EditCounterparty`, `Pay`, `Delete`, `IssueInvoice`, `RecordPayment`, `Refund`, `DeletePayment`. Mutating ops (`AddLine`, `RemoveLine`, `EditCounterparty`) are gated on `State = Open`; `View` and `Pay` carry no state gate. `Delete` is admin-only (Admin/FinanceAdmin/StoreAdmin on any order; TeamsAdmin on team orders) — camp leads and team coordinators never delete their own orders. A **TeamsAdmin** additionally passes `View` on any order and manages team orders only — `Create` (any department, not just the ones they coordinate: departments buy from the collective too, and this is how that gets tracked) and `AddLine`/`RemoveLine` (Open only); camp orders stay view-only for them, and `EditCounterparty`/`Pay` are never granted on team orders. The **product deadline gate** is also enforced here: when the authorization resource is a `OrderLineContext` (carrying the product's `OrderableUntil`), non-admin line edits (`AddLine` / `RemoveLine`) are denied once today's event-zone date is past the deadline; Store admins are exempt.
 
 - Invoice creation, approval, recovery checks and the atomic invoice/order save are owned by the internal `StoreInvoiceIssuer`. The service enforces billability before delegation. Views and issuance share live catalog pricing and counterparty lookup through `StoreOrderReader`; validation order and external-write cancellation boundaries are unchanged.
@@ -302,7 +287,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 **Not built:**
 - Bank-transfer / cash entry (`BankTransfer`, `Manual`) and the `/Store/Admin/Orders` ledger. No service member, endpoint, or view exists.
-- Treasury sync. No job exists; `store_treasury_sync_state` and its entity ship, but nothing reads or writes them (`Docs/debt.yml` STORE-2).
+- Treasury sync. No job, table or entity exists. Finance owns the Holded bank-movement feed, so matching bank transfers to store orders would start there.
 
 ## Cross-Section Dependencies
 
@@ -328,7 +313,7 @@ The Store section uses `IStripeService` (`Humans.Stripe.Contracts`; internal imp
 ## Architecture
 
 **Owning services:** `Service`
-**Owned tables:** `store_products`, `store_orders`, `store_order_lines`, `store_payments`, `store_invoices`, `store_treasury_sync_state`
+**Owned tables:** `store_products`, `store_orders`, `store_order_lines`, `store_payments`, `store_invoices`
 **Status:** (A) Migrated.
 **Project:** `src/Sections/Humans.Store` — the whole vertical is one assembly: `Domain/ Data/ Services/ Controllers/ Models/ Views/ Authorization/ Docs/ Contracts/` plus `Section.cs`. Everything is `internal` except `Section`, `StoreResource`, and the accounting read contract in `Contracts/` (`IStoreAccountingRead`, its two DTOs and the `OrderCounterpartyType` / `OrderState` enums they carry).
 

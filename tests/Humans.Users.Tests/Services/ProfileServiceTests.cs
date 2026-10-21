@@ -223,7 +223,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         _fileStorage.Files[PicKey(profileId, "image/png")].Should().Equal(1, 2, 3);
         var picture = await _service.GetProfilePictureAsync(profileId, Xunit.TestContext.Current.CancellationToken);
         picture.Should().NotBeNull();
-        picture!.Value.ContentType.Should().Be("image/png");
+        picture.Value.ContentType.Should().Be("image/png");
         picture.Value.Data.Should().Equal(1, 2, 3);
     }
 
@@ -270,7 +270,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
         var picture = await _service.GetProfilePictureAsync(profileId, Xunit.TestContext.Current.CancellationToken);
         picture.Should().NotBeNull();
-        picture!.Value.ContentType.Should().Be("image/jpeg");
+        picture.Value.ContentType.Should().Be("image/jpeg");
         picture.Value.Data.Should().Equal(4, 5, 6);
         await _pictureStorage.Received(1).DeleteAsync(PicKey(profileId, "image/png"), CancellationToken.None);
     }
@@ -301,7 +301,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         saved.ProfilePictureStorageKey.Should().NotBeNull();
         var picture = await _service.GetProfilePictureAsync(profileId, ct);
         picture.Should().NotBeNull();
-        picture!.Value.Data.Should().Equal(4, 5, 6);
+        picture.Value.Data.Should().Equal(4, 5, 6);
         if (replacingPicture)
             _fileStorage.Files[PicKey(profileId, "image/png")].Should().Equal(1, 2, 3);
     }
@@ -451,7 +451,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var picture = await _service.GetProfilePictureAsync(profileId, Xunit.TestContext.Current.CancellationToken);
 
         picture.Should().NotBeNull();
-        picture!.Value.Data.Should().Equal(1, 2, 3);
+        picture.Value.Data.Should().Equal(1, 2, 3);
     }
 
     [HumansFact]
@@ -652,7 +652,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         result.Succeeded.Should().BeFalse();
         result.ProfileId.Should().BeNull();
         result.ErrorKey.Should().Be("Profile_BurnerCVRequired");
-        await _userService.DidNotReceiveWithAnyArgs().SaveProfileAsync(default, default!, default, default);
+        await _userService.DidNotReceiveWithAnyArgs().SaveProfileAsync(default, default!);
         (await Db.Profiles.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
@@ -678,7 +678,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await _editor.SaveProfileAsync(userId, request, ct: Xunit.TestContext.Current.CancellationToken);
 
         await _userService.Received(1).SaveProfileAsync(userId, Arg.Any<UserProfileSaveCommand>(),
-            Arg.Any<byte[]?>(), Arg.Any<CancellationToken>(), null);
+            Arg.Any<byte[]?>(), Arg.Any<CancellationToken>());
         (await Db.VolunteerHistoryEntries.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken))
             .EventName.Should().Be("Existing history");
     }
