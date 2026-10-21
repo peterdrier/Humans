@@ -18,7 +18,7 @@ using Humans.Teams.Contracts;
 namespace Humans.Camps.Services;
 
 /// <summary>Application-layer <see cref="ICampManagement"/>; cache-unaware (decorator owns §15 caching).</summary>
-internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDataContributor, IUserMerge
+internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMerge
 {
     /// <summary>GDPR export JSON key for this contributor's data.</summary>
     internal const string CampRoleAssignments = "CampRoleAssignments";
@@ -31,11 +31,9 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
     private readonly ISystemTeamSync _systemTeamSync;
     private readonly IFileStorage _fileStorage;
     private readonly INotificationEmitter _notificationEmitter;
-    private readonly ICampLeadJoinRequestsBadgeCacheInvalidator _leadBadgeInvalidator;
     private readonly Lazy<ICampRoleService> _campRoleService;
     // Lazy: CityPlanningService injects ICampService, closing the cycle.
     private readonly Lazy<ICityPlanningWrite> _cityPlanningService;
-    private readonly ICampInfoInvalidator _campInfoInvalidator;
     private readonly IUserService _userService;
     private readonly ITicketService _tickets;
     private readonly ISettingsService _settingsService;
@@ -56,10 +54,8 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
         ISystemTeamSync systemTeamSync,
         IFileStorage fileStorage,
         INotificationEmitter notificationEmitter,
-        ICampLeadJoinRequestsBadgeCacheInvalidator leadBadgeInvalidator,
         Lazy<ICampRoleService> campRoleService,
         Lazy<ICityPlanningWrite> cityPlanningService,
-        ICampInfoInvalidator campInfoInvalidator,
         IUserService userService,
         ITicketService tickets,
         ISettingsService settingsService,
@@ -71,10 +67,8 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
         _systemTeamSync = systemTeamSync;
         _fileStorage = fileStorage;
         _notificationEmitter = notificationEmitter;
-        _leadBadgeInvalidator = leadBadgeInvalidator;
         _campRoleService = campRoleService;
         _cityPlanningService = cityPlanningService;
-        _campInfoInvalidator = campInfoInvalidator;
         _userService = userService;
         _tickets = tickets;
         _settingsService = settingsService;
@@ -715,8 +709,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
             return;
         }
 
-        // Closing a season drops pending requests from the lead-meter count.
-        var camp = await InvalidateLeadBadgesAsync(campId, cancellationToken);
+        var camp = await _repo.GetByIdAsync(campId, cancellationToken);
         var name = camp?.Seasons.FirstOrDefault(s => s.Id == seasonId)?.Name ?? camp?.Slug;
         var slug = camp?.Slug;
 
@@ -1265,29 +1258,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
         };
     }
 
-    private async Task<Camp?> InvalidateLeadBadgesAsync(Guid campId, CancellationToken cancellationToken)
-    {
-        var camp = await _repo.GetByIdAsync(campId, cancellationToken);
-        if (camp is null)
-        {
-            return null;
-        }
-        var leadUserIds = new HashSet<Guid>();
-        foreach (var season in camp.Seasons)
-        {
-            foreach (var leadUserId in await _repo.GetSpecialRoleHolderUserIdsForSeasonAsync(
-                season.Id, CampSpecialRole.Lead, cancellationToken))
-            {
-                leadUserIds.Add(leadUserId);
-            }
-        }
-        foreach (var leadUserId in leadUserIds)
-        {
-            _leadBadgeInvalidator.Invalidate(leadUserId);
-        }
-        return camp;
-    }
-
     /// <summary>Sole CampMember→Removed transition: role-cascade, state flip, audit. Callers own preconditions and post-effects.</summary>
     private async Task TransitionMemberToRemovedAsync(
         CampMember member,
@@ -1352,7 +1322,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
                 $"Requested membership in camp season {season.Year}",
                 userId,
                 relatedEntityId: campId, relatedEntityType: nameof(Camp));
-            await InvalidateLeadBadgesAsync(campId, cancellationToken);
         }
 
         return insert.Outcome switch
@@ -1420,7 +1389,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
             approvedByUserId,
             relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
 
-        var camp = await InvalidateLeadBadgesAsync(scopedCampId, cancellationToken);
+        var camp = await _repo.GetByIdAsync(scopedCampId, cancellationToken);
         var slug = camp?.Slug;
         try
         {
@@ -1467,7 +1436,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
             cascadeRoleAssignments: false,
             cancellationToken);
 
-        var camp = await InvalidateLeadBadgesAsync(scopedCampId, cancellationToken);
+        var camp = await _repo.GetByIdAsync(scopedCampId, cancellationToken);
         try
         {
             var culture = await GetRecipientCultureAsync(requesterUserId, cancellationToken);
@@ -1590,7 +1559,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
             cascadeRoleAssignments: true,
             cancellationToken);
 
-        await InvalidateLeadBadgesAsync(member.CampSeason.CampId, cancellationToken);
         return CampMembershipMutationResult.Success();
 
     }
@@ -1625,11 +1593,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
         // Called from AccountMergeService.MergeAsync's ordered fan-out; must stay idempotent.
         // Folds the source's CampMember rows onto the survivor and carries their
         // CampRoleAssignments along — leads move too.
-        var leadUserIds = await _repo.GetActiveLeadUserIdsAsync(ct);
         await _repo.ReassignMembershipsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
-        // Folding duplicate pending requests also changes the reviewing leads' counts.
-        foreach (var leadUserId in leadUserIds.Append(sourceUserId).Append(targetUserId).Distinct())
-            _leadBadgeInvalidator.Invalidate(leadUserId);
 
         // Lead moves change Barrio Leads team membership for both users.
         await _systemTeamSync.SyncMembershipForUserAsync(sourceUserId, SystemTeamType.BarrioLeads, ct);
@@ -1669,14 +1633,12 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
         return [new UserDataSlice(CampRoleAssignments, shapedRoles), new UserDataSlice(CampMemberships, shapedMemberships)];
     }
 
-    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+    internal static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
             [CampRoleAssignments] = null,
             [CampMemberships] = null
         };
-
-    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
     /// <summary>
     /// Drops the user's camp memberships and every role assignment hanging off
@@ -1684,17 +1646,9 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserDa
     /// </summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
-        var leadUserIds = await _repo.GetActiveLeadUserIdsAsync(ct);
         await _repo.DeleteCampFootprintForUserAsync(userId, ct);
-        // Capture before deletion, which can remove this user's own lead assignment.
-        foreach (var leadUserId in leadUserIds.Append(userId).Distinct())
-            _leadBadgeInvalidator.Invalidate(leadUserId);
-
-        // The cached CampInfo projection carries the rosters this just emptied, and the
-        // contributor is the inner service, so nothing else drops them. InvalidateAll
-        // rather than per-camp: the user's camps span an unbounded set and the repo
-        // delete does not hand back their ids.
-        await _campInfoInvalidator.InvalidateAllAsync(ct);
+        // The cached CampInfo rosters this just emptied are dropped by CachingCampService,
+        // the registered IUserDataContributor, which refreshes after this returns.
     }
 
     public async Task SetCampSeasonEeSlotCountAsync(

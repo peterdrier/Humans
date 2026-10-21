@@ -366,8 +366,8 @@ public class HumansWebApplicationFactory(string connectionString)
             await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
-        Services.GetRequiredService<ILegalDocumentCacheInvalidator>().InvalidateAll();
-        Services.GetRequiredService<IConsentCacheInvalidator>().InvalidateAll();
+        Services.GetRequiredService<CachingLegalDocumentSyncService>().InvalidateAll();
+        Services.GetRequiredService<CachingConsentService>().Clear();
 
         using var idScope = Services.CreateScope();
         var email = $"dev-{slug}@localhost";

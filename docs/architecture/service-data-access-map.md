@@ -65,18 +65,11 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > The marker-only project `src/Humans.Base/` holds the shared
 > `IApplicationService`, `IRepository`, `IOrchestrator`, `IFanout`, and
 > `IInvalidator` marker interfaces (no data-access behavior of its own), plus
-> the cache infrastructure: `Caching/CacheKeys.cs`, the invalidator extensions in
-> `Extensions/MemoryCacheExtensions.cs`, `Caching/MemoryCacheInvalidators.cs`,
-> and the `TrackedCache<TKey, TValue>` base class
-> (`Caching/TrackedCache.cs`) that every section-owned Singleton
-> caching decorator below inherits. The cross-cutting invalidator interfaces
-> (`INotificationMeterCacheInvalidator`,
-> `ICampLeadJoinRequestsBadgeCacheInvalidator`)
-> resolve via `MemoryCacheInvalidators.cs` to
-> the cache keys their backing `MemoryCacheExtensions` invalidator hits. The only
-> other `IInvalidator`-marked interfaces are section-owned (`ICampInfoInvalidator`,
-> `IConsentCacheInvalidator`, `ILegalDocumentCacheInvalidator`); every other
-> decorator invalidates itself when a write passes through it.
+> the cache infrastructure: `Caching/CacheKeys.cs`,
+> `Extensions/MemoryCacheExtensions.cs`, and the `TrackedCache<TKey, TValue>`
+> base class (`Caching/TrackedCache.cs`) that every section-owned Singleton
+> caching decorator below inherits. No `I*Invalidator` interface remains:
+> each cache owner evicts on its own writes, and HUM0028 blocks new ones.
 > Section-decorator `TrackedCache<TKey, TValue>` subclasses live beside
 > their inner service in each section's own `Services/` (or `Data/`) folder —
 > e.g. `CachingUserService` is `src/Sections/Humans.Users/Data/CachingUserService.cs`
@@ -254,18 +247,17 @@ Every table is owned by exactly one repository; there are no HUM0025
    - `CachingConsentService` → `UserConsentInfo` per user.
    - `CachingLegalDocumentSyncService` → `LegalDocumentInfo` per document.
    - `CachingRoleAssignmentService` → `RoleAssignmentRow` set.
-   All are surfaced on `/Debug/CacheStats` via `ICacheStats`. Each evicts
-   itself when a write passes through the decorator; the few cross-section
-   signals are the section-owned `ICampInfoInvalidator`, `IConsentCacheInvalidator`
-   and `ILegalDocumentCacheInvalidator`, plus EF `SaveChangesInterceptor`s
-   (Users, Events) — no direct `IMemoryCache` coupling in the Application layer.
+   All are surfaced on `/Debug/CacheStats` via `ICacheStats` and evicted
+   by their owning decorator on its own writes (or EF
+   `SaveChangesInterceptor`s for Legal / User-Identity writes) — no direct
+   `IMemoryCache` coupling in the Application layer.
 
 9. **Notification meters are computed, not queried.**
    `NotificationMeterProvider` reads no tables directly — every counter
    fans out through an owning-service interface call (`IUserService`,
    `ITeamService`, `IGovernanceService`, `IConsentService`, `ITicketSync`,
-   `IGoogleSyncService`, `ICampService`). Cache invalidation goes
-   through `INotificationMeterCacheInvalidator`.
+   `IGoogleSyncService`, `ICampService`). The meter cache expires on
+   its 2-minute TTL; nothing evicts it.
 
 10. **HUM analyzers enforce the boundaries at compile time.** Roslyn
     analyzers ratchet the layering rules: `HUM0008` blocks any per-section
@@ -372,10 +364,9 @@ separately below the key table.
 |-----|-----|------|-------------|----------------|
 | `FeedbackBadgeCount` | 2 min | Static | **FeedbackService** (`GetActionableCountAsync`) | FeedbackService (evicts its own key) |
 | `NotificationBadge:{userId}` | 2 min | Per-User | **NotificationInboxService** (`GetUnreadBadgeCountsAsync`) | NotificationService, NotificationEmitter, NotificationInboxService |
-| `NotificationMeters` | 2 min | Static | NotificationMeterProvider | `INotificationMeterCacheInvalidator` (TeamService, ApplicationDecisionService) |
+| `NotificationMeters` | 2 min | Static | NotificationMeterProvider | TTL only |
 | `HoldedContacts` | 2 min | Static | **Finance** `Service` (Holded contact list) | expiry only |
 | `NavBadge:Voting:{userId}` | 2 min | Per-User | **ApplicationDecisionService** (`GetUnvotedApplicationCountAsync`) | ApplicationDecisionService (evicts its own key) |
-| `NavBadge:CampLeadJoinRequests:{userId}` | 2 min | Per-User | NotificationMeterProvider | `ICampLeadJoinRequestsBadgeCacheInvalidator` (CampService) |
 | `NavBadge:Issues:{userId}` | 2 min | Per-User | IssuesService | IssuesService (evicts its own key) |
 | `Legal:{slug}` | 1 hr | Per-Entity | LegalDocumentService (GitHub-source read-through) | LegalDocumentService |
 | `CampContactRateLimit:{userId}:{campId}` | 10 min | Rate Limit | CampContactService | CampContactService |
@@ -394,20 +385,20 @@ separately below the key table.
 
 | Cache | Section | Key | Type | Populated By | Invalidated By |
 |-------|---------|-----|------|-------------|----------------|
-| `TrackedCache<Guid, UserInfo>` | Users (+Profiles) | `User.UserInfo` | Per-User | CachingUserService warmup + lazy load | `UserInfoSaveChangesInterceptor` + `IUserInfoSliceRefresher` (Users-internal) + `IUserMerge` |
-| `TrackedCache<Guid, TeamInfo>` | Teams | `Team.TeamInfo` | Per-Entity | CachingTeamService warmup + lazy load | self-invalidating on writes through `CachingTeamService` + `IUserMerge` |
-| `TrackedCache<Guid, ShiftUserView>` / `TrackedCache<Guid, ShiftRotaView>` | Shifts | `ShiftView.UserView` / `ShiftView.RotaView` | Per-User / Per-Entity | CachingShiftViewService lazy load | `CachingShiftViewService` (`IEventSettingsChangeListener` plus eviction by ShiftManagementService, ShiftSignupService, VolunteerTrackingService) |
-| `TrackedCache<Guid, TicketOrderInfo>` | Tickets | `Tickets.Orders` | Per-Entity | CachingTicketQueryService warmup + lazy load | `CachingTicketQueryService` evicts in a `finally` after each delegated write |
-| `TrackedCache<Guid, CachedUserTicketHoldings>` | Tickets | `Tickets.UserHoldings` | Per-User (5-min freshness in value) | CachingTicketQueryService lazy load | `CachingTicketQueryService` evicts in a `finally` after each delegated write |
-| `TrackedCache<Guid, CampInfo>` + settings slot | Camps | `Camp.CampInfo` | Per-Entity / Static | CachingCampService warmup + lazy load | `ICampInfoInvalidator` + `IUserMerge` |
+| `TrackedCache<Guid, UserInfo>` | Users (+Profiles) | `User.UserInfo` | Per-User | CachingUserService warmup + lazy load | own write pass-throughs + section-internal `IUserInfoSliceRefresher` (`UserInfoSaveChangesInterceptor`, Users' own services) |
+| `TrackedCache<Guid, TeamInfo>` | Teams | `Team.TeamInfo` | Per-Entity | CachingTeamService warmup + lazy load | own writes, `IUserMerge`, GDPR erasure + `ITeamWrite.InvalidateActiveTeamsCache` (Users' merge tail) |
+| `TrackedCache<Guid, ShiftUserView>` / `TrackedCache<Guid, ShiftRotaView>` | Shifts | `ShiftView.UserView` / `ShiftView.RotaView` | Per-User / Per-Entity | CachingShiftViewService lazy load | `InvalidateUser` / `InvalidateRota`, called only by Shifts' own services |
+| `TrackedCache<Guid, TicketOrderInfo>` | Tickets | `Tickets.Orders` | Per-Entity | CachingTicketQueryService warmup + lazy load | own write pass-throughs (clear-all on sync, transfer, contact import, erasure, merge) |
+| `TrackedCache<Guid, CachedUserTicketHoldings>` | Tickets | `Tickets.UserHoldings` | Per-User (5-min freshness in value) | CachingTicketQueryService lazy load | own write pass-throughs (both users on merge; clear-all otherwise) |
+| `TrackedCache<Guid, CampInfo>` + settings slot | Camps | `Camp.CampInfo` | Per-Entity / Static | CachingCampService warmup + lazy load | own writes, role writes, merge, GDPR erasure (`RefreshAll`) |
 | `TrackedCache<Guid, CalendarEventInfo>` | Calendar | `Calendar.Event` | Per-Entity | CachingCalendarService warmup + lazy load | per-event `ReplaceAsync` after delegated write |
 | `TrackedCache<Guid, ApprovedEventView>` + category/venue/settings snapshots | Events | `Event.ApprovedEventView` | Per-Entity / Static | CachingEventService warmup + lazy load | inline per write |
-| `TrackedCache<Guid, UserConsentInfo>` | Consent | `Consent.UserConsentInfo` | Per-User | CachingConsentService lazy load | `IConsentCacheInvalidator` (synchronous per-user evict on submit) |
-| `TrackedCache<Guid, LegalDocumentInfo>` | Legal | `Legal.LegalDocumentInfo` | Per-Entity | CachingLegalDocumentSyncService warmup + lazy load | `ILegalDocumentCacheInvalidator.InvalidateAll` (called directly by `LegalDocumentSyncService` after each write) |
-| `TrackedCache<Guid, RoleAssignmentRow>` | Auth | `Auth.RoleAssignmentRow` | Per-Entity | CachingRoleAssignmentService warmup + lazy load | `CachingRoleAssignmentService` (service-level, after each delegated write) |
+| `TrackedCache<Guid, UserConsentInfo>` | Consent | `Consent.UserConsentInfo` | Per-User | CachingConsentService lazy load | synchronous per-user evict on submit; merge reloads via `UserInfo.AllUserIds` |
+| `TrackedCache<Guid, LegalDocumentInfo>` | Legal | `Legal.LegalDocumentInfo` | Per-Entity | CachingLegalDocumentSyncService warmup + lazy load | `CachingLegalDocumentSyncService.InvalidateAll` (called directly by `LegalDocumentSyncService` after each write) |
+| `TrackedCache<Guid, RoleAssignmentRow>` | Auth | `Auth.RoleAssignmentRow` | Per-Entity | CachingRoleAssignmentService warmup + lazy load | wholesale `Clear()` by the inner `RoleAssignmentService` after each repository write |
 | `TrackedCache<int, RideshareSnapshot>` | Rideshare | `Rideshare.Snapshot` | Per-Year | CachingRideshareService lazy load | full `Clear()` after every delegated write |
 | `TrackedCache<byte, IReadOnlyList<WorkgroupInfo>>` | Workgroups | `Workgroups.Register` | Single entry | CachingWorkgroupService lazy load | full `Clear()` after every delegated write |
-| `TrackedCache<string, CachedVendorEventSummary>` | Tickets | `Tickets.VendorEventSummary` | Per-Entity (15-min freshness in value) | CachingTicketVendorService lazy load | `CachingTicketVendorService` (`GetOrdersAsync` for that event drops the entry; 15-min freshness) |
+| `TrackedCache<string, CachedVendorEventSummary>` | Tickets | `Tickets.VendorEventSummary` | Per-Entity (15-min freshness in value) | CachingTicketVendorService lazy load | own `GetOrdersAsync` pass-through (per event, after a successful pull) |
 | `TrackedCache<string, Dictionary<string, int>>` | Finance | `Finance.SepaStuckBankLines` | Single entry | `SepaBankBooking` sweep | `SepaBankBooking` (cleared when no line is stuck) |
 
 ### Cache Issues / Notes
@@ -419,8 +410,8 @@ separately below the key table.
 2. **Ticket user holdings are tracked, not `IMemoryCache` keys.**
    `CachingTicketQueryService` keeps user holdings in `Tickets.UserHoldings`,
    a `TrackedCache` keyed by user id. Transfer, contact import, account merge,
-   and full ticket sync paths clear the affected tracked entries through
-   `ITicketCacheInvalidator`; stale entries also reload after the 5-minute
+   and full ticket sync paths clear the affected tracked entries in the
+   decorator's own write pass-throughs; stale entries also reload after the 5-minute
    freshness deadline stored in the tracked value.
 
 3. **Caching decorators live beside their inner service in each section's
@@ -485,7 +476,6 @@ Controllers and components that touch `IMemoryCache` directly.
 | **GateLoginThrottle** (Web infrastructure, used by the gate-terminal sign-in) | TryGetValue / Set / Remove | `GateLoginFailures:{sourceIp}` |
 | **GatePinThrottle** (`Humans.Gate/Services/Stores/`; used by `GateController` PIN claim / override) | TryGetValue / Set / Remove | `GatePinFailures:{key}` |
 | **GateVendorMirrorLedger** (`Humans.Gate/Services/Stores/`; used by `GateController` and `GateVendorBackfillAdminController`) | TryGetValue / Set (atomic claim) | `GateVendorMirrorSent:{vendorTicketId}` |
-| **GateTerminalAccountSeeder** (`Humans.Tickets/Services/`) | `InvalidateUserAccess` extension | `claims:{userId}` + `shift-auth:{userId}` for the kiosk account |
 
 The §15 work continues to push cache populators into the owning service
 behind transparent decorators. No view component injects `IMemoryCache`; nav

@@ -10,12 +10,6 @@ and Surveys (`ISurveyAnalysisRead`). Those controller dependencies are outside
 this service-to-service diagram; the Backdoor node below represents only
 `BackdoorApiKeyService`.
 
-Agent's tool dispatcher and user-snapshot provider (`AgentToolDispatcher`,
-`AgentUserSnapshotProvider`) are collaborators of `AgentService` that are not
-registered services; their reads of Consent, Governance, Feedback, Tickets, Teams,
-Auth and Settings are outside this diagram, so the Agent node shows only
-`AgentService`'s own edges.
-
 ## How to read
 
 - Solid black arrow (`-->`) = ctor-injected dependency, eagerly resolved.
@@ -80,12 +74,15 @@ graph LR
     Notif[NotificationService]:::crosscut
     Role[RoleAssignmentService]:::auth
     Metrics[HumansMetricsService]:::crosscut
+    AuditViewer[AuditViewerService]:::crosscut
 
     %% ── Section services (only those with cross-section edges) ──
     Backdoor[BackdoorApiKeyService]:::backdoor
 
     AgentSvc[AgentService]:::agent
     AgentSettings[AgentSettingsService]:::agent
+    AgentTool[AgentToolDispatcher]:::agent
+    AgentSnap[AgentUserSnapshotProvider]:::agent
 
     User[UserService]:::users
     UEmail[UserEmailService]:::users
@@ -254,6 +251,18 @@ graph LR
     %% Agent
     AgentSvc --> User
     AgentSettings --> Audit
+    AgentTool --> AuditViewer
+    AgentTool --> ShiftView
+    AgentTool --> SettingsSvc
+    AgentSnap --> User
+    AgentSnap --> Role
+    AgentSnap --> Team
+    AgentSnap --> AppDec
+    AgentSnap --> Consent
+    AgentSnap --> Feedback
+    AgentSnap --> TicketQ
+    AgentSnap --> ShiftView
+    AgentSnap --> SettingsSvc
 
     %% Users
     User --> AdminAuth
@@ -276,7 +285,6 @@ graph LR
     Merge --> Audit
     Merge --> Team
     Merge --> Notif
-    Merge --> Consent
     DupAcct --> Team
     DupAcct --> Role
     DupAcct --> Audit
@@ -492,6 +500,7 @@ graph LR
     Onboard --> ConsentReview
     Onboard --> HumanLifecycle
     Onboard --> Audit
+    Onboard --> AcctDel
     OnboardWidget --> User
     OnboardWidget --> ShiftView
     OnboardWidget --> MembershipCalc
@@ -723,9 +732,9 @@ graph LR
     Metrics -. "lazy" .-> Consent
 
     %% ── Edge styling ──
-    %% 369 eager edges (indices 0..368) then 22 lazy edges; linkStyle indexes the lazy block by position.
+    %% 381 eager edges (indices 0..380) then 22 lazy edges; linkStyle indexes the lazy block by position.
     %% Recompute the indices whenever edges change.
-    linkStyle 369,370,371,372,373,374,375,376,377,378,379,380,381,382,383,384,385,386,387,388,389,390 stroke:#f97316,stroke-width:2.5px
+    linkStyle 381,382,383,384,385,386,387,388,389,390,391,392,393,394,395,396,397,398,399,400,401,402 stroke:#f97316,stroke-width:2.5px
 ```
 
 
@@ -735,7 +744,7 @@ Not drawn above — their collaborators are all section-internal (or fan-out con
 interfaces / infra connectors, which this graph doesn't chart):
 
 `AdminDatabaseDiagnosticsService` (repository only), `AgentAdminStatusService`,
-`AgentAnthropicBalanceProvider`, `AuditViewerService` (fans `IEntityNameContributor`),
+`AgentAnthropicBalanceProvider`,
 `BurnSettingsService`, `EventBulkImporter` (Events' own repository only),
 `ExternalLoginService`, `GoogleWorkspaceUserService`, `GuideContentService`, `MailerLiteService`,
 `NotificationInboxRead` (composes Notifications' own inbox + meter provider), `ProfileService`.

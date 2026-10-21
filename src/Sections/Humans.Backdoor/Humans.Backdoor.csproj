@@ -28,8 +28,8 @@
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
       The sections whose machine surface Backdoor serves. Each is reached only through
-      the public interface in its Contracts/ folder (Agent, Feedback, Issues, Notifications,
-      Store, Surveys, Expenses) or its contracts leaf (Finance) — HUM0034 keeps everything
+      the public interface in its Contracts/ folder (Agent, Feedback, Issues,
+      Store, Surveys, Expenses) or its contracts leaf (Notifications, Finance) — HUM0034 keeps everything
       else in those assemblies internal, so the reference cannot widen past the published
       surface. Acyclic by construction:
       nothing references Backdoor. Debug is absent — /api/backdoor/logs reads
@@ -38,7 +38,7 @@
     <ProjectReference Include="..\Humans.Agent\Humans.Agent.csproj" />
     <ProjectReference Include="..\Humans.Feedback\Humans.Feedback.csproj" />
     <ProjectReference Include="..\Humans.Issues\Humans.Issues.csproj" />
-    <ProjectReference Include="..\Humans.Notifications\Humans.Notifications.csproj" />
+    <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Store\Humans.Store.csproj" />
     <ProjectReference Include="..\Humans.Surveys\Humans.Surveys.csproj" />
     <!--

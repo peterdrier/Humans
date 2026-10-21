@@ -94,6 +94,9 @@ internal sealed record ToggleDaySignupOutcome(
     IReadOnlyList<ShiftSignup> SignupsAfter)
 {
     internal static ToggleDaySignupOutcome DietaryRequired() => new(true, null, false, false, []);
+
+    /// <summary>The user's active (Pending or Confirmed) signups after the toggle.</summary>
+    public int ActiveSignupCount => SignupsAfter.Count(s => s.Status is SignupStatus.Pending or SignupStatus.Confirmed);
 }
 
 internal sealed record ShiftSignupTeamProbe(

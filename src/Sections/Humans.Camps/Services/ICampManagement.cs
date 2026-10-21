@@ -1,6 +1,7 @@
 using Humans.Base.Enums;
 using NodaTime;
 using Humans.EarlyEntry.Contracts;
+using Humans.Gdpr.Contracts;
 
 namespace Humans.Camps.Services;
 
@@ -148,6 +149,11 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
     Task<SetEarlyEntryOutcome> SetEarlyEntryAsync(
         Guid scopedCampId, Guid campMemberId, bool granted, Guid actorUserId,
         CancellationToken cancellationToken = default);
+
+    // GDPR: IUserDataContributor is carried by CachingCampService (erasure empties cached
+    // rosters); these two are how it reaches the inner service.
+    Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct);
+    Task EraseForUserAsync(Guid userId, CancellationToken ct);
 }
 
 internal sealed record CampMemberLookup(Guid CampSeasonId, Guid UserId, CampMemberStatus Status);

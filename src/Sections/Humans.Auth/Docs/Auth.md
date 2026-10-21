@@ -9,7 +9,6 @@
   src/Humans.Web/Services/LoginMethodCounter.cs
   src/Humans.Web/Services/GateLoginThrottle.cs
   src/Humans.Base/Extensions/MemoryCacheExtensions.cs
-  src/Humans.Base/Caching/MemoryCacheInvalidators.cs
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Humans.Base/Authorization/RoleChecks.cs
   src/Sections/**/Authorization/**/*.cs

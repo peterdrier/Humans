@@ -95,8 +95,8 @@ public class ConsentPageRenderTests(HumansTestDatabase database) : IntegrationTe
 
         await db.SaveChangesAsync(ct);
 
-        Factory.Services.GetRequiredService<ILegalDocumentCacheInvalidator>().InvalidateAll();
-        Factory.Services.GetRequiredService<IConsentCacheInvalidator>().InvalidateAll();
+        Factory.Services.GetRequiredService<CachingLegalDocumentSyncService>().InvalidateAll();
+        Factory.Services.GetRequiredService<CachingConsentService>().Clear();
 
         return versionId;
     }

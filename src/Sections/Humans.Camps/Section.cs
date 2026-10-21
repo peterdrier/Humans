@@ -35,8 +35,6 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddKeyedScoped<IUserMerge>(
             CachingCampService.InnerServiceKey,
             (sp, _) => sp.GetRequiredService<CampService>());
-        // IUserDataContributor on the inner — matches User/Teams pattern (GDPR export iterates contributors).
-        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampService>());
 
         // Owns CampInfo + CampSettingsInfo projection; invalidates after every write through this surface.
         services.AddSingleton<CachingCampService>();
@@ -47,20 +45,25 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddSingleton<ICampRoleCampAccess>(sp => sp.GetRequiredService<CachingCampService>());
         services.AddSingleton<IEarlyEntryProvider>(sp => sp.GetRequiredService<CachingCampService>());
 
-        // §15e CRITICAL: same Singleton instance for invalidator + merge as ICampManagement — one cache, one signaller.
-        services.AddSingleton<ICampInfoInvalidator>(sp => sp.GetRequiredService<CachingCampService>());
+        // Merge, GDPR erasure and role writes change rows the projection serves, so the
+        // decorator carries them and drops the projection itself after the inner write.
         services.AddSingleton<IUserMerge>(sp => sp.GetRequiredService<CachingCampService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CachingCampService>());
 
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingCampService>());
 
         services.AddHostedService(sp => sp.GetRequiredService<CachingCampService>());
 
-        // CampRoleService — separate sub-service, no decorator.
-        // Registered under both ICampRoleService and IGoogleGroupMembershipSource so
-        // the Google sync orchestrator can enumerate the Camps claim alongside the
-        // Teams claim. Mirrors the Teams pattern in Humans.Teams' Section.
+        // CampRoleService — separate sub-service; ICampRoleService resolves to the
+        // decorator, which evicts the projection after role writes.
+        // Also registered as IGoogleGroupMembershipSource so the Google sync
+        // orchestrator can enumerate the Camps claim alongside the Teams claim.
+        // Mirrors the Teams pattern in Humans.Teams' Section.
         services.AddScoped<CampRoleService>();
-        services.AddScoped<ICampRoleService>(sp => sp.GetRequiredService<CampRoleService>());
+        services.AddKeyedScoped<ICampRoleService>(
+            CachingCampService.InnerServiceKey,
+            (sp, _) => sp.GetRequiredService<CampRoleService>());
+        services.AddSingleton<ICampRoleService>(sp => sp.GetRequiredService<CachingCampService>());
         services.AddScoped<ICampRoleSeeding>(sp => sp.GetRequiredService<CampRoleService>());
         services.AddScoped<IGoogleGroupMembershipSource>(sp => sp.GetRequiredService<CampRoleService>());
         // Lazy<ICampRoleService> resolves a circular dep: CampService -> ICampRoleService -> ICampRoleCampAccess.

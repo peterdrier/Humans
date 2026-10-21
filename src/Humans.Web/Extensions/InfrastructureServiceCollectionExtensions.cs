@@ -64,19 +64,9 @@ public static class InfrastructureServiceCollectionExtensions
         // membership is a Teams invariant. Its interface followed at lane 5c and now lives on
         // Humans.Teams.Contracts.
 
-        // Base collaborators that Governance's section file used to register on the way past.
-        // The three badge-cache invalidators are Humans.Base implementations of Humans.Base
-        // interfaces that four sections evict through — none of them is Governance's to own
-        // (memory/architecture/governance-scope.md).
         // HumanLifecycleService left this list at G5 lane 4b-2d: it is Users' suspend/unsuspend
         // state machine and now registers from Humans.Users' Section.cs (Peter, 2026-08-14 —
         // Governance is governance only, never Users machinery).
-        // Base's own nav-badge invalidator, sitting beside its siblings in Humans.Base.
-        // Its registration lived in CampsSectionExtensions because Camps is the only consumer;
-        // the section that owns the file is not always the section that owns the line,
-        // and Section.Register may not register another layer's type.
-        services.AddScoped<ICampLeadJoinRequestsBadgeCacheInvalidator, CampLeadJoinRequestsBadgeCacheInvalidator>();
-        services.AddScoped<INotificationMeterCacheInvalidator, NotificationMeterCacheInvalidator>();
 
         // Same call for Guide's section file: IGuideContentSource is a plain GitHub-markdown
         // fetcher (its signatures name only string) and three of its four consumers are not
