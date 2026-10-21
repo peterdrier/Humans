@@ -32,7 +32,7 @@ namespace Humans.Shifts.Tests.Infrastructure;
 /// A trimmed <em>copy</em> of <c>Humans.Application.Tests</c>' <c>ServiceTestHarness</c>,
 /// not a share: the moved tests make 169 <c>SaveAllAsync</c>, 56 <c>SeedUser</c> and 55
 /// <c>SeedTeam</c> calls, which is Teams' "copy the harness" rather than Budget's "own
-/// three members" (design §15 step 8). The Google-integration and Camps section pairs are
+/// three members". The Google-integration and Camps section pairs are
 /// dropped — no Shifts test touches them.
 ///
 /// <para>

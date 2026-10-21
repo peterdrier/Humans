@@ -85,15 +85,13 @@
   <data name="Cantina_Dietary_Intolerance_Lactose" xml:space="preserve"><value>Lattosio</value></data>
   <data name="Cantina_Dietary_AllergyOther_Required" xml:space="preserve"><value>Descrivi l’altra allergia.</value></data>
   <data name="Cantina_Dietary_IntoleranceOther_Required" xml:space="preserve"><value>Descrivi l’altra intolleranza.</value></data>
-  <data name="Cantina_Dietary_ShiftSignupFailed" xml:space="preserve"><value>Non è stato possibile iscriversi al turno.</value></data>
-  <data name="Cantina_Dietary_ShiftSignupSucceeded" xml:space="preserve"><value>Iscrizione al turno riuscita!</value></data>
-  <data name="Cantina_Dietary_ShiftSignupSucceededWithWarning" xml:space="preserve"><value>Iscrizione al turno riuscita. Nota: {0}</value><comment>{0} = signup warning</comment></data>
-  <data name="Cantina_Dietary_ShiftRangeSignupFailed" xml:space="preserve"><value>Non è stato possibile iscriversi all'intervallo di turni.</value></data>
-  <data name="Cantina_Dietary_ShiftRangeSignupSucceeded" xml:space="preserve"><value>Iscrizione all'intervallo di date riuscita!</value></data>
-  <data name="Cantina_Dietary_ShiftRangeSignupSucceededWithWarning" xml:space="preserve"><value>Iscrizione all'intervallo di date riuscita. Nota: {0}</value><comment>{0} = signup warning</comment></data>
   <data name="Cantina_Dietary_BreadcrumbNavigation" xml:space="preserve"><value>Percorso di navigazione</value></data>
   <data name="Cantina_Dietary_PageTitle" xml:space="preserve"><value>Informazioni alimentari</value></data>
   <data name="Cantina_Dietary_Saved" xml:space="preserve"><value>Le tue informazioni alimentari sono state salvate.</value></data>
   <data name="Cantina_Dietary_SaveFailed" xml:space="preserve"><value>Impossibile salvare le informazioni alimentari.</value></data>
   <data name="Cantina_Dietary_LoadFailed" xml:space="preserve"><value>Impossibile caricare le informazioni alimentari.</value></data>
+  <data name="Cantina_Dietary_OptionalHint" xml:space="preserve"><value>Facoltativo. Aiuta la mensa a pianificare i pasti dei turni lunghi e non influisce mai sulle tue iscrizioni ai turni.</value></data>
+  <data name="Cantina_Dietary_DeclineButton" xml:space="preserve"><value>Preferisco non rispondere</value></data>
+  <data name="Cantina_Dietary_Declined" xml:space="preserve"><value>Ricevuto: non ti chiederemo più le tue informazioni alimentari. Puoi aggiungerle qui quando vuoi.</value></data>
+  <data name="Cantina_Dietary_DeclinedNotice" xml:space="preserve"><value>Hai scelto di non condividere le informazioni alimentari, quindi non te le chiederemo. Puoi comunque compilarle quando vuoi.</value></data>
 </root>

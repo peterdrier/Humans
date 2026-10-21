@@ -18,8 +18,8 @@ namespace Humans.Cantina.Tests;
 
 /// <summary>
 /// cantina_dietary_profiles (Users decomposition commit 10): the read with its legacy fallback,
-/// the member's save, the cantina.profile-dietary copy, merge, export and erasure, and the
-/// dashboard nudge.
+/// the member's save and "I don't want to answer" opt-out, the prompt rule, the
+/// cantina.profile-dietary copy, merge, export and erasure, and the dashboard nudge.
 /// </summary>
 public class DietaryProfileTests
 {
@@ -182,6 +182,56 @@ public class DietaryProfileTests
         read[legacyOnly].DietaryPreference.Should().Be("Vegetarian");
     }
 
+    // ─── "I don't want to answer" (nobodies-collective/Humans#2104) ─────────────
+
+    [HumansFact]
+    public async Task Decline_IsReadBackAsTheOptOutFact_WithNoPreference()
+    {
+        var id = Guid.NewGuid();
+        SeedUser(id);
+        (await _sut.GetDietaryProfileAsync(id, Ct)).Should().BeNull();
+
+        await _sut.DeclineAsync(id, Ct);
+
+        var read = await _sut.GetDietaryProfileAsync(id, Ct);
+        read!.DeclinedToAnswer.Should().BeTrue();
+        read.HasPreference.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task LegacyOnlyPreference_ReadsAsAPreference_NotAnOptOut()
+    {
+        var id = Guid.NewGuid();
+        SeedUser(id, legacyPreference: "Omnivore");
+
+        var read = await _sut.GetDietaryProfileAsync(id, Ct);
+        read!.HasPreference.Should().BeTrue();
+        read.DeclinedToAnswer.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task Decline_ClearsEveryAnswer_AndSavingAnswersLaterClearsTheDecline()
+    {
+        var id = Guid.NewGuid();
+        SeedUser(id);
+        await _sut.SaveAsync(id, Answers(id, allergies: ["Egg"], intolerances: ["Other"], intoleranceOther: "Fructose"), Ct);
+
+        await _sut.DeclineAsync(id, Ct);
+
+        var declined = await _repo.GetAsync(id, Ct);
+        declined!.DeclinedToAnswer.Should().BeTrue();
+        declined.DietaryPreference.Should().BeNull();
+        declined.Allergies.Should().BeEmpty();
+        declined.Intolerances.Should().BeEmpty();
+        declined.IntoleranceOtherText.Should().BeNull();
+
+        await _sut.SaveAsync(id, Answers(id, preference: "Vegetarian"), Ct);
+
+        var answered = await _sut.GetDietaryProfileAsync(id, Ct);
+        answered!.DeclinedToAnswer.Should().BeFalse();
+        answered.DietaryPreference.Should().Be("Vegetarian");
+    }
+
     // ─── cantina.profile-dietary ────────────────────────────────────────────────
 
     [HumansFact]
@@ -250,7 +300,8 @@ public class DietaryProfileTests
         var slice = (await _sut.ContributeForUserAsync(id, Ct)).Single();
         slice.SectionName.Should().Be(DietaryProfileService.DietaryProfileSlice);
         var json = System.Text.Json.JsonSerializer.Serialize(slice.Data);
-        json.Should().Contain("Vegan").And.Contain("Egg").And.NotContain("Asthma");
+        json.Should().Contain("Vegan").And.Contain("Egg").And.NotContain("Asthma")
+            .And.Contain("\"DeclinedToAnswer\":false");
         _sut.ErasureDeclaration.Should().ContainKey(DietaryProfileService.DietaryProfileSlice);
 
         await _sut.EraseForUserAsync(id, Ct);
@@ -285,6 +336,19 @@ public class DietaryProfileTests
         var id = Guid.NewGuid();
         SeedUser(id);
         await _sut.SaveAsync(id, Answers(id), Ct);
+
+        var entries = await new SectionThingsToDo().EntriesAsync(
+            NudgeServices(Substitute.For<IShiftService>()), Principal(id));
+
+        entries.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Nudge_IsGoneAfterTheOptOut()
+    {
+        var id = Guid.NewGuid();
+        SeedUser(id);
+        await _sut.DeclineAsync(id, Ct);
 
         var entries = await new SectionThingsToDo().EntriesAsync(
             NudgeServices(Substitute.For<IShiftService>()), Principal(id));

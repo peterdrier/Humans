@@ -20,7 +20,7 @@
     <!--
       The section's controllers, its authorization handler and its API-key filter are all
       ASP.NET types; a plain Microsoft.NET.Sdk test project does not get the shared framework
-      and cannot get there with a PackageReference (design §15 step 1/8).
+      and cannot get there with a PackageReference.
     -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>

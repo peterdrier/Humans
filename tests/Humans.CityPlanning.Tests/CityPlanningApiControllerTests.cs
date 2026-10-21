@@ -15,6 +15,7 @@ using Humans.CityPlanning.Data;
 using Humans.CityPlanning.Services;
 using Humans.Containers.Contracts;
 using Humans.Teams.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -43,6 +44,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly ILogger<CityPlanningApiController> _logger = Substitute.For<ILogger<CityPlanningApiController>>();
     private readonly IClientProxy _allClients = Substitute.For<IClientProxy>();
+    private readonly ISettingsService _settings = ActiveEvent(2026);
     private readonly CityPlanningService _service;
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _campSeasonId = Guid.NewGuid();
@@ -57,7 +59,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         _service = new CityPlanningService(
             new CityPlanningRepository(CityPlanningDbFactory), Clock,
             Options.Create(new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" }),
-            _campService, _teamService, Substitute.For<IUserService>(), Substitute.For<IAuditLogService>());
+            _campService, _teamService, Substitute.For<IUserService>(), Substitute.For<IAuditLogService>(), _settings);
         _authorization = MapAdminAuthorization(_service);
     }
 
@@ -277,6 +279,28 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
 
         result.Should().BeOfType<NotFoundResult>();
         (await CityPlanningDb.CampPolygonHistories.CountAsync(ct)).Should().Be(1);
+    }
+
+    // peterdrier/Humans#2102: the map's state GET used to create the year's settings row.
+    [HumansFact]
+    public async Task GetState_NoSettingsRow_ReturnsOkAndWritesNothing()
+    {
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(Array.Empty<CampInfo>());
+
+        var result = await CreateController().GetState(TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<OkObjectResult>();
+        (await CityPlanningDb.CityPlanningSettings.AsNoTracking().CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task GetState_NoActiveEvent_IsNotFound()
+    {
+        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
+
+        var result = await CreateController().GetState(TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<NotFoundResult>();
     }
 
     [HumansFact]

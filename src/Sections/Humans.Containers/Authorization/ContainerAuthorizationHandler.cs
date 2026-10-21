@@ -40,10 +40,14 @@ internal sealed class ContainerAuthorizationHandler(ICampService campService, IC
             return;
         }
 
-        // Lead check before the year's settings: reading settings creates the year's row,
-        // so only a year the caller leads a camp in may reach it.
+        // Lead check before the year's settings, so an explicit-year read only runs for a
+        // year the caller leads a camp in. No year and no active event: nothing to authorize.
         var settings = resource.Year is null ? await cityPlanningService.GetSettingsAsync() : null;
-        var year = resource.Year ?? settings!.Year;
+        if ((resource.Year ?? settings?.Year) is not { } year)
+        {
+            return;
+        }
+
         var camp = (await campService.GetCampsForYearAsync(year))
             .FirstOrDefault(c => c.Id == resource.CampId);
         if (camp?.Seasons.Any(s => s.Year == year && s.IsLead(userId)) != true)
@@ -54,7 +58,7 @@ internal sealed class ContainerAuthorizationHandler(ICampService campService, IC
         if (requirement.Operation == ContainerOperation.Place)
         {
             settings ??= await cityPlanningService.GetSettingsAsync(year: year);
-            if (!settings.IsContainerPlacementOpen)
+            if (settings is not { IsContainerPlacementOpen: true })
             {
                 return;
             }

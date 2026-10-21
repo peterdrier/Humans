@@ -17,16 +17,18 @@ public interface ICantinaService : IApplicationService
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 }
 
-/// <summary>A member's food answers. Option values are the canonical English chip values.</summary>
+/// <summary>A member's food answers. Option values are the canonical English chip values.
+/// <c>DeclinedToAnswer</c> records "I don't want to answer" (every food field is then empty).
+/// Whether to prompt the member is each caller's call, composed from these facts.</summary>
 public sealed record DietaryProfileInfo(
     Guid UserId,
     string? DietaryPreference,
     IReadOnlyList<string> Allergies,
     string? AllergyOtherText,
     IReadOnlyList<string> Intolerances,
-    string? IntoleranceOtherText)
+    string? IntoleranceOtherText,
+    bool DeclinedToAnswer = false)
 {
-    /// <summary>True once the member has picked a preference: the answer the cantina gate and
-    /// the dashboard nudge wait for.</summary>
+    /// <summary>True once the member has picked a preference.</summary>
     public bool HasPreference => !string.IsNullOrEmpty(DietaryPreference);
 }

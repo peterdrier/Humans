@@ -19,7 +19,7 @@
     <!--
       The section's three controllers are ASP.NET types, and a plain Microsoft.NET.Sdk test
       project does not get the shared framework — a PackageReference cannot supply it either
-      (NU1010 under Central Package Management, design §15 step 8).
+      (NU1010 under Central Package Management).
     -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>

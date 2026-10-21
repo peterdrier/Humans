@@ -32,7 +32,7 @@ public static class SectionDiscoveryExtensions
 
         // A section is now silently absent when it fails to load or when it deactivates
         // itself, where the by-name call was a compile error — so both sets are logged: that
-        // is what you check when one of its pages 404s (design §6).
+        // is what you check when one of its pages 404s.
         var inactive = AllSections.Value
             .Select(s => s.Name)
             .Except(sections.Select(s => s.Name), StringComparer.Ordinal)
@@ -140,8 +140,8 @@ public static class SectionDiscoveryExtensions
                         Assembly: a,
                         Section: (ISection)Activator.CreateInstance(t)!)))
                 // Assembly-enumeration order is not stable; sort so registration order is.
-                // Nothing depends on it today — #858 §6 establishes that no section baseline
-                // carries a cross-section FK, so the contexts migrate independently.
+                // Nothing depends on it today — no section baseline carries a
+                // cross-section FK, so the contexts migrate independently.
                 .OrderBy(s => s.Name, StringComparer.Ordinal)]);
 
     /// <summary>

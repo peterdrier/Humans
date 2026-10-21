@@ -1097,11 +1097,9 @@
   <data name="EmailTeamRotas_Send" xml:space="preserve">
     <value>An {0} Empf&#xE4;nger senden</value>
   </data>
-  <data name="Shifts_SignupDisabledTooltip_MissingDietary" xml:space="preserve"><value>Tell us your food needs first.</value></data>
   <data name="Shifts_SetupClosedBadge" xml:space="preserve"><value>Aufbau geschlossen</value></data>
   <data name="Shifts_SignupDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Aufbau-Anmeldungen sind geschlossen — wir sind bereits vor Ort.</value></data>
   <data name="Shifts_BailDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Die Aufbau-Schichten stehen fest — melde dich bei deiner Koordination, wenn du nicht kommen kannst.</value></data>
-  <data name="Shifts_DietaryRequiredBeforeSignup" xml:space="preserve"><value>Quick stop — we need your dietary info before signing up for this shift.</value></data>
   <data name="GetInvolved_UrgentShifts" xml:space="preserve">
     <value>Schichten, die jetzt humans brauchen</value>
   </data>
@@ -1156,9 +1154,10 @@
   <data name="Dashboard_CampsDescription" xml:space="preserve">
     <value>Die Nachbarschaften, die Elsewhere wie zuhause fühlen lassen.</value>
   </data>
-  <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>We need your dietary info</value></data>
-  <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>You're signed up for a long shift. The cantina can't plan your meals until you tell us your food preferences.</value></data>
+  <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>Magst du uns deine Essensvorlieben mitteilen?</value></data>
+  <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>Du bist für eine lange Schicht eingetragen. Wenn du uns deine Essensvorlieben mitteilst, kann die Kantine deine Mahlzeiten planen. Das ist freiwillig.</value></data>
   <data name="DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
+  <data name="DietaryMissingBanner_Decline" xml:space="preserve"><value>Ich möchte nicht antworten</value></data>
   <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>Alle meine Schichten anzeigen</value></data>
   <data name="Shifts_SortOrder" xml:space="preserve"><value>Sortierung</value></data>
   <data name="Shifts_BailRangeSuccess" xml:space="preserve"><value>Du hast die Schichtreihe abgesagt.</value></data>

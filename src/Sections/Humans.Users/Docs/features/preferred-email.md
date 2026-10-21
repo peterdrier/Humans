@@ -124,7 +124,7 @@ UserEmail
 ├── Email: string (256)
 ├── IsVerified: bool
 ├── IsGoogle: bool (frozen; the Google identity is GoogleIntegration's)
-├── GoogleEmailStatus: GoogleEmailStatus (per-address sync status; default Unknown)
+├── GoogleEmailStatus: LegacyGoogleEmailStatus (frozen; sync status is GoogleIntegration's)
 ├── IsPrimary: bool (exactly one per user; DB column keeps the legacy name IsNotificationTarget per no-drops-until-prod-verified)
 ├── Visibility: ContactFieldVisibility? (null = hidden)
 ├── VerificationSentAt: Instant? (rate limiting)
@@ -193,9 +193,7 @@ Uses ASP.NET Identity's built-in token providers:
 - Adding/removing users from Shared Drive folders
 - Drift detection for membership sync
 
-When `UserInfo.GoogleEmail` differs from the OAuth email (e.g., after linking a @nobodies.team address), `AddUserToTeamResourcesAsync` proactively removes the old OAuth email from Google Groups to prevent duplicate email delivery. This means the cleanup is immediate rather than waiting for the daily reconciliation cycle.
-
-Addresses with `UserEmail.GoogleEmailStatus == Rejected` are excluded from all sync paths (reconciliation, outbox, direct add). A 403 "Permission denied" from the Groups API — typically because the email address does not have a Google account associated with it — is treated as a permanent rejection. Because the status lives on the `UserEmail` row rather than the user, selecting a different Google email (a fresh row with status `Unknown`) automatically resumes sync (#687).
+A workspace identity whose `Status == Rejected` is excluded from all sync paths (reconciliation, outbox, direct add). A 403 "Permission denied" from the Groups API — typically because the email address does not have a Google account associated with it — is treated as a permanent rejection for that address. The status lives on GoogleIntegration's `google_workspace_identities` row and is recorded only against the address sync targeted, so designating a different Google email (or re-asserting the current one) clears the verdict and resumes sync (#687).
 
 ### Background Jobs
 These jobs use `UserInfo.PrimaryEmail` (the `UserEmail` row with `IsPrimary = true`) to send to the notification target:

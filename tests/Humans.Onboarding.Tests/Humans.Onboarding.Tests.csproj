@@ -23,7 +23,7 @@
       The section's two controllers are ASP.NET types and four test classes construct
       OnboardingWidgetController; a plain Microsoft.NET.Sdk test project does not get the
       shared framework, and a PackageReference cannot supply it (NU1010 under Central
-      Package Management, design §15 step 8).
+      Package Management).
     -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>

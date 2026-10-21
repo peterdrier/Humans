@@ -12,7 +12,7 @@ namespace Humans.Budget.Contracts;
 /// The section's own controllers take the internal <c>IBudgetManagement</c>, so the
 /// other members of the internal <c>IBudgetManagement</c> — year/group/category/line-item
 /// CRUD, the audit log, the cash-flow and VAT projections, the ticketing projection
-/// parameters — are not public at all (design §15 step 5).
+/// parameters — are not public at all.
 /// </remarks>
 public interface IBudgetService : IApplicationService
 {

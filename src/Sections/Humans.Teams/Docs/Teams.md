@@ -186,9 +186,9 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 - Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
 
-- Resource permission edits, inheritance toggles, unlinking and single-resource sync verify that the resource belongs to the team named in the URL after the existing team authorization. Missing or foreign resources return HTTP 404 with a Warning before any mutation; authorization refusals remain Forbid. Ownership is read through GoogleIntegration’s existing snapshot contract, and outbound mutations retain detached cancellation.
+- On GoogleIntegration's team resources page (`/Google/Teams/{slug}/Resources`), resource permission edits, inheritance toggles, unlinking and single-resource sync verify that the resource belongs to the team named in the URL after the existing team authorization. Missing or foreign resources return HTTP 404 with a Warning before any mutation; authorization refusals remain Forbid. Ownership is read through GoogleIntegration’s existing snapshot contract, and outbound mutations retain detached cancellation.
 
-- The inherited-access restriction POST requires an explicit restriction choice. Missing or malformed choices return HTTP 400 and a Warning after its existing resource-management authorization, before dispatching a Google mutation. Unauthorized callers retain Forbid; explicit false remains valid.
+- That page's inherited-access restriction POST requires an explicit restriction choice. Missing or malformed choices return HTTP 400 and a Warning after its existing resource-management authorization, before dispatching a Google mutation. Unauthorized callers retain Forbid; explicit false remains valid.
 
 - Team creation persists the requested approval mode on the initial insert. The EF true sentinel preserves open teams without a second update.
 
@@ -211,7 +211,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 - Member-facing team details, tree, membership, birthdays, roster, map and join pages localize their breadcrumb navigation label in all six supported cultures.
 
-- The team resources GET forwards request cancellation through viewer, team, resource-management permission, resource list and service-account email reads. Shared permission helpers retain their existing default token for resource mutations.
+- GoogleIntegration's team resources GET forwards request cancellation through viewer, team, resource-management permission, resource list and service-account email reads. Shared permission helpers retain their existing default token for resource mutations.
 - The shared department-access resolver accepts a caller token for viewer and team reads; department GETs can retain request cancellation while mutation callers keep the default token.
 
 - Admin team-list paging computes offsets without integer overflow, so extreme page numbers cannot wrap into earlier teams.
@@ -326,7 +326,7 @@ Teams-owned resource keys use the `Teams_` prefix in all six cultures. Shared vo
 
 **Owning services:** `TeamService`, `TeamPageService` (Teams section); `TeamResourceService` (GoogleIntegration section — see note below)
 **Owned tables:** `teams`, `team_members`, `team_join_requests`, `team_join_request_state_history`, `team_role_definitions`, `team_role_assignments`, `team_early_entry_grants` (Teams section); `google_resources` is a Team Resources sub-aggregate but is managed from the GoogleIntegration section
-**Layout:** `src/Sections/Humans.Teams` plus the `Humans.Teams.Contracts` leaf. `TeamService`, `TeamPageService` and `CachingTeamService` are `internal sealed` in `Humans.Teams.Services`; the entities are `internal` in `Humans.Teams.Domain`; `ITeamRepository` / `TeamRepository` / `TeamsDbContext` / the EF configurations and the section's migration chain are in `Humans.Teams.Data`; the two controllers, their view models and their views are in `Humans.Teams.{Controllers,Models,Views}`; the `TeamsResource` set sits at the project root. `TeamResourceService` lives in `Humans.GoogleIntegration.Services` — its repository, EF impl, and connector clients all live in the `Humans.GoogleIntegration` section project (see `memory/architecture/team-resources-google-integration-section.md`).
+**Layout:** `src/Sections/Humans.Teams` plus the `Humans.Teams.Contracts` leaf. `TeamService`, `TeamPageService` and `CachingTeamService` are `internal sealed` in `Humans.Teams.Services`; the entities are `internal` in `Humans.Teams.Domain`; `ITeamRepository` / `TeamRepository` / `TeamsDbContext` / the EF configurations and the section's migration chain are in `Humans.Teams.Data`; the three controllers, their view models and their views are in `Humans.Teams.{Controllers,Models,Views}`; the `TeamsResource` set sits at the project root. `TeamResourceService` lives in `Humans.GoogleIntegration.Services` — its repository, EF impl, and connector clients all live in the `Humans.GoogleIntegration` section project (see `memory/architecture/team-resources-google-integration-section.md`).
 
 - `TeamService` goes through `ITeamRepository` for owned-table access and routes every cross-section read through the public service interface (`IUserService`, `IRoleAssignmentService`, `IShiftService`, `ITeamResourceService`).
 - `TeamResourceService` (in `Humans.GoogleIntegration.Services`) uses `IGoogleResourceRepository` + the `ITeamResourceGoogleClient` connector. `IGoogleResourceRepository` lives in `Humans.GoogleIntegration.Data` alongside its EF impl `GoogleResourceRepository`.

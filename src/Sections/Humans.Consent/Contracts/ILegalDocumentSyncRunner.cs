@@ -8,7 +8,7 @@ namespace Humans.Consent.Contracts;
 /// <remarks>
 /// The contract is "do the thing", not "give me the rows": the pass names
 /// <c>LegalDocument</c> and <c>IConsentRepository</c>, both internal here, so no read-shaped
-/// version of it compiles (design §15 step 6b, Email's rule). The job keeps only the
+/// version of it compiles. The job keeps only the
 /// try/catch and <c>RecordJobRun</c>. Its one consumer, <c>SyncLegalDocumentsJob</c>, is now
 /// in-section; folding the interface inward shrinks contract surface and needs Peter.
 /// </remarks>

@@ -11,7 +11,8 @@ No repository injected. Cross-section calls via `IUserService`,
 `IUserWrite` (`SetRejectedAsync`), `IConsentWrite` (the review annotations), `IConsentService` (review reads), `IGovernanceService`, `IEmailService`, the section's own
 `OnboardingEmails` builder,
 `INotificationEmitter`, `ISystemTeamSync`, `IMembershipCalculator`,
-`IConsentService`, `IHumanLifecycleService`, `IAuditLogService`. No
+`IHumanLifecycleService`, `IAuditLogService`, `IAccountDeletionService`
+(cancels a pending deletion when an unapproved member saves a profile). No
 `IMemoryCache`, no `IClock`. State changes flow through the owning
 services so cache invalidation happens at the boundary they each own.
 

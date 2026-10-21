@@ -1,8 +1,7 @@
 @* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
-   here ships broken markup with a green build and no runtime error — see design §1/§2.
+   here ships broken markup with a green build and no runtime error.
 
-   Three localizers by design (design §15 step 3b, Governance's two-marker variant plus
-   one): the section owns its Onboarding_* / OnboardingReview_* / OnboardingBanner_*
+   Three localizers by design: the section owns its Onboarding_* / OnboardingReview_* / OnboardingBanner_*
    keys; SharedResource keeps the genuinely shared vocabulary the widget renders
    (Common_*, Shifts_*, Admin_*) and the three Onboarding_*Label keys MVC's global
    DataAnnotationLocalizerProvider resolves; and the widget's Consents step renders

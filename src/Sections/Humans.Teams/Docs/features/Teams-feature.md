@@ -284,8 +284,9 @@ User clicks "Leave"
           |
           v
 +-------------------+
-| Revoke Google     |
-| resource access   |
+| Google access     |
+| removed by daily  |
+| reconciliation    |
 +---------+---------+
           |
           v

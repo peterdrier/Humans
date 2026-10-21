@@ -11,7 +11,7 @@ namespace Humans.Web.Hosting;
 /// <see cref="ControllerFeatureProvider"/> requires <c>IsPublic</c>, so an internal
 /// controller is not discovered — and nothing says so: the build is green with zero
 /// warnings and the route simply 404s. The same silent-failure class as a missing
-/// section <c>_ViewImports.cshtml</c>, and measured the same way (design §1).
+/// section <c>_ViewImports.cshtml</c>, and measured the same way.
 /// </summary>
 /// <remarks>
 /// A section's rule is "public means <c>Section</c> or <c>Contracts/</c>",

@@ -43,6 +43,7 @@ internal sealed class CityPlanningController(
         if (error != null) return error;
 
         var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
+        if (settings is null) return NotFound(); // no active event
         var isMapAdmin = await IsMapAdminAsync();
         var userSeasonId = await FindUserLeadSeasonIdAsync(user.Id, settings.Year, cancellationToken);
 
@@ -63,6 +64,7 @@ internal sealed class CityPlanningController(
         if (error != null) return error;
 
         var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
+        if (settings is null) return NotFound(); // no active event
         var isMapAdmin = await IsMapAdminAsync();
         var userSeasonId = await FindUserLeadSeasonIdAsync(user.Id, settings.Year, cancellationToken);
         var seasonsWithout = await cityPlanningService.GetCampSeasonsWithoutCampPolygonAsync(settings.Year, cancellationToken);
@@ -86,7 +88,9 @@ internal sealed class CityPlanningController(
         var (error, _) = await RequireMapAdminAsync(cancellationToken);
         if (error is not null) return error;
 
-        ViewBag.Settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
+        var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
+        if (settings is null) return NotFound(); // no active event
+        ViewBag.Settings = settings;
         return View();
     }
 
@@ -122,6 +126,7 @@ internal sealed class CityPlanningController(
         if (error is not null) return error;
 
         var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
+        if (settings is null) return NotFound(); // no active event
         await cityPlanningService.OpenContainerPlacementAsync(user!.Id, cancellationToken);
         SetSuccess("Container placement phase opened.");
         return RedirectToAction(nameof(Containers), new { year = settings.Year });
@@ -135,6 +140,7 @@ internal sealed class CityPlanningController(
         if (error is not null) return error;
 
         var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
+        if (settings is null) return NotFound(); // no active event
         await cityPlanningService.CloseContainerPlacementAsync(user!.Id, cancellationToken);
         SetSuccess("Container placement phase closed.");
         return RedirectToAction(nameof(Containers), new { year = settings.Year });
@@ -245,6 +251,7 @@ internal sealed class CityPlanningController(
         if (error is not null) return error;
 
         var settings = await cityPlanningService.GetSettingsAsync(ct);
+        if (settings is null) return NotFound(); // no active event
         var content = selector(settings);
         if (content is null) return NotFound();
 
@@ -272,6 +279,9 @@ internal sealed class CityPlanningController(
     {
         var (error, user) = await RequireCurrentUserAsync(cancellationToken);
         if (error != null) return error;
+
+        // The map's base layers come from the state API, which is keyed to the active event.
+        if (await cityPlanningService.GetSettingsAsync(cancellationToken) is null) return NotFound(); // no active event
 
         var isMapAdmin = await IsMapAdminAsync();
         var userCamp = await FindUserLeadCampAsync(user.Id, year, cancellationToken);
@@ -331,7 +341,7 @@ internal sealed class CityPlanningController(
         var vm = new OrgContainerIndexViewModel
         {
             Year = year,
-            IsContainerPlacementOpen = settings.IsContainerPlacementOpen,
+            IsContainerPlacementOpen = settings?.IsContainerPlacementOpen ?? false,
             BarrioGroups = overview.CampGroups
                 .OrderBy(g => g.CampName, StringComparer.OrdinalIgnoreCase)
                 .Select(g => new BarrioContainerGroup

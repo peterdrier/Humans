@@ -1,6 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Users/Controllers/ProfileController.cs
-  src/Sections/Humans.Users/Views/Profile/Privacy.cshtml
+  src/Sections/Humans.Users/Views/Profile/Index.cshtml
+  src/Sections/Humans.Gdpr/Views/User/**
   src/Sections/Humans.Email/Views/CommunicationPreferences/Index.cshtml
   src/Sections/Humans.Gdpr/Services/GdprService.cs
   src/Sections/Humans.Users/Services/AccountDeletionService.cs
@@ -31,7 +32,7 @@ see it**:
 - **My teams** — only people who share a team with you.
 - **All active humans** — anyone active in the system.
 
-You set these on your profile's edit page (`/Profile/Me/Edit`). When someone
+You set these on your profile's edit page (`/Profile/Me/Edit`); email addresses get theirs on the Emails page (`/Profile/Me/Emails`). When someone
 looks at your profile, they only see the things your settings allow — so you can,
 say, share your Signal with everyone but keep your phone number to the Board.
 
@@ -52,7 +53,7 @@ stay on so you don't miss anything important about getting in.
 
 ## Get a copy of everything
 
-Go to **Profile → Privacy** (`/Consent/MyData`) and choose **Download My
+Go to **Profile → My Data** (`/Consent/MyData`) and choose **Download My
 Data**. You get a single file with **everything** the system holds about you —
 your account and emails, profile, contact details, team history, roles, consents,
 shift sign-ups, ticket info, notifications, the emails we've sent you, and the
@@ -61,14 +62,15 @@ It's there whenever you want it, no need to ask anyone.
 
 ## Delete your account
 
-Also on **Profile → Privacy**. Here's exactly what happens when you ask to
+Also on **Profile → My Data**. Here's exactly what happens when you ask to
 delete:
 
 - **Straight away:** you're removed from your teams and any roles, and you start
   losing the access that came with them.
-- **For 30 days:** you can still sign in, and you can **change your mind and
-  cancel** the deletion during this window.
-- **After 30 days:** your personal information is automatically erased
+- **Until the erase date:** you can still sign in, and you can **change your mind and
+  cancel** the deletion. The erase date is 30 days after you ask — or, if you hold a
+  ticket for the current event, its post-event hold date, whichever is later.
+- **After the erase date:** your personal information is automatically erased
   (anonymised) in the background, section by section — profile, contact details,
   emails, photo, tickets, feedback, messages, survey answers, the lot.
 - **Your `@nobodies.team` account is suspended** as part of that, and your Google
@@ -80,7 +82,7 @@ delete:
   commercial law), and the consent and audit logs that prove we were allowed to
   hold your data in the first place — and that we erased it.
 
-So nothing is rushed, and you have a full month to undo it if you change your
+So nothing is rushed, and you have at least a full month to undo it if you change your
 mind.
 
 ## Quick answers
@@ -89,9 +91,9 @@ mind.
 |---|---|
 | Who can see my phone number? | Only who you allow — set it per field on `/Profile/Me/Edit` |
 | Can I stop the marketing/update emails? | Yes — Profile → Communication preferences. A few essential ones stay on |
-| How do I get everything you have on me? | Profile → Privacy → Download My Data |
-| Can I delete my account? | Yes — Profile → Privacy. You get 30 days to cancel before anything is erased |
-| I deleted by mistake | Sign in within 30 days and cancel the deletion. After that it's done |
+| How do I get everything you have on me? | Profile → My Data → Download My Data |
+| Can I delete my account? | Yes — Profile → My Data. You get 30 days to cancel before anything is erased — longer if you hold a ticket for the current event (until its post-event hold date) |
+| I deleted by mistake | Sign in before the erase date (30 days, or the ticket hold date if later) and cancel the deletion. After that it's done |
 | Someone's messaging me and I don't want it | Turn off Facilitated Messages in your communication preferences |
 
 ## Related

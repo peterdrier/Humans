@@ -3,7 +3,7 @@
   <!--
     Sdk.Razor, not plain Sdk: the section owns the /Settings page, its view components
     and their views — so it is an MVC application part. Section discovery still keys off
-    Section.cs : ISection (design §15 step 1).
+    Section.cs : ISection.
   -->
 
   <PropertyGroup>
@@ -13,7 +13,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Settings.Tests" />
-    <!-- The one assembly allowed to see many sections (design §5). -->
+    <!-- The one assembly allowed to see many sections. -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
@@ -39,7 +39,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <!-- The section owns its documentation; keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

@@ -12,7 +12,7 @@ namespace Humans.Consent.Jobs;
 /// The pass itself — pull from GitHub, fan out over the affected teams' members, mail the
 /// ones who still owe a signature — lives inside the Consent section behind
 /// <see cref="ILegalDocumentSyncRunner"/>: it reads <c>consent_records</c> and the legal
-/// document aggregate, neither of which is visible from Base (design §15 step 6b). What is
+/// document aggregate, neither of which is visible from Base. What is
 /// left here is the schedule, the metric and the failure boundary.
 ///
 /// It is <c>public</c> and sits under <c>Jobs/</c> because Shell names the concrete type at

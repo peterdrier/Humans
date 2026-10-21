@@ -6,7 +6,6 @@
   src/Sections/Humans.Cantina/SectionThingsToDo.cs
   src/Sections/Humans.Users/SectionThingsToDo.cs
   src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
-  src/Sections/Humans.Shifts/Controllers/ShiftsController.cs
   src/Sections/Humans.Shifts/ViewComponents/DietaryMissingBannerViewComponent.cs
   src/Humans.Base/ViewComponents/ThingsToDoViewComponent.cs
 -->
@@ -19,6 +18,8 @@
 ## Business Context
 
 The cantina feeds humans working shifts of 6+ hours. Meal preference, allergies and intolerances matter once someone signs up for a qualifying shift, so `/Shifts/ShiftInfo` (the preference wizard) does not collect them.
+
+**Dietary info is opt-in** (nobodies-collective/Humans#2104, Peter's decision). Missing dietary info never blocks a shift signup. We prompt while it is missing, and every prompt offers **"I don't want to answer"**; once chosen, the prompts stop.
 
 The food answers are Cantina's (`cantina_dietary_profiles`, Users decomposition commit 10). Medical conditions stay on the Users `Profile` and have their own form; they are GDPR Art. 9 health data and never enter Cantina.
 
@@ -33,16 +34,16 @@ Both forms are exempt from `MembershipRequiredFilter` so a not-yet-Active member
 
 ## GDPR
 
-- **Dietary:** Cantina's `DietaryProfileService` exports the `DietaryProfile` slice and deletes the row on erasure; merges keep the survivor's answers (the source's move only when the survivor has none).
+- **Dietary:** Cantina's `DietaryProfileService` exports the `DietaryProfile` slice (including `DeclinedToAnswer`) and deletes the row on erasure; merges keep the survivor's answers (the source's move only when the survivor has none).
 - **Medical:** stays in Users' `Profile` export/erasure. The legacy food columns on `profiles` stay in Users' export and are erased with the profile until the retirement drops them.
 
 ## User Stories
 
 ### US-35.1: Things-to-do nudge
 **Acceptance Criteria:**
-- Cantina's `SectionThingsToDo` contributes a `"dietary"` item whenever the member has no dietary preference on file (`ICantinaService`, which falls back to the legacy profile columns until copied).
+- Cantina's `SectionThingsToDo` contributes a `"dietary"` item while the `ICantinaService.GetDietaryProfileAsync` read shows no dietary preference on file (falling back to the legacy profile columns until copied) and not declined.
 - Title `Todo_DietaryMedical_Title`; description `Todo_DietaryMedical_Pending` when `IShiftService.HasQualifyingCantinaSignupAsync` is true, else `Todo_DietaryMedical_NoShift_Pending`; action `Todo_DietaryMedical_Action` → `CantinaProfile/Dietary`; icon `fa-solid fa-utensils`.
-- Any non-empty preference (including Omnivore with no allergies) removes it.
+- Any non-empty preference (including Omnivore with no allergies) or "I don't want to answer" removes it.
 - Self-signups and voluntold signups count alike (`Pending`/`Confirmed`, future, qualifying shift). No email or push.
 
 ### US-35.2: Dietary form
@@ -50,21 +51,23 @@ Both forms are exempt from `MembershipRequiredFilter` so a not-yet-Active member
 - `GET`/`POST /Cantina/Dietary`; full page, works without JS.
 - Fields: **Dietary preference** (required radio: Omnivore, Vegetarian, Vegan, Pescatarian); **Allergies** (chips from `DietaryOptions.AllergyOptions`, `Other` reveals `AllergyOtherText`, ≤ 500); **Intolerances** (chips, `Other` reveals `IntoleranceOtherText`, ≤ 500).
 - POST refuses `Other` without text; chips are filtered against `DietaryOptions`; Other text is kept only while `Other` is selected. The preference is not re-validated beyond being non-blank.
-- On success: replay the interrupted signup (below) or redirect to `/Profile/Me`; on failure re-render with values kept.
+- Says the form is optional and never affects shift signups; shows a note when the member previously declined.
+- A secondary **"I don't want to answer"** button (`DeclineToAnswer=true`, `formnovalidate`) records the opt-out: answers cleared, `DeclinedToAnswer` set, no validation.
+- On success: redirect to `/Shifts` when `returnAction=shifts`, else Home; on failure re-render with values kept. Saving answers clears a prior decline.
 
 ### US-35.3: Medical prompt (Users)
 **Acceptance Criteria:**
-- Users' `SectionThingsToDo` contributes a `"medical"` item (`Todo_Medical_Title`, `Todo_Medical_Pending`, `fa-solid fa-notes-medical`) → `Profile/Medical`, only while `MedicalConditions` is empty **and** the dietary preference is still open — it rides alongside the dietary nudge and disappears with it.
+- Users' `SectionThingsToDo` contributes a `"medical"` item (`Todo_Medical_Title`, `Todo_Medical_Pending`, `fa-solid fa-notes-medical`) → `Profile/Medical`, only while `MedicalConditions` is empty **and** Cantina's profile shows neither a preference nor `DeclinedToAnswer` (Users composes this itself) — it rides alongside the dietary nudge and disappears with it (an answer or a decline).
 - `/Profile/Me/Medical` is a free-text textarea (≤ 4000), trimmed, blank saves as null. Hint: only visible to the member and No-Info Admins.
 
 ### US-35.4: Edit later from profile
 - `/Profile/Me` quick actions link to both forms unconditionally; `/Profile/Me/Edit` links to the dietary form instead of embedding it.
 
-### US-35.5: Hard gate on qualifying-shift signup
+### US-35.5: Gentle banner on /Shifts, never a gate
 **Acceptance Criteria:**
-- `ShiftsController.ToggleDay` redirects to `/Cantina/Dietary?returnAction=signup&shiftId=...` when the target shift `QualifiesForCantinaMeal()` and `ICantinaService` has no preference.
-- On save, `CantinaProfileController` replays the signup through `IShiftSignups` (single shift, range, or back to Shifts/Home per `returnAction`).
-- `DietaryMissingBannerViewComponent` on `/Shifts` and `/Shifts/Mine` plus disabled Sign-Up buttons catch members who already hold a qualifying signup without a preference.
+- No signup path checks dietary info: every Sign-Up button stays enabled and `ToggleDay` signs up regardless (nobodies-collective/Humans#2104 retired the former hard gate, its disabled buttons and the post-save signup replay).
+- `DietaryMissingBannerViewComponent` on `/Shifts` and `/Shifts/Mine` shows an info banner while the member holds a qualifying signup **and** Cantina's profile shows neither a preference nor `DeclinedToAnswer` (Shifts composes this itself).
+- The banner offers **Tell us now** (`/Cantina/Dietary?returnAction=shifts`) and **I don't want to answer** (a POST to `/Cantina/Dietary` with `DeclineToAnswer=true`, back to `/Shifts`), after which it no longer renders.
 
 ## Qualifying Shift
 
@@ -78,6 +81,7 @@ A shift qualifies when `Shift.IsAllDay` (08:00–18:00) **or** `Shift.Duration �
 |---|---|---|
 | `UserId` | `uuid` PK | |
 | `DietaryPreference` | `varchar(200)?` | Non-empty ⇒ answered |
+| `DeclinedToAnswer` | `bool` (default `false`) | "I don't want to answer"; food fields empty; cleared by a save |
 | `Allergies` | `jsonb` list | |
 | `AllergyOtherText` | `varchar(500)?` | Only with `Other` |
 | `Intolerances` | `jsonb` list | |
@@ -90,15 +94,16 @@ The legacy `profiles` food columns are read only by Cantina's fallback and the `
 
 | Event | Effect |
 |---|---|
-| Member saves a dietary preference | Dietary nudge, medical prompt, banner and gate clear |
+| Member saves a dietary preference | Dietary nudge, medical prompt and banner clear |
+| Member chooses "I don't want to answer" | Answers cleared; dietary nudge, medical prompt and banner clear for good |
 | Member saves medical conditions | Medical prompt clears |
 | Member signs up / is voluntold into a qualifying shift | Nudge copy switches to the shift variant |
 | Last qualifying signup bails, is refused, or ends | Nudge copy switches back to the no-shift variant |
 
 ## Cross-section dependencies
 
-- **Shifts** → Cantina: `ICantinaService` for the gate, banner, volunteer search and admin badges. Cantina → Shifts: `IShiftService.HasQualifyingCantinaSignupAsync` (nudge copy) and `IShiftSignups` (replay).
-- **Users** → Cantina: `ICantinaService` for the medical prompt's "dietary still open" check. Cantina → Users: `IUserService` for the merge chain and legacy fallback.
+- **Shifts** → Cantina: `ICantinaService` for the banner (`GetDietaryProfileAsync`), volunteer search and admin badges. Cantina → Shifts: `IShiftService.HasQualifyingCantinaSignupAsync` (nudge copy).
+- **Users** → Cantina: `ICantinaService.GetDietaryProfileAsync` for the medical prompt's "dietary still open" check. Cantina → Users: `IUserService` for the merge chain and legacy fallback.
 
 ## Negative access rules
 

@@ -1,9 +1,7 @@
-using System.Globalization;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Cantina.Models;
 using Humans.Cantina.Services;
-using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,8 +10,9 @@ using Microsoft.Extensions.Localization;
 namespace Humans.Cantina.Controllers;
 
 /// <summary>
-/// The member's own dietary profile at <c>/Cantina/Dietary</c>, and the replay of the shift
-/// signup the dietary gate interrupted (Docs/features/dietary-nudge.md, US-35.6).
+/// The member's own dietary profile at <c>/Cantina/Dietary</c>: save answers, or choose
+/// "I don't want to answer" (Docs/features/dietary-nudge.md). Dietary info is opt-in and never
+/// gates a shift signup.
 /// </summary>
 /// <remarks>
 /// Reads and writes <c>cantina_dietary_profiles</c>, a Cantina table. Owner-only: every action acts on the
@@ -24,18 +23,12 @@ namespace Humans.Cantina.Controllers;
 [Route("Cantina")]
 internal sealed class CantinaProfileController(
     IDietaryProfileManagement dietary,
-    IShiftSignups shiftSignups,
     IUserService userService,
     IStringLocalizer<CantinaResource> localizer,
     ILogger<CantinaProfileController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("Dietary")]
-    public async Task<IActionResult> Dietary(
-        string? returnAction = null,
-        Guid? shiftId = null,
-        Guid? rotaId = null,
-        int? startDayOffset = null,
-        int? endDayOffset = null)
+    public async Task<IActionResult> Dietary(string? returnAction = null)
     {
         var ct = HttpContext.RequestAborted;
         try
@@ -46,10 +39,6 @@ internal sealed class CantinaProfileController(
 
             var vm = DietaryViewModel.FromProfile(await dietary.GetDietaryProfileAsync(user.Id, ct));
             vm.ReturnAction = returnAction;
-            vm.ShiftId = shiftId;
-            vm.RotaId = rotaId;
-            vm.StartDayOffset = startDayOffset;
-            vm.EndDayOffset = endDayOffset;
             return View(vm);
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
@@ -64,6 +53,9 @@ internal sealed class CantinaProfileController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Dietary(DietaryViewModel model)
     {
+        if (model.DeclineToAnswer)
+            return await DeclineAsync(model.ReturnAction);
+
         if (!ModelState.IsValid)
             return View(model);
 
@@ -93,10 +85,8 @@ internal sealed class CantinaProfileController(
                 return View(model);
             }
 
-            // The member was bounced here by the dietary gate on ShiftsController.ToggleDay: re-run
-            // the original signup and land them on /Shifts. A failed replay does not undo the save;
-            // the member can retry the signup from /Shifts without re-entering anything.
-            return await ReplayShiftSignupAsync(user.Id, model);
+            SetSuccess(localizer["Cantina_Dietary_Saved"].Value);
+            return ReturnTo(model.ReturnAction);
         }
         catch (Exception ex)
         {
@@ -106,57 +96,29 @@ internal sealed class CantinaProfileController(
         }
     }
 
-    // Flash mapping duplicated from ShiftsController.SignUp/SignUpRange; sharing it is tracked separately.
-    private async Task<IActionResult> ReplayShiftSignupAsync(Guid userId, DietaryViewModel model)
+    // "I don't want to answer", from the form or the /Shifts banner. Skips the answer validation:
+    // nothing posted besides the choice is kept.
+    private async Task<IActionResult> DeclineAsync(string? returnAction)
     {
-        switch (model.ReturnAction)
+        try
         {
-            case "signup" when model.ShiftId is { } sid:
-                {
-                    var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-                    var result = await shiftSignups.SignUpAsync(
-                        userId,
-                        sid,
-                        actorUserId: null,
-                        flags: privileged ? ShiftSignupRequestFlags.Privileged : ShiftSignupRequestFlags.None);
-                    if (!result.Success)
-                        SetError(result.Error ?? localizer["Cantina_Dietary_ShiftSignupFailed"].Value);
-                    else
-                        SetSuccess(result.Warning is not null
-                            ? string.Format(CultureInfo.CurrentCulture,
-                                localizer["Cantina_Dietary_ShiftSignupSucceededWithWarning"].Value, result.Warning)
-                            : localizer["Cantina_Dietary_ShiftSignupSucceeded"].Value);
-                    return RedirectToAction("Index", "Shifts");
-                }
-            case "signuprange" when model.RotaId is { } rid
-                                     && model.StartDayOffset is { } sd
-                                     && model.EndDayOffset is { } ed:
-                {
-                    var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-                    var flags = ShiftSignupRequestFlags.SkipConflicts;
-                    if (privileged) flags |= ShiftSignupRequestFlags.Privileged;
-                    var result = await shiftSignups.SignUpRangeAsync(
-                        userId,
-                        rid,
-                        sd,
-                        ed,
-                        actorUserId: null,
-                        flags: flags);
-                    if (!result.Success)
-                        SetError(result.Error ?? localizer["Cantina_Dietary_ShiftRangeSignupFailed"].Value);
-                    else
-                        SetSuccess(result.Warning is not null
-                            ? string.Format(CultureInfo.CurrentCulture,
-                                localizer["Cantina_Dietary_ShiftRangeSignupSucceededWithWarning"].Value, result.Warning)
-                            : localizer["Cantina_Dietary_ShiftRangeSignupSucceeded"].Value);
-                    return RedirectToAction("Index", "Shifts");
-                }
-            case "shifts":
-                SetSuccess(localizer["Cantina_Dietary_Saved"].Value);
-                return RedirectToAction("Index", "Shifts");
-            default:
-                SetSuccess(localizer["Cantina_Dietary_Saved"].Value);
-                return RedirectToAction("Index", "Home");
+            var user = await GetCurrentUserInfoAsync();
+            if (user is null)
+                return NotFound();
+
+            await dietary.DeclineAsync(user.Id);
+            SetSuccess(localizer["Cantina_Dietary_Declined"].Value);
         }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to record dietary decline");
+            SetError(localizer["Cantina_Dietary_SaveFailed"].Value);
+        }
+        return ReturnTo(returnAction);
     }
+
+    private RedirectToActionResult ReturnTo(string? returnAction) =>
+        string.Equals(returnAction, "shifts", StringComparison.Ordinal)
+            ? RedirectToAction("Index", "Shifts")
+            : RedirectToAction("Index", "Home");
 }

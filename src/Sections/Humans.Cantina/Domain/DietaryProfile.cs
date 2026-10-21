@@ -29,5 +29,9 @@ internal sealed class DietaryProfile
     /// <summary>Free text, present only when <see cref="DietaryOptions.OtherOption"/> is an intolerance.</summary>
     public string? IntoleranceOtherText { get; set; }
 
+    /// <summary>The member chose "I don't want to answer": every food field is empty and the
+    /// dietary prompts stop. Saving answers clears it (Docs/features/dietary-nudge.md).</summary>
+    public bool DeclinedToAnswer { get; set; }
+
     public Instant UpdatedAt { get; set; }
 }

@@ -119,9 +119,9 @@ For the active event the service builds a `VolunteerTrackingViewModel` containin
 
 ### Write paths
 
-- `VolunteerTrackingController.SetCampSetup` / `ClearCampSetup` / `SetDayOff` / `ClearDayOff` — all gated by the `VolunteerTrackingWrite` policy (Admin or VolunteerCoordinator).
+- `VolunteerTrackingController.SetCampSetup` / `ClearCampSetup` / `SetDayOff` / `ClearDayOff` / `SetAvailabilityDay` / `ClearAvailabilityDay` — all gated by the `VolunteerTrackingWrite` policy (Admin or VolunteerCoordinator).
 
-All write paths route through `IVolunteerTrackingManagement` → `IVolunteerTrackingRepository` and emit audit rows. Validation lives in the service: set-up date must be inside the build window and on/after the user's first build signup; day-off offset must be inside the build window and not overlap an active signup.
+All write paths route through `IVolunteerTrackingManagement` → `IVolunteerTrackingRepository`; the service, not the controller, writes the audit rows. Validation lives in the service: set-up date must be inside the build window and on/after the user's first build signup; day-off offset must be inside the build window and not overlap an active signup.
 
 ### Export
 

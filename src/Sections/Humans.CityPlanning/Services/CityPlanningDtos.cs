@@ -8,8 +8,8 @@ namespace Humans.CityPlanning.Services;
 /// The section's internal service DTOs. <c>CityPlanningSettingsDto</c> is not here — it is
 /// the return type of <c>ICityPlanningService.GetSettingsAsync</c> and lives on the
 /// contracts leaf. There is no internal management interface: the section's own
-/// controllers take the concrete <see cref="CityPlanningService"/> (design §15 step 5 —
-/// keep an interface only where something needs the seam), and the cross-section surface is
+/// controllers take the concrete <see cref="CityPlanningService"/> (keep an interface
+/// only where something needs the seam), and the cross-section surface is
 /// <c>Humans.CityPlanning.Contracts.ICityPlanningService</c> (reads) and
 /// <c>ICityPlanningWrite</c> (Camps' polygon cleanup).
 /// </summary>

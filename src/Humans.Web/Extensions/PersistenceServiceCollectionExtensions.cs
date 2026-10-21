@@ -28,7 +28,7 @@ public static class PersistenceServiceCollectionExtensions
         // DatabaseMigrationHostedService alongside every section's. UsersDbContext used to be
         // registered here too — it carries the Identity tables and was the last context left
         // in Base — and it moved into Humans.Users' Section.Register with the section
-        // (#866, G5 lane 2, design §15 step 11).
+        // (#866, G5 lane 2).
         services.AddSectionDbContext<SystemDbContext>(sentinelTable: "DataProtectionKeys");
 
         services.AddHostedService<DatabaseMigrationHostedService>();

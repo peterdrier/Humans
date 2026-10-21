@@ -744,4 +744,5 @@
   <data name="Governance_Notification_Renew" xml:space="preserve"><value>Renovar →</value></data>
   <data name="Governance_BoardVoting_NoteTooLong" xml:space="preserve"><value>La nota debe tener como máximo 4000 caracteres. Tu voto no se ha modificado.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteTooLong" xml:space="preserve"><value>La nota de la decisión debe tener como máximo 4000 caracteres. La solicitud no se ha finalizado.</value></data>
+  <data name="Governance_BoardVoting_DecisionNoteRequired" xml:space="preserve"><value>Para rechazar una solicitud hace falta una nota de la decisión. La solicitud no se ha finalizado.</value></data>
 </root>

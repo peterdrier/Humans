@@ -15,16 +15,18 @@
 
         <h1>@Localizer["Cantina_Dietary_PageTitle"]</h1>
 
+        <p class="text-muted">@Localizer["Cantina_Dietary_OptionalHint"]</p>
+
+        @if (Model.DeclinedToAnswer)
+        {
+            <div class="alert alert-info">@Localizer["Cantina_Dietary_DeclinedNotice"]</div>
+        }
+
         <form asp-action="Dietary" method="post" novalidate>
             @Html.AntiForgeryToken()
 
-            @* Carryover routing data for the post-save signup-replay branch
-               (see CantinaProfileController.Dietary POST + Docs/features/dietary-nudge.md). *@
+            @* Where to land after the POST: "shifts" from the /Shifts banner, else Home. *@
             <input type="hidden" asp-for="ReturnAction" />
-            <input type="hidden" asp-for="ShiftId" />
-            <input type="hidden" asp-for="RotaId" />
-            <input type="hidden" asp-for="StartDayOffset" />
-            <input type="hidden" asp-for="EndDayOffset" />
 
             @if (ViewData.ModelState.ErrorCount > 0)
             {
@@ -128,9 +130,13 @@
                 </div>
             </fieldset>
 
-            <div class="d-flex justify-content-between">
+            <div class="d-flex justify-content-between flex-wrap gap-2">
                 <a asp-controller="Profile" asp-action="Index" class="btn btn-outline-secondary">@SharedLocalizer["Common_Cancel"]</a>
-                <button type="submit" class="btn btn-primary">@SharedLocalizer["Common_Save"]</button>
+                <div class="d-flex flex-wrap gap-2">
+                    @* Opt-out: clears the answers and stops the dietary prompts (Docs/features/dietary-nudge.md). *@
+                    <button type="submit" name="DeclineToAnswer" value="true" formnovalidate class="btn btn-outline-secondary">@Localizer["Cantina_Dietary_DeclineButton"]</button>
+                    <button type="submit" class="btn btn-primary">@SharedLocalizer["Common_Save"]</button>
+                </div>
             </div>
         </form>
     </div>

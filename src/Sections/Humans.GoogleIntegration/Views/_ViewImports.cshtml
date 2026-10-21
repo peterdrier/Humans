@@ -1,5 +1,5 @@
 @* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line here
-   ships broken markup with a green build and no runtime error — see design §1/§2. The
+   ships broken markup with a green build and no runtime error. The
    @addTagHelper lines matter as much as the @using ones: an unbound tag helper survives into
    the response as its own start tag rather than throwing (G5-SECTION-TEMPLATE.md step 12),
    and Humans.Web cannot be named from a section, so every <vc:> the section's views render

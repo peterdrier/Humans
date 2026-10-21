@@ -17,7 +17,7 @@ namespace Humans.Shifts.ViewComponents;
 /// <remarks>
 /// A view component rather than a partial because a partial needs a model and Debug would have
 /// to be able to name it; these four cards are the only ones in the gallery that construct
-/// section-internal types. Stays <c>internal</c> (design §15 step 6). A chrome-slot contribution
+/// section-internal types. Stays <c>internal</c>. A chrome-slot contribution
 /// takes no arguments (<c>ISectionChrome</c>'s <c>[ViewComponentSlot]</c> declares none), so it
 /// reads the current user from claims rather than a caller-supplied id.
 /// </remarks>

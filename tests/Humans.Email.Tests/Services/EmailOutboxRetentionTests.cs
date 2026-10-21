@@ -17,7 +17,7 @@ namespace Humans.Email.Tests.Services;
 
 /// <summary>
 /// The retention rule itself. It moved out of <c>CleanupEmailOutboxJob</c> and behind
-/// <see cref="IEmailOutboxRetention"/> at the section's G5 move (design §15 step 6b) —
+/// <see cref="IEmailOutboxRetention"/> at the section's G5 move —
 /// what is left of the job is a try/catch and a metric, which is why there is no job
 /// test any more.
 /// </summary>

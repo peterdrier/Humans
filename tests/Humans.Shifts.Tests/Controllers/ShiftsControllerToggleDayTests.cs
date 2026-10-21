@@ -1,4 +1,3 @@
-using Humans.Cantina.Contracts;
 using Humans.Shifts.Domain;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -27,7 +26,7 @@ namespace Humans.Shifts.Tests.Controllers;
 
 /// <summary>
 /// <see cref="ShiftsController.ToggleDay"/> — the AJAX per-day signup/bail toggle.
-/// The bail-vs-signup decision and the dietary gate now live in
+/// The bail-vs-signup decision lives in
 /// <see cref="IShiftSignupService.ToggleDayAsync"/> (see
 /// <c>ShiftSignupServiceTests</c> for that coverage); these tests only assert
 /// the controller's mapping of a stubbed <see cref="ToggleDaySignupOutcome"/>
@@ -45,7 +44,6 @@ public class ShiftsControllerToggleDayTests
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly ICantinaService _cantina = Substitute.For<ICantinaService>();
     private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
     // The name-gate message came home with Onboarding's G5; the controller now resolves it
     // through the section's own resource set.
@@ -90,7 +88,7 @@ public class ShiftsControllerToggleDayTests
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(userInfo);
         var ctrl = new ShiftsController(
             _shiftMgmt, _burnSettings, _signupService, _volunteerTrackingService, _shiftView, _teamService,
-            _auditLogService, _userService, _cantina, _localizer, _onboardingLocalizer, _clock, _builder, _logger);
+            _auditLogService, _userService, _localizer, _onboardingLocalizer, _clock, _builder, _logger);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
@@ -107,11 +105,8 @@ public class ShiftsControllerToggleDayTests
         return ctrl;
     }
 
-    private UserInfo MakeUserInfo(
-        Guid userId, string burner, string first, string last, string? dietary)
+    private static UserInfo MakeUserInfo(Guid userId, string burner, string first, string last)
     {
-        _cantina.GetDietaryProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(dietary is null ? null : new DietaryProfileInfo(userId, dietary, [], null, [], null));
         var profile = new Profile
         {
             UserId = userId,
@@ -146,7 +141,7 @@ public class ShiftsControllerToggleDayTests
     public async Task SaveAvailability_without_an_active_event_returns_the_localized_error_without_writing()
     {
         var userId = Guid.NewGuid();
-        var sut = BuildSut(userId, MakeUserInfo(userId, "Alice", "Alice", "Example", "vegan"));
+        var sut = BuildSut(userId, MakeUserInfo(userId, "Alice", "Alice", "Example"));
         _localizer["VolTrack_NoActiveEvent"].Returns(new LocalizedString("VolTrack_NoActiveEvent", "No hay ningún evento activo."));
 
         var result = await sut.SaveAvailability([1, 2]);
@@ -160,7 +155,7 @@ public class ShiftsControllerToggleDayTests
     public async Task SaveAvailability_RefusedSelection_ReturnsLocalizedError()
     {
         var userId = Guid.NewGuid();
-        var sut = BuildSut(userId, MakeUserInfo(userId, "Alice", "Alice", "Example", "vegan"));
+        var sut = BuildSut(userId, MakeUserInfo(userId, "Alice", "Alice", "Example"));
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(Event);
         _volunteerTrackingService.SetAvailabilityAsync(userId, Event.Id, Arg.Any<IReadOnlyList<int>>()).Returns(false);
         _localizer["Shifts_AvailabilityInvalidDays"].Returns(
@@ -183,7 +178,7 @@ public class ShiftsControllerToggleDayTests
         bool tags, bool malformed, bool viewerExists)
     {
         var userId = Guid.NewGuid();
-        var sut = BuildSut(userId, MakeUserInfo(userId, "Alice", "Alice", "Example", "vegan"));
+        var sut = BuildSut(userId, MakeUserInfo(userId, "Alice", "Alice", "Example"));
         if (!viewerExists)
             _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(Event);
@@ -249,7 +244,7 @@ public class ShiftsControllerToggleDayTests
 
     private void StubToggleOutcome(ToggleDaySignupOutcome outcome) =>
         _signupService.ToggleDayAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<bool>(),
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(),
             Arg.Any<CancellationToken>()).Returns(outcome);
 
     [HumansFact]
@@ -257,10 +252,10 @@ public class ShiftsControllerToggleDayTests
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
-        var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L", dietary: "Vegan"));
+        var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L"));
 
         var created = ActiveSignup(Guid.NewGuid(), userId, shiftId, SignupStatus.Confirmed);
-        StubToggleOutcome(new ToggleDaySignupOutcome(false, SignupResult.Ok(created.Id), true, false, [created]));
+        StubToggleOutcome(new ToggleDaySignupOutcome(SignupResult.Ok(created.Id), true, false, [created]));
         StubBrowseRow(shiftId, userId, SignupStatus.Confirmed);
 
         var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
@@ -268,8 +263,7 @@ public class ShiftsControllerToggleDayTests
         result.Should().BeOfType<PartialViewResult>();
         ctrl.Response.Headers["X-Signed-Up"].ToString().Should().Be("true");
         await _signupService.Received(1).ToggleDayAsync(
-            userId, shiftId, Event.Id, /* privileged */ false, /* hasDietaryPreference */ true,
-            Arg.Any<CancellationToken>());
+            userId, shiftId, Event.Id, /* privileged */ false, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -278,10 +272,10 @@ public class ShiftsControllerToggleDayTests
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
         var signupId = Guid.NewGuid();
-        var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L", dietary: "Vegan"));
+        var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L"));
 
         var existing = ActiveSignup(signupId, userId, shiftId, SignupStatus.Confirmed);
-        StubToggleOutcome(new ToggleDaySignupOutcome(false, SignupResult.Ok(existing.Id), false, false, []));
+        StubToggleOutcome(new ToggleDaySignupOutcome(SignupResult.Ok(existing.Id), false, false, []));
         StubBrowseRow(shiftId, userId, rowStatus: null);
 
         var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
@@ -295,10 +289,10 @@ public class ShiftsControllerToggleDayTests
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
-        var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L", dietary: "Vegan"));
+        var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L"));
 
         StubToggleOutcome(new ToggleDaySignupOutcome(
-            false, SignupResult.Fail("Time conflict on day(s): Mon"), false, false, []));
+            SignupResult.Fail("Time conflict on day(s): Mon"), false, false, []));
         StubBrowseRow(shiftId, userId, rowStatus: null);
 
         var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
@@ -314,10 +308,10 @@ public class ShiftsControllerToggleDayTests
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
-        var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L", dietary: "Vegan"));
+        var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L"));
 
         var pending = ActiveSignup(Guid.NewGuid(), userId, shiftId, SignupStatus.Pending);
-        StubToggleOutcome(new ToggleDaySignupOutcome(false, SignupResult.Ok(pending.Id), true, false, [pending]));
+        StubToggleOutcome(new ToggleDaySignupOutcome(SignupResult.Ok(pending.Id), true, false, [pending]));
         StubBrowseRow(shiftId, userId, SignupStatus.Pending);
 
         var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
@@ -334,10 +328,10 @@ public class ShiftsControllerToggleDayTests
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
-        var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L", dietary: "Vegan"));
+        var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L"));
 
         var created = ActiveSignup(Guid.NewGuid(), userId, shiftId, SignupStatus.Confirmed);
-        StubToggleOutcome(new ToggleDaySignupOutcome(false, SignupResult.Ok(created.Id), true, false, [created]));
+        StubToggleOutcome(new ToggleDaySignupOutcome(SignupResult.Ok(created.Id), true, false, [created]));
         // Active event present, but the toggled shift isn't in the browse set → BuildRowAsync
         // returns null; the controller must resync (204) instead of throwing.
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(Event);
@@ -353,7 +347,7 @@ public class ShiftsControllerToggleDayTests
     public async Task ToggleDay_without_an_active_event_redirects_to_browse_without_mutating_signups()
     {
         var userId = Guid.NewGuid();
-        var ctrl = BuildSut(userId, MakeUserInfo(userId, "Alice", "Alice", "Example", "vegan"));
+        var ctrl = BuildSut(userId, MakeUserInfo(userId, "Alice", "Alice", "Example"));
         ctrl.Url.Action(Arg.Is<Microsoft.AspNetCore.Mvc.Routing.UrlActionContext>(context =>
             context.Action == nameof(ShiftsController.Index))).Returns("/Shifts");
 
@@ -361,27 +355,27 @@ public class ShiftsControllerToggleDayTests
 
         result.Should().BeAssignableTo<IStatusCodeActionResult>().Which.StatusCode.Should().Be(204);
         ctrl.Response.Headers["X-Redirect"].ToString().Should().Be("/Shifts");
-        await _signupService.DidNotReceiveWithAnyArgs().ToggleDayAsync(default, default, default, default, default);
+        await _signupService.DidNotReceiveWithAnyArgs().ToggleDayAsync(default, default, default, default);
     }
 
     [HumansFact]
-    public async Task ToggleDay_WhenDietaryMissing_Returns204_WithRedirectHeader()
+    public async Task ToggleDay_WithoutDietaryInfo_SignsUp_WithoutRedirect()
     {
+        // nobodies-collective/Humans#2104: dietary info is opt-in and never blocks a signup.
+        // The controller no longer consults Cantina at all; the member has no dietary answer.
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
-        // Named (passes name gate) but no dietary preference recorded.
-        var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L", dietary: null));
+        var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L"));
 
-        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(Event);
-        StubToggleOutcome(ToggleDaySignupOutcome.DietaryRequired());
+        var created = ActiveSignup(Guid.NewGuid(), userId, shiftId, SignupStatus.Confirmed);
+        StubToggleOutcome(new ToggleDaySignupOutcome(SignupResult.Ok(created.Id), true, false, [created]));
+        StubBrowseRow(shiftId, userId, SignupStatus.Confirmed);
 
         var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
 
-        var status = result.Should().BeAssignableTo<IStatusCodeActionResult>().Subject;
-        status.StatusCode.Should().Be(204);
-        await _signupService.Received(1).ToggleDayAsync(
-            userId, shiftId, Event.Id, /* privileged */ false, /* hasDietaryPreference */ false,
-            Arg.Any<CancellationToken>());
+        result.Should().BeOfType<PartialViewResult>();
+        ctrl.Response.Headers["X-Signed-Up"].ToString().Should().Be("true");
+        ctrl.Response.Headers.ContainsKey("X-Redirect").Should().BeFalse();
     }
 
     [HumansFact]
@@ -390,13 +384,13 @@ public class ShiftsControllerToggleDayTests
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
         // Empty name fields → name gate trips.
-        var ctrl = BuildSut(userId, MakeUserInfo(userId, burner: "", first: "", last: "", dietary: "Vegan"));
+        var ctrl = BuildSut(userId, MakeUserInfo(userId, burner: "", first: "", last: ""));
 
         var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
 
         var status = result.Should().BeAssignableTo<IStatusCodeActionResult>().Subject;
         status.StatusCode.Should().Be(204);
         await _signupService.DidNotReceiveWithAnyArgs().ToggleDayAsync(
-            default, default, default, default, default);
+            default, default, default, default);
     }
 }

@@ -11,7 +11,7 @@
     HumansControllerBase, so between them they are named by more than twenty section
     projects, by Humans.UI, and — decisively — by Humans.Application and
     Humans.Infrastructure, which the section itself references. A folder would cycle at
-    the assembly level in both directions (design §15 step 5b,
+    the assembly level in both directions (see
     memory/architecture/section-project-cycle-fix.md).
 
     It holds exactly what lives outside the section: the UserInfo read model and the eight
@@ -42,8 +42,8 @@
       three plus HumanLifecycleService and three Humans.Infrastructure jobs inject
       IUserService from *Base*, and Humans.Users references both Base projects. The
       approved surface is unchanged — IUserService is public either way — only the
-      assembly moved, which is design §15 step 5b's own rule ("a consumer in Base forces
-      Humans.<Section>.Contracts"). It also means no consumer needed a new
+      assembly moved, which is the rule that a consumer in Base forces
+      Humans.<Section>.Contracts. It also means no consumer needed a new
       project reference at all.
 
     IAccountDeletionService joined later (Users decomposition, commit 0) so Gdpr's deletion
@@ -84,7 +84,7 @@
     is load-bearing for it. Duplicating it (Humans.Auth.RoleAssignmentResult's
     shape) would put a third copy of a two-property record in the graph and grow this
     project's public surface, which needs Peter. Neither is worth it: the edge is provably
-    harmless and the flat "zero references" phrasing of the G5 end-state design is the thing
+    harmless and the flat "zero references" phrasing is the thing
     that is imprecise, not this csproj. State the rule above, not the count.
 
     Also gone: Humans.Interfaces, which owned the IApplicationService / IOrchestrator /

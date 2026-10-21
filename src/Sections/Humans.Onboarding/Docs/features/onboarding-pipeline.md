@@ -28,7 +28,7 @@
 
 The onboarding pipeline defines the end-to-end journey from signup to active membership. All humans follow the same initial path: sign up, complete profile, then two parallel tracks: sign legal documents and pass a Consent Coordinator profile review. App access opens as soon as the human enters their legal name (`UserState == Active`) — it does not wait on consents or coordinator review. Name + all required consents are what add the human to the Volunteers team (a Google Workspace provisioning group); the coordinator review is a parallel audit track that does not gate admission. The two tracks can happen in any order.
 
-During initial signup only, humans who want Colaborador or Asociado membership see the application form inline alongside their profile setup. This is a streamlined one-shot experience — the system creates both a Profile and an Application behind the scenes, but the user fills one unified form. The tier application proceeds through Board voting in parallel — it never blocks Volunteer access.
+During initial signup only, the profile setup page shows a tier card that explains Colaborador and Asociado and links to Governance's application form (`/Governance/Applications/Create`, new tab); the profile form itself carries no tier fields. The tier application proceeds through Board voting in parallel — it never blocks Volunteer access.
 
 The consent check is purely a **Volunteer-level gate**. It has nothing to do with tier applications.
 
@@ -46,7 +46,7 @@ Sign Up (Google OAuth)
     ▼
 Profile Setup (one-shot onboarding experience)
     ├── Basic profile info (name, location, etc.)
-    ├── [Optional] Tier selection → Colaborador/Asociado application form inline
+    ├── [Optional] Tier card → link to the Colaborador/Asociado application (Governance)
     │
     ▼
 Two parallel tracks (either order):
@@ -88,12 +88,11 @@ Two parallel tracks (either order):
 **So that** I don't need a separate application step
 
 **Acceptance Criteria:**
-- During profile setup, tier selector shows Colaborador/Asociado options
-- Selecting a tier reveals the application form inline (motivation, etc.)
-- Submitting creates both Profile and Application entities
+- During profile setup, a tier card describes Colaborador/Asociado and links to `/Governance/Applications/Create`
+- The application form (motivation, etc.) is Governance's; submitting it creates the Application
 - App access opens at name entry (`UserState == Active`); name + all required consents add the human to the Volunteers team
 - Application enters Board voting queue in parallel
-- **This inline experience is one-shot** — after onboarding, profile edit has no application sections
+- **The tier card is one-shot**: after onboarding, profile edit has no tier card
 
 ### US-16.3: Consent Check Auto-Approve
 
@@ -144,7 +143,7 @@ Two parallel tracks (either order):
   - Profile saved
 - **After initial onboarding, profile edit shows profile fields only — no tier selector or application form**
 
-The default Volunteer flow uses the **onboarding widget** (Names → Shifts → Consents) — see "Onboarding Widget (Low-Friction Variant)" below. The full one-shot form remains the path for Colaborador/Asociado applicants because it surfaces the application fields inline.
+The default Volunteer flow uses the **onboarding widget** (Names → Shifts → Consents) — see "Onboarding Widget (Low-Friction Variant)" below. Colaborador/Asociado applicants apply through Governance's application form, linked from the one-shot form's tier card.
 
 ### Stage 3: Legal Consents
 
@@ -242,7 +241,7 @@ Getting Started
 ├── [○] Sign required documents         → /Consent
 ├── [○] Safety check (pending)
 │
-│   If Colaborador/Asociado selected:
+│   If a Colaborador/Asociado application exists:
 └── [○] Tier application: Submitted
 ```
 
@@ -260,7 +259,7 @@ Term expires: Dec 31, 2027
 ## Business Rules
 
 1. **Consent check = Volunteer gate** — independent of tier applications
-2. **Inline application is one-shot** — only during initial signup
+2. **Tier card is one-shot**: only during initial signup; the application itself is Governance's form
 3. **After onboarding, profile edit is just profile** — no tier/application sections
 4. **Volunteer access is never blocked by tier applications** — parallel tracks
 5. **Grandfather existing users** — consent check only for new signups after deployment

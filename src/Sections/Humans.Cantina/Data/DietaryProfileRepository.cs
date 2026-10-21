@@ -42,6 +42,7 @@ internal sealed class DietaryProfileRepository(IDbContextFactory<CantinaDbContex
             row.AllergyOtherText = values.AllergyOtherText;
             row.Intolerances = [.. values.Intolerances];
             row.IntoleranceOtherText = values.IntoleranceOtherText;
+            row.DeclinedToAnswer = values.DeclinedToAnswer;
             row.UpdatedAt = values.UpdatedAt;
         }
         await ctx.SaveChangesAsync(ct);
@@ -91,6 +92,7 @@ internal sealed class DietaryProfileRepository(IDbContextFactory<CantinaDbContex
         AllergyOtherText = v.AllergyOtherText,
         Intolerances = [.. v.Intolerances],
         IntoleranceOtherText = v.IntoleranceOtherText,
+        DeclinedToAnswer = v.DeclinedToAnswer,
         UpdatedAt = v.UpdatedAt,
     };
 }

@@ -117,7 +117,8 @@ failure instead of throwing.
 - `Service.ValidateName` and `ContainerFormModel`'s regex enforce the same character ban on
   purpose: the form gives the user a message, the service protects every caller.
 - The handler decides who is a lead from the target's year; a target with no year (the camp page)
-  uses the year of City Planning's current settings, which is the public year.
+  uses the year of City Planning's current settings, which is the active event's year. With no
+  active event that target is denied, and the camp's container page answers 404.
 - `ClearPlacementAsync` keeps a row with notes; `SavePlacementAsync` upserts geometry only — the
   "unplaced but annotated" state is real and the UI shows it.
 

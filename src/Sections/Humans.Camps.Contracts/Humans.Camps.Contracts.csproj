@@ -9,7 +9,7 @@
     ProfileSummaryViewModelBuilder binds CampUserInfo. And Camps and CityPlanning reference
     each other — CampService clears a deleted camp's polygons through
     Lazy<ICityPlanningWrite> while CityPlanningService injects ICampService — so a
-    folder would be a project cycle (design §15.5b,
+    folder would be a project cycle (see
     memory/architecture/section-project-cycle-fix.md).
 
     It holds exactly what lives outside the section: the read surface other sections and

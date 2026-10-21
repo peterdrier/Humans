@@ -137,6 +137,9 @@ internal sealed class ApplicationDecisionService(
         if (voterIds.Count == 0)
             return new ApplicationDecisionResult(false, "NoVotes");
 
+        if (string.IsNullOrWhiteSpace(reason))
+            return new ApplicationDecisionResult(false, "DecisionNoteRequired");
+
         if (reason.Length > 4000)
         {
             logger.LogWarning("Rejected overlong decision note for application {ApplicationId}", applicationId);

@@ -10,7 +10,8 @@ namespace Humans.Cantina;
 
 /// <summary>
 /// Cantina's entry on the member dashboard's things-to-do list: the dietary nudge, shown while the
-/// member has no dietary preference on file. Spec: Docs/features/dietary-nudge.md (US-35.1, US-35.5).
+/// member has neither a preference on file nor chose "I don't want to answer".
+/// Spec: Docs/features/dietary-nudge.md (US-35.1).
 /// </summary>
 internal sealed class SectionThingsToDo : ISectionThingsToDo
 {
@@ -20,7 +21,7 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
             return [];
 
         var profile = await services.GetRequiredService<ICantinaService>().GetDietaryProfileAsync(userId);
-        if (profile?.HasPreference == true)
+        if (profile is { HasPreference: true } or { DeclinedToAnswer: true })
             return [];
 
         // Copy varies by whether a qualifying shift already needs feeding; the entry is the same either way.

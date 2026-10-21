@@ -36,7 +36,7 @@ knots; nothing else is split in advance.
   Peter's per-instance approval. "The build was red" is not the justification.
 - The standing shared-contract exceptions are `User`/`UserInfo`, Auth and Audit.
   Those are the whole list; a cycle does not add to it.
-- Full mechanics and the pilot plan: `docs/superpowers/specs/2026-08-07-g5-section-project-split-design.md`.
+- Full mechanics: `docs/sections/G5-SECTION-TEMPLATE.md`.
 
 Related: [[sections-are-logical-units]], [[section-public-contract]],
 [[universal-enforcement-over-per-section]], [[interface-method-additions-are-debt]].

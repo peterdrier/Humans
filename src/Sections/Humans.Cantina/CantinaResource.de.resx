@@ -85,15 +85,13 @@
   <data name="Cantina_Dietary_Intolerance_Lactose" xml:space="preserve"><value>Laktose</value></data>
   <data name="Cantina_Dietary_AllergyOther_Required" xml:space="preserve"><value>Bitte beschreibe die andere Allergie.</value></data>
   <data name="Cantina_Dietary_IntoleranceOther_Required" xml:space="preserve"><value>Bitte beschreibe die andere Unverträglichkeit.</value></data>
-  <data name="Cantina_Dietary_ShiftSignupFailed" xml:space="preserve"><value>Die Anmeldung zur Schicht ist fehlgeschlagen.</value></data>
-  <data name="Cantina_Dietary_ShiftSignupSucceeded" xml:space="preserve"><value>Erfolgreich zur Schicht angemeldet!</value></data>
-  <data name="Cantina_Dietary_ShiftSignupSucceededWithWarning" xml:space="preserve"><value>Erfolgreich zur Schicht angemeldet. Hinweis: {0}</value><comment>{0} = signup warning</comment></data>
-  <data name="Cantina_Dietary_ShiftRangeSignupFailed" xml:space="preserve"><value>Die Anmeldung zum Schichtzeitraum ist fehlgeschlagen.</value></data>
-  <data name="Cantina_Dietary_ShiftRangeSignupSucceeded" xml:space="preserve"><value>Erfolgreich zum Schichtzeitraum angemeldet!</value></data>
-  <data name="Cantina_Dietary_ShiftRangeSignupSucceededWithWarning" xml:space="preserve"><value>Erfolgreich zum Schichtzeitraum angemeldet. Hinweis: {0}</value><comment>{0} = signup warning</comment></data>
   <data name="Cantina_Dietary_BreadcrumbNavigation" xml:space="preserve"><value>Navigationspfad</value></data>
   <data name="Cantina_Dietary_PageTitle" xml:space="preserve"><value>Ernährungsangaben</value></data>
   <data name="Cantina_Dietary_Saved" xml:space="preserve"><value>Deine Ernährungsangaben wurden gespeichert.</value></data>
   <data name="Cantina_Dietary_SaveFailed" xml:space="preserve"><value>Die Ernährungsangaben konnten nicht gespeichert werden.</value></data>
   <data name="Cantina_Dietary_LoadFailed" xml:space="preserve"><value>Die Ernährungsangaben konnten nicht geladen werden.</value></data>
+  <data name="Cantina_Dietary_OptionalHint" xml:space="preserve"><value>Freiwillig. Es hilft der Kantine, die Mahlzeiten für lange Schichten zu planen, und hat nie Einfluss auf deine Schichtanmeldungen.</value></data>
+  <data name="Cantina_Dietary_DeclineButton" xml:space="preserve"><value>Ich möchte nicht antworten</value></data>
+  <data name="Cantina_Dietary_Declined" xml:space="preserve"><value>Alles klar – wir fragen nicht mehr nach deinen Ernährungsangaben. Du kannst sie hier jederzeit ergänzen.</value></data>
+  <data name="Cantina_Dietary_DeclinedNotice" xml:space="preserve"><value>Du hast entschieden, keine Ernährungsangaben zu machen, deshalb fragen wir nicht nach. Du kannst sie jederzeit ausfüllen.</value></data>
 </root>

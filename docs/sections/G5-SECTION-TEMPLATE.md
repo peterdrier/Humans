@@ -3,9 +3,8 @@
 > **Superseded vocabulary (2026-10-17).** The `I<Section>ServiceRead` split and its analyzer named below were retired: read `I<Section>ServiceRead` as the public `I<Section>Service`, and the full internal interface as `I<Section>Management`. See [`section-public-contract`](../../memory/architecture/section-public-contract.md). Lessons keyed to the old names are kept as history.
 
 The recipe for moving one section into its own project under `src/Sections/`
-(nobodies-collective/Humans#866, G5). Extracted 2026-08-09 from §15 of
-[`2026-08-07-g5-section-project-split-design.md`](../superpowers/specs/2026-08-07-g5-section-project-split-design.md)
-(cited below as "spec §N") after five sections executed it: Store (peterdrier/Humans#1223),
+(nobodies-collective/Humans#866, G5). Extracted 2026-08-09 from the G5 split design spec (historical, deleted)
+after five sections executed it: Store (peterdrier/Humans#1223),
 SystemSettings + EventGuide (peterdrier/Humans#1235, A1), Containers + Finance
 (peterdrier/Humans#1239, A2), Expenses (peterdrier/Humans#1240, A3), Surveys
 (peterdrier/Humans#1251, A4), Agent (A4b — the first section with static assets, migrations
@@ -229,10 +228,10 @@ Git Bash.)
    section *names*, never from whether it has views; Central Package Management has no
    `PackageVersion` for the AspNetCore packages, so the framework reference is the only way to
    get them (proven: Auth). With Razor: `<AddRazorSupportForMvc>true</AddRazorSupportForMvc>`,
-   `<InternalsVisibleTo>` for **both** `Humans.<Section>.Tests` **and `Humans.Integration.Tests`**
-   (spec §5), `FrameworkReference Microsoft.AspNetCore.App`, the section's own NuGet packages,
+   `<InternalsVisibleTo>` for **both** `Humans.<Section>.Tests` **and `Humans.Integration.Tests`**,
+   `FrameworkReference Microsoft.AspNetCore.App`, the section's own NuGet packages,
    `<None Include="**\*.md" />`, and the three `<Using>` items Sdk.Razor does not inherit from
-   Sdk.Web (spec §2): `Microsoft.AspNetCore.Http`, `Microsoft.AspNetCore.Routing`,
+   Sdk.Web: `Microsoft.AspNetCore.Http`, `Microsoft.AspNetCore.Routing`,
    `Microsoft.Extensions.Logging`. Project references: `Humans.Interfaces`,
    `Humans.Application`, `Humans.Infrastructure`, `Humans.UI`. (**`Humans.Domain` was on this
    list until G5 lane 3b deleted the project — 2026-08-15.** Its types are in `Humans.Interfaces`
@@ -292,10 +291,10 @@ Git Bash.)
    the `Views/<Controller>/` shape. Renaming it compiles, then 500s on every page and reads as
    a routing bug (proven: MailerLite). Migrations
    land at `Data/Migrations/` — their `namespace` line changes to the section's, which is the one
-   sanctioned edit to a migration file (spec §7); say so in the PR. **Everything the section needs
+   sanctioned edit to a migration file; say so in the PR. **Everything the section needs
    comes with it — no exceptions.**
 3. [ ] **Write `Views/_ViewImports.cshtml` in the same commit as the views.** Start from the
-   shipped Store example (spec §2) but derive the `@using` list from the section's own folders.
+   shipped Store example but derive the `@using` list from the section's own folders.
    Omitting a line — or one `@addTagHelper` — ships broken HTML with a green build.
 3b. [ ] **First ask whether the section has any keys at all.** A section whose views carry no
    `Localizer[…]` call and no `<Section>_*` key in `SharedResource` ships **no resource set
@@ -309,7 +308,7 @@ Git Bash.)
    `Humans.UI`'s set into `<Section>Resource.{resx,es,ca,de,fr,it}` at the project root beside a
    `<Section>Resource.cs` in the section's namespace (root, not a `Resources/` folder — folder and
    namespace must agree, PR peterdrier/Humans#1365). The `.cs` and `.resx` must sit in the same
-   folder, and the `.cs` namespace determines the manifest prefix (spec §3) — get it wrong and
+   folder, and the `.cs` namespace determines the manifest prefix — get it wrong and
    every string in the set degrades to its key at runtime. The boot diagnostic needs no
    per-section edit, **but only if `<Section>Resource` is `public`** — discovery reads
    `GetExportedTypes()` and skips an `internal` marker in silence.
@@ -344,7 +343,7 @@ Git Bash.)
      stay in Email until that template moves too. Grep each candidate key's call sites before
      moving it, exactly as with `Enum_*` (proven: Feedback).
    - If step 5 renames an enum, rename its `Enum_{TypeName}_*` keys in all six languages in the
-     same commit — the key is the **live CLR type name** (spec §3; proven the hard way: Store).
+     same commit — the key is the **live CLR type name** (proven the hard way: Store).
    - **…and the fourth direction: move the *markup* instead of the key.** "Carve by renderer"
      (above) leaves a key in Base because the renderer cannot see a section set. The other way
      out is to move the renderer. The floating help widget in `Humans.Web/Views/Shared/
@@ -547,7 +546,7 @@ Git Bash.)
    `Register(IServiceCollection services, IConfiguration configuration)` — `AddSectionDbContext`,
    repositories, services, section-owned authorization handlers (keyed caching-decorator pairs
    move verbatim). Shell discovers it; nothing is added to `Program.cs`. Remove the section's
-   line from the `Add<Section>Section` roll-call (spec §6).
+   line from the `Add<Section>Section` roll-call.
    - **`Register` may legitimately be empty, and the class still ships.** A section that is one
      controller over other sections' read interfaces registers nothing — its dependencies are
      registered by their owners. Keep the type anyway: `ISection` is what puts the assembly in
@@ -600,7 +599,7 @@ Git Bash.)
 5. [ ] Everything else `internal` — **except `<Section>Resource`** (step 3b) — and internal types
    drop the section prefix: `Repository`, `Service`, entities, EF configurations, view models.
    Controllers, `<Section>DbContext`, `I<Section>Repository` and `Contracts/` types keep it, each
-   for a mechanical reason (spec §6a). Renames in a **separate commit** after the move compiles.
+   for a mechanical reason. Renames in a **separate commit** after the move compiles.
    - **Internalising is also a sealing pass.** `MA0053` ("make class or record sealed") is a
      warning, `TreatWarningsAsErrors` is on, and the rule only fires once a class stops being
      `public` — so a clean `public` → `internal` sweep turns every non-sealed class in the
@@ -1395,7 +1394,7 @@ Git Bash.)
    described *moving* an existing doc's triggers, so brand-new sections fell straight through it:
    `Humans.Holded` and `Humans.Tour` both shipped unmarked, one sweep apart, and each sat invisible
    until a manual scan found it. An unmarked doc reads as *clean*, never as *unchecked*.
-   **A docs path is an API until you have proved otherwise** (spec §7a).
+   **A docs path is an API until you have proved otherwise.**
    - **…and the probe you have to find is not always in `Humans.Agent`.** The
      invariants doc may move because `AgentSectionDocReader` falls back to
      `src/Sections/Humans.{key}/Docs/{key}.md`. `Humans.Agent/Health/AgentDocsHealthCheck`
@@ -1706,7 +1705,7 @@ Git Bash.)
       `src/Sections/**/Authorization/**/*.cs`. **Read the catalog's `triggers:` blocks for Base
       paths your section is leaving, not just the doc links** (proven: Auth).
     - Re-run `grep -rn 'Assembly.Name' src/Humans.Analyzers/` and confirm any analyzer added
-      since the pilot is section-aware (spec §10). **Do not treat this as a formality because
+      since the pilot is section-aware. **Do not treat this as a formality because
       earlier moves found nothing** — Expenses was the first to find something, and what it found
       had been silently off inside all five previously-moved sections:
       `ConcurrencyTokenAnalyzer` and `DateTimeFormatStringAnalyzer` each carried a private

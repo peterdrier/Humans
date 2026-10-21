@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Budget.Tests" />
-    <!-- The one assembly allowed to see many sections (design §5). -->
+    <!-- The one assembly allowed to see many sections. -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
@@ -44,8 +44,7 @@
     <!--
       No AspNetCore package here: those ship with no PackageVersion on purpose and would
       fail the build with NU1010 under Central Package Management. Everything ASP.NET the
-      section touches arrives through the framework reference Sdk.Razor already adds
-      (design §15 step 1).
+      section touches arrives through the framework reference Sdk.Razor already adds.
       Hangfire.Core is for Jobs/TicketingBudgetSyncJob's [DisableConcurrentExecution].
       Package, not project, so no cycle is possible.
     -->
@@ -57,7 +56,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <!-- The section owns its documentation; keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

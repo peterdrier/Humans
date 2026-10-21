@@ -5,7 +5,7 @@
   <!--
     Governance's cross-section surface. A Contracts/ *folder* inside Humans.Governance would
     make Base reference a section and cycle, so it is a leaf project: Base-resident consumers
-    read through this (design §15.5b, memory/architecture/section-project-cycle-fix.md).
+    read through this (memory/architecture/section-project-cycle-fix.md).
 
     It holds exactly what lives outside the section: the tier-application read surface, the
     membership-calculator read surface, the six members the renewal job drives, the DTOs those

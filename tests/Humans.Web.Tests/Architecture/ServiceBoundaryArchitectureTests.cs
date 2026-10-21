@@ -104,7 +104,7 @@ public class ServiceBoundaryArchitectureTests
     /// public on <c>Humans.Users.Contracts</c> (nobodies-collective/Humans#866, G5 lane 2) and
     /// drags <c>UserEmail</c> and <c>EventParticipation</c> with it through its navigations.
     /// Without this list the two <c>Humans.Domain.Entities.User</c> rows in the baseline read as
-    /// *fixed* on byte-identical code — the silent shrink design §10 warns about, arriving
+    /// *fixed* on byte-identical code — the silent shrink the baseline guards against, arriving
     /// through a third keying (not a path, not an assembly: the namespace convention that says
     /// "entities live in .Domain"). The six Profile-side entities left this list when they moved
     /// to <c>Humans.Users.Domain</c> as internal types (nobodies-collective/Humans#1051).

@@ -44,8 +44,8 @@ internal static class AssemblyScope
     /// <c>UserRepository</c> writing <c>User.Email</c> was out of HUM0002's scope because the
     /// file lived in <c>Humans.Infrastructure</c>; after the move the identical code is in a
     /// section assembly, and the rule would fail the build on the one writer it exists to
-    /// protect (design §15 step 6a's "a move can put code into a sweep as easily as out of
-    /// one", reached from the other direction). Matched on the namespace segment first and the
+    /// protect (a move can put code into a sweep as easily as out of
+    /// one, reached from the other direction). Matched on the namespace segment first and the
     /// file path second, the same dual check <c>PublicSurfaceRule.IsUnderContracts</c>
     /// uses, so the carve-out holds for real code and for analyzer test sources alike.
     /// </remarks>

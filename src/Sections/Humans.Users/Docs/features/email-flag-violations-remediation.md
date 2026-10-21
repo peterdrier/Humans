@@ -79,15 +79,14 @@ New DTO:
 
 | Type | Field | Purpose |
 |------|-------|---------|
-| `UserEmailFlagViolation` | `UserId`, `IsGoogleCount`, `VerifiedCount`, `VerifiedPrimaryCount`, `HasMultipleGoogle`, `HasZeroGoogle`, `HasPrimaryProblem` | Per-user summary returned by `GetEmailFlagViolationsAsync`. No display name — the view resolves it via `<vc:human user-id>`. |
+| `UserEmailFlagViolation` | `UserId`, `VerifiedCount`, `VerifiedPrimaryCount`, `HasPrimaryProblem` | Per-user summary returned by `GetEmailFlagViolationsAsync`. No display name — the view resolves it via `<vc:human user-id>`. |
 
 New service surface (`IUserEmailService`):
 
 | Method | Semantics |
 |--------|-----------|
-| `ClearGoogleAsync(userId, userEmailId, actorUserId, ct)` | Drop `IsGoogle` from a single row. Returns false if row not found or not flagged. Does not touch siblings. |
 | `ClearPrimaryAsync(userId, userEmailId, actorUserId, ct)` | Drop `IsPrimary` from a single row. Returns false if row not found or not flagged. **Intentionally bypasses `EnsurePrimaryInvariantAsync`** — leaves the user with zero primary so the operator picks the new one explicitly. |
-| `GetEmailFlagViolationsAsync(ct)` | Returns the list of users currently violating any of the three invariants (multiple Google rows, zero Google row among verified emails, or verified-primary count != 1), sorted by burner name. |
+| `GetEmailFlagViolationsAsync(ct)` | Returns the list of users whose verified-primary count != 1 among verified emails, sorted by burner name. |
 
 New audit actions: `AuditAction.UserEmailGoogleCleared`, `UserEmailPrimaryCleared`.
 
@@ -95,9 +94,7 @@ New audit actions: `AuditAction.UserEmailGoogleCleared`, `UserEmailPrimaryCleare
 
 | Route | Method | Auth | Purpose |
 |-------|--------|------|---------|
-| `/Profile/Me/Emails/ClearGoogle` | POST | self-or-admin | Self-path Clear Google flag (only surfaced in UI on N>1 violation) |
 | `/Profile/Me/Emails/ClearPrimary` | POST | self-or-admin | Self-path Clear Primary flag (only surfaced in UI on N>1 violation) |
-| `/Profile/{id}/Admin/Emails/ClearGoogle` | POST | self-or-admin | Admin-path Clear Google flag (always surfaced on flagged rows) |
 | `/Profile/{id}/Admin/Emails/ClearPrimary` | POST | self-or-admin | Admin-path Clear Primary flag (always surfaced on flagged rows) |
 | `/Google/EmailFlagViolations` | GET | admin-only | Site-wide invariant violation scan |
 

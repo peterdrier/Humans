@@ -153,8 +153,9 @@
         <span class="wg-card-path">src/Sections/Humans.Shifts/ViewComponents/DietaryMissingBannerViewComponent.cs</span>
     </div>
     <div class="wg-card-note">
-        Red dietary-info nudge shown on /Shifts and /Shifts/Mine. Self-gates: renders only when the user has a
-        qualifying cantina signup but no dietary preference on file — so it's empty here unless your account matches.
+        Gentle dietary-info prompt shown on /Shifts and /Shifts/Mine, with an "I don't want to answer" opt-out. It never
+        blocks signups. Self-gates: renders only when the user has a qualifying cantina signup and Cantina's
+        dietary profile has neither a preference nor the opt-out — so it's empty here unless your account matches.
     </div>
     @ParamsBlock(
         ("userId", "<code>Guid</code> — required")

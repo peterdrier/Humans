@@ -5,7 +5,7 @@ namespace Humans.Users;
 /// purpose: the SDK derives the manifest name from the adjacent same-named <c>.cs</c> file's
 /// namespace, not from the folder path, so this must stay <c>namespace Humans.Users</c> —
 /// <c>Humans.Users.Resources</c> would make every string in the set fall back to its raw key
-/// at runtime (design §3).
+/// at runtime.
 /// </summary>
 /// <remarks>
 /// <para>

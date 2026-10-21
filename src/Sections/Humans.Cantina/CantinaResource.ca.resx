@@ -85,15 +85,13 @@
   <data name="Cantina_Dietary_Intolerance_Lactose" xml:space="preserve"><value>Lactosa</value></data>
   <data name="Cantina_Dietary_AllergyOther_Required" xml:space="preserve"><value>Descriu l’altra al·lèrgia.</value></data>
   <data name="Cantina_Dietary_IntoleranceOther_Required" xml:space="preserve"><value>Descriu l’altra intolerància.</value></data>
-  <data name="Cantina_Dietary_ShiftSignupFailed" xml:space="preserve"><value>No s'ha pogut apuntar al torn.</value></data>
-  <data name="Cantina_Dietary_ShiftSignupSucceeded" xml:space="preserve"><value>T'hi has apuntat correctament!</value></data>
-  <data name="Cantina_Dietary_ShiftSignupSucceededWithWarning" xml:space="preserve"><value>T'hi has apuntat correctament. Nota: {0}</value><comment>{0} = signup warning</comment></data>
-  <data name="Cantina_Dietary_ShiftRangeSignupFailed" xml:space="preserve"><value>No s'ha pogut apuntar al rang de torns.</value></data>
-  <data name="Cantina_Dietary_ShiftRangeSignupSucceeded" xml:space="preserve"><value>T'hi has apuntat al rang de dates correctament!</value></data>
-  <data name="Cantina_Dietary_ShiftRangeSignupSucceededWithWarning" xml:space="preserve"><value>T'hi has apuntat al rang de dates correctament. Nota: {0}</value><comment>{0} = signup warning</comment></data>
   <data name="Cantina_Dietary_BreadcrumbNavigation" xml:space="preserve"><value>Ruta de navegació</value></data>
   <data name="Cantina_Dietary_PageTitle" xml:space="preserve"><value>Informació alimentària</value></data>
   <data name="Cantina_Dietary_Saved" xml:space="preserve"><value>S’ha desat la teva informació alimentària.</value></data>
   <data name="Cantina_Dietary_SaveFailed" xml:space="preserve"><value>No s’ha pogut desar la informació alimentària.</value></data>
   <data name="Cantina_Dietary_LoadFailed" xml:space="preserve"><value>No s’ha pogut carregar la informació alimentària.</value></data>
+  <data name="Cantina_Dietary_OptionalHint" xml:space="preserve"><value>Opcional. Ajuda la cantina a planificar els àpats dels torns llargs i mai no afecta les teves inscripcions als torns.</value></data>
+  <data name="Cantina_Dietary_DeclineButton" xml:space="preserve"><value>Prefereixo no respondre</value></data>
+  <data name="Cantina_Dietary_Declined" xml:space="preserve"><value>Entesos: no et tornarem a preguntar per la teva informació alimentària. La pots afegir aquí quan vulguis.</value></data>
+  <data name="Cantina_Dietary_DeclinedNotice" xml:space="preserve"><value>Has triat no compartir la teva informació alimentària, així que no te la demanarem. La pots omplir quan vulguis.</value></data>
 </root>

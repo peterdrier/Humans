@@ -36,7 +36,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
 {
     // A clock and a DbContext-options factory, owned here rather than shared: a harness
     // built around an in-memory UsersDbContext would grant this project
-    // InternalsVisibleTo on it (design §15 step 8).
+    // InternalsVisibleTo on it.
     private readonly FakeClock Clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
 
     private static DbContextOptions<TContext> NewSectionDbOptions<TContext>()

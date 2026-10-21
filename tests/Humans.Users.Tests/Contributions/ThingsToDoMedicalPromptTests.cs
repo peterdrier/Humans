@@ -78,6 +78,16 @@ public class ThingsToDoMedicalPromptTests
     }
 
     [HumansFact]
+    public async Task MedicalPromptGoesAwayAfterIDontWantToAnswer()
+    {
+        var userId = StubUser(dietary: null, medical: null, declined: true);
+
+        var entries = await _sut.EntriesAsync(_services, Principal(userId));
+
+        entries.Should().NotContain(e => e.Key == "medical", "the opt-out closes the dietary nudge it rides with");
+    }
+
+    [HumansFact]
     public async Task MedicalPromptNotShownWhenConditionsAreOnFile()
     {
         var userId = StubUser(dietary: null, medical: "Epilepsy");
@@ -98,12 +108,14 @@ public class ThingsToDoMedicalPromptTests
         entries.Should().NotContain(e => e.Key == "dietary-medical" || e.Key == "dietary");
     }
 
-    private Guid StubUser(string? dietary, string? medical)
+    private Guid StubUser(string? dietary, string? medical, bool declined = false)
     {
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoWith(userId, medical));
         _cantina.GetDietaryProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(dietary is null ? null : new DietaryProfileInfo(userId, dietary, [], null, [], null));
+            .Returns(dietary is null && !declined
+                ? null
+                : new DietaryProfileInfo(userId, dietary, [], null, [], null, declined));
         _shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<ShiftUserSummary>(new ShiftUserSummary(userId, [], [])));
         return userId;

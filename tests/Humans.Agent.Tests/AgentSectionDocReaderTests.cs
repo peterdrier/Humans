@@ -195,7 +195,7 @@ public class AgentSectionDocReaderTests
     /// <summary>
     /// Walks up from the test binaries to the repo root. Three lines, inlined rather than
     /// shared from Humans.Application.Tests: this project needs one member of that class,
-    /// not the harness around it (design §15 step 8).
+    /// not the harness around it.
     /// </summary>
     private static string LocateRepoRoot()
     {

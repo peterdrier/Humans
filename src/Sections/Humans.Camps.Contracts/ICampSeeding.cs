@@ -33,7 +33,7 @@ public interface ICampSeeding
 /// <summary>
 /// The camp-role definition verbs the dev seeders drive. Separate from
 /// <see cref="ICampSeeding"/> because <c>DevelopmentCampRoleSeeder</c> needs only these and
-/// the two services behind them are separate (design §15 step 5b: the interface count is not
+/// the two services behind them are separate (the interface count is not
 /// the thing to minimise, the surface is).
 /// </summary>
 public interface ICampRoleSeeding

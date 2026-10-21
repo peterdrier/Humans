@@ -110,7 +110,7 @@ public class DevelopmentPageRenderTests(HumansTestDatabase database) : Integrati
         // The section's negative access rule. Worth pinning at the move because both
         // controllers are now internal types in another assembly routed through
         // SectionControllerFeatureProvider, while their policies stayed in Shell's
-        // AuthorizationPolicyExtensions (design §8's asymmetry).
+        // AuthorizationPolicyExtensions.
         //
         // 302 to Program.cs's AccessDeniedPath, not 403: cookie authentication redirects an
         // authenticated-but-unauthorized request, app-wide (Cantina's rule).

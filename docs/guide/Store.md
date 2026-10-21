@@ -67,7 +67,7 @@ Go to `/Store/Admin/Catalog` to see all products, and add or edit one at `/Store
 
 ### Issuing a camp's invoice
 
-Open the camp's order and use **Issue invoice**. The button appears only on an open order with at least one item, and only works once the balance is exactly zero (it shows disabled with a notice until then). It creates the document in Holded and approves
+Open the camp's order and use **Issue invoice**. The button appears only on an open order with at least one item, and a new invoice can only be issued once the balance is exactly zero (until then a notice shows next to the button). It creates the document in Holded and approves
 it in one step, then freezes the order — the prices stop tracking the catalogue and the order can
 never be issued a second time.
 

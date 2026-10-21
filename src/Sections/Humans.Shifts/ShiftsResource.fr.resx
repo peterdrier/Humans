@@ -1097,11 +1097,9 @@
   <data name="EmailTeamRotas_Send" xml:space="preserve">
     <value>Envoyer &#xE0; {0} destinataire(s)</value>
   </data>
-  <data name="Shifts_SignupDisabledTooltip_MissingDietary" xml:space="preserve"><value>Tell us your food needs first.</value></data>
   <data name="Shifts_SetupClosedBadge" xml:space="preserve"><value>Montage fermé</value></data>
   <data name="Shifts_SignupDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Les inscriptions au montage sont closes — nous sommes déjà sur place.</value></data>
   <data name="Shifts_BailDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Les shifts de montage sont verrouillés — contacte ta coordination si tu ne peux pas venir.</value></data>
-  <data name="Shifts_DietaryRequiredBeforeSignup" xml:space="preserve"><value>Quick stop — we need your dietary info before signing up for this shift.</value></data>
   <data name="GetInvolved_UrgentShifts" xml:space="preserve">
     <value>Créneaux qui ont besoin de humans maintenant</value>
   </data>
@@ -1156,9 +1154,10 @@
   <data name="Dashboard_CampsDescription" xml:space="preserve">
     <value>Les quartiers qui font qu'Elsewhere se sent comme chez soi.</value>
   </data>
-  <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>We need your dietary info</value></data>
-  <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>You're signed up for a long shift. The cantina can't plan your meals until you tell us your food preferences.</value></data>
+  <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>Tu nous indiques tes préférences alimentaires ?</value></data>
+  <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>Tu es inscrit·e à un long créneau. Si tu nous indiques tes préférences alimentaires, la cantine peut prévoir tes repas. C'est facultatif.</value></data>
   <data name="DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
+  <data name="DietaryMissingBanner_Decline" xml:space="preserve"><value>Je préfère ne pas répondre</value></data>
   <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>Voir tous mes créneaux</value></data>
   <data name="Shifts_SortOrder" xml:space="preserve"><value>Ordre de tri</value></data>
   <data name="Shifts_BailRangeSuccess" xml:space="preserve"><value>Tu t'es retiré de la série de créneaux.</value></data>

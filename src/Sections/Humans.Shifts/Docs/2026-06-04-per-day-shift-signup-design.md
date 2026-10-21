@@ -5,6 +5,8 @@
 **Date:** 2026-06-04.
 **Component class:** Load-bearing (this is the primary volunteer signup surface).
 
+> **Superseded in part (nobodies-collective/Humans#2104):** the dietary gate, the dietary-blocked button state and the dietary replay described below were removed. Dietary info is opt-in and never blocks a signup; see `src/Sections/Humans.Cantina/Docs/features/dietary-nudge.md`.
+
 ## Problem
 
 Signing up for shifts on the browse page (`/Shifts`) has two different flows, both of which reload the whole page on every change:

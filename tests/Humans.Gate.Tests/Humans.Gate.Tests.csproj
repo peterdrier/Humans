@@ -20,7 +20,7 @@
     <!--
       The section's two controllers, its PIN throttle and its mirror ledger are ASP.NET /
       IMemoryCache types; a plain Microsoft.NET.Sdk test project does not get the shared
-      framework and cannot get there with a PackageReference (design §15 step 1/8).
+      framework and cannot get there with a PackageReference.
     -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>

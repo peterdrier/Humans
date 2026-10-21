@@ -744,4 +744,5 @@
   <data name="Governance_Notification_Renew" xml:space="preserve"><value>Verlängern →</value></data>
   <data name="Governance_BoardVoting_NoteTooLong" xml:space="preserve"><value>Die Notiz darf höchstens 4000 Zeichen enthalten. Deine Stimme wurde nicht geändert.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteTooLong" xml:space="preserve"><value>Die Entscheidungsnotiz darf höchstens 4000 Zeichen enthalten. Der Antrag wurde nicht abgeschlossen.</value></data>
+  <data name="Governance_BoardVoting_DecisionNoteRequired" xml:space="preserve"><value>Zum Ablehnen eines Antrags ist eine Entscheidungsnotiz erforderlich. Der Antrag wurde nicht abgeschlossen.</value></data>
 </root>

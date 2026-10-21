@@ -1,7 +1,8 @@
 <!-- freshness:triggers
   src/Sections/Humans.Consent/Views/Consent/**
   src/Sections/Humans.Consent/Views/Legal/**
-  src/Sections/Humans.Users/Views/Profile/Privacy.cshtml
+  src/Sections/Humans.Users/Views/Profile/Index.cshtml
+  src/Sections/Humans.Gdpr/Views/User/**
   src/Sections/Humans.Consent/Views/AdminLegalDocuments/LegalDocuments.cshtml
   src/Sections/Humans.Consent/Views/AdminLegalDocuments/CreateLegalDocument.cshtml
   src/Sections/Humans.Consent/Views/AdminLegalDocuments/EditLegalDocument.cshtml
@@ -46,9 +47,9 @@ This section also surfaces your two core GDPR rights: a copy of everything the o
 
 **Viewing your consent history.** From `/Consent` you can see every document you've signed, its version, and whether it's still current. If a document has been updated, you'll see an "Action required" badge and will need to re-sign. There's a per-document grace period (seven days by default) before a missing re-consent affects your team membership.
 
-**Downloading your data (Article 15).** From your profile, use "Download my data" to get a JSON file containing everything the system holds about you: profile, contact fields, consents, team memberships, shift sign-ups, tickets, feedback, audit entries. Self-service, no request ticket.
+**Downloading your data (Article 15).** On the My Data page (`/Consent/MyData`, linked from your profile), use "Download my data" to get a JSON file containing everything the system holds about you: profile, contact fields, consents, team memberships, shift sign-ups, tickets, feedback, audit entries. Self-service, no request ticket.
 
-**Requesting account deletion (Article 17).** From your profile, use "Delete my account." Your team memberships are revoked immediately, so you stop showing up in rosters and Google Groups. The data purge runs as a background job shortly after. A few records are kept as required by law (consent records, append-only audit entries), but personal identifiers on those are scrubbed or rewritten to a placeholder.
+**Requesting account deletion (Article 17).** On the same My Data page, use "Delete my account." Your team memberships are revoked immediately, so you stop showing up in rosters and Google Groups. The data purge runs as a background job once the 30-day grace period ends — or, if you hold a ticket for the current event, once its post-event hold date passes, whichever is later. A few records are kept as required by law (consent records, append-only audit entries), but personal identifiers on those are scrubbed or rewritten to a placeholder.
 
 ## As a Coordinator (Consent Coordinator)
 
@@ -74,6 +75,6 @@ Coordinators cannot edit legal documents or publish new versions — that's a Bo
 
 ## Related sections
 
-- [Profiles](Profiles.md) — consent status lives on the profile; download/delete start there.
+- [Profiles](Profiles.md) — consent status lives on the profile; it links to the My Data page for download/delete.
 - [Onboarding](Onboarding.md) — entering your legal name unlocks app access; signing all required documents (plus name) admits you to the Volunteers team.
 - [Admin](Admin.md) — document management and flagged-review queue.

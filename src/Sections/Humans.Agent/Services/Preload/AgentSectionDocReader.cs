@@ -21,7 +21,7 @@ internal sealed class AgentSectionDocReader(
 
     /// <summary>
     /// Where a section keeps its invariants doc: inside its own project
-    /// (nobodies-collective/Humans#866 design §7a). Internal because <c>SectionAnnotations</c>
+    /// (nobodies-collective/Humans#866). Internal because <c>SectionAnnotations</c>
     /// reports the same folder on /Debug/Sections and the docs health check probes it; a second
     /// copy of the path would be a second thing to get wrong.
     /// </summary>

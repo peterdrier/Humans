@@ -44,7 +44,7 @@ pages and data.
 
 ## Negative Access Rules
 
-- A Volunteer **cannot** run the scan: `POST /Monitor/CheckDriveActivity` redirects them to `AccessDeniedPath` (policy at `Controllers/MonitorController.cs:21`, path set at `src/Humans.Web/Program.cs:163`).
+- A Volunteer **cannot** run the scan: `POST /Monitor/CheckDriveActivity` redirects them to `AccessDeniedPath` (policy at `Controllers/MonitorController.cs:21`, path set at `src/Humans.Web/Program.cs:161`).
 
 ## Triggers
 

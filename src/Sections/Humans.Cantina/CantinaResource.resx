@@ -85,15 +85,13 @@
   <data name="Cantina_Dietary_Intolerance_Lactose" xml:space="preserve"><value>Lactose</value></data>
   <data name="Cantina_Dietary_AllergyOther_Required" xml:space="preserve"><value>Please describe your "Other" allergy.</value></data>
   <data name="Cantina_Dietary_IntoleranceOther_Required" xml:space="preserve"><value>Please describe your "Other" intolerance.</value></data>
-  <data name="Cantina_Dietary_ShiftSignupFailed" xml:space="preserve"><value>Shift signup failed.</value></data>
-  <data name="Cantina_Dietary_ShiftSignupSucceeded" xml:space="preserve"><value>Signed up successfully!</value></data>
-  <data name="Cantina_Dietary_ShiftSignupSucceededWithWarning" xml:space="preserve"><value>Signed up successfully. Note: {0}</value><comment>{0} = signup warning</comment></data>
-  <data name="Cantina_Dietary_ShiftRangeSignupFailed" xml:space="preserve"><value>Shift range signup failed.</value></data>
-  <data name="Cantina_Dietary_ShiftRangeSignupSucceeded" xml:space="preserve"><value>Signed up for date range!</value></data>
-  <data name="Cantina_Dietary_ShiftRangeSignupSucceededWithWarning" xml:space="preserve"><value>Signed up for date range. Note: {0}</value><comment>{0} = signup warning</comment></data>
   <data name="Cantina_Dietary_BreadcrumbNavigation" xml:space="preserve"><value>Breadcrumb</value></data>
   <data name="Cantina_Dietary_PageTitle" xml:space="preserve"><value>Dietary info</value></data>
   <data name="Cantina_Dietary_Saved" xml:space="preserve"><value>Your dietary info has been saved.</value></data>
   <data name="Cantina_Dietary_SaveFailed" xml:space="preserve"><value>Failed to save dietary info.</value></data>
   <data name="Cantina_Dietary_LoadFailed" xml:space="preserve"><value>Failed to load dietary info.</value></data>
+  <data name="Cantina_Dietary_OptionalHint" xml:space="preserve"><value>Optional. It helps the cantina plan meals for long shifts and never affects your shift signups.</value></data>
+  <data name="Cantina_Dietary_DeclineButton" xml:space="preserve"><value>I don't want to answer</value></data>
+  <data name="Cantina_Dietary_Declined" xml:space="preserve"><value>Got it — we won't ask about your dietary info again. You can add it here any time.</value></data>
+  <data name="Cantina_Dietary_DeclinedNotice" xml:space="preserve"><value>You chose not to share dietary info, so we won't ask. You can still fill it in any time.</value></data>
 </root>

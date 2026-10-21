@@ -38,8 +38,7 @@ internal sealed record ConsentDashboardHistoryItem(
 /// Kept as an interface rather than collapsed into the concrete service for two reasons:
 /// <c>CachingConsentService</c> is the §15 decorator over it, and
 /// <c>CachingConsentServiceTests</c> substitutes it — <c>MA0053</c> seals the concrete
-/// class and Castle DynamicProxy cannot proxy a sealed type (Budget's rule, design §15
-/// step 5).
+/// class and Castle DynamicProxy cannot proxy a sealed type (Budget's rule).
 /// </remarks>
 internal interface IConsentManagement : IConsentService, IConsentSubmission, IApplicationService
 {

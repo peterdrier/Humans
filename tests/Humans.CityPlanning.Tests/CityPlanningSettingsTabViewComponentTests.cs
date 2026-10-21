@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.CityPlanning.ViewComponents;
 using Microsoft.AspNetCore.Http;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using NodaTime;
 using NSubstitute;
+using Xunit;
 
 namespace Humans.CityPlanning.Tests;
 
@@ -27,7 +29,40 @@ public sealed class CityPlanningSettingsTabViewComponentTests
         // the tab must read it separately, not off CityPlanningSettingsDto.RegistrationInfo.
         service.GetRegistrationInfoAsync(Arg.Any<CancellationToken>()).Returns("Bring water.");
 
-        var sut = new CityPlanningSettingsTabViewComponent(service)
+        var model = await InvokeAsync(service, openSeasons: []);
+
+        model.Settings!.Year.Should().Be(2026);
+        model.RegistrationInfo.Should().Be("Bring water.");
+        model.RegistrationInfoEditable.Should().BeTrue();
+    }
+
+    /// <summary>
+    /// With no active event the placement cards go, but registration info is keyed to the highest
+    /// open season — the Register page can still show it, so the tab must still edit it.
+    /// </summary>
+    [HumansTheory]
+    [InlineData(new[] { 2027 }, true)]
+    [InlineData(new int[0], false)]
+    public async Task InvokeAsync_NoActiveEvent_RegistrationInfoEditableOnlyWithAnOpenSeason(
+        int[] openSeasons, bool editable)
+    {
+        var service = Substitute.For<ICityPlanningService>();
+        service.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns((CityPlanningSettingsDto?)null);
+        service.GetRegistrationInfoAsync(Arg.Any<CancellationToken>()).Returns(editable ? "Bring water." : null);
+
+        var model = await InvokeAsync(service, openSeasons);
+
+        model.Settings.Should().BeNull();
+        model.RegistrationInfoEditable.Should().Be(editable);
+        model.RegistrationInfo.Should().Be(editable ? "Bring water." : null);
+    }
+
+    private static async Task<CityPlanningSettingsTabViewModel> InvokeAsync(
+        ICityPlanningService service, IReadOnlyList<int> openSeasons)
+    {
+        var campService = Substitute.For<ICampService>();
+        campService.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, openSeasons));
+        var sut = new CityPlanningSettingsTabViewComponent(service, campService)
         {
             ViewComponentContext = new ViewComponentContext
             {
@@ -35,9 +70,6 @@ public sealed class CityPlanningSettingsTabViewComponentTests
             },
         };
         var result = await sut.InvokeAsync();
-        var model = (CityPlanningSettingsTabViewModel)((ViewViewComponentResult)result).ViewData!.Model!;
-
-        model.Settings.Year.Should().Be(2026);
-        model.RegistrationInfo.Should().Be("Bring water.");
+        return (CityPlanningSettingsTabViewModel)((ViewViewComponentResult)result).ViewData!.Model!;
     }
 }

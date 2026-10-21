@@ -22,7 +22,7 @@ Nobodies Collective sells event tickets through external vendors (currently Tick
 
 ### New Entities
 
-- **TicketOrder** — one record per purchase from vendor. Fields: VendorOrderId, BuyerName, BuyerEmail, MatchedUserId (auto-matched by email), TotalAmount, Currency, DiscountCode, DiscountAmount, DonationAmount, VatAmount, PaymentStatus, VendorEventId, PurchasedAt, SyncedAt, StripePaymentIntentId, PaymentMethod, PaymentMethodDetail, StripeFee, ApplicationFee
+- **TicketOrder** — one record per purchase from vendor. Fields: VendorOrderId, BuyerName, BuyerEmail, MatchedUserId (auto-matched by email), TotalAmount, Currency, DiscountCode, DiscountAmount, DonationAmount, VatAmount, PaymentStatus, VendorEventId, PurchasedAt, SyncedAt, StripePaymentIntentId, PaymentMethod, PaymentMethodDetail, StripeFee, ApplicationFee, FeeTax, WithheldTax
 - **TicketAttendee** — one per issued ticket (multiple per order). Fields: VendorTicketId, TicketOrderId, AttendeeName, AttendeeEmail, MatchedUserId, TicketTypeName, Price, Status (Valid/Void/CheckedIn), Barcode (vendor `issued_ticket.barcode`, nullable, indexed — searchable on `/Tickets/Attendees` alongside name and email), CheckedInAt (gate-scan time from the vendor's `/check_ins` resource; write-once — earliest scan wins — and orthogonal to Status, since a scanned ticket stays Valid), VendorEventId, SyncedAt
 - **TicketSyncState** — singleton (Id=1) tracking sync operational state. Fields: VendorEventId, LastSyncAt, SyncStatus (Idle/Running/Error), LastError, StatusChangedAt
 
@@ -34,7 +34,7 @@ Nobodies Collective sells event tickets through external vendors (currently Tick
 
 - **ITicketVendorService** — vendor-agnostic interface, owned by `Humans.Tickets` (`Contracts/` folder)
 - **TicketTailorService** — TicketTailor API client, the vendor adapter implementation of `ITicketVendorService` (`src/Sections/Humans.TicketTailor`, its own project — the only vendor adapter behind the port, beside its non-Production stub and Tickets' caching decorator; a future vendor swap adds `Humans.<NewVendor>` and deletes this one, per `TicketVendorPortArchitectureTests`). Basic Auth, cursor-based pagination. Captures `txn_id` (Stripe PaymentIntent ID), discount amounts from line items, and the per-ticket `barcode` from issued tickets. Also implements the check-in and write surface: `GET /check_ins` (gate check-in sync — checkout/undo records with quantity −1 are netted out), `POST /check_ins` (best-effort mirror of Humans gate admits), `POST /issued_tickets/{id}/void` (void-to-hold for transfers), and `POST /issued_tickets` (reissue from a hold).
-- **IStripeService / StripeService** — Stripe connector (`Humans.Stripe`); Tickets uses only its read side. Looks up PaymentIntent → Charge → BalanceTransaction to get payment method type and fee breakdown (Stripe processing fee vs TT application fee).
+- **IStripeService / StripeService** — Stripe connector (`Humans.Stripe`); Tickets uses only its read side. Looks up PaymentIntent → Charge → BalanceTransaction to get payment method type and fee breakdown (Stripe processing fee, TT application fee, Stripe's VAT on its fees, withheld tax).
 - **ITicketSyncService / TicketSyncService** — sync orchestration: fetch orders/attendees/check-ins, upsert, apply gate check-ins onto attendee rows (write-once `CheckedInAt`), email-match to users, match discount codes to campaign grants, enrich orders with Stripe fee data, compute VAT using VIP split logic
 - Local order and holdings snapshots are cleared when a configured sync attempt exits, including failures after partial writes, so readers see the committed rows.
 - **TicketSyncJob** — Hangfire recurring job (`TicketVendor:SyncIntervalMinutes`; default 15, `appsettings.json` sets 5)
@@ -89,7 +89,7 @@ Public, anonymous-accessible page used as the redirect target after a buyer comp
 - **Route**: `/Welcome` (`WelcomeController`, `[AllowAnonymous]`)
 - **Active-user shortcut**: authenticated users whose `UserState == Active` are redirected straight to `/Shifts` — they don't need the explainer. Authenticated non-Active visitors are redirected into `/OnboardingWidget` rather than seeing the explainer.
 - **CTA**: links to `/Account/Login?returnUrl=/OnboardingWidget` so post-login lands in the guided onboarding flow that surfaces priority shifts as Step 2. A secondary, deliberately unlocalized link ("New here? See what Humans does") points external visitors at the public `/Tour` page (#1272).
-- **Localization**: `Welcome_*` strings in `SharedResource.{en,es,ca,de,fr,it}.resx`
+- **Localization**: `Onboarding_Welcome*` strings in `OnboardingResource.{en,es,ca,de,fr,it}.resx`
 
 The TicketTailor "after checkout" redirect URL points at this route.
 

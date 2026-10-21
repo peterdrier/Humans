@@ -35,7 +35,7 @@ Same as current `/Shifts/ShiftInfo` — any authenticated user can view and edit
 - Wizard replaces the existing flat form at `GET /Shifts/ShiftInfo`
 - 3 steps: Skills, Work Style, Languages
 - Step 1 (Skills): emoji-prefixed chip multi-select — Bartending, First Aid, Driving, Sound, Electrical, Construction, Cooking, Art, DJ, Other
-- Step 2 (Work Style): radio cards for time preference (Early Bird, Night Owl, All Day, No Preference) + Bootstrap toggle switches for quirks (Sober Shift, Work In Shade, Quiet Work, Physical Work OK, No Heights)
+- Step 2 (Work Style): radio cards for time preference (Early Bird, Night Owl, All Day, No Preference) + Bootstrap toggle switches for quirks (Sober Shift, Work In Shade, Quiet Work, Physical Work OK, No Heights), then preferred shift-tag checkboxes when any tags exist (saved as the volunteer's tag preferences)
 - Step 3 (Languages): emoji-prefixed chip multi-select — English, Spanish, German, French, Italian, Portuguese, Catalan, Other
 - Progress dots in header show current/completed/future steps
 - Step label, title, and subtitle update per step

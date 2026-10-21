@@ -29,7 +29,7 @@ namespace Humans.Shifts;
 /// <remarks>
 /// Registrations are <c>ShiftsSectionExtensions.AddShiftsSection</c> verbatim, plus the
 /// <c>AddSectionDbContext&lt;ShiftsDbContext&gt;</c> line moved out of
-/// <c>InfrastructureServiceCollectionExtensions</c> (design §15 step 11).
+/// <c>InfrastructureServiceCollectionExtensions</c>.
 /// </remarks>
 public sealed class Section : ISection, IIssueQueueOwner
 {

@@ -115,7 +115,7 @@ public class CantinaPageRenderTests(HumansTestDatabase database) : IntegrationTe
         // Admin/CantinaAdmin never sees the roster. Worth pinning at the move because the
         // controller is now an internal type in another assembly, routed through
         // SectionControllerFeatureProvider, while CantinaAdminOrAdmin stayed in Shell's
-        // AuthorizationPolicyExtensions (design §8's asymmetry).
+        // AuthorizationPolicyExtensions.
         //
         // The shape is a 302 to Program.cs's AccessDeniedPath, not the bare 403 the invariants
         // doc claimed before this move — cookie authentication's DenyAnonymousAuthorization

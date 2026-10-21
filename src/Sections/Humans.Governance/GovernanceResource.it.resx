@@ -744,4 +744,5 @@
   <data name="Governance_Notification_Renew" xml:space="preserve"><value>Rinnova →</value></data>
   <data name="Governance_BoardVoting_NoteTooLong" xml:space="preserve"><value>La nota deve contenere al massimo 4000 caratteri. Il tuo voto non è stato modificato.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteTooLong" xml:space="preserve"><value>La nota della decisione deve contenere al massimo 4000 caratteri. La domanda non è stata finalizzata.</value></data>
+  <data name="Governance_BoardVoting_DecisionNoteRequired" xml:space="preserve"><value>Per respingere una domanda serve una nota della decisione. La domanda non è stata finalizzata.</value></data>
 </root>

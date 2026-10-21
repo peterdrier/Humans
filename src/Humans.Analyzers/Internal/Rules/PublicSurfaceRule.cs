@@ -53,7 +53,7 @@ internal static class PublicSurfaceRule
         isEnabledByDefault: true,
         description:
             "Every other public type is either an accident waiting to be depended on, or "
-            + "belongs under Contracts/ or Jobs/ instead (design §10, §6a).");
+            + "belongs under Contracts/ or Jobs/ instead.");
 
     /// <summary>The well-known types the check needs, resolved once per compilation.</summary>
     public sealed class Context(

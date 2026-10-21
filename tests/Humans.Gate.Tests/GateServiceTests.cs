@@ -67,7 +67,7 @@ public class GateServiceTests
     // The three ServiceTestHarness members this suite used — an in-memory GateDbContext,
     // a factory over the same store, and a fixed clock. Owned here rather than shared:
     // the harness is built around UsersDbContext and sharing it would grant a section
-    // test project InternalsVisibleTo on it (design §15 step 8).
+    // test project InternalsVisibleTo on it.
     // Field initialisers run in declaration order, and each test gets a fresh instance,
     // so every test case gets its own store.
     private readonly DbContextOptions<GateDbContext> _dbOptions =

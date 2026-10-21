@@ -13,7 +13,7 @@ public static class PersonSearchOrderingExtensions
     /// </summary>
     /// <remarks>
     /// In Humans.Base rather than Shell because a section project cannot reference Humans.Web
-    /// and Gate's kiosk people-picker needs the same order (design §15 step 6).
+    /// and Gate's kiosk people-picker needs the same order.
     /// </remarks>
     public static IOrderedEnumerable<HumanSearchResult> OrderByRelevance(
         this IEnumerable<HumanSearchResult> results) =>

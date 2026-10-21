@@ -6,8 +6,7 @@ markers via `GetExportedTypes()`. Everything else is `internal`.
 
 The calendar *events* half of the section has no cross-section surface at all. Its whole
 fan-in is `CalendarController` and the view models, both inside the section;
-no other section and nothing in Base reads a calendar event (design §9 B4;
-G5-SECTION-TEMPLATE.md step 5b). `ICalendarQueries` is `internal` and inside
+no other section and nothing in Base reads a calendar event (G5-SECTION-TEMPLATE.md step 5b). `ICalendarQueries` is `internal` and inside
 `Services/`: the split it draws is between the section's cached read path and its write path,
 not between sections.
 

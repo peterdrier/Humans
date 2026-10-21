@@ -19,17 +19,18 @@ internal sealed class DietaryViewModel
     [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? IntoleranceOtherText { get; set; }
 
-    // Carryover from the dietary-gate redirect (ShiftsController.ToggleDay): pure round-trip
-    // routing data so the POST can replay the original signup after a successful save
-    // (Docs/features/dietary-nudge.md, US-35.6).
+    /// <summary>Where to land after the POST: <c>"shifts"</c> (the /Shifts banner) or Home.</summary>
     public string? ReturnAction { get; set; }
-    public Guid? ShiftId { get; set; }
-    public Guid? RotaId { get; set; }
-    public int? StartDayOffset { get; set; }
-    public int? EndDayOffset { get; set; }
+
+    /// <summary>Posted by the "I don't want to answer" buttons; the answers are then ignored.</summary>
+    public bool DeclineToAnswer { get; set; }
+
+    /// <summary>The member's stored choice, shown as a note on the form.</summary>
+    public bool DeclinedToAnswer { get; set; }
 
     public static DietaryViewModel FromProfile(DietaryProfileInfo? profile) => profile is null ? new() : new()
     {
+        DeclinedToAnswer = profile.DeclinedToAnswer,
         DietaryPreference = profile.DietaryPreference ?? string.Empty,
         Allergies = [.. profile.Allergies],
         AllergyOtherText = profile.AllergyOtherText,

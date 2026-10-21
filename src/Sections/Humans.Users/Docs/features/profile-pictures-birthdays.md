@@ -160,8 +160,8 @@ All UI strings are localized in 6 languages: EN, ES, CA, DE, FR, IT. Keys includ
 - `Profile_ProfilePicture`, `Profile_DateOfBirth`
 - `Profile_PictureTooLarge`, `Profile_PictureInvalidFormat`
 - `ProfileEdit_PictureHelp`, `ProfileEdit_RemovePicture`
-- `TeamDetail_TeamLeads`
-- `Birthdays_Title`, `Birthdays_Count`, `Birthdays_None`, `Birthdays_Privacy`
+- `Teams_TeamDetail_TeamCoordinators`
+- `Teams_Birthdays_Title`, `Teams_Birthdays_Count`, `Teams_Birthdays_None`, `Teams_Birthdays_Privacy`
 
 ## Related Features
 

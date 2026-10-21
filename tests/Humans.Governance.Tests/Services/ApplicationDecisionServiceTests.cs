@@ -638,6 +638,28 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         unchanged.Status.Should().Be(ApplicationStatus.Submitted);
     }
 
+    [HumansTheory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task RejectAsync_without_a_decision_note_is_refused_before_finalizing(string reason)
+    {
+        var application = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+        await SeedBoardVoteAsync(application.Id);
+
+        var result = await _service.RejectAsync(application.Id, Guid.NewGuid(), reason, null,
+            TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("DecisionNoteRequired");
+        ClearAllTrackers();
+        var stored = await GovernanceDb.Applications.SingleAsync(app => app.Id == application.Id,
+            TestContext.Current.CancellationToken);
+        stored.Status.Should().Be(ApplicationStatus.Submitted);
+        (await GovernanceDb.BoardVotes.CountAsync(vote => vote.ApplicationId == application.Id,
+            TestContext.Current.CancellationToken)).Should().Be(1);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task RejectAsync_NoBoardVotes_ReturnsNoVotesWithoutFinalizing()
     {
@@ -1212,7 +1234,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var values = new Dictionary<string, StringValues>(StringComparer.Ordinal)
         {
             ["ApplicationId"] = app.Id.ToString(),
-            ["BoardMeetingDate"] = "2026-03-01"
+            ["BoardMeetingDate"] = "2026-03-01",
+            ["DecisionNote"] = "Not a fit this cycle"
         };
         if (valid) values[finalize ? "Approved" : "vote"] = finalize ? "false" : "0";
         else if (malformed) values[finalize ? "Approved" : "vote"] = "not-a-choice";

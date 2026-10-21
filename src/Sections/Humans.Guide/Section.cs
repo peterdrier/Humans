@@ -17,8 +17,8 @@ namespace Humans.Guide;
 /// consumers are not Guide's — the Agent section's <c>AgentSectionDocReader</c>,
 /// <c>AgentFeatureSpecReader</c>, <c>CommunityFaqReader</c> and <c>AgentDocsHealthCheck</c>,
 /// and Base's <c>GitHubCommunityKbContentSource</c> — so it stays
-/// in Base with the settings type it binds (design §15 step 5b's connector test; the section
-/// that owns the file is not always the section that owns the line).
+/// in Base with the settings type it binds (the section that
+/// owns the file is not always the section that owns the line).
 /// <para>
 /// Guide owns no tables, so there is no <c>AddSectionDbContext</c> line and no repository.
 /// </para>

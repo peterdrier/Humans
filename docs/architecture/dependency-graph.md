@@ -75,12 +75,15 @@ graph LR
     Notif[NotificationService]:::crosscut
     Role[RoleAssignmentService]:::auth
     Metrics[HumansMetricsService]:::crosscut
+    AuditViewer[AuditViewerService]:::crosscut
 
     %% ── Section services (only those with cross-section edges) ──
     Backdoor[BackdoorApiKeyService]:::backdoor
 
     AgentSvc[AgentService]:::agent
     AgentSettings[AgentSettingsService]:::agent
+    AgentTool[AgentToolDispatcher]:::agent
+    AgentSnap[AgentUserSnapshotProvider]:::agent
 
     User[UserService]:::users
     UEmail[UserEmailService]:::users
@@ -89,11 +92,11 @@ graph LR
     AcctDel[AccountDeletionService]:::users
     Merge[AccountMergeService]:::users
     DupAcct[DuplicateAccountService]:::users
-    ExtLogin[ExternalLoginService]:::users
     UsersAudience[UsersAudienceService]:::users
     HumanLifecycle[HumanLifecycleService]:::users
     TeamMsgOpts[TeamMessageOptionsProvider]:::teams
     CommPref[CommunicationPreferenceService]:::email
+    EmailProblems[EmailProblemsService]:::users
     Unsub[UnsubscribeService]:::email
     UserNameSync[UserNameSyncService]:::users
 
@@ -174,6 +177,8 @@ graph LR
     TicketBudget[TicketingBudgetService]:::budget
 
     Finance[HoldedFinanceManagement]:::finance
+    HoldedDocSync[HoldedDocumentSync]:::finance
+    SepaBooking[SepaBankBooking]:::finance
     PayDetails[PaymentDetailsService]:::finance
 
     Holded[HoldedService]:::holded
@@ -248,17 +253,28 @@ graph LR
 
     %% Agent
     AgentSvc --> User
-    AgentSvc --> AppDec
-    AgentSvc --> Consent
     AgentSettings --> Audit
+    AgentTool --> AuditViewer
+    AgentTool --> ShiftView
+    AgentTool --> SettingsSvc
+    AgentSnap --> User
+    AgentSnap --> Role
+    AgentSnap --> Team
+    AgentSnap --> AppDec
+    AgentSnap --> Consent
+    AgentSnap --> Feedback
+    AgentSnap --> TicketQ
+    AgentSnap --> ShiftView
+    AgentSnap --> SettingsSvc
 
     %% Users
     User --> AdminAuth
     User --> Audit
     UEmail --> Audit
-    UEmail --> GIdentity
     CommPref --> Audit
     CommPref --> User
+    CommPref --> TicketQ
+    EmailProblems --> Audit
     Unsub --> User
     CF --> Team
     CF --> Role
@@ -267,27 +283,21 @@ graph LR
     AcctDel --> Role
     AcctDel --> Gdpr
     AcctDel --> TicketQ
-    AcctDel --> ShiftMgmt
-    AcctDel --> ShiftView
     AcctDel --> Audit
     AcctDel --> Email
     Merge --> Audit
     Merge --> Team
-    Merge --> Role
     Merge --> Notif
-    Merge --> Consent
     DupAcct --> Team
     DupAcct --> Role
     DupAcct --> Audit
     DupAcct --> AppDec
     DupAcct --> Consent
-    ExtLogin --> MagicLink
     UsersAudience --> TicketQ
     HumanLifecycle --> NotifEmitter
     HumanLifecycle --> NotifInbox
     HumanLifecycle --> Audit
     HumanLifecycle --> Metrics
-    TeamMsgOpts --> Team
     TeamMsgOpts --> TRes
     UserNameSync --> Audit
 
@@ -304,11 +314,11 @@ graph LR
     Team --> NotifEmitter
     Team --> ShiftMgmt
     Team --> AdminAuth
-    Team --> GIdentity
     TPage --> TRes
     TPage --> ShiftMgmt
     TPage --> SettingsSvc
     TPage --> User
+    TPage --> Role
 
     %% Camps
     Camp --> Audit
@@ -335,7 +345,6 @@ graph LR
     MemTier --> User
     %% Consent
     ConsentReview --> User
-    ConsentReview --> Consent
     %% Finance
     PayDetails --> User
     PayDetails --> Audit
@@ -491,8 +500,10 @@ graph LR
     Onboard --> NotifEmitter
     Onboard --> MembershipCalc
     Onboard --> Consent
+    Onboard --> ConsentReview
     Onboard --> HumanLifecycle
     Onboard --> Audit
+    Onboard --> AcctDel
     OnboardWidget --> User
     OnboardWidget --> ShiftView
     OnboardWidget --> MembershipCalc
@@ -524,16 +535,19 @@ graph LR
     %% Expenses -> Finance is the Finance.Contracts leaf, so the project graph stays acyclic.
     %% ExpenseBookings is not ExpenseReport: ExpenseReport -> Finance, so Finance -> ExpenseReport
     %% was a DI cycle that hung every request (peterdrier/Humans#2034).
+    HoldedDocSync --> Holded
+    SepaBooking --> Holded
+    SepaBooking --> Audit
 
     %% Calendar
     Cal --> Audit
+    Cal --> Team
     ICalFeed --> User
     CalFeedToken --> Audit
 
     %% Email
     Email --> UEmail
     Email --> Metrics
-    Email --> CommPref
     EmailOutbox --> SettingsSvc
     EmailOutbox --> Audit
     EmailOutboxProc --> Campaign
@@ -596,6 +610,7 @@ graph LR
     ExpenseReport --> Audit
     ExpenseReport --> Holded
     ExpenseReport --> Finance
+    ExpenseReport --> PayDetails
     ExpenseReport --> Preapproval
     ExpensePublisher --> User
     ExpensePublisher --> Holded
@@ -704,10 +719,12 @@ graph LR
     %% ═══════════════════════════════════
 
     UEmail -. "lazy" .-> TicketQ
+    UEmail -. "lazy" .-> GIdentity
     Team -. "lazy" .-> Role
     Team -. "lazy" .-> Email
     Team -. "lazy" .-> GSyncOutbox
     Team -. "lazy" .-> GSyncSvc
+    Team -. "lazy" .-> GIdentity
     Team -. "lazy" .-> TRes
     Team -. "lazy" .-> User
     Camp -. "lazy" .-> CityPlan
@@ -722,11 +739,12 @@ graph LR
     TRes -. "lazy" .-> Role
     Cal -. "lazy" .-> Team
     Metrics -. "lazy" .-> User
+    Metrics -. "lazy" .-> Consent
 
     %% ── Edge styling ──
-    %% 350 eager edges (indices 0..349) then 19 lazy edges; linkStyle indexes the lazy block by position.
+    %% Eager edges come first, then the lazy block; linkStyle indexes the lazy block by position.
     %% Recompute the indices whenever edges change.
-    linkStyle 350,351,352,353,354,355,356,357,358,359,360,361,362,363,364,365,366,367,368 stroke:#f97316,stroke-width:2.5px
+    linkStyle 381,382,383,384,385,386,387,388,389,390,391,392,393,394,395,396,397,398,399,400,401,402 stroke:#f97316,stroke-width:2.5px
 ```
 
 
@@ -736,10 +754,10 @@ Not drawn above — their collaborators are all section-internal (or fan-out con
 interfaces / infra connectors, which this graph doesn't chart):
 
 `AdminDatabaseDiagnosticsService` (repository only), `AgentAdminStatusService`,
-`AgentAnthropicBalanceProvider`, `AuditViewerService` (fans `IEntityNameContributor`),
-`BurnSettingsService`, `EmailProblemsService`, `EventBulkImporter` (Events' own repository only),
-`GoogleWorkspaceUserService`, `GuideContentService`, `MailerLiteService`, `NotificationInboxRead`
-(composes Notifications' own inbox + meter provider), `ProfileService`.
+`AgentAnthropicBalanceProvider`,
+`BurnSettingsService`, `EventBulkImporter` (Events' own repository only),
+`ExternalLoginService`, `GoogleWorkspaceUserService`, `GuideContentService`, `MailerLiteService`,
+`NotificationInboxRead` (composes Notifications' own inbox + meter provider), `ProfileService`.
 
 ## Cycles broken by lazy-resolution
 
@@ -757,7 +775,8 @@ Other notable one-way lazy edges:
 - **Team → User** — user-slice stitching; User no longer reaches back into Team.
 - **Team → GoogleSyncOutbox** — enqueues transactional-outbox Google-sync events on membership/role changes; one-way.
 - **ShiftManagement → Role / User / Camp / Tickets**, **Team → Role / Email**, **TeamResource → Role** — one-way lazy where eager injection would still close a cycle through other paths (notably `ISystemTeamSync`, a job interface outside this graph).
-- **Calendar → Team**, **HumansMetrics → User** — Singleton hosts (the `CachingCalendarService` decorator, the polled metrics gauge) resolving a scoped read service per call, not cycle breaks.
+- **Team → WorkspaceIdentity**, **UserEmail → WorkspaceIdentity** — one-way lazy resolution of `IGoogleIntegrationService` / `IGoogleIntegrationWrite`.
+- **Calendar → Team**, **HumansMetrics → User / Consent** — Singleton hosts (the `CachingCalendarService` decorator, the polled metrics gauge) resolving a scoped read service per call, not cycle breaks.
 
 When adding a new cross-service call, default to ctor injection. Reach for the lazy pattern only when ctor injection produces a circular DI error, and document why at the call site.
 

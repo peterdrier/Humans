@@ -72,7 +72,8 @@ The inner service holds no cache — invalidation methods are no-ops on the
 inner; `CachingTicketQueryService` intercepts. Cross-section calls via
 `IBudgetService`, `ICampaignService`, `ICampaignWrite`, `IUserService`,
 `IUserEmailService`, `ITeamService` (read-split surface),
-`ISettingsService`, plus `IClock`. Carries the GDPR export/erasure bodies
+`ISettingsService`, `IGovernanceService` (membership tier column on the ticket-holder rows),
+`IAuditLogService` (one entry per attendee / order export), plus `IClock`. Carries the GDPR export/erasure bodies
 (`ContributeForUserAsync`, `EraseForUserAsync` on `ITicketManagement`) and the
 static `Erasure` table; the decorator fronts them as the section's one
 `IUserDataContributor`. `EraseForUserAsync` erases via
@@ -231,7 +232,8 @@ Implements the internal `IEventParticipationManagement` (and so `ITicketWrite`),
 ### UserParticipationBackfillService (Scoped)
 
 No repository. Parses the `/Tickets/Participation/Backfill` CSV and calls
-`IEventParticipationManagement.BackfillParticipationsAsync`. No cache.
+`IEventParticipationManagement.BackfillParticipationsAsync`; the active event comes from
+`ISettingsService`. No cache.
 
 ### OnsiteRosterService (Scoped)
 

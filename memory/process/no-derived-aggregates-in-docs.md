@@ -1,6 +1,6 @@
 ---
 name: No derived aggregates in docs
-description: HARD RULE. Never write a doc number derived from data already in that doc — no list counts, `Total` rows, or code-owned-set counts. Delete stale counts, don't refresh them.
+description: HARD RULE. Never write a doc number derived from data already in that doc — no list counts, `Total` rows, or code-owned-set counts. Any count you find, delete it on sight; never refresh it.
 ---
 
 # No derived aggregates in docs
@@ -66,17 +66,16 @@ It over-reports — dates, issue refs, config values and thresholds all match, a
 fine. Read each hit and ask the one question: *is this number derived from something else?*
 Delete the ones that are, in the same commit.
 
-**Review scope — pre-existing counts are not findings.** This rule binds the *author* of new
-prose: don't write derived numbers. In code review it applies only to counts the PR under
-review **added or modified**. A derived count that already existed on main is documented debt,
-not an error in the PR — flagging it there is wrong, and each PR is not a dumping ground for
-discovering the next pre-existing violation. Peter, 2026-08-26: a third of Codex's findings
-were pre-existing counts; that class of finding is invalid unless the PR introduced the count.
+**Pre-existing counts: remove on sight.** Whoever finds a derived count, in any doc, deletes
+the number in the change they are already making. No question to Peter, no follow-up, no
+"not this PR's" punt. Peter, 2026-10-21: "we don't count in our docs ... remove the number",
+and make that automatic whenever more are found. Two limits: never edit Peter's own files
+(`docs/architecture/peters-hard-rules.md`, `peters-working-rules.md`); tell him instead.
+And a reviewer's finding about a pre-existing count is not a defect of the PR's logic: the
+author just deletes the number and says so in one line.
 
-**And not ledger entries either.** A pre-existing derived count is never recorded in a debt
-ledger, run file, issue, or any other log. Its existence in its first form *is* the complete
-debt record; writing "doc X has a hand-maintained count" anywhere else creates exactly the
-shadow copy this rule forbids. Nothing shall refer to it as a problem other than the count
-itself, where it sits. It gets fixed only when a change touches that prose anyway.
+**Never log one.** A derived count is never recorded in a debt ledger, run file, issue, or any
+other log. Writing "doc X has a hand-maintained count" anywhere creates exactly the shadow copy
+this rule forbids. The fix is the deletion, done where it sits.
 
 Related: [[reuse-first-change-discipline]], [[rules-maintenance]], [[review-finding-triage]].

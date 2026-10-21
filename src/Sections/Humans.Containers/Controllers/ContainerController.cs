@@ -37,6 +37,7 @@ internal sealed class ContainerController(
         var canPlace = await AuthorizeAsync(target, ContainerOperationRequirement.Place);
 
         var settings = await cityPlanningService.GetSettingsAsync(ct);
+        if (settings is null) return NotFound(); // no active event
         var containers = await containerService.GetByCampAsync(camp.Id, ct);
         var sortedContainers = containers
             .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)

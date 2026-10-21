@@ -31,7 +31,8 @@ public sealed class ContainerPlacementPhaseTests : CityPlanningTestBase
             _campService,
             Substitute.For<ITeamService>(),
             Substitute.For<IUserService>(),
-            Substitute.For<IAuditLogService>());
+            Substitute.For<IAuditLogService>(),
+            ActiveEvent(2026));
     }
 
     [HumansFact]
@@ -41,7 +42,7 @@ public sealed class ContainerPlacementPhaseTests : CityPlanningTestBase
 
         await _sut.OpenContainerPlacementAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
-        var settings = await _sut.GetSettingsAsync(Xunit.TestContext.Current.CancellationToken);
+        var settings = (await _sut.GetSettingsAsync(Xunit.TestContext.Current.CancellationToken))!;
         settings.IsContainerPlacementOpen.Should().BeTrue();
         settings.ContainerPlacementOpenedAt.Should().Be(Clock.GetCurrentInstant());
         settings.ContainerPlacementClosedAt.Should().BeNull();
@@ -55,7 +56,7 @@ public sealed class ContainerPlacementPhaseTests : CityPlanningTestBase
 
         await _sut.CloseContainerPlacementAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
-        var settings = await _sut.GetSettingsAsync(Xunit.TestContext.Current.CancellationToken);
+        var settings = (await _sut.GetSettingsAsync(Xunit.TestContext.Current.CancellationToken))!;
         settings.IsContainerPlacementOpen.Should().BeFalse();
         settings.ContainerPlacementClosedAt.Should().Be(Clock.GetCurrentInstant());
     }

@@ -1098,11 +1098,9 @@
   <data name="EmailTeamRotas_Send" xml:space="preserve">
     <value>Enviar a {0} destinatario(s)</value>
   </data>
-  <data name="Shifts_SignupDisabledTooltip_MissingDietary" xml:space="preserve"><value>Primero cuéntanos tus necesidades alimentarias.</value></data>
   <data name="Shifts_SetupClosedBadge" xml:space="preserve"><value>Montaje cerrado</value></data>
   <data name="Shifts_SignupDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Las inscripciones de montaje están cerradas — ya estamos en el sitio.</value></data>
   <data name="Shifts_BailDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Los turnos de montaje ya están cerrados — contacta con tu coordinación si no puedes venir.</value></data>
-  <data name="Shifts_DietaryRequiredBeforeSignup" xml:space="preserve"><value>Un momento — necesitamos tu información alimentaria antes de apuntarte a este turno.</value></data>
   <data name="GetInvolved_UrgentShifts" xml:space="preserve">
     <value>Turnos que necesitan humans ahora</value>
   </data>
@@ -1157,9 +1155,10 @@
   <data name="Dashboard_CampsDescription" xml:space="preserve">
     <value>Los barrios que hacen que Elsewhere se sienta como casa.</value>
   </data>
-  <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>Necesitamos tus datos alimentarios</value></data>
-  <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>Estás apuntada a un turno largo. La cantina no puede planificar tus comidas hasta que nos digas tus preferencias.</value></data>
+  <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>¿Nos cuentas tus preferencias alimentarias?</value></data>
+  <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>Estás en un turno largo. Si nos cuentas tus preferencias alimentarias, la cantina puede planificar tus comidas. Es opcional.</value></data>
   <data name="DietaryMissingBanner_Cta" xml:space="preserve"><value>Decírnoslo ahora</value></data>
+  <data name="DietaryMissingBanner_Decline" xml:space="preserve"><value>Prefiero no responder</value></data>
   <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>Ver todos mis turnos</value></data>
   <data name="Shifts_SortOrder" xml:space="preserve"><value>Orden</value></data>
   <data name="Shifts_BailRangeSuccess" xml:space="preserve"><value>Has cancelado el rango de turnos.</value></data>

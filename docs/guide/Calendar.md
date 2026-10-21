@@ -52,7 +52,7 @@ Every event page ends with a change-history panel listing who created, edited, o
 
 ### Subscribe in your own calendar app
 
-Below the month grid at `/Calendar` is your personal feed URL. Copy it into any calendar app that subscribes to iCal feeds and it shows your shift signups, the guide events you saved and your working groups' meetings — not the community calendar's events. The URL is private: anyone who has it can read the feed. **Regenerate URL** replaces it, and every copy you handed out before stops working.
+Below the month grid at `/Calendar` is your personal feed card. The first time, press **Create my feed URL** to get your URL. Copy it into any calendar app that subscribes to iCal feeds and it shows your shift signups, the guide events you saved and your working groups' meetings — not the community calendar's events. The URL is private: anyone who has it can read the feed. **Regenerate URL** replaces it, and every copy you handed out before stops working.
 
 ## Related sections
 

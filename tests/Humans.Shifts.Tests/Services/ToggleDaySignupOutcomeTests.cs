@@ -16,7 +16,7 @@ public sealed class ToggleDaySignupOutcomeTests
             SignupStatus.Refused, SignupStatus.Cancelled, SignupStatus.NoShow
         }.Select(status => new ShiftSignup { Id = Guid.NewGuid(), Status = status }).ToList();
 
-        var outcome = new ToggleDaySignupOutcome(false, null, true, false, signups);
+        var outcome = new ToggleDaySignupOutcome(SignupResult.Ok(Guid.NewGuid()), true, false, signups);
 
         outcome.ActiveSignupCount.Should().Be(2);
     }

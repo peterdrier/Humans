@@ -195,13 +195,7 @@ internal sealed class GovernanceBoardVotingController(
             {
                 logger.LogWarning("Finalize failed for application {ApplicationId}: {ErrorKey}",
                     model.ApplicationId, result.ErrorKey);
-                var (messageKey, returnToDetail) = result.ErrorKey switch
-                {
-                    "NotFound" => ("Governance_BoardVoting_ApplicationNotFound", false),
-                    "NoVotes" => ("Governance_BoardVoting_NoVotes", true),
-                    "DecisionNoteTooLong" => ("Governance_BoardVoting_DecisionNoteTooLong", true),
-                    _ => ("Governance_BoardVoting_ApplicationNotVotable", false)
-                };
+                var (messageKey, returnToDetail) = FinalizeErrorMessage(result.ErrorKey);
                 SetError(localizer[messageKey].Value);
                 return returnToDetail
                     ? RedirectToAction(nameof(BoardVotingDetail), new { applicationId = model.ApplicationId })
@@ -217,4 +211,13 @@ internal sealed class GovernanceBoardVotingController(
         }
         return RedirectToAction(nameof(BoardVoting));
     }
+
+    private static (string MessageKey, bool ReturnToDetail) FinalizeErrorMessage(string? errorKey) => errorKey switch
+    {
+        "NotFound" => ("Governance_BoardVoting_ApplicationNotFound", false),
+        "NoVotes" => ("Governance_BoardVoting_NoVotes", true),
+        "DecisionNoteTooLong" => ("Governance_BoardVoting_DecisionNoteTooLong", true),
+        "DecisionNoteRequired" => ("Governance_BoardVoting_DecisionNoteRequired", true),
+        _ => ("Governance_BoardVoting_ApplicationNotVotable", false)
+    };
 }

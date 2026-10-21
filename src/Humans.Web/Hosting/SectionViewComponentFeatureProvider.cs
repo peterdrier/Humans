@@ -27,7 +27,7 @@ namespace Humans.Web.Hosting;
 /// First needed by Notifications, whose bell is chrome rendered from Shell's
 /// <c>_Layout</c> and <c>_AdminLayout</c>. Leaving the component in
 /// Shell would have split the section's 38-key resource set, since its markup renders
-/// two of them (design §15 step 3b).
+/// two of them.
 /// </para>
 /// </remarks>
 internal sealed class SectionViewComponentFeatureProvider

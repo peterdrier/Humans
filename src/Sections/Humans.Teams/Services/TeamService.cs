@@ -1637,7 +1637,7 @@ internal sealed class TeamService(
     // ==========================================================================
     // ITeamSeeding — the dev/demo fixture surface. Explicit implementations: the members of
     // the same names on this class return the section's entities, which cannot leave the
-    // assembly, so these overloads differ only in their projection (design §15 step 5b).
+    // assembly, so these overloads differ only in their projection.
     // ==========================================================================
 
     async Task<TeamInfo> ITeamSeeding.CreateTeamAsync(
