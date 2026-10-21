@@ -5,6 +5,7 @@ using Microsoft.Extensions.Hosting;
 // @e2e: profile.spec.ts
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
+using Humans.GoogleIntegration.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using Humans.Base.Controllers;
@@ -29,6 +30,7 @@ internal sealed class UsersAdminController(
     IOnboardingIntake onboardingService,
     IUsersAudienceService audienceService,
     IAccountDeletionService accountDeletionService,
+    IGoogleIntegrationService googleIdentities,
     IWebHostEnvironment environment,
     IClock clock,
     ILogger<UsersAdminController> logger,
@@ -69,11 +71,23 @@ internal sealed class UsersAdminController(
                 .ToHashSet();
         }
 
+        // nobodies-collective/Humans#847: the Google-rejected filter reads GoogleIntegration's
+        // identity verdicts (Users decomposition commit 15), loaded only when it is asked for.
+        IReadOnlySet<Guid>? googleRejectedUserIds = null;
+        if (string.Equals(filter, AdminHumanListAssembler.GoogleRejectedFilter, StringComparison.OrdinalIgnoreCase))
+        {
+            googleRejectedUserIds = (await googleIdentities.GetWorkspaceIdentitiesAsync(allUserIds, ct))
+                .Where(kv => kv.Value.Status == GoogleEmailStatus.Rejected)
+                .Select(kv => kv.Key)
+                .ToHashSet();
+        }
+
         var allRows = AdminHumanListAssembler.Assemble(
             allUsers,
             notificationEmails,
             searchUserIds,
-            filter);
+            filter,
+            googleRejectedUserIds);
 
         var viewModel = AdminHumanListViewModelBuilder.Build(
             allRows,

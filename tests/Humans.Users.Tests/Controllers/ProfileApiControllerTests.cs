@@ -238,10 +238,10 @@ public class ProfileApiControllerTests
                 ContactFieldVisibility.AllActiveProfiles, Arg.Any<CancellationToken>())
             .Returns([
                 new UserEmailDto(Guid.NewGuid(), "alt@example.com",
-                    IsVerified: true, IsGoogle: false, Provider: null, ProviderKey: null,
+                    IsVerified: true, Provider: null, ProviderKey: null,
                     IsPrimary: false, Visibility: ContactFieldVisibility.AllActiveProfiles),
                 new UserEmailDto(Guid.NewGuid(), "primary@example.com",
-                    IsVerified: true, IsGoogle: false, Provider: null, ProviderKey: null,
+                    IsVerified: true, Provider: null, ProviderKey: null,
                     IsPrimary: true, Visibility: ContactFieldVisibility.AllActiveProfiles)
             ]);
 
@@ -503,7 +503,7 @@ public class ProfileApiControllerTests
         _userEmailService.GetVisibleEmailsAsync(targetUserId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
             .Returns([
                 new UserEmailDto(Guid.NewGuid(), "shared@example.com",
-                    IsVerified: true, IsGoogle: false, Provider: null, ProviderKey: null,
+                    IsVerified: true, Provider: null, ProviderKey: null,
                     IsPrimary: true, Visibility: ContactFieldVisibility.AllActiveProfiles)
             ]);
 

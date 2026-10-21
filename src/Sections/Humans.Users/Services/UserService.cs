@@ -228,36 +228,6 @@ internal sealed class UserService(
 
     // --- User writes ---
 
-    public async Task<bool> TrySetGoogleEmailStatusFromSyncAsync(
-        Guid userId, GoogleEmailStatus status, CancellationToken ct = default, Guid? googleEmailId = null)
-    {
-        // Vendor results belong to the row that was attempted, even if the user switched
-        // Google address while the request ran. Legacy callers may still select the current
-        // verified Google/OAuth address by omitting the row id.
-        var emails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
-        var googleRow = googleEmailId is { } targetId
-            ? emails.FirstOrDefault(e => e.Id == targetId && e.IsVerified)
-            : emails.FirstOrDefault(e => e.IsVerified && e.IsGoogle)
-                ?? emails.Where(e => e.IsVerified && e.Provider != null)
-                    .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
-        if (googleRow is null)
-            return false;
-
-        // Rejected is terminal for a given address: a later successful sync MUST NOT silently flip
-        // it back to Valid. The user clears it by selecting a different Google email, which lands on
-        // a different row that starts Unknown — so the rejection never strands sync again.
-        if (status == GoogleEmailStatus.Valid && googleRow.GoogleEmailStatus == GoogleEmailStatus.Rejected)
-            return false;
-
-        if (googleRow.GoogleEmailStatus == status)
-            return false;
-
-        googleRow.GoogleEmailStatus = status;
-        googleRow.UpdatedAt = clock.GetCurrentInstant();
-        await repo.UpdateUserEmailAsync(googleRow, ct);
-        return true;
-    }
-
     public async Task SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default)
     {
         await repo.SetPreferredLanguageAsync(userId, preferredLanguage, ct);
@@ -634,7 +604,6 @@ internal sealed class UserService(
             Email = email,
             IsVerified = command.IsVerified,
             IsPrimary = false,
-            IsGoogle = false,
             Visibility = command.Visibility,
             Provider = command.Provider,
             ProviderKey = command.ProviderKey,
@@ -646,7 +615,6 @@ internal sealed class UserService(
         await repo.AddUserEmailAsync(row, ct);
         // The row has committed; finish its required invariant repairs after a browser disconnect.
         await EnsurePrimaryInvariantAsync(row.UserId, CancellationToken.None);
-        await EnsureGoogleInvariantAsync(row.UserId, CancellationToken.None);
         return new UserEmailAddResult(row.Id, Added: true, isConflict);
     }
 
@@ -669,9 +637,9 @@ internal sealed class UserService(
             email.IsVerified = true;
             email.UpdatedAt = clock.GetCurrentInstant();
             await repo.UpdateUserEmailAsync(email, ct);
-            // Verification has committed; primary / Google repair is part of completing it.
+            // Verification has committed; primary repair is part of completing it. The Google
+            // identity is resolved on read by GoogleIntegration (Users decomposition commit 15).
             await EnsurePrimaryInvariantAsync(userId, CancellationToken.None);
-            await EnsureGoogleInvariantAsync(userId, CancellationToken.None);
             changed = true;
         }
 
@@ -684,18 +652,6 @@ internal sealed class UserService(
         else if (command.Primary == UserEmailPrimaryChange.ClearDuplicatePrimary)
         {
             changed |= await ClearDuplicatePrimaryAsync(userId, emailId, ct);
-        }
-
-        if (command.Google == UserEmailGoogleChange.MakeGoogle)
-        {
-            var row = await repo.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct);
-            if (row is null || !row.IsVerified) return new UpdateEmailResult(false);
-            await repo.SetUserEmailGoogleExclusiveAsync(userId, emailId, clock.GetCurrentInstant(), ct);
-            changed = true;
-        }
-        else if (command.Google == UserEmailGoogleChange.ClearDuplicateGoogle)
-        {
-            changed |= await ClearDuplicateGoogleAsync(userId, emailId, ct);
         }
 
         if (command.ChangeVisibility)
@@ -745,7 +701,6 @@ internal sealed class UserService(
         {
             // Removal has committed; leave the remaining verified addresses usable.
             await EnsurePrimaryInvariantAsync(userId, CancellationToken.None);
-            await EnsureGoogleInvariantAsync(userId, CancellationToken.None);
         }
 
         return true;
@@ -775,7 +730,6 @@ internal sealed class UserService(
         foreach (var mutatedUserId in mutatedUserIds)
         {
             await EnsurePrimaryInvariantAsync(mutatedUserId, ct);
-            await EnsureGoogleInvariantAsync(mutatedUserId, ct);
         }
 
         return new UserEmailReconcilePlanResult(mutatedUserIds);
@@ -806,12 +760,9 @@ internal sealed class UserService(
         }
         userId = user.Id;
 
-        // see nobodies-collective/Humans#687 — User.GoogleEmail deprecated, not exported.
+        // The Google Workspace identity is exported by GoogleIntegration's WorkspaceIdentity slice
+        // (Users decomposition commit 15); the legacy per-row flags stay in the UserEmails slice.
         var userEmails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
-        var googleEmail = userEmails
-            .Where(e => e.IsVerified && e.IsGoogle)
-            .Select(e => e.Email)
-            .FirstOrDefault();
         var effectiveEmail = userEmails
             .Where(e => e.IsVerified)
             .OrderByDescending(e => e.IsPrimary)
@@ -824,7 +775,6 @@ internal sealed class UserService(
             Email = effectiveEmail,
             user.DisplayName,
             user.PreferredLanguage,
-            GoogleEmail = googleEmail,
             user.UnsubscribedFromCampaigns,
             user.SuppressScheduleChangeEmails,
             ContactSource = user.ContactSource?.ToString(),
@@ -1109,20 +1059,6 @@ internal sealed class UserService(
         return true;
     }
 
-    private async Task<bool> ClearDuplicateGoogleAsync(Guid userId, Guid emailId, CancellationToken ct)
-    {
-        var row = await repo.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct);
-        if (row is null || !row.IsGoogle) return false;
-
-        var allEmails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
-        if (allEmails.Count(e => e.IsGoogle) <= 1) return false;
-
-        row.IsGoogle = false;
-        row.UpdatedAt = clock.GetCurrentInstant();
-        await repo.UpdateUserEmailAsync(row, ct);
-        return true;
-    }
-
     private async Task EnsurePrimaryInvariantAsync(Guid userId, CancellationToken ct)
     {
         var emails = (await repo.GetUserEmailsByUserIdForMutationAsync(userId, ct)).ToList();
@@ -1148,40 +1084,6 @@ internal sealed class UserService(
             if (row.IsPrimary != shouldBePrimary)
             {
                 row.IsPrimary = shouldBePrimary;
-                row.UpdatedAt = now;
-                changed.Add(row);
-            }
-        }
-
-        if (changed.Count > 0)
-            await repo.UpdateUserEmailsAsync(changed, ct);
-    }
-
-    private async Task EnsureGoogleInvariantAsync(Guid userId, CancellationToken ct)
-    {
-        var emails = (await repo.GetUserEmailsByUserIdForMutationAsync(userId, ct)).ToList();
-        var verified = emails.Where(e => e.IsVerified).ToList();
-        if (verified.Count == 0)
-            return;
-
-        var currentGoogles = verified.Where(e => e.IsGoogle).ToList();
-
-        var winner =
-            verified.FirstOrDefault(e => e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
-            ?? currentGoogles.OrderBy(e => e.Id).FirstOrDefault()
-            ?? verified.OrderByDescending(e => e.UpdatedAt).ThenBy(e => e.Id).First();
-
-        if (currentGoogles.Count == 1 && currentGoogles[0].Id == winner.Id)
-            return;
-
-        var now = clock.GetCurrentInstant();
-        var changed = new List<UserEmail>();
-        foreach (var row in verified)
-        {
-            var shouldBeGoogle = row.Id == winner.Id;
-            if (row.IsGoogle != shouldBeGoogle)
-            {
-                row.IsGoogle = shouldBeGoogle;
                 row.UpdatedAt = now;
                 changed.Add(row);
             }

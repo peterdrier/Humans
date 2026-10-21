@@ -509,7 +509,7 @@ public class CachingUserServiceTests
             IsVerified = true,
             IsPrimary = true,
             IsGoogle = true,
-            GoogleEmailStatus = GoogleEmailStatus.Valid,
+            GoogleEmailStatus = LegacyGoogleEmailStatus.Valid,
             Provider = "Google",
             ProviderKey = "subject-xyz",
         };
@@ -581,9 +581,8 @@ public class CachingUserServiceTests
         result.Id.Should().Be(userId);
         result.BurnerName.Should().Be("Octa");
         result.PreferredLanguage.Should().Be("es");
-        result.GoogleEmailStatus.Should().Be(GoogleEmailStatus.Valid);
         result.UserEmails.Should().ContainSingle(e =>
-            e.Id == emailId && e.IsPrimary && e.IsGoogle && e.IsVerified);
+            e.Id == emailId && e.IsPrimary && e.IsVerified);
 #pragma warning disable HUM_USER_PARTICIPATIONS // the legacy table still flows into UserInfo for Tickets' fallback
         result.EventParticipations.Should().ContainSingle(p =>
             p.Id == participationId && p.Year == 2026 && p.Status == LegacyParticipationStatus.Ticketed);

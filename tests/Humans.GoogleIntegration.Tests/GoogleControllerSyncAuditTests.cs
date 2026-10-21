@@ -127,6 +127,7 @@ public sealed class GoogleControllerSyncAuditTests
         _resources,
         _provisioning,
         Substitute.For<IGoogleAdminService>(),
+        Substitute.For<IGoogleIntegrationService>(),
         _syncLog,
         NullLogger<GoogleController>.Instance)
     {

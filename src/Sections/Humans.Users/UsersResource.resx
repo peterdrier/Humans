@@ -201,14 +201,9 @@
   <data name="EmailGrid_Primary" xml:space="preserve"><value>Primary</value></data>
   <data name="EmailGrid_Google" xml:space="preserve"><value>Google</value></data>
   <data name="EmailGrid_GoogleColumnTooltip" xml:space="preserve"><value>Email used for Google Workspace sync.</value></data>
-  <data name="EmailGrid_GoogleProblem" xml:space="preserve"><value>Google sync problem</value></data>
-  <data name="EmailGrid_GoogleOk" xml:space="preserve"><value>Google OK</value></data>
-  <data name="EmailGrid_RetryGoogle" xml:space="preserve"><value>Retry</value></data>
   <data name="EmailGrid_WorkspaceLockedHelp" xml:space="preserve"><value>Primary and Google are managed by Google Workspace while your @nobodies.team address is present.</value></data>
   <data name="EmailGrid_VerificationPendingTitle" xml:space="preserve"><value>Email verification pending</value></data>
   <data name="EmailGrid_VerificationPendingBody" xml:space="preserve"><value>Check your inbox for the verification email and click the link to confirm your address.</value></data>
-  <data name="EmailGrid_GoogleSyncRejectedTitle" xml:space="preserve"><value>Google sync paused for this address.</value></data>
-  <data name="EmailGrid_GoogleSyncRejectedBody" xml:space="preserve"><value>Google rejected your selected Google email when trying to grant access to Drive or add you to a Group — typically because the address is not backed by a Google account. New sync attempts are suppressed until an administrator resolves this. Select a different Google-backed email and ask an admin to clear the rejected state.</value></data>
   <data name="EmailGrid_Visibility" xml:space="preserve"><value>Visibility</value></data>
   <data name="EmailGrid_Actions" xml:space="preserve"><value>Actions</value></data>
   <data name="EmailGrid_StatusMergePending" xml:space="preserve"><value>Merge pending</value></data>
@@ -219,17 +214,11 @@
   <data name="EmailGrid_BackToAdminDetail" xml:space="preserve"><value>Back to user detail</value></data>
   <data name="EmailGrid_Unlink" xml:space="preserve"><value>Unlink</value></data>
   <data name="EmailGrid_ConfirmUnlink" xml:space="preserve"><value>Unlink this Google account?</value></data>
-  <data name="EmailGrid_SetGoogleRejected" xml:space="preserve"><value>Could not set Google service email — the row is unknown or not verified.</value></data>
   <data name="EmailGrid_UnlinkRejected" xml:space="preserve"><value>Could not unlink — the row is unknown or has no sign-in provider.</value></data>
-  <data name="EmailGrid_GoogleServiceUpdated" xml:space="preserve"><value>Google service email updated. Sync will be retried with the new email.</value></data>
-  <data name="EmailGrid_GoogleFlagCleared" xml:space="preserve"><value>Google identity flag cleared from that row.</value></data>
   <data name="EmailGrid_SetPrimary" xml:space="preserve"><value>Set primary</value></data>
-  <data name="EmailGrid_SetGoogle" xml:space="preserve"><value>Set Google</value></data>
-  <data name="EmailGrid_ClearGoogleRejected" xml:space="preserve"><value>Could not clear Google flag — the row is unknown or not currently flagged.</value></data>
   <data name="EmailGrid_PrimaryFlagCleared" xml:space="preserve"><value>Primary flag cleared from that row.</value></data>
   <data name="EmailGrid_ClearPrimaryRejected" xml:space="preserve"><value>Could not clear primary flag — the row is unknown or not currently flagged.</value></data>
   <data name="EmailGrid_Clear" xml:space="preserve"><value>Clear</value></data>
-  <data name="EmailGrid_ConfirmClearGoogle" xml:space="preserve"><value>Clear the Google identity flag from this email row?</value></data>
   <data name="EmailGrid_ConfirmClearPrimary" xml:space="preserve"><value>Clear the primary flag from this email row?</value></data>
   <data name="EmailGrid_UnlinkSuccess" xml:space="preserve"><value>Sign-in provider unlinked.</value></data>
   <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve"><value>This email is linked to a sign-in provider. Use Unlink instead.</value></data>
@@ -384,7 +373,6 @@
 &lt;p&gt;Best wishes,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name</comment></data>
   <data name="Users_Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>This email is linked to another account. Verifying it will request an account merge. Check your inbox for the verification link.</value></data>
   <data name="Users_Profile_EmailVerifiedMergeRequested" xml:space="preserve"><value>Email verified. A merge request has been submitted for admin review. The email {0} will be added to your account once approved.</value><comment>{0} = email address</comment></data>
-  <data name="Users_NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Has a @nobodies.team email account</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Imported · no profile yet</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>This human exists in the system but has not completed a profile (for example, they were imported from a mailing list or ticketing).</value></data>
   <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>Your access has been suspended: {0}</value></data>

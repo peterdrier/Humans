@@ -42,7 +42,8 @@ namespace Humans.Users.Tests.Controllers;
 
 /// <summary>
 /// Self-route <c>ProfileEmailsController</c> actions over the UserEmailService grid:
-/// SetGoogle, Link, Unlink, SetPrimary.
+/// Link, Unlink, SetPrimary. (The Google identity routes moved to GoogleIntegration's
+/// <c>WorkspaceIdentityController</c> in Users decomposition commit 15.)
 /// </summary>
 public class ProfileEmailsControllerGridTests
 {
@@ -160,15 +161,11 @@ public class ProfileEmailsControllerGridTests
     [InlineData("SetPrimary", true)]
     [InlineData("SetEmailVisibility", true)]
     [InlineData("DeleteEmail", false)]
-    [InlineData("SetGoogle", true)]
-    [InlineData("ClearGoogle", true)]
     [InlineData("ClearPrimary", true)]
     [InlineData("Unlink", false)]
     [InlineData("AdminSetPrimary", false)]
     [InlineData("AdminSetVisibility", false)]
     [InlineData("AdminDeleteEmail", false)]
-    [InlineData("AdminSetGoogle", false)]
-    [InlineData("AdminClearGoogle", false)]
     [InlineData("AdminClearPrimary", false)]
     [InlineData("AdminUnlink", false)]
     public async Task EmailMutation_RejectionLogsWarningWithReasonWithoutException(string action, bool validationFailure)
@@ -181,10 +178,6 @@ public class ProfileEmailsControllerGridTests
             .Returns(Task.FromException<UpdateEmailResult>(rejection));
         _userEmailService.DeleteEmailAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<DeleteEmailResult>(rejection));
-        _userEmailService.SetGoogleAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<bool>(rejection));
-        _userEmailService.ClearGoogleAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<bool>(rejection));
         _userEmailService.ClearPrimaryAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<bool>(rejection));
         _userEmailService.UnlinkAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -198,22 +191,18 @@ public class ProfileEmailsControllerGridTests
             "SetPrimary" => await _controller.SetPrimary(emailId, ct),
             "SetEmailVisibility" => await _controller.SetEmailVisibility(emailId, null),
             "DeleteEmail" => await _controller.DeleteEmail(emailId),
-            "SetGoogle" => await _controller.SetGoogle(emailId, ct),
-            "ClearGoogle" => await _controller.ClearGoogle(emailId, ct),
             "ClearPrimary" => await _controller.ClearPrimary(emailId, ct),
             "Unlink" => await _controller.Unlink(emailId, ct),
             "AdminSetPrimary" => await _controller.AdminSetPrimary(targetId, emailId, ct),
             "AdminSetVisibility" => await _controller.AdminSetVisibility(targetId, emailId, null, ct),
             "AdminDeleteEmail" => await _controller.AdminDeleteEmail(targetId, emailId, ct),
-            "AdminSetGoogle" => await _controller.AdminSetGoogle(targetId, emailId, ct),
-            "AdminClearGoogle" => await _controller.AdminClearGoogle(targetId, emailId, ct),
             "AdminClearPrimary" => await _controller.AdminClearPrimary(targetId, emailId, ct),
             "AdminUnlink" => await _controller.AdminUnlink(targetId, emailId, ct),
             _ => throw new ArgumentOutOfRangeException(nameof(action))
         };
 
         result.Should().BeOfType<RedirectToActionResult>();
-        var expectedError = action is "SetPrimary" or "SetEmailVisibility" or "SetGoogle" or "ClearGoogle" or "ClearPrimary"
+        var expectedError = action is "SetPrimary" or "SetEmailVisibility" or "ClearPrimary"
             ? "Common_Error"
             : (string.Equals(action, "Unlink", StringComparison.Ordinal) || string.Equals(action, "DeleteEmail", StringComparison.Ordinal))
                 ? validationFailure ? "LinkedAccounts_UnlinkBlockedLastSignInMethod" : "Common_Error"
@@ -317,38 +306,6 @@ public class ProfileEmailsControllerGridTests
     }
 
     [HumansFact]
-    public async Task SetGoogle_AsSelf_CallsSetGoogleAsync_AndRedirectsToGrid()
-    {
-        var emailId = Guid.NewGuid();
-        _userEmailService.SetGoogleAsync(_userId, emailId, _userId, Arg.Any<CancellationToken>())
-            .Returns(true);
-
-        var result = await _controller.SetGoogle(emailId, Xunit.TestContext.Current.CancellationToken);
-
-        await _userEmailService.Received(1).SetGoogleAsync(
-            _userId, emailId, _userId, Arg.Any<CancellationToken>());
-        result.Should().BeOfType<RedirectToActionResult>()
-            .Which.ActionName.Should().Be("Emails");
-    }
-
-    [HumansFact]
-    public async Task SetGoogle_AuthorizationFails_ReturnsForbid()
-    {
-        var emailId = Guid.NewGuid();
-        _authorizationService.AuthorizeAsync(
-            Arg.Any<ClaimsPrincipal>(),
-            Arg.Any<object?>(),
-            Arg.Any<IEnumerable<IAuthorizationRequirement>>())
-            .Returns(AuthorizationResult.Failed());
-
-        var result = await _controller.SetGoogle(emailId, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<ForbidResult>();
-        await _userEmailService.DidNotReceive().SetGoogleAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
     public async Task Link_AsSelf_ReturnsChallengeResult_WithProvider()
     {
         // Url.Action returns the callback URL (with returnUrl appended) when
@@ -448,22 +405,6 @@ public class ProfileEmailsControllerGridTests
     // the controller passes the route userId (target) to the service and the
     // current user's id as actorUserId.
     // -------------------------------------------------------------------------
-
-    [HumansFact]
-    public async Task AdminSetGoogle_AsAdmin_CallsServiceWithRouteUserId()
-    {
-        var targetUserId = Guid.NewGuid();
-        var emailId = Guid.NewGuid();
-        _userEmailService.SetGoogleAsync(targetUserId, emailId, _userId, Arg.Any<CancellationToken>())
-            .Returns(true);
-
-        var result = await _controller.AdminSetGoogle(targetUserId, emailId, Xunit.TestContext.Current.CancellationToken);
-
-        await _userEmailService.Received(1).SetGoogleAsync(
-            targetUserId, emailId, _userId, Arg.Any<CancellationToken>());
-        result.Should().BeOfType<RedirectToActionResult>()
-            .Which.ActionName.Should().Be("AdminEmails");
-    }
 
     [HumansFact]
     public async Task AdminSetPrimary_AsAdmin_CallsServiceWithRouteUserId()
@@ -732,24 +673,6 @@ public class ProfileEmailsControllerGridTests
             .Which.ActionName.Should().Be("AdminEmails");
     }
 
-    [HumansFact]
-    public async Task AdminSetGoogle_AuthorizationFails_ReturnsForbid()
-    {
-        var targetUserId = Guid.NewGuid();
-        var emailId = Guid.NewGuid();
-        _authorizationService.AuthorizeAsync(
-            Arg.Any<ClaimsPrincipal>(),
-            Arg.Any<object?>(),
-            Arg.Any<IEnumerable<IAuthorizationRequirement>>())
-            .Returns(AuthorizationResult.Failed());
-
-        var result = await _controller.AdminSetGoogle(targetUserId, emailId, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<ForbidResult>();
-        await _userEmailService.DidNotReceive().SetGoogleAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-    }
-
     // -------------------------------------------------------------------------
     // Findings O, P, Q — self-path auth gates and audit-log symmetry.
     // O: DeleteEmail self-action must call AuthorizeAsync (UserEmailOperations.Edit).
@@ -910,7 +833,6 @@ public class ProfileEmailsControllerGridTests
             IsVerified: isVerified,
             Provider: provider,
             ProviderKey: providerKey,
-            IsGoogle: false,
             IsPrimary: false,
             Visibility: null,
             VerificationSentAt: null,

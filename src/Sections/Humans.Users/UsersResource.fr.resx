@@ -447,15 +447,6 @@
   <data name="EmailGrid_GoogleColumnTooltip" xml:space="preserve">
     <value>E-mail utilisé pour la synchronisation Google Workspace.</value>
   </data>
-  <data name="EmailGrid_GoogleProblem" xml:space="preserve">
-    <value>Problème de synchronisation Google</value>
-  </data>
-  <data name="EmailGrid_GoogleOk" xml:space="preserve">
-    <value>Google OK</value>
-  </data>
-  <data name="EmailGrid_RetryGoogle" xml:space="preserve">
-    <value>Réessayer</value>
-  </data>
   <data name="EmailGrid_WorkspaceLockedHelp" xml:space="preserve">
     <value>Principal et Google sont gérés par Google Workspace tant que votre adresse @nobodies.team est présente.</value>
   </data>
@@ -464,12 +455,6 @@
   </data>
   <data name="EmailGrid_VerificationPendingBody" xml:space="preserve">
     <value>Vérifiez votre boîte de réception et cliquez sur le lien dans l’e-mail de vérification pour confirmer votre adresse.</value>
-  </data>
-  <data name="EmailGrid_GoogleSyncRejectedTitle" xml:space="preserve">
-    <value>Synchronisation Google suspendue pour cette adresse.</value>
-  </data>
-  <data name="EmailGrid_GoogleSyncRejectedBody" xml:space="preserve">
-    <value>Google a rejeté l’adresse Google sélectionnée lors de la tentative d’octroi d’accès à Drive ou d’ajout à un Groupe — généralement parce que l’adresse n’est pas liée à un compte Google. Les nouvelles tentatives de synchronisation sont suspendues jusqu’à ce qu’un administrateur résolve le problème. Sélectionnez une autre adresse liée à un compte Google et demandez à un administrateur d’effacer l’état rejeté.</value>
   </data>
   <data name="EmailGrid_Visibility" xml:space="preserve">
     <value>Visibilité</value>
@@ -501,26 +486,11 @@
   <data name="EmailGrid_ConfirmUnlink" xml:space="preserve">
     <value>Dissocier ce compte Google ?</value>
   </data>
-  <data name="EmailGrid_SetGoogleRejected" xml:space="preserve">
-    <value>Impossible de définir l'e-mail de service Google — ligne inconnue ou non vérifiée.</value>
-  </data>
   <data name="EmailGrid_UnlinkRejected" xml:space="preserve">
     <value>Impossible de dissocier — ligne inconnue ou sans fournisseur de connexion.</value>
   </data>
-  <data name="EmailGrid_GoogleServiceUpdated" xml:space="preserve">
-    <value>E-mail de service Google mis à jour. La synchronisation sera relancée avec le nouvel e-mail.</value>
-  </data>
-  <data name="EmailGrid_GoogleFlagCleared" xml:space="preserve">
-    <value>Indicateur d'identité Google effacé de cette ligne.</value>
-  </data>
   <data name="EmailGrid_SetPrimary" xml:space="preserve">
     <value>Définir comme principal</value>
-  </data>
-  <data name="EmailGrid_SetGoogle" xml:space="preserve">
-    <value>Définir pour Google</value>
-  </data>
-  <data name="EmailGrid_ClearGoogleRejected" xml:space="preserve">
-    <value>Impossible d'effacer l'indicateur Google — la ligne est inconnue ou non marquée actuellement.</value>
   </data>
   <data name="EmailGrid_PrimaryFlagCleared" xml:space="preserve">
     <value>Indicateur principal effacé de cette ligne.</value>
@@ -530,9 +500,6 @@
   </data>
   <data name="EmailGrid_Clear" xml:space="preserve">
     <value>Effacer</value>
-  </data>
-  <data name="EmailGrid_ConfirmClearGoogle" xml:space="preserve">
-    <value>Effacer l'indicateur d'identité Google de cette ligne d'e-mail ?</value>
   </data>
   <data name="EmailGrid_ConfirmClearPrimary" xml:space="preserve">
     <value>Effacer l'indicateur principal de cette ligne d'e-mail ?</value>
@@ -779,7 +746,6 @@
   </data>
   <data name="Users_Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>Cette adresse e-mail est liée à un autre compte. Sa vérification demandera une fusion de comptes. Consultez votre boîte de réception pour le lien de vérification.</value></data>
   <data name="Users_Profile_EmailVerifiedMergeRequested" xml:space="preserve"><value>Adresse e-mail vérifiée. Une demande de fusion a été soumise à l'examen administratif. L'adresse e-mail {0} sera ajoutée à votre compte après approbation.</value><comment>{0} = email address</comment></data>
-  <data name="Users_NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Possède un compte e-mail @nobodies.team</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Importé · pas encore de profil</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>Cette personne existe dans le système mais n'a pas encore complété de profil (par exemple, elle a été importée depuis une liste de diffusion ou la billetterie).</value></data>
   <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>Ton accès a été suspendu : {0}</value></data>

@@ -1,18 +1,17 @@
 using AwesomeAssertions;
 using Humans.Users.Contracts;
-using Humans.Users.ViewComponents;
+using Humans.GoogleIntegration.ViewComponents;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using NSubstitute;
 using Xunit;
 
-namespace Humans.Users.Tests.ViewComponents;
+namespace Humans.GoogleIntegration.Tests.ViewComponents;
 
-public sealed class UserBadgeViewComponentTests
+public sealed class NobodiesEmailBadgeViewComponentTests
 {
-    // The membership-tier badge moved to Governance with commit 11 of the Users decomposition;
-    // its test lives in Humans.Governance.Tests.
+    // Moved from Users with the component (Users decomposition commit 15).
     [HumansFact]
     public async Task RequestAborted_PropagatesCancellation()
     {

@@ -538,15 +538,6 @@ internal sealed class CachingUserService(
 
     // Writes — delegate to inner, then refresh the affected entry.
 
-    public async Task<bool> TrySetGoogleEmailStatusFromSyncAsync(
-        Guid userId, GoogleEmailStatus status, CancellationToken ct = default, Guid? googleEmailId = null)
-    {
-        var result = await WithInnerAsync(inner =>
-            inner.TrySetGoogleEmailStatusFromSyncAsync(userId, status, ct, googleEmailId));
-        if (result) await RefreshEntryAsync(userId);
-        return result;
-    }
-
     public async Task SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default)
     {
         await WithInnerAsync(inner => inner.SetPreferredLanguageAsync(userId, preferredLanguage, ct));

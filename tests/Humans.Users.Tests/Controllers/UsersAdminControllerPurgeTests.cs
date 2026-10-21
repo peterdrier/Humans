@@ -66,6 +66,7 @@ public class UsersAdminControllerPurgeTests
             _onboarding,
             _audience,
             _deletion,
+            Substitute.For<Humans.GoogleIntegration.Contracts.IGoogleIntegrationService>(),
             _environment,
             _clock,
             NullLogger<UsersAdminController>.Instance,

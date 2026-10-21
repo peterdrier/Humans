@@ -61,6 +61,7 @@ public class MembershipRequiredFilterTests
     // CantinaProfileController is internal to Humans.Cantina: the dietary form at /Profile/Me/Dietary.
     private static readonly Type CantinaProfileControllerType = SectionControllerType("Humans.Cantina", "CantinaProfileController");
     private static readonly Type TicketParticipationControllerType = SectionControllerType("Humans.Tickets", "TicketParticipationController");
+    private static readonly Type WorkspaceIdentityControllerType = SectionControllerType("Humans.GoogleIntegration", "WorkspaceIdentityController");
 
     private static Type GdprControllerType(string name) => SectionControllerType("Humans.Gdpr", name);
 
@@ -181,8 +182,7 @@ public class MembershipRequiredFilterTests
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.SetPrimary)),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.SetEmailVisibility)),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.DeleteEmail)),
-            (typeof(ProfileEmailsController), nameof(ProfileEmailsController.SetGoogle)),
-            (typeof(ProfileEmailsController), nameof(ProfileEmailsController.ClearGoogle)),
+            (WorkspaceIdentityControllerType, "Set"),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.ClearPrimary)),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.Link)),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.Unlink)),

@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const view = fs.readFileSync(path.resolve(__dirname, '../../../src/Sections/Humans.Users/Views/Profile/CommunicationPreferences.cshtml'), 'utf8');
+const view = fs.readFileSync(path.resolve(__dirname, '../../../src/Sections/Humans.Email/Views/CommunicationPreferences/Index.cshtml'), 'utf8');
 const script = view.slice(view.indexOf('<script>') + 8, view.indexOf('</script>'));
 const flush = () => new Promise(resolve => setImmediate(resolve));
 function form(alertEnabled) {

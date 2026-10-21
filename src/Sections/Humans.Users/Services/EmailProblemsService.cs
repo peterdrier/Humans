@@ -33,17 +33,9 @@ internal sealed class EmailProblemsService(
                 problems.Add(new EmailProblem(
                     EmailProblemKind.MultipleIsPrimary, p.Id, null, null, null, null));
 
-            if (emails.Count(e => e.IsGoogle) > 1)
-                problems.Add(new EmailProblem(
-                    EmailProblemKind.MultipleIsGoogle, p.Id, null, null, null, null));
-
             if (emails.Any(e => e.IsVerified) && !emails.Any(e => e.IsPrimary))
                 problems.Add(new EmailProblem(
                     EmailProblemKind.ZeroIsPrimary, p.Id, null, null, null, null));
-
-            if (!emails.Any(e => e.IsGoogle))
-                problems.Add(new EmailProblem(
-                    EmailProblemKind.ZeroIsGoogle, p.Id, null, null, null, null));
 
             foreach (var unverified in emails.Where(e => !e.IsVerified))
             {

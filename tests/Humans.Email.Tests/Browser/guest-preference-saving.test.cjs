@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const view = fs.readFileSync(path.resolve(__dirname, '../../../src/Sections/Humans.Users/Views/GuestAccount/CommunicationPreferences.cshtml'), 'utf8');
+const view = fs.readFileSync(path.resolve(__dirname, '../../../src/Sections/Humans.Email/Views/GuestAccount/CommunicationPreferences.cshtml'), 'utf8');
 const script = view.slice(view.indexOf('<script>') + 8, view.indexOf('</script>'))
     .replace(/^\s*@if.*Model.UnsubscribeToken.*\n\s*\{\n\s*@:body.append.*\n\s*\}/gm, '');
 const flush = () => new Promise(resolve => setImmediate(resolve));

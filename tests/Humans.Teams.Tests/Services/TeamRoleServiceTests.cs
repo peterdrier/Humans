@@ -59,6 +59,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             .With<IEmailService>()
             .With<ISystemTeamSync>()
             .With<IGoogleSyncOutboxService>(googleOutboxService)
+            .With<IGoogleIntegrationService>()
             .With(teamResourceService)
             .With(userService)
             .With<IUserService>(userService)

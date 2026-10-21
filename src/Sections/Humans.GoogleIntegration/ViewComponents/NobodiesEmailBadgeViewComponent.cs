@@ -1,14 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
-using Humans.Users.Services;
 
-namespace Humans.Users.ViewComponents;
+namespace Humans.GoogleIntegration.ViewComponents;
 
 /// <summary>
 /// Renders a nobodies.team email badge or status indicator for a user.
 ///
-/// Reads from the cached <c>UserInfo</c> projection — no local IMemoryCache is needed
-/// since the underlying read is already cache-served by <see cref="IUserManagement"/>.
+/// Reads the member's verified addresses from the cached <c>UserInfo</c> projection. Moved from
+/// Users to GoogleIntegration (Users decomposition commit 15): the @nobodies.team account is the
+/// Workspace account GoogleIntegration provisions.
 ///
 /// Modes:
 ///   "badge"     — icon badge (ProfileCard)
@@ -17,9 +17,10 @@ namespace Humans.Users.ViewComponents;
 ///   "detail"    — show email + linked badge, or provisioning form (AdminDetail)
 ///
 /// Public, not internal: Razor's build-time tag-helper discovery only sees public view
-/// components (design; HUM0034 exempts view components), used in-assembly via
-/// <c>&lt;vc:nobodies-email-badge&gt;</c>. Teams' member roster (formerly this component's
-/// "provision" mode) now renders its own email-or-provisioning-form cell.
+/// components (design; HUM0034 exempts view components), used by Users' views via
+/// <c>&lt;vc:nobodies-email-badge&gt;</c> and this section's Google identity card. Teams' member
+/// roster (formerly this component's "provision" mode) now renders its own
+/// email-or-provisioning-form cell.
 /// </summary>
 public sealed class NobodiesEmailBadgeViewComponent(IUserService userService) : ViewComponent
 {

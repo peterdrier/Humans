@@ -167,8 +167,8 @@ internal sealed class UserInfoSaveChangesInterceptor(
             DeletionEligibleAfter = user.DeletionEligibleAfter,
             UnsubscribedFromCampaigns = user.UnsubscribedFromCampaigns,
             SuppressScheduleChangeEmails = user.SuppressScheduleChangeEmails,
-            // GoogleEmailStatus removed — now per-address on UserEmail; UserInfo derives it from
-            // the canonical Google row, and a UserEmail change already invalidates the cache below.
+            // GoogleEmailStatus is not on UserInfo: the Google identity and its verdict are
+            // GoogleIntegration's google_workspace_identities (Users decomposition commit 15).
             ContactSource = user.ContactSource,
             ExternalSourceId = user.ExternalSourceId,
             MergedToUserId = user.MergedToUserId,

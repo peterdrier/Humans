@@ -295,7 +295,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 **Outbound** — every `ProjectReference` of `Humans.Teams.csproj` beyond Base and its own leaf, and what it is for:
 
-- **Users.Contracts** (also the leaf's one reference, for `GoogleEmailStatus`): `IUserService.GetUserInfosAsync` batch-resolves `UserInfo` for nav-stripped reads, projected straight into DTOs; `IUserService` feeds the reconciler.
+- **Users.Contracts**: `IUserService.GetUserInfosAsync` batch-resolves `UserInfo` for nav-stripped reads, projected straight into DTOs; `IUserService` feeds the reconciler.
 - **Auth:** `IRoleAssignmentService` for role-holder reads and `IAdminAuthorizationService` for the actor checks; `IRoleAssignmentClaimsCacheInvalidator` after Coordinators reconciliation.
 - **GoogleIntegration:** each team can have linked Google resources (Drive folders, Groups). Membership changes append events through `IGoogleSyncOutboxService`, whose processor calls `IGoogleSyncWrite.AddUserToTeamResourcesAsync` for joins (a leave event needs no call: reconciliation removes the access); `TeamDriveAccessSource` supplies expected Drive access; `ITeamResourceService` / `ITeamResourceWrite` for the Resources page and the Google-group reconciliation.
 - **Shifts.Contracts:** `IShiftManagementService` for the team page's shifts card; `IShiftAuthorizationInvalidator` after coordinator changes. Rotas belong to a department or sub-team, and coordinator/manager status is what scopes their shift management.

@@ -14,25 +14,6 @@ public interface IUserWrite
     // ---- User storage commands ----
 
     /// <summary>
-    /// Sync-driven Google status write targeting the user's canonical verified
-    /// <see cref="UserEmail.IsGoogle"/> address — status is per-address (#687),
-    /// not on the user. Preserves the "Rejected is terminal" invariant: once the
-    /// address is flagged <see cref="GoogleEmailStatus.Rejected"/> (Google HTTP
-    /// 403 on a group/drive add), a later successful sync MUST NOT flip that same
-    /// address back to <see cref="GoogleEmailStatus.Valid"/>. The user clears it
-    /// by selecting a different Google email — a fresh row that starts
-    /// <see cref="GoogleEmailStatus.Unknown"/> — so a rejection never strands sync
-    /// after the address changes. Call this from any outbox-processor /
-    /// reconciliation writer; the invariant lives here so a future second caller
-    /// cannot silently bypass it. Returns true if a write occurred, false if
-    /// short-circuited by the rule or the target row no longer exists. When
-    /// <c>googleEmailId</c> is supplied, updates that verified row owned by the user,
-    /// even if another address has since become their selected Google email.
-    /// </summary>
-    Task<bool> TrySetGoogleEmailStatusFromSyncAsync(
-        Guid userId, GoogleEmailStatus status, CancellationToken ct = default, Guid? googleEmailId = null);
-
-    /// <summary>
     /// Sets <c>User.PreferredLanguage</c>. Invalidates the UserInfo cache on
     /// success. No-op if the user does not exist.
     /// </summary>

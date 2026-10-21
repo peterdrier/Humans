@@ -213,7 +213,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             {
                 Id = Guid.NewGuid(), UserId = userId, Email = "google@example.com",
                 IsVerified = true, IsPrimary = true, IsGoogle = true,
-                GoogleEmailStatus = GoogleEmailStatus.Rejected,
+                GoogleEmailStatus = LegacyGoogleEmailStatus.Rejected,
                 CreatedAt = createdAt,
                 UpdatedAt = createdAt.Plus(NodaTime.Duration.FromHours(2)),
                 VerificationSentAt = createdAt.Plus(NodaTime.Duration.FromHours(1)),
@@ -769,7 +769,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     [InlineData("add")]
     [InlineData("verify")]
     [InlineData("remove")]
-    public async Task EmailWrite_DisconnectAfterCommit_StillRepairsPrimaryAndGoogle(string operation)
+    public async Task EmailWrite_DisconnectAfterCommit_StillRepairsPrimary(string operation)
     {
         using var request = new CancellationTokenSource();
         var userId = Guid.NewGuid();
@@ -779,7 +779,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         if (!string.Equals(operation, "add", StringComparison.Ordinal)) rows.Add(target);
         if (string.Equals(operation, "remove", StringComparison.Ordinal))
         {
-            target.IsVerified = target.IsPrimary = target.IsGoogle = true;
+            target.IsVerified = target.IsPrimary = true;
             rows.Add(survivor);
         }
         var repository = Substitute.For<IUserRepository>();
@@ -830,7 +830,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var remaining = rows.Should().ContainSingle().Which;
         remaining.IsVerified.Should().BeTrue();
         remaining.IsPrimary.Should().BeTrue();
-        remaining.IsGoogle.Should().BeTrue();
     }
 
     [HumansTheory]

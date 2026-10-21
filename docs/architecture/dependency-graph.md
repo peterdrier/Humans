@@ -151,6 +151,7 @@ graph LR
     GDriveAccess[GoogleDriveAccessSyncService]:::google
     EmailProv[EmailProvisioningService]:::google
     GRemoval[GoogleRemovalNotificationService]:::google
+    GIdentity[WorkspaceIdentityService]:::google
     GSyncOutbox[GoogleSyncOutboxService]:::google
     GSyncOutboxProc[GoogleSyncOutboxProcessor]:::google
     GTrans[GoogleTranslationService]:::google
@@ -249,6 +250,7 @@ graph LR
     User --> AdminAuth
     User --> Audit
     UEmail --> Audit
+    UEmail --> GIdentity
     CommPref --> Audit
     CommPref --> User
     Unsub --> User
@@ -297,6 +299,7 @@ graph LR
     Team --> ShiftMgmt
     Team --> AdminAuth
     Team --> EarlyEntry
+    Team --> GIdentity
     TPage --> TRes
     TPage --> ShiftMgmt
     TPage --> SettingsSvc
@@ -313,7 +316,7 @@ graph LR
     CampContact --> Audit
     CampContact --> NotifEmitter
     CampContact --> User
-    CampRole --> UEmail
+    CampRole --> GIdentity
     CampRole --> User
     CampRole --> Audit
     CampRole --> NotifEmitter
@@ -453,6 +456,8 @@ graph LR
     GRemoval --> UEmail
     GRemoval --> User
     GRemoval --> Email
+    GIdentity --> User
+    GIdentity --> Audit
     GSyncOutboxProc --> User
     GSyncOutboxProc --> Team
     GSyncOutboxProc --> Metrics

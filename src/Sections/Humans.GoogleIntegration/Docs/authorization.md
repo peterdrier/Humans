@@ -31,3 +31,7 @@
 | `GoogleController.CheckEmailRenames` / `EmailRenames` / `EmailFlagViolations` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.Index` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleSyncHistoryMigrationAdminController` | Class | `Admin` | `PolicyNames.AdminOnly` |
+| `WorkspaceIdentityController` (`[Route("Profile")]`) | Class | authenticated | `[Authorize]` |
+| `WorkspaceIdentityController.Set` (`Me/Emails/Google`) | Action | the signed-in member, on their own rows only | class `[Authorize]`; target is the current user |
+| `WorkspaceIdentityController.AdminSet` (`{id:guid}/Admin/Emails/Google`) | Action | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` |
+| `WorkspaceIdentityCardViewComponent` (admin detail user part) | Render | admin view only (host page admits HumanAdmin, Board, Admin); Re-run button `Admin` | `ProfileCardViewMode.Admin` + `PolicyNames.AdminOnly` |

@@ -8,6 +8,7 @@ public sealed record UserEmailInfo(
     string Email,
     bool IsVerified,
     bool IsPrimary,
+    [property: Obsolete("Moved to GoogleIntegration's google_workspace_identities (Users decomposition commit 15). Read IGoogleIntegrationService.GetWorkspaceIdentityAsync / GetWorkspaceIdentitiesAsync; the one reader left is GoogleIntegration's legacy fallback and the google.workspace-identities copy.", DiagnosticId = "HUM_USER_GOOGLE_IDENTITY")]
     bool IsGoogle,
     string? Provider,
     string? ProviderKey,
@@ -15,7 +16,8 @@ public sealed record UserEmailInfo(
     Instant? VerificationSentAt,
     Instant CreatedAt,
     Instant UpdatedAt,
-    GoogleEmailStatus GoogleEmailStatus);
+    [property: Obsolete("Moved to GoogleIntegration's google_workspace_identities (Users decomposition commit 15). Read IGoogleIntegrationService.GetWorkspaceIdentityAsync / GetWorkspaceIdentitiesAsync; the one reader left is GoogleIntegration's legacy fallback and the google.workspace-identities copy.", DiagnosticId = "HUM_USER_GOOGLE_IDENTITY")]
+    LegacyGoogleEmailStatus GoogleEmailStatus);
 
 /// <summary>Compact projection of <c>ContactField</c> carried inside <see cref="ProfileInfo"/>.</summary>
 public sealed record ContactFieldInfo(
@@ -279,33 +281,6 @@ public sealed record UserInfo(
         .Where(e => e.IsPrimary && e.IsVerified)
         .Select(e => e.Email)
         .FirstOrDefault();
-
-    /// <summary>First verified IsGoogle UserEmail.</summary>
-    public string? GoogleEmail => UserEmails
-        .Where(e => e.IsGoogle && e.IsVerified)
-        .Select(e => e.Email)
-        .FirstOrDefault();
-
-    /// <summary>
-    /// Effective Google Workspace sync status for this user — the per-address status of the
-    /// address sync actually targets: the verified
-    /// <see cref="UserEmailInfo.IsGoogle"/> row, else the verified provider (OAuth) fallback row
-    /// (covers ~pre-#687 users with no IsGoogle row). <see cref="GoogleEmailStatus.Unknown"/>
-    /// when there is no such address. Replaces the deprecated user-level <c>User.GoogleEmailStatus</c>
-    /// column (nobodies-collective/Humans#687); a rejection no longer survives switching Google address.
-    /// </summary>
-    public GoogleEmailStatus GoogleEmailStatus
-    {
-        get
-        {
-            var target = UserEmails.FirstOrDefault(e => e.IsGoogle && e.IsVerified)
-                ?? UserEmails
-                    .Where(e => e.IsVerified && e.Provider != null)
-                    .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
-                    .FirstOrDefault();
-            return target?.GoogleEmailStatus ?? GoogleEmailStatus.Unknown;
-        }
-    }
 
     /// <summary>All verified addresses, primary first.</summary>
     public IReadOnlyList<string> AllVerifiedEmails => UserEmails

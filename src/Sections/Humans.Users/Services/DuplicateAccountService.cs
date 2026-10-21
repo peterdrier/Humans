@@ -57,8 +57,7 @@ internal sealed class DuplicateAccountService(
                     emailToUsers[ueNormalized] = ueList;
                 }
                 var verifiedTag = ue.IsVerified ? "verified" : "unverified";
-                var googleTag = ue.IsGoogle ? ", Google" : "";
-                ueList.Add((u.Id, $"UserEmail ({ue.Email}, {verifiedTag}{googleTag})"));
+                ueList.Add((u.Id, $"UserEmail ({ue.Email}, {verifiedTag})"));
             }
         }
 

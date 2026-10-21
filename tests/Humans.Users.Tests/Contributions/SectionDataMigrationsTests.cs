@@ -143,7 +143,7 @@ public class SectionDataMigrationsTests
             Instant.FromUtc(2026, 1, 1, 0, 0),
             [
                 new EmailProblem(EmailProblemKind.LegacyIdentityEmailNotInUserEmails, legacyUser, null, null, "old@x.com", null),
-                new EmailProblem(EmailProblemKind.ZeroIsGoogle, Guid.NewGuid(), null, null, null, null),
+                new EmailProblem(EmailProblemKind.MultipleIsPrimary, Guid.NewGuid(), null, null, null, null),
             ]));
         _emailProblems.BackfillLegacyIdentityEmailsAsync(_actorId, Arg.Any<CancellationToken>())
             .Returns([(legacyUser, "old@x.com")]);

@@ -318,80 +318,6 @@ internal sealed class ProfileEmailsController(
             userId,
             relatedEntityId: emailId,
             relatedEntityType: nameof(UserEmail));
-    [HttpPost("Me/Emails/SetGoogle")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetGoogle(Guid emailId, CancellationToken ct)
-    {
-        var user = await GetCurrentUserInfoAsync(ct);
-        if (user is null)
-            return NotFound();
-
-        var authz = await authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
-        if (!authz.Succeeded)
-            return Forbid();
-
-        try
-        {
-            var ok = await userEmailService.SetGoogleAsync(user.Id, emailId, user.Id, ct);
-            SetGoogleEmailResult(ok);
-        }
-        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
-        {
-            logger.LogWarning("Failed to set Google service email {EmailId} for user {UserId}: {Reason}", emailId, user.Id, ex.Message);
-            SetError(sharedLocalizer["Common_Error"].Value);
-        }
-
-        return RedirectToAction(nameof(Emails));
-    }
-
-    private void SetGoogleEmailResult(bool ok)
-    {
-        if (ok)
-        {
-            SetSuccess(localizer["EmailGrid_GoogleServiceUpdated"].Value);
-            return;
-        }
-
-        SetError(localizer["EmailGrid_SetGoogleRejected"].Value);
-    }
-
-    [HttpPost("Me/Emails/ClearGoogle")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ClearGoogle(Guid emailId, CancellationToken ct)
-    {
-        var user = await GetCurrentUserInfoAsync(ct);
-        if (user is null)
-            return NotFound();
-
-        var authz = await authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
-        if (!authz.Succeeded)
-            return Forbid();
-
-        try
-        {
-            var ok = await userEmailService.ClearGoogleAsync(user.Id, emailId, user.Id, ct);
-            SetGoogleEmailClearedResult(ok);
-        }
-        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
-        {
-            logger.LogWarning("Failed to clear Google flag on email {EmailId} for user {UserId}: {Reason}", emailId, user.Id, ex.Message);
-            SetError(sharedLocalizer["Common_Error"].Value);
-        }
-
-        return RedirectToAction(nameof(Emails));
-    }
-
-    private void SetGoogleEmailClearedResult(bool ok)
-    {
-        if (ok)
-        {
-            SetSuccess(localizer["EmailGrid_GoogleFlagCleared"].Value);
-            return;
-        }
-
-        SetError(localizer["EmailGrid_ClearGoogleRejected"].Value);
-    }
-
     [HttpPost("Me/Emails/ClearPrimary")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ClearPrimary(Guid emailId, CancellationToken ct)
@@ -608,32 +534,6 @@ internal sealed class ProfileEmailsController(
         return View("Emails", viewModel);
     }
 
-    [HttpPost("{id:guid}/Admin/Emails/SetGoogle")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AdminSetGoogle(Guid id, Guid emailId, CancellationToken ct)
-    {
-        var authz = await authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
-        if (!authz.Succeeded)
-            return Forbid();
-
-        var actor = await GetCurrentUserInfoAsync(ct);
-        if (actor is null)
-            return Forbid();
-
-        try
-        {
-            var ok = await userEmailService.SetGoogleAsync(id, emailId, actor.Id, ct);
-            SetGoogleEmailResult(ok);
-        }
-        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
-        {
-            logger.LogWarning("Admin failed to set Google service email {EmailId} for user {UserId}: {Reason}", emailId, id, ex.Message);
-            SetError(ex.Message);
-        }
-
-        return RedirectToAction(nameof(AdminEmails), new { id });
-    }
-
     [HttpPost("{id:guid}/Admin/Emails/SetPrimary")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AdminSetPrimary(Guid id, Guid emailId, CancellationToken ct)
@@ -666,32 +566,6 @@ internal sealed class ProfileEmailsController(
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
             logger.LogWarning("Admin failed to set primary email {EmailId} for user {UserId}: {Reason}", emailId, id, ex.Message);
-            SetError(ex.Message);
-        }
-
-        return RedirectToAction(nameof(AdminEmails), new { id });
-    }
-
-    [HttpPost("{id:guid}/Admin/Emails/ClearGoogle")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AdminClearGoogle(Guid id, Guid emailId, CancellationToken ct)
-    {
-        var authz = await authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
-        if (!authz.Succeeded)
-            return Forbid();
-
-        var actor = await GetCurrentUserInfoAsync(ct);
-        if (actor is null)
-            return Forbid();
-
-        try
-        {
-            var ok = await userEmailService.ClearGoogleAsync(id, emailId, actor.Id, ct);
-            SetGoogleEmailClearedResult(ok);
-        }
-        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
-        {
-            logger.LogWarning("Admin failed to clear Google flag on email {EmailId} for user {UserId}: {Reason}", emailId, id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -1021,15 +895,6 @@ internal sealed class ProfileEmailsController(
 
         var (canAdd, minutesUntilResend) = await GetEmailAddCooldownStatusAsync(emails, ct);
 
-        var hasNobodiesTeam = emails.Any(e => e.IsVerified &&
-            e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase));
-
-        // Use the already-loaded `emails` — UserManager doesn't .Include(UserEmails).
-        var googleServiceEmail = emails
-            .Where(e => e.IsVerified && e.IsGoogle)
-            .Select(e => e.Email)
-            .FirstOrDefault();
-
         var workspaceLockedEmail = FindWorkspaceLockedEmail(emails);
 
         var (userLogins, rawUserEmails) = await GetAdminEmailDiagnosticsAsync(user.Id, isAdminContext, ct);
@@ -1063,8 +928,6 @@ internal sealed class ProfileEmailsController(
                 Id = e.Id,
                 Email = e.Email,
                 IsVerified = e.IsVerified,
-                IsGoogle = e.IsGoogle,
-                GoogleEmailStatus = e.GoogleEmailStatus,
                 IsPrimary = e.IsPrimary,
                 Visibility = e.Visibility,
                 IsPendingVerification = e.IsPendingVerification,
@@ -1085,11 +948,6 @@ internal sealed class ProfileEmailsController(
             LinkedAccounts = linkedAccounts,
             CanAddEmail = !UserStateEvaluator.IsTombstone(user) && (isAdminContext || canAdd),
             MinutesUntilResend = minutesUntilResend,
-            GoogleServiceEmail = googleServiceEmail,
-            HasNobodiesTeamEmail = hasNobodiesTeam,
-#pragma warning disable CS0618 // Legacy User.GoogleEmailStatus remains mapped for compatibility.
-            GoogleEmailStatus = user.GoogleEmailStatus,
-#pragma warning restore CS0618
             TargetUserId = user.Id,
             TargetDisplayName = burnerName,
             IsAdminContext = isAdminContext,

@@ -45,8 +45,6 @@ internal sealed class AdminHumanDetailViewModel
     public string? NobodiesTeamEmail { get; set; }
 
     public string? OAuthEmail { get; set; }
-    public string? GoogleServiceEmail { get; set; }
-    public GoogleEmailStatus GoogleEmailStatus { get; set; }
     public List<AdminUserEmailViewModel> UserEmails { get; set; } = [];
 
     public int ApplicationCount { get; set; }
@@ -58,7 +56,6 @@ internal sealed class AdminHumanDetailViewModel
 internal sealed class AdminUserEmailViewModel
 {
     public string Email { get; set; } = string.Empty;
-    public bool IsGoogle { get; set; }
     public bool IsVerified { get; set; }
     public bool IsPrimary { get; set; }
     public ContactFieldVisibility? Visibility { get; set; }

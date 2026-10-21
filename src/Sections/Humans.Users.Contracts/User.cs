@@ -129,7 +129,7 @@ public class User : IdentityUser<Guid>
     /// remains; the column is retained only so EF keeps it until a later drop migration.
     /// </summary>
     [Obsolete("Moved to UserEmail.GoogleEmailStatus (per-address) — #687. Do not read or write; retained for the DB column until a drop migration.")]
-    public GoogleEmailStatus GoogleEmailStatus { get; set; } = GoogleEmailStatus.Unknown;
+    public LegacyGoogleEmailStatus GoogleEmailStatus { get; set; } = LegacyGoogleEmailStatus.Unknown;
 
     /// <summary>Source of this user; null for self-registered.</summary>
     public ContactSource? ContactSource { get; set; }

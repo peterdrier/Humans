@@ -55,18 +55,11 @@ internal static class AdminHumanDetailViewModelBuilder
                 Proficiency = pl.Proficiency
             }).ToList(),
             OAuthEmail = info.Email,
-            GoogleServiceEmail = userEmails
-                .Where(e => e.IsVerified && e.IsGoogle)
-                .Select(e => e.Email)
-                .FirstOrDefault()
-                ?? info.Email,
-            GoogleEmailStatus = info.GoogleEmailStatus,
             UserEmails = userEmails
                 .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
                 .Select(e => new AdminUserEmailViewModel
                 {
                     Email = e.Email,
-                    IsGoogle = e.IsGoogle,
                     IsVerified = e.IsVerified,
                     IsPrimary = e.IsPrimary,
                     Visibility = e.Visibility,

@@ -67,10 +67,10 @@ Repository: `IUserRepository`.
 | Table | R/W |
 |-------|-----|
 | UserEmails | R/W |
-| Users | R/W (the only direct EF write to `Users.Email`). The `Users.GoogleEmail` shadow column has no reader or writer left (nobodies-collective/Humans#1102); the mapping survives only until the drop PR. Google sync status is per-address on `UserEmails.GoogleEmailStatus` — `Users.GoogleEmailStatus` is deprecated/unwritten. |
+| Users | R/W (the only direct EF write to `Users.Email`). The `Users.GoogleEmail` shadow column has no reader or writer left (nobodies-collective/Humans#1102); the mapping survives only until the drop PR. `UserEmails.IsGoogle` / `UserEmails.GoogleEmailStatus` and `Users.GoogleEmailStatus` are frozen and unwritten: the Google Workspace identity is GoogleIntegration's `google_workspace_identities` (Users decomposition commit 15). |
 
 Cross-section calls via `IUserService`, plus ASP.NET `UserManager<User>` and
-`IServiceProvider` for lazy resolution. Implements `IUserMerge`. No
+`IServiceProvider` for lazy resolution (Tickets' `ITicketService`, Users' `IAccountMergeService`, and GoogleIntegration's `IGoogleIntegrationWrite.ClearIfAddressAsync` after each committed delete, unlink or OAuth tag-move/rename/displacement). Implements `IUserMerge`. No
 `IMemoryCache` directly.
 **Cross-section design-rule note:** `Users` reads/writes overlap the User
 section — `IUserRepository` is the consolidated owner and this is the

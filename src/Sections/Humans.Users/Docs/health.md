@@ -71,7 +71,8 @@ The shapes imply one register with one cache and one write funnel:
 
 - The full app is reachable only when `User.State == Active`; state is written at each
   transition and never derived on read.
-- Exactly one verified `IsPrimary` address per account; at most one `IsGoogle`; a verified
+- Exactly one verified `IsPrimary` address per account (the Google identity is GoogleIntegration's since
+  Users decomposition commit 15; `IsGoogle` is frozen); a verified
   address belongs to at most one account. Each is service-enforced: the verify paths
   open a merge request when another account already holds the address verified, and the OAuth
   reconcile blocks or displaces before it writes.
