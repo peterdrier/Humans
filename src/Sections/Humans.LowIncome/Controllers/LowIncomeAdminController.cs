@@ -30,7 +30,7 @@ internal sealed class LowIncomeAdminController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Grant(Guid? userId, CancellationToken ct) =>
-        ActAsync(userId, async (person, actor) =>
+        ActAsync(nameof(Grant), userId, async (person, actor) =>
         {
             await grants.IssueAsync(Section.SourceKey, person, sourceRef: null, actor, ct);
             return (true, "Low Income grant given");
@@ -40,13 +40,13 @@ internal sealed class LowIncomeAdminController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Remove(Guid? userId, string? reason, CancellationToken ct) =>
-        ActAsync(userId, async (person, actor) =>
+        ActAsync(nameof(Remove), userId, async (person, actor) =>
             await grants.RevokeAsync(Section.SourceKey, person, reason, actor, ct)
                 ? (true, "Low Income grant removed")
                 : (false, "That person holds no Low Income grant."), ct);
 
     private async Task<IActionResult> ActAsync(
-        Guid? userId, Func<Guid, Guid, Task<(bool Ok, string Message)>> act, CancellationToken ct)
+        string action, Guid? userId, Func<Guid, Guid, Task<(bool Ok, string Message)>> act, CancellationToken ct)
     {
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
@@ -63,11 +63,12 @@ internal sealed class LowIncomeAdminController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Low Income grant action refused for {UserId}", person);
+            logger.LogWarning(ex, "Low Income {Action} refused for {UserId}", action, person);
             SetError(NoProgram);
         }
-        catch (ArgumentException)
+        catch (ArgumentException ex)
         {
+            logger.LogWarning(ex, "Low Income {Action} rejected for {UserId}", action, person);
             SetError("The reason is too long.");
         }
         return RedirectToAction(nameof(Index));

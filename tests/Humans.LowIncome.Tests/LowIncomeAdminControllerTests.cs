@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using NodaTime;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -24,6 +24,8 @@ public sealed class LowIncomeAdminControllerTests
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly Guid _actor = Guid.NewGuid();
 
+    private readonly CapturingLogger<LowIncomeAdminController> _logger = new();
+
     private LowIncomeAdminController NewController()
     {
         _users.GetUserInfoAsync(_actor, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(new UserInfo(
@@ -36,12 +38,14 @@ public sealed class LowIncomeAdminControllerTests
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, _actor.ToString()), new Claim(ClaimTypes.Role, RoleNames.Admin)], "test"))
         };
-        return new LowIncomeAdminController(_grants, _users, NullLogger<LowIncomeAdminController>.Instance)
+        return new LowIncomeAdminController(_grants, _users, _logger)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
         };
     }
+
+    private static ArgumentException TooLong(string reason) => new("too long", nameof(reason));
 
     private static string? Message(Controller c, string key) => c.TempData[key] as string;
 
@@ -104,6 +108,20 @@ public sealed class LowIncomeAdminControllerTests
     }
 
     [HumansFact]
+    public async Task TooLongReason_IsShownAsAnError_AndLogged()
+    {
+        var person = Guid.NewGuid();
+        _grants.RevokeAsync(Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(TooLong("x"));
+        var controller = NewController();
+
+        await controller.Remove(person, new string('x', 501), CancellationToken.None);
+
+        Message(controller, TempDataKeys.ErrorMessage).Should().Contain("too long");
+        _logger.Warnings.Should().ContainSingle().Which.Should().BeOfType<ArgumentException>();
+    }
+
+    [HumansFact]
     public async Task NoPersonPicked_CallsNothing()
     {
         var controller = NewController();
@@ -112,5 +130,20 @@ public sealed class LowIncomeAdminControllerTests
 
         _grants.ReceivedCalls().Should().BeEmpty();
         Message(controller, TempDataKeys.ErrorMessage).Should().NotBeNull();
+    }
+}
+
+internal sealed class CapturingLogger<T> : ILogger<T>
+{
+    public List<Exception?> Warnings { get; } = [];
+
+    public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+    public bool IsEnabled(LogLevel logLevel) => true;
+
+    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+        Func<TState, Exception?, string> formatter)
+    {
+        if (logLevel == LogLevel.Warning) Warnings.Add(exception);
     }
 }
