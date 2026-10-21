@@ -111,8 +111,9 @@ not from where the context lives.
 `src/Directory.Build.props` adds a `ProjectReference` with
 `OutputItemType="Analyzer"` and `ReferenceOutputAssembly="false"` to every
 project under `src/` except the analyzer itself. The analyzer compiles to
-`netstandard2.0` and binds to `Microsoft.CodeAnalysis.CSharp` 5.0.0 (the
-version EF Core Design pulls in on .NET 10). Tests do *not* attach the
+`netstandard2.0` and binds to the `Microsoft.CodeAnalysis.CSharp` version pinned in
+`Directory.Packages.props`, held deliberately low: a compiler older than that
+version refuses to load the analyzer (CS9057). Tests do *not* attach the
 analyzer to their own compilation — they instantiate analyzers directly via
 `AnalyzerTestHarness` and feed them synthetic compilations.
 
