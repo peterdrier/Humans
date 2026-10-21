@@ -46,7 +46,7 @@ All under `/Account`. Anti-forgery on every POST.
 | GET | `MagicLinkConfirm` | anonymous | Landing page that defers token consumption to a user-clicked POST (defeats email security scanners) |
 | POST | `MagicLink` | anonymous | Verifies login token, signs the user in, stamps `LastLoginAt` |
 | GET | `MagicLinkSignup` | anonymous | Reads the signup token (without consuming it) and renders the complete-signup form |
-| POST | `CompleteSignup` | anonymous | Redeems the signup token — consumed once, after field validation — then creates the `User` + `UserEmail` and signs the new user in. A duplicate submit from the now-signed-in user redirects onward; any other replay gets `MagicLinkError` |
+| POST | `CompleteSignup` | anonymous | Redeems the signup token — consumed once, after required-name and 256-character name-length validation — then creates the `User` + `UserEmail` and signs the new user in. A duplicate submit from the now-signed-in user redirects onward; any other replay gets `MagicLinkError` |
 | GET | `GateLogin` | anonymous | Renders the gate-terminal username/password form (shared laptop at gate; see `src/Sections/Humans.Scanner/Docs/features/gate-terminal-login.md`) |
 | POST | `GateLogin` | anonymous | Checks the credential against the well-known gate account (`SystemUserIds.GateTerminal`). Failures throttle per source IP (`GateLoginThrottle`, 10/min) — never per account, so nobody can lock the gate out; the account has Identity lockout disabled. Success signs in `isPersistent: true`, stamps `LastLoginAt`, redirects to `/Gate` (the gate terminal, which forwards to the claim screen to pick who's scanning) |
 | POST | `Logout` | (any) | Sign-out and redirect to `Home/Index` |

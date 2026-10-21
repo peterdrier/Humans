@@ -902,6 +902,39 @@ public class AccountProvisioningServiceTests
         _audit.ReceivedCalls().Should().HaveCount(1);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(0, 256)]
+    [Xunit.InlineData(1, 256)]
+    [Xunit.InlineData(2, 256)]
+    [Xunit.InlineData(0, 257)]
+    [Xunit.InlineData(1, 257)]
+    [Xunit.InlineData(2, 257)]
+    public async Task CompleteMagicLinkSignupAsync_ValidatesNameLengthsBeforeCreatingAccount(int field, int length)
+    {
+        string[] names = ["Burner", "First", "Last"];
+        names[field] = " " + new string('x', length) + " ";
+
+        var result = await _service.CompleteMagicLinkSignupAsync(
+            "length@example.com", names[0], names[1], names[2], Xunit.TestContext.Current.CancellationToken);
+
+        if (length > 256)
+        {
+            result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.Failed);
+            result.User.Should().BeNull();
+            _userRepo.Count.Should().Be(0);
+            _userEmailFake.All.Should().BeEmpty();
+            await _userManager.DidNotReceive().CreateAsync(Arg.Any<User>());
+            await _userService.DidNotReceive().EnsureStubProfileAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.Created);
+            await _userService.Received(1).EnsureStubProfileAsync(
+                result.User!.Id, names[0].Trim(), names[1].Trim(), names[2].Trim(), Arg.Any<CancellationToken>());
+        }
+    }
+
     [HumansFact]
     public async Task CompleteMagicLinkSignupAsync_CreatesUserEmailAndStubProfile()
     {
