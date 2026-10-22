@@ -110,34 +110,12 @@ internal sealed class GuestAccountController(
     private async Task<CommunicationPreferencesViewModel> BuildCommunicationPreferencesViewModelAsync(Guid userId, CancellationToken ct)
     {
         var prefs = await commPrefService.GetPreferencesReadOnlyAsync(userId, ct);
-        var prefsByCategory = prefs.ToDictionary(p => p.Category);
-
         var hasTicketOrder = (await ticketQueryService.GetUserTicketHoldingsAsync(userId, ct))
             .HasTicketAttendeeMatch;
 
-        var categories = new List<CategoryPreferenceItem>();
-
-        foreach (var category in MessageCategoryExtensions.ActiveCategories)
-        {
-            var pref = prefsByCategory.GetValueOrDefault(category);
-            var isAlwaysOn = category.IsAlwaysOn();
-            var isTicketingLocked = CommunicationPreferenceService.IsTicketingLocked(category, hasTicketOrder);
-
-            categories.Add(new CategoryPreferenceItem
-            {
-                Category = category,
-                // No row: the category's default, as in the panel view component.
-                EmailEnabled = pref is null ? !category.DefaultOptedOut() : !pref.OptedOut,
-                AlertEnabled = pref?.InboxEnabled ?? true,
-                EmailEditable = !isAlwaysOn && !isTicketingLocked,
-                AlertEditable = !isAlwaysOn && !isTicketingLocked,
-                IsTicketingLocked = isTicketingLocked,
-            });
-        }
-
         return new CommunicationPreferencesViewModel
         {
-            Categories = categories,
+            Categories = CategoryPreferenceItem.ForActiveCategories(prefs, hasTicketOrder),
             TicketingYear = clock.GetCurrentInstant().InUtc().Year,
         };
     }
