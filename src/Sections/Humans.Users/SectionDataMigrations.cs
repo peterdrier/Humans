@@ -10,15 +10,13 @@ namespace Humans.Users;
 /// Users' data migrations, run from <c>/Debug/DataMigrations</c>. Each one resolves Users' own
 /// services, so the copy stays inside the section; the Debug host only lists, applies and
 /// audits the run. These replace the Temp screens that used to live at
-/// <c>/Profile/Admin/Backfill</c>, <c>/Profile/Admin/PictureMigration</c> and
-/// <c>/Profile/Admin/EmailProblems/BackfillLegacyEmails</c>.
+/// <c>/Profile/Admin/Backfill</c> and <c>/Profile/Admin/EmailProblems/BackfillLegacyEmails</c>.
 /// </summary>
 internal sealed class SectionDataMigrations : ISectionDataMigrations
 {
     private const string Section = "Users";
 
     internal const string StubProfilesKey = "users.stub-profiles";
-    internal const string PicturesToFilesystemKey = "users.profile-pictures-to-filesystem";
     internal const string LegacyIdentityEmailsKey = "users.legacy-identity-emails";
 
     public IEnumerable<DataMigration> Migrations() =>
@@ -27,10 +25,6 @@ internal sealed class SectionDataMigrations : ISectionDataMigrations
             "Materialize a Stub Profile for every live user without one (nobodies-collective/Humans#635)",
             "The profile-less fallback branch of GET /Profile/{id}/Popover",
             StubProfilesStatusAsync, ApplyStubProfilesAsync),
-        new(PicturesToFilesystemKey, Section,
-            "Move DB-recorded custom profile pictures onto the filesystem (nobodies-collective/Humans#702)",
-            "Profile.ProfilePictureContentType as a migrate-on-read trigger",
-            PicturesStatusAsync, ApplyPicturesAsync),
         new(LegacyIdentityEmailsKey, Section,
             "Create a verified UserEmail row from the legacy User.Email Identity column",
             "The legacy-column fallback in User.Email / UserInfo.Email",
@@ -66,41 +60,6 @@ internal sealed class SectionDataMigrations : ISectionDataMigrations
                 created++;
         }
         return created;
-    }
-
-    // --- users.profile-pictures-to-filesystem ---
-
-    private static async Task<DataMigrationStatus> PicturesStatusAsync(IServiceProvider sp, CancellationToken ct) =>
-        new(["Profile", "User", "Display name", "Content type", "Updated"],
-            [.. (await sp.GetRequiredService<IProfilePictureService>().GetProfilePictureMigrationSnapshotAsync(ct))
-                .DbOnlyRows.Select(r => (IReadOnlyList<string>)
-                [
-                    r.ProfileId.ToString(), r.UserId.ToString(), r.DisplayName, r.ContentType,
-                    r.UpdatedAt.ToInvariantTimestamp(),
-                ])]);
-
-    private static async Task<int> ApplyPicturesAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct)
-    {
-        var pictures = sp.GetRequiredService<IProfilePictureService>();
-        var logger = sp.GetRequiredService<ILogger<SectionDataMigrations>>();
-        var snapshot = await pictures.GetProfilePictureMigrationSnapshotAsync(ct);
-
-        // GetProfilePictureAsync's filesystem-save side effect IS the migration.
-        var migrated = 0;
-        foreach (var row in snapshot.DbOnlyRows)
-        {
-            if (await pictures.GetProfilePictureAsync(row.ProfileId, ct) is not null)
-            {
-                migrated++;
-            }
-            else
-            {
-                logger.LogWarning(
-                    "Profile-picture migration: GetProfilePictureAsync returned null for DB-only profile {ProfileId} (userId {UserId}); row skipped",
-                    row.ProfileId, row.UserId);
-            }
-        }
-        return migrated;
     }
 
     // --- users.legacy-identity-emails ---

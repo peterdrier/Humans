@@ -60,21 +60,6 @@ internal sealed partial class UserRepository
             : null;
     }
 
-    public async Task<IReadOnlyList<(Guid ProfileId, Guid UserId, string BurnerName, string ContentType, string? StorageKey, Instant UpdatedAt)>>
-        GetCustomPictureRowsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var rows = await ctx.Profiles
-            .AsNoTracking()
-            .Where(p => p.ProfilePictureContentType != null)
-            .Select(p => new { p.Id, p.UserId, p.BurnerName, p.ProfilePictureContentType, p.ProfilePictureStorageKey, p.UpdatedAt })
-            .ToListAsync(ct);
-
-        return rows
-            .Select(r => (r.Id, r.UserId, r.BurnerName, r.ProfilePictureContentType!, r.ProfilePictureStorageKey, r.UpdatedAt))
-            .ToList();
-    }
-
     public async Task<IReadOnlyList<ProfileLanguage>> GetLanguagesAsync(
         Guid profileId, CancellationToken ct = default)
     {

@@ -17,7 +17,6 @@ namespace Humans.Users.Tests.Contributions;
 public class SectionDataMigrationsTests
 {
     private readonly IUserManagement _users = Substitute.For<IUserManagement>();
-    private readonly IProfilePictureService _pictures = Substitute.For<IProfilePictureService>();
     private readonly IEmailProblemsService _emailProblems = Substitute.For<IEmailProblemsService>();
     private readonly Guid _actorId = Guid.NewGuid();
     private readonly IServiceProvider _services;
@@ -27,7 +26,6 @@ public class SectionDataMigrationsTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton(_users);
-        services.AddSingleton(_pictures);
         services.AddSingleton(_emailProblems);
         _services = services.BuildServiceProvider();
     }
@@ -45,7 +43,6 @@ public class SectionDataMigrationsTests
         migrations.Select(m => m.Key).Should().BeEquivalentTo(
         [
             SectionDataMigrations.StubProfilesKey,
-            SectionDataMigrations.PicturesToFilesystemKey,
             SectionDataMigrations.LegacyIdentityEmailsKey,
         ]);
         migrations.Should().OnlyContain(m => string.Equals(m.Section, "Users", StringComparison.Ordinal) && m.Key.StartsWith("users.", StringComparison.Ordinal));
@@ -89,28 +86,6 @@ public class SectionDataMigrationsTests
         (await migration.Status(_services, Ct)).Done.Should().BeTrue();
         (await migration.Apply(_services, _actorId, Ct)).Should().Be(0);
         await _users.DidNotReceiveWithAnyArgs().EnsureStubProfileAsync(default);
-    }
-
-    [HumansFact]
-    public async Task Pictures_apply_counts_only_rows_the_read_migrated()
-    {
-        var migratedProfile = Guid.NewGuid();
-        var missingProfile = Guid.NewGuid();
-        var at = Instant.FromUtc(2026, 1, 1, 0, 0);
-        _pictures.GetProfilePictureMigrationSnapshotAsync(Arg.Any<CancellationToken>()).Returns(
-            new ProfilePictureMigrationSnapshot(3, 1,
-            [
-                new ProfilePictureMigrationRow(migratedProfile, Guid.NewGuid(), "A", "image/png", at),
-                new ProfilePictureMigrationRow(missingProfile, Guid.NewGuid(), "B", "image/jpeg", at),
-            ]));
-        _pictures.GetProfilePictureAsync(migratedProfile, Arg.Any<CancellationToken>())
-            .Returns(([1, 2, 3], "image/png"));
-        _pictures.GetProfilePictureAsync(missingProfile, Arg.Any<CancellationToken>())
-            .Returns(((byte[], string)?)null);
-        var migration = Migration(SectionDataMigrations.PicturesToFilesystemKey);
-
-        (await migration.Status(_services, Ct)).Pending.Should().Be(2);
-        (await migration.Apply(_services, _actorId, Ct)).Should().Be(1);
     }
 
     [HumansFact]

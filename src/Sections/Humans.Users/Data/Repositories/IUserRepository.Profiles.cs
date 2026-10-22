@@ -56,15 +56,6 @@ internal partial interface IUserRepository
         Guid profileId, CancellationToken ct = default);
 
     /// <summary>
-    /// Issue nobodies-collective/Humans#702: returns every profile whose
-    /// <c>ProfilePictureContentType</c> is non-null — the population the
-    /// DB→FS migration verification page operates on. Projects only the
-    /// scalar columns needed (no bytea load). Read-only (AsNoTracking).
-    /// </summary>
-    Task<IReadOnlyList<(Guid ProfileId, Guid UserId, string BurnerName, string ContentType, string? StorageKey, Instant UpdatedAt)>>
-        GetCustomPictureRowsAsync(CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the languages for a profile, ordered by proficiency descending
     /// then language code. Read-only.
     /// </summary>

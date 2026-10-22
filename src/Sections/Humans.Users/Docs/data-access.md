@@ -35,8 +35,7 @@ storage paths).
 |-------|-----|
 | Profiles | R (storage-path lookup) |
 
-Uses `IUserManagement` for migration-snapshot user lookups and `IFileStorage`
-to read picture bytes. No picture mutations or `IMemoryCache`; writes belong to
+Uses `IFileStorage` to read picture bytes. No picture mutations or `IMemoryCache`; writes belong to
 the profile-edit flow below.
 
 ### ProfileEditorService (Scoped)
