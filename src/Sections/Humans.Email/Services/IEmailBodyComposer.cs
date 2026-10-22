@@ -13,9 +13,9 @@ internal interface IEmailBodyComposer
     /// <summary>
     /// Wraps <paramref name="htmlContent"/> in the branded template and
     /// returns the paired HTML/plain-text bodies. <paramref name="unsubscribeUrl"/>
-    /// is rendered in both the HTML footer (when non-null) and, for
-    /// opt-outable categories, will be communicated as List-Unsubscribe by
-    /// the transport layer.
+    /// is rendered in the HTML and plain-text footers when non-null, using the
+    /// message's culture. Opt-outable categories also communicate it through
+    /// List-Unsubscribe headers.
     /// </summary>
     (string HtmlBody, string PlainTextBody) Compose(string htmlContent, string? unsubscribeUrl = null, string? culture = null);
 }

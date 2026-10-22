@@ -9,6 +9,13 @@ internal static class BrandedEmailTemplate
 {
     private static readonly ResourceManager Resources = new(typeof(EmailResource));
 
+    public static string GetUnsubscribeLabel(string? culture)
+    {
+        var language = culture?.Split('-')[0].ToLowerInvariant();
+        var recipientCulture = CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : CultureCatalog.DefaultCultureCode);
+        return Resources.GetString("Email_UnsubscribeFooter", recipientCulture)!;
+    }
+
     public static string Wrap(string content, string baseUrl, string environmentName, string? unsubscribeUrl = null, string? culture = null)
     {
         content = EmailInlineStyler.Apply(content);
@@ -17,9 +24,7 @@ internal static class BrandedEmailTemplate
         var envLabel = string.Equals(environmentName, "Staging", StringComparison.OrdinalIgnoreCase)
             ? "QA"
             : environmentName.ToUpperInvariant();
-        var language = culture?.Split('-')[0].ToLowerInvariant();
-        var recipientCulture = CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : CultureCatalog.DefaultCultureCode);
-        var unsubscribeLabel = Resources.GetString("Email_UnsubscribeFooter", recipientCulture)!;
+        var unsubscribeLabel = GetUnsubscribeLabel(culture);
         var unsubscribeFooter = unsubscribeUrl is not null
             ? $"""<p style="font-size: 11px; color: #8b7355; margin: 8px 0 0 0;"><a href="{WebUtility.HtmlEncode(unsubscribeUrl)}" style="color: #8b7355;">{WebUtility.HtmlEncode(unsubscribeLabel)}</a></p>"""
             : "";

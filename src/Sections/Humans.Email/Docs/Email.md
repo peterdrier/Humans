@@ -39,7 +39,7 @@ Transactional email outbox: queue, render, deliver, retry, pause/resume. Backs c
 | RecipientName | string? | Display name, max 256 characters to preserve accepted member names |
 | Subject | string | Email subject line |
 | HtmlBody | string | Rendered HTML body |
-| PlainTextBody | string? | Optional plain-text alternative; composed bodies retain action URLs, paragraph/heading/list/line-break separation, and table captions with tab-separated cells and one line per row |
+| PlainTextBody | string? | Optional plain-text alternative; composed bodies retain action URLs, paragraph/heading/list/line-break separation, and table captions with tab-separated cells and one line per row; when an unsubscribe URL is supplied, both HTML and plain text include the same localized label and URL, using the message culture rather than the ambient processing culture |
 | TemplateName | string | Template identifier used to render this message |
 | UserId | Guid? | Bare cross-section id (optional) — no FK constraint, no nav |
 | CampaignGrantId | Guid? | Bare cross-section id (CampaignGrant, Campaigns) — no FK constraint, no nav; status mirroring writes through `ICampaignWrite` |
