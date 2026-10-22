@@ -25,21 +25,29 @@ internal sealed class PaymentDetailsService(
     public async Task<string?> GetIbanAsync(Guid userId, CancellationToken ct = default)
     {
         var info = await users.GetUserInfoAsync(userId, ct);
-        var row = await repo.GetAsync(info?.Id ?? userId, ct);
+        return await ReadIbanAsync(info?.Id ?? userId, info, ct);
+    }
+
+    private async Task<string?> ReadIbanAsync(Guid userId, UserInfo? info, CancellationToken ct)
+    {
+        var row = await repo.GetAsync(userId, ct);
         return row is not null ? row.Iban : LegacyIban(info);
     }
 
     public async Task<bool> SetIbanAsync(Guid userId, string? iban, CancellationToken ct = default)
     {
-        if (await users.GetUserInfoAsync(userId, ct) is null) return false;
+        var info = await users.GetUserInfoAsync(userId, ct);
+        if (info is null) return false;
         var normalized = string.IsNullOrWhiteSpace(iban) ? null : IbanValidator.Normalize(iban);
-        await repo.UpsertAsync(userId, normalized, clock.GetCurrentInstant(), ct);
+        await repo.UpsertAsync(info.Id, normalized, clock.GetCurrentInstant(), ct);
         return true;
     }
 
     public async Task<string?> RevealIbanAsync(Guid userId, Guid actorUserId, CancellationToken ct = default)
     {
-        var iban = await GetIbanAsync(userId, ct);
+        var info = await users.GetUserInfoAsync(userId, ct);
+        userId = info?.Id ?? userId;
+        var iban = await ReadIbanAsync(userId, info, ct);
         if (iban is null) return null;
 
         // Entity type and wording unchanged from the Users screen this came from, so earlier
