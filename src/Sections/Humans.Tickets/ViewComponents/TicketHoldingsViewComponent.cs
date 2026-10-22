@@ -6,10 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Tickets.ViewComponents;
 
 /// <summary>
-/// Contributed to <c>UserPartSlots.ProfileSidebar</c> / <c>AdminDetailSidebar</c> (own-profile
-/// and admin hosts only) — renders nothing for <see cref="ProfileCardViewMode.Public"/>, since
-/// it has no per-viewer visibility check of its own and would otherwise leak any member's
-/// ticket holdings to any authenticated viewer.
+/// Renders nothing for <see cref="ProfileCardViewMode.Public"/>: it has no viewer check of its own and would leak any
+/// member's holdings.
 /// </summary>
 public sealed class TicketHoldingsViewComponent(
     ITicketService queryService,

@@ -7,11 +7,8 @@ using Microsoft.Extensions.Options;
 namespace Humans.Tickets.ViewComponents;
 
 /// <summary>
-/// The member dashboard's ticket card: confirmed, not attending, or missing — plus the
-/// buy/declare actions that go with each. When the holdings read fails the card says the
-/// status is unavailable instead of claiming "no ticket" and offering buy/declare. Shows a "not configured" note when no ticket
-/// vendor is set up, rather than hiding. Renders nothing off season (the admin switch on
-/// the active event settings): there is no ticket to buy or declare against.
+/// A failed holdings read says the status is unavailable, never "no ticket" with buy/declare actions. Renders
+/// nothing off season.
 /// </summary>
 public sealed class MemberTicketStatusViewComponent(
     ITicketService ticketService,
@@ -49,7 +46,7 @@ public sealed class MemberTicketStatusViewComponent(
             eventYear is null ? null : await ParticipationStatusAsync(userId, eventYear.Value, ct)));
     }
 
-    /// <summary>The member's ticket count, or <c>null</c> when the holdings read failed.</summary>
+    /// <summary>Null when the holdings read failed.</summary>
     private async Task<int?> TicketCountAsync(Guid userId, CancellationToken ct)
     {
         try
@@ -58,7 +55,7 @@ public sealed class MemberTicketStatusViewComponent(
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            throw; // request aborted — let it abort, don't log as an error
+            throw;
         }
         catch (Exception ex)
         {
@@ -75,7 +72,7 @@ public sealed class MemberTicketStatusViewComponent(
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            throw; // request aborted — let it abort, don't log as an error
+            throw;
         }
         catch (Exception ex)
         {
@@ -93,7 +90,7 @@ public sealed class MemberTicketStatusViewComponent(
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            throw; // request aborted — let it abort, don't log as an error
+            throw;
         }
         catch (Exception ex)
         {

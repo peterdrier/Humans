@@ -5,12 +5,6 @@ using Humans.Tickets.Contracts;
 
 namespace Humans.Tickets.Services;
 
-/// <summary>
-/// Builds the "Who's onsite" roster (#736): joins
-/// the year's onsite participations (Attended with a check-in) with camp / team /
-/// governance-role names and applies filters. Pure orchestration over existing
-/// section services — no DB access.
-/// </summary>
 internal sealed class OnsiteRosterService : IOnsiteRosterService
 {
     private readonly IEventParticipationManagement _participations;

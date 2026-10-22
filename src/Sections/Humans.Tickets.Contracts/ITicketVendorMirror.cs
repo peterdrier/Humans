@@ -5,22 +5,12 @@ using NodaTime;
 namespace Humans.Tickets.Contracts;
 
 /// <summary>
-/// Best-effort mirror of a gate admission back to the ticket vendor, so the vendor
-/// dashboard and vendor check-in app stay consistent with what happened at the gate.
+/// Best-effort mirror of a gate admission to the vendor. Gate's own scan events stay the dedupe authority; a
+/// failed mirror is not a failed admission.
 /// </summary>
-/// <remarks>
-/// Driven by Gate's <c>GateVendorCheckInJob</c>. It goes through
-/// Tickets rather than straight at the vendor port for the reason
-/// <see cref="ITicketDiscountCodes"/> does. This is a write, so it is not on
-/// <see cref="ITicketService"/>. The Gate section's own <c>gate_scan_events</c>
-/// remains the dedupe authority; a failed mirror is not a failed admission.
-/// </remarks>
 public interface ITicketVendorMirror : IApplicationService
 {
-    /// <summary>
-    /// Records a check-in for an issued ticket at the vendor. Not idempotent: each POST creates
-    /// a record, so callers must never retry it.
-    /// </summary>
+    /// <summary>Not idempotent: each call creates a vendor record, so callers must never retry.</summary>
     [ExternalWrite]
     Task CreateCheckInAsync(
         string vendorTicketId, Instant occurredAt, CancellationToken ct = default);

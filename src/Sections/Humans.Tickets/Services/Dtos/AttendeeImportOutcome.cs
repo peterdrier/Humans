@@ -1,12 +1,5 @@
 namespace Humans.Tickets.Services.Dtos;
 
-/// <summary>
-/// Per-attendee classification produced by
-/// <c>IAttendeeContactImportService.BuildPlanAsync</c>.
-/// Mirrors the MailerLite import's outcome shape — verified matches attach,
-/// unverified matches are deleted-then-created (squatter protection),
-/// no match creates a new user with a verified UserEmail row.
-/// </summary>
 internal enum AttendeeImportOutcome
 {
     /// <summary>Exactly one verified UserEmail matches — set MatchedUserId, no creation.</summary>

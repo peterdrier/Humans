@@ -5,11 +5,7 @@ using NodaTime.Text;
 
 namespace Humans.Gate.ViewComponents;
 
-/// <summary>
-/// The /Settings#gate tab (peterdrier/Humans#1634). <see cref="SectionSettings"/> gates it
-/// on <c>PolicyNames.TicketAdminOrAdmin</c> — the same policy the old <c>Gate/Admin</c>
-/// settings form used, so every viewer who reaches this component may edit.
-/// </summary>
+/// <summary><see cref="SectionSettings"/> gates the tab on TicketAdminOrAdmin, so every viewer who reaches it may edit.</summary>
 internal sealed class GateSettingsTabViewComponent(IGateService gate) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()

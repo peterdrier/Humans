@@ -6,7 +6,6 @@ using Humans.Tickets.Domain;
 
 namespace Humans.Tickets.Services.Dtos;
 
-/// <summary>Aggregated ticket dashboard statistics.</summary>
 internal sealed class TicketDashboardStats
 {
     public int TicketsSold { get; init; }
@@ -23,7 +22,6 @@ internal sealed class TicketDashboardStats
     public List<DailySales> DailySalesPoints { get; init; } = [];
     public List<RecentOrder> RecentOrders { get; init; } = [];
 
-    // Sync state
     public TicketSyncStatus SyncStatus { get; init; }
     public string? SyncError { get; init; }
     public Instant? LastSyncAt { get; init; }
@@ -58,7 +56,6 @@ internal sealed class RecentOrder
     public TicketPaymentStatus PaymentStatus { get; init; }
 }
 
-/// <summary>Weekly and quarterly sales aggregates for reporting.</summary>
 internal sealed class TicketSalesAggregates
 {
     public List<WeeklySalesAggregate> WeeklySales { get; init; } = [];
@@ -93,10 +90,8 @@ internal sealed class QuarterlySalesAggregate
 }
 
 /// <summary>
-/// One calendar month of ticket money for the accountant's monthly recap
-/// booking. Paid orders by purchase month; <see cref="RefundedGross"/> is the
-/// gross of orders since refunded, by purchase month, so the row still ties to
-/// the processor statement. A month with only refunds still gets a row.
+/// <see cref="RefundedGross"/> is the gross of orders since refunded, by purchase month, so the row still ties to the
+/// processor statement. A month with only refunds still gets a row.
 /// </summary>
 internal sealed class MonthlySalesAggregate
 {
@@ -110,20 +105,18 @@ internal sealed class MonthlySalesAggregate
     public decimal VatAmount { get; init; }
     public decimal StripeFees { get; init; }
     public decimal ApplicationFees { get; init; }
-    /// <summary>VAT Stripe charged on its fees (Stripe's <c>tax</c> bucket).</summary>
+    /// <summary>VAT Stripe charged on its fees.</summary>
     public decimal FeeTax { get; init; }
-    /// <summary>Tax Stripe withheld from the payout (Stripe's <c>withheld_tax</c> bucket).</summary>
+    /// <summary>Tax Stripe withheld from the payout.</summary>
     public decimal WithheldTax { get; init; }
     public decimal RefundedGross { get; init; }
 
     /// <summary>
-    /// Taxable ticket income, VAT included — built the way the VAT base is, per order:
-    /// Σ min(price, VIP threshold) over Valid/CheckedIn seats less the order discount,
-    /// floored at zero. So it is the base <see cref="VatAmount"/> was charged on.
+    /// Built per order the way the VAT base is (Σ min(price, VIP threshold) over live seats less the discount,
+    /// floored at zero), so it is the base <see cref="VatAmount"/> was charged on.
     /// </summary>
     public decimal TicketIncomeInclVat { get; init; }
 
-    /// <summary>Taxable ticket income net of the VAT it carries.</summary>
     public decimal TicketIncomeExVat => TicketIncomeInclVat - VatAmount;
 }
 
@@ -133,18 +126,13 @@ internal sealed class TicketTypeSalesAggregate
     public decimal Price { get; init; }
     public int TicketsSold { get; init; }
 
-    /// <summary>Sum of listed ticket prices — not order revenue (order-level
-    /// discounts and donations are excluded), so it won't reconcile with
-    /// the weekly/quarterly GrossRevenue figures.</summary>
+    /// <summary>Sum of listed ticket prices, without order discounts and donations, so it won't reconcile with
+    /// GrossRevenue.</summary>
     public decimal FaceValue { get; init; }
 }
 
 /// <summary>
-/// Discount-code usage and cost for one campaign. Grants come from the
-/// Campaigns section; the money comes from the paid orders whose
-/// <c>DiscountCode</c> matches a grant of that campaign. Codes redeemed on
-/// paid orders that match no grant land in a single unattributed row with
-/// <see cref="CodesGranted"/> null.
+/// Codes redeemed on paid orders that match no grant land in one unattributed row with <see cref="CodesGranted"/> null.
 /// </summary>
 internal sealed class DiscountCampaignAggregate
 {
@@ -153,14 +141,12 @@ internal sealed class DiscountCampaignAggregate
     /// <summary>Null for the unattributed row — nothing granted those codes.</summary>
     public int? CodesGranted { get; init; }
 
-    /// <summary>Paid orders that carried one of this campaign's codes.</summary>
     public int CodesUsed { get; init; }
 
     public decimal AverageDiscount { get; init; }
     public decimal TotalDiscount { get; init; }
 }
 
-/// <summary>Aggregated code tracking data: campaign summaries + individual code details.</summary>
 internal sealed class CodeTrackingData
 {
     public int TotalCodesSent { get; init; }
@@ -194,7 +180,6 @@ internal sealed class CodeDetailDto
     public string? RedeemedOrderVendorId { get; init; }
 }
 
-/// <summary>Break-even calculation result.</summary>
 internal sealed class BreakEvenResult
 {
     public int Target { get; init; }
@@ -202,7 +187,6 @@ internal sealed class BreakEvenResult
     public string Currency { get; init; } = "EUR";
 }
 
-/// <summary>A single row in the orders list page.</summary>
 [method: JsonConstructor]
 internal sealed record OrderRow()
 {
@@ -228,14 +212,12 @@ internal sealed record OrderRow()
     public string? MatchedUserName { get; init; }
 }
 
-/// <summary>Paged result of order rows.</summary>
 internal sealed class OrdersPageResult
 {
     public List<OrderRow> Rows { get; init; } = [];
     public int TotalCount { get; init; }
 }
 
-/// <summary>A single row in the attendees list page.</summary>
 [method: JsonConstructor]
 internal sealed record AttendeeRow()
 {
@@ -250,14 +232,12 @@ internal sealed record AttendeeRow()
     public string VendorOrderId { get; init; } = string.Empty;
 }
 
-/// <summary>Paged result of attendee rows.</summary>
 internal sealed class AttendeesPageResult
 {
     public List<AttendeeRow> Rows { get; init; } = [];
     public int TotalCount { get; init; }
 }
 
-/// <summary>A single row in the "who hasn't bought" page.</summary>
 internal sealed class WhoHasntBoughtRowDto
 {
     public Guid UserId { get; init; }
@@ -268,7 +248,6 @@ internal sealed class WhoHasntBoughtRowDto
     public MembershipTier Tier { get; init; }
 }
 
-/// <summary>Paged result + metadata for the "who hasn't bought" page.</summary>
 internal sealed class WhoHasntBoughtResult
 {
     public List<WhoHasntBoughtRowDto> Humans { get; init; } = [];
@@ -276,7 +255,6 @@ internal sealed class WhoHasntBoughtResult
     public List<string> AvailableTeams { get; init; } = [];
 }
 
-/// <summary>CSV export data for attendees.</summary>
 internal sealed class AttendeeExportRow
 {
     public string AttendeeName { get; init; } = string.Empty;
@@ -287,10 +265,6 @@ internal sealed class AttendeeExportRow
     public string VendorOrderId { get; init; } = string.Empty;
 }
 
-/// <summary>
-/// Server-side aggregate numerics for the ticket dashboard (tickets sold,
-/// gross revenue / fees across paid orders, unmatched order count).
-/// </summary>
 internal sealed class TicketDashboardTotals
 {
     public int TicketsSold { get; init; }
@@ -302,10 +276,6 @@ internal sealed class TicketDashboardTotals
     public int UnmatchedOrderCount { get; init; }
 }
 
-/// <summary>
-/// A paid order's payment-method and fee slice, used for in-memory grouping
-/// by payment method on the ticket dashboard.
-/// </summary>
 internal sealed class PaidOrderPaymentMethodRow
 {
     public string? PaymentMethod { get; init; }
@@ -315,22 +285,12 @@ internal sealed class PaidOrderPaymentMethodRow
     public decimal? ApplicationFee { get; init; }
 }
 
-/// <summary>
-/// Narrow per-order projection used by the dashboard's daily-sales chart:
-/// purchase instant and the count of attendees on the order.
-/// </summary>
 internal sealed class OrderDateAndCount
 {
     public Instant PurchasedAt { get; init; }
     public int AttendeeCount { get; init; }
 }
 
-/// <summary>
-/// Narrow per-paid-order projection used for weekly/quarterly sales
-/// aggregation. <see cref="VipDonations"/> is the sum of
-/// <c>(Price - VipThreshold)</c> across Valid/CheckedIn VIP attendees priced
-/// above the threshold.
-/// </summary>
 internal sealed class PaidOrderSalesRow
 {
     public Instant PurchasedAt { get; init; }
@@ -341,9 +301,8 @@ internal sealed class PaidOrderSalesRow
     public decimal VipDonations { get; init; }
 
     /// <summary>
-    /// Sum of <c>Price</c> over the order's Valid/CheckedIn seats — the seat set the VAT base
-    /// is taken over. Not derivable from <see cref="TotalAmount"/>: a transfer voids the
-    /// original seat and adds a live replacement at the same price on the same order.
+    /// The seats the VAT base is taken over. Not derivable from <see cref="TotalAmount"/>: a transfer voids a seat
+    /// and adds a live replacement at the same price on the same order.
     /// </summary>
     public decimal LiveSeatGross { get; init; }
     public decimal DiscountAmount { get; init; }
@@ -353,10 +312,7 @@ internal sealed class PaidOrderSalesRow
     public decimal? WithheldTax { get; init; }
 }
 
-/// <summary>
-/// Refunded order's purchase instant, gross and processing fees, for the monthly recap:
-/// a refund does not return the fees already charged, so they still belong in the totals.
-/// </summary>
+/// <summary>A refund does not return the fees already charged, so they still belong in the monthly totals.</summary>
 internal sealed class RefundedOrderRow
 {
     public Instant PurchasedAt { get; init; }
@@ -367,21 +323,12 @@ internal sealed class RefundedOrderRow
     public decimal? WithheldTax { get; init; }
 }
 
-/// <summary>
-/// Narrow per-attendee projection used to aggregate sales by ticket type and
-/// price. One row per Valid/CheckedIn attendee on a paid order.
-/// </summary>
 internal sealed class PaidAttendeeTypePriceRow
 {
     public string TicketTypeName { get; init; } = string.Empty;
     public decimal Price { get; init; }
 }
 
-/// <summary>
-/// Narrow order projection used to correlate campaign-code redemptions to
-/// their redeeming order buyer. One row per order that carries a discount
-/// code.
-/// </summary>
 internal sealed class DiscountCodeOrderRow
 {
     public string DiscountCode { get; init; } = string.Empty;
@@ -392,7 +339,6 @@ internal sealed class DiscountCodeOrderRow
     public bool IsPaid { get; init; }
 }
 
-/// <summary>CSV export data for orders.</summary>
 internal sealed class OrderExportRow
 {
     public string Date { get; init; } = string.Empty;
@@ -414,14 +360,11 @@ internal sealed class OrderExportRow
     public string VendorOrderId { get; init; } = string.Empty;
     public Instant PurchasedAt { get; init; }
 
-    /// <summary>Sum of (price − 315) over the order's Valid/CheckedIn seats priced above the VIP threshold.</summary>
+    /// <summary>Sum of the amount above the VIP threshold over the order's live seats.</summary>
     public decimal VipDonations { get; init; }
 }
 
-/// <summary>
-/// One donation on a paid order, for the accountant's donor list. <see cref="Date"/> is the
-/// purchase date in Europe/Madrid, the zone the monthly accountant report buckets by.
-/// </summary>
+/// <summary><see cref="Date"/> is in Europe/Madrid, the zone the monthly accountant report buckets by.</summary>
 internal sealed record DonationExportRow(
     string Date,
     string VendorOrderId,

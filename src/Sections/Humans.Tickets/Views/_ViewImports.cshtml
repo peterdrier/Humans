@@ -1,10 +1,5 @@
-@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
-   here ships broken markup with a green build and no runtime error.
-   Guarded by TicketsPageRenderTests (step 12).
-
-   Two localizers by design: the section owns
-   its Tickets_* set, and the transfer wizard also renders Common_Back /
-   Common_Cancel, which are genuinely shared vocabulary and stay in SharedResource. *@
+@* A section RCL does NOT inherit the host's _ViewImports. Omitting a line here ships broken markup with a green
+   build; TicketsPageRenderTests guards it. *@
 @using Humans.Base.Extensions
 @using Humans.Base.Enums
 @using Humans.Tickets
@@ -23,11 +18,6 @@
 @inject IStringLocalizer<TicketsResource> Localizer
 @inject IStringLocalizer<SharedResource> SharedLocalizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
-@* <vc:ticket-stub> is this section's own component, public under Contracts/ so MVC's
-   default provider discovers it and the tag helper is generated (step 6). Everything else
-   the views open — <vc:human>, <vc:human-search>, <vc:access-matrix> — is Humans.Base's.
-   <vc:human-summary> is Users', contributed to the ticket-transfer-party IUserPart slot. *@
 @addTagHelper *, Humans.Base
 @addTagHelper *, Humans.Tickets
-@* <vc:audit-log> (TicketTransferAdmin/Detail) is the AuditLog section's own component. *@
 @addTagHelper *, Humans.AuditLog

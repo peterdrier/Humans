@@ -5,7 +5,6 @@ using NodaTime;
 
 namespace Humans.Tickets.Data;
 
-/// <summary>EF-backed <see cref="IEventParticipationRepository"/>; singleton over a context factory.</summary>
 internal sealed class EventParticipationRepository(IDbContextFactory<TicketsDbContext> factory)
     : IEventParticipationRepository
 {
@@ -130,7 +129,6 @@ internal sealed class EventParticipationRepository(IDbContextFactory<TicketsDbCo
             }
             before.TryAdd(userId, (ep.Status, ep.Source, ep.DeclaredAt));
 
-            // Attended is permanent — leave it alone.
             if (ep.Status == ParticipationStatus.Attended)
                 continue;
 

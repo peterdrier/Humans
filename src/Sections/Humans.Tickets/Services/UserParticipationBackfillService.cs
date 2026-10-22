@@ -6,9 +6,6 @@ using NodaTime;
 
 namespace Humans.Tickets.Services;
 
-/// <summary>The admin participation backfill behind <c>/Tickets/Participation/Backfill</c>: parses pasted
-/// <c>UserId,Status</c> rows, previews them, and on apply writes and audits through
-/// <see cref="IEventParticipationManagement"/>.</summary>
 internal sealed class UserParticipationBackfillService(
     IEventParticipationManagement participations,
     ISettingsService settingsService,
@@ -45,10 +42,8 @@ internal sealed class UserParticipationBackfillService(
         return ParticipationBackfillResult.Success(count, year);
     }
 
-    /// <summary>
-    /// Pasted rows of <c>UserId,Status</c> — an optional header row is skipped
-    /// and rows without a defined status are silently dropped (the caller reports a count).
-    /// </summary>
+    /// <summary>An optional header row is skipped; rows without a defined status are dropped (the caller reports a
+    /// count).</summary>
     private static List<(Guid UserId, ParticipationStatus Status)> ParseEntries(string csvData)
     {
         var config = HumansCsv.ReadConfig();

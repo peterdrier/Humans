@@ -4,129 +4,83 @@ using NodaTime;
 
 namespace Humans.Gate.Services;
 
-/// <summary>
-/// The Gate (admissions) section service: evaluates a scanned ticket against the
-/// admission rules, records the agent's decision as an append-only
-/// <c>gate_scan_events</c> row (the dedupe authority and audit trail), and reads
-/// back leaderboard/settings. Owns the Gate tables via <c>IGateRepository</c> and
-/// reads Tickets / EarlyEntry / BurnSettings through their cross-section
-/// interfaces. Not consumed cross-section, so no read/write split is needed.
-/// </summary>
 internal interface IGateService : IApplicationService
 {
-    /// <summary>Live, write-free verdict for a freshly scanned barcode. Re-evaluated against the server clock every call.</summary>
+    /// <summary>Write-free; re-evaluated against the server clock on every call.</summary>
     Task<GateScanResult> EvaluateAsync(string barcode, CancellationToken ct = default);
 
     /// <summary>
-    /// Record the agent's decision after the photo-ID step. The scan is
-    /// re-evaluated server-side (the client-supplied flags never override a STOP),
-    /// then the durable verdict is written. Returns the final verdict for display.
-    /// <paramref name="scannedByUserId"/> is the authenticated gate staffer, which
-    /// the controller MUST take from the session — never from the request body —
-    /// so the audit attribution cannot be forged.
+    /// Re-evaluates server-side, so client flags never override a STOP. The controller must take
+    /// <paramref name="scannedByUserId"/> from the authenticated principal, never the request body.
     /// </summary>
     Task<GateDecisionResult> RecordDecisionAsync(GateDecisionInput input, Guid scannedByUserId, CancellationToken ct = default);
 
-    /// <summary>Unordered per-staffer scan tallies since <paramref name="since"/> (controller sorts for display).</summary>
+    /// <summary>Unordered; the controller sorts for display.</summary>
     Task<GateLeaderboard> GetLeaderboardAsync(Instant since, CancellationToken ct = default);
 
-    /// <summary>The current gate settings (general-entry cutoff + minor age threshold).</summary>
     Task<GateSettingsDto> GetSettingsAsync(CancellationToken ct = default);
 
-    /// <summary>Persist gate settings (admin only; authorized at the controller).</summary>
+    /// <summary>Authorized at the controller.</summary>
     Task SaveSettingsAsync(GateSettingsDto settings, CancellationToken ct = default);
 
-    /// <summary>Retention purge: delete scan rows older than <paramref name="cutoff"/>. Returns the count removed.</summary>
     Task<int> PurgeScansBeforeAsync(Instant cutoff, CancellationToken ct = default);
 
-    /// <summary>
-    /// Diff of local admits (<c>gate_scan_events</c>) against the vendor's check-in status
-    /// as of the last ticket sync, for the one-off vendor check-in backfill page — recovers
-    /// admits the fire-and-forget mirror (<c>GateVendorCheckInJob</c>) never delivered.
-    /// </summary>
+    /// <summary>Local admits against the vendor's check-in status as of the last ticket sync.</summary>
     Task<GateVendorBackfillSnapshot> GetVendorCheckInBackfillAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// The de-duplicated volunteers signed up for gate shifts on <paramref name="rosterTeamId"/>
-    /// whose shift starts within ±2 hours of now (event-local time) — the people likely working
-    /// the gate around shift change. Used to pre-fill the claim screen. Empty when there's no
-    /// active event or no shift starting in that window.
+    /// De-duplicated signups whose gate shift starts within ±2 hours of now, event-local. Empty with no active event.
     /// </summary>
     Task<IReadOnlyList<GateRosterEntry>> GetShiftRosterAsync(Guid rosterTeamId, CancellationToken ct = default);
 
-    // ── Personal device PINs ─────────────────────────────────────────────────
-    // Each gate staffer sets a 4-digit PIN once and reuses it to claim the shared
-    // scanner (real attribution). Hashes only. Kiosk overrides are authorized by the
-    // shared Gate:SupervisorPin at the controller; the claim flow (and with it the
-    // per-PIN override path) has no reachable page since peterdrier#1075 — deletion
-    // is tracked in nobodies-collective/Humans#933.
+    // Personal device PINs: the claim flow has no reachable page since peterdrier#1075; deletion is tracked in
+    // nobodies-collective/Humans#933. Kiosk overrides use the shared Gate:SupervisorPin at the controller.
 
-    /// <summary>Whether <paramref name="userId"/> has set a PIN, and whether they hold a gate-supervisor role.</summary>
     Task<GatePinStatus> GetPinStatusAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Kiosk self-enrolment: a staffer — supervisors included — sets their own claim PIN.
-    /// Stores <c>AdminEnrolled = false</c>, so the PIN attributes scans but can never authorize
-    /// a per-PIN override. Rejects weak/trivial PINs.
+    /// Stores <c>AdminEnrolled = false</c>: the PIN attributes scans but never authorizes an override. Rejects trivial
+    /// PINs.
     /// </summary>
     Task<GatePinSetResult> SetOwnPinAsync(Guid userId, string pin, CancellationToken ct = default);
 
-    /// <summary>Admin sets/initialises any user's PIN (incl. supervisors), from the gate admin page. <paramref name="actorUserId"/> is the acting admin (audit). Returns false if the PIN is invalid.</summary>
+    /// <summary>Returns false when the PIN is invalid.</summary>
     Task<bool> AdminSetPinAsync(Guid userId, string pin, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Verify a staffer's PIN for claiming the scanner. Timing-safe. False if no PIN set or mismatch.</summary>
+    /// <summary>Timing-safe. False when no PIN is set or it doesn't match.</summary>
     Task<bool> VerifyPinAsync(Guid userId, string pin, CancellationToken ct = default);
 
     /// <summary>
-    /// Authorize a supervisor override: true only if the asserted supervisor is enrolled, the
-    /// PIN matches, AND they currently hold a gate-supervisor role — all server-verified in one
-    /// call. Verify-only: an un-enrolled or non-supervisor user is rejected, never enrolled.
+    /// True only for an admin-enrolled PIN that matches, held by a current gate-supervisor role holder. Verify only:
+    /// never enrols.
     /// </summary>
     Task<bool> AuthorizeOverrideAsync(Guid supervisorUserId, string pin, CancellationToken ct = default);
 
-    /// <summary>Clear a user's PIN (admin reset). <paramref name="actorUserId"/> is the acting admin (audit). They re-enrol on next claim.</summary>
+    /// <summary>They re-enrol on the next claim.</summary>
     Task ClearPinAsync(Guid userId, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>
-    /// The user-ids of every gate-supervisor (Admin/Board/TicketAdmin) who has a PIN enrolled —
-    /// i.e. the people who could authorize a per-PIN override. Drove the kiosk override picker
-    /// (a tap-list, since the locked-down terminal can't reach free-text people search); the
-    /// authority itself is re-checked by <see cref="AuthorizeOverrideAsync"/> at submit time.
-    /// </summary>
+    /// <summary>Supervisors with an admin-enrolled PIN; authority is re-checked by <see cref="AuthorizeOverrideAsync"/>.</summary>
     Task<IReadOnlyList<Guid>> GetEnrolledSupervisorIdsAsync(CancellationToken ct = default);
 }
 
-/// <summary>One pre-filled gate-roster pick: a Humans user signed up for a current gate shift.</summary>
 internal sealed record GateRosterEntry(Guid UserId, string DisplayName);
 
-/// <summary>Whether a staffer has a device PIN set, and whether they hold a gate-supervisor role.</summary>
 internal sealed record GatePinStatus(bool HasPin, bool IsSupervisor);
 
-/// <summary>Outcome of a kiosk self-enrolment attempt.</summary>
 internal enum GatePinSetResult
 {
-    /// <summary>PIN set.</summary>
     Ok,
 
-    /// <summary>The PIN is not exactly four digits or is too easily guessed (e.g. 0000, 1234, repeats).</summary>
+    /// <summary>Not exactly four digits, or too easily guessed (0000, 1234, repeats).</summary>
     InvalidPin,
 }
 
 /// <summary>Write-free result of evaluating a scan, before the agent's ID decision.</summary>
-/// <param name="Outcome">The server-computed pre-check result: stop, supervisor review, or proceed to photo-ID confirmation.</param>
-/// <param name="Barcode">The normalized barcode that was evaluated.</param>
-/// <param name="GuestName">The attendee name on the matched ticket, or null when no current-event ticket matched.</param>
-/// <param name="TicketTypeName">The ticket type name for the matched attendee, or null when unmatched.</param>
-/// <param name="IsEarly">Whether the outcome permits proceeding with early entry after photo-ID confirmation.</param>
-/// <param name="EarlyEntrySource">The source labels for the guest's Early Entry grant, or null if none; remains server-side for privacy.</param>
-/// <param name="TicketAttendeeId">The matched ticket-attendee ID, or null when unmatched.</param>
-/// <param name="GuestUserId">The Humans user ID matched to the ticket, or null when the ticket is unmatched.</param>
-/// <param name="PreviousAdmitAt">The time this barcode was previously admitted locally, or null if it has not been admitted.</param>
-/// <param name="PreviousAdmitByUserId">The gate staffer's user ID for the previous local admission, or null if there was none.</param>
-/// <param name="VendorTicketId">The vendor-issued ticket ID for mirroring an admission check-in, or null when unavailable.</param>
-/// <param name="EarliestEntryDate">The earliest event-local date the holder may enter (their Early Entry grant), or null if they hold none. Drives the precise too-early reason. Date only — the EE source stays server-side (privacy I2).</param>
-/// <param name="Today">Today's calendar date in the event time zone, for the "today is …" half of the too-early reason. Null when not computed (e.g. invalid barcode).</param>
-/// <param name="GeneralEntryDate">The event-local date general entry opens, for the no-Early-Entry too-early reason. Null when the cutoff is unconfigured.</param>
+/// <remarks>
+/// <paramref name="EarlyEntrySource"/> stays server-side for privacy; the card shows only
+/// <paramref name="EarliestEntryDate"/>, a date. <paramref name="Today"/> is null when not computed (e.g. an invalid
+/// barcode); <paramref name="GeneralEntryDate"/> is null while the cutoff is unconfigured.
+/// </remarks>
 internal sealed record GateScanResult(
     GatePreCheckOutcome Outcome,
     string Barcode,
@@ -144,14 +98,9 @@ internal sealed record GateScanResult(
     LocalDate? GeneralEntryDate = null);
 
 /// <summary>
-/// The agent's decision for a scan, recorded server-side after re-evaluation.
-/// Deliberately carries no scanner identity — that is supplied separately by the
-/// controller from the authenticated session so it cannot be forged on the wire.
-/// A non-null <paramref name="OverrideByUserId"/> marks an authorized override
-/// (too-early or child-without-ID): the controller sets it ONLY after server-verifying
-/// the shared supervisor PIN (<c>Gate:SupervisorPin</c>), so the service treats it as
-/// proof the override was authorized. The shared PIN authorizes but cannot attribute,
-/// so the value recorded is the scanning gate account.
+/// Carries no scanner identity: the controller supplies it from the session, so it can't be forged on the wire. The
+/// controller sets <paramref name="OverrideByUserId"/> only after verifying the supervisor PIN, so the service treats
+/// non-null as proof.
 /// </summary>
 internal sealed record GateDecisionInput(
     string Barcode,
@@ -162,7 +111,6 @@ internal sealed record GateDecisionInput(
     string? Note,
     Guid? OverrideByUserId = null);
 
-/// <summary>The durable verdict plus the bits needed to render the result screen.</summary>
 internal sealed record GateDecisionResult(
     GateVerdict Verdict,
     string? GuestName,
@@ -172,33 +120,24 @@ internal sealed record GateDecisionResult(
     Guid? PreviousAdmitByUserId,
     string? VendorTicketId = null);
 
-/// <summary>One leaderboard row: a staffer's scan tallies.</summary>
 internal sealed record GateLeaderboardRow(Guid ScannedByUserId, int Admitted, int Rejected, int Total);
 
-/// <summary>Aggregated gate activity for a window.</summary>
 internal sealed record GateLeaderboard(int TotalAdmitted, int TotalScanned, IReadOnlyList<GateLeaderboardRow> Rows);
 
 /// <summary>
-/// Gate configuration DTO (mirrors the singleton settings row).
-/// <paramref name="CutoffConfigured"/> is a read-only projection of whether a real
-/// general-entry cutoff has been set (it is ignored on save — an admin always
-/// writes a concrete cutoff); it lets the terminal warn loudly while unset.
+/// <paramref name="CutoffConfigured"/> is a read-only projection, ignored on save.
 /// </summary>
 internal sealed record GateSettingsDto(
     Instant GeneralEntryOpensAt, int MinorAgeThresholdYears, bool CutoffConfigured = false);
 
 /// <summary>
-/// One local admit in the vendor check-in backfill diff. <paramref name="VendorTicketId"/>
-/// is non-null for mirrorable rows and null for unmirrorable ones (no matched attendee
-/// or the attendee row carries no vendor ticket id).
+/// <paramref name="VendorTicketId"/> is null for unmirrorable rows (no matched attendee or no vendor ticket id).
 /// </summary>
 internal sealed record GateVendorBackfillRow(
     string Barcode, string? AttendeeName, Instant AdmittedAt, string? VendorTicketId);
 
 /// <summary>
-/// Local admits diffed against the vendor's check-in status (as of the last ticket sync).
-/// <paramref name="Pending"/> can be mirrored via <c>GateVendorCheckInJob</c>;
-/// <paramref name="Unmirrorable"/> can only be fixed on the vendor dashboard.
+/// <paramref name="Pending"/> can be mirrored; <paramref name="Unmirrorable"/> can only be fixed on the vendor dashboard.
 /// </summary>
 internal sealed record GateVendorBackfillSnapshot(
     int AdmitCount,

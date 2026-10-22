@@ -2,13 +2,7 @@ using NodaTime;
 
 namespace Humans.Tickets.Contracts;
 
-/// <summary>
-/// Compact projection of a <c>TicketAttendee</c>
-/// row carried inside <see cref="TicketOrderInfo"/>. One per issued ticket.
-/// <paramref name="CheckedInAt"/> is the vendor check-in signal (from the
-/// <c>/check_ins</c> sync) — the issued ticket's <paramref name="Status"/> stays
-/// <c>Valid</c> when checked in, so consumers must test <paramref name="CheckedInAt"/>.
-/// </summary>
+/// <summary>A gate scan keeps <paramref name="Status"/> at Valid: test <paramref name="CheckedInAt"/> for check-in.</summary>
 public sealed record TicketAttendeeInfo(
     Guid Id,
     string VendorTicketId,
@@ -24,12 +18,8 @@ public sealed record TicketAttendeeInfo(
     Instant? CheckedInAt = null);
 
 /// <summary>
-/// Compact projection of a <c>TicketOrder</c>
-/// row, with embedded <see cref="TicketAttendeeInfo"/> children. Used as the
-/// canonical in-memory shape behind <c>CachingTicketQueryService</c>'s
-/// order projection. <paramref name="FeeTax"/> (VAT Stripe charged on its fees) and
-/// <paramref name="WithheldTax"/> (tax Stripe withheld from the payout) are null on orders
-/// enriched before those Stripe fee buckets were captured.
+/// <paramref name="FeeTax"/> (VAT on Stripe's fees) and <paramref name="WithheldTax"/> are null on orders enriched
+/// before those Stripe buckets were captured.
 /// </summary>
 public sealed record TicketOrderInfo(
     Guid Id,

@@ -4,20 +4,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Store.Data;
 
-/// <summary>
-/// Per-section database context for the Store section
-/// (nobodies-collective/Humans#858): maps only <c>store_products</c>,
-/// <c>store_orders</c>, <c>store_order_lines</c>, <c>store_payments</c>,
-/// <c>store_invoices</c>, with its own
-/// <c>__EFMigrationsHistory_Store</c> table and migrations under
-/// <c>Data/Migrations/</c>. Same database, same connection — the split
-/// is a code-side partition of the EF model.
-/// </summary>
-/// <remarks>
-/// Internal-sealed like every section context (issue nobodies-collective/Humans#750): repositories
-/// are the only consumers. Configurations are applied explicitly (not by
-/// assembly scanning) so this model can never accrete another section's tables.
-/// </remarks>
 internal sealed class StoreDbContext(DbContextOptions<StoreDbContext> options)
     : DbContext(options)
 {

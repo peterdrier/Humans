@@ -6,11 +6,8 @@ using NodaTime;
 namespace Humans.Tickets.Data;
 
 /// <summary>
-/// The only reader and writer of <c>tickets_event_participations</c>. Reads return cleared rows
-/// (<see cref="EventParticipation.Status"/> null) too: the service needs them to know which legacy
-/// Users rows are shadowed. Writes that take a <c>legacy</c> row treat it as the existing record
-/// when the table has none for that user and year, so the lifecycle rules see the same record the
-/// reads do (Users decomposition plan §3.1 step 4).
+/// Reads return cleared rows (null <see cref="EventParticipation.Status"/>) too: the service needs them to know
+/// which legacy rows are shadowed. A <c>legacy</c> argument counts as the existing record when the table has none.
 /// </summary>
 internal interface IEventParticipationRepository : IRepository
 {
@@ -19,42 +16,32 @@ internal interface IEventParticipationRepository : IRepository
     Task<IReadOnlyList<EventParticipation>> GetAllAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Upsert one record. On an existing record: Attended is permanent (only a missing
-    /// <c>CheckedInAt</c> may be filled by a later Attended write); anything else takes the new
-    /// status, source and declared-at. <c>CheckedInAt</c> is write-once. Returns false when the write
-    /// was refused because the record is Attended and there was nothing to fill.
+    /// Attended is permanent (only a missing <c>CheckedInAt</c> may be filled); <c>CheckedInAt</c> is write-once.
+    /// Returns false when refused: Attended with nothing to fill.
     /// </summary>
     Task<bool> UpsertAsync(
         Guid userId, int year, ParticipationStatus status, ParticipationSource source,
         Instant? declaredAt, Instant? checkedInAt, EventParticipation? legacy, CancellationToken ct = default);
 
     /// <summary>
-    /// Remove the record when its source is <paramref name="requiredSource"/> and it is not
-    /// Attended. With a <paramref name="legacy"/> row for the same user and year the record is
-    /// cleared (kept with a null status) instead of deleted, so the legacy value stays shadowed.
-    /// Returns true when a record was removed.
+    /// Only when the source is <paramref name="requiredSource"/> and not Attended. With a <paramref name="legacy"/> row
+    /// the record is cleared (null status) instead of deleted, so the legacy value stays shadowed.
     /// </summary>
     Task<bool> ClearAsync(
         Guid userId, int year, ParticipationSource requiredSource, EventParticipation? legacy,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Admin backfill for one year: each entry takes its status with source AdminBackfill unless
-    /// the record is Attended. Returns the entries that changed a record.
-    /// </summary>
+    /// <summary>Skips Attended records. Returns the entries that changed a record.</summary>
     Task<IReadOnlyList<(Guid UserId, ParticipationStatus Status)>> BackfillAsync(
         int year, IReadOnlyList<(Guid UserId, ParticipationStatus Status)> entries,
         IReadOnlyDictionary<Guid, EventParticipation> legacyByUser, CancellationToken ct = default);
 
-    /// <summary>Inserts <paramref name="row"/> unless a row (cleared or not) exists for its user and
-    /// year. The legacy copy's idempotent write.</summary>
+    /// <summary>Skips a user and year that already has a row, cleared or not, so the legacy copy is idempotent.</summary>
     Task<bool> TryInsertAsync(EventParticipation row, CancellationToken ct = default);
 
     /// <summary>
-    /// Account-merge fold of <paramref name="sourceUserId"/> onto <paramref name="targetUserId"/>,
-    /// per year: the survivor keeps the higher-precedence status (Attended &gt; Ticketed &gt; NoShow
-    /// &gt; NotAttending) and the first check-in. The source's record is then removed, or cleared
-    /// where it has a legacy row. Each user's legacy rows count as their records.
+    /// Per year the survivor keeps the higher status (Attended &gt; Ticketed &gt; NoShow &gt; NotAttending) and the
+    /// first check-in. The source's record is removed, or cleared where it has a legacy row.
     /// </summary>
     Task ReassignAsync(
         Guid sourceUserId, Guid targetUserId,

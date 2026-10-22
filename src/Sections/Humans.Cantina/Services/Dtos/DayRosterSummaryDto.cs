@@ -2,25 +2,8 @@ using NodaTime;
 
 namespace Humans.Cantina.Services.Dtos;
 
-/// <summary>
-/// One row of the Cantina Weekly Roster's per-day mini-summary table.
-/// Carries counts only — the per-person detail rolls up across the whole
-/// week in <see cref="WeeklyRosterDto.People"/> rather than being repeated
-/// per day.
-/// </summary>
-/// <param name="DayOffset">
-/// The day-offset relative to <c>EventSettings.GateOpeningDate</c>.
-/// </param>
-/// <param name="CalendarDate">
-/// <c>GateOpeningDate + DayOffset</c> in the event's timezone. Null when
-/// no active event exists.
-/// </param>
-/// <param name="TotalOnSite">Distinct on-site humans on this single day.</param>
-/// <param name="UnansweredOnDay">
-/// Distinct on-site humans on this single day whose <c>DietaryPreference</c>
-/// is null/empty. A missing profile row would count the same way, but every
-/// on-site human has one.
-/// </param>
+/// <summary>Counts only; per-person detail rolls up across the week in <see cref="WeeklyRosterDto.People"/>.</summary>
+/// <remarks><paramref name="CalendarDate"/> is null with no active event.</remarks>
 internal sealed record DayRosterSummaryDto(
     int DayOffset,
     LocalDate? CalendarDate,

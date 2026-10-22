@@ -1,8 +1,5 @@
-@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
-   here ships broken markup with a green build and no runtime error — G5-SECTION-TEMPLATE.md
-   step 3, from the split design's §2 (Views — Razor Class Library per section).
-   Guarded by CantinaPageRenderTests (template step 12, render every page) — which lives in
-   Humans.Integration.Tests and so never runs in CI. *@
+@* A section RCL does NOT inherit the host's _ViewImports. Omitting a line here ships broken markup with a green build;
+   CantinaPageRenderTests guards it, but only outside CI. *@
 @using Humans.Base.Extensions
 @using Humans.Cantina
 @using Humans.Cantina.Controllers
@@ -19,6 +16,6 @@
 @inject IStringLocalizer<CantinaResource> Localizer
 @inject IStringLocalizer<SharedResource> SharedLocalizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
-@* Nothing in these views is a <vc:…>, but a section can only addTagHelper against
-   Humans.Base — a Shell-resident component renders as inert literal markup (step 6). *@
+@* No <vc:…> here, but a Shell-resident component would render as inert markup: a section can only addTagHelper
+   against Humans.Base. *@
 @addTagHelper *, Humans.Base

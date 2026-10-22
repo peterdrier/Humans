@@ -4,7 +4,6 @@ using NodaTime;
 
 namespace Humans.Preapprovals.Services;
 
-/// <summary>A program as the section's own pages see it, with its managers and every grant.</summary>
 internal sealed record ProgramInfo(
     Guid Id,
     string Name,
@@ -23,12 +22,12 @@ internal sealed record ProgramInfo(
     IReadOnlyList<Guid> ManagerUserIds,
     IReadOnlyList<GrantInfo> Grants)
 {
-    /// <summary>Σ MaxAmount over Open + Claimed + Consumed: what counts against the ceiling.</summary>
+    /// <summary>What counts against the ceiling.</summary>
     public decimal Granted => Grants.Where(g => g.CountsAgainstCeiling).Sum(g => g.MaxAmount);
 
     public decimal Consumed => Grants.Where(g => g.Status == GrantStatus.Consumed).Sum(g => g.MaxAmount);
 
-    /// <summary>Σ over Applied rows: the queue a manager sees beside what is committed.</summary>
+    /// <summary>The Applied queue a manager sees beside what is committed.</summary>
     public decimal Requested => Grants.Where(g => g.Status == GrantStatus.Applied).Sum(g => g.MaxAmount);
 
     /// <summary>Revoked, plus Open past the deadline. Frozen rows, never adjusted.</summary>
@@ -44,7 +43,7 @@ internal sealed record ProgramInfo(
 
     public bool DeadlinePassed(LocalDate today) => today > ClaimBy;
 
-    /// <summary>Once any grant exists the kind cannot change — the rule <c>UpdateProgramAsync</c> enforces.</summary>
+    /// <summary>The rule <c>UpdateProgramAsync</c> enforces.</summary>
     public bool KindLocked => Grants.Count > 0;
 
     /// <summary>The apply form shows and the POST is accepted only while all three hold.</summary>
@@ -52,7 +51,6 @@ internal sealed record ProgramInfo(
         Status == ProgramStatus.Open && AcceptsApplications && !DeadlinePassed(today);
 }
 
-/// <summary>One grant with the program facts its pages need beside it.</summary>
 internal sealed record GrantInfo(
     Guid Id,
     Guid ProgramId,
@@ -77,7 +75,7 @@ internal sealed record GrantInfo(
     public bool IsTerminal =>
         Status is GrantStatus.Consumed or GrantStatus.Declined or GrantStatus.Revoked;
 
-    /// <summary>Open and the deadline not passed today: the only state a member can file against.</summary>
+    /// <summary>The only state a member can file against.</summary>
     public bool IsClaimable(LocalDate today) => Status == GrantStatus.Open && today <= ClaimBy;
 
     public bool DeadlinePassed(LocalDate today) => Status == GrantStatus.Open && today > ClaimBy;
@@ -98,15 +96,12 @@ internal sealed record ProgramSave(
     ProgramStatus Status,
     IReadOnlyList<Guid> ManagerUserIds);
 
-/// <summary>Resource key and formatting arguments for an expected refusal.</summary>
 internal sealed record PreapprovalRefusal(string Key, params object[] Args);
 
-/// <summary>Mutation result: either a refusal the page shows, or success.</summary>
 internal record PreapprovalMutationResult(PreapprovalRefusal? Refusal = null)
 {
     public static readonly PreapprovalMutationResult Ok = new();
 }
 
-/// <summary>Mutation result carrying a created id on success.</summary>
 internal sealed record PreapprovalMutationResult<T>(T? Value = default, PreapprovalRefusal? Refusal = null)
     : PreapprovalMutationResult(Refusal);

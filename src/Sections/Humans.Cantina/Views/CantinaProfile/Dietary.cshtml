@@ -25,7 +25,6 @@
         <form asp-action="Dietary" method="post" novalidate>
             @Html.AntiForgeryToken()
 
-            @* Where to land after the POST: "shifts" from the /Shifts banner, else Home. *@
             <input type="hidden" asp-for="ReturnAction" />
 
             @if (ViewData.ModelState.ErrorCount > 0)
@@ -35,7 +34,6 @@
                 </div>
             }
 
-            @* ===== Dietary Preference (required radio group) ===== *@
             <fieldset class="mb-4">
                 <legend class="h6">
                     @Localizer["Cantina_Dietary_DietaryPreference_Label"]
@@ -60,7 +58,6 @@
                 <span asp-validation-for="DietaryPreference" class="text-danger"></span>
             </fieldset>
 
-            @* ===== Allergies (multi-checkbox + Other text) ===== *@
             <fieldset class="mb-4">
                 <legend class="h6">@Localizer["Cantina_Dietary_Allergies_Label"]</legend>
                 <div class="d-flex flex-wrap gap-3">
@@ -78,7 +75,6 @@
                         </div>
                     }
                 </div>
-                @* Other on its own line — visual hint that it opens a free-text field *@
                 <div class="form-check mt-2 pt-2 border-top">
                     <input class="form-check-input"
                            type="checkbox"
@@ -95,7 +91,6 @@
                 </div>
             </fieldset>
 
-            @* ===== Intolerances (multi-checkbox + Other text) ===== *@
             <fieldset class="mb-4">
                 <legend class="h6">@Localizer["Cantina_Dietary_Intolerances_Label"]</legend>
                 <div class="d-flex flex-wrap gap-3">
@@ -113,7 +108,6 @@
                         </div>
                     }
                 </div>
-                @* Other on its own line — visual hint that it opens a free-text field *@
                 <div class="form-check mt-2 pt-2 border-top">
                     <input class="form-check-input"
                            type="checkbox"
@@ -133,7 +127,6 @@
             <div class="d-flex justify-content-between flex-wrap gap-2">
                 <a asp-controller="Profile" asp-action="Index" class="btn btn-outline-secondary">@SharedLocalizer["Common_Cancel"]</a>
                 <div class="d-flex flex-wrap gap-2">
-                    @* Opt-out: clears the answers and stops the dietary prompts (Docs/features/dietary-nudge.md). *@
                     <button type="submit" name="DeclineToAnswer" value="true" formnovalidate class="btn btn-outline-secondary">@Localizer["Cantina_Dietary_DeclineButton"]</button>
                     <button type="submit" class="btn btn-primary">@SharedLocalizer["Common_Save"]</button>
                 </div>
@@ -145,9 +138,7 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script nonce="@Context.Items["CspNonce"]">
-        // Toggle the "Other" text input visibility based on the matching checkbox.
-        // Server-side validation (CantinaProfileController) still enforces the conditional-required
-        // rule, so users with JS disabled get a normal validation error and resubmit.
+        // The server enforces the same rule, so users without JS get a normal validation error.
         (function () {
             function wireOther(prefix, otherValue) {
                 var checkbox = document.getElementById(prefix + '-' + otherValue);

@@ -2,31 +2,25 @@ using NodaTime;
 
 namespace Humans.Store.Services.Dtos;
 
-/// <summary>
-/// Reconciliation status of a single Stripe Checkout Session against recorded
-/// <c>Payment</c> rows. See the 2026-06-04 reconciliation design.
-/// </summary>
 internal enum StripeReconciliationStatus
 {
-    /// <summary>Paid session whose PaymentIntent is already recorded as Paid locally.</summary>
+    /// <summary>Recorded as Paid locally.</summary>
     Recorded,
     /// <summary>
-    /// Paid session whose PaymentIntent is recorded but still <c>Pending</c> locally — Stripe has
-    /// confirmed the money, the settlement webhook hasn't landed yet. The amount is NOT counted
-    /// toward the order balance, so don't read this as "accounted for".
+    /// Recorded but still Pending locally: Stripe confirmed the money, the settlement webhook hasn't landed. Not counted
+    /// toward the balance, so don't read it as accounted for.
     /// </summary>
     RecordedPending,
-    /// <summary>Paid session, order resolved and billable, but not yet recorded — recordable.</summary>
+    /// <summary>Order resolved and billable, but not yet recorded.</summary>
     Missing,
-    /// <summary>Paid session with no resolvable billable order (missing metadata, deleted order, or Team order).</summary>
+    /// <summary>No resolvable billable order (missing metadata, deleted order, or Team order).</summary>
     Unmatched,
-    /// <summary>Session not in a paid state (open / expired / async-pending) — informational.</summary>
+    /// <summary>Not paid (open, expired or async-pending); informational.</summary>
     Unpaid,
-    /// <summary>Paid session whose local payment is Failed — a conflicting terminal outcome requiring review.</summary>
+    /// <summary>The local payment is Failed: a conflicting terminal outcome needing review.</summary>
     RecordedFailed,
 }
 
-/// <summary>One Stripe Checkout Session row in the reconciliation view.</summary>
 internal sealed record StripeReconciliationRow(
     string SessionId,
     string? PaymentIntentId,
@@ -37,10 +31,7 @@ internal sealed record StripeReconciliationRow(
     string? OrderLabel,
     StripeReconciliationStatus Status);
 
-/// <summary>
-/// A recorded Stripe-method payment with no matching session in the Stripe list —
-/// reported for human review, never auto-deleted.
-/// </summary>
+/// <summary>A recorded Stripe payment with no matching session: reported for review, never auto-deleted.</summary>
 internal sealed record StripeOrphanPayment(
     string PaymentIntentId,
     Guid OrderId,
@@ -49,18 +40,9 @@ internal sealed record StripeOrphanPayment(
     Instant ReceivedAt);
 
 /// <summary>
-/// Full reconciliation report for the Store Stripe Payments admin screen: webhook/checkout
-/// health, every Stripe payment matched to its order, and recorded payments orphaned from Stripe.
+/// <paramref name="StripeQueried"/> is false when Stripe couldn't be read (key unset or missing read scope);
+/// <paramref name="Orphans"/> is then empty rather than flagging every recorded payment.
 /// </summary>
-/// <param name="StripeQueried">
-/// True when the Stripe session list was actually read. False when Stripe could not be queried
-/// (key unset or missing read scope) — in which case <see cref="Orphans"/> is empty rather than
-/// false-flagging every recorded payment as an orphan.
-/// </param>
-/// <param name="WebhookConfigured">Whether the Stripe webhook is configured.</param>
-/// <param name="CheckoutConfigured">Whether Stripe Checkout is configured.</param>
-/// <param name="Rows">The Stripe sessions and their local reconciliation status.</param>
-/// <param name="Orphans">Recorded Stripe payments with no matching session, for review.</param>
 internal sealed record StripeReconciliationReport(
     bool WebhookConfigured,
     bool CheckoutConfigured,
@@ -78,5 +60,4 @@ internal sealed record StripeReconciliationReport(
         .Sum(r => r.AmountEur ?? 0m);
 }
 
-/// <summary>Outcome of recording the missing payments: how many were recorded and their total.</summary>
 internal sealed record StripeReconciliationResult(int RecordedCount, decimal TotalEur);

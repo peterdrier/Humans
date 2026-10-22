@@ -4,11 +4,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Cantina.Data;
 
-/// <summary>
-/// Cantina's own context: <c>cantina_dietary_profiles</c> and its own
-/// <c>__EFMigrationsHistory_Cantina</c>, same database and connection. Configurations are applied
-/// explicitly, never by assembly scan, so this model cannot accrete another section's tables.
-/// </summary>
 internal sealed class CantinaDbContext(DbContextOptions<CantinaDbContext> options)
     : DbContext(options)
 {

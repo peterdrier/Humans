@@ -1,13 +1,10 @@
-@* A section RCL does not inherit the host's Views/_ViewImports.cshtml. A missing @using
-   here ships broken markup with a green build — only EarlyEntryPageRenderTests catches it,
-   and that is a local-only integration test. *@
+@* A section RCL does not inherit the host's _ViewImports. A missing @using here ships broken markup with
+   a green build; only the local-only EarlyEntryPageRenderTests catches it. *@
 @using Humans.Base.Extensions
 @using Humans.EarlyEntry
 @using Humans.EarlyEntry.Models
 @using Humans.Base
 @using Humans.Base.Models.Tables
 @using NodaTime
-@* No localized copy: the roster is an admin page, inline English
-   (memory/code/localization-admin-exempt.md). *@
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @addTagHelper *, Humans.Base

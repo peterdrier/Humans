@@ -16,7 +16,6 @@ internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         b.Property(x => x.RequestPayload).HasColumnType("jsonb");
         b.Property(x => x.ResponsePayload).HasColumnType("jsonb");
 
-        // Intra-section FK to Order — one invoice per order, typed-FK form, no nav.
         b.HasOne<Order>()
             .WithOne()
             .HasForeignKey<Invoice>(x => x.OrderId)

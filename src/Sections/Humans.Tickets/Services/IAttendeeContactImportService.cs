@@ -4,14 +4,8 @@ using Humans.Base.Interfaces;
 namespace Humans.Tickets.Services;
 
 /// <summary>
-/// Plan-and-apply import that creates Humans users for ticket attendees
-/// whose email doesn't already resolve to an existing user. Mirrors the
-/// MailerLite import shape: <see cref="BuildPlanAsync"/> classifies, the admin
-/// previews + selects, <see cref="ApplyAsync"/> executes only selected rows.
-///
-/// Stateless: <see cref="ApplyAsync"/> re-queries unmatched attendees so
-/// plan and apply are independent (a sync in between is tolerated and
-/// counted as <c>VanishedBetweenPlanAndApply</c>).
+/// Plan, then apply only the selected rows. Apply re-queries, so a sync in between is tolerated (counted as
+/// <c>VanishedBetweenPlanAndApply</c>).
 /// </summary>
 internal interface IAttendeeContactImportService : IApplicationService
 {

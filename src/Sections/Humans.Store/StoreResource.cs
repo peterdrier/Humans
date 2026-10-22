@@ -1,10 +1,7 @@
 namespace Humans.Store;
 
 /// <summary>
-/// Marker type for Store's resource set. The <c>.resx</c> files sit beside this file
-/// on purpose: the SDK derives the manifest name from the adjacent same-named
-/// <c>.cs</c> file's namespace, not from the folder path, so this must stay
-/// <c>namespace Humans.Store</c> — <c>Humans.Store.Resources</c> would make every
-/// Store string fall back to its raw key at runtime.
+/// Must stay <c>namespace Humans.Store</c>: the SDK derives the adjacent .resx manifest name from this file's namespace,
+/// and any other namespace makes every Store string fall back to its raw key.
 /// </summary>
 public class StoreResource;

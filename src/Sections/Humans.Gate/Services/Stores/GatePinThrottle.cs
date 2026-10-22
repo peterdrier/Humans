@@ -4,24 +4,14 @@ using NodaTime;
 namespace Humans.Gate.Services.Stores;
 
 /// <summary>
-/// Brute-force throttle for gate PIN entry (claim take-over and the shared supervisor
-/// override PIN). A 4-digit PIN is a small secret, so after a few failures the key is
-/// locked for a real cooldown that does NOT reset on its own — only a correct PIN
-/// (<see cref="Reset"/>) clears it.
-///
-/// Claim callers throttle per <em>target user-id</em>, never per shared device/IP:
-/// in practice the reverse-proxy collapses all kiosk traffic to one IP, so 5 failures
-/// for any one PIN would freeze every claim at the terminal for 15 minutes (gate-wide
-/// DoS); the per-user bucket already caps brute-force at 5 / 15 min across the ~10k
-/// PIN space. The shared override PIN has no per-user key, so it uses one deliberate
-/// terminal-wide bucket whose lockout blocks only the override path, never scanning.
+/// A 4-digit PIN is a small secret, so a locked key stays locked until a correct PIN (<see cref="Reset"/>). Claims
+/// throttle per target user, never per IP: the proxy collapses kiosk traffic to one IP, so an IP key would freeze
+/// every claim. The shared override PIN uses one terminal-wide bucket that blocks only overrides.
 /// </summary>
 internal sealed class GatePinThrottle(IMemoryCache cache, IClock clock)
 {
-    /// <summary>Failed attempts allowed before a key is locked out.</summary>
     public const int MaxFailures = 5;
 
-    /// <summary>How long a key stays locked after <see cref="MaxFailures"/> failures.</summary>
     public static readonly Duration Lockout = Duration.FromMinutes(15);
 
     private readonly Lock _lock = new();
@@ -34,7 +24,7 @@ internal sealed class GatePinThrottle(IMemoryCache cache, IClock clock)
 
     private static string Key(string key) => $"GatePinFailures:{key}";
 
-    /// <summary>Null when entry for this key is allowed; otherwise whole seconds left on the lockout (≥ 1).</summary>
+    /// <summary>Null when entry is allowed; otherwise whole seconds left on the lockout (≥ 1).</summary>
     public int? SecondsUntilRetry(string key)
     {
         lock (_lock)
@@ -57,7 +47,6 @@ internal sealed class GatePinThrottle(IMemoryCache cache, IClock clock)
             if (state.Count >= MaxFailures)
                 state.LockedUntil = clock.GetCurrentInstant() + Lockout;
 
-            // Keep the record alive at least until the lockout clears (or the decay window).
             var ttl = state.LockedUntil is { } until
                 ? until - clock.GetCurrentInstant()
                 : Lockout;
@@ -65,7 +54,6 @@ internal sealed class GatePinThrottle(IMemoryCache cache, IClock clock)
         }
     }
 
-    /// <summary>A correct PIN clears the key's failure history.</summary>
     public void Reset(string key)
     {
         lock (_lock)

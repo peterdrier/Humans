@@ -1,27 +1,14 @@
 namespace Humans.Tickets.Contracts;
 
-/// <summary>
-/// Status of a user's participation in a yearly event.
-/// </summary>
 public enum ParticipationStatus
 {
-    /// <summary>
-    /// User has declared they are not attending this year.
-    /// </summary>
     NotAttending = 0,
 
-    /// <summary>
-    /// User has a valid ticket for the event.
-    /// </summary>
     Ticketed = 1,
 
-    /// <summary>
-    /// User attended the event (checked in).
-    /// </summary>
+    /// <summary>Checked in at the gate.</summary>
     Attended = 2,
 
-    /// <summary>
-    /// User had a ticket but did not attend (post-event derivation).
-    /// </summary>
+    /// <summary>Had a ticket but did not attend.</summary>
     NoShow = 3,
 }

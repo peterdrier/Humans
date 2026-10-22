@@ -6,10 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Tickets;
 
-/// <summary>
-/// Tickets' data migrations, run from <c>/Debug/DataMigrations</c>. The copy resolves Tickets' own
-/// service; the Debug host lists, applies and audits the run.
-/// </summary>
 internal sealed class SectionDataMigrations : ISectionDataMigrations
 {
     internal const string EventParticipationsKey = "tickets.event-participations";

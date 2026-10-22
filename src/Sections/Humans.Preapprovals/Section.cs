@@ -16,10 +16,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Preapprovals;
 
-/// <summary>
-/// Preapprovals' DI entry point, at the project root by convention. Discovered by Shell —
-/// nothing names it, so it needs no section prefix.
-/// </summary>
 public sealed class Section : ISection, ISectionAdminNav
 {
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
@@ -34,10 +30,8 @@ public sealed class Section : ISection, ISectionAdminNav
     {
         services.AddSectionDbContext<PreapprovalsDbContext>(sentinelTable: "pre_programs");
 
-        // Singleton + IDbContextFactory pattern (§15b): the repository owns context lifetime.
         services.AddSingleton<IPreapprovalRepository, PreapprovalRepository>();
 
-        // No caching decorator: a handful of programs, read on a few pages a day.
         services.AddScoped<PreapprovalService>();
         services.AddScoped<IPreapprovalManagement>(sp => sp.GetRequiredService<PreapprovalService>());
         services.AddScoped<IPreapprovalService>(sp => sp.GetRequiredService<PreapprovalService>());
@@ -50,8 +44,6 @@ public sealed class Section : ISection, ISectionAdminNav
 
         services.AddScoped<PreapprovalRemindersJob>();
 
-        // Preapprovals owns its email copy and its gallery samples; Email keeps the mechanics
-        // (memory/architecture/email-templates-live-in-sender.md).
         services.AddScoped<PreapprovalsEmails>();
         services.AddScoped<IEmailPreviewContributor, PreapprovalsEmailPreviews>();
 

@@ -4,9 +4,8 @@ using NodaTime;
 namespace Humans.Store.Services;
 
 /// <summary>
-/// Today's date in the active event's time zone (UTC before an event exists). The one
-/// source for the product-deadline checks in <see cref="Service"/> and
-/// <c>OrderAuthorizationHandler</c>, so the two can never disagree about the date.
+/// Today in the active event's time zone (UTC before an event exists). The one source for the product-deadline checks
+/// in <see cref="Service"/> and <c>OrderAuthorizationHandler</c>, so they never disagree about the date.
 /// </summary>
 internal static class EventZoneToday
 {

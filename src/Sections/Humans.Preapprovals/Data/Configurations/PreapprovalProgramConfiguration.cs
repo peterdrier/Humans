@@ -44,10 +44,9 @@ internal sealed class ProgramManagerConfiguration : IEntityTypeConfiguration<Pro
     public void Configure(EntityTypeBuilder<ProgramManager> b)
     {
         b.ToTable("pre_program_managers");
-        // One role; a manager is a manager.
         b.HasKey(m => new { m.ProgramId, m.UserId });
 
-        // UserId is a bare cross-section reference: indexed for the per-user reads, no FK.
+        // A bare cross-section reference: indexed for the per-user reads, no FK.
         b.Property(m => m.UserId).IsRequired();
         b.Property(m => m.AddedByUserId).IsRequired();
         b.Property(m => m.AddedAt).IsRequired();

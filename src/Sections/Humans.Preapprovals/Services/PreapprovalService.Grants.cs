@@ -7,17 +7,11 @@ using NodaTime;
 
 namespace Humans.Preapprovals.Services;
 
-/// <summary>
-/// The grant state machine as managers and members drive it. Every transition is one
-/// person's act, audited with the actor; the ceiling is checked on every path that commits
-/// money (issue, approve, raise) and nowhere else.
-/// </summary>
+/// <summary>The ceiling is checked on every path that commits money (issue, approve, raise) and nowhere else.</summary>
 internal sealed partial class PreapprovalService
 {
     private const int LabelMax = 200;
     private const int NoteMax = 2000;
-
-    // ── Issue ─────────────────────────────────────────────────────────────
 
     public async Task<PreapprovalMutationResult<Guid>> IssueAsync(
         Guid programId, Guid beneficiaryUserId, decimal? amount, string? label, Guid actorUserId,
@@ -85,8 +79,6 @@ internal sealed partial class PreapprovalService
         return new(grants.Select(g => g.Id).ToList());
     }
 
-    // ── Apply ─────────────────────────────────────────────────────────────
-
     public async Task<PreapprovalMutationResult<Guid>> ApplyAsync(
         Guid programId, Guid applicantUserId, string? note, decimal? requestedAmount, CancellationToken ct = default)
     {
@@ -146,8 +138,6 @@ internal sealed partial class PreapprovalService
         await AnnounceApplicationAsync(info, ToInfo(grant, program), ct);
         return new(grant.Id);
     }
-
-    // ── Decide ────────────────────────────────────────────────────────────
 
     public async Task<PreapprovalMutationResult> ApproveAsync(
         Guid grantId, decimal? amount, Guid actorUserId, CancellationToken ct = default)
@@ -268,15 +258,12 @@ internal sealed partial class PreapprovalService
         return PreapprovalMutationResult.Ok;
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────
-
     /// <summary>Issue and approve commit money: refused on a closed program or past its deadline.</summary>
     private PreapprovalRefusal? CanCommit(PreapprovalProgram program) =>
         program.Status == ProgramStatus.Closed ? new(PreapprovalErrorKeys.ProgramClosed)
         : Today > program.ClaimBy ? new(PreapprovalErrorKeys.DeadlinePassed)
         : null;
 
-    /// <summary>The grant's amount by the program's kind: fixed takes none, per-grant needs one.</summary>
     private static (decimal Value, PreapprovalRefusal? Refusal) SizeGrant(PreapprovalProgram program, decimal? amount)
     {
         if (program.Kind == ProgramKind.FixedPerPerson)

@@ -8,11 +8,8 @@ using NodaTime;
 namespace Humans.Cantina.Services;
 
 /// <summary>
-/// The dietary profiles Cantina owns (<c>cantina_dietary_profiles</c>): the reads Shifts, Users and
-/// the roster make, the member's own save, the Article 15/17 slice and the account-merge fold.
-/// Until <c>cantina.profile-dietary</c> has run, a member without a row reads their legacy
-/// <c>profiles</c> food columns through <see cref="UserInfo"/> (Users decomposition plan §3.1 step 4).
-/// Never reads medical conditions.
+/// Until <c>cantina.profile-dietary</c> has run, a member without a row reads their legacy <c>profiles</c> food columns
+/// through <see cref="UserInfo"/>. Never reads medical conditions.
 /// </summary>
 internal sealed class DietaryProfileService(
     IDietaryProfileRepository repo,
@@ -50,8 +47,7 @@ internal sealed class DietaryProfileService(
 
     public async Task<string?> SaveAsync(Guid userId, DietaryProfileInfo answers, CancellationToken ct = default)
     {
-        // "Other" requires accompanying free text. The controller checks first, field-targeted;
-        // this is the backstop for any other caller.
+        // The controller checks first, field-targeted; this is the backstop for other callers.
         if (answers.Allergies.Contains(DietaryOptions.OtherOption, StringComparer.Ordinal)
             && string.IsNullOrWhiteSpace(answers.AllergyOtherText))
             return "Cantina_Dietary_AllergyOther_Required";
@@ -64,8 +60,8 @@ internal sealed class DietaryProfileService(
         await repo.UpsertAsync(new DietaryProfile
         {
             UserId = userId,
-            // Not re-validated against DietaryOptions.DietaryPreferences: the radio group constrains
-            // the UI and the column has always taken any non-blank string (Cantina.md, health.md §5).
+            // Not re-validated against DietaryPreferences: the radio group constrains the UI and the column has always
+            // taken any non-blank string.
             DietaryPreference = string.IsNullOrWhiteSpace(answers.DietaryPreference) ? null : answers.DietaryPreference,
             Allergies = allergies,
             AllergyOtherText = allergies.Contains(DietaryOptions.OtherOption) ? answers.AllergyOtherText?.Trim() : null,
@@ -84,8 +80,6 @@ internal sealed class DietaryProfileService(
             DeclinedToAnswer = true,
             UpdatedAt = clock.GetCurrentInstant(),
         }, ct);
-
-    // ─── cantina.profile-dietary ─────────────────────────────────────────────────
 
     public async Task<IReadOnlyList<DietaryProfileInfo>> GetUncopiedLegacyProfilesAsync(CancellationToken ct = default)
     {
@@ -109,9 +103,8 @@ internal sealed class DietaryProfileService(
         return written;
     }
 
-    /// <summary>The one reader of the obsolete legacy fields: the read fallback, the copy and the
-    /// merge-survivor check. Deleted with the migration once production reports it done. Null when
-    /// the member has no food answer on their profile.</summary>
+    /// <summary>The one reader of the obsolete legacy fields. Deleted with the migration once production reports it
+    /// done. Null when the member has no food answer on their profile.</summary>
     private static DietaryProfileInfo? LegacyProfile(UserInfo? info)
     {
         if (info?.Profile is not { } p) return null;
@@ -145,14 +138,12 @@ internal sealed class DietaryProfileService(
         UpdatedAt = now,
     };
 
-    // ─── IUserMerge ──────────────────────────────────────────────────────────────
-
     public async Task ReassignAsync(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)
     {
         _ = actorUserId;
-        // The survivor's answers win. Answers still only on its legacy profile count as its own, so
-        // they are copied first rather than overwritten by the source's row.
+        // Answers still only on the survivor's legacy profile count as its own, so copy them first rather than let the
+        // source's row overwrite them.
         if (await repo.GetAsync(mergedToUserId, ct) is null
             && LegacyProfile(await users.GetRawUserInfoAsync(mergedToUserId, ct)) is { } legacy)
         {
@@ -160,8 +151,6 @@ internal sealed class DietaryProfileService(
         }
         await repo.ReassignAsync(mergedFromUserId, mergedToUserId, now, ct);
     }
-
-    // ─── IUserDataContributor ────────────────────────────────────────────────────
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
@@ -182,8 +171,7 @@ internal sealed class DietaryProfileService(
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
-    /// <summary>Deletes the member's row. The legacy <c>profiles</c> food columns are erased by
-    /// Users' profile erasure, which still owns them.</summary>
+    /// <summary>The legacy <c>profiles</c> food columns are erased by Users' profile erasure, which still owns them.</summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         await repo.DeleteAsync(userId, ct);
 }

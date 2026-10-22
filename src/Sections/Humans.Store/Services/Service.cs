@@ -48,8 +48,6 @@ internal sealed class Service(
 
         var counterparties = new List<CounterpartyOrders>();
 
-        // Camp counterparties: the one camp the viewer leads, or every camp's
-        // season for the year when the viewer is a privileged reader.
         var campSeasons = new List<CampSeasonInfo>();
         foreach (var camp in await campService.GetCampsForYearAsync(year, ct))
         {
@@ -67,9 +65,6 @@ internal sealed class Service(
             }
         }
 
-        // Team counterparties — top-level departments only. The viewer's own
-        // coordinated departments, or every department when a privileged reader.
-        // Order is the controller / view's concern (memory/architecture/display-sort-in-controllers.md).
         var teams = (await teamService.GetTeamsAsync(ct)).Values
             .Where(t => t.ParentTeamId is null
                         && (allCounterparties
@@ -89,8 +84,8 @@ internal sealed class Service(
 
         foreach (var season in campSeasons)
         {
-            // One order per camp-season; if legacy data has multiple, surface
-            // only the highest-balance one and let the admin delete the rest.
+            // One order per camp-season; for legacy duplicates, surface the highest-balance one and let the admin
+            // delete the rest.
             var allOrders = new List<OrderDto>();
             foreach (var order in campOrdersBySeason[season.Id])
                 allOrders.Add(await MapOrderAsync(order, productNames, currentPrices, ct, season.Name));
@@ -146,9 +141,8 @@ internal sealed class Service(
             catalog = await GetActiveCatalogAsync(order.Year, ct);
         }
 
-        // A pending async payment (e.g. SEPA mandate captured, not yet cleared) is excluded from
-        // BalanceEur, so without this guard the full balance would stay payable a second time
-        // while the mandate settles — a double-charge window.
+        // A pending async payment is excluded from BalanceEur, so without this the full balance stays payable a second
+        // time while the mandate settles: a double charge.
         var hasPendingPayment = order.Payments.Any(p => p.Status == PaymentStatus.Pending);
 
         return new OrderPageData(
@@ -236,7 +230,7 @@ internal sealed class Service(
             $"Updated store product '{product.Name}'",
             actorUserId);
 
-        // Dedicated, queryable price-change event for the order-page audit view (nobodies-collective/Humans#816).
+        // A dedicated, queryable price-change event for the order page's audit view.
         if (oldPrice != draft.UnitPriceEur)
             await audit.LogAsync(
                 AuditAction.StoreProductPriceChanged, AuditEntityTypes.Product, product.Id,
@@ -372,10 +366,7 @@ internal sealed class Service(
             .ToList();
     }
 
-    /// <summary>
-    /// Copies each legacy payment's int <see cref="Payment.Method"/> into its string
-    /// <see cref="Payment.MethodName"/>, one audit entry per row. Rescans at run time.
-    /// </summary>
+    /// <summary>Copies each legacy payment's int <see cref="Payment.Method"/> into <see cref="Payment.MethodName"/>, one audit entry per row.</summary>
     public async Task<int> RepairPaymentMethodNamesAsync(Guid actorUserId, CancellationToken ct = default)
     {
         var payments = await repo.GetPaymentsMissingMethodNameAsync(ct);
@@ -429,9 +420,8 @@ internal sealed class Service(
         if (season is null)
             return RefuseCreation("Store_CampSeasonMissing", "camp season", campSeasonId, actorUserId);
 
-        // No year filter: a CampSeason *is* a (camp, year) pair, so every order returned here
-        // already belongs to season.Year — except a legacy row still at Year = 0, which an
-        // `o.Year == season.Year` guard would wave through and hand the season a second order.
+        // No year filter: a CampSeason already is a (camp, year) pair, and an `o.Year == season.Year` guard would wave
+        // through a legacy Year = 0 row and hand the season a second order.
         var existing = await repo.GetOrdersForCampSeasonAsync(campSeasonId, ct);
         if (existing.Count > 0)
             return RefuseCreation("Store_CampOrderExists", "camp season", campSeasonId, actorUserId);
@@ -460,14 +450,14 @@ internal sealed class Service(
         var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
         if (order is null) return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
 
-        // An issued order is referenced by its store_invoices row under a restrictive foreign key,
-        // and a paid one reads zero-balance — without this the delete would reach EF and blow up.
+        // An issued order is held by a restrictive FK from store_invoices, and a paid one reads zero-balance; without
+        // this the delete blows up in EF.
         if (order.State != OrderState.Open)
             return RefuseAdminMutation(orderId, actorUserId,
                 $"Order {orderId} has been invoiced; an invoiced order cannot be deleted.");
 
-        // Payments cascade on delete, and a paid-in-full or pending-only order reads zero-balance —
-        // any payment row, whatever its status, is a money record that must outlive the order.
+        // Payments cascade on delete, and any payment row, whatever its status, is a money record that must outlive
+        // the order.
         if (order.Payments.Count > 0)
             return RefuseAdminMutation(orderId, actorUserId,
                 $"Order {orderId} has payments recorded; an order with payments cannot be deleted.");
@@ -550,8 +540,7 @@ internal sealed class Service(
         if (product.Year != order.Year)
             return RefuseMutation("Store_ProductYearMismatch", orderId, actorUserId);
 
-        // OrderableUntil is gated by OrderAuthorizationHandler (Store admins exempt,
-        // everyone else denied) — the auth-free service only annotates the audit entry.
+        // OrderableUntil is enforced by OrderAuthorizationHandler; the auth-free service only annotates the audit entry.
         var today = await settingsService.TodayInEventZoneAsync(clock);
         var deadlinePassed = today > product.OrderableUntil;
 
@@ -589,8 +578,7 @@ internal sealed class Service(
         if (ctx.OrderState != OrderState.Open)
             return RefuseMutation("Store_OrderLinesFrozen", orderId, actorUserId, lineId);
 
-        // OrderableUntil is gated by OrderAuthorizationHandler (Store admins exempt,
-        // everyone else denied) — the auth-free service only annotates the audit entry.
+        // OrderableUntil is enforced by OrderAuthorizationHandler; the auth-free service only annotates the audit entry.
         var today = await settingsService.TodayInEventZoneAsync(clock);
         var deadlinePassed = today > ctx.ProductOrderableUntil;
 
@@ -638,7 +626,7 @@ internal sealed class Service(
         return MutationResult.Failure(errorKey);
     }
 
-    /// <summary>Returns the active event's catalog year, falling back to the current UTC year before it exists.</summary>
+    /// <summary>Falls back to the current UTC year before an active event exists.</summary>
     public Task<int> GetCurrentEventYearAsync(CancellationToken ct = default) => orderReader.GetCurrentEventYearAsync(ct);
 
     [ExternalWrite]
@@ -703,9 +691,9 @@ internal sealed class Service(
             throw new ArgumentException("PaymentIntent id is required.", nameof(paymentIntentId));
 
         if (await repo.StripePaymentIntentExistsAsync(paymentIntentId, ct))
-            return; // idempotent: duplicate Stripe webhook delivery
+            return; // duplicate Stripe webhook delivery
 
-        // Defense-in-depth: never record a payment on a team-owned order.
+        // Defense in depth: never record a payment on a team-owned order.
         var order = await repo.GetOrderByIdAsync(orderId, ct);
         if (order is not null && order.TeamId is not null)
             throw new InvalidOperationException("Team orders are non-billable.");
@@ -737,11 +725,9 @@ internal sealed class Service(
     }
 
     /// <summary>
-    /// Records a Store-admin ledger entry: a <see cref="PaymentMethod.DepositReturn"/> credits a
-    /// returned deposit (full or partial) back to the order; a <see cref="PaymentMethod.Refund"/>
-    /// books money sent back out (issued by hand in the Stripe dashboard). The admin enters a
-    /// positive amount; a refund is stored negative and must cite its reference. A refund has no cap — a camp may have
-    /// overpaid — but deposit returns can never add up to more than the order's deposits.
+    /// A <see cref="PaymentMethod.DepositReturn"/> credits a returned deposit; a <see cref="PaymentMethod.Refund"/>
+    /// books money sent back by hand from the Stripe dashboard, stored negative and citing its reference. Refunds are
+    /// uncapped (a camp may have overpaid); deposit returns never exceed the order's deposits.
     /// </summary>
     public async Task<AdminMutationResult> RecordAdminPaymentAsync(
         Guid orderId,
@@ -808,10 +794,8 @@ internal sealed class Service(
     }
 
     /// <summary>
-    /// Admin-only hard delete of one payment row of any method or status, for a row recorded in
-    /// error (e.g. a mistaken refund — no money moved in Stripe). The row is gone for good, so the
-    /// audit entry carries everything needed to reconstruct it. The order balance is computed, so
-    /// it follows by itself.
+    /// Hard delete of a payment recorded in error. The row is gone for good, so the audit entry carries everything
+    /// needed to reconstruct it.
     /// </summary>
     public async Task<AdminMutationResult> DeletePaymentAsync(
         Guid orderId, Guid paymentId, Guid actorUserId, CancellationToken ct = default)
@@ -839,8 +823,6 @@ internal sealed class Service(
         var recorded = await repo.GetRecordedStripePaymentsAsync(ct);
         var recordedByPi = recorded.ToDictionary(p => p.PaymentIntentId, p => p.Status, StringComparer.Ordinal);
 
-        // Resolve each distinct matched order once (Stripe-side and recorded-side) for its
-        // display label and billable check.
         var matchedIds = sessions.Where(s => s.OrderId is not null).Select(s => s.OrderId!.Value)
             .Concat(recorded.Select(p => p.OrderId))
             .Distinct();
@@ -861,9 +843,8 @@ internal sealed class Service(
                 ClassifyStripeSession(s, order, recordedByPi)));
         }
 
-        // Orphans: recorded Stripe payments whose PI is absent from the Stripe list — but only
-        // when Stripe was actually queried. If it couldn't be read, an empty session list does
-        // NOT mean those payments are orphans, so skip the check entirely.
+        // Orphans only when Stripe was actually queried: an unreadable Stripe yields an empty session list, which
+        // does not make every recorded payment an orphan.
         var stripePis = sessions.Where(s => s.PaymentIntentId is not null)
             .Select(s => s.PaymentIntentId!).ToHashSet(StringComparer.Ordinal);
         var orphans = stripeQueried
@@ -890,8 +871,8 @@ internal sealed class Service(
         if (!string.Equals(s.PaymentStatus, "paid", StringComparison.Ordinal))
             return StripeReconciliationStatus.Unpaid;
         if (s.PaymentIntentId is { } pi && recordedByPi.TryGetValue(pi, out var paymentStatus))
-            // Stripe says paid but the local row hasn't settled — the amount is not in the
-            // balance yet, so it must not present as plain "Recorded".
+            // Stripe says paid but the local row hasn't settled: the amount isn't in the balance yet, so it must not
+            // present as plain "Recorded".
             return paymentStatus switch
             {
                 PaymentStatus.Paid => StripeReconciliationStatus.Recorded,
@@ -922,7 +903,7 @@ internal sealed class Service(
             var order = await repo.GetOrderByIdAsync(orderId, ct);
             if (order is null || order.TeamId is not null) continue;
 
-            await RecordStripePaymentAsync(orderId, pi, amount, ct: ct); // settled (Paid); idempotent on PI id
+            await RecordStripePaymentAsync(orderId, pi, amount, ct: ct); // idempotent on PI id
             count++;
             total += amount;
         }
@@ -997,10 +978,8 @@ internal sealed class Service(
             return;
         }
 
-        // payment_status distinguishes a settled sync payment (card/wallet → "paid") from an
-        // async method where only the debit mandate has been captured (SEPA, delayed Bizum →
-        // "unpaid"). A mandate is not money: record it Pending so the order balance does NOT count
-        // it until Stripe confirms settlement via async_payment_succeeded. See nobodies-collective/Humans#638.
+        // "paid" is a settled sync payment; "unpaid" is an async method with only the debit mandate captured. A mandate
+        // isn't money: record it Pending so the balance ignores it until async_payment_succeeded.
         var status = string.Equals(session.PaymentStatus, "paid", StringComparison.Ordinal)
             ? PaymentStatus.Paid
             : PaymentStatus.Pending;
@@ -1023,13 +1002,9 @@ internal sealed class Service(
     }
 
     /// <summary>
-    /// Transitions the <see cref="PaymentStatus.Pending"/> payment behind an async Checkout
-    /// event to its settled state — <see cref="PaymentStatus.Paid"/> on
-    /// <c>async_payment_succeeded</c>, <see cref="PaymentStatus.Failed"/> on
-    /// <c>async_payment_failed</c>. Idempotent: a re-delivered event that finds the row already in
-    /// the target state is a no-op. Out-of-order tolerance: if a terminal event arrives before
-    /// <c>completed</c> (no row yet), the payment is recorded directly in its terminal state so
-    /// a later completed event cannot lose settlement or recreate a failed payment as Pending.
+    /// Idempotent: a re-delivered event finding the row already in the target state no-ops. A terminal event arriving
+    /// before <c>completed</c> records the payment directly in its terminal state, so the later completed can neither
+    /// lose settlement nor recreate a failed payment as Pending.
     /// </summary>
     private async Task TransitionAsyncPaymentAsync(StoreCheckoutWebhookEvent evt, PaymentStatus target, CancellationToken ct)
     {
@@ -1048,8 +1023,6 @@ internal sealed class Service(
         var existing = await repo.GetPaymentByStripePaymentIntentIdAsync(paymentIntentId, ct);
         if (existing is null)
         {
-            // Preserve either terminal outcome before completed; its later delivery no-ops on
-            // the unique PI instead of recreating a failed payment as Pending.
             if (session.OrderId is { } orderId
                 && session.AmountEur is { } amountEur && amountEur > 0)
             {
@@ -1068,12 +1041,12 @@ internal sealed class Service(
         }
 
         if (existing.Status == target)
-            return; // idempotent: re-delivery of an already-applied transition
+            return; // re-delivery of an already-applied transition
 
         if (existing.Status != PaymentStatus.Pending)
         {
-            // A non-Pending, non-target state (e.g. a Failed row receiving a late success, or vice
-            // versa) is anomalous; log and leave the recorded state untouched rather than guess.
+            // A non-Pending, non-target state (a Failed row getting a late success, or vice versa) is anomalous: log and
+            // leave it rather than guess.
             logger.LogWarning(
                 "{Kind} for PI {PaymentIntentId} found payment in unexpected state {Status}; leaving unchanged.",
                 evt.Kind, paymentIntentId, existing.Status);
@@ -1091,17 +1064,13 @@ internal sealed class Service(
     }
 
     /// <summary>
-    /// Handles <c>checkout.session.expired</c>: defensively removes an orphan
-    /// <see cref="PaymentStatus.Pending"/> row that somehow predates a missing <c>completed</c>
-    /// event. In practice unreachable (a Pending row is created by <c>completed</c>, and an expired
-    /// session never reached <c>completed</c>), so this only cleans up edge-case retries. A settled
-    /// (Paid) or Failed payment is never touched.
+    /// Defensive: removes an orphan Pending row for an expired session. Unreachable in practice, since Pending rows come
+    /// from <c>completed</c>. Paid and Failed payments are never touched.
     /// </summary>
     private async Task HandleCheckoutSessionExpiredAsync(StoreCheckoutWebhookEvent evt, CancellationToken ct)
     {
         if (evt.Session is not { PaymentIntentId: { } paymentIntentId })
         {
-            // No PI on an expired session is the normal case (payment never started); nothing to do.
             logger.LogDebug("checkout.session.expired event {EventId} has no PaymentIntentId; nothing to clean up.", evt.EventId);
             return;
         }
@@ -1139,10 +1108,8 @@ internal sealed class Service(
     }
 
     /// <summary>
-    /// What every year-wide view needs before it can price an order: the year's camp seasons
-    /// and department teams (for labels and, on the summary, for selecting orders), the
-    /// year's catalog, and the live prices Open orders reprice to. Shared by the admin summary
-    /// and the accounting export so their totals cannot drift apart.
+    /// What every year-wide view needs to price an order. Shared by the admin summary and the accounting export so their
+    /// totals can't drift apart.
     /// </summary>
     private sealed record YearContext(
         IReadOnlyDictionary<Guid, CampSeasonInfo> SeasonsForYear,
@@ -1158,7 +1125,6 @@ internal sealed class Service(
             .ToDictionary(season => season.Id);
         var products = await repo.GetAllProductsForYearAsync(year, ct);
 
-        // Departments: every top-level team, unfiltered by user (admin views show all).
         var allTeams = await teamService.GetTeamsAsync(ct);
         var departmentIds = allTeams.Values
             .Where(t => t.ParentTeamId is null)
@@ -1166,10 +1132,8 @@ internal sealed class Service(
             .ToList();
         var teamNames = allTeams.Values.ToDictionary(t => t.Id, t => t.Name);
 
-        // Reprice Open orders to the live catalog, exactly like the order page (MapOrderAsync).
-        // Priced from the requested year's products (already loaded above), not the
-        // active event's catalog — historical summaries must not reprice against a
-        // later year's prices.
+        // Reprice Open orders like the order page does, but from the requested year's products: a historical summary
+        // must not reprice against a later year's prices.
         var currentPrices = products.ToDictionary(
             p => p.Id,
             p => new BalanceCalculator.ProductPrice(p.UnitPriceEur, p.VatRatePercent, p.DepositAmountEur));
@@ -1231,9 +1195,7 @@ internal sealed class Service(
                 0m));
         }
 
-        // Counterparty row ordering is the view's concern
-        // (memory/architecture/display-sort-in-controllers.md).
-        // by-item aggregates lines from BOTH camp and team orders so suppliers see the full demand.
+        // By-item aggregates camp AND team orders so suppliers see the full demand.
         var allLineProjections = campOrdersInYear
             .Concat(teamOrders)
             .SelectMany(o =>
@@ -1295,13 +1257,9 @@ internal sealed class Service(
             new CrossTabDto(productColumns, counterpartyRows));
     }
 
-    // ── IStoreAccountingRead ────────────────────────────────────────────────
-
     /// <summary>
-    /// The year's orders selected by their persisted <see cref="Order.Year"/>, not through the
-    /// counterparty: a camp deleted since (its seasons cascade; Store keeps the bare id) or a
-    /// department reparented since still has its money in the books, so the export keeps the
-    /// row and labels it as best it can.
+    /// Selected by persisted <see cref="Order.Year"/>, not through the counterparty: a since-deleted camp or reparented
+    /// department still has its money in the books.
     /// </summary>
     private async Task<(IReadOnlyList<Order> Orders, YearContext Context)> LoadYearOrdersForAccountingAsync(
         int year, CancellationToken ct)
@@ -1317,8 +1275,7 @@ internal sealed class Service(
         var (orders, context) = await LoadYearOrdersForAccountingAsync(year, ct);
         var totalsByOrder = PriceAll(orders, context);
 
-        // Names and revenue accounts by id, not by year: a line may point at a product that
-        // was deactivated or re-homed since it was added, and the export still needs its name.
+        // By id, not year: a line may point at a product deactivated or re-homed since, and the export still needs its name.
         var products = (await repo.GetProductsByIdsAsync(
                 orders.SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList(), ct))
             .ToDictionary(p => p.Id);
@@ -1364,8 +1321,7 @@ internal sealed class Service(
 
     public async Task<IReadOnlyList<AccountingPaymentDto>> GetPaymentsAsync(int year, CancellationToken ct = default)
     {
-        // Team orders are non-billable and never carry payments; the Paid filter below is
-        // what selects, so they contribute nothing rather than being excluded by kind.
+        // Team orders never carry payments; the Paid filter below is what selects.
         var (orders, context) = await LoadYearOrdersForAccountingAsync(year, ct);
 
         var rows = new List<AccountingPaymentDto>();
@@ -1402,7 +1358,6 @@ internal sealed class Service(
         new(p.Id, p.Year, p.Name, p.Description, p.UnitPriceEur, p.VatRatePercent,
             p.DepositAmountEur, p.OrderableUntil, p.IsActive, p.HoldedRevenueAccountNum);
 
-    /// <summary>Display names for the given product ids, live or deactivated, any year.</summary>
     private async Task<IReadOnlyDictionary<Guid, string>> LoadProductNamesAsync(
         IReadOnlyCollection<Guid> productIds, CancellationToken ct) =>
         (await repo.GetProductsByIdsAsync(productIds, ct)).ToDictionary(p => p.Id, p => p.Name);

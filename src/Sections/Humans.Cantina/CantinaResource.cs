@@ -1,16 +1,8 @@
 namespace Humans.Cantina;
 
 /// <summary>
-/// Marker type for Cantina's resource set. The <c>.resx</c> files sit beside this file on
-/// purpose: the SDK derives the manifest name from the adjacent same-named <c>.cs</c> file's
-/// namespace, not from the folder path, so this must stay <c>namespace Humans.Cantina</c> —
-/// <c>Humans.Cantina.Resources</c> would make every Cantina string fall back to its raw key
-/// at runtime (G5-SECTION-TEMPLATE.md step 3b, from the split design's §3 Localization —
-/// not <c>design-rules.md</c>, whose §3 is the repository layer).
+/// Must stay <c>namespace Humans.Cantina</c>: the SDK derives the adjacent .resx manifest name from this file's
+/// namespace, and any other namespace makes every Cantina string fall back to its raw key.
 /// </summary>
-/// <remarks>
-/// Public because the boot localization diagnostic discovers section resource markers via
-/// <c>GetExportedTypes()</c>; an internal marker is skipped in silence
-/// (G5-SECTION-TEMPLATE.md step 3b).
-/// </remarks>
+/// <remarks>Public because the boot localization diagnostic finds markers via <c>GetExportedTypes()</c>.</remarks>
 public class CantinaResource;

@@ -3,11 +3,6 @@ using Humans.Tickets.Contracts;
 
 namespace Humans.Tickets.Services;
 
-/// <summary>
-/// Tickets-internal surface over <c>tickets_event_participations</c>: the reads <see cref="ITicketService"/>
-/// forwards, the member's own declaration, ticket-sync reconciliation, the admin backfill and the legacy
-/// copy behind <c>tickets.event-participations</c>.
-/// </summary>
 internal interface IEventParticipationManagement : ITicketWrite, IApplicationService
 {
     /// <inheritdoc cref="ITicketService.GetParticipationsAsync"/>

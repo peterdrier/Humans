@@ -10,17 +10,8 @@ using EventParticipation = Humans.Tickets.Domain.EventParticipation;
 namespace Humans.Tickets.Services;
 
 /// <summary>
-/// Event participation, owned by Tickets since Users decomposition commit 13
-/// (<c>tickets_event_participations</c>): the reads other sections make through
-/// <see cref="ITicketService"/>, Gate's write through <see cref="ITicketWrite"/>, the member's
-/// declaration, ticket-sync reconciliation, the admin backfill, the Article 15/17 slice and the
-/// account-merge fold.
-/// <para>
-/// Until <c>tickets.event-participations</c> has run, a user and year with no row here reads the
-/// frozen legacy Users row through <see cref="UserInfo"/> (plan §3.1 step 4), and writes start from
-/// that row. Removing a record that a legacy row backs leaves a cleared row so the legacy value never
-/// comes back.
-/// </para>
+/// Until <c>tickets.event-participations</c> has run, a user and year with no row here reads the frozen legacy Users
+/// row, and writes start from it. Removing a record a legacy row backs leaves a cleared row.
 /// </summary>
 internal sealed class EventParticipationService(
     IEventParticipationRepository repo,
@@ -31,8 +22,6 @@ internal sealed class EventParticipationService(
     : IEventParticipationManagement, IUserDataContributor, IUserMerge
 {
     internal const string EventParticipationsSlice = "EventParticipations";
-
-    // ─── Reads ───────────────────────────────────────────────────────────────────
 
     public async Task<IReadOnlyList<EventParticipationInfo>> GetParticipationsAsync(
         Guid userId, CancellationToken ct = default)
@@ -60,8 +49,6 @@ internal sealed class EventParticipationService(
 
     private static EventParticipationInfo ToInfo(EventParticipation r) =>
         new(r.UserId, r.Year, r.Status!.Value, r.Source, r.DeclaredAt, r.CheckedInAt);
-
-    // ─── Writes ──────────────────────────────────────────────────────────────────
 
     public async Task<bool> DeclareNotAttendingAsync(Guid userId, int year, CancellationToken ct = default)
     {
@@ -130,8 +117,6 @@ internal sealed class EventParticipationService(
         return changed.Count;
     }
 
-    // ─── tickets.event-participations ────────────────────────────────────────────
-
     public async Task<IReadOnlyList<EventParticipationInfo>> GetUncopiedLegacyParticipationsAsync(
         CancellationToken ct = default)
     {
@@ -164,20 +149,18 @@ internal sealed class EventParticipationService(
         return written;
     }
 
-    // ─── Legacy ──────────────────────────────────────────────────────────────────
-
     private async Task<IReadOnlyList<EventParticipationInfo>> EffectiveForRawUserAsync(Guid userId, CancellationToken ct) =>
         Effective(await repo.GetByUserIdAsync(userId, ct), LegacyRows(await users.GetRawUserInfoAsync(userId, ct)));
 
     private async Task<EventParticipation?> LegacyRowAsync(Guid userId, int year, CancellationToken ct) =>
         LegacyRows(await users.GetRawUserInfoAsync(userId, ct)).FirstOrDefault(l => l.Year == year);
 
-    /// <summary>The one reader of the obsolete legacy slice: the read fallback, the write seed and the
-    /// copy above. Deleted with the migration once production reports it done. Enum values map by name.</summary>
+    /// <summary>The only reader of the obsolete legacy slice; it goes when the data migration is retired.
+    /// Enum values map by name.</summary>
     private static IReadOnlyList<EventParticipation> LegacyRows(UserInfo? info)
     {
         if (info is null) return [];
-#pragma warning disable HUM_USER_PARTICIPATIONS // the fallback and copy the field is kept for (plan §3.1)
+#pragma warning disable HUM_USER_PARTICIPATIONS // read fallback and copy, until the data migration is retired
         var legacy = info.EventParticipations;
 #pragma warning restore HUM_USER_PARTICIPATIONS
         return [.. legacy.Select(l => new EventParticipation
@@ -192,8 +175,6 @@ internal sealed class EventParticipationService(
         })];
     }
 
-    // ─── IUserMerge ──────────────────────────────────────────────────────────────
-
     public async Task ReassignAsync(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)
     {
@@ -205,8 +186,6 @@ internal sealed class EventParticipationService(
             LegacyRows(await users.GetRawUserInfoAsync(mergedToUserId, ct)),
             ct);
     }
-
-    // ─── IUserDataContributor ────────────────────────────────────────────────────
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
@@ -224,8 +203,7 @@ internal sealed class EventParticipationService(
         ];
     }
 
-    // Retention unchanged from the Users declaration this slice came from: Users' erasure never
-    // touched event_participations, and this keeps doing the same.
+    // Retained as Users declared it: Users' erasure never touched these rows either.
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {

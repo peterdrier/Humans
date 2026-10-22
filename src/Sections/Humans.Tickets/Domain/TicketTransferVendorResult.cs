@@ -1,13 +1,8 @@
 namespace Humans.Tickets.Domain;
 
 /// <summary>
-/// Outcome of the automated TicketTailor void+reissue on a
-/// <see cref="TicketTransferRequest"/>. Written by
-/// <c>TicketTransferService.ProcessTransferAsync</c> and surfaced to the ticket team:
-/// <see cref="Succeeded"/> → transfer done; <see cref="VoidSucceededIssueFailed"/> → void
-/// committed at the vendor but reissue failed (finish manually against the recorded hold);
-/// <see cref="Failed"/> → vendor void failed, nothing changed (process manually).
-/// <see cref="NotAttempted"/> for manual ("mark successful") transfers.
+/// <see cref="VoidSucceededIssueFailed"/>: the vendor void committed but the reissue failed; retry from the held seat
+/// or finish by hand. <see cref="Failed"/>: the void failed and nothing changed.
 /// </summary>
 internal enum TicketTransferVendorResult
 {

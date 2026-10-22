@@ -1,24 +1,13 @@
 namespace Humans.Tickets.Contracts;
 
-/// <summary>
-/// Constants for ticket VAT and donation calculations.
-/// </summary>
 public static class TicketConstants
 {
-    /// <summary>
-    /// VIP ticket threshold in euros. Ticket revenue up to this amount is taxable at the standard rate.
-    /// Any amount above this threshold on a single ticket is treated as a VAT-free donation.
-    /// </summary>
+    /// <summary>Per ticket: the part above this is a VAT-free donation; the rest is taxable.</summary>
     public const decimal VipThresholdEuros = 315m;
 
-    /// <summary>
-    /// Spanish event ticket VAT rate (10%).
-    /// </summary>
+    /// <summary>Spanish VAT on event tickets, included in the price.</summary>
     public const decimal VatRate = 0.10m;
 
-    /// <summary>
-    /// Shared inbox for the ticket team. Transfer requests are emailed here so the
-    /// team can process the void+reissue manually in the TicketTailor dashboard.
-    /// </summary>
+    /// <summary>The ticket team's shared inbox; transfer requests are emailed here.</summary>
     public const string TicketsTeamEmail = "tickets@nobodies.team";
 }

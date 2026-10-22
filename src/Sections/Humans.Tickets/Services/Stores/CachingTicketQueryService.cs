@@ -12,16 +12,9 @@ using Humans.Tickets.Services.Dtos;
 namespace Humans.Tickets.Services.Stores;
 
 /// <summary>
-/// Singleton caching decorator for Tickets. Internally it keeps two tracked
-/// slices: orders keyed by order id, and user holdings keyed by user id.
+/// The cached rows' writers (sync, transfer, contact import, GDPR erasure, merge fold) all go through this decorator:
+/// each write delegates to its keyed inner and evicts in a <c>finally</c>. Nothing else evicts the slices.
 /// </summary>
-/// <remarks>
-/// The cached rows are written by the sync, transfer, contact-import and GDPR
-/// erasure paths and by the account-merge fold, so the decorator fronts each of
-/// those interfaces too: a write delegates to its keyed inner and evicts in a
-/// <c>finally</c>, the original failure still reaching the caller. Nothing outside
-/// this class evicts the slices.
-/// </remarks>
 internal sealed class CachingTicketQueryService
     : ITicketManagement, ITicketSyncService, ITicketTransferService, IAttendeeContactImportService,
         IUserDataContributor, IUserMerge, IHostedService
@@ -131,8 +124,6 @@ internal sealed class CachingTicketQueryService
     public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetOrderDriftAsync(ct));
 
-    // ── IUserDataContributor: GDPR export + erasure ─────────────────────────
-
     // Static table: the erasure-coverage architecture test reads it from an
     // uninitialized instance.
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => TicketQueryService.Erasure;
@@ -144,8 +135,6 @@ internal sealed class CachingTicketQueryService
     // and emails just tombstoned; without this the erased identity keeps being served.
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         MutateAsync<ITicketManagement>(inner => inner.EraseForUserAsync(userId, ct), ClearAll);
-
-    // ── ITicketSyncService + IUserMerge ─────────────────────────────────────
 
     // A later sync stage can fail after orders/attendees have committed.
     public Task<TicketSyncResult> SyncOrdersAndAttendeesAsync(CancellationToken ct = default) =>
@@ -168,8 +157,6 @@ internal sealed class CachingTicketQueryService
                 _userHoldings.Invalidate(mergedFromUserId);
                 _userHoldings.Invalidate(mergedToUserId);
             });
-
-    // ── ITicketTransferService ──────────────────────────────────────────────
 
     // Pendency is stamped into holdings ("transfer pending") and decisions change the
     // order projection's TransferredToName/TransferredAt, so every transfer mutation evicts.
@@ -217,8 +204,6 @@ internal sealed class CachingTicketQueryService
     public Task<int> CountPendingAsync(CancellationToken ct = default) =>
         WithInnerAsync<ITicketTransferService, int>(inner => inner.CountPendingAsync(ct));
 
-    // ── IAttendeeContactImportService ───────────────────────────────────────
-
     public Task<AttendeeImportPlan> BuildPlanAsync(CancellationToken ct = default) =>
         WithInnerAsync<IAttendeeContactImportService, AttendeeImportPlan>(inner => inner.BuildPlanAsync(ct));
 
@@ -235,8 +220,6 @@ internal sealed class CachingTicketQueryService
     }
 
     Task IHostedService.StopAsync(CancellationToken ct) => Task.CompletedTask;
-
-    // ── Inner-service plumbing ──────────────────────────────────────────────
 
     private void ClearAll()
     {
@@ -280,8 +263,6 @@ internal sealed class CachingTicketQueryService
             return true;
         });
 
-    // Every inner (query, sync, transfer, contact import) is keyed under the same
-    // InnerServiceKey on its own interface; the unkeyed interface resolves to this decorator.
     private async Task<TResult> WithInnerAsync<TInner, TResult>(Func<TInner, Task<TResult>> action)
         where TInner : notnull
     {

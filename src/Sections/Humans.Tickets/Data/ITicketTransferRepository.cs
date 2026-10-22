@@ -18,19 +18,11 @@ internal interface ITicketTransferRepository : IRepository
 
     Task UpdateAsync(TicketTransferRequest request, CancellationToken ct = default);
 
-    /// <summary>
-    /// Repoint <c>SenderUserId</c> and <c>ReceiverUserId</c> from
-    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
-    /// Called from the account-merge path so the merged user inherits any
-    /// transfer requests they were involved in.
-    /// </summary>
     Task ReassignUserAsync(Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// GDPR Art. 17: tombstones the receiver name/email, clears the sender's
-    /// stated reason and any admin notes the user wrote, on every transfer
-    /// request naming them. The request row stays — it is part of the ticket's
-    /// chain of custody.
+    /// Tombstones the receiver snapshot and clears the sender's reason and the admin notes on every request naming
+    /// the user. The row stays: it is the ticket's chain of custody.
     /// </summary>
     Task<int> ErasePiiForUserAsync(Guid userId, CancellationToken ct = default);
 }

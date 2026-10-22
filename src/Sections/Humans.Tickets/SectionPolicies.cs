@@ -6,14 +6,9 @@ using Microsoft.AspNetCore.Authorization;
 namespace Humans.Tickets;
 
 /// <summary>
-/// Tickets' authorization policies, at the project root by convention. Discovered by Shell
-/// alongside <see cref="Section"/> — nothing names it.
-/// </summary>
-/// <remarks>
-/// <c>ScannerAccess</c> and <c>GateAdmit</c> stay in Shell: both also admit the shared
-/// gate-terminal system account (a Gate-domain identity), so they are composites spanning
+/// <c>ScannerAccess</c> and <c>GateAdmit</c> stay in Shell: both also admit the gate-terminal account, so they span
 /// two sections.
-/// </remarks>
+/// </summary>
 internal sealed class SectionPolicies : ISectionPolicies
 {
     public void AddPolicies(AuthorizationOptions options)

@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace Humans.Preapprovals.Models;
 
-/// <summary>The member's own page: their grants and the programs they can apply to.</summary>
 internal sealed class MemberIndexViewModel
 {
     public required Guid CurrentUserId { get; init; }
@@ -22,7 +21,6 @@ internal sealed class MemberIndexViewModel
     public IEnumerable<GrantInfo> Past => Grants.Where(g => g.IsTerminal).OrderByDescending(g => g.UpdatedAt);
 }
 
-/// <summary>One program as a member sees it, with the apply form.</summary>
 internal sealed class MemberProgramViewModel
 {
     public required ProgramInfo Program { get; init; }
@@ -42,7 +40,7 @@ internal sealed class ApplyFormViewModel
     public decimal? RequestedAmount { get; set; }
 }
 
-/// <summary>The admin index: every program with its totals, or only the ones the person manages.</summary>
+/// <summary>Every program, or only the ones the person manages.</summary>
 internal sealed class AdminIndexViewModel
 {
     public required LocalDate Today { get; init; }
@@ -50,7 +48,6 @@ internal sealed class AdminIndexViewModel
     public required bool CanAdminister { get; init; }
 }
 
-/// <summary>One program's manage page: grants, applications, and the issue forms.</summary>
 internal sealed class AdminProgramViewModel
 {
     public required ProgramInfo Program { get; init; }
@@ -66,7 +63,7 @@ internal sealed class AdminProgramViewModel
         .OrderBy(g => g.IsTerminal).ThenBy(g => g.CreatedAt);
 }
 
-/// <summary>The create/edit form. Managers arrive as a list of ids from the people picker.</summary>
+/// <summary>Managers arrive as a list of ids from the people picker.</summary>
 internal sealed class ProgramFormViewModel
 {
     public Guid? Id { get; set; }

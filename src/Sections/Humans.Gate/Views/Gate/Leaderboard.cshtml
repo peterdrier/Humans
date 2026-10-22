@@ -7,8 +7,7 @@
     <link rel="stylesheet" href="@Url.Content("~/_content/Humans.Gate/css/gate/gate.css")" asp-append-version="true" />
 }
 
-@* The kiosk is chromeless (no browser back), so a prominent return path is mandatory — without it
-   the operator is stranded here mid-queue. *@
+@* The kiosk is chromeless (no browser back), so this return path is mandatory. *@
 <a asp-action="Index" class="gate-back">&larr; Back to scanning</a>
 
 <h1>Gate leaderboard</h1>

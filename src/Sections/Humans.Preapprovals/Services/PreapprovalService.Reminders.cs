@@ -8,10 +8,7 @@ using NodaTime;
 
 namespace Humans.Preapprovals.Services;
 
-/// <summary>
-/// The nightly reminder pass. It sends and records; it never changes a grant or a program,
-/// and a passed deadline is left exactly as the people involved left it.
-/// </summary>
+/// <summary>Never changes a grant or a program: a passed deadline is left exactly as the people involved left it.</summary>
 internal sealed partial class PreapprovalService
 {
     private const int FirstReminderDays = 14;

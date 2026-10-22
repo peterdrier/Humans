@@ -4,20 +4,9 @@ using NodaTime;
 namespace Humans.Tickets.Services;
 
 /// <summary>
-/// The section's forwarding edge onto its vendor port: the one place in the
-/// codebase that names both the application's ticketing vocabulary
-/// (<see cref="TicketDiscountCodeRequest"/>, <see cref="TicketDiscountKind"/>) and the
-/// port's (<c>DiscountCodeSpec</c>, <c>DiscountType</c>).
+/// The one place that names both the application's discount vocabulary and the vendor port's, so the two can drift
+/// apart without recompiling any consumer.
 /// </summary>
-/// <remarks>
-/// Tickets is the application's only door to ticketing. A section that needs a discount
-/// code or wants a gate admission mirrored asks <em>Tickets</em>, through
-/// <see cref="ITicketDiscountCodes"/> / <see cref="ITicketVendorMirror"/> on the contracts
-/// leaf, and Tickets asks the vendor. Keeping the map here is what lets the two
-/// vocabularies drift: when the 2027 vendor's notion of a discount is not
-/// percentage-or-fixed, this file absorbs it and neither Campaigns nor any later consumer
-/// is recompiled (Finance's <c>CreditorLedgerLine</c> shape).
-/// </remarks>
 internal sealed class TicketVendorGateway(ITicketVendorService vendor)
     : ITicketDiscountCodes, ITicketVendorMirror
 {

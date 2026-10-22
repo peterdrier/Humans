@@ -13,15 +13,10 @@ using NodaTime;
 namespace Humans.Preapprovals.Services;
 
 /// <summary>
-/// The pre-approval rules: programs and their ceiling, grants and their state machine, the
-/// transitions Expenses drives, the reminder pass, and the GDPR surface. Every state change is
-/// a person's action (or Expenses' on their behalf) and is audited as such; nothing here runs
-/// on a timer except the reminders, which send and record and never touch a grant.
+/// Every state change is a person's action (or Expenses' on their behalf); the only timer is the reminder pass, which
+/// never touches a grant.
 /// </summary>
-/// <remarks>
-/// EF-free: the repository hands over detached entities and takes them back. "Today" is the
-/// Europe/Madrid date, the zone the association books in.
-/// </remarks>
+/// <remarks>"Today" is the Europe/Madrid date, the zone the association books in.</remarks>
 internal sealed partial class PreapprovalService(
     IPreapprovalRepository repository,
     IUserService users,
@@ -37,12 +32,9 @@ internal sealed partial class PreapprovalService(
 {
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
-    /// <summary>Audit actor name for the nightly reminder pass.</summary>
     internal const string ReminderJobName = "PreapprovalRemindersJob";
 
     private LocalDate Today => clock.GetCurrentInstant().InZone(MadridZone).Date;
-
-    // ── Reads ─────────────────────────────────────────────────────────────
 
     public async Task<IReadOnlyList<ProgramInfo>> GetProgramsAsync(CancellationToken ct = default) =>
         (await repository.GetProgramsAsync(ct)).Select(ToInfo).ToList();
@@ -82,9 +74,6 @@ internal sealed partial class PreapprovalService(
     public async Task<bool> ManagesAnyProgramAsync(Guid userId, CancellationToken ct = default) =>
         await repository.ManagesAnyProgramAsync(await AllIdsAsync(userId, ct), ct);
 
-    // ── Expenses' transitions ─────────────────────────────────────────────
-    // Each runs inside the ambient TransactionScope Expenses opens around its own status change.
-
     public async Task<GrantStamp> ClaimAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct)
     {
         var grant = await repository.GetGrantAsync(grantId, ct)
@@ -92,8 +81,7 @@ internal sealed partial class PreapprovalService(
 
         if (grant.Status == GrantStatus.Claimed && grant.ExpenseReportId == expenseReportId)
         {
-            // The holding report resubmitting after a rejection: filed in time, so no deadline
-            // check; it gets a fresh stamp from the program as it is now.
+            // The holding report resubmitting after a rejection: filed in time, so no deadline check, but a fresh stamp.
             await AuditGrantAsync(AuditAction.PreapprovalGrantClaimed, grant,
                 $"Re-stamped for expense report {expenseReportId} (resubmit): cap {Euros(grant.MaxAmount)}, account {grant.Program.HoldedAccountNumber}.",
                 actorUserId, expenseReportId);
@@ -167,8 +155,6 @@ internal sealed partial class PreapprovalService(
     private static GrantStamp Stamp(PreapprovalGrant grant) => new(
         grant.MaxAmount, grant.Program.HoldedAccountNumber, grant.Program.HoldedAccountId, grant.Program.ClaimBy);
 
-    // ── Mapping ───────────────────────────────────────────────────────────
-
     private static ProgramInfo ToInfo(PreapprovalProgram p) => new(
         p.Id, p.Name, p.Description, p.Kind, p.PerPersonAmount, p.TotalCeiling, p.HoldedAccountNumber,
         p.HoldedAccountId, p.AcceptsApplications, p.ClaimBy, p.Status, p.CreatedByUserId, p.CreatedAt,
@@ -187,7 +173,7 @@ internal sealed partial class PreapprovalService(
         g.Id, g.Program.Name, g.Label, g.MaxAmount, g.Program.HoldedAccountNumber,
         g.Program.HoldedAccountId, g.Program.ClaimBy, g.Status);
 
-    /// <summary>Every id the person has held, so a grant under a since-merged id is still theirs.</summary>
+    /// <summary>So a grant under a since-merged id is still theirs.</summary>
     private async Task<IReadOnlyList<Guid>> AllIdsAsync(Guid userId, CancellationToken ct)
     {
         var info = await users.GetUserInfoAsync(userId, ct);

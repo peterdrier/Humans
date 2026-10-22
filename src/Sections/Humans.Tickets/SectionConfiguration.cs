@@ -4,11 +4,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace Humans.Tickets;
 
-/// <summary>
-/// Tickets' own settings — the vendor binding behind <c>TicketVendorSettings</c>. The
-/// interval is also read at job-scheduling time by <c>SectionJobs</c>, which registers the
-/// same key through the same extension.
-/// </summary>
+/// <summary><c>SectionJobs</c> registers the same key to read the sync interval at scheduling time.</summary>
 internal sealed class SectionConfiguration : ISectionConfiguration
 {
     public void DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)

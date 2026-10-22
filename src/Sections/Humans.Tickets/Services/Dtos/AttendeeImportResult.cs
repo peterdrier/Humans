@@ -2,12 +2,6 @@ using NodaTime;
 
 namespace Humans.Tickets.Services.Dtos;
 
-/// <summary>
-/// Outcome counters from
-/// <c>IAttendeeContactImportService.ApplyAsync</c>.
-/// Format mirrors the MailerLite import summary so admin banner / audit row
-/// read consistently across import jobs.
-/// </summary>
 internal sealed record AttendeeImportResult(
     int TotalAttempted,
     int UsersCreated,

@@ -1,15 +1,12 @@
 @model DailyMatrixDto
 
 @functions {
-    // Long-form date "Tuesday 7 July 2026" — culture-aware (this view renders
-    // in a web request, so CurrentCulture is the user's); the surrounding
-    // labels are still resx-localized.
+    // Culture-aware: rendered in a web request, so CurrentCulture is the viewer's.
     private static string FormatLong(LocalDate? d) =>
         d.HasValue ? d.Value.ToDate() : "";
 
-    // Short abbreviations for column headers so the matrix stays narrow; the full
-    // name in title= keeps the header accessible. Only chips whose abbreviation
-    // differs from their first three letters are named here.
+    // Abbreviated so the matrix stays narrow; title= keeps the full name accessible. Only chips whose abbreviation
+    // isn't their first three letters are named.
     private static string AbbrevChip(string name) => name switch
     {
         "Peanut" => "Pnt",
@@ -24,8 +21,7 @@
 @{
     ViewData["Title"] = Localizer["Cantina_Day_PageTitle"].Value;
 
-    // Pre-filter the "Other" sentinel out of the chip lists — Other gets a
-    // dedicated flag column + a free-text column for the follow-up.
+    // "Other" gets its own flag and free-text columns instead.
     var dietPrefs = DietaryOptions.DietaryPreferences;
     var allergyChips = DietaryOptions.AllergyOptions.Where(a => a != DietaryOptions.OtherOption).ToList();
     var intoleranceChips = DietaryOptions.IntoleranceOptions.Where(i => i != DietaryOptions.OtherOption).ToList();
@@ -49,7 +45,6 @@
 }
 
 <div class="container py-4">
-    @* === Page header + CSV download ======================================== *@
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
         <h1 class="mb-0">
             @if (Model.CalendarDate is not null)
@@ -76,7 +71,6 @@
         </div>
     </div>
 
-    @* === Day-level aggregates summary card ================================= *@
     <div class="card mb-4">
         <div class="card-body">
             <div class="row text-center">
@@ -102,7 +96,6 @@
     }
     else
     {
-        @* === THE MATRIX ==================================================== *@
         <div class="table-responsive cantina-matrix">
             <table class="table table-sm table-bordered align-middle">
                 <thead class="table-light">

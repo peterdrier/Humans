@@ -8,12 +8,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Preapprovals.Services;
 
-/// <summary>
-/// The audit, in-app notification and email helpers every transition calls. In-app copy is
-/// rendered per recipient language from the section's resx; emails go through
-/// <see cref="PreapprovalsEmails"/>. Email and notification failures never fail the write:
-/// the row and the audit entry are the record.
-/// </summary>
+/// <summary>Email and notification failures never fail the write: the row and the audit entry are the record.</summary>
 internal sealed partial class PreapprovalService
 {
     private static readonly System.Resources.ResourceManager NoticeResources = new(typeof(PreapprovalsResource));
@@ -23,8 +18,6 @@ internal sealed partial class PreapprovalService
 
     private static string MemberUrl(Guid programId) => $"/Preapprovals/{programId}";
     private static string ManageUrl(Guid programId) => $"/Preapprovals/Admin/{programId}";
-
-    // ── Audit ─────────────────────────────────────────────────────────────
 
     private Task AuditGrantAsync(
         AuditAction action, Domain.PreapprovalGrant grant, string description, Guid actorUserId,
@@ -40,8 +33,6 @@ internal sealed partial class PreapprovalService
             relatedEntityId: relatedUserId,
             relatedEntityType: relatedUserId is null ? null : AuditEntityTypes.User);
 
-    // ── In-app notifications ──────────────────────────────────────────────
-
     /// <summary>Clears the beneficiary's standing "file by" prompt (issued, released, reminders, deadline moved).</summary>
     private Task ResolveFileByAsync(Guid grantId, Guid? actorUserId, CancellationToken ct) =>
         SafeAsync(() => notificationResolve.ResolveBySourceKeyAsync(
@@ -53,10 +44,7 @@ internal sealed partial class PreapprovalService
             NotificationSource.PreapprovalApplicationReceived, RequestSourceKey(grantId), actorUserId, ct),
             "resolve application-received", grantId);
 
-    /// <summary>
-    /// The beneficiary's actionable "file by" prompt, keyed by the grant so one resolve clears
-    /// every variant (issued, released, reminder, deadline moved). Body: program, label, amount, date.
-    /// </summary>
+    /// <summary>Keyed by the grant, so one resolve clears every variant (issued, released, reminder, deadline moved).</summary>
     private Task NotifyFileByAsync(GrantInfo info, string titleKey, NotificationPriority priority, CancellationToken ct) =>
         NotifyAsync([info.BeneficiaryUserId], NotificationSource.PreapprovalFileBy, NotificationClass.Actionable,
             priority, titleKey, info, "Preapprovals_Notice_FileBy_Body", MemberUrl(info.ProgramId),
@@ -124,9 +112,6 @@ internal sealed partial class PreapprovalService
         }
     }
 
-    // ── Email ─────────────────────────────────────────────────────────────
-
-    /// <summary>One email to the beneficiary in their language.</summary>
     private Task EmailAsync(GrantInfo info, PreapprovalNoticeKind kind, string? detail, CancellationToken ct,
         decimal? previousAmount = null) =>
         EmailAsync([info.BeneficiaryUserId], info, kind, detail, MemberUrl(info.ProgramId), ct, previousAmount);

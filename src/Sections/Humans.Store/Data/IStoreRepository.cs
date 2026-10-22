@@ -3,79 +3,43 @@ using Humans.Store.Domain;
 
 namespace Humans.Store.Data;
 
-/// <summary>
-/// Repository for the Store section's tables: <c>store_products</c>,
-/// <c>store_orders</c>, <c>store_order_lines</c>, <c>store_payments</c> and
-/// <c>store_invoices</c>. The only non-test file that writes to these DbSets.
-/// </summary>
-/// <remarks>
-/// Keeps the <c>Store</c> prefix because it derives from <see cref="IRepository"/> and so
-/// cannot itself be called <c>IRepository</c>.
-/// </remarks>
 internal interface IStoreRepository : IRepository
 {
-    // Products
     Task<IReadOnlyList<Product>> GetActiveProductsForYearAsync(int year, CancellationToken ct = default);
-    /// <summary>
-    /// Returns all products for the given year regardless of <see cref="Product.IsActive"/>.
-    /// </summary>
+    /// <summary>Includes inactive products.</summary>
     Task<IReadOnlyList<Product>> GetAllProductsForYearAsync(int year, CancellationToken ct = default);
     Task<Product?> GetProductByIdAsync(Guid productId, CancellationToken ct = default);
     /// <summary>
-    /// Resolves products for the given ids regardless of whether the product is
-    /// currently active or belongs to the active year. Order-mapping code projects
-    /// the name from it, so issued/historical lines render with their actual product
-    /// name even after the product has been deactivated; issuance also reads each
-    /// line's <see cref="Product.HoldedRevenueAccountNum"/> from here.
+    /// Includes inactive and other-year products, so historical lines keep their real product name.
     /// </summary>
     Task<IReadOnlyList<Product>> GetProductsByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default);
     Task AddProductAsync(Product product, CancellationToken ct = default);
     Task UpdateProductAsync(Product product, CancellationToken ct = default);
 
-    // Orders
     Task<IReadOnlyList<Order>> GetOrdersForCampSeasonAsync(Guid campSeasonId, CancellationToken ct = default);
     Task<Order?> GetOrderByIdAsync(Guid orderId, CancellationToken ct = default);
     Task<Order?> GetOrderWithLinesAndPaymentsAsync(Guid orderId, CancellationToken ct = default);
-    /// <summary>
-    /// Returns every legacy camp order whose persisted year has not been resolved.
-    /// Feeds the operator review screen; cross-section season resolution stays in the service.
-    /// </summary>
+    /// <summary>Legacy camp orders whose persisted year is unresolved.</summary>
     Task<IReadOnlyList<Order>> GetOrdersWithMissingYearAsync(CancellationToken ct = default);
-    /// <summary>
-    /// Returns every <see cref="Order"/> whose <c>CampSeasonId</c> is in
-    /// <paramref name="campSeasonIds"/>, with <c>Lines</c> and <c>Payments</c>
-    /// eager-loaded. Empty input returns an empty list without a round-trip.
-    /// </summary>
+    /// <summary>Empty input returns an empty list without a round trip.</summary>
     Task<IReadOnlyList<Order>> GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
         IReadOnlyCollection<Guid> campSeasonIds,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the team order for <paramref name="teamId"/> in
-    /// <paramref name="year"/>, or null. The "one order per team per year"
-    /// invariant is service-enforced; this method returns the first match if
-    /// more exist. <c>Lines</c> and <c>Payments</c> are eager-loaded.
+    /// Null when none; the first match when the service-enforced one-per-team-per-year rule was broken.
     /// </summary>
     Task<Order?> GetOrderForTeamAsync(Guid teamId, int year, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns every <see cref="Order"/> whose <c>TeamId</c> is in
-    /// <paramref name="teamIds"/> for the given <paramref name="year"/>, with
-    /// <c>Lines</c> and <c>Payments</c> eager-loaded. Empty input returns an empty list
-    /// without a round-trip.
-    /// </summary>
+    /// <summary>Empty input returns an empty list without a round trip.</summary>
     Task<IReadOnlyList<Order>> GetOrdersForTeamsWithLinesAndPaymentsAsync(
         IReadOnlyCollection<Guid> teamIds,
         int year,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns every <see cref="Order"/> of <paramref name="year"/> by its persisted
-    /// <see cref="Order.Year"/>, plus legacy rows still at <c>Year = 0</c> whose
-    /// <c>CampSeasonId</c> is in <paramref name="campSeasonIds"/>, with <c>Lines</c> and
-    /// <c>Payments</c> eager-loaded. Selection does not go through the counterparty, so an
-    /// order whose camp was since deleted or whose team was reparented is still returned —
-    /// the accounting export must never lose a row that carries money.
+    /// By persisted <see cref="Order.Year"/>, plus legacy <c>Year = 0</c> rows in <paramref name="campSeasonIds"/>. Not
+    /// selected through the counterparty, so the accounting export never loses a row that carries money.
     /// </summary>
     Task<IReadOnlyList<Order>> GetOrdersForYearWithLinesAndPaymentsAsync(
         int year,
@@ -84,77 +48,38 @@ internal interface IStoreRepository : IRepository
 
     Task AddOrderAsync(Order order, CancellationToken ct = default);
     Task UpdateOrderAsync(Order order, CancellationToken ct = default);
-    /// <summary>
-    /// Hard-deletes the order. Cascade FKs remove its lines and payments. The
-    /// service is responsible for enforcing balance/state preconditions.
-    /// </summary>
+    /// <summary>Cascades to lines and payments; the service enforces the preconditions.</summary>
     Task DeleteOrderAsync(Guid orderId, CancellationToken ct = default);
 
-    // Lines
     Task AddLineAsync(OrderLine line, CancellationToken ct = default);
     Task RemoveLineAsync(Guid lineId, CancellationToken ct = default);
-    /// <summary>
-    /// Returns the line plus its parent order's <see cref="Order.State"/> and
-    /// <see cref="Order.CampSeasonId"/> and the product's
-    /// <see cref="Product.OrderableUntil"/> deadline — everything the line-edit gate
-    /// needs, in one round trip.
-    /// </summary>
     Task<LineContext?> GetLineWithOrderAndProductAsync(Guid lineId, CancellationToken ct = default);
 
-    // Payments
     Task AddPaymentAsync(Payment payment, CancellationToken ct = default);
     Task<bool> StripePaymentIntentExistsAsync(string paymentIntentId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the single payment recorded against <paramref name="paymentIntentId"/>, or null if
-    /// none. Used by the async-payment state machine to read a payment's current
-    /// <see cref="Payment.Status"/> before transitioning it. The Stripe PI index is unique, so
-    /// at most one row matches.
-    /// </summary>
+    /// <summary>Null when none. The Stripe PI index is unique, so at most one row matches.</summary>
     Task<Payment?> GetPaymentByStripePaymentIntentIdAsync(string paymentIntentId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Sets <see cref="Payment.Status"/> on the payment with the given id. The service owns the
-    /// transition rules (which from-states may move to which to-states); this is the bare write.
-    /// </summary>
+    /// <summary>The bare write: the service owns the transition rules.</summary>
     Task UpdatePaymentStatusAsync(Guid paymentId, PaymentStatus status, CancellationToken ct = default);
 
-    /// <summary>Every payment whose string <see cref="Payment.MethodName"/> is still unset. Feeds
-    /// the operator review screen for the int → string method migration.</summary>
     Task<IReadOnlyList<Payment>> GetPaymentsMissingMethodNameAsync(CancellationToken ct = default);
 
-    /// <summary>Sets <see cref="Payment.MethodName"/> on the payment with the given id.</summary>
     Task SetPaymentMethodNameAsync(Guid paymentId, PaymentMethod methodName, CancellationToken ct = default);
 
-    /// <summary>
-    /// Hard-deletes the payment with the given id. Used by the <c>checkout.session.expired</c>
-    /// cleanup of an orphan <see cref="PaymentStatus.Pending"/> row (the service enforces the
-    /// status precondition before calling) and by the Admin-only delete-payment action.
-    /// </summary>
+    /// <summary>The service enforces any status precondition.</summary>
     Task DeletePaymentAsync(Guid paymentId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns every recorded Stripe-method payment (rows with a non-null
-    /// <see cref="Payment.StripePaymentIntentId"/>), projected for reconciliation.
-    /// Feeds both missing-payment detection (Stripe sessions absent here) and orphan
-    /// detection (recorded here but absent from Stripe).
-    /// </summary>
+    /// <summary>Rows with a Stripe PaymentIntent id, for missing-payment and orphan detection.</summary>
     Task<IReadOnlyList<RecordedStripePayment>> GetRecordedStripePaymentsAsync(CancellationToken ct = default);
 
-    // Invoices
-
-    /// <summary>
-    /// Returns the issued invoice of every order in <paramref name="orderIds"/> that has one.
-    /// Empty input returns an empty list without a round-trip.
-    /// </summary>
+    /// <summary>Empty input returns an empty list without a round trip.</summary>
     Task<IReadOnlyList<Invoice>> GetInvoicesForOrdersAsync(IReadOnlyCollection<Guid> orderIds, CancellationToken ct = default);
 
     /// <summary>
-    /// Writes the issued <paramref name="invoice"/> and the now-frozen <paramref name="order"/>
-    /// (state, <c>IssuedInvoiceId</c>, and the line snapshots repriced at issue time) in one
-    /// <c>SaveChanges</c>. One method rather than two because the Store invariant is atomic-on-
-    /// success: an order must never be left <c>InvoiceIssued</c> without its invoice row, or
-    /// carry an invoice row while still <c>Open</c>.
+    /// One <c>SaveChanges</c>: an order must never be <c>InvoiceIssued</c> without its invoice row, or carry one while
+    /// still <c>Open</c>.
     /// </summary>
     Task SaveIssuedInvoiceAsync(Invoice invoice, Order order, CancellationToken ct = default);
 }

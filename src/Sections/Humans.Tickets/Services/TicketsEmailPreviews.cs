@@ -2,13 +2,6 @@ using Humans.Email.Contracts;
 
 namespace Humans.Tickets.Services;
 
-/// <summary>
-/// Tickets' contribution to the template gallery at <c>/Email/EmailPreview</c>: one
-/// sample per template <see cref="TicketsEmails"/> can send, built through the same
-/// builder the real send path uses, so the gallery cannot drift from what members
-/// receive (peterdrier/Humans#1651). Sample data only — no recipient is real and
-/// nothing is sent.
-/// </summary>
 internal sealed class TicketsEmailPreviews(TicketsEmails emails) : IEmailPreviewContributor
 {
     private const string SampleTicket = "Nobodies 2026 — Early Bird (TT-10482)";

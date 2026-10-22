@@ -120,9 +120,7 @@ internal sealed partial class PreapprovalService
     }
 
     /// <summary>
-    /// Every Open holder gets the stale "file by" prompt resolved and a new one with the new
-    /// date, in app and by email. Reminder markers carry the deadline they announced, so the
-    /// reminders simply run again for the new date; nothing else is touched.
+    /// Reminder markers carry the deadline they announced, so the reminders simply run again for the new date.
     /// </summary>
     private async Task DeadlineMovedAsync(PreapprovalProgram program, Guid actorUserId, CancellationToken ct)
     {
@@ -156,10 +154,7 @@ internal sealed partial class PreapprovalService
         return null;
     }
 
-    /// <summary>
-    /// The account id for a number Finance offers today. An unchanged number on an existing
-    /// program is kept as is, so an account retired since never blocks a deadline edit.
-    /// </summary>
+    /// <summary>An unchanged number keeps its id, so an account retired since never blocks a deadline edit.</summary>
     private async Task<string?> ResolveAccountAsync(int accountNumber, PreapprovalProgram? keep, CancellationToken ct)
     {
         if (keep is not null && keep.HoldedAccountNumber == accountNumber) return keep.HoldedAccountId;

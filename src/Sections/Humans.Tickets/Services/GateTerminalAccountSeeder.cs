@@ -9,19 +9,11 @@ using NodaTime;
 
 namespace Humans.Tickets.Services;
 
-/// <summary>Admin-card status of the shared gate-terminal account.</summary>
 internal sealed record GateTerminalStatus(bool Provisioned, bool HasPassword, Instant? LastLoginAt);
 
 /// <summary>
-/// Provisions and manages the shared gate-terminal account
-/// (<see cref="SystemUserIds.GateTerminal"/>): a real User row, not a person.
-/// Created lazily the first time a ticket admin sets its password from
-/// /Tickets/Admin/Gate. Mirrors Development's <c>DevPersonaSeeder</c>: User via
-/// <see cref="UserManager{TUser}"/>, Profile via the canonical
-/// <see cref="IProfileEditorService.SaveProfileAsync"/> path (so
-/// <c>UserStateClassifier</c> lifts the state to Active), consent check cleared
-/// so the account never sits in the Consent Coordinator review queue.
-/// The password lives on the Identity row itself — no extra credential storage.
+/// A real User row, not a person, created on the first password set. Its consent check is cleared so it never sits
+/// in the Consent Coordinator review queue.
 /// </summary>
 internal sealed class GateTerminalAccountSeeder(
     UserManager<User> userManager,
@@ -43,12 +35,8 @@ internal sealed class GateTerminalAccountSeeder(
     }
 
     /// <summary>
-    /// Sets (or rotates) the gate password, provisioning the account on first use.
-    /// Rotation bumps the Identity security stamp, so existing gate sessions die
-    /// at the next security-stamp validation sweep. Identity lockout is disabled
-    /// on the account: the username is public, so per-account lockout would let
-    /// anyone deny the real terminal at gate. Sign-in failures are throttled per
-    /// source IP instead (Shell's <c>GateLoginThrottle</c>).
+    /// Rotation bumps the security stamp, ending existing gate sessions. Lockout is off: the username is public, so
+    /// lockout would let anyone lock out the real terminal. Shell's <c>GateLoginThrottle</c> throttles per IP instead.
     /// </summary>
     public async Task<IdentityResult> SetPasswordAsync(string password, Guid actorUserId)
     {
@@ -68,10 +56,8 @@ internal sealed class GateTerminalAccountSeeder(
         if (user is null)
             return IdentityResult.Failed(new IdentityError { Description = "Gate account not found." });
 
-        // Validate-then-replace: ResetPasswordAsync checks the new password against
-        // the policy BEFORE touching the stored hash, so a rejected rotation leaves
-        // the old password (and live gate sessions) intact. On success it bumps the
-        // security stamp, signing out existing gate sessions.
+        // ResetPasswordAsync validates before replacing the hash, so a rejected rotation keeps the old password and
+        // live gate sessions.
         var token = await credentialManager.GeneratePasswordResetTokenAsync(user);
         var reset = await credentialManager.ResetPasswordAsync(user, token, password);
         if (!reset.Succeeded)

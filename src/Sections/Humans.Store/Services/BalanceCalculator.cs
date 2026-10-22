@@ -5,10 +5,7 @@ namespace Humans.Store.Services;
 
 internal static class BalanceCalculator
 {
-    /// <summary>
-    /// Current catalog price components for a product, used to reprice the lines
-    /// of an <see cref="OrderState.Open"/> order. See nobodies-collective/Humans#816.
-    /// </summary>
+    /// <summary>Current catalog price components, used to reprice an Open order's lines.</summary>
     internal readonly record struct ProductPrice(decimal UnitPriceEur, decimal VatRatePercent, decimal? DepositAmountEur);
 
     internal sealed record LineTotals(
@@ -36,21 +33,12 @@ internal static class BalanceCalculator
     private static readonly IReadOnlyDictionary<Guid, ProductPrice> NoCurrentPrices =
         new Dictionary<Guid, ProductPrice>();
 
-    /// <summary>
-    /// Computes order totals from each line's add-time snapshot. Equivalent to
-    /// <see cref="Compute(Order, IReadOnlyDictionary{Guid, ProductPrice})"/>
-    /// with no resolvable current prices — every line falls back to its snapshot.
-    /// </summary>
+    /// <summary>Every line priced at its add-time snapshot.</summary>
     public static Result Compute(Order order) => Compute(order, NoCurrentPrices);
 
     /// <summary>
-    /// Computes order totals using <em>effective</em> prices: an
-    /// <see cref="OrderState.Open"/> order tracks the current catalog price
-    /// from <paramref name="currentPrices"/> (a running tab), while an
-    /// <see cref="OrderState.InvoiceIssued"/> order is frozen and always
-    /// reads each line's add-time snapshot. An Open line whose product is absent
-    /// from <paramref name="currentPrices"/> falls back to its snapshot.
-    /// See nobodies-collective/Humans#816.
+    /// An Open order is a running tab at the current catalog price from <paramref name="currentPrices"/>, falling back
+    /// to the snapshot for an absent product; an InvoiceIssued order is frozen at its snapshots.
     /// </summary>
     public static Result Compute(Order order, IReadOnlyDictionary<Guid, ProductPrice> currentPrices)
     {
@@ -77,9 +65,7 @@ internal static class BalanceCalculator
             lineTotals.Add(new LineTotals(line.Id, unitPrice, vatRate, depositPerUnit, lineSubtotal, lineVat, lineDeposit, lineTotal));
         }
 
-        // Only settled money counts. Pending (mandate captured, not yet cleared) and Failed
-        // (mandate rejected / settlement bounced) are excluded so the balance reflects what Stripe
-        // has actually confirmed, never what the donor intended. See nobodies-collective/Humans#638.
+        // Only settled money counts: Pending and Failed are what the payer intended, not what Stripe confirmed.
         var payments = order.Payments
             .Where(p => p.Status == PaymentStatus.Paid)
             .Sum(p => p.AmountEur);
