@@ -1,4 +1,5 @@
 using Humans.Email.Contracts;
+using Humans.Email.Services;
 using NodaTime;
 
 namespace Humans.Email.Models;
@@ -32,6 +33,23 @@ internal sealed class CommunicationPreferencesViewModel
 
 internal sealed class CategoryPreferenceItem
 {
+    internal static CategoryPreferenceItem FromPreference(
+        MessageCategory category, CommunicationPreferenceSnapshot? preference, bool hasTicketOrder)
+    {
+        var locked = CommunicationPreferenceService.IsTicketingLocked(category, hasTicketOrder);
+        var editable = !category.IsAlwaysOn() && !locked;
+        return new CategoryPreferenceItem
+        {
+            Category = category,
+            // Missing Marketing rows default off, matching the send policy.
+            EmailEnabled = preference is null ? !category.DefaultOptedOut() : !preference.OptedOut,
+            AlertEnabled = preference?.InboxEnabled ?? true,
+            EmailEditable = editable,
+            AlertEditable = editable,
+            IsTicketingLocked = locked,
+        };
+    }
+
     public MessageCategory Category { get; set; }
 
     /// <summary>

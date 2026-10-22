@@ -126,20 +126,7 @@ internal sealed class GuestAccountController(
         foreach (var category in MessageCategoryExtensions.ActiveCategories)
         {
             var pref = prefsByCategory.GetValueOrDefault(category);
-            var isAlwaysOn = category.IsAlwaysOn();
-            var isTicketingLocked = CommunicationPreferenceService.IsTicketingLocked(category, hasTicketOrder);
-
-            categories.Add(new CategoryPreferenceItem
-            {
-                Category = category,
-                // No row → category's domain default (Marketing is opt-out-by-default,
-                // so a missing row renders unchecked). Matches the panel view component.
-                EmailEnabled = pref is null ? !category.DefaultOptedOut() : !pref.OptedOut,
-                AlertEnabled = pref?.InboxEnabled ?? true,
-                EmailEditable = !isAlwaysOn && !isTicketingLocked,
-                AlertEditable = !isAlwaysOn && !isTicketingLocked,
-                IsTicketingLocked = isTicketingLocked,
-            });
+            categories.Add(CategoryPreferenceItem.FromPreference(category, pref, hasTicketOrder));
         }
 
         return new CommunicationPreferencesViewModel

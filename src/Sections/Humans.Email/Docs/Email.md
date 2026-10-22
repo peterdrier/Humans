@@ -166,6 +166,8 @@ The communication-preference routes moved from Users in decomposition commit 14 
 
 ## Invariants
 
+- Guest and shared-panel preference rows use one section-internal projection for category defaults, channel values and editability. The panel adds update attribution; guest token highlighting and authorization remain controller-owned.
+
 - The template gallery requests samples for `CultureCatalog.SupportedCultureCodes`; it owns sample personas, not a second supported-language roster.
 
 - The unsubscribe footer uses `EmailMessage.Culture`, captured by opt-outable senders before their template scope ends, with English fallback for missing/unsupported culture. Regional codes use their supported base language. Shared composer previews use the viewer’s UI culture. The scalar is not stored: the outbox retains the already-rendered body; suppression, unsubscribe URLs/headers, and no-persistence system delivery keep their existing paths.

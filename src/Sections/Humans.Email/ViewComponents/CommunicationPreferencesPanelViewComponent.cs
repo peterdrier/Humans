@@ -1,6 +1,5 @@
 using Humans.Email.Contracts;
 using Humans.Email.Models;
-using Humans.Email.Services;
 using Humans.Tickets.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
@@ -38,23 +37,10 @@ public sealed class CommunicationPreferencesPanelViewComponent(
         foreach (var category in MessageCategoryExtensions.ActiveCategories)
         {
             var pref = prefsByCategory.GetValueOrDefault(category);
-            var isAlwaysOn = category.IsAlwaysOn();
-            var isTicketingLocked = CommunicationPreferenceService.IsTicketingLocked(category, hasTicketOrder);
-
-            categories.Add(new CategoryPreferenceItem
-            {
-                Category = category,
-                // No row → fall back to the category's domain default (Marketing is
-                // opt-out-by-default, so a missing row renders unchecked, matching what
-                // the send path treats null as). Other categories default on.
-                EmailEnabled = pref is null ? !category.DefaultOptedOut() : !pref.OptedOut,
-                AlertEnabled = pref?.InboxEnabled ?? true,
-                EmailEditable = !isAlwaysOn && !isTicketingLocked,
-                AlertEditable = !isAlwaysOn && !isTicketingLocked,
-                IsTicketingLocked = isTicketingLocked,
-                UpdateSource = pref?.UpdateSource,
-                UpdatedAt = pref?.UpdatedAt,
-            });
+            var item = CategoryPreferenceItem.FromPreference(category, pref, hasTicketOrder);
+            item.UpdateSource = pref?.UpdateSource;
+            item.UpdatedAt = pref?.UpdatedAt;
+            categories.Add(item);
         }
 
         return View(new CommunicationPreferencesViewModel
