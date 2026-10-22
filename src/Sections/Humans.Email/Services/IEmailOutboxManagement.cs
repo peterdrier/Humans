@@ -31,7 +31,7 @@ internal interface IEmailOutboxManagement : IEmailOutboxService, IEmailOutboxRet
     /// <summary>
     /// Adds only keys with no row yet, so processor counts are never overwritten and a re-run is safe.
     /// </summary>
-    Task<int> BackfillDailySendCountsAsync(CancellationToken cancellationToken = default);
+    Task<int> BackfillDailySendCountsAsync(Guid actorUserId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Totals for one UTC day, summed across templates.</summary>

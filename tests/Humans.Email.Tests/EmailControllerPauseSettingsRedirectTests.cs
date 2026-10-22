@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
 using Humans.Base.Configuration;
 using Humans.Email.Controllers;
 using Humans.Email.Services;
@@ -25,8 +24,7 @@ public sealed class EmailControllerPauseSettingsRedirectTests
     private EmailController BuildSut()
     {
         var controller = new EmailController(
-            Substitute.For<IUserService>(), _outbox, Substitute.For<IAuditLogService>(),
-            NullLogger<EmailController>.Instance, Options.Create(new EmailSettings()));
+            Substitute.For<IUserService>(), _outbox, NullLogger<EmailController>.Instance, Options.Create(new EmailSettings()));
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
