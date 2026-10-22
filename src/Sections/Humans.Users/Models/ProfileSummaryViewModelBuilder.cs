@@ -8,23 +8,6 @@ namespace Humans.Users.Models;
 
 internal static class ProfileSummaryViewModelBuilder
 {
-    public static ProfileSummaryViewModel BuildWithoutProfile(UserInfo info)
-    {
-        ArgumentNullException.ThrowIfNull(info);
-
-        // Email is intentionally NOT populated here — the popover surfaces this
-        // model to any authenticated user, so exposing email (verified or not)
-        // is a GDPR PII leak. Admins who need email use /Users/Admin/{id}.
-        return new ProfileSummaryViewModel
-        {
-            UserId = info.Id,
-            DisplayName = info.BurnerName,
-            ProfilePictureUrl = info.ProfilePictureUrl,
-            PreferredLanguage = info.PreferredLanguage,
-            HasProfile = false,
-        };
-    }
-
     public static ProfileSummaryViewModel BuildWithProfile(
         UserInfo info,
         IReadOnlyList<TeamMembership> memberships,

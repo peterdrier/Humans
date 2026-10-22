@@ -1,8 +1,6 @@
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
-using Humans.Users.Services;
-using Humans.Users.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NSubstitute;
@@ -10,13 +8,12 @@ using NSubstitute;
 namespace Humans.Users.Tests.Contributions;
 
 /// <summary>
-/// Users' data migrations on <c>/Debug/DataMigrations</c>: the remaining retired Temp screens.
+/// Users' legacy-email data migration on <c>/Debug/DataMigrations</c>.
 /// Each status must list exactly what its apply will fix (or <c>done</c> never arrives), and each
 /// apply must carry the acting admin and be a no-op once nothing is pending.
 /// </summary>
 public class SectionDataMigrationsTests
 {
-    private readonly IUserManagement _users = Substitute.For<IUserManagement>();
     private readonly IEmailProblemsService _emailProblems = Substitute.For<IEmailProblemsService>();
     private readonly Guid _actorId = Guid.NewGuid();
     private readonly IServiceProvider _services;
@@ -25,7 +22,6 @@ public class SectionDataMigrationsTests
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddSingleton(_users);
         services.AddSingleton(_emailProblems);
         _services = services.BuildServiceProvider();
     }
@@ -42,50 +38,10 @@ public class SectionDataMigrationsTests
 
         migrations.Select(m => m.Key).Should().BeEquivalentTo(
         [
-            SectionDataMigrations.StubProfilesKey,
             SectionDataMigrations.LegacyIdentityEmailsKey,
         ]);
         migrations.Should().OnlyContain(m => string.Equals(m.Section, "Users", StringComparison.Ordinal) && m.Key.StartsWith("users.", StringComparison.Ordinal));
         migrations.Should().OnlyContain(m => !string.IsNullOrWhiteSpace(m.Title) && !string.IsNullOrWhiteSpace(m.Retires));
-    }
-
-    [HumansFact]
-    public async Task Stub_profiles_lists_only_live_profile_less_users()
-    {
-        var bare = Guid.NewGuid();
-        var profiled = Guid.NewGuid();
-        var merged = Guid.NewGuid();
-        StubUsers(
-            Info(bare),
-            Info(profiled, withProfile: true),
-            Info(merged, mergedAt: Instant.FromUtc(2026, 2, 1, 0, 0)));
-
-        var status = await Migration(SectionDataMigrations.StubProfilesKey).Status(_services, Ct);
-
-        status.Pending.Should().Be(1);
-        status.PendingRows.Single()[0].Should().Be(bare.ToString());
-        status.Columns.Should().HaveCount(status.PendingRows.Single().Count);
-    }
-
-    [HumansFact]
-    public async Task Stub_profiles_apply_ensures_each_pending_user_for_the_actor_then_finds_nothing()
-    {
-        var bare = Guid.NewGuid();
-        StubUsers(Info(bare));
-        _users.EnsureStubProfileAsync(bare, null, null, null, Arg.Any<CancellationToken>(), _actorId)
-            .Returns(true);
-        var migration = Migration(SectionDataMigrations.StubProfilesKey);
-
-        (await migration.Apply(_services, _actorId, Ct)).Should().Be(1);
-        await _users.Received(1).EnsureStubProfileAsync(bare, null, null, null, Arg.Any<CancellationToken>(), _actorId);
-
-        // The profile now exists: a second apply writes nothing and calls nothing.
-        StubUsers(Info(bare, withProfile: true));
-        _users.ClearReceivedCalls();
-
-        (await migration.Status(_services, Ct)).Done.Should().BeTrue();
-        (await migration.Apply(_services, _actorId, Ct)).Should().Be(0);
-        await _users.DidNotReceiveWithAnyArgs().EnsureStubProfileAsync(default);
     }
 
     [HumansFact]
@@ -109,28 +65,4 @@ public class SectionDataMigrationsTests
         (await migration.Apply(_services, _actorId, Ct)).Should().Be(1);
         await _emailProblems.Received(1).BackfillLegacyIdentityEmailsAsync(_actorId, Arg.Any<CancellationToken>());
     }
-
-    private void StubUsers(params UserInfo[] infos) =>
-        _users.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(infos));
-
-    private static UserInfo Info(Guid userId, bool withProfile = false, Instant? mergedAt = null) =>
-        new User
-        {
-            Id = userId,
-            PreferredLanguage = "en",
-            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            MergedAt = mergedAt,
-        }.ToUserInfo(
-            [],
-            withProfile
-                ? new Profile
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = userId,
-                    BurnerName = "Test",
-                    CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-                    UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-                }
-                : null);
 }

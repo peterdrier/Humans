@@ -99,7 +99,7 @@ The shapes imply one register with one cache and one write funnel:
   `user_emails.IsNotificationTarget`-named columns waits on prod verification.
 - `Profile.BurnerName/FirstName/LastName` remain dual-written and read by current consumers;
   retiring those columns requires migrating those readers first (nobodies-collective/Humans#1098).
-- Users' remaining data migrations (`SectionDataMigrations`) retire on the same signal, each by its own key. `users.names-onto-user`, `users.legacy-gdpr-tombstones` and `users.profile-pictures-to-filesystem` retired after production reported done on 2026-10-22.
+- Users' remaining data migrations (`SectionDataMigrations`) retire on the same signal, each by its own key. `users.names-onto-user`, `users.legacy-gdpr-tombstones`, `users.profile-pictures-to-filesystem` and `users.stub-profiles` retired after production reported done on 2026-10-22.
 - `AccountMergeRequest` still carries `User` navs; strip when the nav-strip pattern is
   generalised.
 - `PolicyNames.HumanAdminOnly` is registered with no call site.
