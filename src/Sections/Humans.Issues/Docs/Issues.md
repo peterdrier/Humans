@@ -155,6 +155,7 @@ Known area labels in the member submission form, issue list and detail view use 
 
 - A regular human **cannot** see issues they did not report — even in sections they do not own.
 - A section role-holder **cannot** see, comment on, or mutate issues whose `Section` does not map to one of their roles. (Their elevated access is scoped to their section; null-section issues are Admin-only.)
+- Status, assignee, section and GitHub-link actions share one controller triage gate: resolve the viewer, read the visible issue, authorize Handle, then validate the form before mutation.
 - A regular human **cannot** change an issue's status, assignee, section, or GitHub link — even on issues they reported. (They may comment, and that comment may auto-reopen a terminal issue, but the status field itself is handler-only.)
 - An API client **cannot** call `/Issues/*` (the cookie-authenticated controller) — and a cookie-authenticated user **cannot** call `/api/backdoor/issues/*` without an API key.
 - A key holder **cannot** reach an issue by id that their own queue would not have listed: `GET {id}`, its comments, `POST {id}/comments` and every `PATCH` all answer 404, the same as the browser shows them nothing.
