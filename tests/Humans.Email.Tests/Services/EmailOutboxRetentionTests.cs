@@ -101,7 +101,7 @@ public class EmailOutboxRetentionTests : IDisposable
     public async Task PurgeExpiredAsync_LeavesDailySendCountsUntouched()
     {
         // CleanupEmailOutboxJob (via IEmailOutboxRetention) must never purge
-        // email_daily_send_counts — it's the durable denominator (#1195).
+        // email_daily_send_counts — it's the durable denominator (nobodies-collective/Humans#1195).
         var oldRow = new EmailDailySendCount
         {
             Date = new LocalDate(2025, 1, 1),

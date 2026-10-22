@@ -8,7 +8,7 @@ namespace Humans.Email.Tests;
 
 /// <summary>
 /// Architecture tests enforcing the §15 repository pattern for the Email
-/// section — migrated per issue #548.
+/// section.
 ///
 /// <para>
 /// The Email section's §15 migration chose the <b>no-decorator</b> variant
@@ -83,10 +83,8 @@ public class EmailArchitectureTests
     [HumansFact]
     public void ConnectorAbstractions_SitOnTheSideTheirImplementationLivesOn()
     {
-        // IImmediateOutboxProcessor is on the contracts leaf because Base used to implement
-        // it; HangfireImmediateOutboxProcessor moved into Humans.Email/Contracts/ at G5 lane
-        // 5b-1, so both sides are now section-side and the interface could go internal in a
-        // later pass. IEmailBodyComposer is section-internal because both sides of it are.
+        // IImmediateOutboxProcessor stays on the contracts leaf because the Shell registers it.
+        // IEmailBodyComposer is section-internal because both sides of it are.
         typeof(IImmediateOutboxProcessor).Namespace
             .Should().Be("Humans.Email.Contracts");
         typeof(IImmediateOutboxProcessor).IsPublic.Should().BeTrue();

@@ -123,7 +123,7 @@ internal sealed class EmailOutboxProcessor(
                     message.CampaignGrantId.Value, EmailOutboxStatus.Sent, sentAt, message.Id, cancellationToken);
             }
 
-            // 1 second between sends to stay under SMTP rate limits.
+            // Stays under the SMTP relay's rate limit.
             await ThrottleDelayAsync(TimeSpan.FromSeconds(1), cancellationToken);
         }
 

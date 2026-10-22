@@ -9,8 +9,7 @@ using NSubstitute;
 namespace Humans.Email.Tests;
 
 /// <summary>
-/// The /Settings#email tab body (peterdrier/Humans#1634) — the same pause-state read
-/// the /Email/EmailOutbox dashboard header used to show.
+/// The /Settings#email tab body (peterdrier/Humans#1634): it reports the email pause state.
 /// </summary>
 public sealed class EmailPauseSettingsTabViewComponentTests
 {

@@ -38,7 +38,7 @@ internal sealed class UnsubscribeService(
         }
         catch (CryptographicException ex)
         {
-            // Already logged in CommunicationPreferenceService.
+            // UnsubscribeTokenProvider has already warned about this token.
             if (ex.Message.Contains("expired", StringComparison.OrdinalIgnoreCase))
                 return UnsubscribeTokenResult.Expired();
 

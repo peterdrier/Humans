@@ -458,7 +458,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     }
 
     // ==========================================================================
-    // Daily send counts (#1195)
+    // Daily send counts (nobodies-collective/Humans#1195)
     // ==========================================================================
 
     [HumansFact]
