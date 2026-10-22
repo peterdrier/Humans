@@ -4,18 +4,8 @@ using Humans.Consent.Domain;
 
 namespace Humans.Consent.Data;
 
-/// <summary>
-/// EF-backed implementation of <see cref="ILegalDocumentRepository"/>.
-/// The only non-test file that touches <c>DbContext.LegalDocuments</c> or
-/// <c>DbContext.DocumentVersions</c>. Uses <see cref="IDbContextFactory{TContext}"/> so the repository
-/// can be registered as Singleton.
-/// </summary>
 internal sealed class LegalDocumentRepository(IDbContextFactory<LegalDbContext> factory) : ILegalDocumentRepository
 {
-    // ==========================================================================
-    // Reads — LegalDocument
-    // ==========================================================================
-
     public async Task<LegalDocument?> GetByIdAsync(Guid documentId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -81,18 +71,12 @@ internal sealed class LegalDocumentRepository(IDbContextFactory<LegalDbContext> 
         if (teamIds.Count == 0) return [];
 
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Team is cross-section data; callers stitch team names via
-        // ITeamService (memory/architecture/no-cross-section-ef-joins.md).
         return await ctx.LegalDocuments
             .AsNoTracking()
             .Where(d => d.IsActive && d.IsRequired && teamIds.Contains(d.TeamId))
             .Include(d => d.Versions)
             .ToListAsync(ct);
     }
-
-    // ==========================================================================
-    // Reads — DocumentVersion
-    // ==========================================================================
 
     public async Task<DocumentVersion?> GetVersionByIdAsync(Guid versionId, CancellationToken ct = default)
     {
@@ -102,10 +86,6 @@ internal sealed class LegalDocumentRepository(IDbContextFactory<LegalDbContext> 
             .Include(v => v.LegalDocument)
             .FirstOrDefaultAsync(v => v.Id == versionId, ct);
     }
-
-    // ==========================================================================
-    // Writes — LegalDocument
-    // ==========================================================================
 
     public async Task<LegalDocument> AddAsync(LegalDocument document, CancellationToken ct = default)
     {
@@ -176,8 +156,7 @@ internal sealed class LegalDocumentRepository(IDbContextFactory<LegalDbContext> 
         var document = await ctx.LegalDocuments.FindAsync([documentId], ct);
         if (document is null) return false;
 
-        // Attach via the DbSet so EF picks up the FK and doesn't try to
-        // track the disconnected LegalDocument nav.
+        // Add through the DbSet so EF takes the FK and doesn't try to track the disconnected LegalDocument nav.
         ctx.DocumentVersions.Add(newVersion);
 
         document.CurrentCommitSha = commitSha;
@@ -186,10 +165,6 @@ internal sealed class LegalDocumentRepository(IDbContextFactory<LegalDbContext> 
         await ctx.SaveChangesAsync(ct);
         return true;
     }
-
-    // ==========================================================================
-    // Writes — DocumentVersion
-    // ==========================================================================
 
     public async Task<bool> UpdateVersionSummaryAsync(
         Guid documentId,

@@ -30,9 +30,6 @@ internal sealed class RoleAssignmentConfiguration : IEntityTypeConfiguration<Rol
         builder.Property(ra => ra.CreatedAt)
             .IsRequired();
 
-        // UserId / CreatedByUserId are bare cross-section Guid columns — no FK
-        // constraint, no nav (memory/architecture/no-cross-section-ef-joins.md).
-
         builder.HasIndex(ra => ra.UserId);
         builder.HasIndex(ra => ra.RoleName);
         builder.HasIndex(ra => new { ra.UserId, ra.RoleName, ra.ValidFrom });

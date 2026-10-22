@@ -5,101 +5,36 @@ using Humans.Consent.Domain;
 
 namespace Humans.Consent.Data;
 
-/// <summary>
-/// Repository for the Legal Documents aggregate (<c>legal_documents</c>,
-/// <c>document_versions</c>). The only non-test file that may touch those
-/// DbSets.
-/// </summary>
-/// <remarks>
-/// Used by <c>LegalDocumentSyncService</c> — the sole writer for this
-/// aggregate, owning both the admin write surface and the GitHub-sync write
-/// surface (nobodies-collective/Humans#751) — in
-/// <c>Humans.Consent.Services</c>. Read methods use
-/// <c>AsNoTracking</c>; writes create and dispose short-lived contexts via
-/// <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{LegalDbContext}"/>
-/// so the repository can be registered Singleton alongside
-/// <c>IUserRepository</c>, etc.
-///
-/// <para>
-/// Legal documents carry a cross-section TeamId only. Callers that need team
-/// data call <see cref="ITeamService"/> and stitch by
-/// <see cref="LegalDocument.TeamId"/>.
-/// </para>
-/// </remarks>
 internal interface ILegalDocumentRepository : IRepository
 {
-    // ==========================================================================
-    // Reads — LegalDocument
-    // ==========================================================================
-
-    /// <summary>
-    /// Loads a single legal document with aggregate-local <c>Versions</c>
-    /// included. Read-only (AsNoTracking). Returns null if the document does
-    /// not exist.
-    /// </summary>
+    /// <summary>With <c>Versions</c>. Null if it doesn't exist.</summary>
     Task<LegalDocument?> GetByIdAsync(Guid documentId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Loads legal documents, optionally filtered by team id. Includes
-    /// aggregate-local <c>Versions</c>. Read-only (AsNoTracking). Callers
-    /// that need per-team grouping stitch with <see cref="ITeamService"/>.
-    /// </summary>
+    /// <summary>With <c>Versions</c>.</summary>
     Task<IReadOnlyList<LegalDocument>> GetDocumentsAsync(
         Guid? teamId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns every active legal document with <c>Versions</c> included.
-    /// Read-only (AsNoTracking).
-    /// </summary>
+    /// <summary>With <c>Versions</c>.</summary>
     Task<IReadOnlyList<LegalDocument>> GetActiveDocumentsAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns every active, required legal document with <c>Versions</c>
-    /// included. Read-only (AsNoTracking). Used by
-    /// <see cref="Humans.Consent.Services.ILegalDocumentSyncManagement.GetRequiredVersionsAsync"/>.
-    /// </summary>
+    /// <summary>With <c>Versions</c>.</summary>
     Task<IReadOnlyList<LegalDocument>> GetActiveRequiredDocumentsAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns active, required legal documents for a team with
-    /// <c>Versions</c> included. Read-only (AsNoTracking). Used when
-    /// computing required consents for a team membership.
-    /// </summary>
+    /// <summary>With <c>Versions</c>.</summary>
     Task<IReadOnlyList<LegalDocument>> GetActiveRequiredDocumentsForTeamAsync(
         Guid teamId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns active, required legal documents for any of the given teams with
-    /// <c>Versions</c> included. Read-only (AsNoTracking).
-    /// </summary>
+    /// <summary>With <c>Versions</c>.</summary>
     Task<IReadOnlyList<LegalDocument>> GetActiveRequiredDocumentsForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default);
 
-    // ==========================================================================
-    // Reads — DocumentVersion
-    // ==========================================================================
-
-    /// <summary>
-    /// Loads a single document version. Read-only (AsNoTracking). Includes
-    /// the parent <see cref="LegalDocument"/> (aggregate-local nav) for
-    /// callers that need document metadata alongside the version.
-    /// </summary>
+    /// <summary>With its <see cref="LegalDocument"/>.</summary>
     Task<DocumentVersion?> GetVersionByIdAsync(Guid versionId, CancellationToken ct = default);
 
-    // ==========================================================================
-    // Writes — LegalDocument
-    // ==========================================================================
-
-    /// <summary>
-    /// Adds a new <see cref="LegalDocument"/>. Persists immediately.
-    /// Returns the saved entity detached from the repository context.
-    /// </summary>
+    /// <summary>Returns the saved entity, detached.</summary>
     Task<LegalDocument> AddAsync(LegalDocument document, CancellationToken ct = default);
 
-    /// <summary>
-    /// Updates a legal document with the given field set. Returns true if
-    /// the document was found and updated; false if it does not exist.
-    /// </summary>
+    /// <summary>False if the document doesn't exist.</summary>
     Task<bool> UpdateAsync(
         Guid documentId,
         string name,
@@ -110,24 +45,16 @@ internal interface ILegalDocumentRepository : IRepository
         string? gitHubFolderPath,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Soft-archives a legal document (sets <c>IsActive=false</c>). Returns
-    /// the updated entity detached, or null if the document does not exist.
-    /// </summary>
+    /// <summary>Sets <c>IsActive</c> false. Returns the entity detached, or null if it doesn't exist.</summary>
     Task<LegalDocument?> ArchiveAsync(Guid documentId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Records that a sync succeeded with no content change — updates
-    /// <c>LastSyncedAt</c> only. Returns false if the document does not
-    /// exist.
-    /// </summary>
+    /// <summary>A sync with no content change: only <c>LastSyncedAt</c> moves. False if the document doesn't exist.</summary>
     Task<bool> TouchLastSyncedAtAsync(
         Guid documentId, Instant lastSyncedAt, CancellationToken ct = default);
 
     /// <summary>
-    /// Adds a new <see cref="DocumentVersion"/> and updates the parent
-    /// document's <c>CurrentCommitSha</c> and <c>LastSyncedAt</c> in a
-    /// single transaction. Returns false if the document does not exist.
+    /// Also updates the document's <c>CurrentCommitSha</c> and <c>LastSyncedAt</c>, in one transaction. False if the
+    /// document doesn't exist.
     /// </summary>
     Task<bool> AddVersionAsync(
         Guid documentId,
@@ -136,15 +63,7 @@ internal interface ILegalDocumentRepository : IRepository
         Instant lastSyncedAt,
         CancellationToken ct = default);
 
-    // ==========================================================================
-    // Writes — DocumentVersion
-    // ==========================================================================
-
-    /// <summary>
-    /// Updates the <c>ChangesSummary</c> of a specific version. Returns
-    /// true if found and updated; false if the version does not exist or
-    /// does not belong to the specified document.
-    /// </summary>
+    /// <summary>False if the version doesn't exist or belongs to another document.</summary>
     Task<bool> UpdateVersionSummaryAsync(
         Guid documentId,
         Guid versionId,

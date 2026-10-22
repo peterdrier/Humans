@@ -4,16 +4,8 @@ using Humans.Consent.Domain;
 
 namespace Humans.Consent.Services;
 
-/// <summary>
-/// Application service for admin legal-document management flows.
-/// </summary>
 internal interface IAdminLegalDocumentService : IApplicationService
 {
-    /// <summary>
-    /// Gets legal documents for admin listing, optionally filtered by team.
-    /// Team names are stitched in memory from <c>ITeamService</c> rather
-    /// than via a cross-domain <c>.Include(d => d.Team)</c>.
-    /// </summary>
     Task<IReadOnlyList<AdminLegalDocumentListItem>> GetLegalDocumentsAsync(
         Guid? teamId,
         CancellationToken cancellationToken = default);
@@ -25,10 +17,8 @@ internal interface IAdminLegalDocumentService : IApplicationService
     GitHubFolderPathNormalizationResult NormalizeGitHubFolderPath(string? input);
 
     /// <summary>
-    /// Creates a legal document and runs the initial content sync when a
-    /// GitHub folder path was supplied.
+    /// Runs the initial sync when a GitHub folder path was supplied. Returns null when the team doesn't exist.
     /// </summary>
-    /// <returns>The created document and sync result, or null when its team does not exist.</returns>
     Task<AdminLegalDocumentCreateResult?> CreateLegalDocumentWithInitialSyncAsync(
         AdminLegalDocumentUpsertRequest request,
         Guid actorUserId,

@@ -72,8 +72,7 @@ internal sealed class UsersAdminController(
                 .ToHashSet();
         }
 
-        // nobodies-collective/Humans#847: the Google-rejected filter reads GoogleIntegration's
-        // identity verdicts (Users decomposition commit 15), loaded only when it is asked for.
+        // GoogleIntegration's verdicts, loaded only when the Google-rejected filter asks.
         IReadOnlySet<Guid>? googleRejectedUserIds = null;
         if (string.Equals(filter, AdminHumanListAssembler.GoogleRejectedFilter, StringComparison.OrdinalIgnoreCase))
         {
@@ -178,9 +177,7 @@ internal sealed class UsersAdminController(
         return RedirectToAction(nameof(AdminDetail), new { id });
     }
 
-    // Audience-segmentation diagnostic — relocated here from AdminController by the
-    // "legacy admin routes -> section homes" move (#901). Admin-only (stricter than the
-    // class-level Board-or-Admin gate).
+    // Stricter than the class-level Board-or-Admin gate.
     [Authorize(Policy = PolicyNames.AdminOnly)]
     [HttpGet("Audience")]
     public async Task<IActionResult> Audience(int? year, CancellationToken ct)
@@ -214,13 +211,13 @@ internal sealed class UsersAdminController(
         }
     }
 
-    // Dev/QA-only destructive purge — moved here with the rest of the per-user admin surface.
+    // Dev/QA only.
     [HttpPost("{id:guid}/Purge")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> PurgeHuman(Guid id)
     {
-        // Captured before the purge collapses the identity.
+        // Before the purge collapses the identity.
         var displayName = (await _userService.GetRawUserInfoAsync(id))?.BurnerName;
         var currentUser = await GetCurrentUserInfoAsync();
 

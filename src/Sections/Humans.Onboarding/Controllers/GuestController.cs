@@ -7,11 +7,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Onboarding.Controllers;
 
-/// <summary>
-/// Dashboard for profileless accounts (authenticated users without a Profile). Comms
-/// preferences, GDPR tools and ticket status are contributed by their own sections into
-/// this page's cards / chrome slot.
-/// </summary>
 [Authorize]
 internal sealed class GuestController(
     IUserService userService,

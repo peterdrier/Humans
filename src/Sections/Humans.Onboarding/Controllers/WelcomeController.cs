@@ -4,10 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Onboarding.Controllers;
 
-/// <summary>
-/// Anonymous explainer + redirect gate at /Welcome: signed-in actives go to /Shifts,
-/// signed-in non-actives to the onboarding widget, everyone else sees the explainer.
-/// </summary>
 [AllowAnonymous]
 internal sealed class WelcomeController : Controller
 {
@@ -21,7 +17,6 @@ internal sealed class WelcomeController : Controller
                 return Redirect("/Shifts");
             }
 
-            // Not active — send to widget, not explainer.
             return Redirect("/OnboardingWidget");
         }
 

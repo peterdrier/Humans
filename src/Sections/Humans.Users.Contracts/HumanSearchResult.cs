@@ -1,35 +1,14 @@
 namespace Humans.Users.Contracts;
 
-/// <summary>
-/// Single canonical person-search result. Returned by IUserService's
-/// search regardless of the <c>PersonSearchFields</c> bits passed; a wider
-/// flag-set just lets more rows match.
-/// </summary>
-/// <param name="UserId">Owning user id.</param>
-/// <param name="ProfileId">Owning profile id. Surfaced so callers that need
-/// to fan out into <c>IContactFieldService</c> (which keys by profile id)
-/// don't have to round-trip through a profile lookup.</param>
-/// <param name="BurnerName">The human's primary public display label — resolved from
-/// <c>User.BurnerName</c> (nobodies-collective/Humans#1098).</param>
-/// <param name="ProfilePictureUrl">Effective picture URL (custom or
-/// upstream). <c>null</c> when no picture is set.</param>
-/// <param name="MatchField">Short label naming which bucket matched
-/// (<c>"Name"</c>, <c>"Bio"</c>, <c>"City"</c>, <c>"Burner CV"</c>,
-/// <c>"Email"</c>, etc.). <c>null</c> if the caller doesn't care.</param>
-/// <param name="MatchSnippet">Highlighted snippet when the match was on
-/// long-form text (Bio / Interests / CV); <c>null</c> for short fields and
-/// for name-only matches.</param>
-/// <param name="MatchedEmail">The verified email or non-public ContactField
-/// value that matched, when the caller passed the
-/// <c>PersonSearchFields.Admin</c> bit. Always <c>null</c> for
-/// non-admin callers — services are auth-free, but never leak admin-bit
-/// content into the basic shape.</param>
-/// <param name="Score">Relevance score (higher = better) from
-/// <c>PersonSearchMatcher</c>: exact name &gt; prefix &gt; token-prefix &gt;
-/// contains &gt; non-name field. The service returns matches unordered
-/// (per <c>memory/architecture/person-search.md</c>); controllers/views sort
-/// by this via <c>OrderByRelevance()</c> so the best name match surfaces first
-/// instead of an alphabetical list.</param>
+/// <summary>The one person-search result shape; wider <c>PersonSearchFields</c> just let more rows match.</summary>
+/// <param name="UserId">Owning user.</param>
+/// <param name="ProfileId">For <c>IContactFieldService</c>, which keys by profile id.</param>
+/// <param name="BurnerName">From <c>User.BurnerName</c>.</param>
+/// <param name="ProfilePictureUrl">Custom or upstream; null when none.</param>
+/// <param name="MatchField">Which bucket matched (<c>"Name"</c>, <c>"Bio"</c>, <c>"Email"</c>, …).</param>
+/// <param name="MatchSnippet">For long-form matches (Bio, Interests, CV); null otherwise.</param>
+/// <param name="MatchedEmail">Only with the <c>PersonSearchFields.Admin</c> bit; always null otherwise.</param>
+/// <param name="Score">Higher is better. Results come back unordered: callers sort with <c>OrderByRelevance()</c>.</param>
 public record HumanSearchResult(
     Guid UserId,
     Guid ProfileId,

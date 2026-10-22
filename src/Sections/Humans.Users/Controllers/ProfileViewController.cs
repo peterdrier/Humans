@@ -20,9 +20,6 @@ using Humans.Base.Authorization;
 
 namespace Humans.Users.Controllers;
 
-// Other members' profiles: the profile page, picture, popovers and
-// search. Split out of ProfileController, which keeps the member's own profile pages;
-// ProfileEmailsController holds the email grids.
 [Authorize]
 [Route("Profile")]
 internal sealed class ProfileViewController(
@@ -39,14 +36,12 @@ internal sealed class ProfileViewController(
 {
     private readonly IUserManagement _userService = userService;
 
-    // ─── Shared (Profile Picture) ────────────────────────────────────
-
     [HttpGet("Picture")]
     [AllowAnonymous]
     [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client)]
     public async Task<IActionResult> Picture(Guid id, CancellationToken ct)
     {
-        // Controller routes through the profile-picture service, which owns the FS read path + GDPR gate.
+        // The picture service owns the file read and the GDPR gate.
         var result = await profilePictureService.GetProfilePictureAsync(id, ct);
         if (result is null)
         {
@@ -55,8 +50,6 @@ internal sealed class ProfileViewController(
 
         return File(result.Value.Data, result.Value.ContentType);
     }
-
-    // ─── View Another Profile ────────────────────────────────────────
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> ViewProfile(Guid id, CancellationToken ct)
@@ -97,7 +90,6 @@ internal sealed class ProfileViewController(
             CanViewSentMessages = canViewSentMessages,
         };
 
-        // Index.cshtml is shared with ProfileController.Me; both render the same page shape.
         return View("~/Views/Profile/Index.cshtml", viewModel);
     }
 
@@ -159,11 +151,8 @@ internal sealed class ProfileViewController(
     }
 
     /// <summary>
-    /// Whether the viewer may see the in-platform messages sent to the profile user: a
-    /// coordinator or a privileged shift-management role, never on one's own profile. Uses
-    /// the same coordinator check as <see cref="BuildNoShowHistoryContextAsync"/> so the two
-    /// panels appear under consistent access rules. The rows themselves come from
-    /// <c>&lt;vc:audit-log&gt;</c> in the view.
+    /// A coordinator or privileged shift role, never on one's own profile. Same coordinator check as
+    /// <see cref="BuildNoShowHistoryContextAsync"/>, so the two panels share access rules.
     /// </summary>
     private async Task<bool> CanViewSentMessagesAsync(Guid viewerId, bool isOwnProfile, CancellationToken ct)
     {
@@ -195,7 +184,7 @@ internal sealed class ProfileViewController(
             .Where(x => x.Membership is not null)
             .Select(x => new TeamMembership(x.TeamInfo.Name, x.Membership!.Role) { IsHidden = x.TeamInfo.IsHidden })
             .ToList();
-        // Camp + roles for the active season; rendered admin-only in the view.
+        // Rendered admin-only in the view.
         var camp = await campService.GetCampUserInfoAsync(id, ct);
         var tier = await governanceService.GetMembershipTierAsync(id, ct);
         var isApproved = (await consentService.GetConsentReviewAsync(id, ct)).IsApproved;
@@ -204,15 +193,8 @@ internal sealed class ProfileViewController(
         return PartialView("_HumanPopover", vm);
     }
 
-    // Reduced popover served to anonymous viewers on public team pages (#771).
-    // Mirrors the AllowAnonymous Profile/Picture endpoint pattern: only renders
-    // when the target user is an active coordinator on a team that publishes
-    // its coordinators (IsPublicPage && ShowCoordinatorsOnPublicPage). Returns
-    // 404 otherwise so anonymous probes can't enumerate users. Filtering on the
-    // controller per peters-hard-rules.md ("controllers ... responsible for
-    // formatting, sorting, filtering") and to avoid expanding ITeamService
-    // surface (memory/architecture/interface-method-additions-are-debt.md);
-    // mirrors the inline TeamInfo filter the authenticated Popover uses above.
+    // For anonymous viewers of public team pages: renders only for an active coordinator of a team that publishes
+    // its coordinators, and 404s otherwise so anonymous probes can't enumerate users.
     [AllowAnonymous]
     [HttpGet("{id:guid}/PublicPopover")]
     public async Task<IActionResult> PublicPopover(Guid id, CancellationToken ct)
@@ -243,8 +225,6 @@ internal sealed class ProfileViewController(
         return PartialView("_HumanPopoverPublic", vm);
     }
 
-    // ─── Search ──────────────────────────────────────────────────────
-
     [HttpGet("Search")]
     public async Task<IActionResult> Search(string? q, CancellationToken ct)
     {
@@ -255,13 +235,10 @@ internal sealed class ProfileViewController(
             return View(viewModel);
         }
 
-        // PublicAll = name + bio + public ContactFields. Admin bit gated by code review.
-        // Uncapped: return the full match set so relevance ranking surfaces the right person
-        // (a hard cap returned an arbitrary subset before sorting). Cheap at our small scale.
+        // Never the Admin bit here. Uncapped, so relevance ranking can surface the right person.
         var results = await _userService.SearchUsersAsync(
             q, PersonSearchFields.PublicAll, limit: int.MaxValue, ct);
 
-        // Display sort at controller — memory/architecture/display-sort-in-controllers.md.
         viewModel.Results = results
             .OrderByRelevance()
             .ToList();

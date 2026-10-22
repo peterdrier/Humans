@@ -53,7 +53,6 @@
 
             @if (!hasShifts)
             {
-                @* Empty-state — mirrors Shifts/BrowsingClosed. *@
                 <div class="alert alert-info text-center my-4">
                     @if (Model.EventSettings is null)
                     {
@@ -75,13 +74,8 @@
             }
             else
             {
-                @* Shifts' rota tables are that section's presentation, so the component lives in
-                   Humans.Shifts. Invoked by Type through the IOnboardingShiftsStep seam
-                   (nobodies-collective/Humans#1815) — a single-contributor slot, so
-                   ViewComponentSlotContractTests requires every OnboardingShiftsStepArgs property
-                   to bind to a parameter and vice versa: a dropped or renamed argument fails the
-                   build instead of silently 500ing (#1810). The event goes across by id; Shifts
-                   resolves its own settings DTO. *@
+                @* Single-contributor slot: ViewComponentSlotContractTests requires every OnboardingShiftsStepArgs
+                   property to bind to a parameter, so a renamed argument fails the build instead of a 500. *@
                 @await Component.InvokeAsync(ShiftsStep.ShiftsList, new OnboardingShiftsStepArgs(
                     EventSettingsId: Model.EventSettings!.Id,
                     Shifts: Model.Shifts,

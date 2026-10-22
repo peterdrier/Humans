@@ -11,11 +11,8 @@ using Humans.Users.Contracts;
 namespace Humans.Users.ViewComponents;
 
 /// <summary>
-/// Renders the same content as the hover popover (<c>_HumanPopover.cshtml</c>)
-/// inline — avatar, name, membership badge, city/country, public teams +
-/// (admin-only) hidden teams, and languages. Use on admin-review screens
-/// (e.g. ticket-transfer detail) where the reviewer needs identity context
-/// without having to hover.
+/// The hover popover's content, inline, for admin-review screens where the reviewer needs
+/// identity context without hovering.
 /// </summary>
 public sealed class HumanSummaryViewComponent(
     IUserService userService, ITeamService teamService, IGovernanceService governanceService,

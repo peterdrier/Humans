@@ -6,25 +6,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Users.Data;
 
-/// <summary>
-/// Per-section database context for the merged Users+Profiles section
-/// (nobodies-collective/Humans#858, peel 15): maps <c>users</c>, <c>profiles</c>,
-/// <c>profile_languages</c>, <c>contact_fields</c>, <c>user_emails</c>,
-/// <c>volunteer_history_entries</c>, <c>communication_preferences</c>,
-/// <c>account_merge_requests</c>, <c>event_participations</c> and the seven
-/// ASP.NET Identity tables, with its own <c>__EFMigrationsHistory_Users</c>
-/// table and migrations under <c>Data/Migrations/</c>. Same database, same
-/// connection — the split is a code-side partition of the EF model.
-/// </summary>
-/// <remarks>
-/// <para>
-/// Carries the Identity base (<c>IdentityDbContext</c>): nothing pins Identity
-/// to a context name, so the base class moved here when <c>HumansDbContext</c>
-/// was deleted. Internal-sealed like every section context (issue #750);
-/// configurations are applied explicitly (not by assembly scanning) so this
-/// model can never accrete another section's tables.
-/// </para>
-/// </remarks>
 internal sealed class UsersDbContext(DbContextOptions<UsersDbContext> options)
     : IdentityDbContext<User, IdentityRole<Guid>, Guid>(options)
 {
@@ -51,7 +32,6 @@ internal sealed class UsersDbContext(DbContextOptions<UsersDbContext> options)
         builder.ApplyConfiguration(new VolunteerHistoryEntryConfiguration());
         builder.ApplyConfiguration(new CommunicationPreferenceConfiguration());
 
-        // Rename Identity tables to use lowercase with underscores (PostgreSQL convention)
         builder.Entity<User>().ToTable("users");
         builder.Entity<IdentityRole<Guid>>().ToTable("roles");
         builder.Entity<IdentityUserRole<Guid>>().ToTable("user_roles");

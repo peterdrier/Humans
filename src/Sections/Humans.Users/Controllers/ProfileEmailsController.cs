@@ -25,9 +25,6 @@ using Humans.GoogleIntegration.Contracts;
 
 namespace Humans.Users.Controllers;
 
-// Email addresses and linked logins: the member's own grid under /Profile/Me/Emails and the
-// admin grid under /Profile/{id}/Admin/Emails. Split out of ProfileController, which keeps
-// the own-profile pages; ProfileViewController holds other members' profiles.
 [Authorize]
 [Route("Profile")]
 internal sealed class ProfileEmailsController(
@@ -48,8 +45,6 @@ internal sealed class ProfileEmailsController(
     private readonly ITicketService _ticketQueryService = ticketQueryService;
     private readonly IUserManagement _userService = userService;
     private readonly GoogleWorkspaceOptions _googleWorkspaceOptions = googleWorkspaceOptions.Value;
-
-    // ─── Own Emails ──────────────────────────────────────────────────
 
     [HttpGet("Me/Emails")]
     public async Task<IActionResult> Emails()
@@ -193,7 +188,7 @@ internal sealed class ProfileEmailsController(
                 SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
                 return RedirectToAction(nameof(Emails));
             }
-            // Self audit at controller — SetPrimaryAsync doesn't take actorUserId.
+            // SetPrimaryAsync takes no actor, so the controller audits.
             await auditLogService.LogAsync(
                 AuditAction.UserEmailPrimarySet,
                 nameof(User), user.Id,
@@ -353,7 +348,7 @@ internal sealed class ProfileEmailsController(
         if (!authz.Succeeded)
             return Forbid();
 
-        // Round-trip via ExternalLoginCallback so link-while-signed-in branch fires.
+        // Round-trip through ExternalLoginCallback so its link-while-signed-in branch runs.
         var resolvedReturnUrl = returnUrl ?? Url.Action(nameof(Emails)) ?? "/Profile/Me/Emails";
         var redirectUrl = Url.Action("ExternalLoginCallback", "Account", new { returnUrl = resolvedReturnUrl })
             ?? "/Account/ExternalLoginCallback";
@@ -410,7 +405,7 @@ internal sealed class ProfileEmailsController(
         SetError(localizer["EmailGrid_UnlinkRejected"].Value);
     }
 
-    // User-facing Unlink (see nobodies-collective/Humans#731) — keyed by (Provider, ProviderKey); enforces auth-method invariant server-side.
+    // Keyed by (Provider, ProviderKey); the auth-method invariant is enforced server-side.
     [HttpPost("Me/LinkedAccounts/Unlink")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnlinkLinkedAccount(string provider, string providerKey, CancellationToken ct)
@@ -429,7 +424,7 @@ internal sealed class ProfileEmailsController(
         if (!authz.Succeeded)
             return Forbid();
 
-        // Stale dashboard or forged request — fail soft.
+        // Stale page or forged request: fail soft.
         var logins = await userManager.GetLoginsAsync(user);
         var hasLogin = logins.Any(l =>
             string.Equals(l.LoginProvider, provider, StringComparison.Ordinal)
@@ -440,8 +435,8 @@ internal sealed class ProfileEmailsController(
             return RedirectToAction(nameof(Emails));
         }
 
-        // Route via UnlinkAsync to keep AspNetUserLogins + user_emails in sync. Orphan logins fall back to RemoveLoginAsync.
-        // The last-verified-sign-in-method invariant is returned by UnlinkAsync as a typed refusal.
+        // UnlinkAsync keeps the login and email rows in sync and refuses removing the last verified sign-in method.
+        // An orphan login falls back to RemoveLoginAsync.
         var rawRows = await userEmailService.GetEntitiesByUserIdAsync(user.Id, ct);
         var matching = rawRows.FirstOrDefault(r =>
             string.Equals(r.Provider, provider, StringComparison.Ordinal)
@@ -456,9 +451,8 @@ internal sealed class ProfileEmailsController(
             }
             else
             {
-                // Orphan login: no UserEmail row — drop directly. UnlinkAsync's guard can't
-                // see this branch, so enforce the auth-method invariant here: with zero
-                // verified emails this login may be the user's only sign-in path.
+                // Orphan login: UnlinkAsync's guard can't see it, so enforce the invariant here. With no verified
+                // email this login may be the only way in.
                 if (rawRows.Count(r => r.IsVerified) < 1)
                 {
                     SetError(localizer["LinkedAccounts_UnlinkBlockedLastSignInMethod"].Value);
@@ -495,7 +489,7 @@ internal sealed class ProfileEmailsController(
 
         return RedirectToAction(nameof(Emails));
     }
-    // Admin grid mirrors self-grid against a target user. No AdminLink: OAuth linking requires target's authentication.
+    // No admin Link action: OAuth linking needs the target's own authentication.
 
     [HttpGet("{id:guid}/Admin/Emails")]
     public async Task<IActionResult> AdminEmails(Guid id, CancellationToken ct)
@@ -508,10 +502,8 @@ internal sealed class ProfileEmailsController(
         if (targetUser is null)
             return NotFound();
 
-        // A merge moves every email row to the surviving account, and the grid's forms
-        // submit the row ids under the id in the route. Opened on a tombstone, the page
-        // would show the survivor's rows under the archived id and every form would post
-        // a mismatched owner; the survivor's own page is where those rows are managed.
+        // A merge moves every email row to the survivor, and the forms post row ids under the route id. On a tombstone
+        // every form would post a mismatched owner, so manage them on the survivor's page.
         var resolved = await _userService.GetUserInfoAsync(id, ct);
         if (resolved is not null && resolved.Id != id)
             return RedirectToAction(nameof(AdminEmails), new { id = resolved.Id });
@@ -540,7 +532,7 @@ internal sealed class ProfileEmailsController(
                 SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
                 return RedirectToAction(nameof(AdminEmails), new { id });
             }
-            // Audit at controller — SetPrimaryAsync has no actorUserId.
+            // SetPrimaryAsync takes no actor, so the controller audits.
             await auditLogService.LogAsync(
                 AuditAction.UserEmailPrimarySet,
                 nameof(User), id,
@@ -615,7 +607,7 @@ internal sealed class ProfileEmailsController(
                 return RedirectToAction(nameof(AdminEmails), new { id });
             }
 
-            // The pending address committed. Finish its audit and verification queueing after disconnect.
+            // The address committed: finish its audit and verification queueing even after a disconnect.
             await SendAdminAddedEmailVerificationAsync(id, targetUser, email, result, actor.Id);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
@@ -650,7 +642,7 @@ internal sealed class ProfileEmailsController(
 
         SetSuccess(localizer["EmailGrid_AdminAddSentVerification"].Value);
     }
-    // Admin recovery: insert a verified UserEmail without verification email.
+    // Admin recovery: a verified row without a verification email.
     [HttpPost("{id:guid}/Admin/Emails/AddVerified")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
@@ -871,8 +863,6 @@ internal sealed class ProfileEmailsController(
         SetSuccess(localizer["Profile_EmailVisibilityUpdated"].Value);
     }
 
-    // ─── Helpers ─────────────────────────────────────────────────────
-
     private async Task<EmailsViewModel> BuildEmailsViewModelAsync(User user, bool isAdminContext = false, CancellationToken ct = default)
     {
         var emails = await userEmailService.GetUserEmailsAsync(user.Id, ct);
@@ -887,8 +877,7 @@ internal sealed class ProfileEmailsController(
 
         var linkedAccounts = await BuildLinkedAccountsAsync(user, emails, isAdminContext, ct);
 
-        // see nobodies-collective/Humans#758 — addresses linked to the user's event ticket.
-        // The grid hides Delete for these rows; UserEmailService.DeleteEmailAsync re-validates.
+        // Addresses linked to the event ticket: the grid hides Delete, and DeleteEmailAsync re-validates.
         var ticketEmails = await GetTicketLinkedEmailsAsync(user.Id, ct);
 
         bool RowIsTicketLinked(string address) =>
@@ -961,7 +950,7 @@ internal sealed class ProfileEmailsController(
         return (cooldownCanAdd, cooldownMinutes);
     }
 
-    // Workspace canonical: Provider=Google + Workspace-domain email. Locks Primary + Google radios.
+    // Provider Google on a Workspace-domain address: locks the Primary and Google radios.
     private UserEmailEditDto? FindWorkspaceLockedEmail(IReadOnlyList<UserEmailEditDto> emails)
     {
         var workspaceDomainSuffix = "@" + _googleWorkspaceOptions.Domain;
@@ -974,7 +963,7 @@ internal sealed class ProfileEmailsController(
             ?? workspaceCandidates.FirstOrDefault();
     }
 
-    // see nobodies-collective/Humans#697 — admin diagnostic loads AspNetUserLogins + computes store-disagreement.
+    // Admin diagnostic: the login rows beside the email rows, to show where the stores disagree.
     private async Task<(IReadOnlyList<(string Provider, string ProviderKey)> UserLogins, IReadOnlyList<UserEmailRowSnapshot> RawUserEmails)>
         GetAdminEmailDiagnosticsAsync(Guid userId, bool isAdminContext, CancellationToken ct)
     {
@@ -990,7 +979,7 @@ internal sealed class ProfileEmailsController(
         return (userLogins, rawUserEmails);
     }
 
-    // see nobodies-collective/Humans#731 — self uses UserManager (ProviderDisplayName); stitches UserEmail row id + CreatedAt.
+    // Self view goes through UserManager for ProviderDisplayName, then stitches each row's id and CreatedAt.
     private async Task<IReadOnlyList<LinkedOAuthAccountViewModel>> BuildLinkedAccountsAsync(
         User user, IReadOnlyList<UserEmailEditDto> emails, bool isAdminContext, CancellationToken ct)
     {
@@ -1001,7 +990,7 @@ internal sealed class ProfileEmailsController(
         if (logins.Count == 0)
             return [];
 
-        // (Provider, ProviderKey) uniqueness is service-enforced, not DB-enforced — keep first row per key.
+        // (Provider, ProviderKey) uniqueness is service-enforced, not in the database: keep the first row per key.
         var rowsByKey = new Dictionary<(string, string), UserEmailRowSnapshot>();
         foreach (var r in await userEmailService.GetEntitiesByUserIdAsync(user.Id, ct))
         {

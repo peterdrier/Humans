@@ -14,7 +14,6 @@ using Humans.Teams.Contracts;
 
 namespace Humans.Auth.Services;
 
-// Stitches display data from UserInfo in memory — design-rules §6b in-memory join.
 [DontFix(
     reason: "Auth (crosscut) references vertical sections — IUserService for assignee/creator display stitching, ISystemTeamSync for system-team membership. Permanent exception pending Peter-led inversion.",
     since: "2026-05-25")]
@@ -28,7 +27,6 @@ internal sealed class RoleAssignmentService(
     IClock clock,
     ILogger<RoleAssignmentService> logger) : IRoleAssignmentManagement, IUserDataContributor, IUserMerge
 {
-    /// <summary>GDPR export JSON key for this contributor's data.</summary>
     internal const string RoleAssignments = "RoleAssignments";
 
     public async Task<(IReadOnlyList<RoleAssignmentSummarySnapshot> Items, int TotalCount)> GetFilteredAsync(
@@ -255,9 +253,8 @@ internal sealed class RoleAssignmentService(
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken cancellationToken)
     {
-        // The merge fold commits each section's step on its own (no wrapping transaction),
-        // so the re-FK is final when it returns. Evict even when it throws, as the
-        // orchestrator's finally used to.
+        // The merge commits each section's step on its own, so the re-FK is final when it returns. Evict even
+        // when it throws.
         try
         {
             await repository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, cancellationToken);

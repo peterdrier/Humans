@@ -4,10 +4,7 @@ using Humans.Consent.Domain;
 
 namespace Humans.Consent.Data;
 
-/// <summary>
-/// <c>consent_records</c> is append-only; a DB trigger in the section
-/// baseline migration rejects UPDATE/DELETE.
-/// </summary>
+/// <summary>Append-only: a trigger in the section baseline migration rejects UPDATE and DELETE.</summary>
 internal sealed class ConsentRecordConfiguration : IEntityTypeConfiguration<ConsentRecord>
 {
     public void Configure(EntityTypeBuilder<ConsentRecord> builder)
@@ -20,7 +17,7 @@ internal sealed class ConsentRecordConfiguration : IEntityTypeConfiguration<Cons
             .IsRequired();
 
         builder.Property(cr => cr.IpAddress)
-            .HasMaxLength(45) // IPv6 max length
+            .HasMaxLength(45) // IPv6
             .IsRequired();
 
         builder.Property(cr => cr.UserAgent)
@@ -28,15 +25,11 @@ internal sealed class ConsentRecordConfiguration : IEntityTypeConfiguration<Cons
             .IsRequired();
 
         builder.Property(cr => cr.ContentHash)
-            .HasMaxLength(64) // SHA-256 hex
+            .HasMaxLength(64)
             .IsRequired();
 
         builder.Property(cr => cr.ExplicitConsent)
             .IsRequired();
-
-        // UserId is a bare cross-section Guid column — no FK constraint, no nav.
-        // Consent history is append-only; the Users section anonymises in place
-        // rather than deleting (IAccountDeletionService).
 
         builder.HasIndex(cr => new { cr.UserId, cr.DocumentVersionId })
             .IsUnique();

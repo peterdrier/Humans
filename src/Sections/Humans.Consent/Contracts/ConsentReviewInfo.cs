@@ -4,13 +4,9 @@ using NodaTime;
 namespace Humans.Consent.Contracts;
 
 /// <summary>
-/// A member's Consent Coordinator review: the consent-check annotation and the signup rejection's
-/// reason, time and reviewer. <see cref="None"/> for a member nobody has reviewed yet.
+/// An annotation: it does not gate Volunteer admission. Reject and suspend are the kick-out levers, and their
+/// state is Users' <c>UserInfo.State</c>.
 /// </summary>
-/// <remarks>
-/// The review annotates; it does not gate Volunteer admission (name + required consents).
-/// Reject and suspend are the kick-out levers, and their state is Users' <c>UserInfo.State</c>.
-/// </remarks>
 public sealed record ConsentReviewInfo(
     Guid UserId,
     ConsentCheckStatus? Status,
@@ -22,23 +18,16 @@ public sealed record ConsentReviewInfo(
     Instant? RejectedAt,
     Guid? RejectedByUserId)
 {
-    /// <summary>The review of a member with nothing recorded.</summary>
     public static ConsentReviewInfo None(Guid userId) =>
         new(userId, null, null, null, null, false, null, null, null);
 
-    /// <summary>The signup was rejected.</summary>
     public bool IsRejected => RejectedAt is not null;
 }
 
-/// <summary>
-/// The review-queue predicates, which need both the member (<see cref="UserInfo"/>) and their
-/// review. Shared by the queue, its nav pill, the notification meter and the dashboards so they
-/// cannot drift.
-/// </summary>
+/// <summary>Shared by the queue, its nav pill, the notification meter and the dashboards so they can't drift.</summary>
 public static class ConsentReviewPredicates
 {
-    /// <summary>In the Consent Coordinator's review queue: active (which excludes merged/deleted
-    /// tombstones), named, and not yet approved.</summary>
+    /// <summary>Active (which excludes merged/deleted tombstones), named, and not yet approved.</summary>
     public static bool NeedsConsentReview(this UserInfo user, ConsentReviewInfo review)
     {
         ArgumentNullException.ThrowIfNull(user);
@@ -47,9 +36,8 @@ public static class ConsentReviewPredicates
     }
 
     /// <summary>
-    /// Carries an unresolved Flagged consent check. Excludes rejected members (Clear is blocked on
-    /// them, so they would be unresolvable in the queue) and merged/deleted tombstones, which are
-    /// not live accounts left to review. Drives the /OnboardingReview flagged section.
+    /// Unresolved Flagged check. Excludes rejected members (Clear is blocked on them, so they'd be unresolvable)
+    /// and merged/deleted tombstones.
     /// </summary>
     public static bool IsConsentCheckFlagged(this UserInfo user, ConsentReviewInfo review)
     {

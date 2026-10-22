@@ -44,7 +44,7 @@ internal sealed class ConsentController(
         if (user is null)
             return NotFound();
 
-        // Stub profile (no legal name) cannot attest to a consent. Bounce to /Profile/Me/Edit.
+        // A stub profile (no legal name) can't attest to a consent.
         if (await IsStubProfileAsync(user.Id, HttpContext.RequestAborted))
             return RedirectToProfileEditForStub();
 
@@ -77,7 +77,6 @@ internal sealed class ConsentController(
                 user.Id, model.DocumentVersionId, model.ExplicitConsent,
                 ipAddress, userAgent);
 
-            // The service's Stub gate refuses a profile without its legal names.
             if (string.Equals(result.ErrorKey, "StubProfile", StringComparison.Ordinal))
                 return RedirectToProfileEditForStub();
 
@@ -87,7 +86,7 @@ internal sealed class ConsentController(
                 return RedirectToAction(nameof(Index));
             }
 
-            // ConsentService does not call into Onboarding (avoids inverted arrow); report the signature.
+            // ConsentService doesn't call Onboarding (the arrow is one-way), so the controller reports the signature.
             await onboardingService.ConsentSignedAsync(user.Id);
 
             SetConsentSubmitSuccessFlash(result);

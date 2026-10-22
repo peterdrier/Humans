@@ -21,8 +21,6 @@ internal sealed partial class UserRepository : IUserRepository
     {
     }
 
-    // Reads — User
-
     public async Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -44,8 +42,6 @@ internal sealed partial class UserRepository : IUserRepository
             .Replace("\\", "\\\\")
             .Replace("%", "\\%")
             .Replace("_", "\\_");
-
-    // Writes — User
 
     public async Task<bool> SetPreferredLanguageAsync(
         Guid userId, string preferredLanguage, CancellationToken ct = default)
@@ -113,9 +109,7 @@ internal sealed partial class UserRepository : IUserRepository
         if (user is null)
             return false;
 
-        // Read-only: the classifier needs the profile's name fields and legacy RejectedAt. The suspension
-        // reason is NOT written here — it lives in the audit log and the notification, and profiles
-        // is never mutated by this path.
+        // Read-only: the classifier needs the profile's names and legacy RejectedAt.
         var profile = await ctx.Profiles
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
@@ -146,7 +140,6 @@ internal sealed partial class UserRepository : IUserRepository
         return true;
     }
 
-    // Sets user.State from the single classifier using the profile loaded in the same context.
     // Caller owns SaveChangesAsync so this composes with other field mutations in one round-trip.
     private static async Task ResyncStateInContextAsync(
         UsersDbContext ctx, User user, CancellationToken ct)
@@ -171,31 +164,26 @@ internal sealed partial class UserRepository : IUserRepository
 
         user.DisplayName = "Merged User";
 
-        // #1097: overwrite the User-side names with the profile fold's tombstone labels,
-        // so the resolver (User.BurnerName first) cannot
-        // render the merged human's real name and the two sides stay in sync.
+        // Overwrite the User-side names with the fold's tombstone labels, so the resolver
+        // (User.BurnerName) cannot render the merged human's real name.
         user.BurnerName = "Merged User";
         user.FirstName = "Merged";
         user.LastName = "User";
 
-        // Scrub the legacy Identity email/username PII from the tombstone. The address
-        // already moved to the survivor's UserEmail rows during the fan-out, so keeping
-        // it here is redundant PII that would otherwise live on the tombstone forever
-        // (GDPR). A unique @merged.local sentinel removes the PII while keeping Identity
-        // uniqueness satisfied and marking the row as a merge tombstone.
+        // Scrub the legacy Identity email/username: the address already moved to the survivor,
+        // so it would be redundant PII kept forever. A unique sentinel keeps Identity uniqueness.
         var tombstoneAddress = $"merged-{sourceUserId:N}@merged.local";
         user.Email = tombstoneAddress;
         user.UserName = tombstoneAddress;
         user.NormalizedUserName = tombstoneAddress.ToUpperInvariant();
-        // NormalizedEmail is a being-removed Identity shadow column (HUM0010 forbids the
-        // C# property); scrub the underlying column via the EF property accessor.
+        // NormalizedEmail is a being-removed shadow column (HUM0010 forbids the C# property).
         ctx.Entry(user).Property("NormalizedEmail").CurrentValue = tombstoneAddress.ToUpperInvariant();
 
         user.ProfilePictureUrl = null;
         user.PhoneNumber = null;
         user.PhoneNumberConfirmed = false;
 
-        // Archived via merge, not deletion — clear deletion fields.
+        // Archived via merge, not deletion.
         user.DeletionRequestedAt = null;
         user.DeletionScheduledFor = null;
         user.DeletionEligibleAfter = null;
@@ -343,33 +331,28 @@ internal sealed partial class UserRepository : IUserRepository
 
         user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
 
-        // nobodies-collective/Humans#1098: dual-write the sentinel into BurnerName too, mirroring
-        // AnonymizeForMergeAsync's "Merged User" tombstone — the resolver now reads User.BurnerName
-        // only, so a blank BurnerName would render empty instead of the "Deleted User" tombstone.
+        // The resolver reads User.BurnerName only, so a blank one would render empty instead of
+        // the "Deleted User" tombstone.
         user.BurnerName = UserInfo.GdprAnonymizedBurnerName;
         user.FirstName = "Deleted";
         user.LastName = "User";
 
-        // Scrub the legacy Identity email/username PII. The address was already removed
-        // from UserEmail rows (RemoveAllUserEmailsForUserAndSaveAsync runs first), but the
-        // legacy Identity columns lingered. Mirrors the merge tombstone scrub; original
-        // email is captured above for the deletion record.
+        // Scrub the legacy Identity email/username too; the UserEmail rows are already gone.
         var tombstoneAddress = $"deleted-{userId:N}@deleted.local";
         user.Email = tombstoneAddress;
         user.UserName = tombstoneAddress;
         user.NormalizedUserName = tombstoneAddress.ToUpperInvariant();
-        // NormalizedEmail is a being-removed Identity shadow column (HUM0010 forbids the
-        // C# property); scrub the underlying column via the EF property accessor.
+        // NormalizedEmail is a being-removed shadow column (HUM0010 forbids the C# property).
         ctx.Entry(user).Property("NormalizedEmail").CurrentValue = tombstoneAddress.ToUpperInvariant();
 
         user.ProfilePictureUrl = null;
         user.PhoneNumber = null;
         user.PhoneNumberConfirmed = false;
 
-        // The frozen re-consent stamp (Consent's consent_reminders replaced it) goes with the rest.
+        // The frozen re-consent stamp goes too.
         user.LastConsentReminderSentAt = null;
 
-        // Drop external logins for the same reason — see nobodies-collective/Humans#661.
+        // External logins go too, or the erased account could still sign in.
         var logins = await ctx.Set<IdentityUserLogin<Guid>>()
             .Where(l => l.UserId == userId)
             .ToListAsync(ct);
@@ -388,8 +371,6 @@ internal sealed partial class UserRepository : IUserRepository
         return new ExpiredDeletionAnonymizationResult(
             originalEmail, originalBurnerName, preferredLanguage);
     }
-
-    // Reads — EventParticipation
 
     public async Task<IReadOnlyList<EventParticipation>> GetEventParticipationsByUserIdAsync(
         Guid userId, CancellationToken ct = default)

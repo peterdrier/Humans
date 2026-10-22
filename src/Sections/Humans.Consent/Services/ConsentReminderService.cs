@@ -8,25 +8,16 @@ using NodaTime;
 namespace Humans.Consent.Services;
 
 /// <summary>
-/// The re-consent reminder cooldown stamps Consent owns (<c>consent_reminders</c>): the read and
-/// write behind <c>SendReConsentReminderJob</c>, the <c>consent.reminder-stamps</c> copy and the
-/// Article 15/17 slice. Until the copy has run, a member without a row reads their legacy
-/// <c>users.LastConsentReminderSentAt</c> through <see cref="UserInfo"/> (Users decomposition
-/// plan §3.1 step 4).
+/// Until the <c>consent.reminder-stamps</c> copy has run, a member without a row reads their legacy
+/// <c>users.LastConsentReminderSentAt</c>. No <c>IUserMerge</c>: the job reads by the resolved survivor id.
 /// </summary>
-/// <remarks>
-/// No <c>IUserMerge</c>: rows stay keyed to the id they were written for. The job reads by the
-/// resolved survivor id, so a merged-away id's stamp is never consulted, as when this was a
-/// <c>users</c> column the merge never moved.
-/// </remarks>
 internal sealed class ConsentReminderService(
     IConsentReminderRepository repo,
     IUserService users) : IApplicationService, IUserDataContributor
 {
     internal const string ConsentReminderSlice = "ConsentReminder";
 
-    /// <summary>When each of <paramref name="members"/> was last reminded; members never reminded
-    /// are absent.</summary>
+    /// <summary>Members never reminded are absent.</summary>
     public async Task<IReadOnlyDictionary<Guid, Instant>> GetLastSentAsync(
         IEnumerable<UserInfo> members, CancellationToken ct = default)
     {
@@ -40,17 +31,13 @@ internal sealed class ConsentReminderService(
         return result;
     }
 
-    /// <summary>Stamps the member's cooldown anchor.</summary>
     public Task RecordSentAsync(Guid userId, Instant sentAt, CancellationToken ct = default) =>
         repo.UpsertAsync(userId, sentAt, ct);
 
-    // ─── consent.reminder-stamps ─────────────────────────────────────────────────
-
-    /// <summary>A legacy stamp the copy would write.</summary>
     internal sealed record LegacyStamp(Guid UserId, Instant SentAt);
 
-    /// <summary>Every living member whose legacy stamp has no row yet. Tombstones are skipped: they
-    /// are never reminded, and copying an erased member's stamp would resurrect it.</summary>
+    /// <summary>Tombstones are skipped: they are never reminded, and copying an erased member's stamp would
+    /// resurrect it.</summary>
     public async Task<IReadOnlyList<LegacyStamp>> GetUncopiedLegacyStampsAsync(CancellationToken ct = default)
     {
         var copied = (await repo.GetAllAsync(ct)).Select(r => r.UserId).ToHashSet();
@@ -72,20 +59,17 @@ internal sealed class ConsentReminderService(
         return written;
     }
 
-    /// <summary>The one reader of the obsolete legacy field: the read fallback, the copy and the
-    /// export. A tombstone reads null: members erased before Users' erasure cleared the column
-    /// still hold a stamp there. Deleted with the migration once production reports it done.</summary>
+    /// <summary>The only reader of the obsolete legacy field; it goes when the data migration is retired. A tombstone
+    /// reads null: members erased before Users' erasure cleared the column still hold a stamp there.</summary>
     private static Instant? LegacyLastSent(UserInfo? info)
     {
-#pragma warning disable HUM_USER_CONSENT_REMINDER // the fallback and copy the field is kept for (plan §3.1)
+#pragma warning disable HUM_USER_CONSENT_REMINDER // read fallback and copy, until the data migration is retired
         return info is { IsTombstone: false } ? info.LastConsentReminderSentAt : null;
 #pragma warning restore HUM_USER_CONSENT_REMINDER
     }
 
-    // ─── IUserDataContributor ────────────────────────────────────────────────────
-
-    /// <summary>The stamps of this human's own id and every merged-away id, survivor first; the
-    /// survivor's legacy stamp stands in for its row until the copy has run.</summary>
+    /// <summary>Survivor first, then merged-away ids. The survivor's legacy stamp stands in for its row until the
+    /// copy has run.</summary>
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var info = await users.GetUserInfoAsync(userId, ct);
@@ -109,7 +93,6 @@ internal sealed class ConsentReminderService(
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
-    /// <summary>Deletes the member's row. Users' erasure clears the legacy <c>users</c> column it
-    /// owns, and the fallback reads null for a tombstone.</summary>
+    /// <summary>Users' erasure clears the legacy column, and the fallback reads null for a tombstone.</summary>
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) => repo.DeleteAsync(userId, ct);
 }

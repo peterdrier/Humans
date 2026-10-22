@@ -69,7 +69,6 @@
             <vc:my-camps />
         }
 
-        @* Section-contributed parts (IUserPart), e.g. Tickets' onsite chip; each auto-hides when empty *@
         <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.Profile" user-id="@Model.UserId" view-mode="@cardViewMode" />
 
         @if (!Model.IsOwnProfile && Model.CanViewShiftSignups)
@@ -117,7 +116,6 @@
     @if (Model.IsOwnProfile)
     {
         <div class="col-md-4">
-            @* Section-contributed parts (IUserPart) — TicketHoldings (Tickets), each auto-hides when empty *@
             <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.ProfileSidebar" user-id="@Model.UserId" view-mode="@cardViewMode" />
 
             <div class="card mb-4">

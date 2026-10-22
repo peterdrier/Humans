@@ -6,18 +6,9 @@ using Humans.Consent.Contracts;
 namespace Humans.Consent.Jobs;
 
 /// <summary>
-/// Background job that syncs legal documents from the GitHub repository.
+/// Public because Shell names the concrete type at registration; HUM0034 makes any other public type in a
+/// section assembly an error.
 /// </summary>
-/// <remarks>
-/// The pass itself — pull from GitHub, fan out over the affected teams' members, mail the
-/// ones who still owe a signature — lives inside the Consent section behind
-/// <see cref="ILegalDocumentSyncRunner"/>: it reads <c>consent_records</c> and the legal
-/// document aggregate, neither of which is visible from Base. What is
-/// left here is the schedule, the metric and the failure boundary.
-///
-/// It is <c>public</c> and sits under <c>Jobs/</c> because Shell names the concrete type at
-/// registration and HUM0034 makes every other public type in a section assembly an error.
-/// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class SyncLegalDocumentsJob(
     ILegalDocumentSyncRunner runner,

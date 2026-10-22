@@ -13,9 +13,8 @@ using Microsoft.Extensions.Localization;
 namespace Humans.Users;
 
 /// <summary>
-/// Users' entries on the member dashboard's things-to-do list: profile completion, the
-/// consent-check clearance non-volunteers wait on, and the optional medical-conditions prompt.
-/// Cantina contributes the dietary nudge the last one pairs with (its Docs/features/dietary-nudge.md).
+/// Profile completion, the consent-check clearance non-volunteers wait on, and the optional
+/// medical-conditions prompt that pairs with Cantina's dietary nudge.
 /// </summary>
 internal sealed class SectionThingsToDo : ISectionThingsToDo
 {
@@ -59,9 +58,8 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
         var shiftUser = await services.GetRequiredService<IShiftView>().GetUserAsync(userId);
         var percent = ProfileCompletion.ComputePercent(profile, shiftUser.TagPreferences.Count > 0);
 
-        // Hidden/derived required fields can cap real-user completion in the
-        // 90–95% range. Treat 80% as "complete enough" so the nudge stops
-        // shouting at people who can't push it higher.
+        // Hidden or derived required fields can cap real completion around 90–95%, so 80% is
+        // "complete enough" and the nudge stops shouting at people who can't push it higher.
         var complete = percent >= 80;
 
         return new ThingsToDoEntry("profile", localizer["Todo_Profile_Title"].Value, "fa-solid fa-user",
@@ -90,12 +88,8 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
     }
 
     /// <summary>
-    /// Offers the optional medical-conditions form while the member's dietary nudge is open (no
-    /// preference on Cantina's record and not "I don't want to answer") and they have no medical
-    /// conditions on file: the
-    /// window the combined dietary-and-medical form had before commit 10. MedicalConditions has no
-    /// "answered" marker, so tying it to the dietary answer keeps it from nagging members with
-    /// nothing to declare.
+    /// Shown while the dietary nudge is open and no medical conditions are on file. MedicalConditions
+    /// has no "answered" marker, so tying it to the dietary answer keeps it from nagging forever.
     /// </summary>
     private static async ValueTask<ThingsToDoEntry?> MedicalEntryAsync(
         IServiceProvider services,

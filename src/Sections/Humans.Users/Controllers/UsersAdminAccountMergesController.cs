@@ -33,14 +33,12 @@ internal sealed class UsersAdminAccountMergesController(
             .Concat(groups.SelectMany(g => g.Accounts.Select(a => a.UserId)))
             .ToHashSet();
 
-        // Raw: the already-merged test below reads a tombstone's own MergedToUserId, which
-        // the cross-section read resolves away. Filtering the warmed snapshot costs no query.
+        // Raw: the already-merged test reads a tombstone's own MergedToUserId, which the resolving read hides.
         var infos = (await _userService.GetAllRawUserInfosAsync(ct))
             .Where(u => involvedIds.Contains(u.Id))
             .ToDictionary(u => u.Id);
 
-        // "Already merged" gates the Close action, which only applies when THIS pair
-        // merged into each other — not when one side merged into an unrelated account.
+        // Only when this pair merged into each other, not into an unrelated account.
         bool MergedIntoEachOther(Guid a, Guid b) =>
             (infos.TryGetValue(a, out var ia) && ia.MergedToUserId == b) ||
             (infos.TryGetValue(b, out var ib) && ib.MergedToUserId == a);

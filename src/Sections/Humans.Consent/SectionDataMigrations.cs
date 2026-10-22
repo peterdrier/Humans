@@ -5,10 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Consent;
 
-/// <summary>
-/// Consent's data migrations, run from <c>/Debug/DataMigrations</c>. The copy resolves Consent's
-/// own service; the Debug host lists, applies and audits the run.
-/// </summary>
 internal sealed class SectionDataMigrations : ISectionDataMigrations
 {
     internal const string ProfileReviewKey = "consent.profile-review";

@@ -4,40 +4,16 @@ using NodaTime;
 
 namespace Humans.Auth.Data;
 
-/// <summary>
-/// Repository for the Auth section's table: <c>role_assignments</c>. The only
-/// non-test writer of that table.
-/// </summary>
-/// <remarks>
-/// There are no cross-domain navigation properties to <c>.Include()</c>;
-/// <c>RoleAssignmentService</c> stitches display data in memory via
-/// <c>IUserService</c>.
-/// </remarks>
 internal interface IRoleAssignmentRepository : IRepository
 {
-    /// <summary>
-    /// Loads a single role assignment by id for mutation via
-    /// <see cref="UpdateAsync"/>. Cross-domain navs are NOT populated.
-    /// Returns null if the assignment does not exist.
-    /// </summary>
+    /// <summary>Tracked, for <see cref="UpdateAsync"/>. Returns null if it doesn't exist.</summary>
     Task<RoleAssignment?> FindForMutationAsync(Guid assignmentId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Read-only single role assignment by id. Cross-domain navs are NOT populated.
-    /// </summary>
     Task<RoleAssignment?> GetByIdAsync(Guid assignmentId, CancellationToken ct = default);
 
-    /// <summary>
-    /// All assignments for a given user, ordered by <c>ValidFrom</c> descending.
-    /// Read-only. Cross-domain navs are NOT populated.
-    /// </summary>
+    /// <summary>Newest <c>ValidFrom</c> first.</summary>
     Task<IReadOnlyList<RoleAssignment>> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Filtered list of assignments plus total count for pagination. Read-only.
-    /// Cross-domain navs are NOT populated — callers stitch User / CreatedByUser
-    /// via <c>IUserService.GetUserInfosAsync</c>.
-    /// </summary>
     Task<(IReadOnlyList<RoleAssignment> Items, int TotalCount)> GetFilteredAsync(
         string? roleFilter,
         bool activeOnly,
@@ -46,11 +22,6 @@ internal interface IRoleAssignmentRepository : IRepository
         Instant now,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns true if the user already has an active assignment whose time
-    /// window overlaps the proposed <paramref name="validFrom"/> / <paramref name="validTo"/>
-    /// range for the given role.
-    /// </summary>
     Task<bool> HasOverlappingAssignmentAsync(
         Guid userId,
         string roleName,
@@ -58,85 +29,46 @@ internal interface IRoleAssignmentRepository : IRepository
         Instant? validTo,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns true if the user has an assignment for <paramref name="roleName"/>
-    /// that is active at <paramref name="now"/>.
-    /// </summary>
     Task<bool> HasActiveRoleAsync(
         Guid userId,
         string roleName,
         Instant now,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns true if the user has any active role assignment at
-    /// <paramref name="now"/> (regardless of role name).
-    /// </summary>
     Task<bool> HasAnyActiveAssignmentAsync(
         Guid userId,
         Instant now,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the distinct set of user IDs that have at least one active
-    /// role assignment at <paramref name="now"/>.
-    /// </summary>
     Task<IReadOnlyList<Guid>> GetUserIdsWithActiveAssignmentsAsync(
         Instant now,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// All currently-active assignments for the user for mutation via
-    /// <see cref="UpdateManyAsync"/>. Used by <c>RevokeAllActiveAsync</c> to
-    /// stamp <c>ValidTo</c> on each.
-    /// </summary>
+    /// <summary>Tracked, for <see cref="UpdateManyAsync"/>.</summary>
     Task<IReadOnlyList<RoleAssignment>> GetActiveForUserForMutationAsync(
         Guid userId,
         Instant now,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Distinct user ids that hold an active assignment for the given role at
-    /// <paramref name="now"/>. Read-only, cross-domain navs not populated.
-    /// </summary>
     Task<IReadOnlyList<Guid>> GetActiveUserIdsInRoleAsync(
         string roleName,
         Instant now,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Counts active assignments at <paramref name="now"/> grouped by role name.
-    /// </summary>
     Task<IReadOnlyDictionary<string, int>> GetActiveCountsByRoleAsync(
         Instant now,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Persists a new role assignment. Commits immediately.
-    /// </summary>
     Task AddAsync(RoleAssignment assignment, CancellationToken ct = default);
 
-    /// <summary>
-    /// Persists changes to a mutated assignment (obtained via
-    /// <see cref="FindForMutationAsync"/>). Commits immediately.
-    /// </summary>
     Task UpdateAsync(RoleAssignment assignment, CancellationToken ct = default);
 
-    /// <summary>
-    /// Persists changes to a list of mutated assignments (obtained via
-    /// <see cref="GetActiveForUserForMutationAsync"/>). Commits all in one
-    /// transaction. No-op when the list is empty.
-    /// </summary>
+    /// <summary>One transaction. No-op for an empty list.</summary>
     Task UpdateManyAsync(IReadOnlyList<RoleAssignment> assignments, CancellationToken ct = default);
 
     /// <summary>
-    /// Account-merge fold: bulk-moves rows from <paramref name="sourceUserId"/>
-    /// to <paramref name="targetUserId"/>. When source has an assignment that
-    /// is active at <paramref name="updatedAt"/> for a role that target also
-    /// has active at the same instant, the source row is dropped (target's
-    /// existing row wins). All other source rows (inactive / historical, or
-    /// active but no conflicting active target row) are re-FK'd to target so
-    /// history is preserved. Single SaveChanges.
+    /// A source row active at <paramref name="updatedAt"/> for a role the target also holds then is dropped (the
+    /// target's row wins); every other source row moves, so history is kept. One SaveChanges.
     /// </summary>
     Task ReassignToUserAsync(
         Guid sourceUserId,

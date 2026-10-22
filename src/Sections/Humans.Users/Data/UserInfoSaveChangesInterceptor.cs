@@ -8,9 +8,8 @@ using Humans.Users.Contracts;
 namespace Humans.Users.Data;
 
 /// <summary>
-/// Catches writes to UserInfo-contributing tables that bypass IUserManagement
-/// (Identity machinery, OAuth callbacks, direct-repo) and invalidates UserInfo.
-/// Profile-section writes are handled by CachingUserService directly. See #703.
+/// Refreshes <c>UserInfo</c> for writes to its contributing tables that bypass
+/// <c>IUserManagement</c> (Identity machinery, OAuth callbacks, direct-repo writes).
 /// </summary>
 internal sealed class UserInfoSaveChangesInterceptor(
     IServiceProvider services,
@@ -164,8 +163,7 @@ internal sealed class UserInfoSaveChangesInterceptor(
             DeletionRequestedAt = user.DeletionRequestedAt,
             DeletionScheduledFor = user.DeletionScheduledFor,
             DeletionEligibleAfter = user.DeletionEligibleAfter,
-            // GoogleEmailStatus is not on UserInfo: the Google identity and its verdict are
-            // GoogleIntegration's google_workspace_identities (Users decomposition commit 15).
+            // GoogleEmailStatus is not on UserInfo: GoogleIntegration owns the Google identity.
             ContactSource = user.ContactSource,
             ExternalSourceId = user.ExternalSourceId,
             MergedToUserId = user.MergedToUserId,

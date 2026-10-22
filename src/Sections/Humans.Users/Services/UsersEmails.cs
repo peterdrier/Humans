@@ -10,13 +10,8 @@ using NodaTime;
 namespace Humans.Users.Services;
 
 /// <summary>
-/// Users' own email templates: one method per template, each returning a ready
-/// <see cref="EmailMessage"/> (content plus the routing policy Users chooses —
-/// template name, opt-out category and the do-not-persist rule for erasure mail) for
-/// the single <see cref="IEmailService.SendAsync"/> path. Copy lives in Users' own resx
-/// set and is rendered in the recipient's culture inside a <see cref="CultureScope"/>
-/// (memory/architecture/email-templates-live-in-sender.md, peterdrier/Humans#1651).
-/// Pure — no I/O, no persistence.
+/// Users' email templates: each returns a ready <see cref="EmailMessage"/> with the routing policy
+/// Users chooses, rendered in the recipient's culture. Pure — no I/O.
 /// </summary>
 internal sealed class UsersEmails(
     IOptions<EmailSettings> settings,

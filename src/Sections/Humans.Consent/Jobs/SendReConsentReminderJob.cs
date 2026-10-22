@@ -11,22 +11,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Consent.Jobs;
 
-/// <summary>
-/// Background job that sends re-consent reminders to members.
-/// </summary>
-/// <remarks>
-/// Reads user display/email data via <see cref="IUserService"/> and keeps the cooldown stamp in
-/// Consent's own <c>consent_reminders</c> through <see cref="ConsentReminderService"/>, so the job
-/// never touches a section DbContext directly (design-rules §2c).
-///
-/// Consent owns it: the reminder exists to close a re-consent gap, the required-version set
-/// it mails about is <see cref="ILegalDocumentSyncManagement"/>'s, and the job id is
-/// <c>consent-reconsent-reminders</c>. What it reads from Governance and Users is the
-/// audience and the display data, both through their read interfaces. It sits under
-/// <c>Jobs/</c> and is internal: only Consent's own <c>Section.cs</c> and
-/// <c>SectionJobs.cs</c> name the concrete type, and Shell schedules it through
-/// <c>ISectionJobs</c>.
-/// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 internal sealed class SendReConsentReminderJob(
     IMembershipCalculator membershipCalculator,
@@ -42,10 +26,6 @@ internal sealed class SendReConsentReminderJob(
 {
     private readonly EmailSettings _emailSettings = emailSettings.Value;
 
-    /// <summary>
-    /// Sends re-consent reminders to members who haven't consented to required documents.
-    /// Uses ConsentReminderDaysBeforeSuspension and ConsentReminderCooldownDays from EmailSettings.
-    /// </summary>
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         var daysBeforeSuspension = _emailSettings.ConsentReminderDaysBeforeSuspension;
@@ -82,7 +62,6 @@ internal sealed class SendReConsentReminderJob(
                     continue;
                 }
 
-                // Skip if a reminder was sent recently
                 if (lastSent.TryGetValue(user.Id, out var sentAt) && now - sentAt < cooldown)
                 {
                     continue;

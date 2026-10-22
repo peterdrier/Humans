@@ -5,10 +5,9 @@ using Humans.Users.Contracts;
 namespace Humans.Users.Domain;
 
 /// <summary>
-/// The frozen legacy <c>communication_preferences</c> row. Email owns the live preferences in
-/// <c>email_communication_preferences</c> since Users decomposition commit 14; this table is no longer
-/// written except by erasure, is read into the obsolete <see cref="UserInfo.CommunicationPreferences"/>
-/// for Email's fallback and copy, and is dropped once <c>email.communication-preferences</c> reports done.
+/// The frozen legacy <c>communication_preferences</c> row; Email owns the live preferences. Written
+/// only by erasure, read into the obsolete <see cref="UserInfo.CommunicationPreferences"/>, and
+/// dropped once <c>email.communication-preferences</c> reports done.
 /// </summary>
 internal sealed class CommunicationPreference
 {
@@ -20,27 +19,17 @@ internal sealed class CommunicationPreference
 
     public bool OptedOut { get; set; }
 
-    /// <summary>
-    /// Whether in-app inbox notifications are enabled for this category.
-    /// Default true. When false, informational notifications for this category are suppressed.
-    /// Actionable notifications are always shown regardless of this setting.
-    /// </summary>
+    /// <summary>When false, informational inbox notifications are suppressed; actionable ones always show.</summary>
     public bool InboxEnabled { get; set; } = true;
 
     public Instant UpdatedAt { get; set; }
 
-    /// <summary>
-    /// How this preference was set: "Profile", "MagicLink", "DataMigration", etc.
-    /// </summary>
+    /// <summary>"Profile", "MagicLink", "DataMigration", etc.</summary>
     public string UpdateSource { get; set; } = string.Empty;
 
     /// <summary>
-    /// Earliest opt-in instant we know about for this category. Stamped on the
-    /// first opt-in transition (OptedOut: true → false) or on the first import
-    /// from an external source that carries a real subscribe date. Preserved
-    /// across opt-out / re-opt cycles — represents "first ever subscribed",
-    /// not "currently subscribed since". Null for pre-existing rows that
-    /// pre-date the column or for rows that were lazy-seeded as default-opted-out.
+    /// First-ever opt-in, kept across opt-out/re-opt cycles. Null for rows that predate the column
+    /// or were lazy-seeded opted out.
     /// </summary>
     public Instant? SubscribedAt { get; set; }
 

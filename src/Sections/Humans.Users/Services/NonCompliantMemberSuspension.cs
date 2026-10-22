@@ -11,15 +11,8 @@ using Humans.Users.Contracts;
 namespace Humans.Users.Services;
 
 /// <summary>
-/// Suspends members who haven't re-consented to required documents after the
-/// grace period has expired, and runs each suspension's downstream side effects.
+/// The nightly re-consent suspension sweep and each suspension's downstream side effects.
 /// </summary>
-/// <remarks>
-/// The body of the nightly job (<c>Jobs/SuspendNonCompliantMembersJob.cs</c>).
-/// All reads/writes fan out through section services
-/// (<see cref="IUserManagement"/>) so this never touches another section's
-/// DbContext directly (design-rules §2c).
-/// </remarks>
 internal sealed class NonCompliantMemberSuspension(
     IUserManagement userService,
     IMembershipCalculator membershipCalculator,
@@ -33,12 +26,8 @@ internal sealed class NonCompliantMemberSuspension(
     private static readonly ResourceManager NoticeResources = new(typeof(UsersResource));
 
     /// <summary>
-    /// The audit actor recorded against every suspension this sweep performs. It is a
-    /// persisted string, and it is the *job* class's name rather than this type's — the
-    /// rows already in the database say "SuspendNonCompliantMembersJob", and the job is
-    /// still what runs this. A literal rather than a `nameof` even though the job is now
-    /// in this assembly: the value is persisted, so renaming the type must not silently
-    /// re-key existing rows (memory/code/type-name-as-persisted-string.md).
+    /// Persisted audit actor: the job's name, which existing rows carry. A literal, not
+    /// <c>nameof</c>, so renaming a type cannot re-key them.
     /// </summary>
     private const string AuditActor = "SuspendNonCompliantMembersJob";
 
@@ -53,14 +42,10 @@ internal sealed class NonCompliantMemberSuspension(
             return;
         }
 
-        // Prepare downstream inputs before changing state: an already-suspended
-        // user will not be returned by the write on a retry.
+        // Read before writing: a retry won't return an already-suspended user.
         var usersById = await userService
             .GetUserInfosAsync(usersToSuspend, cancellationToken);
 
-        // Apply the suspension write through IUserManagement — returns the
-        // subset of user ids actually mutated (skips already-suspended /
-        // profileless users).
         var suspendedIds = await userService
             .SuspendProfilesForMissingConsentAsync(usersToSuspend, cancellationToken);
 

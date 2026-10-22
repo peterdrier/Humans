@@ -5,9 +5,8 @@ using Humans.Users.Data.Repositories;
 namespace Humans.Users.Services;
 
 /// <summary>
-/// nobodies-collective/Humans#1097 phase 4 — the operator-driven half of the BurnerName/legal-name
-/// move. The schema migration is additive only; this is where the data actually moves, one
-/// admin click at a time, and it is re-runnable.
+/// Moves BurnerName and legal names from Profile onto User, one re-runnable admin click at a time;
+/// the schema migration was additive only.
 /// </summary>
 internal sealed class UserNameSyncService(
     IUserRepository repo,
@@ -57,8 +56,7 @@ internal sealed class UserNameSyncService(
         var synced = 0;
         foreach (var row in unsynced)
         {
-            // Re-persisting the Profile runs the same dual-write seam every profile save uses,
-            // so there is exactly one place that copies names onto the User row.
+            // Re-saving the Profile runs the one dual-write seam that copies names onto the User.
             var profile = await repo.GetByUserIdAsync(row.UserId, ct).ConfigureAwait(false);
             if (profile is null)
                 continue;

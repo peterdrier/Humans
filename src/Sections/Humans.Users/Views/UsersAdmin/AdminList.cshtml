@@ -98,9 +98,7 @@
 }
 else
 {
-    @* Admin directory rows, not search results (nobodies-collective/Humans#1062): the email is
-       the notification target the controller batch-resolved, and the joined / last-login columns
-       are the ones the sort links above address. <vc:human> still owns avatar and name. *@
+    @* Admin directory rows, not search results: the email is the notification target. *@
     <div class="list-group">
         @foreach (var human in Model.Humans)
         {

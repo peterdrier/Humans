@@ -6,11 +6,6 @@ namespace Humans.Onboarding.ViewComponents;
 
 internal sealed record OnboardingProgressBannerViewModel(bool Show);
 
-/// <summary>
-/// The "continue setup" strip <c>SectionChrome</c> contributes to every authenticated page.
-/// Discovered by Shell's <c>SectionViewComponentFeatureProvider</c>, so it stays
-/// <c>internal</c> — the section exports only <c>Section</c> and <c>OnboardingResource</c>.
-/// </summary>
 internal sealed class OnboardingProgressBannerViewComponent(
     IOnboardingWidgetState state,
     ILogger<OnboardingProgressBannerViewComponent> logger) : ViewComponent
@@ -28,16 +23,11 @@ internal sealed class OnboardingProgressBannerViewComponent(
         if (!Guid.TryParse(userIdRaw, out var userId))
             return View(hidden);
 
-        // Don't show the "Continue setup →" prompt on widget pages themselves —
-        // the user is already inside the onboarding flow and doesn't need a
-        // banner offering to send them where they already are.
         var path = HttpContext.Request.Path.Value ?? string.Empty;
         if (path.StartsWith("/OnboardingWidget", StringComparison.OrdinalIgnoreCase))
             return View(hidden);
 
-        // Banner is purely advisory — it must never break the layout. If state lookup
-        // throws (DbContext disposed mid-render, transient query failure, half-logout
-        // cookie state, etc.) swallow the error so the page still renders.
+        // The banner is advisory and must never break the layout, so a failed state lookup is swallowed.
         OnboardingWidgetStep step;
         try
         {

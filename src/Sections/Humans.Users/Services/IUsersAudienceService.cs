@@ -2,12 +2,7 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Users.Services;
 
-/// <summary>
-/// Backs the Users admin area's audience-segmentation diagnostic
-/// (<c>UsersAdminController.Audience</c>) — account/profile/ticket coverage, optionally
-/// scoped to a single ticket-purchase year. Moved out of the deleted admin-dashboard
-/// aggregator at nobodies-collective/Humans#1091; this section is its only caller, so nothing here is public.
-/// </summary>
+/// <summary>Account/profile/ticket coverage, optionally scoped to one ticket-purchase year.</summary>
 internal interface IUsersAudienceService : IApplicationService
 {
     Task<AudienceSegmentation> GetAudienceSegmentationAsync(int? year, CancellationToken ct = default);

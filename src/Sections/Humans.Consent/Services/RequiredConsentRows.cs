@@ -4,19 +4,9 @@ using NodaTime;
 namespace Humans.Consent.Services;
 
 /// <summary>
-/// Shapes the onboarding-widget Consents rows from the active+required document set and
-/// the user's consented-version ids: one row per document at its current version (latest
-/// <c>EffectiveFrom &lt;= now</c>), unsigned first so outstanding work bubbles to the top
-/// of the widget.
+/// Unsigned first. The one shape for both <see cref="ConsentService"/> and <see cref="CachingConsentService"/>,
+/// which compose the inputs differently but must produce identical rows.
 /// </summary>
-/// <remarks>
-/// Single source of truth for both the repo-backed <see cref="ConsentService"/> read and
-/// the <see cref="CachingConsentService"/> decorator, which compose the two inputs
-/// differently (repo vs cache) but must produce the identical row shape and ordering.
-/// Internal, and not a static on <see cref="RequiredConsentRow"/> itself, because it names
-/// <see cref="ActiveRequiredLegalDocumentSnapshot"/> — a section type <c>Contracts/</c>
-/// must not publish to carry a helper.
-/// </remarks>
 internal static class RequiredConsentRows
 {
     public static IReadOnlyList<RequiredConsentRow> BuildOrdered(

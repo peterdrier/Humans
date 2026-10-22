@@ -21,17 +21,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Users;
 
-/// <summary>
-/// Users + Profiles' DI entry point, at the project root by convention. Discovered by Shell —
-/// nothing names it, so it needs no section prefix.
-/// </summary>
-/// <remarks>
-/// <para>
-/// The <c>CachingUserService</c> registration block: one Singleton resolved six ways, an
-/// <c>AddHostedService</c> for its startup warm, and the inner <c>UserService</c> registered
-/// keyed-scoped so the decorator can open a scope per call.
-/// </para>
-/// </remarks>
 public sealed class Section : ISection, IIssueQueueOwner
 {
     internal static IdentityBuilder AddIdentityStores(IdentityBuilder builder) =>
@@ -39,60 +28,43 @@ public sealed class Section : ISection, IIssueQueueOwner
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
-        // Users carries the seven ASP.NET Identity tables; its sentinel is the chain-created
-        // users table.
         services.AddSectionDbContext<UsersDbContext>(sentinelTable: "users");
 
-        // Catches Identity-machinery writes (UpdateAsync, LastLoginAt, OAuth UserEmail).
-        // Singleton, resolved onto every section's DbContext and DbContextFactory pipelines via
-        // IEnumerable<IInterceptor> — the interceptor pattern-matches
-        // User/UserEmail/CommunicationPreference wherever they are saved.
-        // A section owns its own interceptors; Base names none of them.
+        // On every section's context pipeline: catches User/UserEmail/CommunicationPreference
+        // writes wherever they are saved, including Identity machinery.
         services.AddSingleton<UserInfoSaveChangesInterceptor>();
         services.AddSingleton<IInterceptor>(sp => sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
 
-        // CachingUserService decorator + UserInfo read-model span the User and Profile tables.
         services.AddSingleton<IUserRepository, UserRepository>();
 
-        // AccountMergeRequests is a Users table, so its repository and services live here;
-        // AccountMergeService also feeds the GDPR export fan-out.
         services.AddSingleton<IAccountMergeRepository, AccountMergeRepository>();
         services.AddScoped<AccountMergeService>();
         services.AddScoped<IAccountMergeService>(sp => sp.GetRequiredService<AccountMergeService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<AccountMergeService>());
         services.AddScoped<IDuplicateAccountService, DuplicateAccountService>();
 
-        // Inner Scoped + keyed; decorator resolves via IServiceScopeFactory per-call.
         services.AddKeyedScoped<IUserManagement, UserService>(CachingUserService.InnerServiceKey);
         services.AddScoped<UserService>(sp =>
             (UserService)sp.GetRequiredKeyedService<IUserManagement>(CachingUserService.InnerServiceKey));
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<UserService>());
 
-        // Singleton so _byUserId dict survives across requests.
         services.AddSingleton<CachingUserService>();
         services.AddSingleton<IUserManagement>(sp => sp.GetRequiredService<CachingUserService>());
         services.AddSingleton<IUserService>(sp => sp.GetRequiredService<CachingUserService>());
         services.AddSingleton<IUserWrite>(sp => sp.GetRequiredService<CachingUserService>());
-        // Guid → display-name fan-out.
         services.AddSingleton<IEntityNameContributor>(sp => sp.GetRequiredService<CachingUserService>());
 
         // Same Singleton instance must back merge so the cache owner sees it.
         services.AddSingleton<IUserMerge>(sp =>
             sp.GetRequiredService<CachingUserService>());
 
-        // Section-internal refresh signal for UserInfoSaveChangesInterceptor and Users' own
-        // services that write past the decorator. Never cross-section.
         services.AddSingleton<IUserInfoSliceRefresher>(sp =>
             sp.GetRequiredService<CachingUserService>());
 
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingUserService>());
 
-        // Hosted service for TrackedCache StartAsync → WarmAllAsync.
         services.AddHostedService(sp => sp.GetRequiredService<CachingUserService>());
 
-        // Singleton repos so CachingUserService injects directly without a scope factory. The frozen
-        // legacy communication_preferences rows (Email owns the live table since Users decomposition
-        // commit 14) are only read into UserInfo and deleted on erasure.
         services.AddSingleton<ICommunicationPreferenceRepository, CommunicationPreferenceRepository>();
 
         services.AddScoped<ContactFieldService>();
@@ -103,8 +75,6 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<IUserEmailService>(sp => sp.GetRequiredService<UserEmailService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<UserEmailService>());
 
-        // Users owns its email copy and its gallery samples; Email keeps the mechanics
-        // (memory/architecture/email-templates-live-in-sender.md).
         services.AddScoped<UsersEmails>();
         services.AddScoped<IEmailPreviewContributor, UsersEmailPreviews>();
 
@@ -113,40 +83,28 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<IProfileEditorService, ProfileEditorService>();
         services.AddScoped<IAccountProvisioningService, AccountProvisioningService>();
 
-        // Resource-based authorization handler for UserEmail operations. Policy stays in
-        // Shell's AuthorizationPolicyExtensions; the handler lives with the section.
         services.AddSingleton<IAuthorizationHandler, UserEmailAuthorizationHandler>();
 
-        // Backs PolicyNames.HumanAdminOnly (registered in this section's Policies).
         services.AddSingleton<IAuthorizationHandler, HumanAdminOnlyHandler>();
 
         services.AddScoped<ProfileService>();
         services.AddScoped<IProfilePictureService>(sp => sp.GetRequiredService<ProfileService>());
 
-        // The suspend/unsuspend state machine over this section's own IUserManagement, and the body
-        // of the nightly non-compliance sweep. Orchestrators: no repository injected, and every
-        // outbound edge is another section's leaf.
         services.AddScoped<IHumanLifecycleService, HumanLifecycleService>();
         services.AddScoped<INonCompliantMemberSuspension, NonCompliantMemberSuspension>();
 
-        // Same shape: no repository, so orchestrators by the hard rules' definition.
-        // ExternalLoginService keeps its Humans.Application.Services.Users namespace —
-        // HUM0005 names it as the sole legal caller of ReconcileOAuthIdentityAsync by full name.
+        // ExternalLoginService keeps its Humans.Application.Services.Users namespace: HUM0005
+        // names it by full name as the sole caller of ReconcileOAuthIdentityAsync.
         services.AddScoped<IAccountDeletionService, AccountDeletionService>();
         services.AddScoped<IExternalLoginService, ExternalLoginService>();
 
         services.AddScoped<ProcessAccountDeletionsJob>();
         services.AddScoped<SuspendNonCompliantMembersJob>();
 
-        // Audience-segmentation diagnostic for UsersAdminController.Audience.
         services.AddScoped<IUsersAudienceService, UsersAudienceService>();
     }
 
-    // This section owns the issue queue its members' reports land in; Issues discovers
-    // the seam rather than holding a list of sections (memory/architecture/section-contribution-seams.md).
-    // The key is "Profiles", not "Users": Profiles merged into this section at
-    // nobodies-collective/Humans#866 and stored rows still carry the old string, so the queue
-    // keeps its name and HumanAdmin keeps seeing it.
+    // "Profiles", not "Users": stored rows still carry the merged-in section's old key.
     string IIssueQueueOwner.QueueKey => "Profiles";
 
     string IIssueQueueOwner.AreaLabelResourceKey => "Issues_Area_Profiles";

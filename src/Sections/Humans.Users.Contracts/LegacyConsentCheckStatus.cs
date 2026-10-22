@@ -1,11 +1,8 @@
 namespace Humans.Users.Contracts;
 
 /// <summary>
-/// The type of the frozen <c>profiles.ConsentCheckStatus</c> column. The live status is Consent's
-/// <c>ConsentCheckStatus</c> in <c>consent_reviews</c> (Users decomposition commit 12);
-/// <c>Users.Contracts</c> cannot name it (Consent references this project), so the legacy field
-/// keeps this copy and the <c>consent.profile-review</c> copy maps it by name.
-/// Deleted with that migration's retirement PR. Member names are stored as strings: never rename.
+/// The frozen <c>profiles.ConsentCheckStatus</c> type. Consent references this project, so the live type can't be
+/// named here; the <c>consent.profile-review</c> copy maps by name. Stored by name: never rename.
 /// </summary>
 public enum LegacyConsentCheckStatus
 {

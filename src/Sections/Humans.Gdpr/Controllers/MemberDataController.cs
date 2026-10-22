@@ -11,13 +11,6 @@ using NodaTime;
 
 namespace Humans.Gdpr.Controllers;
 
-/// <summary>
-/// A member's own subject-rights actions from the My Data page: the Article 15 data export and
-/// the Article 17 deletion request. Both act on the signed-in member only and never take a
-/// user id. The page itself (<c>/Consent/MyData</c>) is Consent's (<c>MyDataController</c>) and links here.
-/// The landing pages for the pending deletion are
-/// <see cref="UserController"/>.
-/// </summary>
 [Authorize]
 internal sealed class MemberDataController(
     IUserService userService,

@@ -3,31 +3,16 @@ using NodaTime;
 namespace Humans.Users.Contracts;
 
 /// <summary>
-/// Sections implement this to participate in account merge. Each impl re-FKs
-/// its user-keyed rows from the eliminated user (<c>mergedFromUserId</c>
-/// — the source row being tombstoned) onto the surviving user
-/// (<c>mergedToUserId</c> — the target).
-///
-/// <para>
-/// The orchestrator (<c>AccountMergeService.MergeAsync</c>) fans out across
-/// every registered implementation as ordered, independently-committing steps —
-/// there is NO wrapping <c>TransactionScope</c>. Implementations MUST therefore
-/// be idempotent: re-running "move source's rows to target" after a partial
-/// failure must be a safe no-op (a re-FK of an already-moved row must not error).
-/// An implementation that owns a cache over the rows it moves evicts it itself once
-/// its own step returns (Auth, Camps and Workgroups do); the orchestrator still
-/// evicts the caches it reaches in a <c>finally</c> after all steps complete.
-/// </para>
+/// The merge runs these as independently committing steps with no wrapping transaction, so implementations must be
+/// idempotent: re-running after a partial failure must be a safe no-op. An implementation that caches the rows it
+/// moves evicts that cache itself once its step returns.
 /// </summary>
 public interface IUserMerge
 {
     /// <summary>
-    /// Re-FK this section's user-keyed rows from
-    /// <paramref name="mergedFromUserId"/> (the eliminated/tombstoned user)
-    /// onto <paramref name="mergedToUserId"/> (the surviving user).
-    /// Implementations resolve same-row conflicts per their own section's
-    /// rules and stamp <paramref name="now"/> as <c>UpdatedAt</c> on tables
-    /// that carry one.
+    /// Moves this section's rows from <paramref name="mergedFromUserId"/> (being tombstoned) to
+    /// <paramref name="mergedToUserId"/>, resolving conflicts by the section's own rules and stamping
+    /// <paramref name="now"/> as <c>UpdatedAt</c> where there is one.
     /// </summary>
     Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct);
 }

@@ -5,10 +5,8 @@ using NodaTime;
 namespace Humans.Users.Services;
 
 /// <summary>
-/// The Users section's internal face: the public <see cref="IUserService"/> reads and
-/// <see cref="IUserWrite"/> writes, the merge seam, and the row writes and lookups that only
-/// this section's own services, jobs and controllers issue. Every face resolves to the same
-/// <c>CachingUserService</c> instance.
+/// The section's internal face: the public reads and writes, the merge seam, and the row commands
+/// only Users itself issues. Every face resolves to the same <c>CachingUserService</c>.
 /// </summary>
 internal interface IUserManagement : IUserService, IUserWrite, IUserMerge
 {
@@ -22,54 +20,34 @@ internal interface IUserManagement : IUserService, IUserWrite, IUserMerge
         Guid userId, bool suspended, bool adminSuspension = false, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the user ids of every account with <c>DeletionScheduledFor</c>
-    /// in the past (or equal to <paramref name="now"/>) and with
-    /// <c>DeletionEligibleAfter</c> either null or already elapsed. Used by
-    /// the account deletion job to enumerate candidates without reading the
-    /// Users table directly (design-rules §2c).
+    /// Users whose <c>DeletionScheduledFor</c> has passed and whose <c>DeletionEligibleAfter</c>
+    /// is null or has passed.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
         Instant now, CancellationToken ct = default);
 
     /// <summary>
-    /// Applies the identity-level fields of the GDPR expiry anonymization
-    /// on the User aggregate — removes <c>UserEmail</c> rows through
-    /// <c>IUserRepository</c>, renames to <c>Deleted User</c>, clears
-    /// phone/picture/iCal/deletion fields, sets the security stamp, and
-    /// permanently locks out the account. Returns the pre-write identity
-    /// slice or <c>null</c> if the user does not exist. Invalidates the
-    /// UserInfo cache on success. Cross-section cascade (team
-    /// memberships, role assignments, profile anonymization, shift cleanup)
-    /// is owned by <see cref="IAccountDeletionService.AnonymizeExpiredAccountAsync"/>.
+    /// The identity half of the GDPR expiry anonymization; returns the prior identity, or null when
+    /// the user does not exist. The cross-section cascade is
+    /// <see cref="IAccountDeletionService.AnonymizeExpiredAccountAsync"/>'s.
     /// </summary>
     Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
         Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Sets the deletion-pending fields on a user (<c>DeletionRequestedAt</c>,
-    /// <c>DeletionScheduledFor</c>, optional <c>DeletionEligibleAfter</c>).
-    /// <paramref name="eligibleAfter"/> is the post-event hold date when the
-    /// user is on a current event ticket, otherwise null. Returns false if
-    /// the user does not exist.
+    /// <paramref name="eligibleAfter"/> is the post-event hold date for a current ticket holder.
+    /// False if the user does not exist.
     /// </summary>
     Task<bool> SetDeletionPendingAsync(
         Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Clears deletion-pending fields (<c>DeletionRequestedAt</c>,
-    /// <c>DeletionScheduledFor</c>, <c>DeletionEligibleAfter</c>).
-    /// Returns false if the user does not exist.
-    /// </summary>
     Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Idempotently materializes a stub profile for a live user. Returns true
-    /// only when a profile row was created. When provided, seeds the stub with
-    /// the member's burner and legal names (the magic-link signup path); import/OAuth
-    /// callers omit them, and the stub instead inherits BurnerName from the User row
-    /// (already seeded at account creation) so it survives the #1097 Profile->User mirror.
-    /// An admin actor records a successful repair audit after the save.
+    /// Idempotent; true only when a row was created. Names seed the stub on magic-link signup;
+    /// other callers omit them and the stub inherits BurnerName from the User row, so it survives
+    /// the Profile→User name mirror. An admin actor gets a repair audit.
     /// </summary>
     Task<bool> EnsureStubProfileAsync(
         Guid userId,
@@ -80,11 +58,8 @@ internal interface IUserManagement : IUserService, IUserWrite, IUserMerge
         Guid? actorUserId = null);
 
     /// <summary>
-    /// Saves the profile fields projected into UserInfo and updates the user's
-    /// display label in the same storage operation. Supplied picture bytes are
-    /// written before their content-type metadata; a failed write preserves the
-    /// previous picture. Old/current metadata lets the editor clean up stale files.
-    /// A supplied CV is reconciled in the same save as the profile fields; null leaves it unchanged.
+    /// Saves the profile fields and the user's display label together. Picture bytes are written
+    /// before their metadata, so a failed write keeps the previous picture. A null CV is left alone.
     /// </summary>
     Task<UserProfileSaveResult> SaveProfileAsync(
         Guid userId,
@@ -94,9 +69,8 @@ internal interface IUserManagement : IUserService, IUserWrite, IUserMerge
         IReadOnlyList<CVEntry>? volunteerHistory = null);
 
     /// <summary>
-    /// Persists the member's medical conditions (the <c>/Profile/Me/Medical</c> page), creating
-    /// the profile row if there is none. Leaves every other profile field untouched.
-    /// MedicalConditions is GDPR Art. 9 — the caller owns ownership/authorization checks.
+    /// Creates the profile row if needed and touches no other field. GDPR Art. 9: the caller owns
+    /// the authorization check.
     /// </summary>
     Task SaveMedicalConditionsAsync(
         Guid userId,
@@ -104,99 +78,62 @@ internal interface IUserManagement : IUserService, IUserWrite, IUserMerge
         CancellationToken ct = default);
 
     /// <summary>
-    /// Anonymizes profile-owned personal data for GDPR deletion and returns the
-    /// previous picture metadata so the orchestrator can remove filesystem
-    /// bytes after the DB read gate has been cleared.
+    /// Returns the old picture metadata so the caller deletes the file only after the DB read gate
+    /// is cleared.
     /// </summary>
     Task<UserProfileAnonymizeResult> AnonymizeProfileForDeletionAsync(
         Guid userId,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Replaces a profile's language rows and returns the owning user id so
-    /// cache decorators can refresh the affected UserInfo entry.
-    /// </summary>
     Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(
         Guid profileId,
         IReadOnlyList<ProfileLanguageInfo> languages,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Suspends the given users for missing consent and returns the user ids
-    /// that were actually mutated.
-    /// </summary>
+    /// <summary>Returns the ids actually changed.</summary>
     Task<IReadOnlySet<Guid>> SuspendProfilesForMissingConsentAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Adds a Users-owned email row and applies the primary / Google row
-    /// invariants. Does not generate verification tokens, send email, create
-    /// account-merge requests, or touch external-login rows.
+    /// Applies the primary / Google invariants only: no verification token, email, merge request
+    /// or external-login change.
     /// </summary>
     Task<UserEmailAddResult> AddUserEmailAsync(
         Guid userId,
         UserEmailAddCommand command,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Updates mutable UserEmail row state through one invariant-aware command
-    /// instead of one public method per flag transition.
-    /// </summary>
     Task<UpdateEmailResult> UpdateUserEmailAsync(
         Guid userId,
         Guid emailId,
         UserEmailUpdateCommand command,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Removes a Users-owned email row and optionally repairs primary / Google
-    /// invariants. External login removal is orchestrated by callers before
-    /// invoking this storage command.
-    /// </summary>
+    /// <summary>Callers remove any external login first.</summary>
     Task<bool> RemoveUserEmailAsync(
         Guid userId,
         Guid emailId,
         UserEmailRemoveCommand command,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Applies an OAuth reconcile row plan and repairs UserEmail invariants for
-    /// every affected user. OAuth policy, external login state, and audit rows
-    /// remain outside this storage command.
-    /// </summary>
+    /// <summary>Storage only: OAuth policy, external logins and audit stay with the caller.</summary>
     Task<UserEmailReconcilePlanResult> ApplyUserEmailReconcilePlanAsync(
         Guid userId,
         UserEmailReconcilePlanCommand command,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Tombstones source user as merged into target. Sets
-    /// <c>MergedToUserId</c>, <c>MergedAt</c>, locks the source out
-    /// (<c>LockoutEnd</c> far future), and applies the existing per-user
-    /// anonymization fields (display name, picture, phone, security stamp,
-    /// iCal token). Returns true if the source row existed; false if it
-    /// was missing. Invalidates the UserInfo cache for the source on
-    /// success. Used by <c>AccountMergeService.AcceptAsync</c> as the
-    /// final step of the fold-into-target flow.
+    /// Tombstones the source as merged into the target: anonymizes the identity fields and locks it
+    /// out. False if the source was missing. The final step of the merge.
     /// </summary>
     Task<bool> AnonymizeForMergeAsync(
         Guid sourceUserId, Guid targetUserId, Instant now,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns userIds of users that have AspNetUserLogins rows but zero
-    /// UserEmail rows. Used by EmailProblems admin scan.
-    /// </summary>
     Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns every <c>AspNetUserLogins</c> <c>(LoginProvider, ProviderKey)</c>
-    /// row for each of the given users, grouped by <c>UserId</c>. Users without
-    /// any external login are absent from the dictionary. Used by the per-user
-    /// admin emails diagnostic and the OAuth-reconcile mother-of-all
-    /// cross-user-collision log.
-    /// </summary>
+    /// <summary>External logins per user; users without any are absent.</summary>
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
         GetExternalLoginsByUserIdsAsync(
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);

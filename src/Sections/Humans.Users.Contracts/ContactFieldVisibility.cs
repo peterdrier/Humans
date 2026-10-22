@@ -1,28 +1,14 @@
 namespace Humans.Users.Contracts;
 
-/// <summary>
-/// Visibility levels for contact fields.
-/// Lower values are more restrictive (enables >= filtering).
-/// </summary>
+/// <summary>Lower is more restrictive: access checks compare with &gt;=, so never reorder.</summary>
 public enum ContactFieldVisibility
 {
-    /// <summary>
-    /// Only visible to board members.
-    /// </summary>
     BoardOnly = 0,
 
-    /// <summary>
-    /// Visible to team coordinators and board members.
-    /// </summary>
     CoordinatorsAndBoard = 1,
 
-    /// <summary>
-    /// Visible to members who share at least one team with the profile owner.
-    /// </summary>
+    /// <summary>Members who share at least one team with the owner.</summary>
     MyTeams = 2,
 
-    /// <summary>
-    /// Visible to all active members of the organization.
-    /// </summary>
     AllActiveProfiles = 3
 }

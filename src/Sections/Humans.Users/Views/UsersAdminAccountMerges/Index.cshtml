@@ -135,8 +135,7 @@ else
 </a>
 
 <script>
-    // [data-confirm] is handled globally by site.js — no inline confirm handler here
-    // (a second one caused the confirm dialog to fire twice).
+    // site.js handles [data-confirm] globally; a second handler fired the dialog twice.
 
     // For detection rows, the archived account is whichever radio is NOT chosen.
     document.querySelectorAll('form input[name="survivorUserId"]').forEach(function (radio) {

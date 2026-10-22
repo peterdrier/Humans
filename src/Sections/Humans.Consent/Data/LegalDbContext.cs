@@ -3,23 +3,6 @@ using Humans.Consent.Domain;
 
 namespace Humans.Consent.Data;
 
-/// <summary>
-/// Per-section database context for the Legal section: maps only
-/// <c>legal_documents</c>, <c>document_versions</c>, <c>consent_records</c>,
-/// <c>consent_reviews</c> and <c>consent_reminders</c>,
-/// with its own <c>__EFMigrationsHistory_Legal</c> table and migrations under
-/// <c>Data/Migrations/</c>. Same database, same connection — the split
-/// is a code-side partition of the EF model.
-/// </summary>
-/// <remarks>
-/// Internal-sealed like every section context: repositories
-/// are the only consumers. Configurations are applied explicitly (not by
-/// assembly scanning) so this model can never accrete another section's tables.
-/// A consent record's user and a legal document's team are bare Guid
-/// references, so the Identity and Teams tables stay outside this model and
-/// are deliberately absent here. The <c>consent_records</c> immutability
-/// trigger lives as raw SQL in the section baseline, not in this model.
-/// </remarks>
 internal sealed class LegalDbContext(DbContextOptions<LegalDbContext> options)
     : DbContext(options)
 {

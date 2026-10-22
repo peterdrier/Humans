@@ -1,56 +1,29 @@
 
 namespace Humans.Users.Contracts;
 
-/// <summary>
-/// Service for managing contact fields with visibility controls.
-/// </summary>
-// No marker interface — see Humans.Users.Contracts.csproj.
 public interface IContactFieldService
 {
-    /// <summary>
-    /// Gets contact fields visible to the viewer for a given profile owner.
-    /// Reads from the cached <c>UserInfo</c> projection — no DB round-trip on a warm cache.
-    /// </summary>
-    /// <param name="userId">The owner of the profile.</param>
-    /// <param name="viewerUserId">The user viewing the profile.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Contact fields filtered by visibility level.</returns>
+    /// <summary>Filtered to what <paramref name="viewerUserId"/> may see. Served from the <c>UserInfo</c> cache.</summary>
     Task<IReadOnlyList<ContactFieldDto>> GetVisibleContactFieldsAsync(
         Guid userId,
         Guid viewerUserId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Gets all contact fields for a profile (for editing by the owner).
-    /// </summary>
-    /// <param name="profileId">The profile to get contact fields for.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>All contact fields for the profile.</returns>
+    /// <summary>Every field, for the owner's editor.</summary>
     Task<IReadOnlyList<ContactFieldEditDto>> GetAllContactFieldsAsync(
         Guid profileId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Saves current contact fields for a profile (upsert/delete).
-    /// Historical email fields remain unchanged unless explicitly selected for removal.
+    /// Upserts and deletes the current fields. Historical email fields stay unless listed in
+    /// <paramref name="removedLegacyContactFieldIds"/>.
     /// </summary>
-    /// <param name="profileId">The profile to save contact fields for.</param>
-    /// <param name="fields">The current contact fields to save.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <param name="removedLegacyContactFieldIds">Historical email IDs to remove from this profile only.</param>
     Task SaveContactFieldsAsync(
         Guid profileId,
         IReadOnlyList<ContactFieldEditDto> fields,
         CancellationToken cancellationToken = default,
         IReadOnlyCollection<Guid>? removedLegacyContactFieldIds = null);
 
-    /// <summary>
-    /// Gets the maximum visibility level that a viewer can see for a profile owner.
-    /// </summary>
-    /// <param name="ownerUserId">The user who owns the profile.</param>
-    /// <param name="viewerUserId">The user viewing the profile.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The maximum visibility level the viewer can see.</returns>
     Task<ContactFieldVisibility> GetViewerAccessLevelAsync(
         Guid ownerUserId,
         Guid viewerUserId,

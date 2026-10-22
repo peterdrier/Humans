@@ -1,9 +1,6 @@
 
 namespace Humans.Users.Contracts;
 
-/// <summary>
-/// Contact field data for display purposes.
-/// </summary>
 public record ContactFieldDto(
     Guid Id,
     ContactFieldType FieldType,
@@ -11,9 +8,6 @@ public record ContactFieldDto(
     string Value,
     ContactFieldVisibility Visibility);
 
-/// <summary>
-/// Contact field data for editing purposes.
-/// </summary>
 public record ContactFieldEditDto(
     Guid? Id,
     ContactFieldType FieldType,

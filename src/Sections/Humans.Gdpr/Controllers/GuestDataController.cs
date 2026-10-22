@@ -12,11 +12,6 @@ using NodaTime;
 
 namespace Humans.Gdpr.Controllers;
 
-/// <summary>
-/// The subject-rights actions for profileless accounts (authenticated users without a Profile):
-/// the Article 15 data export and the Article 17 deletion request and its cancellation, at
-/// <c>/Gdpr/Guest/*</c> beside their member counterparts on <see cref="MemberDataController"/>.
-/// </summary>
 [Authorize]
 internal sealed class GuestDataController(
     IUserService userService,
@@ -66,7 +61,6 @@ internal sealed class GuestDataController(
 
         try
         {
-            // Single orchestrator for profile + profileless deletion (see #685).
             var result = await accountDeletionService.RequestDeletionAsync(user.Id);
             var flash = GuestDeletionRequestFlash.From(result);
             if (flash.Success)

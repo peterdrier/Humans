@@ -3,55 +3,35 @@ using Humans.Users.Contracts;
 
 namespace Humans.Auth.Contracts;
 
-/// <summary>
-/// Service for magic link authentication — login via emailed link.
-/// Supports login for existing users (via any verified email) and signup for new users.
-/// </summary>
 public interface IMagicLinkService : IApplicationService
 {
     /// <summary>
-    /// Sends a magic link login email to an existing user, or a signup link if no user exists.
-    /// Always returns success (no account enumeration). Rate-limited to one email per 60 seconds per user.
+    /// Sends a login link to an existing user, or a signup link otherwise. Always looks like success (no account
+    /// enumeration). One email per 60 seconds per user.
     /// </summary>
     Task SendMagicLinkAsync(string email, string? returnUrl, CancellationToken ct = default);
 
     /// <summary>
-    /// Verifies a login magic link token for <paramref name="userId"/>.
-    /// Tokens are single-use (consumed on verification). The caller signs in the
-    /// Identity user it loads by that id.
+    /// Single-use: consumes the token. False if the user doesn't exist or the token is expired, invalid or used.
     /// </summary>
-    /// <returns>True if the user exists and the token is valid; false if expired, invalid, or already used.</returns>
     Task<bool> VerifyLoginTokenAsync(Guid userId, string token, CancellationToken ct = default);
 
     /// <summary>
-    /// Decodes a signup magic link token and returns the email if valid.
-    /// Does <em>not</em> consume the token — this is the read used to render the
-    /// signup form, so an email security scanner following the link cannot burn
-    /// it. Redemption goes through <see cref="VerifyAndConsumeSignupTokenAsync"/>.
+    /// Does not consume the token: this read renders the signup form, so an email scanner following the link
+    /// can't burn it. Returns null if expired or invalid; <paramref name="expectedEmail"/> is only for logging.
     /// </summary>
-    /// <param name="token">The signup token to decode.</param>
-    /// <param name="expectedEmail">Optional email for logging on failure.</param>
-    /// <returns>The email address if the token is valid; null if expired or invalid.</returns>
     string? VerifySignupToken(string token, string? expectedEmail = null);
 
     /// <summary>
-    /// Verifies a signup magic link token and consumes it, so it works exactly once.
-    /// The signup counterpart of <see cref="VerifyLoginTokenAsync"/>; call it at the
-    /// point of redemption, never on a GET.
+    /// Consumes the token, so it works once: call it at redemption, never on a GET. Returns null if expired,
+    /// invalid or already redeemed; <paramref name="expectedEmail"/> is only for logging.
     /// </summary>
-    /// <param name="token">The signup token to redeem.</param>
-    /// <param name="expectedEmail">Optional email for logging on failure.</param>
-    /// <param name="ct">Token used to cancel the verification and token consumption.</param>
-    /// <returns>The email address if the token was valid and unused; null if expired, invalid, or already redeemed.</returns>
     Task<string?> VerifyAndConsumeSignupTokenAsync(
         string token, string? expectedEmail = null, CancellationToken ct = default);
 
     /// <summary>
-    /// Un-redeems a signup token consumed by <see cref="VerifyAndConsumeSignupTokenAsync"/>
-    /// when the signup it was consumed for failed to create an account. Call it only on
-    /// that path: provisioning rolls itself back on failure, so nothing was accomplished
-    /// and the person must be able to resubmit the same link rather than wait out its
-    /// 15 minutes. No-op if the token was never reserved.
+    /// Call only when the signup the token was consumed for failed to create an account, so the person can
+    /// resubmit the same link instead of waiting out its 15 minutes. No-op if never reserved.
     /// </summary>
     void ReleaseSignupToken(string token);
 }

@@ -3,10 +3,7 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Auth;
 
-/// <summary>
-/// Auth's contribution to the "Users" admin sidebar group: the role-assignment roster. The
-/// group is merged by label with Users' own items.
-/// </summary>
+/// <summary>Merged by label into Users' "Users" admin group.</summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>

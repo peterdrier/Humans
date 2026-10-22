@@ -5,15 +5,9 @@ using NodaTime;
 
 namespace Humans.Application.Services.Users;
 
-// OAuth-callback decision ladder, lifted out of AccountController per HUM0031
-// (nobodies-collective/Humans#857) and the A2/A3 findings in
-// docs/debt/controller-intent-audit-2026-06-12.md. UserManager allowed per
-// design-rules §2a — Identity is a framework concern, and AspNetUserLogins is
-// the authoritative store for (Provider, ProviderKey) → UserId.
-//
-// HUM0005 pins IUserEmailService.ReconcileOAuthIdentityAsync to this class as
-// its sole caller. Keep that surface narrow: this service exists only to serve
-// the OAuth callback, so nothing else can reach the reconcile primitive.
+// UserManager allowed per design-rules §2a: AspNetUserLogins is the authoritative
+// (Provider, ProviderKey) → UserId store. HUM0005 pins ReconcileOAuthIdentityAsync to this class
+// as its sole caller, so keep this service to the OAuth callback alone.
 internal sealed class ExternalLoginService(
     UserManager<User> userManager,
     IUserManagement userService,

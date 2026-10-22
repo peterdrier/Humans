@@ -4,11 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Consent.ViewComponents;
 
-/// <summary>
-/// The rejection reason on the member's own account-status wall, contributed to
-/// <c>UserPartSlots.AccountStatus</c> (the host renders the slot for a Rejected account only).
-/// Renders nothing outside the Self view mode or when no reason was recorded.
-/// </summary>
+/// <summary>The host renders the slot only for a Rejected account; this renders nothing outside Self view mode.</summary>
 public sealed class RejectionReasonViewComponent(IConsentService consent) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)

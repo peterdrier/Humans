@@ -2,10 +2,6 @@ using NodaTime;
 
 namespace Humans.Consent.Domain;
 
-/// <summary>
-/// A specific version of a legal document.
-/// Spanish content is canonical; English is for display only.
-/// </summary>
 internal sealed class DocumentVersion
 {
     public Guid Id { get; init; }
@@ -18,10 +14,7 @@ internal sealed class DocumentVersion
 
     public string CommitSha { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Multi-language content keyed by language code (e.g. "es", "en", "de").
-    /// Spanish ("es") is canonical/legally binding.
-    /// </summary>
+    /// <summary>Keyed by language code. Spanish (<c>"es"</c>) is canonical and legally binding.</summary>
     public Dictionary<string, string> Content { get; set; } = new(StringComparer.Ordinal);
 
     public Instant EffectiveFrom { get; set; }

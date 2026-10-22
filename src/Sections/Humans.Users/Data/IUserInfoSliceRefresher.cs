@@ -4,12 +4,8 @@ using Humans.Users.Contracts;
 namespace Humans.Users.Data;
 
 /// <summary>
-/// Section-internal cache-staleness signal into the <see cref="CachingUserService"/> dict.
-/// <c>UserInfoSaveChangesInterceptor</c> applies slice-level refreshes when Identity / OAuth /
-/// direct-repo writes touch contributing tables; Users' own services that write past the
-/// decorator (GDPR erasure, import provisioning, merge rejection, contact fields) call
-/// <see cref="RefreshAsync"/>. Every contributing table is Users-owned, so no other section
-/// needs it: it must not become a cross-section contract.
+/// Refreshes <see cref="CachingUserService"/> entries for writes that bypass the decorator.
+/// Every contributing table is Users-owned: it must not become a cross-section contract.
 /// </summary>
 internal interface IUserInfoSliceRefresher
 {

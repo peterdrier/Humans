@@ -15,11 +15,7 @@ using NodaTime;
 
 namespace Humans.Onboarding.Controllers;
 
-/// <summary>
-/// Guided onboarding widget — three steps (Names → Shifts → Consents).
-/// Index is the canonical dispatcher; /Welcome, Home/Index, Guest/Index, and the
-/// layout banner all link here without needing to know which step a user is on.
-/// </summary>
+/// <summary>Index is the dispatcher: everything links there without knowing which step a user is on.</summary>
 [Authorize]
 internal sealed class OnboardingWidgetController(
     IUserService userService,
@@ -57,11 +53,7 @@ internal sealed class OnboardingWidgetController(
     [HttpGet]
     public async Task<IActionResult> Names(CancellationToken ct)
     {
-        // Prefill from the user's OWN saved profile — never from OAuth claims, which
-        // are unverified (see Names_Get_ReturnsBlankViewModel_IgnoringOauthClaims).
-        // Bare/Stub accounts have blank names, so a genuinely new user still gets an
-        // empty form; a returning or data-drifted user sees what's actually on file
-        // instead of a blank form that looks like their earlier entry never saved.
+        // Prefill from the user's own saved profile, never from OAuth claims, which are unverified.
         var profile = (await _userService.GetUserInfoAsync(CurrentUserId(), ct))?.Profile;
         return View(new NamesViewModel
         {
@@ -82,18 +74,13 @@ internal sealed class OnboardingWidgetController(
         var info = await _userService.GetUserInfoAsync(userId, ct);
         userId = info?.Id ?? userId;
 
-        // Skip the save for an already-named user (stale page / back-button re-POST).
-        // In-section check against the user's OWN profile — the name save must NOT be
-        // gated by any cross-section consent/step check, or a vacuously-"complete"
-        // consent state (no required legal docs) bounces a bare account into an endless
-        // Names redirect loop.
+        // Skip the save for an already-named user (stale page or back-button re-POST). Must not be gated
+        // on any consent/step check: with no required documents that reads "complete" and loops forever.
         if (info is not null && info.HasRequiredNameFields)
             return RedirectToAction(nameof(Index));
 
-        // SaveProfileAsync is a full-field overwrite but the form only carries the three
-        // names, so preserve every other field from the current profile. A data-drifted
-        // profile (City/Bio/emergency contact on file but a blank name) must keep that
-        // data when its name is fixed here.
+        // SaveProfileAsync overwrites every field but the form carries only names, so keep the rest
+        // from the current profile.
         var request = BuildNameSaveRequest(vm, info?.Profile);
 
         var save = await profileEditorService.SaveProfileAsync(userId, request, ct);
@@ -107,10 +94,7 @@ internal sealed class OnboardingWidgetController(
         return RedirectToAction(nameof(Shifts));
     }
 
-    // Builds a profile-save request that sets the three name fields from the form while
-    // carrying forward every other field from the existing profile (null for a brand-new
-    // profileless account — nothing to preserve). Picture is left as a no-op mutation
-    // (null data + RemoveProfilePicture:false) so SaveProfileAsync keeps the current one.
+    // Picture is a no-op mutation (null data, RemoveProfilePicture: false) so the current one stays.
     // Dietary fields and CV are omitted: Users leaves them untouched on a name-only save.
     private static ProfileSaveRequest BuildNameSaveRequest(NamesViewModel vm, ProfileInfo? existing) =>
         new(
@@ -142,9 +126,7 @@ internal sealed class OnboardingWidgetController(
         var userId = (await GetCurrentUserInfoAsync(ct))?.Id ?? CurrentUserId();
         var userShiftView = await shiftView.GetUserAsync(userId, ct);
         var (shiftIds, statuses) = ShiftSignupHelper.ResolveActiveStatuses(userShiftView.Signups);
-        // Onboarding viewers are regular (non-privileged) volunteers, so the early-entry
-        // lock applies whenever the close has passed — same surfacing the /Shifts browse
-        // grid gives non-privileged users (the server gate still enforces it on submit).
+        // Onboarding viewers are never privileged, so the early-entry lock applies once the close has passed.
         var earlyEntryClosed = es.IsEarlyEntryClosed(clock.GetCurrentInstant());
         var vm = OnboardingShiftsStepBuilder.Build(
             es, urgentShifts, shiftIds, statuses, priority ?? string.Empty, earlyEntryClosed);
@@ -178,7 +160,6 @@ internal sealed class OnboardingWidgetController(
             return BadRequest(ModelState);
         }
 
-        // Multi-day Build/Strike signup, routed back through the widget dispatcher.
         var result = await signupService.SignUpRangeAsync(userId, rotaId, startDayOffset, endDayOffset);
         if (!result.Success)
         {
@@ -203,7 +184,7 @@ internal sealed class OnboardingWidgetController(
     {
         var userId = CurrentUserId();
 
-        // Stub profile can't sign — ConsentService would refuse. Bounce to Names.
+        // ConsentService refuses a nameless signer.
         if (await IsNameMissingAsync(userId, ct))
             return RedirectToNamesForStub();
 
@@ -211,8 +192,8 @@ internal sealed class OnboardingWidgetController(
         if (step.Outcome is NextConsentStepOutcome.NothingLeftToSign)
             return RedirectToAction(nameof(Index));
 
-        // The dispatcher still answers "consents" while anything is unsigned, so handing an
-        // unloadable document back to it bounces the user between the two forever. Stop.
+        // The dispatcher still answers "consents" while anything is unsigned, so handing an unloadable
+        // document back to it would bounce the user between the two forever.
         if (step.Outcome is NextConsentStepOutcome.DocumentUnavailable)
         {
             SetError(localizer["Onboarding_ConsentDocumentUnavailable"].Value);
@@ -246,7 +227,7 @@ internal sealed class OnboardingWidgetController(
 
         var userId = CurrentUserId();
 
-        // Mirror GET gate against stale-page / back-button POST.
+        // Same gate as GET, against a stale-page or back-button POST.
         if (await IsNameMissingAsync(userId, ct))
             return RedirectToNamesForStub();
 
@@ -271,11 +252,11 @@ internal sealed class OnboardingWidgetController(
             }
         }
 
-        // Always dispatch — routes Home after final consent instead of stranding on signed-docs view.
+        // Always dispatch: after the final consent it routes Home instead of stranding the user here.
         return RedirectToAction(nameof(Index));
     }
 
-    // Gated on HasRequiredNameFields, not State==Stub — catches Active profiles with blank names.
+    // HasRequiredNameFields, not State == Stub: catches Active profiles with blank names.
     private async Task<bool> IsNameMissingAsync(Guid userId, CancellationToken ct)
     {
         var info = await _userService.GetUserInfoAsync(userId, ct);
