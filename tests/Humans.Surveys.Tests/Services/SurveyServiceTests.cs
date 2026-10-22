@@ -1244,7 +1244,6 @@ public class SurveyServiceTests
             FallbackPictureUrl: null,
             CreatedAt: Instant.MinValue,
             LastLoginAt: null,
-            LastConsentReminderSentAt: null,
             DeletionRequestedAt: null,
             DeletionScheduledFor: null,
             DeletionEligibleAfter: null,
@@ -2167,7 +2166,7 @@ public class SurveyServiceTests
     }
 
     private static UserInfo UserInfoWithName(Guid id, string burnerName, string culture = "en") => new(
-        id, burnerName, false, culture, null, Instant.MinValue, null, null, null, null, null,
+        id, burnerName, false, culture, null, Instant.MinValue, null, null, null, null,
         null, null, null, null, null,
         [], [], [], null, []);
 

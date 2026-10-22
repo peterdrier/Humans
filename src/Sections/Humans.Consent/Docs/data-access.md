@@ -161,10 +161,9 @@ Repository: `IConsentReminderRepository` (Singleton, `IDbContextFactory<LegalDbC
 | consent_reminders | R/W |
 
 The re-consent reminder cooldown stamp. Serves `SendReConsentReminderJob`'s
-read (`GetLastSentAsync`) and stamp (`RecordSentAsync`), the
-`consent.reminder-stamps` copy, and the `ConsentReminder` export/erasure
-slice. Until the copy is done, a member with no row reads the legacy
-`users.LastConsentReminderSentAt` via `IUserService`. No cache.
+read (`GetLastSentAsync`), stamp (`RecordSentAsync`) and `ConsentReminder`
+export/erasure slice. Reads only Consent-owned rows; `IUserService` resolves the
+exported human's merge chain. No cache.
 
 ### ConsentEmails (Scoped, internal)
 

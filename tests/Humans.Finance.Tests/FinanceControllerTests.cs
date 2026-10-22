@@ -842,7 +842,6 @@ public class FinanceControllerTests
         FallbackPictureUrl: null,
         CreatedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
         LastLoginAt: null,
-        LastConsentReminderSentAt: null,
         DeletionRequestedAt: null,
         DeletionScheduledFor: null,
         DeletionEligibleAfter: null,

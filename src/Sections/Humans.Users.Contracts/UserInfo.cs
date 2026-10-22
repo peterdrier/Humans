@@ -156,8 +156,6 @@ public sealed record UserInfo(
     string? FallbackPictureUrl,
     Instant CreatedAt,
     Instant? LastLoginAt,
-    [property: Obsolete("Moved to Consent's consent_reminders. The one reader left is Consent's ConsentReminderService: its legacy fallback and the consent.reminder-stamps copy.", DiagnosticId = "HUM_USER_CONSENT_REMINDER")]
-    Instant? LastConsentReminderSentAt,
     Instant? DeletionRequestedAt,
     Instant? DeletionScheduledFor,
     Instant? DeletionEligibleAfter,
@@ -388,7 +386,6 @@ public sealed record UserInfo(
             FallbackPictureUrl: user.ProfilePictureUrl,
             CreatedAt: user.CreatedAt,
             LastLoginAt: user.LastLoginAt,
-            LastConsentReminderSentAt: user.LastConsentReminderSentAt,
             DeletionRequestedAt: user.DeletionRequestedAt,
             DeletionScheduledFor: user.DeletionScheduledFor,
             DeletionEligibleAfter: user.DeletionEligibleAfter,

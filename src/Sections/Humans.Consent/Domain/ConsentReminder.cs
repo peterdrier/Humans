@@ -5,8 +5,7 @@ namespace Humans.Consent.Domain;
 /// <summary>
 /// When the re-consent reminder email last went to a member, one row per member
 /// (<c>consent_reminders</c>): the cooldown anchor <c>SendReConsentReminderJob</c> reads and
-/// stamps. Replaces <c>users.LastConsentReminderSentAt</c>, which Users keeps unwritten until the
-/// <c>consent.reminder-stamps</c> data migration is done in production.
+/// stamps. Its legacy Users-column copy completed in production; Consent owns the live stamp.
 /// </summary>
 internal sealed class ConsentReminder
 {

@@ -360,6 +360,6 @@ public class CampAdminControllerTests
     }
 
     private static UserInfo MakeUser(Guid id) => new(
-        id, "actor", false, "en", null, SystemClock.Instance.GetCurrentInstant(), null, null,
+        id, "actor", false, "en", null, SystemClock.Instance.GetCurrentInstant(), null,
         null, null, null, null, null, null, null, null, [], [], [], null, []);
 }

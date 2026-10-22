@@ -1353,7 +1353,7 @@ public class ServiceTests
         var actor = Guid.NewGuid();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(new UserInfo(
-            actor, "Tester", false, "en", null, _clock.GetCurrentInstant(), null, null, null, null, null,
+            actor, "Tester", false, "en", null, _clock.GetCurrentInstant(), null, null, null, null,
             null, null, null, null, null, [], [], [], null, []));
         var http = new DefaultHttpContext
         {

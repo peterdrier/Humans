@@ -168,6 +168,6 @@ public sealed class BoardFeatureCollectionTests
 
     private static UserInfo User(Guid id, string burnerName) => new(
         id, burnerName, false, "en", null, Now,
-        null, null, null, null, null, null, null,
+        null, null, null, null, null, null,
         null, null, null, [], [], [], null, []);
 }

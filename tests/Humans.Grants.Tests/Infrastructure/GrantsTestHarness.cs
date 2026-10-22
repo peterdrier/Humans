@@ -90,7 +90,7 @@ public abstract class GrantsTestHarness : IDisposable
         var userId = id ?? Guid.NewGuid();
         _users[userId] = new UserInfo(
             userId, burnerName, false, language, null, Instant.FromUtc(2026, 1, 1, 0, 0),
-            null, null, null, null, null, null, null,
+            null, null, null, null, null, null,
             null, null, null, [], [], [],
             UserFixtures.Profile(burnerName: burnerName, membershipTier: LegacyMembershipTier.Volunteer), [])
         { MergedUserIds = mergedIds ?? [] };

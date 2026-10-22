@@ -160,7 +160,6 @@ internal sealed class UserInfoSaveChangesInterceptor(
             ProfilePictureUrl = user.ProfilePictureUrl,
             CreatedAt = user.CreatedAt,
             LastLoginAt = user.LastLoginAt,
-            LastConsentReminderSentAt = user.LastConsentReminderSentAt,
             DeletionRequestedAt = user.DeletionRequestedAt,
             DeletionScheduledFor = user.DeletionScheduledFor,
             DeletionEligibleAfter = user.DeletionEligibleAfter,

@@ -104,11 +104,9 @@ public class User : IdentityUser<Guid>
     }
 
     /// <summary>
-    /// FROZEN: the re-consent reminder cooldown stamp now lives in Consent's
-    /// <c>consent_reminders</c>. Users no longer writes this column except to clear it on GDPR erasure; it is read only through the
-    /// obsolete <see cref="UserInfo.LastConsentReminderSentAt"/> by the
-    /// <c>consent.reminder-stamps</c> copy and fallback, and the column is dropped once that copy
-    /// is done in production.
+    /// FROZEN: the cooldown anchor moved to Consent's <c>consent_reminders</c>. Its data copy
+    /// and legacy readers are retired after production reported done on 2026-10-22.
+    /// Users clears this column on GDPR erasure until its separate drop migration ships.
     /// </summary>
     public Instant? LastConsentReminderSentAt { get; set; }
 
