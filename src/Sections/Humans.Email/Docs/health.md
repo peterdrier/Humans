@@ -106,26 +106,26 @@ no-login page adds the inbox column and the highlighted row.
   headers and a footer link (`src/Sections/Humans.Email/Services/OutboxEmailService.cs:49`,
   `src/Sections/Humans.Email/Services/OutboxEmailService.cs:53`).
 - The pause flag stops the drain and nothing else
-  (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:38`).
+  (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:37`).
 - Time-sensitive templates are picked up first, FIFO within each class
   (`src/Sections/Humans.Email/Data/EmailOutboxRepository.cs:129`), and the same list starts
   an immediate drain (`src/Sections/Humans.Email/Services/OutboxEmailService.cs:116`).
 - A failed message is retried with exponential backoff
-  (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:91`) until a fixed attempt
+  (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:90`) until a fixed attempt
   count, then waits for an admin (`src/Sections/Humans.Email/Data/EmailOutboxRepository.cs:124`).
 - Delivery is at-least-once: a row picked up and not marked is re-claimed after the stale
-  window (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:45`).
+  window (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:44`).
 - A test-domain address is marked sent without a transport call
-  (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:61`).
+  (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:60`).
 - Bookkeeping never rewrites delivery state: neither the grant mirror
-  (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:138`) nor the tally
-  (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:155`) can throw out of the batch.
+  (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:137`) nor the tally
+  (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:154`) can throw out of the batch.
 - The tally outlives the send log: retention deletes only old sent rows
   (`src/Sections/Humans.Email/Data/EmailOutboxRepository.cs:197`), and the backfill inserts
   only day/template keys with no row yet
-  (`src/Sections/Humans.Email/Services/EmailOutboxService.cs:163`).
+  (`src/Sections/Humans.Email/Services/EmailOutboxService.cs:164`).
 - Only `AdminOnly` reaches the outbox dashboard, the gallery and the backfill
-  (`src/Sections/Humans.Email/Controllers/EmailController.cs:17`); the preview and
+  (`src/Sections/Humans.Email/Controllers/EmailController.cs:15`); the preview and
   self-send endpoints are open to any signed-in human
   (`src/Sections/Humans.Email/Controllers/EmailPreviewController.cs:15`), and the self-send
   is rate-limited (`src/Sections/Humans.Email/Controllers/EmailPreviewController.cs:41`).
@@ -159,8 +159,8 @@ no-login page adds the inbox column and the highlighted row.
   (`src/Sections/Humans.Email/Services/UnsubscribeService.cs:21`,
   `src/Sections/Humans.Email/Controllers/GuestAccountController.cs:105`).
 - A send-log row is personal data: exported
-  (`src/Sections/Humans.Email/Services/EmailOutboxService.cs:178`) and destroyed whatever
-  its status (`src/Sections/Humans.Email/Services/EmailOutboxService.cs:229`); erasure
+  (`src/Sections/Humans.Email/Services/EmailOutboxService.cs:179`) and destroyed whatever
+  its status (`src/Sections/Humans.Email/Services/EmailOutboxService.cs:230`); erasure
   deletes every preference row too
   (`src/Sections/Humans.Email/Services/CommunicationPreferenceService.cs:416`).
 - A merge leaves the source with only cleared rows where a legacy row backs it
