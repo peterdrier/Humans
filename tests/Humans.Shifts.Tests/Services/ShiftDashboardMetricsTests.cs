@@ -17,11 +17,31 @@ using Humans.Users.Data;
 using Humans.Users.Services;
 
 using Humans.Shifts.Models;
+using Xunit;
 
 namespace Humans.Shifts.Tests.Services;
 
 public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
 {
+    [HumansTheory]
+    [InlineData(0, 0, 0, 0)]
+    [InlineData(1, 0, 0, 100)]
+    [InlineData(0, 1, 100, 0)]
+    [InlineData(199, 1, 1, 99)]
+    public void PostEventRates_AgreeAcrossDashboardLevels(
+        int confirmed, int noShow, int expectedNoShow, int expectedCompletion)
+    {
+        var period = new PostEventPeriodRow(confirmed, noShow);
+        var department = new PostEventDepartmentRow(Guid.NewGuid(), "Team", "team",
+            confirmed, noShow, period, period, period);
+        var overall = new PostEventStats(0, 0, confirmed, noShow, [department]);
+
+        new[] { period.NoShowPct, department.NoShowPct, overall.NoShowPct }
+            .Should().OnlyContain(value => value == expectedNoShow);
+        new[] { period.CompletionPct, department.CompletionPct, overall.CompletionPct }
+            .Should().OnlyContain(value => value == expectedCompletion);
+    }
+
     private static readonly Instant TestNow = Instant.FromUtc(2026, 7, 1, 12, 0);
 
     private readonly ShiftManagementService _service;

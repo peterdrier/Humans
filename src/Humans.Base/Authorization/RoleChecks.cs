@@ -64,23 +64,6 @@ public static class RoleChecks
         return IsAdmin(user) || user.IsInRole(RoleNames.EventsAdmin);
     }
 
-    public static bool CanAccessReviewQueue(ClaimsPrincipal user)
-    {
-        return IsAdminOrBoard(user) ||
-               user.IsInRole(RoleNames.ConsentCoordinator) ||
-               user.IsInRole(RoleNames.VolunteerCoordinator);
-    }
-
-    public static bool CanAccessTickets(ClaimsPrincipal user)
-    {
-        return IsAdminOrBoard(user) || user.IsInRole(RoleNames.TicketAdmin);
-    }
-
-    public static bool CanManageTickets(ClaimsPrincipal user)
-    {
-        return IsAdmin(user) || user.IsInRole(RoleNames.TicketAdmin);
-    }
-
     /// <summary>
     /// Roles the current principal may assign from the human admin surface.
     /// </summary>
@@ -134,18 +117,5 @@ public static class RoleChecks
         return IsAdmin(user) || user.IsInRole(RoleNames.VolunteerCoordinator);
     }
 
-    public static bool CanManageRole(ClaimsPrincipal user, string roleName)
-    {
-        if (IsAdmin(user))
-        {
-            return true;
-        }
 
-        if (IsBoard(user) || IsHumanAdmin(user))
-        {
-            return RoleNames.BoardManageableRoles.Contains(roleName);
-        }
-
-        return false;
-    }
 }

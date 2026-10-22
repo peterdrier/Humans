@@ -262,6 +262,16 @@ internal sealed class CityPlanningApiController(
         return File(System.Text.Encoding.UTF8.GetBytes(collection.ToJsonString()), "application/geo+json", fileName);
     }
 
+    private async Task<IActionResult?> RequireContainerPlacementAsync(Guid id, int year, CancellationToken ct)
+    {
+        var container = await containerService.GetByIdAsync(id, ct);
+        if (container is null) return NotFound();
+
+        var auth = await authorizationService.AuthorizeAsync(
+            User, ContainerAuthorizationTarget.For(container, year), ContainerOperationRequirement.Place);
+        return auth.Succeeded ? null : Forbid();
+    }
+
     [HttpPut("containers/{id:guid}/placement/{year:int}")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveContainerPlacement(
@@ -270,12 +280,8 @@ internal sealed class CityPlanningApiController(
         [FromBody] SaveContainerPlacementRequest request,
         CancellationToken cancellationToken)
     {
-        var container = await containerService.GetByIdAsync(id, cancellationToken);
-        if (container is null) return NotFound();
-
-        var authResult = await authorizationService.AuthorizeAsync(
-            User, ContainerAuthorizationTarget.For(container, year), ContainerOperationRequirement.Place);
-        if (!authResult.Succeeded) return Forbid();
+        var error = await RequireContainerPlacementAsync(id, year, cancellationToken);
+        if (error is not null) return error;
 
         var result = await containerService.SavePlacementAsync(id, year, request.GeoJson, CurrentUserId(), cancellationToken);
         if (result.ErrorKey is { } key)
@@ -296,12 +302,8 @@ internal sealed class CityPlanningApiController(
         [FromForm] UpdateContainerPlacementNotesRequest request,
         CancellationToken cancellationToken)
     {
-        var container = await containerService.GetByIdAsync(id, cancellationToken);
-        if (container is null) return NotFound();
-
-        var authResult = await authorizationService.AuthorizeAsync(
-            User, ContainerAuthorizationTarget.For(container, year), ContainerOperationRequirement.Place);
-        if (!authResult.Succeeded) return Forbid();
+        var error = await RequireContainerPlacementAsync(id, year, cancellationToken);
+        if (error is not null) return error;
 
         ContainerImageUpload? imageUpload = null;
         if (request.PlacementImage is { Length: > 0 } f)
@@ -332,12 +334,8 @@ internal sealed class CityPlanningApiController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ClearContainerPlacement(Guid id, int year, CancellationToken cancellationToken)
     {
-        var container = await containerService.GetByIdAsync(id, cancellationToken);
-        if (container is null) return NotFound();
-
-        var authResult = await authorizationService.AuthorizeAsync(
-            User, ContainerAuthorizationTarget.For(container, year), ContainerOperationRequirement.Place);
-        if (!authResult.Succeeded) return Forbid();
+        var error = await RequireContainerPlacementAsync(id, year, cancellationToken);
+        if (error is not null) return error;
 
         await containerService.ClearPlacementAsync(id, year, CurrentUserId(), cancellationToken);
         return NoContent();

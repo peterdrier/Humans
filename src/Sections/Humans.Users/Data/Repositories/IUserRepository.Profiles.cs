@@ -24,10 +24,6 @@ internal partial interface IUserRepository
     Task<(string ContentType, string? StorageKey)?> GetProfilePictureLocationAsync(
         Guid profileId, CancellationToken ct = default);
 
-    /// <summary>Every profile with a picture, scalar columns only (no bytea load).</summary>
-    Task<IReadOnlyList<(Guid ProfileId, Guid UserId, string BurnerName, string ContentType, string? StorageKey, Instant UpdatedAt)>>
-        GetCustomPictureRowsAsync(CancellationToken ct = default);
-
     /// <summary>Ordered by proficiency descending, then language code.</summary>
     Task<IReadOnlyList<ProfileLanguage>> GetLanguagesAsync(
         Guid profileId, CancellationToken ct = default);

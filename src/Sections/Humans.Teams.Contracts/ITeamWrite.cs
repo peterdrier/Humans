@@ -33,12 +33,6 @@ public interface ITeamWrite : IApplicationService
         Guid teamId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// The graph stitches each member's <c>UserInfo</c>, so Users' account merge calls this after its tombstone,
-    /// which no Teams write sees.
-    /// </summary>
-    void InvalidateActiveTeamsCache();
-
     /// <summary>Also removes their role assignments. Returns the number of memberships ended.</summary>
     Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default);
 

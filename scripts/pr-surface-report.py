@@ -325,11 +325,16 @@ def extract_interface_symbols(ref: str) -> dict[str, dict[str, object]]:
         pending_signature: list[str] = []
 
         for raw_line in content.splitlines():
-            line = raw_line.split("//", 1)[0].strip()
+            line = raw_line.strip()
+            code_line = literal_re.sub(lambda match: " " * len(match.group()), line)
+            # Mask literals before finding comments: a default URL's // is data.
+            comment = code_line.find("//")
+            if comment >= 0:
+                line = line[:comment].rstrip()
+                code_line = code_line[:comment].rstrip()
             if not line or line.startswith("["):
                 continue
 
-            code_line = literal_re.sub(lambda match: " " * len(match.group()), line)
             if current is None:
                 match = interface_re.search(code_line)
                 if not match:

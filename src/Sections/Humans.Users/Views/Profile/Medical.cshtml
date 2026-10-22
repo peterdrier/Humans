@@ -1,6 +1,6 @@
 @model Humans.Users.Models.MedicalViewModel
 @{
-    ViewData["Title"] = Localizer["Profile_DietaryMedical_MedicalConditions_Title"].Value;
+    ViewData["Title"] = Localizer["Users_Profile_DietaryMedical_MedicalConditions_Title"].Value;
 }
 
 @* GDPR Art. 9 data: this page only ever shows the signed-in member their own medical conditions.
@@ -10,11 +10,11 @@
         <nav aria-label="@Localizer["Users_BreadcrumbNavigation"]">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a></li>
-                <li class="breadcrumb-item active" aria-current="page">@Localizer["Profile_DietaryMedical_MedicalConditions_Title"]</li>
+                <li class="breadcrumb-item active" aria-current="page">@Localizer["Users_Profile_DietaryMedical_MedicalConditions_Title"]</li>
             </ol>
         </nav>
 
-        <h1>@Localizer["Profile_DietaryMedical_MedicalConditions_Title"]</h1>
+        <h1>@Localizer["Users_Profile_DietaryMedical_MedicalConditions_Title"]</h1>
 
         <form asp-action="Medical" method="post" novalidate>
             @Html.AntiForgeryToken()
@@ -27,10 +27,10 @@
             }
 
             <div class="mb-4">
-                <p class="text-muted small">@Localizer["Profile_DietaryMedical_MedicalConditions_Hint"]</p>
+                <p class="text-muted small">@Localizer["Users_Profile_DietaryMedical_MedicalConditions_Hint"]</p>
                 <textarea asp-for="MedicalConditions" class="form-control" rows="4" maxlength="4000"></textarea>
                 <span asp-validation-for="MedicalConditions" class="text-danger"></span>
-                <div class="form-text">@Localizer["Profile_DietaryMedical_MedicalConditions_VisibilityNote"]</div>
+                <div class="form-text">@Localizer["Users_Profile_DietaryMedical_MedicalConditions_VisibilityNote"]</div>
             </div>
 
             <div class="d-flex justify-content-between">

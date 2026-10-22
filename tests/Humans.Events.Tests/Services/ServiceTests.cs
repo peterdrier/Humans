@@ -138,15 +138,17 @@ public sealed class EventServiceTests
         result.Should().Be(expected);
     }
 
-    [HumansFact]
-    public async Task SaveGuideSettingsAsync_CreatesSettingsUsingEventTimezone()
+    [HumansTheory]
+    [InlineData("Europe/Madrid", 10)]
+    [InlineData("Unavailable/Zone", 12)]
+    public async Task SaveGuideSettingsAsync_CreatesSettingsUsingEventTimezone(string zoneId, int utcHour)
     {
         var eventSettingsId = Guid.NewGuid();
         _burnSettings.GetEventSettingsByIdAsync(eventSettingsId, Arg.Any<CancellationToken>()).Returns(new EventSettingsInfo(
             Id: eventSettingsId,
             EventName: "Nowhere 2026",
             Year: 2026,
-            TimeZoneId: "Europe/Madrid",
+            TimeZoneId: zoneId,
             GateOpeningDate: new LocalDate(2026, 7, 1),
             BuildStartOffset: -14,
             EventEndOffset: 7,
@@ -162,15 +164,15 @@ public sealed class EventServiceTests
         await _service.SaveGuideSettingsAsync(
             existingId: null,
             eventSettingsId,
-            submissionOpenAt: new LocalDateTime(2026, 5, 5, 12, 0),
+            submissionOpenAt: new LocalDateTime(2026, 5, 5, 12, 0).PlusNanoseconds(123),
             submissionCloseAt: new LocalDateTime(2026, 5, 6, 12, 0),
             guidePublishAt: new LocalDateTime(2026, 5, 7, 12, 0),
             maxPrintSlots: 42, ct: TestContext.Current.CancellationToken);
 
         _repo.Settings.Should().NotBeNull();
-        _repo.Settings!.SubmissionOpenAt.Should().Be(Instant.FromUtc(2026, 5, 5, 10, 0));
-        _repo.Settings.SubmissionCloseAt.Should().Be(Instant.FromUtc(2026, 5, 6, 10, 0));
-        _repo.Settings.GuidePublishAt.Should().Be(Instant.FromUtc(2026, 5, 7, 10, 0));
+        _repo.Settings!.SubmissionOpenAt.Should().Be(Instant.FromUtc(2026, 5, 5, utcHour, 0) + Duration.FromNanoseconds(123));
+        _repo.Settings.SubmissionCloseAt.Should().Be(Instant.FromUtc(2026, 5, 6, utcHour, 0));
+        _repo.Settings.GuidePublishAt.Should().Be(Instant.FromUtc(2026, 5, 7, utcHour, 0));
         _repo.Settings.MaxPrintSlots.Should().Be(42);
         _repo.SaveChangesCount.Should().Be(1);
     }

@@ -24,7 +24,7 @@
 - **Every human-composed send renders through `SanitizedMarkdownRenderer`** (Base) — Markdig → `Ganss.Xss.HtmlSanitizer`, one pipeline, no bespoke HTML-encode/`<br>` path. Images (`<img src>`) are restricted to `https://` — `data:`, `http:`, and `javascript:` sources are stripped via the sanitizer's `FilterUrl` hook; `<a href>` keeps the sanitizer's broader allowance. `style` attributes are stripped outright (`AllowedAttributes.Remove("style")`) so a CSS `url(...)` (e.g. `background-image`) can't smuggle a non-`https://` fetch the `<img>` rule doesn't cover. `EmailInlineStyler` (section-internal) then walks the rendered HTML with AngleSharp and stamps inline `style` attributes matching `BrandedEmailTemplate`'s palette onto h1–h3/p/a/ul/ol/li/blockquote/table/th/td/hr/code/pre, since many clients strip `<style>` blocks; it runs once, inside `BrandedEmailTemplate.Wrap`, so every branded send and preview gets it for free.
 - `IEmailService.SendAsync` and `IEmailOutboxProcessor.ProcessQueuedAsync` are marked `[ExternalWrite]`: the former can send a `DoNotPersist` message directly, and the latter reaches SMTP while draining. State-changing callers must detach request cancellation at their entry point.
 - Recipient log properties use Base’s email redaction policy (at most two UTF-16 units plus masked local part and domain), including queue, suppression, SMTP and stub logs.
-- **Delivery** is performed by `EmailOutboxProcessor` (section) via `IEmailTransport` (`SmtpEmailTransport` when `Email:SmtpHost` is set, `StubEmailTransport` when it is empty). `ProcessEmailOutboxJob` (`Humans.Email/Jobs/`) is the Hangfire scheduler shim that calls it through `IEmailOutboxProcessor`. `IImmediateOutboxProcessor` (`HangfireImmediateOutboxProcessor`, `Humans.Email/Contracts/`) is the trigger for time-sensitive templates that need to fire the next job run immediately rather than wait for the recurring tick.
+- **Delivery** is performed by `EmailOutboxProcessor` (section) via `IEmailTransport` (`SmtpEmailTransport` when `Email:SmtpHost` is set, `StubEmailTransport` when it is empty outside production). `ProcessEmailOutboxJob` (`Humans.Email/Jobs/`) is the Hangfire scheduler shim that calls it through `IEmailOutboxProcessor`. `IImmediateOutboxProcessor` (`HangfireImmediateOutboxProcessor`, `Humans.Email/Contracts/`) is the trigger for time-sensitive templates that need to fire the next job run immediately rather than wait for the recurring tick.
 <!-- wheat: docs/plans/2026-09-16-production-readiness.md §Promotion rehearsal and recovery record -->
 - Transport selection keys on the raw `Email:SmtpHost` setting (`Section.Register`), and `appsettings.json` defaults it to `smtp-relay.gmail.com`, so any host binds the real `SmtpEmailTransport` unless `Email:SmtpHost` is explicitly cleared. Removing SMTP credentials alone does not select `StubEmailTransport`.
 - A persisted `EmailMessage.DeliveryId` reuses that logical delivery's outbox primary key: retries are no-ops while the row exists, even if their payload changes. Only the first enqueue records queue metrics or triggers immediate processing. Ordinary sends without a delivery id receive a new id each time. Retention/erasure removes this deduplication history; `DoNotPersist` bypasses it, and SMTP delivery retains its existing retry semantics.
@@ -45,7 +45,7 @@
 | RecipientName | string? | Display name, max 256 characters to preserve accepted member names |
 | Subject | string | Email subject line |
 | HtmlBody | string | Rendered HTML body |
-| PlainTextBody | string? | Optional plain-text alternative; composed bodies retain action URLs, paragraph/heading/list/line-break separation, and table captions with tab-separated cells and one line per row |
+| PlainTextBody | string? | Optional plain-text alternative; composed bodies retain action URLs, paragraph/heading/list/line-break separation, and table captions with tab-separated cells and one line per row; when an unsubscribe URL is supplied, both HTML and plain text include the same localized label and URL, using the message culture rather than the ambient processing culture |
 | TemplateName | string | Template identifier used to render this message |
 | UserId | Guid? | Bare cross-section id (optional) — no FK constraint, no nav |
 | CampaignGrantId | Guid? | Bare cross-section id (CampaignGrant, Campaigns) — no FK constraint, no nav; status mirroring writes through `ICampaignWrite` |
@@ -171,6 +171,16 @@ The communication-preference routes moved from Users in decomposition commit 14 
 | HumanAdmin, Board, Admin (`HumanAdminBoardOrAdmin` policy) | See a human's preferences read-only on `/Users/Admin/{id}` (`CommunicationPreferencesCardViewComponent`, an `AdminDetail` user part at weight 210, admin mode only). View another human's outbox (`GET /Email/Admin/{id}/Outbox`), reached from the "Email Outbox" card on `/Users/Admin/{id}` that Email contributes there as an `AdminDetail` user part (`OutboxCardViewComponent`, shown only to a `HumanAdminBoardOrAdmin` viewer in admin mode). Everyone else gets the 403 from the controller and no card. |
 
 ## Invariants
+
+- Missing or empty unsubscribe tokens are invalid before Data Protection or user reads, including the new-category validator and legacy fallback. The anonymous one-click path refuses a missing token rather than surfacing a token-decoding exception.
+
+- An absent, empty or whitespace-only `Email:SmtpHost` selects the logging stub outside production. Production always selects SMTP and still boots: a missing host fails at send time with an `Email:SmtpHost` diagnostic, so persisted messages follow normal outbox failure/retry handling rather than being marked sent by the stub. The health check reports SMTP as unconfigured. A nonblank host selects SMTP in every environment.
+
+- Communication preferences expose unsubscribe headers, browser links and token validation; raw token generation stays in the token provider used by those live paths.
+
+- Preference labels and descriptions come from the localized Email resources; `ActiveCategories` is the UI roster. Retired enum names remain for stored preference and token compatibility, without separate unused display or deprecation helpers.
+
+- Guest and shared-panel preference rows use one section-internal projection for category defaults, channel values and editability. The panel adds update attribution; guest token highlighting and authorization remain controller-owned.
 
 - The template gallery requests samples for `CultureCatalog.SupportedCultureCodes`; it owns sample personas, not a second supported-language roster.
 

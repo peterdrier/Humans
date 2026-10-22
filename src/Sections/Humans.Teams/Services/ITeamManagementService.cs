@@ -8,6 +8,11 @@ using NodaTime;
 
 namespace Humans.Teams.Services;
 
+/// <summary>Teams-owned graph; member display data is resolved only when a caller reads it.</summary>
+internal sealed record TeamReadSnapshot(TeamInfo Team, IReadOnlyList<TeamMemberReference> Members);
+
+internal sealed record TeamMemberReference(Guid TeamMemberId, Guid UserId, TeamMemberRole Role, Instant JoinedAt);
+
 internal sealed record TeamPageCallToActionInput(string? Text, string? Url, CallToActionStyle Style);
 
 internal sealed record TeamPageUpdateResult(bool Succeeded, string? ErrorMessage)
@@ -68,6 +73,16 @@ internal sealed record TeamEarlyEntryGrantInfo(
 /// </summary>
 internal interface ITeamManagementService : ITeamManagement
 {
+    /// <summary>Loads Teams-owned facts without copying Users' display fields into the cache.</summary>
+    Task<IReadOnlyDictionary<Guid, TeamReadSnapshot>> GetTeamSnapshotsAsync(CancellationToken ct = default);
+
+    /// <summary>Builds canonical read models with current, merge-resolved member display data.</summary>
+    Task<IReadOnlyDictionary<Guid, TeamInfo>> ResolveTeamMembersAsync(
+        IReadOnlyDictionary<Guid, TeamReadSnapshot> teams, CancellationToken ct = default);
+
+    /// <summary>Evicts after the Teams system-membership reconciliation completes.</summary>
+    void InvalidateActiveTeamsCache();
+
     /// <summary><c>CachingTeamService</c> is the registered contributor.</summary>
     Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct);
 

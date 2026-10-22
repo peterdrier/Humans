@@ -251,9 +251,6 @@ internal sealed class CommunicationPreferenceService(
     private async Task<CommunicationPreference?> LegacyRowAsync(Guid userId, MessageCategory category, CancellationToken ct) =>
         LegacyRows(await userService.GetRawUserInfoAsync(userId, ct)).FirstOrDefault(l => l.Category == category);
 
-    public string GenerateUnsubscribeToken(Guid userId, MessageCategory category) =>
-        tokenProvider.GenerateToken(userId, category);
-
     public (TokenValidationStatus Status, Guid UserId, MessageCategory Category) ValidateUnsubscribeToken(string token) =>
         tokenProvider.ValidateToken(token);
 

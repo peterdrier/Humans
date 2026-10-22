@@ -45,7 +45,7 @@ inbox:
     review: panel
   - added: 2026-10-21
     id: USERS-22
-    what: "Drop users.LastConsentReminderSentAt (Users) and delete the User.LastConsentReminderSentAt entity property and its copy in UserInfoSaveChangesInterceptor. Replaced by data migration consent.reminder-stamps; blocked on CENTRAL-97 (the retirement PR) merged and deployed. The production done reading of consent.reminder-stamps (quoted with its date) is the standing approval in memory/architecture/no-drops-until-prod-verified.md; the drop is its own generated migration with a baseline entry in NoDestructiveMigrationOps.baseline.txt whose Approval line cites that reading and Evidence line cites the retirement PR."
+    what: "Drop users.LastConsentReminderSentAt (Users) and delete the User.LastConsentReminderSentAt entity property. Replaced by data migration consent.reminder-stamps; blocked on CENTRAL-97 (the retirement PR) merged and deployed. The production done reading of consent.reminder-stamps (quoted with its date) is the standing approval in memory/architecture/no-drops-until-prod-verified.md; the drop is its own generated migration with a baseline entry in NoDestructiveMigrationOps.baseline.txt whose Approval line cites that reading and Evidence line cites the retirement PR."
     review: panel
   - added: 2026-10-22
     id: USERS-23

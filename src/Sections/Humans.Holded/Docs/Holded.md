@@ -105,6 +105,8 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
 
 ## Invariants
 
+- Operator timestamps and ledger dates use the shared display formatters in Europe/Madrid time; monthly usage labels use the shared month/year formatter. Date ordering and month names follow the UI culture, and missing sync stamps still read "never".
+
 - Nightly sweep = one trailing **45-day** window anchored on *now* (accounting-date filter ⇒
   never anchor on the newest cached line); full sweep (inception → today) on cold cache or the
   Full sync button. Reconciliation catches anything older, so correctness does not depend on

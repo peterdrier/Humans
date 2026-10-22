@@ -189,7 +189,7 @@ public class ProfileEmailsControllerGridTests
         var expectedError = action is "SetPrimary" or "SetEmailVisibility" or "ClearPrimary"
             ? "Common_Error"
             : (string.Equals(action, "Unlink", StringComparison.Ordinal) || string.Equals(action, "DeleteEmail", StringComparison.Ordinal))
-                ? validationFailure ? "LinkedAccounts_UnlinkBlockedLastSignInMethod" : "Common_Error"
+                ? validationFailure ? "Users_LinkedAccounts_UnlinkBlockedLastSignInMethod" : "Common_Error"
                 : reason;
         _controller.TempData["ErrorMessage"].Should().Be(expectedError);
         var arguments = _logger.ReceivedCalls().Should().ContainSingle(call =>
@@ -217,14 +217,14 @@ public class ProfileEmailsControllerGridTests
             _authorizationService, _signInManager, Options.Create(new GoogleWorkspaceOptions()));
         var row = Guid.NewGuid();
         _userEmailService.VerifyEmailAsync(_userId, row, "token")
-            .Returns(new VerifyEmailResult(string.Empty, false, "Profile_InvalidVerificationLink"));
+            .Returns(new VerifyEmailResult(string.Empty, false, "Users_Profile_InvalidVerificationLink"));
 
         var result = await controller.VerifyEmail(_userId, row, "token");
 
         result.Should().BeOfType<ViewResult>().Which.ViewName.Should().Be("VerifyEmailResult");
         controller.ViewData["Success"].Should().Be(false);
-        controller.ViewData["Message"].Should().Be(localizer["Profile_InvalidVerificationLink"].Value);
-        controller.ViewData["Message"].Should().NotBe("Profile_InvalidVerificationLink");
+        controller.ViewData["Message"].Should().Be(localizer["Users_Profile_InvalidVerificationLink"].Value);
+        controller.ViewData["Message"].Should().NotBe("Users_Profile_InvalidVerificationLink");
     }
 
     [HumansTheory]
@@ -335,12 +335,12 @@ public class ProfileEmailsControllerGridTests
     {
         var emailId = Guid.NewGuid();
         _userEmailService.UnlinkAsync(_userId, emailId, _userId, Arg.Any<CancellationToken>())
-            .Returns(new UnlinkEmailResult(false, "LinkedAccounts_UnlinkBlockedLastSignInMethod"));
+            .Returns(new UnlinkEmailResult(false, "Users_LinkedAccounts_UnlinkBlockedLastSignInMethod"));
 
         var result = await _controller.Unlink(emailId, TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Emails");
-        _controller.TempData["ErrorMessage"].Should().Be("LinkedAccounts_UnlinkBlockedLastSignInMethod");
+        _controller.TempData["ErrorMessage"].Should().Be("Users_LinkedAccounts_UnlinkBlockedLastSignInMethod");
         await _userManager.DidNotReceive().RemoveLoginAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
@@ -699,14 +699,14 @@ public class ProfileEmailsControllerGridTests
     }
 
     [HumansTheory]
-    [InlineData("EmailGrid_DeleteRejectedHasProvider", false)]
-    [InlineData("EmailGrid_DeletePrimaryBlocked", false)]
+    [InlineData("Users_EmailGrid_DeleteRejectedHasProvider", false)]
+    [InlineData("Users_EmailGrid_DeletePrimaryBlocked", false)]
     [InlineData("Users_EmailDelete_LastVerifiedBlocked", false)]
-    [InlineData("EmailGrid_DeleteTicketLinkedBlocked", false)]
-    [InlineData("EmailGrid_DeleteRejectedHasProvider", true)]
-    [InlineData("EmailGrid_DeletePrimaryBlocked", true)]
+    [InlineData("Users_EmailGrid_DeleteTicketLinkedBlocked", false)]
+    [InlineData("Users_EmailGrid_DeleteRejectedHasProvider", true)]
+    [InlineData("Users_EmailGrid_DeletePrimaryBlocked", true)]
     [InlineData("Users_EmailDelete_LastVerifiedBlocked", true)]
-    [InlineData("EmailGrid_DeleteTicketLinkedBlocked", true)]
+    [InlineData("Users_EmailGrid_DeleteTicketLinkedBlocked", true)]
     public async Task DeleteEmail_ExpectedRefusal_IsLocalizedWithoutDeletionAudit(string errorKey, bool admin)
     {
         var emailId = Guid.NewGuid();
@@ -852,13 +852,13 @@ public class ProfileEmailsControllerGridTests
             ]);
         _userEmailService.UnlinkAsync(_userId, rowId, _userId, Arg.Any<CancellationToken>())
             .Returns(lastSignInMethod
-                ? Task.FromResult(new UnlinkEmailResult(false, "LinkedAccounts_UnlinkBlockedLastSignInMethod"))
+                ? Task.FromResult(new UnlinkEmailResult(false, "Users_LinkedAccounts_UnlinkBlockedLastSignInMethod"))
                 : Task.FromException<UnlinkEmailResult>(new InvalidOperationException("Private unlink operation diagnostic")));
 
         var result = await _controller.UnlinkLinkedAccount(provider, providerKey, TestContext.Current.CancellationToken);
 
         _controller.TempData["ErrorMessage"].Should().Be(lastSignInMethod
-            ? "LinkedAccounts_UnlinkBlockedLastSignInMethod" : "Common_Error");
+            ? "Users_LinkedAccounts_UnlinkBlockedLastSignInMethod" : "Common_Error");
 
         // The Identity login row must remain untouched — the service refused
         // before any mutation, and the controller never bypasses it.

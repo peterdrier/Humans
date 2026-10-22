@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 6
-inbox:
-  - added: 2026-10-21
-    id: SURVEYS-5
-    what: "ISurveyService.SubmitResponseAsync has no production caller (the wizard finalises through AdvanceWizardAsync, which shares PrepareSubmissionAsync/PersistResponseAsync); it survives only as the entry point of SurveyServiceTests' submission tests and throws where AdvanceWizardAsync returns outcomes. Port those tests onto AdvanceWizardAsync (or the shared private pipeline) and delete the member. Found by the section-doctor governance-cluster sweep via a repo-wide grep."
-    review: panel
+inbox: []

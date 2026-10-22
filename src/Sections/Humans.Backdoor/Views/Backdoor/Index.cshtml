@@ -1,5 +1,4 @@
 @model BackdoorKeysViewModel
-@using System.Globalization
 @using NodaTime
 @{
     ViewData["Title"] = "API keys";
@@ -7,7 +6,7 @@
 
     string Stamp(Instant? at) => at is null
         ? "never"
-        : at.Value.InZone(madrid).ToDateTimeUnspecified().ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture);
+        : at.Value.ToDateTime(madrid);
 }
 
 <page-header title="API keys" subtitle="Personal keys for /api/backdoor/*" />

@@ -207,10 +207,11 @@ public class NotificationInboxServiceTests : IDisposable
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
             {
-                [resolverId] = new(
-                    resolverId, "Resolver", false, "en", null, Instant.FromUnixTimeSeconds(0),
-                    null, null, null, null, null, null, null,
-                    null, null, null, [], [], [], null, []),
+                [resolverId] = new User
+                {
+                    Id = resolverId,
+                    BurnerName = "Resolver",
+                }.ToUserInfo(),
             }));
 
         var result = await _service.GetInboxAsync(

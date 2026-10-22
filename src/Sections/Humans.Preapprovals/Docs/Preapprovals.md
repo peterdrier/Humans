@@ -115,7 +115,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 |-------|--------------|
 | Member with a grant | See own grants on `/Preapprovals`; file an expense against an Open one before the deadline. |
 | Any member while a program accepts applications | All of the above. Additionally apply for a pre-approval; a second submit edits the pending one. |
-| Program manager | All of the above. Additionally, on their programs only: issue, issue to many (fixed kind), approve, decline, revoke, change an amount. Sees only their programs on the admin index. |
+| Program manager | All of the above. Additionally, on their programs only: issue, issue to many (fixed kind), approve, decline, revoke, change an amount. Sees only their programs on the admin index. In Expenses, does the first review (endorse, reject, decline a line) of reports filed against their programs' grants. |
 | Board, FinanceAdmin, Admin | All of the above on every program. Additionally create and edit programs, set the ceiling, name managers, close a program. |
 
 ## Invariants
@@ -208,7 +208,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - **Gdpr**: implements `IUserDataContributor`.
 - **Expenses** (consumer, PR 3 of the feature): `IPreapprovalWrite.ClaimAsync` / `ReleaseAsync` /
   `ConsumeAsync` inside its own `TransactionScope`; `IPreapprovalService.ListClaimableForUserAsync` /
-  `GetGrantAsync`.
+  `GetGrantAsync` / `ListManagedGrantIdsAsync`.
 
 ## Architecture
 
@@ -222,7 +222,7 @@ A `Contracts/` folder in the section (no leaf project: nothing Preapprovals refe
 
 | Interface | Methods | Notes |
 |---|---:|---|
-| `IPreapprovalService` (public) | 2 | `ListClaimableForUserAsync`, `GetGrantAsync`. Returns `GrantOption`, never entities. |
+| `IPreapprovalService` (public) | 3 | `ListClaimableForUserAsync`, `GetGrantAsync`, `ListManagedGrantIdsAsync` (the grants a named manager may first-review in Expenses). Returns `GrantOption` or ids, never entities. |
 | `IPreapprovalWrite` (public) | 3 | The three Expenses transitions `ClaimAsync` / `ReleaseAsync` / `ConsumeAsync` (returning `GrantStamp`). An interface rather than a view component because each must run inside the `TransactionScope` Expenses opens around its own status change. |
 | `IPreapprovalManagement : IPreapprovalService, IPreapprovalWrite` (internal) | all the rest | Administration, issuing, applying, approving, declining, revoking, reminders. |
 

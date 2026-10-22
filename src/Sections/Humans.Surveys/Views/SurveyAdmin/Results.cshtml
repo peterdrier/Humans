@@ -1,7 +1,7 @@
 @model SurveyResultsViewModel
 
 @{
-    ViewData["Title"] = Localizer["Survey_Admin_Results_Title"].Value;
+    ViewData["Title"] = Localizer["Surveys_Admin_Results_Title"].Value;
 
     static string StatusBadge(SurveyStatus s) => s switch
     {
@@ -9,15 +9,15 @@
         SurveyStatus.Closed => "bg-secondary",
         _ => "bg-warning text-dark",
     };
-    var untitled = Localizer["Survey_Admin_Results_Untitled"].Value;
+    var untitled = Localizer["Surveys_Admin_Results_Untitled"].Value;
 }
 
 <nav aria-label="@Localizer["Surveys_BreadcrumbNavigation"]">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item" authorize-policy="@Humans.Base.Authorization.PolicyNames.BoardOrAdmin"><a asp-controller="Admin" asp-action="Index">@Localizer["Survey_Admin_Common_AdminBreadcrumb"]</a></li>
-        <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Index">@Localizer["Survey_Admin_Index_Title"]</a></li>
+        <li class="breadcrumb-item" authorize-policy="@Humans.Base.Authorization.PolicyNames.BoardOrAdmin"><a asp-controller="Admin" asp-action="Index">@Localizer["Surveys_Admin_Common_AdminBreadcrumb"]</a></li>
+        <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Index">@Localizer["Surveys_Admin_Index_Title"]</a></li>
         <li class="breadcrumb-item" authorize-policy="@Humans.Base.Authorization.PolicyNames.BoardOrAdmin"><a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@Model.SurveyId">@(string.IsNullOrWhiteSpace(Model.Title) ? untitled : Model.Title)</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["Survey_Admin_Results_Breadcrumb"]</li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Surveys_Admin_Results_Breadcrumb"]</li>
     </ol>
 </nav>
 
@@ -27,8 +27,8 @@
         <span class="badge @StatusBadge(Model.Status)">@Localizer.EnumDisplay(Model.Status)</span>
         @if (!Model.IsEmbargoed)
         {
-            <a asp-controller="SurveyAdmin" asp-action="ExportCsv" asp-route-id="@Model.SurveyId" class="btn btn-outline-secondary btn-sm">@Localizer["Survey_Admin_Results_DownloadCsv"]</a>
-            <a asp-controller="SurveyAdmin" asp-action="ExportJson" asp-route-id="@Model.SurveyId" class="btn btn-outline-secondary btn-sm">@Localizer["Survey_Admin_Results_DownloadJson"]</a>
+            <a asp-controller="SurveyAdmin" asp-action="ExportCsv" asp-route-id="@Model.SurveyId" class="btn btn-outline-secondary btn-sm">@Localizer["Surveys_Admin_Results_DownloadCsv"]</a>
+            <a asp-controller="SurveyAdmin" asp-action="ExportJson" asp-route-id="@Model.SurveyId" class="btn btn-outline-secondary btn-sm">@Localizer["Surveys_Admin_Results_DownloadJson"]</a>
         }
     </div>
 </div>
@@ -36,28 +36,28 @@
 @if (Model.IsEmbargoed)
 {
     <div class="alert alert-info">
-        @Localizer["Survey_Admin_Results_EmbargoNotice"]
+        @Localizer["Surveys_Admin_Results_EmbargoNotice"]
     </div>
 }
 else
 {
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
     <div>
-        <strong>@Localizer["Survey_Admin_Results_QuestionResultsLabel"]</strong>
-        <span class="text-muted">@string.Format(Localizer["Survey_Admin_Results_ResponseCount"].Value, Model.SelectedResponseCount)</span>
+        <strong>@Localizer["Surveys_Admin_Results_QuestionResultsLabel"]</strong>
+        <span class="text-muted">@string.Format(Localizer["Surveys_Admin_Results_ResponseCount"].Value, Model.SelectedResponseCount)</span>
     </div>
-    <div class="btn-group" role="group" aria-label="@Localizer["Survey_Admin_Results_FilterAriaLabel"]">
+    <div class="btn-group" role="group" aria-label="@Localizer["Surveys_Admin_Results_FilterAriaLabel"]">
         <a asp-action="Results" asp-route-id="@Model.SurveyId" asp-route-scope="@SurveyResultsScope.Unique"
            class="btn btn-sm @(Model.Scope == SurveyResultsScope.Unique ? "btn-primary" : "btn-outline-primary")">
-            @Localizer["Survey_Admin_Results_ScopeUnique"]
+            @Localizer["Surveys_Admin_Results_ScopeUnique"]
         </a>
         <a asp-action="Results" asp-route-id="@Model.SurveyId" asp-route-scope="@SurveyResultsScope.Anonymous"
            class="btn btn-sm @(Model.Scope == SurveyResultsScope.Anonymous ? "btn-primary" : "btn-outline-primary")">
-            @Localizer["Survey_Admin_Results_ScopeAnonymous"]
+            @Localizer["Surveys_Admin_Results_ScopeAnonymous"]
         </a>
         <a asp-action="Results" asp-route-id="@Model.SurveyId" asp-route-scope="@SurveyResultsScope.Combined"
            class="btn btn-sm @(Model.Scope == SurveyResultsScope.Combined ? "btn-primary" : "btn-outline-primary")">
-            @Localizer["Survey_Admin_Results_ScopeCombined"]
+            @Localizer["Surveys_Admin_Results_ScopeCombined"]
         </a>
     </div>
 </div>
@@ -67,36 +67,36 @@ else
     <div class="col-sm-4">
         <div class="card h-100"><div class="card-body text-center">
             <div class="display-6">@Model.ResponseCount</div>
-            <div class="text-muted">@Localizer["Survey_Admin_Results_StatResponses"]</div>
+            <div class="text-muted">@Localizer["Surveys_Admin_Results_StatResponses"]</div>
         </div></div>
     </div>
     <div class="col-sm-4">
         <div class="card h-100"><div class="card-body text-center">
             <div class="display-6">@Model.InvitedCount</div>
-            <div class="text-muted">@Localizer["Survey_Admin_Results_StatInvited"]</div>
+            <div class="text-muted">@Localizer["Surveys_Admin_Results_StatInvited"]</div>
         </div></div>
     </div>
     <div class="col-sm-4">
         <div class="card h-100"><div class="card-body text-center">
             <div class="display-6">@(Model.InvitedCount > 0 ? $"{Model.ResponseRatePercent}%" : "—")</div>
-            <div class="text-muted">@Localizer["Survey_Admin_Results_StatResponseRate"]</div>
+            <div class="text-muted">@Localizer["Surveys_Admin_Results_StatResponseRate"]</div>
         </div></div>
     </div>
 </div>
 
-<h2 class="h5">@Localizer["Survey_Admin_Results_FunnelHeader"] <span class="text-muted fw-normal">@Localizer["Survey_Admin_Results_FunnelAllResponses"]</span></h2>
+<h2 class="h5">@Localizer["Surveys_Admin_Results_FunnelHeader"] <span class="text-muted fw-normal">@Localizer["Surveys_Admin_Results_FunnelAllResponses"]</span></h2>
 <div class="card mb-4">
     <div class="card-body">
         <div class="row">
             <div class="col-md-6">
-                <h3 class="h6 text-muted">@Localizer["Survey_Admin_Results_InviteLink"]</h3>
-                <p class="mb-1">@Localizer["Survey_Admin_Results_Started"] <strong>@Model.Funnel.LinkStarted</strong></p>
-                <p class="mb-0">@Localizer["Survey_Admin_Results_Finished"] <strong>@Model.Funnel.LinkFinished</strong></p>
+                <h3 class="h6 text-muted">@Localizer["Surveys_Admin_Results_InviteLink"]</h3>
+                <p class="mb-1">@Localizer["Surveys_Admin_Results_Started"] <strong>@Model.Funnel.LinkStarted</strong></p>
+                <p class="mb-0">@Localizer["Surveys_Admin_Results_Finished"] <strong>@Model.Funnel.LinkFinished</strong></p>
             </div>
             <div class="col-md-6">
-                <h3 class="h6 text-muted">@Localizer["Survey_Admin_Results_PublicLink"]</h3>
-                <p class="mb-1">@Localizer["Survey_Admin_Results_Started"] <strong>@Model.Funnel.SlugStarted</strong></p>
-                <p class="mb-0">@Localizer["Survey_Admin_Results_Finished"] <strong>@Model.Funnel.SlugFinished</strong></p>
+                <h3 class="h6 text-muted">@Localizer["Surveys_Admin_Results_PublicLink"]</h3>
+                <p class="mb-1">@Localizer["Surveys_Admin_Results_Started"] <strong>@Model.Funnel.SlugStarted</strong></p>
+                <p class="mb-0">@Localizer["Surveys_Admin_Results_Finished"] <strong>@Model.Funnel.SlugFinished</strong></p>
             </div>
         </div>
     </div>
@@ -104,10 +104,10 @@ else
 
 @if (!Model.IsEmbargoed)
 {
-<h2 class="h5">@Localizer["Survey_Admin_Results_QuestionsHeader"]</h2>
+<h2 class="h5">@Localizer["Surveys_Admin_Results_QuestionsHeader"]</h2>
 @if (Model.Questions.Count == 0)
 {
-    <p class="text-muted">@Localizer["Survey_Admin_Results_NoQuestions"]</p>
+    <p class="text-muted">@Localizer["Surveys_Admin_Results_NoQuestions"]</p>
 }
 @foreach (var q in Model.Questions)
 {
@@ -119,16 +119,16 @@ else
                 case SurveyQuestionType.RankedChoice:
                     @if (!Model.RankedQuestions.TryGetValue(q.QuestionId, out var ranked))
                     {
-                        <p class="text-muted mb-0">@Localizer["Survey_Admin_Results_NoRankedBallots"]</p>
+                        <p class="text-muted mb-0">@Localizer["Surveys_Admin_Results_NoRankedBallots"]</p>
                     }
                     else
                     {
-                        var noWinner = Localizer["Survey_Admin_Results_NoWinner"].Value;
+                        var noWinner = Localizer["Surveys_Admin_Results_NoWinner"].Value;
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
                                 <div class="card h-100">
                                     <div class="card-body">
-                                        <div class="text-muted small">@Localizer["Survey_Admin_Results_OriginalOfficialResult"]</div>
+                                        <div class="text-muted small">@Localizer["Surveys_Admin_Results_OriginalOfficialResult"]</div>
                                         <div class="h5 mb-0">@(ranked.OriginalOfficialResult.WinnerLabel ?? noWinner)</div>
                                     </div>
                                 </div>
@@ -136,7 +136,7 @@ else
                             <div class="col-md-6">
                                 <div class="card h-100">
                                     <div class="card-body">
-                                        <div class="text-muted small">@Localizer["Survey_Admin_Results_CurrentOfficialResult"]</div>
+                                        <div class="text-muted small">@Localizer["Surveys_Admin_Results_CurrentOfficialResult"]</div>
                                         <div class="h5 mb-0">@(ranked.CurrentOfficialResult.WinnerLabel ?? noWinner)</div>
                                     </div>
                                 </div>
@@ -157,18 +157,18 @@ else
                             var showingCurrentCycle = currentCycleLabels.Count > 0;
                             var cycleLabels = showingCurrentCycle ? currentCycleLabels : originalCycleLabels;
                             <div class="alert alert-info">
-                                <strong>@(showingCurrentCycle ? Localizer["Survey_Admin_Results_CycleDetectedAvailable"].Value : Localizer["Survey_Admin_Results_CycleDetectedAll"].Value)</strong>
+                                <strong>@(showingCurrentCycle ? Localizer["Surveys_Admin_Results_CycleDetectedAvailable"].Value : Localizer["Surveys_Admin_Results_CycleDetectedAll"].Value)</strong>
                                 @string.Join(" → ", cycleLabels).
                                 @if (showingCurrentCycle)
                                 {
-                                    <text>@Localizer["Survey_Admin_Results_CycleExplanationCurrent"]</text>
+                                    <text>@Localizer["Surveys_Admin_Results_CycleExplanationCurrent"]</text>
                                 }
                                 else
                                 {
-                                    <text>@Localizer["Survey_Admin_Results_CycleExplanationOriginal"]</text>
+                                    <text>@Localizer["Surveys_Admin_Results_CycleExplanationOriginal"]</text>
                                 }
                                 <a href="https://nobodies.team/event-dates-2027-voting-method.html#preference-cycles-and-availability"
-                                   target="_blank" rel="noopener noreferrer">@Localizer["Survey_Admin_Results_CycleLinkText"]</a>.
+                                   target="_blank" rel="noopener noreferrer">@Localizer["Surveys_Admin_Results_CycleLinkText"]</a>.
                             </div>
                         }
                         @if (!string.Equals(
@@ -177,21 +177,21 @@ else
                             StringComparison.Ordinal))
                         {
                             <div class="alert alert-warning py-2">
-                                @Localizer["Survey_Admin_Results_WinnerChanged"]
+                                @Localizer["Surveys_Admin_Results_WinnerChanged"]
                             </div>
                         }
 
-                        <h4 class="h6">@Localizer["Survey_Admin_Results_SensitivityHeader"]</h4>
+                        <h4 class="h6">@Localizer["Surveys_Admin_Results_SensitivityHeader"]</h4>
                         <div class="table-responsive mb-3">
                             <table class="table table-sm align-middle">
-                                <thead><tr><th>@Localizer["Survey_Admin_Results_ColumnMethod"]</th><th>@Localizer["Survey_Admin_Results_ColumnWinner"]</th><th>@Localizer["Survey_Admin_Results_ColumnNotes"]</th></tr></thead>
+                                <thead><tr><th>@Localizer["Surveys_Admin_Results_ColumnMethod"]</th><th>@Localizer["Surveys_Admin_Results_ColumnWinner"]</th><th>@Localizer["Surveys_Admin_Results_ColumnNotes"]</th></tr></thead>
                                 <tbody>
                                 @foreach (var method in ranked.Methods)
                                 {
                                     <tr class="@(method == ranked.CurrentOfficialResult ? "table-primary" : "")">
                                         <th scope="row">@Localizer[method.MethodKey]</th>
-                                        <td>@(method.WinnerLabel ?? Localizer["Survey_Admin_Results_NoUniqueWinner"].Value)</td>
-                                        <td>@(method.TieBreakUsed ? Localizer["Survey_Admin_Results_TieBreakApplied"].Value : "")</td>
+                                        <td>@(method.WinnerLabel ?? Localizer["Surveys_Admin_Results_NoUniqueWinner"].Value)</td>
+                                        <td>@(method.TieBreakUsed ? Localizer["Surveys_Admin_Results_TieBreakApplied"].Value : "")</td>
                                     </tr>
                                 }
                                 </tbody>
@@ -199,26 +199,26 @@ else
                         </div>
 
                         <details class="mb-3">
-                            <summary>@Localizer["Survey_Admin_Results_PairwiseSummary"]</summary>
+                            <summary>@Localizer["Surveys_Admin_Results_PairwiseSummary"]</summary>
                             <div class="table-responsive mt-2">
                                 <table class="table table-sm">
-                                    <thead><tr><th>@Localizer["Survey_Admin_Results_ColumnPair"]</th><th>@Localizer["Survey_Admin_Results_ColumnVotes"]</th></tr></thead>
+                                    <thead><tr><th>@Localizer["Surveys_Admin_Results_ColumnPair"]</th><th>@Localizer["Surveys_Admin_Results_ColumnVotes"]</th></tr></thead>
                                     <tbody>
                                     @foreach (var contest in ranked.Pairwise)
                                     {
                                         var first = ranked.Candidates.First(candidate => candidate.Value == contest.First).Label;
                                         var second = ranked.Candidates.First(candidate => candidate.Value == contest.Second).Label;
-                                        <tr><td>@first @Localizer["Survey_Admin_Results_VsSeparator"] @second</td><td>@contest.PreferFirst – @contest.PreferSecond</td></tr>
+                                        <tr><td>@first @Localizer["Surveys_Admin_Results_VsSeparator"] @second</td><td>@contest.PreferFirst – @contest.PreferSecond</td></tr>
                                     }
                                     </tbody>
                                 </table>
                             </div>
                         </details>
 
-                        <h4 class="h6">@Localizer["Survey_Admin_Results_RejectionsHeader"]</h4>
+                        <h4 class="h6">@Localizer["Surveys_Admin_Results_RejectionsHeader"]</h4>
                         <div class="table-responsive mb-3">
                             <table class="table table-sm">
-                                <thead><tr><th>@Localizer["Survey_Admin_Results_ColumnOption"]</th><th>@Localizer["Survey_Admin_Results_ColumnRejected"]</th><th>@Localizer["Survey_Admin_Results_ColumnStatus"]</th></tr></thead>
+                                <thead><tr><th>@Localizer["Surveys_Admin_Results_ColumnOption"]</th><th>@Localizer["Surveys_Admin_Results_ColumnRejected"]</th><th>@Localizer["Surveys_Admin_Results_ColumnStatus"]</th></tr></thead>
                                 <tbody>
                                 @foreach (var candidate in ranked.Candidates)
                                 {
@@ -228,7 +228,7 @@ else
                                         <td>
                                             @if (!candidate.IsAvailable)
                                             {
-                                                <span class="badge text-bg-warning">@Localizer["Survey_Admin_Results_NoLongerAvailable"]</span>
+                                                <span class="badge text-bg-warning">@Localizer["Surveys_Admin_Results_NoLongerAvailable"]</span>
                                             }
                                         </td>
                                     </tr>
@@ -244,8 +244,8 @@ else
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="questionId" value="@q.QuestionId" />
                                 <fieldset>
-                                    <legend class="h6">@Localizer["Survey_Admin_Results_UnavailableOptionsLegend"]</legend>
-                                    <p class="form-text">@Localizer["Survey_Admin_Results_UnavailableOptionsHelp"]</p>
+                                    <legend class="h6">@Localizer["Surveys_Admin_Results_UnavailableOptionsLegend"]</legend>
+                                    <p class="form-text">@Localizer["Surveys_Admin_Results_UnavailableOptionsHelp"]</p>
                                     @foreach (var candidate in ranked.Candidates)
                                     {
                                         <div class="form-check">
@@ -256,7 +256,7 @@ else
                                             <label class="form-check-label" for="unavailable-@q.QuestionId-@candidate.Value">@candidate.Label</label>
                                         </div>
                                     }
-                                    <button type="submit" class="btn btn-outline-primary btn-sm mt-2">@Localizer["Survey_Admin_Results_Recalculate"]</button>
+                                    <button type="submit" class="btn btn-outline-primary btn-sm mt-2">@Localizer["Surveys_Admin_Results_Recalculate"]</button>
                                 </fieldset>
                             </form>
                         }
@@ -267,7 +267,7 @@ else
                 case SurveyQuestionType.MultiChoice:
                     @if (q.OptionCounts.Count == 0)
                     {
-                        <p class="text-muted mb-0">@Localizer["Survey_Admin_Results_NoOptions"]</p>
+                        <p class="text-muted mb-0">@Localizer["Surveys_Admin_Results_NoOptions"]</p>
                     }
                     else
                     {
@@ -288,7 +288,7 @@ else
                     break;
 
                 case SurveyQuestionType.Rating:
-                    <p class="mb-2">@Localizer["Survey_Admin_Results_AverageLabel"] <strong>@(q.RatingAverage ?? "—")</strong></p>
+                    <p class="mb-2">@Localizer["Surveys_Admin_Results_AverageLabel"] <strong>@(q.RatingAverage ?? "—")</strong></p>
                     @foreach (var b in q.RatingDistribution)
                     {
                         var w = q.RatingMaxCount > 0 ? (int)Math.Round(100.0 * b.Count / q.RatingMaxCount) : 0;
@@ -307,7 +307,7 @@ else
                 case SurveyQuestionType.Grid:
                     @if (q.Grid is null || q.Grid.Rows.Count == 0 || q.Grid.Columns.Count == 0)
                     {
-                        <p class="text-muted mb-0">@Localizer["Survey_Admin_Results_GridNoRowsColumns"]</p>
+                        <p class="text-muted mb-0">@Localizer["Surveys_Admin_Results_GridNoRowsColumns"]</p>
                     }
                     else
                     {
@@ -315,7 +315,7 @@ else
                             <table class="table table-sm align-middle mb-0">
                                 <thead>
                                     <tr>
-                                        <th scope="col">@Localizer["Survey_Admin_Results_ColumnRow"]</th>
+                                        <th scope="col">@Localizer["Surveys_Admin_Results_ColumnRow"]</th>
                                         @foreach (var column in q.Grid.Columns)
                                         {
                                             <th scope="col" class="text-center">@column.Label</th>
@@ -346,7 +346,7 @@ else
                 default:
                     @if (q.FreeTextAnswers.Count == 0)
                     {
-                        <p class="text-muted mb-0">@Localizer["Survey_Admin_Results_NoFreeTextAnswers"]</p>
+                        <p class="text-muted mb-0">@Localizer["Surveys_Admin_Results_NoFreeTextAnswers"]</p>
                     }
                     else
                     {
@@ -365,10 +365,10 @@ else
 
 @if (Model.ShowIdentifiedRespondents)
 {
-    <h2 class="h5">@Localizer["Survey_Admin_Results_IdentifiedRespondentsHeader"]</h2>
+    <h2 class="h5">@Localizer["Surveys_Admin_Results_IdentifiedRespondentsHeader"]</h2>
     @if (Model.Respondents.Count == 0)
     {
-        <p class="text-muted">@Localizer["Survey_Admin_Results_NoIdentifiedRespondents"]</p>
+        <p class="text-muted">@Localizer["Surveys_Admin_Results_NoIdentifiedRespondents"]</p>
     }
     else
     {
@@ -397,13 +397,13 @@ else
 
 @if (Model.ShowUnattributedBallots)
 {
-    <h2 class="h5">@Localizer["Survey_Admin_Results_IndividualBallotsHeader"]</h2>
+    <h2 class="h5">@Localizer["Surveys_Admin_Results_IndividualBallotsHeader"]</h2>
     <p class="text-muted">
-        @Localizer["Survey_Admin_Results_BallotsPrivacyNote"]
+        @Localizer["Surveys_Admin_Results_BallotsPrivacyNote"]
     </p>
     @if (Model.UnattributedBallots.Count == 0)
     {
-        <p class="text-muted">@Localizer["Survey_Admin_Results_NoBallotsInView"]</p>
+        <p class="text-muted">@Localizer["Surveys_Admin_Results_NoBallotsInView"]</p>
     }
     else
     {
@@ -416,7 +416,7 @@ else
                 <div class="accordion-item">
                     <h3 class="accordion-header" id="@headingId">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="false" aria-controls="@collapseId">
-                            @string.Format(Localizer["Survey_Admin_Results_BallotLabel"].Value, i + 1)
+                            @string.Format(Localizer["Surveys_Admin_Results_BallotLabel"].Value, i + 1)
                         </button>
                     </h3>
                     <div id="@collapseId" class="accordion-collapse collapse" aria-labelledby="@headingId" data-bs-parent="#unattributed-ballots">
@@ -432,5 +432,5 @@ else
 }
 
 <div class="mt-3">
-    <a asp-controller="SurveyAdmin" asp-action="Index" class="btn btn-outline-secondary btn-sm">@Localizer["Survey_Admin_Results_BackToSurveys"]</a>
+    <a asp-controller="SurveyAdmin" asp-action="Index" class="btn btn-outline-secondary btn-sm">@Localizer["Surveys_Admin_Results_BackToSurveys"]</a>
 </div>

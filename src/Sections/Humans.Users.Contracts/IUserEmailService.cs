@@ -133,11 +133,6 @@ public interface IUserEmailService
         Guid userId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Users with no emails are absent.</summary>
-    Task<IReadOnlyDictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>> GetEntitiesByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken cancellationToken = default);
-
     /// <summary>Users with no notification target are absent.</summary>
     Task<IReadOnlyDictionary<Guid, string>> GetNotificationEmailsByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds,

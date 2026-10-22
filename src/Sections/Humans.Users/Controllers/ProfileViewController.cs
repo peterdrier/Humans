@@ -168,15 +168,8 @@ internal sealed class ProfileViewController(
     public async Task<IActionResult> Popover(Guid id, CancellationToken ct)
     {
         var info = await _userService.GetUserInfoAsync(id, ct);
-        if (info is null) return NotFound();
+        if (info?.Profile is null) return NotFound();
         id = info.Id; // memberships and camp below are keyed by the live id
-
-        var profile = info.Profile;
-        if (profile is null)
-        {
-            return PartialView("_HumanPopover",
-                ProfileSummaryViewModelBuilder.BuildWithoutProfile(info));
-        }
 
         var memberships = (await teamService.GetTeamsAsync(ct)).Values
             .Where(t => t.IsActive && t.SystemTeamType != SystemTeamType.Volunteers)

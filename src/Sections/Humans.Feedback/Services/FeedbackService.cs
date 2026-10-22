@@ -92,20 +92,8 @@ internal sealed class FeedbackService(
         await repository.SaveTrackedReportAsync(report, cancellationToken);
 
         // Audit after the business save so a rollback never leaves a ghost audit row.
-        if (actorUserId.HasValue)
-        {
-            await auditLogService.LogAsync(
-                AuditAction.FeedbackStatusChanged, AuditEntityTypes.FeedbackReport, id,
-                $"Feedback {id} status changed to {status}",
-                actorUserId.Value);
-        }
-        else
-        {
-            await auditLogService.LogAsync(
-                AuditAction.FeedbackStatusChanged, AuditEntityTypes.FeedbackReport, id,
-                $"Feedback {id} status changed to {status}",
-                "API");
-        }
+        await LogTriageMutationAsync(AuditAction.FeedbackStatusChanged, id,
+            $"Feedback {id} status changed to {status}", actorUserId);
 
         cache.Remove(BadgeCacheKey);
         return FeedbackMutationResult.Success;
@@ -135,18 +123,7 @@ internal sealed class FeedbackService(
 
         var description =
             $"Feedback {id} GitHub link: {(issueNumber.HasValue ? issueNumber.Value.ToString(CultureInfo.InvariantCulture) : "(cleared)")}";
-        if (actorUserId.HasValue)
-        {
-            await auditLogService.LogAsync(
-                AuditAction.FeedbackGitHubLinked, AuditEntityTypes.FeedbackReport, id,
-                description, actorUserId.Value);
-        }
-        else
-        {
-            await auditLogService.LogAsync(
-                AuditAction.FeedbackGitHubLinked, AuditEntityTypes.FeedbackReport, id,
-                description, "API");
-        }
+        await LogTriageMutationAsync(AuditAction.FeedbackGitHubLinked, id, description, actorUserId);
         return FeedbackMutationResult.Success;
     }
 
@@ -250,24 +227,18 @@ internal sealed class FeedbackService(
         await repository.SaveTrackedReportAsync(report, cancellationToken);
 
         var description = $"Feedback {id} assignment changed: {string.Join("; ", changes)}";
-        if (actorUserId.HasValue)
-        {
-            await auditLogService.LogAsync(
-                AuditAction.FeedbackAssignmentChanged, AuditEntityTypes.FeedbackReport, id,
-                description, actorUserId.Value);
-        }
-        else
-        {
-            await auditLogService.LogAsync(
-                AuditAction.FeedbackAssignmentChanged, AuditEntityTypes.FeedbackReport, id,
-                description, "API");
-        }
+        await LogTriageMutationAsync(AuditAction.FeedbackAssignmentChanged, id, description, actorUserId);
 
         logger.LogInformation(
             "Feedback {ReportId} assignment updated by {ActorId}: {Changes}",
             id, actorUserId?.ToString() ?? "API", string.Join("; ", changes));
         return FeedbackMutationResult.Success;
     }
+
+    private Task LogTriageMutationAsync(AuditAction action, Guid reportId, string description, Guid? actorUserId) =>
+        actorUserId is { } actor
+            ? auditLogService.LogAsync(action, AuditEntityTypes.FeedbackReport, reportId, description, actor)
+            : auditLogService.LogAsync(action, AuditEntityTypes.FeedbackReport, reportId, description, "API");
 
     public async Task<int> GetActionableCountAsync(
         CancellationToken cancellationToken = default) =>

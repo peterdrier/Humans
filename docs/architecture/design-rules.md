@@ -661,7 +661,7 @@ Only the section that owns a cache evicts it. There is no cross-section invalida
 
 - **Own writes:** the decorator evicts or replaces after delegating the write, or the inner service calls its own section's concrete decorator (the one §15c exception) when eviction has to happen at a specific point (e.g. before a sync that reads the fresh value). Neither crosses a section boundary.
 - **Another section's change makes the view stale:** use a signal the owner already receives (`IUserMerge`, `IUserDataContributor` erasure, its own writes), or read that data live from the other section's cached service instead of copying it into this cache. A cached copy of another section's data that nothing tells you about is a design smell; a short TTL is the fallback, not an invalidator.
-- If none of those fits, stop and ask Peter. Don't add an `I*Invalidator` or a cache-clearing method on an `I*Write` interface; `ITeamWrite.InvalidateActiveTeamsCache` is the one recorded exception (debt ledger CENTRAL-98).
+- If none of those fits, stop and ask Peter. Don't add an `I*Invalidator` or a cache-clearing method on an `I*Write` interface.
 
 ### 15f. Canonical Read-Model Naming
 

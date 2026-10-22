@@ -23,6 +23,23 @@ internal sealed class CommunicationPreferencesViewModel
 
 internal sealed class CategoryPreferenceItem
 {
+    private static CategoryPreferenceItem FromPreference(
+        MessageCategory category, CommunicationPreferenceSnapshot? preference, bool hasTicketOrder)
+    {
+        var locked = CommunicationPreferenceService.IsTicketingLocked(category, hasTicketOrder);
+        var editable = !category.IsAlwaysOn() && !locked;
+        return new CategoryPreferenceItem
+        {
+            Category = category,
+            // Missing Marketing rows default off, matching the send policy.
+            EmailEnabled = preference is null ? !category.DefaultOptedOut() : !preference.OptedOut,
+            AlertEnabled = preference?.InboxEnabled ?? true,
+            EmailEditable = editable,
+            AlertEditable = editable,
+            IsTicketingLocked = locked,
+        };
+    }
+
     public MessageCategory Category { get; set; }
 
     /// <summary>True means the member receives email: the inverse of <c>OptedOut</c>.</summary>
@@ -51,20 +68,10 @@ internal sealed class CategoryPreferenceItem
         return MessageCategoryExtensions.ActiveCategories.Select(category =>
         {
             var pref = prefsByCategory.GetValueOrDefault(category);
-            var isTicketingLocked = CommunicationPreferenceService.IsTicketingLocked(category, hasTicketOrder);
-            var editable = !category.IsAlwaysOn() && !isTicketingLocked;
-            return new CategoryPreferenceItem
-            {
-                Category = category,
-                // No row: the category's default, the same rule the send path applies.
-                EmailEnabled = pref is null ? !category.DefaultOptedOut() : !pref.OptedOut,
-                AlertEnabled = pref?.InboxEnabled ?? true,
-                EmailEditable = editable,
-                AlertEditable = editable,
-                IsTicketingLocked = isTicketingLocked,
-                UpdateSource = pref?.UpdateSource,
-                UpdatedAt = pref?.UpdatedAt,
-            };
+            var item = FromPreference(category, pref, hasTicketOrder);
+            item.UpdateSource = pref?.UpdateSource;
+            item.UpdatedAt = pref?.UpdatedAt;
+            return item;
         }).ToList();
     }
 }

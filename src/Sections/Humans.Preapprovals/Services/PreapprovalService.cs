@@ -63,6 +63,9 @@ internal sealed partial class PreapprovalService(
         return grant is null ? null : ToOption(grant);
     }
 
+    public async Task<IReadOnlySet<Guid>> ListManagedGrantIdsAsync(Guid userId, CancellationToken ct) =>
+        (await repository.GetGrantIdsOfManagedProgramsAsync(await AllIdsAsync(userId, ct), ct)).ToHashSet();
+
     public async Task<bool> HasAnythingForUserAsync(Guid userId, CancellationToken ct = default)
     {
         var ids = await AllIdsAsync(userId, ct);

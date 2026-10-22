@@ -142,7 +142,7 @@ public sealed class SurveyAdminControllerTests
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Which;
         redirect.ActionName.Should().Be(nameof(SurveyAdminController.Edit));
         redirect.RouteValues!["id"].Should().Be(id);
-        sut.TempData[TempDataKeys.ErrorMessage].Should().Be(localizer["Survey_Admin_Builder_Saved_TranslationFailed"].Value);
+        sut.TempData[TempDataKeys.ErrorMessage].Should().Be(localizer["Surveys_Admin_Builder_Saved_TranslationFailed"].Value);
         sut.ModelState.IsValid.Should().BeTrue();
         await surveys.Received(1).CreateAsync(Arg.Any<SurveyEditInput>(), actor, Arg.Any<CancellationToken>());
     }
@@ -712,8 +712,13 @@ public sealed class SurveyAdminControllerTests
         sut.TempData.Should().NotContainKey(TempDataKeys.SuccessMessage);
     }
 
-    [HumansFact]
-    public async Task Preview_denies_a_non_owner_non_boardOrAdmin_human_by_id()
+    [HumansTheory]
+    [Xunit.InlineData("intro")]
+    [Xunit.InlineData("page")]
+    [Xunit.InlineData("thank-you")]
+    [Xunit.InlineData("email")]
+    [Xunit.InlineData("send-email")]
+    public async Task Preview_denies_a_non_owner_non_boardOrAdmin_human_by_id(string route)
     {
         // Rehearsal reads the whole survey back, Drafts included — opening it to authors must not
         // open it to everyone with an account.
@@ -725,9 +730,19 @@ public sealed class SurveyAdminControllerTests
             .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Someone else's survey"), authorId));
         var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: strangerId, isBoardOrAdmin: false);
 
-        var result = await sut.Preview(surveyId, "en", Xunit.TestContext.Current.CancellationToken);
+        var previewEmails = Substitute.For<ISurveyPreviewEmailService>();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var result = route switch
+        {
+            "page" => await sut.PreviewPage(surveyId, "en", null, ct),
+            "thank-you" => await sut.PreviewThankYou(surveyId, "en", ct),
+            "email" => await sut.PreviewEmail(surveyId, previewEmails, ct),
+            "send-email" => await sut.SendPreviewEmail(surveyId, previewEmails, ct),
+            _ => await sut.Preview(surveyId, "en", ct),
+        };
 
         result.Should().BeOfType<ForbidResult>();
+        previewEmails.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

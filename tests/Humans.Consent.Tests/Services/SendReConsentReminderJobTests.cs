@@ -39,10 +39,9 @@ public sealed class SendReConsentReminderJobTests
         var first = MakeUser("first@example.com") with { PreferredLanguage = language };
         var next = MakeUser("next@example.com");
         var cooling = MakeUser("cooling@example.com");
-        var legacyCooling = MakeUser("legacy-cooling@example.com", now);
         var membership = Substitute.For<IMembershipCalculator>();
         membership.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>(), Arg.Any<Duration?>())
-            .Returns(new[] { first.Id, next.Id, cooling.Id, legacyCooling.Id });
+            .Returns(new[] { first.Id, next.Id, cooling.Id });
         var legal = Substitute.For<ILegalDocumentSyncManagement>();
         legal.GetRequiredVersionsAsync(Arg.Any<CancellationToken>()).Returns([]);
         var users = Substitute.For<IUserService>();
@@ -51,8 +50,7 @@ public sealed class SendReConsentReminderJobTests
             {
                 [first.Id] = first,
                 [next.Id] = next,
-                [cooling.Id] = cooling,
-                [legacyCooling.Id] = legacyCooling
+                [cooling.Id] = cooling
             });
         var reminderRepo = Substitute.For<IConsentReminderRepository>();
         reminderRepo.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -87,8 +85,6 @@ public sealed class SendReConsentReminderJobTests
         await reminderRepo.Received(1).UpsertAsync(next.Id, now, Arg.Any<CancellationToken>());
         await email.DidNotReceive().SendAsync(
             Arg.Is<EmailMessage>(m => m.RecipientEmail == cooling.Email), Arg.Any<CancellationToken>());
-        await email.DidNotReceive().SendAsync(
-            Arg.Is<EmailMessage>(m => m.RecipientEmail == legacyCooling.Email), Arg.Any<CancellationToken>());
         if (string.Equals(outcome, "success", StringComparison.Ordinal))
         {
             error.Should().BeNull();
@@ -136,11 +132,9 @@ public sealed class SendReConsentReminderJobTests
             Arg.Is<EmailMessage>(m => m.RecipientEmail == next.Email), Arg.Any<CancellationToken>());
     }
 
-    /// <summary>A member; <paramref name="legacySentAt"/> is the frozen users-column stamp the
-    /// reminder read falls back to until consent.reminder-stamps has copied it.</summary>
-    private static UserInfo MakeUser(string email, Instant? legacySentAt = null)
+    private static UserInfo MakeUser(string email)
     {
-        var user = new User { Id = Guid.NewGuid(), BurnerName = "Member", LastConsentReminderSentAt = legacySentAt };
+        var user = new User { Id = Guid.NewGuid(), BurnerName = "Member" };
         return UserInfo.Create(user,
             [new UserEmail { Id = Guid.NewGuid(), UserId = user.Id, Email = email, IsVerified = true, IsPrimary = true }],
             [], [], null, []);

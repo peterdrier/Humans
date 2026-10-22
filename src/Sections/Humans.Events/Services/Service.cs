@@ -647,16 +647,6 @@ internal sealed class EventService(
         CreatedAt = clock.GetCurrentInstant()
     };
 
-    private static Instant ToInstant(LocalDateTime localDateTime, DateTimeZone? tz)
-    {
-        if (tz == null)
-        {
-            var utc = DateTime.SpecifyKind(localDateTime.ToDateTimeUnspecified(), DateTimeKind.Utc);
-            return Instant.FromDateTimeUtc(utc);
-        }
-        return localDateTime.InZoneLeniently(tz).ToInstant();
-    }
-
     // Nothing public to contribute to the community calendar yet.
     public Task<IReadOnlyList<CalendarFeedItem>> GetPublicItemsForWindowAsync(Instant from, Instant to, CancellationToken ct) =>
         Task.FromResult<IReadOnlyList<CalendarFeedItem>>([]);

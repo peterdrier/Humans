@@ -196,16 +196,9 @@ internal sealed class EventsController(
         var user = await GetCurrentUserInfoAsync(ct);
         if (user == null) return Challenge();
 
-        var guideEvent = await guide.GetEventForModerationAsync(eventId, ct);
-        if (guideEvent is null || guideEvent.CampId != null) return NotFound();
-        if (guideEvent.SubmitterUserId != user.Id && !RoleChecks.IsEventsAdmin(User))
-            return Forbid();
-
-        if (!guideEvent.CanEdit)
-        {
-            SetError(localizer["Events_NotEditable"].Value);
-            return RedirectToAction(nameof(MySubmissions));
-        }
+        var editable = await RequireEditableIndividualEventAsync(eventId, user.Id, ct);
+        if (editable.Error is not null) return editable.Error;
+        var guideEvent = editable.Event!;
 
         var guideSettings = await guide.GetGuideSettingsAsync(ct);
         if (guideSettings == null)
@@ -245,16 +238,8 @@ internal sealed class EventsController(
         var user = await GetCurrentUserInfoAsync();
         if (user == null) return Challenge();
 
-        var guideEvent = await guide.GetEventForModerationAsync(eventId);
-        if (guideEvent is null || guideEvent.CampId != null) return NotFound();
-        if (guideEvent.SubmitterUserId != user.Id && !RoleChecks.IsEventsAdmin(User))
-            return Forbid();
-
-        if (!guideEvent.CanEdit)
-        {
-            SetError(localizer["Events_NotEditable"].Value);
-            return RedirectToAction(nameof(MySubmissions));
-        }
+        var editable = await RequireEditableIndividualEventAsync(eventId, user.Id);
+        if (editable.Error is not null) return editable.Error;
 
         var guideSettings = await guide.GetGuideSettingsAsync();
         if (guideSettings == null)
@@ -482,6 +467,21 @@ internal sealed class EventsController(
         };
 
         return View(model);
+    }
+
+    private async Task<(IActionResult? Error, EventInfo? Event)> RequireEditableIndividualEventAsync(
+        Guid eventId, Guid userId, CancellationToken ct = default)
+    {
+        var guideEvent = await guide.GetEventForModerationAsync(eventId, ct);
+        if (guideEvent is null || guideEvent.CampId != null) return (NotFound(), null);
+        if (guideEvent.SubmitterUserId != userId && !RoleChecks.IsEventsAdmin(User))
+            return (Forbid(), null);
+        if (!guideEvent.CanEdit)
+        {
+            SetError(localizer["Events_NotEditable"].Value);
+            return (RedirectToAction(nameof(MySubmissions)), null);
+        }
+        return (null, guideEvent);
     }
 
     private bool IsSubmissionOpen(EventGuideSettingsView? settings) =>

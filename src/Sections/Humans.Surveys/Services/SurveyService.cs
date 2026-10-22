@@ -211,26 +211,11 @@ internal sealed class SurveyService(
         var survey = new Survey
         {
             Id = surveyId,
-            Title = input.Title,
-            Intro = input.Intro,
-            ThankYou = input.ThankYou,
-            InvitationEmailSubject = invitationEmailSubject,
-            InvitationEmailMessage = invitationEmailMessage,
-            DefaultCulture = input.DefaultCulture,
-            AllowAnonymous = input.AllowAnonymous,
-            IsAsociadoVote = input.IsAsociadoVote,
             Status = SurveyStatus.Draft,
-            OpensAt = input.OpensAt,
-            ClosesAt = input.ClosesAt,
-            AudienceType = input.AudienceType,
-            AudienceTeamId = input.AudienceTeamId,
-            AudienceLoggedInSince = input.AudienceLoggedInSince,
-            PublicSlug = publicSlug,
             CreatedByUserId = actorUserId,
             CreatedAt = now,
-            UpdatedAt = now,
-            Questions = questions,
         };
+        ApplyEditableFields(survey, input, questions, invitationEmailSubject, invitationEmailMessage, publicSlug, now);
 
         try
         {
@@ -329,26 +314,8 @@ internal sealed class SurveyService(
             throw;
         }
 
-        var survey = new Survey
-        {
-            Id = surveyId,
-            Title = input.Title,
-            Intro = input.Intro,
-            ThankYou = input.ThankYou,
-            InvitationEmailSubject = invitationEmailSubject,
-            InvitationEmailMessage = invitationEmailMessage,
-            DefaultCulture = input.DefaultCulture,
-            AllowAnonymous = input.AllowAnonymous,
-            IsAsociadoVote = input.IsAsociadoVote,
-            OpensAt = input.OpensAt,
-            ClosesAt = input.ClosesAt,
-            AudienceType = input.AudienceType,
-            AudienceTeamId = input.AudienceTeamId,
-            AudienceLoggedInSince = input.AudienceLoggedInSince,
-            PublicSlug = publicSlug,
-            UpdatedAt = now,
-            Questions = questions,
-        };
+        var survey = new Survey { Id = surveyId };
+        ApplyEditableFields(survey, input, questions, invitationEmailSubject, invitationEmailMessage, publicSlug, now);
 
         // Diffed against the no-tracking snapshot so the audit trail names what changed.
         var changeSummary = DescribeSurveyChanges(existing, survey);
@@ -363,6 +330,28 @@ internal sealed class SurveyService(
         }
         await auditLog.LogAsync(AuditAction.SurveyUpdated, AuditEntityTypes.Survey, surveyId, changeSummary, actorUserId);
         return new(surveyId);
+    }
+
+    private static void ApplyEditableFields(
+        Survey survey, SurveyEditInput input, List<SurveyQuestion> questions,
+        LocalizedText invitationEmailSubject, LocalizedText invitationEmailMessage, string? publicSlug, Instant now)
+    {
+        survey.Title = input.Title;
+        survey.Intro = input.Intro;
+        survey.ThankYou = input.ThankYou;
+        survey.InvitationEmailSubject = invitationEmailSubject;
+        survey.InvitationEmailMessage = invitationEmailMessage;
+        survey.DefaultCulture = input.DefaultCulture;
+        survey.AllowAnonymous = input.AllowAnonymous;
+        survey.IsAsociadoVote = input.IsAsociadoVote;
+        survey.OpensAt = input.OpensAt;
+        survey.ClosesAt = input.ClosesAt;
+        survey.AudienceType = input.AudienceType;
+        survey.AudienceTeamId = input.AudienceTeamId;
+        survey.AudienceLoggedInSince = input.AudienceLoggedInSince;
+        survey.PublicSlug = publicSlug;
+        survey.UpdatedAt = now;
+        survey.Questions = questions;
     }
 
     /// <summary>
@@ -1054,25 +1043,6 @@ internal sealed class SurveyService(
             inputMethod,
             culture,
             ct);
-    }
-
-    public async Task SubmitResponseAsync(SurveySubmission submission, CancellationToken ct = default)
-    {
-        var prepared = await PrepareSubmissionAsync(submission, ct);
-        if (prepared.AlreadyCompleted)
-        {
-            throw new InvalidOperationException("This invitation has already submitted a response.");
-        }
-        if (prepared.MissingRequired.Count > 0)
-        {
-            throw new InvalidOperationException("Required survey questions are unanswered.");
-        }
-        if (prepared.InvalidAnswers.Count > 0)
-        {
-            throw new InvalidOperationException("Survey answers are invalid.");
-        }
-
-        await PersistResponseAsync(submission, prepared.VisibleAnswers, ct);
     }
 
     private async Task<SubmissionPreparation> PrepareSubmissionAsync(
@@ -2401,9 +2371,9 @@ internal sealed class SurveyService(
         if (!Enum.IsDefined(type.Value))
             return new("Surveys_Validation_AudienceUnsupported", "The selected survey audience is not supported.");
         if (type == SurveyAudienceType.Team && teamId is null)
-            return new("Survey_Admin_Builder_Error_TeamRequired", "A team is required for the Team audience.");
+            return new("Surveys_Admin_Builder_Error_TeamRequired", "A team is required for the Team audience.");
         if (type == SurveyAudienceType.LoggedInSince && loggedInSince is null)
-            return new("Survey_Admin_Builder_Error_LoggedInSinceRequired", "A cutoff date is required for the Logged in since audience.");
+            return new("Surveys_Admin_Builder_Error_LoggedInSinceRequired", "A cutoff date is required for the Logged in since audience.");
         return null;
     }
 

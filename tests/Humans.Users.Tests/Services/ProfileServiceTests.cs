@@ -54,7 +54,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             NullLogger<UserService>.Instance, AuditLog);
 
         _service = new ProfileService(
-            _userRepository, _userService,
+            _userRepository,
             _pictureStorage);
         _editor = new ProfileEditorService(
             _userService,
@@ -616,7 +616,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
         result.Succeeded.Should().BeFalse();
         result.ProfileId.Should().BeNull();
-        result.ErrorKey.Should().Be("Profile_BurnerCVRequired");
+        result.ErrorKey.Should().Be("Users_Profile_BurnerCVRequired");
         await _userService.DidNotReceiveWithAnyArgs().SaveProfileAsync(default, default!);
         (await Db.Profiles.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }

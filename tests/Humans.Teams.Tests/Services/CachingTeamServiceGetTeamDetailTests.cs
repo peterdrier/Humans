@@ -31,6 +31,19 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
     public CachingTeamServiceGetTeamDetailTests()
     {
         _innerTeamService = Substitute.For<ITeamManagementService>();
+        _innerTeamService.GetTeamSnapshotsAsync(Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                var teams = await _innerTeamService.GetTeamsAsync(call.Arg<CancellationToken>());
+                return (IReadOnlyDictionary<Guid, TeamReadSnapshot>)teams.ToDictionary(pair => pair.Key, pair => new TeamReadSnapshot(
+                    pair.Value, pair.Value.Members.Select(member => new TeamMemberReference(
+                        member.TeamMemberId, member.UserId, member.Role, member.JoinedAt)).ToList()));
+            });
+        _innerTeamService.ResolveTeamMembersAsync(
+                Arg.Any<IReadOnlyDictionary<Guid, TeamReadSnapshot>>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(
+                call.Arg<IReadOnlyDictionary<Guid, TeamReadSnapshot>>()
+                    .ToDictionary(pair => pair.Key, pair => pair.Value.Team)));
         _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         var userService = Substitute.For<IUserService>();
 

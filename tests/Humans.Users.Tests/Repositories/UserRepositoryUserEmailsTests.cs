@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Base.Extensions;
 using Humans.Users.Tests.Infrastructure;
 using Humans.Users.Data.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -59,6 +60,38 @@ public sealed class UserRepositoryUserEmailTests : IDisposable
         _dbContext.Dispose();
     }
 
-    // The Gmail-alias fallback in GetUserEmailsByEmailsAsync uses EF.Functions.ILike, which InMemory
-    // cannot evaluate; its identity key (GmailAliasEmailComparer) is covered in EmailNormalizationTests.
+    [HumansTheory]
+    [Xunit.InlineData("INDIGO@example.test", "indigo@example.test", true)]
+    [Xunit.InlineData("First.Last+tag@GoogleMail.Com", "firstlast@gmail.com", true)]
+    [Xunit.InlineData("firstlast@gmail.com", "FIRST.LAST+tag@googlemail.com", true)]
+    [Xunit.InlineData("person+tag@example.test", "person@example.test", false)]
+    [Xunit.InlineData("first.last@example.test", "firstlast@example.test", false)]
+    [Xunit.InlineData("alex_smith@example.test", "alexXsmith@example.test", false)]
+    [Xunit.InlineData("percent%name@example.test", "percentXname@example.test", false)]
+    public async Task BatchLookup_UsesLiteralCaseInsensitiveAndGmailIdentityRules(
+        string stored, string target, bool matches)
+    {
+        using var culture = new CultureScope("tr");
+        var row = new UserEmail { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), Email = stored };
+        _dbContext.UserEmails.Add(row);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _repo.GetUserEmailsByEmailsAsync([target], Xunit.TestContext.Current.CancellationToken);
+
+        result.Select(email => email.Id).Should().BeEquivalentTo(matches ? [row.Id] : Array.Empty<Guid>());
+    }
+
+    [HumansFact]
+    public async Task BatchLookup_ReturnsExactMatchesBeforeAliases_WithoutDuplicatingRows()
+    {
+        var alias = new UserEmail { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), Email = "first.last+tag@gmail.com" };
+        var exact = new UserEmail { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), Email = "firstlast@gmail.com" };
+        _dbContext.UserEmails.AddRange(alias, exact);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _repo.GetUserEmailsByEmailsAsync(
+            ["firstlast@gmail.com", "FIRSTLAST@gmail.com"], Xunit.TestContext.Current.CancellationToken);
+
+        result.Select(email => email.Id).Should().Equal(exact.Id, alias.Id);
+    }
 }

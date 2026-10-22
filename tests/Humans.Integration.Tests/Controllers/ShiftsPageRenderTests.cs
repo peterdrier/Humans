@@ -139,9 +139,9 @@ public class ShiftsPageRenderTests(HumansTestDatabase database) : IntegrationTes
         // One page per renderer: a section view, the two actions from ProfileController, and the moved controller.
         foreach (var (url, spanish) in new[]
                  {
-                     ("/Shifts/Dashboard", "Panel de turnos"),                    // ShiftDash_Title
-                     ("/Shifts/ShiftInfo", "Preferencias de turnos"),         // ShiftInfo_Title
-                     ("/Shifts/Dashboard/VolunteerTracking", "Seguimiento de Voluntarios"), // VolTrack_Title
+                     ("/Shifts/Dashboard", "Panel de turnos"),                    // Shifts_ShiftDash_Title
+                     ("/Shifts/ShiftInfo", "Preferencias de turnos"),         // Shifts_ShiftInfo_Title
+                     ("/Shifts/Dashboard/VolunteerTracking", "Seguimiento de Voluntarios"), // Shifts_VolTrack_Title
                  })
         {
             var response = await Client.GetAsync(url, ct);

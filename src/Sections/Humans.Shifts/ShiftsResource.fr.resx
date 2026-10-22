@@ -47,44 +47,44 @@
   <data name="Shifts_Pending" xml:space="preserve">
     <value>(en attente)</value>
   </data>
-  <data name="ShiftInfo_Title" xml:space="preserve">
+  <data name="Shifts_ShiftInfo_Title" xml:space="preserve">
     <value>Préférences de quarts</value>
   </data>
-  <data name="ShiftInfo_StepOf" xml:space="preserve">
+  <data name="Shifts_ShiftInfo_StepOf" xml:space="preserve">
     <value>Étape {0} sur {1}</value>
     <comment>{0} = current step, {1} = total steps</comment>
   </data>
-  <data name="ShiftInfo_SkillsTitle" xml:space="preserve">
+  <data name="Shifts_ShiftInfo_SkillsTitle" xml:space="preserve">
     <value>Qu'est-ce que vous savez faire ?</value>
   </data>
-  <data name="ShiftInfo_SkillsSubtitle" xml:space="preserve">
+  <data name="Shifts_ShiftInfo_SkillsSubtitle" xml:space="preserve">
     <value>Sélectionnez les compétences que vous souhaitez utiliser. Vous pouvez les modifier à tout moment.</value>
   </data>
-  <data name="ShiftInfo_WorkStyleTitle" xml:space="preserve">
+  <data name="Shifts_ShiftInfo_WorkStyleTitle" xml:space="preserve">
     <value>Comment aimez-vous travailler ?</value>
   </data>
-  <data name="ShiftInfo_WorkStyleSubtitle" xml:space="preserve">
+  <data name="Shifts_ShiftInfo_WorkStyleSubtitle" xml:space="preserve">
     <value>Aidez les coordinateurs à vous associer des quarts adaptés à votre style et disponibilité.</value>
   </data>
-  <data name="ShiftInfo_LanguagesTitle" xml:space="preserve">
+  <data name="Shifts_ShiftInfo_LanguagesTitle" xml:space="preserve">
     <value>Quelles langues parlez-vous ?</value>
   </data>
-  <data name="ShiftInfo_LanguagesSubtitle" xml:space="preserve">
+  <data name="Shifts_ShiftInfo_LanguagesSubtitle" xml:space="preserve">
     <value>Cela nous aide à vous placer dans des équipes où vous pouvez bien communiquer.</value>
   </data>
-  <data name="ShiftInfo_OtherSkills" xml:space="preserve">
+  <data name="Shifts_ShiftInfo_OtherSkills" xml:space="preserve">
     <value>Quelles autres compétences avez-vous ?</value>
   </data>
-  <data name="ShiftInfo_WorkTime" xml:space="preserve">
+  <data name="Shifts_ShiftInfo_WorkTime" xml:space="preserve">
     <value>Quand préférez-vous travailler ?</value>
   </data>
-  <data name="ShiftInfo_OtherPrefs" xml:space="preserve">
+  <data name="Shifts_ShiftInfo_OtherPrefs" xml:space="preserve">
     <value>Autres préférences</value>
   </data>
-  <data name="ShiftInfo_OtherLanguages" xml:space="preserve">
+  <data name="Shifts_ShiftInfo_OtherLanguages" xml:space="preserve">
     <value>Quelles autres langues parlez-vous ?</value>
   </data>
-  <data name="ShiftInfo_Continue" xml:space="preserve">
+  <data name="Shifts_ShiftInfo_Continue" xml:space="preserve">
     <value>Continuer</value>
   </data>
   <data name="Shifts_Title" xml:space="preserve">
@@ -384,780 +384,780 @@
   <data name="Shifts_ConfirmSignup_Conflicts_AllBlocked" xml:space="preserve">
     <value>On dirait que tu es déjà inscrit·e à un créneau chaque jour de cette plage, donc on ne peut en ajouter aucun.</value>
   </data>
-  <data name="ShiftDash_Title" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Title" xml:space="preserve">
     <value>Tableau de bord des quarts</value>
   </data>
-  <data name="ShiftDash_ShiftsCount" xml:space="preserve">
+  <data name="Shifts_ShiftDash_ShiftsCount" xml:space="preserve">
     <value>{0} quarts</value>
     <comment>{0} = count</comment>
   </data>
-  <data name="ShiftDash_Date" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Date" xml:space="preserve">
     <value>Date</value>
   </data>
-  <data name="ShiftDash_Department" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Department" xml:space="preserve">
     <value>Département</value>
   </data>
-  <data name="ShiftDash_AllDepartments" xml:space="preserve">
+  <data name="Shifts_ShiftDash_AllDepartments" xml:space="preserve">
     <value>Tous les départements</value>
   </data>
-  <data name="ShiftDash_Filter" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Filter" xml:space="preserve">
     <value>Filtrer</value>
   </data>
-  <data name="ShiftDash_Clear" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Clear" xml:space="preserve">
     <value>Effacer</value>
   </data>
-  <data name="ShiftDash_NoShiftsMatch" xml:space="preserve">
+  <data name="Shifts_ShiftDash_NoShiftsMatch" xml:space="preserve">
     <value>Aucun quart ne correspond aux filtres actuels.</value>
   </data>
-  <data name="ShiftDash_Shift" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Shift" xml:space="preserve">
     <value>Quart</value>
   </data>
-  <data name="ShiftDash_DateTime" xml:space="preserve">
+  <data name="Shifts_ShiftDash_DateTime" xml:space="preserve">
     <value>Date / Heure</value>
   </data>
-  <data name="ShiftDash_Slots" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Slots" xml:space="preserve">
     <value>Places</value>
   </data>
-  <data name="ShiftDash_Priority" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Priority" xml:space="preserve">
     <value>Priorité</value>
   </data>
-  <data name="ShiftDash_Voluntell" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Voluntell" xml:space="preserve">
     <value>Désignation d'office</value>
   </data>
-  <data name="ShiftDash_SearchHumans" xml:space="preserve">
+  <data name="Shifts_ShiftDash_SearchHumans" xml:space="preserve">
     <value>Rechercher des humans pour : {0}</value>
     <comment>{0} = shift/rota name</comment>
   </data>
-  <data name="ShiftDash_SearchPlaceholder" xml:space="preserve">
+  <data name="Shifts_ShiftDash_SearchPlaceholder" xml:space="preserve">
     <value>Tapez un nom (min. 2 caractères)...</value>
   </data>
-  <data name="ShiftDash_NoHumansFound" xml:space="preserve">
+  <data name="Shifts_ShiftDash_NoHumansFound" xml:space="preserve">
     <value>Aucun humans trouvé.</value>
   </data>
-  <data name="ShiftDash_SearchFailed" xml:space="preserve">
+  <data name="Shifts_ShiftDash_SearchFailed" xml:space="preserve">
     <value>La recherche a échoué.</value>
   </data>
-  <data name="ShiftDash_ScheduleConflict" xml:space="preserve">
+  <data name="Shifts_ShiftDash_ScheduleConflict" xml:space="preserve">
     <value>Conflit d'horaire</value>
   </data>
-  <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Overview_ShiftsFilled" xml:space="preserve">
     <value>Places remplies</value>
   </data>
-  <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Overview_TicketHolders" xml:space="preserve">
     <value>Détenteurs de billets</value>
   </data>
-  <data name="ShiftDash_Overview_TicketHoldersSubline" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Overview_TicketHoldersSubline" xml:space="preserve">
     <value>humans qui ont payé</value>
   </data>
-  <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve">
     <value>Humains détenteurs de billets</value>
   </data>
-  <data name="ShiftDash_Overview_EngagedSubline" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Overview_EngagedSubline" xml:space="preserve">
     <value>{0} humans ne se sont pas inscrits</value>
     <comment>{0} = count</comment>
   </data>
-  <data name="ShiftDash_Overview_NonTicketSignups" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Overview_NonTicketSignups" xml:space="preserve">
     <value>Inscriptions sans billet</value>
   </data>
-  <data name="ShiftDash_Overview_NonTicketSubline" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Overview_NonTicketSubline" xml:space="preserve">
     <value>inscrits sans billet (pour l'instant)</value>
   </data>
-  <data name="ShiftDash_Overview_StalePending" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Overview_StalePending" xml:space="preserve">
     <value>En attente anciens</value>
   </data>
-  <data name="ShiftDash_Overview_StaleSubline" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Overview_StaleSubline" xml:space="preserve">
     <value>en attente &gt; 3 jours</value>
   </data>
-  <data name="ShiftDash_Overview_TicketData_Hidden" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Overview_TicketData_Hidden" xml:space="preserve">
     <value>données billetterie non encore partagées</value>
   </data>
-  <data name="ShiftDash_PeriodFilter_Label" xml:space="preserve">
+  <data name="Shifts_ShiftDash_PeriodFilter_Label" xml:space="preserve">
     <value>Affichage :</value>
   </data>
-  <data name="ShiftDash_PeriodFilter_All" xml:space="preserve">
+  <data name="Shifts_ShiftDash_PeriodFilter_All" xml:space="preserve">
     <value>Tout</value>
   </data>
-  <data name="ShiftDash_PeriodFilter_BuildDays" xml:space="preserve">
+  <data name="Shifts_ShiftDash_PeriodFilter_BuildDays" xml:space="preserve">
     <value>Montage</value>
   </data>
-  <data name="ShiftDash_PeriodFilter_EventShifts" xml:space="preserve">
+  <data name="Shifts_ShiftDash_PeriodFilter_EventShifts" xml:space="preserve">
     <value>Événement</value>
   </data>
-  <data name="ShiftDash_PeriodFilter_Strike" xml:space="preserve">
+  <data name="Shifts_ShiftDash_PeriodFilter_Strike" xml:space="preserve">
     <value>Démontage</value>
   </data>
-  <data name="ShiftDash_SubPeriodFilter_Label" xml:space="preserve">
+  <data name="Shifts_ShiftDash_SubPeriodFilter_Label" xml:space="preserve">
     <value>Phase de montage :</value>
   </data>
-  <data name="ShiftDash_SubPeriodFilter_All" xml:space="preserve">
+  <data name="Shifts_ShiftDash_SubPeriodFilter_All" xml:space="preserve">
     <value>Tout le montage</value>
   </data>
-  <data name="ShiftDash_SubPeriodFilter_FirstCrew" xml:space="preserve">
+  <data name="Shifts_ShiftDash_SubPeriodFilter_FirstCrew" xml:space="preserve">
     <value>Première équipe</value>
   </data>
-  <data name="ShiftDash_SubPeriodFilter_SetupWeek" xml:space="preserve">
+  <data name="Shifts_ShiftDash_SubPeriodFilter_SetupWeek" xml:space="preserve">
     <value>Semaine de montage</value>
   </data>
-  <data name="ShiftDash_SubPeriodFilter_PreEventWeek" xml:space="preserve">
+  <data name="Shifts_ShiftDash_SubPeriodFilter_PreEventWeek" xml:space="preserve">
     <value>Semaine pré-événement</value>
   </data>
-  <data name="ShiftDash_SubPeriodFilter_FinishingWeekend" xml:space="preserve">
+  <data name="Shifts_ShiftDash_SubPeriodFilter_FinishingWeekend" xml:space="preserve">
     <value>Weekend de finition</value>
   </data>
-  <data name="ShiftDash_Departments_Title" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Departments_Title" xml:space="preserve">
     <value>Départements</value>
   </data>
-  <data name="ShiftDash_Departments_SortNote" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Departments_SortNote" xml:space="preserve">
     <value>triés par % de places remplies le plus bas en premier</value>
   </data>
-  <data name="ShiftDash_Countdown_Label" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Countdown_Label" xml:space="preserve">
     <value>Compte à rebours avant l'arrivée sur le terrain</value>
   </data>
-  <data name="ShiftDash_Countdown_Days" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Countdown_Days" xml:space="preserve">
     <value>{0} jours</value>
     <comment>{0} = whole days</comment>
   </data>
-  <data name="ShiftDash_Countdown_Weeks" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Countdown_Weeks" xml:space="preserve">
     <value>{0} semaines</value>
   </data>
-  <data name="ShiftDash_Countdown_WeeksAndDays" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Countdown_WeeksAndDays" xml:space="preserve">
     <value>{0} semaines et {1} jours</value>
   </data>
-  <data name="ShiftDash_Countdown_FirstDay" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Countdown_FirstDay" xml:space="preserve">
     <value>premier jour de montage: {0}</value>
   </data>
-  <data name="ShiftDash_Countdown_Today" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Countdown_Today" xml:space="preserve">
     <value>Aujourd'hui</value>
   </data>
-  <data name="ShiftDash_Countdown_InProgress" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Countdown_InProgress" xml:space="preserve">
     <value>Événement en cours — jour {0} depuis le début du montage</value>
   </data>
-  <data name="ShiftDash_DeptStaffingByDay_Title" xml:space="preserve">
+  <data name="Shifts_ShiftDash_DeptStaffingByDay_Title" xml:space="preserve">
     <value>Présence sur le terrain par jour</value>
   </data>
-  <data name="ShiftDash_DeptStaffingByDay_Subtitle" xml:space="preserve">
+  <data name="Shifts_ShiftDash_DeptStaffingByDay_Subtitle" xml:space="preserve">
     <value>empilé par département — inscriptions confirmées uniquement</value>
   </data>
-  <data name="ShiftDash_DurationMix_Title" xml:space="preserve">
+  <data name="Shifts_ShiftDash_DurationMix_Title" xml:space="preserve">
     <value>Mixage des durées de shifts</value>
   </data>
-  <data name="ShiftDash_DurationMix_Subtitle" xml:space="preserve">
+  <data name="Shifts_ShiftDash_DurationMix_Subtitle" xml:space="preserve">
     <value>répartition des shifts entre journée complète et horaire, pour cette période</value>
   </data>
-  <data name="ShiftDash_DurationMix_Col_Duration" xml:space="preserve">
+  <data name="Shifts_ShiftDash_DurationMix_Col_Duration" xml:space="preserve">
     <value>Durée</value>
   </data>
-  <data name="ShiftDash_DurationMix_Col_Slots" xml:space="preserve">
+  <data name="Shifts_ShiftDash_DurationMix_Col_Slots" xml:space="preserve">
     <value>Créneaux</value>
   </data>
-  <data name="ShiftDash_DurationMix_Col_Filled" xml:space="preserve">
+  <data name="Shifts_ShiftDash_DurationMix_Col_Filled" xml:space="preserve">
     <value>Remplis</value>
   </data>
-  <data name="ShiftDash_DurationMix_Col_Pct" xml:space="preserve">
+  <data name="Shifts_ShiftDash_DurationMix_Col_Pct" xml:space="preserve">
     <value>%</value>
   </data>
-  <data name="ShiftDash_DurationMix_FullDay" xml:space="preserve">
+  <data name="Shifts_ShiftDash_DurationMix_FullDay" xml:space="preserve">
     <value>Journée complète</value>
   </data>
-  <data name="ShiftDash_DurationMix_HourLabel" xml:space="preserve">
+  <data name="Shifts_ShiftDash_DurationMix_HourLabel" xml:space="preserve">
     <value>{0} h</value>
     <comment>{0} = whole hours</comment>
   </data>
-  <data name="ShiftDash_DurationMix_Total" xml:space="preserve">
+  <data name="Shifts_ShiftDash_DurationMix_Total" xml:space="preserve">
     <value>Total</value>
   </data>
-  <data name="ShiftDash_Heatmap_Title" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Heatmap_Title" xml:space="preserve">
     <value>Carte thermique de couverture</value>
   </data>
-  <data name="ShiftDash_Heatmap_Subtitle" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Heatmap_Subtitle" xml:space="preserve">
     <value>remplissage des créneaux par planning par jour — vert = 80%+, jaune = 60–79%, rouge = en dessous, gris = pas de shift ce jour-là</value>
   </data>
-  <data name="ShiftDash_Heatmap_Col_Team" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Heatmap_Col_Team" xml:space="preserve">
     <value>Équipe</value>
   </data>
-  <data name="ShiftDash_Heatmap_Tooltip_Filled" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Heatmap_Tooltip_Filled" xml:space="preserve">
     <value>{0} — {1} / {2} places occupées</value>
   </data>
-  <data name="ShiftDash_Heatmap_Tooltip_None" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Heatmap_Tooltip_None" xml:space="preserve">
     <value>{0} — aucun tour ce jour-là</value>
   </data>
-  <data name="ShiftDash_Heatmap_Legend" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Heatmap_Legend" xml:space="preserve">
     <value>Survolez une cellule pour les détails. Faites défiler horizontalement pour voir tous les jours.</value>
   </data>
-  <data name="ShiftDash_Departments_Col_Department" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Departments_Col_Department" xml:space="preserve">
     <value>Département</value>
   </data>
-  <data name="ShiftDash_Departments_Col_Total" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Departments_Col_Total" xml:space="preserve">
     <value>Total</value>
   </data>
-  <data name="ShiftDash_Departments_Col_Filled" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Departments_Col_Filled" xml:space="preserve">
     <value>Remplis</value>
   </data>
-  <data name="ShiftDash_Departments_Col_Pct" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Departments_Col_Pct" xml:space="preserve">
     <value>%</value>
   </data>
-  <data name="ShiftDash_Departments_Col_SlotsRemaining" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Departments_Col_SlotsRemaining" xml:space="preserve">
     <value>Places restantes</value>
   </data>
-  <data name="ShiftDash_Departments_Col_Period" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Departments_Col_Period" xml:space="preserve">
     <value>Période</value>
   </data>
-  <data name="ShiftDash_Departments_Direct" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Departments_Direct" xml:space="preserve">
     <value>Direct</value>
   </data>
-  <data name="ShiftDash_Coordinators_Title" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Coordinators_Title" xml:space="preserve">
     <value>Activité des coordinateurs</value>
   </data>
-  <data name="ShiftDash_Coordinators_Subtitle" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Coordinators_Subtitle" xml:space="preserve">
     <value>équipes avec inscriptions en attente, connexion la plus ancienne d'abord</value>
   </data>
-  <data name="ShiftDash_Coordinators_Col_Team" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Coordinators_Col_Team" xml:space="preserve">
     <value>Équipe</value>
   </data>
-  <data name="ShiftDash_Coordinators_Col_Coordinators" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Coordinators_Col_Coordinators" xml:space="preserve">
     <value>Coordinateurs</value>
   </data>
-  <data name="ShiftDash_Coordinators_Col_Pending" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Coordinators_Col_Pending" xml:space="preserve">
     <value>En attente</value>
   </data>
-  <data name="ShiftDash_Coordinators_NoCoordinators" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Coordinators_NoCoordinators" xml:space="preserve">
     <value>pas de coordinateurs</value>
   </data>
-  <data name="ShiftDash_Coordinators_Never" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Coordinators_Never" xml:space="preserve">
     <value>jamais</value>
   </data>
-  <data name="ShiftDash_Coordinators_MinutesAgo" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Coordinators_MinutesAgo" xml:space="preserve">
     <value>il y a {0} min</value>
     <comment>{0} = minutes</comment>
   </data>
-  <data name="ShiftDash_Coordinators_HoursAgo" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Coordinators_HoursAgo" xml:space="preserve">
     <value>il y a {0} h</value>
     <comment>{0} = hours</comment>
   </data>
-  <data name="ShiftDash_Coordinators_DaysAgo" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Coordinators_DaysAgo" xml:space="preserve">
     <value>il y a {0} j</value>
     <comment>{0} = days</comment>
   </data>
-  <data name="ShiftDash_Coordinators_DirectPending" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Coordinators_DirectPending" xml:space="preserve">
     <value>{0} directs</value>
     <comment>{0} = pending count at this team level only</comment>
   </data>
-  <data name="ShiftDash_Trends_Title" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Trends_Title" xml:space="preserve">
     <value>Tendances</value>
   </data>
-  <data name="ShiftDash_Trends_Window_7d" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Trends_Window_7d" xml:space="preserve">
     <value>7j</value>
   </data>
-  <data name="ShiftDash_Trends_Window_30d" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Trends_Window_30d" xml:space="preserve">
     <value>30j</value>
   </data>
-  <data name="ShiftDash_Trends_Window_90d" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Trends_Window_90d" xml:space="preserve">
     <value>90j</value>
   </data>
-  <data name="ShiftDash_Trends_Window_All" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Trends_Window_All" xml:space="preserve">
     <value>Tout</value>
   </data>
-  <data name="ShiftDash_Trends_NewSignups" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Trends_NewSignups" xml:space="preserve">
     <value>Nouvelles inscriptions</value>
   </data>
-  <data name="ShiftDash_Trends_NewTicketSales" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Trends_NewTicketSales" xml:space="preserve">
     <value>Nouvelles ventes de billets</value>
   </data>
-  <data name="ShiftDash_Trends_DAU" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Trends_DAU" xml:space="preserve">
     <value>Connexions uniques (DAU)</value>
   </data>
-  <data name="ShiftDash_Trends_DAUNote" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Trends_DAUNote" xml:space="preserve">
     <value>Seule la dernière connexion par human est stockée — les périodes anciennes sont sous-comptées.</value>
   </data>
-  <data name="ShiftDash_Status_OnTrack" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Status_OnTrack" xml:space="preserve">
     <value>En bonne voie</value>
   </data>
-  <data name="ShiftDash_Status_AtRisk" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Status_AtRisk" xml:space="preserve">
     <value>À risque</value>
   </data>
-  <data name="ShiftDash_Status_BelowTarget" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Status_BelowTarget" xml:space="preserve">
     <value>En dessous de l'objectif</value>
   </data>
-  <data name="ShiftDash_Coordinators_StaleLabel" xml:space="preserve">
+  <data name="Shifts_ShiftDash_Coordinators_StaleLabel" xml:space="preserve">
     <value>Inactif depuis plus de 7 jours</value>
   </data>
-  <data name="VolTrack_Title" xml:space="preserve">
+  <data name="Shifts_VolTrack_Title" xml:space="preserve">
     <value>Suivi des Volontaires</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_NoActiveEvent" xml:space="preserve">
+  <data name="Shifts_VolTrack_NoActiveEvent" xml:space="preserve">
     <value>Aucun événement actif.</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_AllClear" xml:space="preserve">
+  <data name="Shifts_VolTrack_AllClear" xml:space="preserve">
     <value>Tout le monde est à jour.</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_UnknownUser" xml:space="preserve">
+  <data name="Shifts_VolTrack_UnknownUser" xml:space="preserve">
     <value>(inconnu)</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_AsOfToday" xml:space="preserve">
+  <data name="Shifts_VolTrack_AsOfToday" xml:space="preserve">
     <value>En date du {0}</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Counts_MainTotal" xml:space="preserve">
+  <data name="Shifts_VolTrack_Counts_MainTotal" xml:space="preserve">
     <value>Bénévoles suivis</value>
   </data>
-  <data name="VolTrack_Counts_WithGaps" xml:space="preserve">
+  <data name="Shifts_VolTrack_Counts_WithGaps" xml:space="preserve">
     <value>Avec des trous</value>
   </data>
-  <data name="VolTrack_Counts_OnCampSetup" xml:space="preserve">
+  <data name="Shifts_VolTrack_Counts_OnCampSetup" xml:space="preserve">
     <value>En montage de camp aujourd'hui</value>
   </data>
-  <data name="VolTrack_Counts_Unbooked" xml:space="preserve">
+  <data name="Shifts_VolTrack_Counts_Unbooked" xml:space="preserve">
     <value>Déclarés mais non réservés</value>
   </data>
-  <data name="VolTrack_Export_Title" xml:space="preserve">
+  <data name="Shifts_VolTrack_Export_Title" xml:space="preserve">
     <value>Exporter la grille des b&#xE9;n&#xE9;voles</value>
   </data>
-  <data name="VolTrack_Export_Department" xml:space="preserve">
+  <data name="Shifts_VolTrack_Export_Department" xml:space="preserve">
     <value>D&#xE9;partement</value>
   </data>
-  <data name="VolTrack_Export_AllDepartments" xml:space="preserve">
+  <data name="Shifts_VolTrack_Export_AllDepartments" xml:space="preserve">
     <value>Tous les d&#xE9;partements</value>
   </data>
-  <data name="VolTrack_Export_Period" xml:space="preserve">
+  <data name="Shifts_VolTrack_Export_Period" xml:space="preserve">
     <value>P&#xE9;riode</value>
   </data>
-  <data name="VolTrack_Export_PeriodCustom" xml:space="preserve">
+  <data name="Shifts_VolTrack_Export_PeriodCustom" xml:space="preserve">
     <value>Plage personnalis&#xE9;e</value>
   </data>
-  <data name="VolTrack_Export_From" xml:space="preserve">
+  <data name="Shifts_VolTrack_Export_From" xml:space="preserve">
     <value>Du</value>
   </data>
-  <data name="VolTrack_Export_To" xml:space="preserve">
+  <data name="Shifts_VolTrack_Export_To" xml:space="preserve">
     <value>Au</value>
   </data>
-  <data name="VolTrack_Export_Download" xml:space="preserve">
+  <data name="Shifts_VolTrack_Export_Download" xml:space="preserve">
     <value>T&#xE9;l&#xE9;charger le XLSX</value>
   </data>
-  <data name="VolTrack_Export_Methodology" xml:space="preserve">
+  <data name="Shifts_VolTrack_Export_Methodology" xml:space="preserve">
     <value>Lignes = humans ayant &#x2265;1 cr&#xE9;neau confirm&#xE9; sur la p&#xE9;riode. Couleur de cellule = l'&#xE9;quipe avec laquelle ils ont travaill&#xE9; le plus d'heures ce jour-l&#xE0;. Cellule blanche = jour pr&#xE9;c&#xE9;dant leur premier cr&#xE9;neau confirm&#xE9; (jour d'arriv&#xE9;e). Ligne des totaux = humans pr&#xE9;sents sur place ce jour-l&#xE0; (utilis&#xE9; pour le d&#xE9;compte des repas). Les noms affich&#xE9;s sont des noms de playa.</value>
   </data>
-  <data name="VolTrack_Filter_HideNoGaps" xml:space="preserve">
+  <data name="Shifts_VolTrack_Filter_HideNoGaps" xml:space="preserve">
     <value>Masquer les bénévoles sans trous</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Filter_HideCampSetup" xml:space="preserve">
+  <data name="Shifts_VolTrack_Filter_HideCampSetup" xml:space="preserve">
     <value>Masquer les bénévoles avec une date de montage de camp</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Filter_HideUnbookedSection" xml:space="preserve">
+  <data name="Shifts_VolTrack_Filter_HideUnbookedSection" xml:space="preserve">
     <value>Masquer la section déclarés mais non réservés</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Filter_Apply" xml:space="preserve">
+  <data name="Shifts_VolTrack_Filter_Apply" xml:space="preserve">
     <value>Appliquer</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Filter_Active" xml:space="preserve">
+  <data name="Shifts_VolTrack_Filter_Active" xml:space="preserve">
     <value>Filtres actifs</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Filter_Clear" xml:space="preserve">
+  <data name="Shifts_VolTrack_Filter_Clear" xml:space="preserve">
     <value>Effacer les filtres</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Main_Title" xml:space="preserve">
+  <data name="Shifts_VolTrack_Main_Title" xml:space="preserve">
     <value>Trous d'emploi du temps</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Main_Subtitle" xml:space="preserve">
+  <data name="Shifts_VolTrack_Main_Subtitle" xml:space="preserve">
     <value>{0} bénévoles affichés</value>
     <comment>{0} = count</comment>
   </data>
-  <data name="VolTrack_Main_Empty" xml:space="preserve">
+  <data name="Shifts_VolTrack_Main_Empty" xml:space="preserve">
     <value>Aucun bénévole avec des inscriptions en période de montage.</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Search_Placeholder" xml:space="preserve">
+  <data name="Shifts_VolTrack_Search_Placeholder" xml:space="preserve">
     <value>Rechercher par nom ou nom de playa…</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Search_NoMatch" xml:space="preserve">
+  <data name="Shifts_VolTrack_Search_NoMatch" xml:space="preserve">
     <value>Aucun bénévole ne correspond à « {0} ».</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Col_Volunteer" xml:space="preserve">
+  <data name="Shifts_VolTrack_Col_Volunteer" xml:space="preserve">
     <value>Bénévole</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_GapBadge" xml:space="preserve">
+  <data name="Shifts_VolTrack_GapBadge" xml:space="preserve">
     <value>{0} trous</value>
     <comment>{0} = count</comment>
   </data>
-  <data name="VolTrack_CampSetupTooltip" xml:space="preserve">
+  <data name="Shifts_VolTrack_CampSetupTooltip" xml:space="preserve">
     <value>En montage de camp depuis le {0}</value>
     <comment>{0} = date</comment>
   </data>
-  <data name="VolTrack_Unbooked_Heading" xml:space="preserve">
+  <data name="Shifts_VolTrack_Unbooked_Heading" xml:space="preserve">
     <value>Déclarés participants, pas encore réservés</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Unbooked_Subtitle" xml:space="preserve">
+  <data name="Shifts_VolTrack_Unbooked_Subtitle" xml:space="preserve">
     <value>Bénévoles ayant indiqué leur présence et leurs disponibilités, mais qui ne se sont inscrits à aucun créneau.</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Unbooked_Title" xml:space="preserve">
+  <data name="Shifts_VolTrack_Unbooked_Title" xml:space="preserve">
     <value>Disponibles mais non réservés</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Unbooked_Subtitle_Count" xml:space="preserve">
+  <data name="Shifts_VolTrack_Unbooked_Subtitle_Count" xml:space="preserve">
     <value>{0} bénévoles affichés</value>
     <comment>{0} = count</comment>
   </data>
-  <data name="VolTrack_Unbooked_Empty" xml:space="preserve">
+  <data name="Shifts_VolTrack_Unbooked_Empty" xml:space="preserve">
     <value>Aucun bénévole déclaré mais non réservé.</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_AvailableDaysBadge" xml:space="preserve">
+  <data name="Shifts_VolTrack_AvailableDaysBadge" xml:space="preserve">
     <value>{0} dispo.</value>
     <comment>{0} = count</comment>
   </data>
-  <data name="VolTrack_AvailableDaysTooltip" xml:space="preserve">
+  <data name="Shifts_VolTrack_AvailableDaysTooltip" xml:space="preserve">
     <value>Jours disponibles pendant la période de montage</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_UnbookedBadge" xml:space="preserve">
+  <data name="Shifts_VolTrack_UnbookedBadge" xml:space="preserve">
     <value>{0} non réservés</value>
     <comment>{0} = count</comment>
   </data>
-  <data name="VolTrack_UnbookedTooltip" xml:space="preserve">
+  <data name="Shifts_VolTrack_UnbookedTooltip" xml:space="preserve">
     <value>Jours disponibles non réservés</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_State_DayOff" xml:space="preserve">
+  <data name="Shifts_VolTrack_State_DayOff" xml:space="preserve">
     <value>Jour de repos</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Legend_DayOff" xml:space="preserve">
+  <data name="Shifts_VolTrack_Legend_DayOff" xml:space="preserve">
     <value>Jour de repos (validé)</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Popover_MarkDayOff" xml:space="preserve">
+  <data name="Shifts_VolTrack_Popover_MarkDayOff" xml:space="preserve">
     <value>Marquer comme jour de repos</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Popover_CancelDayOff" xml:space="preserve">
+  <data name="Shifts_VolTrack_Popover_CancelDayOff" xml:space="preserve">
     <value>Annuler le jour de repos</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Popover_ReasonLabel" xml:space="preserve">
+  <data name="Shifts_VolTrack_Popover_ReasonLabel" xml:space="preserve">
     <value>Raison (facultatif)</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Popover_DayOffBlockedBySignups" xml:space="preserve">
+  <data name="Shifts_VolTrack_Popover_DayOffBlockedBySignups" xml:space="preserve">
     <value>Annuler cette inscription avant de marquer un jour de repos</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Msg_DayOffMarked" xml:space="preserve">
+  <data name="Shifts_VolTrack_Msg_DayOffMarked" xml:space="preserve">
     <value>Jour de repos marqué.</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Msg_DayOffCleared" xml:space="preserve">
+  <data name="Shifts_VolTrack_Msg_DayOffCleared" xml:space="preserve">
     <value>Jour de repos annulé.</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_DayOffBadge" xml:space="preserve">
+  <data name="Shifts_VolTrack_DayOffBadge" xml:space="preserve">
     <value>{0} jour(s) de repos</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Err_DayOffWithSignups" xml:space="preserve">
+  <data name="Shifts_VolTrack_Err_DayOffWithSignups" xml:space="preserve">
     <value>Le bénévole a des inscriptions ce jour-là — annulez-les d'abord.</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Err_DayOffOutsideBuild" xml:space="preserve">
+  <data name="Shifts_VolTrack_Err_DayOffOutsideBuild" xml:space="preserve">
     <value>Le jour de repos doit se situer pendant la période de montage.</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_AuditAction_DayOffMarked" xml:space="preserve">
+  <data name="Shifts_VolTrack_AuditAction_DayOffMarked" xml:space="preserve">
     <value>Jour de repos marqué</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_AuditAction_DayOffCleared" xml:space="preserve">
+  <data name="Shifts_VolTrack_AuditAction_DayOffCleared" xml:space="preserve">
     <value>Jour de repos annulé</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_State_Confirmed" xml:space="preserve">
+  <data name="Shifts_VolTrack_State_Confirmed" xml:space="preserve">
     <value>Confirmé</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_State_Pending" xml:space="preserve">
+  <data name="Shifts_VolTrack_State_Pending" xml:space="preserve">
     <value>En attente</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_State_Gap" xml:space="preserve">
+  <data name="Shifts_VolTrack_State_Gap" xml:space="preserve">
     <value>Trou</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_State_CampSetup" xml:space="preserve">
+  <data name="Shifts_VolTrack_State_CampSetup" xml:space="preserve">
     <value>Montage de camp</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_State_Outside" xml:space="preserve">
+  <data name="Shifts_VolTrack_State_Outside" xml:space="preserve">
     <value>Hors période</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_State_Expected" xml:space="preserve">
+  <data name="Shifts_VolTrack_State_Expected" xml:space="preserve">
     <value>Attendu</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_State_AvailableUnbooked" xml:space="preserve">
+  <data name="Shifts_VolTrack_State_AvailableUnbooked" xml:space="preserve">
     <value>Disponible, non réservé</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_State_AvailableExpected" xml:space="preserve">
+  <data name="Shifts_VolTrack_State_AvailableExpected" xml:space="preserve">
     <value>Disponible (futur)</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_State_NotAvailable" xml:space="preserve">
+  <data name="Shifts_VolTrack_State_NotAvailable" xml:space="preserve">
     <value>Non disponible</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Popover_Rotas" xml:space="preserve">
+  <data name="Shifts_VolTrack_Popover_Rotas" xml:space="preserve">
     <value>Roulements :</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Popover_Available" xml:space="preserve">
+  <data name="Shifts_VolTrack_Popover_Available" xml:space="preserve">
     <value>Bénévole marqué comme disponible</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Popover_MarkCampSetup" xml:space="preserve">
+  <data name="Shifts_VolTrack_Popover_MarkCampSetup" xml:space="preserve">
     <value>Marquer comme allé au montage du camp à partir de ce jour</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Popover_MoveCampSetup" xml:space="preserve">
+  <data name="Shifts_VolTrack_Popover_MoveCampSetup" xml:space="preserve">
     <value>Déplacer le montage du camp à ce jour</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Popover_ClearCampSetup" xml:space="preserve">
+  <data name="Shifts_VolTrack_Popover_ClearCampSetup" xml:space="preserve">
     <value>Effacer le montage du camp</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Popover_OpenDashboard" xml:space="preserve">
+  <data name="Shifts_VolTrack_Popover_OpenDashboard" xml:space="preserve">
     <value>Trouver des créneaux pour le voluntell</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Scroll_Left" xml:space="preserve">
+  <data name="Shifts_VolTrack_Scroll_Left" xml:space="preserve">
     <value>Défiler à gauche</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Scroll_Right" xml:space="preserve">
+  <data name="Shifts_VolTrack_Scroll_Right" xml:space="preserve">
     <value>Défiler à droite</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Legend_Title" xml:space="preserve">
+  <data name="Shifts_VolTrack_Legend_Title" xml:space="preserve">
     <value>Légende</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Legend_Confirmed" xml:space="preserve">
+  <data name="Shifts_VolTrack_Legend_Confirmed" xml:space="preserve">
     <value>Inscription confirmée</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Legend_Pending" xml:space="preserve">
+  <data name="Shifts_VolTrack_Legend_Pending" xml:space="preserve">
     <value>Inscription en attente</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Legend_Gap" xml:space="preserve">
+  <data name="Shifts_VolTrack_Legend_Gap" xml:space="preserve">
     <value>Pas de couverture un jour où ils auraient dû être là</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Legend_AvailableUnbooked" xml:space="preserve">
+  <data name="Shifts_VolTrack_Legend_AvailableUnbooked" xml:space="preserve">
     <value>Disponible, pas encore d'inscription</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Legend_CampSetup" xml:space="preserve">
+  <data name="Shifts_VolTrack_Legend_CampSetup" xml:space="preserve">
     <value>En montage de camp</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Legend_OutsideOrExpected" xml:space="preserve">
+  <data name="Shifts_VolTrack_Legend_OutsideOrExpected" xml:space="preserve">
     <value>En dehors de leur créneau d'activité</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Msg_CampSetupSaved" xml:space="preserve">
+  <data name="Shifts_VolTrack_Msg_CampSetupSaved" xml:space="preserve">
     <value>Date d'installation du camp enregistrée.</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Msg_CampSetupCleared" xml:space="preserve">
+  <data name="Shifts_VolTrack_Msg_CampSetupCleared" xml:space="preserve">
     <value>Date d'installation du camp effacée.</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Msg_AvailabilitySet" xml:space="preserve">
+  <data name="Shifts_VolTrack_Msg_AvailabilitySet" xml:space="preserve">
     <value>Disponibilité mise à jour.</value>
   </data>
-  <data name="VolTrack_Msg_AvailabilityCleared" xml:space="preserve">
+  <data name="Shifts_VolTrack_Msg_AvailabilityCleared" xml:space="preserve">
     <value>Disponibilité mise à jour.</value>
   </data>
-  <data name="VolTrack_Popover_MarkAvailable" xml:space="preserve">
+  <data name="Shifts_VolTrack_Popover_MarkAvailable" xml:space="preserve">
     <value>Marquer comme disponible</value>
   </data>
-  <data name="VolTrack_Popover_UnmarkAvailable" xml:space="preserve">
+  <data name="Shifts_VolTrack_Popover_UnmarkAvailable" xml:space="preserve">
     <value>Ne plus marquer comme disponible</value>
   </data>
-  <data name="VolTrack_Err_BadRequest" xml:space="preserve">
+  <data name="Shifts_VolTrack_Err_BadRequest" xml:space="preserve">
     <value>Requête invalide.</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Err_BadDate" xml:space="preserve">
+  <data name="Shifts_VolTrack_Err_BadDate" xml:space="preserve">
     <value>Format de date invalide.</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Err_Unknown" xml:space="preserve">
+  <data name="Shifts_VolTrack_Err_Unknown" xml:space="preserve">
     <value>Une erreur s'est produite. Veuillez réessayer.</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Err_SetupAtOrAfterGateOpen" xml:space="preserve">
+  <data name="Shifts_VolTrack_Err_SetupAtOrAfterGateOpen" xml:space="preserve">
     <value>La date d'installation doit être comprise dans la période de montage (avant l'ouverture des portes).</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_Err_SetupBeforeFirstSignup" xml:space="preserve">
+  <data name="Shifts_VolTrack_Err_SetupBeforeFirstSignup" xml:space="preserve">
     <value>La date d'installation doit être égale ou postérieure à la première inscription de montage du bénévole.</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="ShiftDash_VolTrackEntry_Title" xml:space="preserve">
+  <data name="Shifts_ShiftDash_VolTrackEntry_Title" xml:space="preserve">
     <value>Suivi des bénévoles</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="ShiftDash_VolTrackEntry_Subtitle" xml:space="preserve">
+  <data name="Shifts_ShiftDash_VolTrackEntry_Subtitle" xml:space="preserve">
     <value>Identifier les lacunes, marquer les dates d'installation du camp, faire ressortir les bénévoles déclarés mais non inscrits.</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="ShiftDash_VolTrackEntry_Open" xml:space="preserve">
+  <data name="Shifts_ShiftDash_VolTrackEntry_Open" xml:space="preserve">
     <value>Ouvrir</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_AuditAction_CampSetupSet" xml:space="preserve">
+  <data name="Shifts_VolTrack_AuditAction_CampSetupSet" xml:space="preserve">
     <value>Date d'installation du camp définie</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="VolTrack_AuditAction_CampSetupCleared" xml:space="preserve">
+  <data name="Shifts_VolTrack_AuditAction_CampSetupCleared" xml:space="preserve">
     <value>Date d'installation du camp effacée</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="EmailRota_Title" xml:space="preserve">
+  <data name="Shifts_EmailRota_Title" xml:space="preserve">
     <value>Envoyer un e-mail au roulement&#xA0;: {0}</value>
   </data>
-  <data name="EmailRota_Breadcrumb" xml:space="preserve">
+  <data name="Shifts_EmailRota_Breadcrumb" xml:space="preserve">
     <value>E-mail au roulement</value>
   </data>
-  <data name="EmailRota_Heading" xml:space="preserve">
+  <data name="Shifts_EmailRota_Heading" xml:space="preserve">
     <value>Envoyer un e-mail &#xE0; tout le monde dans le roulement&#xA0;: {0}</value>
   </data>
-  <data name="EmailRota_RecipientsHeading" xml:space="preserve">
+  <data name="Shifts_EmailRota_RecipientsHeading" xml:space="preserve">
     <value>Destinataires ({0})</value>
   </data>
-  <data name="EmailRota_NoRecipients" xml:space="preserve">
+  <data name="Shifts_EmailRota_NoRecipients" xml:space="preserve">
     <value>Personne n'est encore inscrit &#xE0; ce roulement.</value>
   </data>
-  <data name="EmailRota_MessageLabel" xml:space="preserve">
+  <data name="Shifts_EmailRota_MessageLabel" xml:space="preserve">
     <value>Votre message</value>
   </data>
-  <data name="EmailRota_MessageHelp" xml:space="preserve">
+  <data name="Shifts_EmailRota_MessageHelp" xml:space="preserve">
     <value>Chaque destinataire verra ce message ainsi que sa propre liste de cr&#xE9;neaux pour ce roulement.</value>
   </data>
-  <data name="EmailRota_Button" xml:space="preserve">
+  <data name="Shifts_EmailRota_Button" xml:space="preserve">
     <value>Envoyer un e-mail &#xE0; un roulement</value>
   </data>
-  <data name="EmailRota_Send" xml:space="preserve">
+  <data name="Shifts_EmailRota_Send" xml:space="preserve">
     <value>Envoyer &#xE0; {0} destinataire(s)</value>
   </data>
-  <data name="EmailRota_NoActiveSignups" xml:space="preserve">
+  <data name="Shifts_EmailRota_NoActiveSignups" xml:space="preserve">
     <value>Ce roulement n'a aucune inscription active &#xE0; qui envoyer un e-mail.</value>
   </data>
-  <data name="EmailTeamRotas_Title" xml:space="preserve">
+  <data name="Shifts_EmailTeamRotas_Title" xml:space="preserve">
     <value>Envoyer un e-mail &#xE0; l'&#xE9;quipe&#xA0;: {0}</value>
   </data>
-  <data name="EmailTeamRotas_Breadcrumb" xml:space="preserve">
+  <data name="Shifts_EmailTeamRotas_Breadcrumb" xml:space="preserve">
     <value>E-mail &#xE0; l'&#xE9;quipe</value>
   </data>
-  <data name="EmailTeamRotas_Heading" xml:space="preserve">
+  <data name="Shifts_EmailTeamRotas_Heading" xml:space="preserve">
     <value>Envoyer un e-mail &#xE0; tout le monde ayant un cr&#xE9;neau dans : {0}</value>
   </data>
-  <data name="EmailTeamRotas_RecipientsHeading" xml:space="preserve">
+  <data name="Shifts_EmailTeamRotas_RecipientsHeading" xml:space="preserve">
     <value>Destinataires ({0})</value>
   </data>
-  <data name="EmailTeamRotas_RotaCount" xml:space="preserve">
+  <data name="Shifts_EmailTeamRotas_RotaCount" xml:space="preserve">
     <value>sur {0} roulement(s)</value>
   </data>
-  <data name="EmailTeamRotas_NoRecipients" xml:space="preserve">
+  <data name="Shifts_EmailTeamRotas_NoRecipients" xml:space="preserve">
     <value>Personne ne correspond encore &#xE0; cette s&#xE9;lection.</value>
   </data>
-  <data name="EmailTeamRotas_MessageLabel" xml:space="preserve">
+  <data name="Shifts_EmailTeamRotas_MessageLabel" xml:space="preserve">
     <value>Votre message</value>
   </data>
-  <data name="EmailTeamRotas_MessageHelp" xml:space="preserve">
+  <data name="Shifts_EmailTeamRotas_MessageHelp" xml:space="preserve">
     <value>Chaque destinataire verra ce message et, si la case est coch&#xE9;e, sa propre liste de cr&#xE9;neaux dans les roulements s&#xE9;lectionn&#xE9;s.</value>
   </data>
-  <data name="EmailTeamRotas_Send" xml:space="preserve">
+  <data name="Shifts_EmailTeamRotas_Send" xml:space="preserve">
     <value>Envoyer &#xE0; {0} destinataire(s)</value>
   </data>
   <data name="Shifts_SetupClosedBadge" xml:space="preserve"><value>Montage fermé</value></data>
   <data name="Shifts_SignupDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Les inscriptions au montage sont closes — nous sommes déjà sur place.</value></data>
   <data name="Shifts_BailDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Les shifts de montage sont verrouillés — contacte ta coordination si tu ne peux pas venir.</value></data>
-  <data name="GetInvolved_UrgentShifts" xml:space="preserve">
+  <data name="Shifts_GetInvolved_UrgentShifts" xml:space="preserve">
     <value>Créneaux qui ont besoin de humans maintenant</value>
   </data>
-  <data name="GetInvolved_Title" xml:space="preserve">
+  <data name="Shifts_GetInvolved_Title" xml:space="preserve">
     <value>Participe</value>
   </data>
-  <data name="GetInvolved_Intro" xml:space="preserve">
+  <data name="Shifts_GetInvolved_Intro" xml:space="preserve">
     <value>L'événement fonctionne grâce aux humans. Choisis des créneaux qui te conviennent — chaque heure compte.</value>
   </data>
-  <data name="GetInvolved_Phase_Setup" xml:space="preserve">
+  <data name="Shifts_GetInvolved_Phase_Setup" xml:space="preserve">
     <value>Montage</value>
   </data>
-  <data name="GetInvolved_Phase_Setup_Desc" xml:space="preserve">
+  <data name="Shifts_GetInvolved_Phase_Setup_Desc" xml:space="preserve">
     <value>Construis le site avant l'ouverture des portes. Travail physique, horaires flexibles, idéal pour rencontrer l'équipe.</value>
   </data>
-  <data name="GetInvolved_Phase_Event" xml:space="preserve">
+  <data name="Shifts_GetInvolved_Phase_Event" xml:space="preserve">
     <value>Événement</value>
   </data>
-  <data name="GetInvolved_Phase_Event_Desc" xml:space="preserve">
+  <data name="Shifts_GetInvolved_Phase_Event_Desc" xml:space="preserve">
     <value>Fais tourner les choses pendant l'événement. Bars, entrées, sécurité, art — il y en a pour tous.</value>
   </data>
-  <data name="GetInvolved_Phase_Strike" xml:space="preserve">
+  <data name="Shifts_GetInvolved_Phase_Strike" xml:space="preserve">
     <value>Démontage</value>
   </data>
-  <data name="GetInvolved_Phase_Strike_Desc" xml:space="preserve">
+  <data name="Shifts_GetInvolved_Phase_Strike_Desc" xml:space="preserve">
     <value>Tout démonter et ne laisser aucune trace. Travail satisfaisant, engagement généralement plus court.</value>
   </data>
-  <data name="GetInvolved_BrowseAllShifts" xml:space="preserve">
+  <data name="Shifts_GetInvolved_BrowseAllShifts" xml:space="preserve">
     <value>Voir tous les créneaux</value>
   </data>
-  <data name="GetInvolved_MyShifts" xml:space="preserve">
+  <data name="Shifts_GetInvolved_MyShifts" xml:space="preserve">
     <value>Mes créneaux</value>
   </data>
-  <data name="Dashboard_SlotsSingular" xml:space="preserve">
+  <data name="Shifts_Dashboard_SlotsSingular" xml:space="preserve">
     <value>place</value>
   </data>
-  <data name="Dashboard_SlotsPlural" xml:space="preserve">
+  <data name="Shifts_Dashboard_SlotsPlural" xml:space="preserve">
     <value>places</value>
   </data>
-  <data name="Dashboard_GetInvolved" xml:space="preserve">
+  <data name="Shifts_Dashboard_GetInvolved" xml:space="preserve">
     <value>Participe</value>
   </data>
-  <data name="Dashboard_GetInvolvedSubtitle" xml:space="preserve">
+  <data name="Shifts_Dashboard_GetInvolvedSubtitle" xml:space="preserve">
     <value>Ça ne se construit pas tout seul.</value>
   </data>
-  <data name="Dashboard_ShiftsDescription" xml:space="preserve">
+  <data name="Shifts_Dashboard_ShiftsDescription" xml:space="preserve">
     <value>Regarde ce qu'il faut faire et inscris-toi.</value>
   </data>
-  <data name="Dashboard_TeamsDescription" xml:space="preserve">
+  <data name="Shifts_Dashboard_TeamsDescription" xml:space="preserve">
     <value>Trouve tes gens. Ou deviens les gens de quelqu'un.</value>
   </data>
-  <data name="Dashboard_CampsDescription" xml:space="preserve">
+  <data name="Shifts_Dashboard_CampsDescription" xml:space="preserve">
     <value>Les quartiers qui font qu'Elsewhere se sent comme chez soi.</value>
   </data>
-  <data name="DietaryMissingBanner_Title" xml:space="preserve"><value>Tu nous indiques tes préférences alimentaires ?</value></data>
-  <data name="DietaryMissingBanner_Body" xml:space="preserve"><value>Tu es inscrit·e à un long créneau. Si tu nous indiques tes préférences alimentaires, la cantine peut prévoir tes repas. C'est facultatif.</value></data>
-  <data name="DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
-  <data name="DietaryMissingBanner_Decline" xml:space="preserve"><value>Je préfère ne pas répondre</value></data>
+  <data name="Shifts_DietaryMissingBanner_Title" xml:space="preserve"><value>Tu nous indiques tes préférences alimentaires ?</value></data>
+  <data name="Shifts_DietaryMissingBanner_Body" xml:space="preserve"><value>Tu es inscrit·e à un long créneau. Si tu nous indiques tes préférences alimentaires, la cantine peut prévoir tes repas. C'est facultatif.</value></data>
+  <data name="Shifts_DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
+  <data name="Shifts_DietaryMissingBanner_Decline" xml:space="preserve"><value>Je préfère ne pas répondre</value></data>
   <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>Voir tous mes créneaux</value></data>
   <data name="Shifts_SortOrder" xml:space="preserve"><value>Ordre de tri</value></data>
   <data name="Shifts_BailRangeSuccess" xml:space="preserve"><value>Tu t'es retiré de la série de créneaux.</value></data>
@@ -1165,7 +1165,7 @@
   <data name="Shifts_BailSuccess" xml:space="preserve"><value>Tu t'es retiré du créneau.</value></data>
   <data name="Shifts_AvailabilityUpdated" xml:space="preserve"><value>Disponibilité mise à jour.</value></data>
   <data name="Shifts_TagPreferencesSaved" xml:space="preserve"><value>Préférences de tags enregistrées.</value></data>
-  <data name="VolTrack_Msg_DayOffNotSet" xml:space="preserve"><value>Aucun jour de repos n'était défini pour ce jour.</value></data>
+  <data name="Shifts_VolTrack_Msg_DayOffNotSet" xml:space="preserve"><value>Aucun jour de repos n'était défini pour ce jour.</value></data>
   <data name="Shifts_AccountCannotSignUp" xml:space="preserve"><value>Votre compte ne peut pas s'inscrire à des créneaux.</value></data>
   <data name="Shifts_Email_CoordinatorRotaMessage_Subject" xml:space="preserve">
     <value>Un message concernant vos cr&#xE9;neaux sur {0}</value>
@@ -1182,17 +1182,17 @@
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve">
     <value>&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;Un message du coordinateur de &lt;strong&gt;{2}&lt;/strong&gt; :&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;{4}&lt;p&gt;Merci,&lt;/p&gt;{5}</value>
   </data>
-  <data name="EmailRota_IncludeShifts" xml:space="preserve"><value>Inclure dans l'e-mail les cr&#xE9;neaux de chaque destinataire</value></data>
-  <data name="EmailTeamRotas_IncludeShifts" xml:space="preserve"><value>Inclure dans l'e-mail les cr&#xE9;neaux de chaque destinataire</value></data>
-  <data name="EmailTeamRotas_ScopeLabel" xml:space="preserve"><value>Quels roulements</value></data>
-  <data name="EmailTeamRotas_ScopeUpcoming" xml:space="preserve"><value>Uniquement les prochains roulements</value></data>
-  <data name="EmailTeamRotas_ScopeAll" xml:space="preserve"><value>Tous les roulements de cet &#xE9;v&#xE9;nement</value></data>
-  <data name="EmailTeamRotas_PeriodsLabel" xml:space="preserve"><value>P&#xE9;riodes</value></data>
-  <data name="EmailTeamRotas_PeriodBuild" xml:space="preserve"><value>Montage</value></data>
-  <data name="EmailTeamRotas_PeriodEvent" xml:space="preserve"><value>&#xC9;v&#xE9;nement</value></data>
-  <data name="EmailTeamRotas_PeriodStrike" xml:space="preserve"><value>D&#xE9;montage</value></data>
-  <data name="EmailTeamRotas_Refresh" xml:space="preserve"><value>Actualiser les destinataires</value></data>
-  <data name="EmailTeamRotas_AudienceChanged" xml:space="preserve"><value>La liste des destinataires correspond maintenant au public s&#xE9;lectionn&#xE9;. V&#xE9;rifie-la, puis clique sur Envoyer.</value></data>
+  <data name="Shifts_EmailRota_IncludeShifts" xml:space="preserve"><value>Inclure dans l'e-mail les cr&#xE9;neaux de chaque destinataire</value></data>
+  <data name="Shifts_EmailTeamRotas_IncludeShifts" xml:space="preserve"><value>Inclure dans l'e-mail les cr&#xE9;neaux de chaque destinataire</value></data>
+  <data name="Shifts_EmailTeamRotas_ScopeLabel" xml:space="preserve"><value>Quels roulements</value></data>
+  <data name="Shifts_EmailTeamRotas_ScopeUpcoming" xml:space="preserve"><value>Uniquement les prochains roulements</value></data>
+  <data name="Shifts_EmailTeamRotas_ScopeAll" xml:space="preserve"><value>Tous les roulements de cet &#xE9;v&#xE9;nement</value></data>
+  <data name="Shifts_EmailTeamRotas_PeriodsLabel" xml:space="preserve"><value>P&#xE9;riodes</value></data>
+  <data name="Shifts_EmailTeamRotas_PeriodBuild" xml:space="preserve"><value>Montage</value></data>
+  <data name="Shifts_EmailTeamRotas_PeriodEvent" xml:space="preserve"><value>&#xC9;v&#xE9;nement</value></data>
+  <data name="Shifts_EmailTeamRotas_PeriodStrike" xml:space="preserve"><value>D&#xE9;montage</value></data>
+  <data name="Shifts_EmailTeamRotas_Refresh" xml:space="preserve"><value>Actualiser les destinataires</value></data>
+  <data name="Shifts_EmailTeamRotas_AudienceChanged" xml:space="preserve"><value>La liste des destinataires correspond maintenant au public s&#xE9;lectionn&#xE9;. V&#xE9;rifie-la, puis clique sur Envoyer.</value></data>
   <data name="Shifts_Email_CoordinatorRotaMessage_ShiftsIntro" xml:space="preserve"><value>Pour information, vos cr&#xE9;neaux sur ce roulement sont :</value></data>
   <data name="Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro" xml:space="preserve"><value>Pour information, vos cr&#xE9;neaux avec cette &#xE9;quipe&#xA0;:</value></data>
   <data name="Shifts_ShiftProfile_LoadFailed" xml:space="preserve"><value>Impossible de charger les informations de créneaux.</value></data>
@@ -1226,37 +1226,37 @@
   <data name="Shifts_Notification_AssignedDay" xml:space="preserve"><value>Un créneau de {0} vous a été attribué pour le jour {1}</value></data>
   <data name="Shifts_Notification_AssignedRange" xml:space="preserve"><value>Des créneaux de {0} vous ont été attribués ({1} au total)</value></data>
   <data name="Shifts_Notification_AssignedRangeSingular" xml:space="preserve"><value>Un créneau de {0} vous a été attribué</value></data>
-  <data name="ShiftInfo_Skill_Bartending" xml:space="preserve"><value>Service au bar</value></data>
-  <data name="ShiftInfo_Skill_FirstAid" xml:space="preserve"><value>Premiers secours</value></data>
-  <data name="ShiftInfo_Skill_Driving" xml:space="preserve"><value>Conduite</value></data>
-  <data name="ShiftInfo_Skill_Sound" xml:space="preserve"><value>Son</value></data>
-  <data name="ShiftInfo_Skill_Electrical" xml:space="preserve"><value>Électricité</value></data>
-  <data name="ShiftInfo_Skill_Construction" xml:space="preserve"><value>Construction</value></data>
-  <data name="ShiftInfo_Skill_Cooking" xml:space="preserve"><value>Cuisine</value></data>
-  <data name="ShiftInfo_Skill_Art" xml:space="preserve"><value>Art</value></data>
-  <data name="ShiftInfo_Skill_DJ" xml:space="preserve"><value>DJ</value></data>
-  <data name="ShiftInfo_Time_EarlyBird" xml:space="preserve"><value>Lève-tôt</value></data>
-  <data name="ShiftInfo_Time_NightOwl" xml:space="preserve"><value>Oiseau de nuit</value></data>
-  <data name="ShiftInfo_Time_AllDay" xml:space="preserve"><value>Toute la journée</value></data>
-  <data name="ShiftInfo_Time_NoPreference" xml:space="preserve"><value>Sans préférence</value></data>
-  <data name="ShiftInfo_Time_EarlyBird_Description" xml:space="preserve"><value>Quarts du matin, installation et préparation</value></data>
-  <data name="ShiftInfo_Time_NightOwl_Description" xml:space="preserve"><value>Quarts du soir et de nuit</value></data>
-  <data name="ShiftInfo_Time_AllDay_Description" xml:space="preserve"><value>Flexible, du matin au soir</value></data>
-  <data name="ShiftInfo_Time_NoPreference_Description" xml:space="preserve"><value>Je prends ce dont on a besoin</value></data>
-  <data name="ShiftInfo_Quirk_SoberShift" xml:space="preserve"><value>Quart sans alcool ni drogues</value></data>
-  <data name="ShiftInfo_Quirk_WorkInShade" xml:space="preserve"><value>Travail à l’ombre</value></data>
-  <data name="ShiftInfo_Quirk_QuietWork" xml:space="preserve"><value>Travail calme</value></data>
-  <data name="ShiftInfo_Quirk_PhysicalWorkOK" xml:space="preserve"><value>Travail physique accepté</value></data>
-  <data name="ShiftInfo_Quirk_NoHeights" xml:space="preserve"><value>Pas de travail en hauteur</value></data>
+  <data name="Shifts_ShiftInfo_Skill_Bartending" xml:space="preserve"><value>Service au bar</value></data>
+  <data name="Shifts_ShiftInfo_Skill_FirstAid" xml:space="preserve"><value>Premiers secours</value></data>
+  <data name="Shifts_ShiftInfo_Skill_Driving" xml:space="preserve"><value>Conduite</value></data>
+  <data name="Shifts_ShiftInfo_Skill_Sound" xml:space="preserve"><value>Son</value></data>
+  <data name="Shifts_ShiftInfo_Skill_Electrical" xml:space="preserve"><value>Électricité</value></data>
+  <data name="Shifts_ShiftInfo_Skill_Construction" xml:space="preserve"><value>Construction</value></data>
+  <data name="Shifts_ShiftInfo_Skill_Cooking" xml:space="preserve"><value>Cuisine</value></data>
+  <data name="Shifts_ShiftInfo_Skill_Art" xml:space="preserve"><value>Art</value></data>
+  <data name="Shifts_ShiftInfo_Skill_DJ" xml:space="preserve"><value>DJ</value></data>
+  <data name="Shifts_ShiftInfo_Time_EarlyBird" xml:space="preserve"><value>Lève-tôt</value></data>
+  <data name="Shifts_ShiftInfo_Time_NightOwl" xml:space="preserve"><value>Oiseau de nuit</value></data>
+  <data name="Shifts_ShiftInfo_Time_AllDay" xml:space="preserve"><value>Toute la journée</value></data>
+  <data name="Shifts_ShiftInfo_Time_NoPreference" xml:space="preserve"><value>Sans préférence</value></data>
+  <data name="Shifts_ShiftInfo_Time_EarlyBird_Description" xml:space="preserve"><value>Quarts du matin, installation et préparation</value></data>
+  <data name="Shifts_ShiftInfo_Time_NightOwl_Description" xml:space="preserve"><value>Quarts du soir et de nuit</value></data>
+  <data name="Shifts_ShiftInfo_Time_AllDay_Description" xml:space="preserve"><value>Flexible, du matin au soir</value></data>
+  <data name="Shifts_ShiftInfo_Time_NoPreference_Description" xml:space="preserve"><value>Je prends ce dont on a besoin</value></data>
+  <data name="Shifts_ShiftInfo_Quirk_SoberShift" xml:space="preserve"><value>Quart sans alcool ni drogues</value></data>
+  <data name="Shifts_ShiftInfo_Quirk_WorkInShade" xml:space="preserve"><value>Travail à l’ombre</value></data>
+  <data name="Shifts_ShiftInfo_Quirk_QuietWork" xml:space="preserve"><value>Travail calme</value></data>
+  <data name="Shifts_ShiftInfo_Quirk_PhysicalWorkOK" xml:space="preserve"><value>Travail physique accepté</value></data>
+  <data name="Shifts_ShiftInfo_Quirk_NoHeights" xml:space="preserve"><value>Pas de travail en hauteur</value></data>
   <data name="Enum_SignupStatus_Pending" xml:space="preserve"><value>En attente</value></data>
   <data name="Enum_SignupStatus_Confirmed" xml:space="preserve"><value>Confirmé</value></data>
   <data name="Enum_SignupStatus_Refused" xml:space="preserve"><value>Refusé</value></data>
   <data name="Enum_SignupStatus_Bailed" xml:space="preserve"><value>Retiré</value></data>
   <data name="Enum_SignupStatus_Cancelled" xml:space="preserve"><value>Annulé</value></data>
   <data name="Enum_SignupStatus_NoShow" xml:space="preserve"><value>Absent</value></data>
-  <data name="ShiftSignups_Title" xml:space="preserve"><value>Inscriptions aux créneaux</value></data>
-  <data name="ShiftSignups_ConfirmedCount" xml:space="preserve"><value>{0} confirmés</value></data>
-  <data name="ShiftSignups_MoreCount" xml:space="preserve"><value>+ {0} autres</value></data>
+  <data name="Shifts_ShiftSignups_Title" xml:space="preserve"><value>Inscriptions aux créneaux</value></data>
+  <data name="Shifts_ShiftSignups_ConfirmedCount" xml:space="preserve"><value>{0} confirmés</value></data>
+  <data name="Shifts_ShiftSignups_MoreCount" xml:space="preserve"><value>+ {0} autres</value></data>
   <data name="Shifts_Delete_ConfirmedSignups" xml:space="preserve">
     <value>Suppression impossible : {0} personnes ont des inscriptions confirmées. Annulez-les ou réaffectez-les d’abord.</value>
   </data>
@@ -1267,10 +1267,10 @@
     <value>Créneau supprimé.</value>
   </data>
   <data name="Shifts_AvailabilityInvalidDays" xml:space="preserve"><value>Sélectionnez des jours compris dans le calendrier de l’événement.</value></data>
-  <data name="Dashboard_OffSeasonTitle" xml:space="preserve">
+  <data name="Shifts_Dashboard_OffSeasonTitle" xml:space="preserve">
     <value>Saison terminée</value>
   </data>
-  <data name="Dashboard_OffSeasonBody" xml:space="preserve">
+  <data name="Shifts_Dashboard_OffSeasonBody" xml:space="preserve">
     <value>Merci pour cette année. Les créneaux rouvriront quand le Conseil publiera le prochain événement.</value>
   </data>
   <data name="Shifts_StatusReasonTooLong" xml:space="preserve"><value>Le motif ne peut pas dépasser 1 000 caractères.</value></data>

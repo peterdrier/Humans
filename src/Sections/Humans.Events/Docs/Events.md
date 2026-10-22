@@ -178,6 +178,12 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 
 ## Invariants
 
+- Approve, reject, request-edit and moderator-withdraw forms reject invalid model binding or validation with HTTP 400 after resolving the moderator, before event reads or writes. This includes the moderation reason’s 500-character limit.
+
+- Individual-event edit GET and POST share the event lookup, individual-route ownership check and editable-status refusal. Missing/camp events return 404 before ownership denial; non-owners require EventsAdmin/Admin, and non-editable events redirect with the existing message.
+
+- Guide settings and event forms share the section’s local-time conversion helper: configured zones use lenient DST resolution, and an unavailable zone treats local values as UTC. NodaTime inputs retain their sub-tick precision.
+
 - Category and venue create/edit forms require explicit active and display-order values; categories also require the sensitivity choice. Missing fields cannot reactivate an inactive entry, clear its sensitivity marker or reset its order. Explicit false and order zero remain valid, and form summaries display missing-field errors.
 
 - Personal, barrio and moderation authoring forms require explicit start time, duration and recurrence choices; personal and moderator individual forms also require the all-day choice. Moderator camp forms require the priority-rank field, with an explicit blank still clearing the rank. Missing fields refuse the save before event changes or persistence. Explicit midnight, 60-minute durations and false choices remain valid. Validation summaries show field errors even when an all-day toggle hides the timing inputs.

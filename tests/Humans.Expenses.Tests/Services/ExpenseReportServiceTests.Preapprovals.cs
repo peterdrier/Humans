@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
 using Xunit;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Data;
@@ -90,7 +91,7 @@ public sealed partial class ExpenseReportServiceTests
         loaded!.PreapprovalGrantId.Should().Be(grant.Id);
         loaded.HoldedAccountNumber.Should().Be(GrantAccountNumber);
         loaded.HoldedAccountId.Should().Be(GrantAccountId);
-        loaded.BudgetCategoryId.Should().BeNull("a pre-approved report skips coordinator endorsement");
+        loaded.BudgetCategoryId.Should().BeNull("a pre-approved report is first reviewed by its program's managers, not a budget coordinator");
         loaded.BudgetYearId.Should().BeNull();
         loaded.MaxAmount.Should().BeNull("the cap is stamped at submit, not at draft");
         await _holdedFinance.DidNotReceive().ListExpenseAccountsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>());
@@ -241,21 +242,73 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task Submit_WithGrant_SkipsCoordinatorEndorsement()
+    public async Task Endorse_PreapprovedReport_ByAnyoneButItsProgramsManager_IsRefused()
     {
-        SetupActiveYear();
         var submitter = Guid.NewGuid();
         var grant = MakeGrant();
-        var id = await CreateSubmittableGrantDraftAsync(submitter, grant);
-        _preapprovalWrites.ClaimAsync(grant.Id, id, submitter, Arg.Any<CancellationToken>()).Returns(StampOf(grant));
-        (await _sut.SubmitWithResultAsync(id, submitter, false, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
+        var reportId = Guid.NewGuid();
+        await SeedGrantReportAsync(reportId, submitter, grant.Id, ExpenseReportStatus.Submitted, maxAmount: 150m);
+        var otherManager = Guid.NewGuid();
+        _preapprovals.ListManagedGrantIdsAsync(otherManager, Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid> { Guid.NewGuid() });
 
-        var endorse = await _sut.CoordinatorEndorseWithResultAsync(id, Guid.NewGuid(), false, null, TestContext.Current.CancellationToken);
+        var endorse = await _sut.CoordinatorEndorseWithResultAsync(reportId, otherManager, false, null, TestContext.Current.CancellationToken);
+        var reject = await _sut.CoordinatorRejectWithResultAsync(reportId, otherManager, false, "No", TestContext.Current.CancellationToken);
 
-        endorse.Succeeded.Should().BeFalse();
-        endorse.Error!.OperatorMessage.Should().Contain("not booked to a budget category");
-        (await _sut.GetReviewQueueAsync(Guid.NewGuid(), isFinanceAdmin: true, TestContext.Current.CancellationToken))
-            .Should().ContainSingle(r => r.Id == id, "it waits on Finance directly");
+        endorse.Error!.OperatorMessage.Should().Contain("not a manager");
+        reject.Succeeded.Should().BeFalse();
+        (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Submitted);
+        (await _sut.GetReviewQueueAsync(otherManager, isFinanceAdmin: false, TestContext.Current.CancellationToken)).Should().BeEmpty();
+        (await _sut.GetCoordinatorQueueAsync(otherManager, TestContext.Current.CancellationToken)).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Endorse_PreapprovedReport_ByItsProgramsManager_KeepsTheGrantAsTheCeiling()
+    {
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant(maxAmount: 150m);
+        _preapprovals.GetGrantAsync(grant.Id, Arg.Any<CancellationToken>()).Returns(grant);
+        var reportId = Guid.NewGuid();
+        await SeedGrantReportAsync(reportId, submitter, grant.Id, ExpenseReportStatus.Submitted, maxAmount: 150m);
+        var manager = Guid.NewGuid();
+        _preapprovals.ListManagedGrantIdsAsync(manager, Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid> { grant.Id });
+
+        (await _sut.GetCoordinatorQueueAsync(manager, TestContext.Current.CancellationToken))
+            .Should().ContainSingle(r => r.Id == reportId);
+        (await _sut.GetReviewQueueAsync(manager, isFinanceAdmin: false, TestContext.Current.CancellationToken))
+            .Should().ContainSingle(r => r.Id == reportId);
+
+        var over = await _sut.CoordinatorEndorseWithResultAsync(reportId, manager, false, 151m, TestContext.Current.CancellationToken);
+        over.Error!.OperatorMessage.Should().Contain("cannot exceed the pre-approved 150.00");
+
+        (await _sut.CoordinatorEndorseWithResultAsync(reportId, manager, false, null, TestContext.Current.CancellationToken))
+            .Succeeded.Should().BeTrue();
+        var endorsed = await _sut.GetAsync(reportId, TestContext.Current.CancellationToken);
+        endorsed!.Status.Should().Be(ExpenseReportStatus.CoordinatorEndorsed);
+        endorsed.MaxAmount.Should().Be(150m, "a blank cap keeps the pre-approved amount");
+        await AuditLog.Received(1).LogAsync(AuditAction.ExpenseEndorse, Arg.Any<string>(), reportId,
+            Arg.Is<string>(d => d.StartsWith("Pre-approval manager endorsed", StringComparison.Ordinal)), manager);
+        (await _sut.GetCoordinatorQueueAsync(manager, TestContext.Current.CancellationToken))
+            .Should().BeEmpty("only Submitted reports wait on the first review");
+    }
+
+    [HumansFact]
+    public async Task CoordinatorReject_PreapprovedReport_ByItsProgramsManager_SendsItBackToDraft_StillHoldingTheGrant()
+    {
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant();
+        var reportId = Guid.NewGuid();
+        await SeedGrantReportAsync(reportId, submitter, grant.Id, ExpenseReportStatus.Submitted, maxAmount: 150m);
+        var manager = Guid.NewGuid();
+        _preapprovals.ListManagedGrantIdsAsync(manager, Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid> { grant.Id });
+
+        (await _sut.CoordinatorRejectWithResultAsync(reportId, manager, false, "Receipt unreadable", TestContext.Current.CancellationToken))
+            .Succeeded.Should().BeTrue();
+
+        (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Draft);
+        await _preapprovalWrites.DidNotReceiveWithAnyArgs().ReleaseAsync(default, default, default, default);
     }
 
     [HumansFact]

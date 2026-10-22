@@ -7,7 +7,7 @@
     var isAdmin = Model.ViewMode == ShiftSignupsViewMode.Admin;
     var label = isAdmin && !string.IsNullOrEmpty(Model.DisplayName)
         ? $"{Model.DisplayName}'s Shifts"
-        : Localizer["ShiftSignups_Title"].Value;
+        : Localizer["Shifts_ShiftSignups_Title"].Value;
 }
 
 @functions {
@@ -29,7 +29,7 @@
             <span>
                 @if (Model.Upcoming.Count > 0)
                 {
-                    <span class="badge bg-success">@Localizer["ShiftSignups_ConfirmedCount", Model.Upcoming.Count]</span>
+                    <span class="badge bg-success">@Localizer["Shifts_ShiftSignups_ConfirmedCount", Model.Upcoming.Count]</span>
                 }
                 @if (Model.Pending.Count > 0)
                 {
@@ -127,7 +127,7 @@
                 @if (Model.Past.Count > 5)
                 {
                     <div class="px-3 py-2 text-muted small">
-                        @Localizer["ShiftSignups_MoreCount", Model.Past.Count - 5]
+                        @Localizer["Shifts_ShiftSignups_MoreCount", Model.Past.Count - 5]
                     </div>
                 }
             }

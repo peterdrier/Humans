@@ -165,11 +165,13 @@ internal sealed class ExpenseReportService(
         // Filtering the whole queue in memory beats a per-audience query at this scale and keeps the repository's
         // order. Drafts and withdrawals are excluded upstream for everyone.
         var categoryIds = await GetCoordinatorCategoryIdsAsync(viewerUserId, ct);
+        var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(viewerUserId, ct);
         var viewer = await userService.GetUserInfoAsync(viewerUserId, ct);
         var ownIds = viewer?.AllUserIds ?? [viewerUserId];
         return queue
             .Where(r => ownIds.Contains(r.SubmitterUserId)
-                        || (r.BudgetCategoryId is { } categoryId && categoryIds.Contains(categoryId)))
+                        || (r.BudgetCategoryId is { } categoryId && categoryIds.Contains(categoryId))
+                        || (r.PreapprovalGrantId is { } grantId && managedGrantIds.Contains(grantId)))
             .ToList();
     }
 
@@ -202,10 +204,16 @@ internal sealed class ExpenseReportService(
         Guid coordinatorUserId, CancellationToken ct = default)
     {
         var categoryIds = await GetCoordinatorCategoryIdsAsync(coordinatorUserId, ct);
-        if (categoryIds.Count == 0) return [];
+        var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(coordinatorUserId, ct);
 
-        return await repo.GetByCategoryIdsAndStatusAsync(categoryIds,
-            ExpenseReportStatus.Submitted, ct);
+        var queue = categoryIds.Count == 0
+            ? []
+            : (await repo.GetByCategoryIdsAndStatusAsync(categoryIds, ExpenseReportStatus.Submitted, ct)).ToList();
+        if (managedGrantIds.Count > 0)
+            queue.AddRange((await repo.GetForReviewQueueAsync(ct)).Where(r =>
+                r.Status == ExpenseReportStatus.Submitted
+                && r.PreapprovalGrantId is { } grantId && managedGrantIds.Contains(grantId)));
+        return queue;
     }
 
     private async Task<IReadOnlyList<Guid>> GetCoordinatorCategoryIdsAsync(
@@ -1165,8 +1173,21 @@ internal sealed class ExpenseReportService(
             var report = await repo.GetByIdAsync(reportId, ct);
             if (report is null) return ExpenseMutationResult.OperatorFailure("Could not endorse the report. It may no longer be in Submitted status.");
 
-            if (!actorIsFinanceAdmin && await GetCoordinatorRefusalAsync(report.BudgetCategoryId, coordinatorUserId, ct) is { } refusal)
+            if (!actorIsFinanceAdmin && await GetFirstReviewerRefusalAsync(report, coordinatorUserId, ct) is { } refusal)
                 return refusal;
+
+            if (report.PreapprovalGrantId is { } grantId)
+            {
+                // The same ceiling approval enforces, so an endorsement never promises more than Finance may pay.
+                var grant = await preapprovals.GetGrantAsync(grantId, ct);
+                if (grant is null)
+                    return ExpenseMutationResult.OperatorFailure("The report's pre-approval no longer exists; reject the report.");
+                if (maxAmount is null)
+                    maxAmount = grant.MaxAmount;
+                else if (maxAmount > grant.MaxAmount)
+                    return ExpenseMutationResult.OperatorFailure(
+                        $"The cap cannot exceed the pre-approved {grant.MaxAmount.ToString("0.00", CultureInfo.InvariantCulture)} EUR.");
+            }
 
             var now = clock.GetCurrentInstant();
             var ok = await repo.CoordinatorEndorseAsync(reportId, coordinatorUserId, maxAmount, now, ct);
@@ -1175,7 +1196,7 @@ internal sealed class ExpenseReportService(
             await auditLogService.LogAsync(
                 AuditAction.ExpenseEndorse,
                 AuditEntityTypes.Report, reportId,
-                (actorIsFinanceAdmin ? "Finance admin" : "Coordinator")
+                ReviewerLabel(report, actorIsFinanceAdmin)
                     + " endorsed expense report." + MaxAmountDetail(maxAmount),
                 coordinatorUserId);
 
@@ -1191,7 +1212,7 @@ internal sealed class ExpenseReportService(
             var report = await repo.GetByIdAsync(reportId, ct);
             if (report is null) return ExpenseMutationResult.OperatorFailure("Could not reject the report. It may no longer be in Submitted status.");
 
-            if (!actorIsFinanceAdmin && await GetCoordinatorRefusalAsync(report.BudgetCategoryId, coordinatorUserId, ct) is { } refusal)
+            if (!actorIsFinanceAdmin && await GetFirstReviewerRefusalAsync(report, coordinatorUserId, ct) is { } refusal)
                 return refusal;
 
             var now = clock.GetCurrentInstant();
@@ -1201,7 +1222,7 @@ internal sealed class ExpenseReportService(
             await auditLogService.LogAsync(
                 AuditAction.ExpenseCoordinatorReject,
                 AuditEntityTypes.Report, reportId,
-                $"{(actorIsFinanceAdmin ? "Finance admin" : "Coordinator")} rejected expense report: {reason}",
+                $"{ReviewerLabel(report, actorIsFinanceAdmin)} rejected expense report: {reason}",
                 coordinatorUserId);
 
             return ExpenseMutationResult.Success;
@@ -1220,7 +1241,7 @@ internal sealed class ExpenseReportService(
                 return ExpenseMutationResult.OperatorFailure(
                     $"The reason can be at most {DeclineReasonMaxLength} characters.");
 
-            var (_, line, refusal) = await GetDeclinableLineAsync(
+            var (report, line, refusal) = await GetDeclinableLineAsync(
                 reportId, actorUserId, actorIsFinanceAdmin, lineId, ct);
             if (refusal is not null) return refusal;
             if (line!.Declined)
@@ -1233,7 +1254,7 @@ internal sealed class ExpenseReportService(
             await auditLogService.LogAsync(
                 AuditAction.ExpenseLineDeclined,
                 AuditEntityTypes.Report, reportId,
-                $"{(actorIsFinanceAdmin ? "Finance admin" : "Coordinator")} declined line "
+                $"{ReviewerLabel(report!, actorIsFinanceAdmin)} declined line "
                     + $"\"{line.Description}\" ({line.Amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR): {trimmed}",
                 actorUserId);
 
@@ -1245,7 +1266,7 @@ internal sealed class ExpenseReportService(
         CancellationToken ct = default) =>
         RunMutationAsync(ct, async () =>
         {
-            var (_, line, refusal) = await GetDeclinableLineAsync(
+            var (report, line, refusal) = await GetDeclinableLineAsync(
                 reportId, actorUserId, actorIsFinanceAdmin, lineId, ct);
             if (refusal is not null) return refusal;
             if (!line!.Declined)
@@ -1258,7 +1279,7 @@ internal sealed class ExpenseReportService(
             await auditLogService.LogAsync(
                 AuditAction.ExpenseLineDeclineUndone,
                 AuditEntityTypes.Report, reportId,
-                $"{(actorIsFinanceAdmin ? "Finance admin" : "Coordinator")} undid the decline of line "
+                $"{ReviewerLabel(report!, actorIsFinanceAdmin)} undid the decline of line "
                     + $"\"{line.Description}\" ({line.Amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR); "
                     + $"it had been declined: {line.DeclinedReason}",
                 actorUserId);
@@ -1269,7 +1290,7 @@ internal sealed class ExpenseReportService(
     private const int DeclineReasonMaxLength = 1000;
 
     /// <summary>
-    /// The service half of the DeclineLine gate: the report must still await a decision (a coordinator only while
+    /// The service half of the DeclineLine gate: the report must still await a decision (a first reviewer only while
     /// Submitted, a finance admin through CoordinatorEndorsed), and the line must be top-level. Proof rows are never
     /// declinable.
     /// </summary>
@@ -1287,8 +1308,8 @@ internal sealed class ExpenseReportService(
         if (!open) return (null, null, ExpenseMutationResult.OperatorFailure(cannot));
 
         if (!actorIsFinanceAdmin
-            && await GetCoordinatorRefusalAsync(report.BudgetCategoryId, actorUserId, ct) is { } coordinatorRefusal)
-            return (null, null, coordinatorRefusal);
+            && await GetFirstReviewerRefusalAsync(report, actorUserId, ct) is { } reviewerRefusal)
+            return (null, null, reviewerRefusal);
 
         var line = report.Lines.FirstOrDefault(l => l.Id == lineId);
         if (line is null) return (null, null, ExpenseMutationResult.Failure("Expenses_Validation_LineNotOnReport"));
@@ -1547,9 +1568,24 @@ internal sealed class ExpenseReportService(
         return (new ExpenseBooking(account.AccountNum, account.AccountId, mapRow.BudgetCategoryId, activeYear.Id), null);
     }
 
-    private async Task<ExpenseMutationResult?> GetCoordinatorRefusalAsync(
-        Guid? categoryId, Guid actorUserId, CancellationToken ct)
+    private static string ReviewerLabel(ExpenseReportDto report, bool actorIsFinanceAdmin) =>
+        actorIsFinanceAdmin ? "Finance admin"
+        : report.PreapprovalGrantId is null ? "Coordinator"
+        : "Pre-approval manager";
+
+    /// <summary>
+    /// A pre-approved report has no category; its first reviewer is a manager of the grant's program, the person who
+    /// already decided it.
+    /// </summary>
+    private async Task<ExpenseMutationResult?> GetFirstReviewerRefusalAsync(
+        ExpenseReportDto report, Guid actorUserId, CancellationToken ct)
     {
+        if (report.PreapprovalGrantId is { } grantId)
+            return (await preapprovals.ListManagedGrantIdsAsync(actorUserId, ct)).Contains(grantId)
+                ? null
+                : ExpenseMutationResult.OperatorFailure("Actor is not a manager of the report's pre-approval program.");
+
+        var categoryId = report.BudgetCategoryId;
         if (categoryId is null)
             return ExpenseMutationResult.OperatorFailure("Report is not booked to a budget category; there is no coordinator to endorse it.");
         var category = await budgetService.GetCategoryByIdAsync(categoryId.Value);

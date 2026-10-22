@@ -94,11 +94,11 @@ internal sealed class NonCompliantMemberSuspension(
                     NotificationSource.AccessSuspended,
                     NotificationClass.Actionable,
                     NotificationPriority.Critical,
-                    NoticeResources.GetString("AccountStatus_HeadingSuspended", culture)!,
+                    NoticeResources.GetString("Users_AccountStatus_HeadingSuspended", culture)!,
                     [user.Id],
-                    body: NoticeResources.GetString("AccountStatus_ConsentSuspendedBody", culture)!,
+                    body: NoticeResources.GetString("Users_AccountStatus_ConsentSuspendedBody", culture)!,
                     actionUrl: "/Consent",
-                    actionLabel: NoticeResources.GetString("AccountStatus_ReviewConsents", culture)!,
+                    actionLabel: NoticeResources.GetString("Users_AccountStatus_ReviewConsents", culture)!,
                     cancellationToken: cancellationToken);
             }
             catch (Exception ex)

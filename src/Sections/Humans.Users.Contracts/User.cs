@@ -98,8 +98,8 @@ public class User : IdentityUser<Guid>
     }
 
     /// <summary>
-    /// Frozen: the stamp lives in Consent's <c>consent_reminders</c>. Written only to clear it on GDPR erasure; read
-    /// only by the <c>consent.reminder-stamps</c> copy and fallback. Dropped once that copy is done.
+    /// Frozen: the stamp lives in Consent's <c>consent_reminders</c>. Written only to clear it on GDPR erasure;
+    /// the column goes with its separate drop migration.
     /// </summary>
     public Instant? LastConsentReminderSentAt { get; set; }
 

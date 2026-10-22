@@ -70,7 +70,7 @@ internal sealed class SurveyAdminController(
         {
             var viewer = new SurveyViewer(actorId.Value, RoleChecks.IsAdminOrBoard(User));
             var result = await surveyService.ApproveAndSendAsync(id, viewer, ct);
-            SetSuccess(localizer["Survey_Admin_Queue_Approved", result.EmailsQueued, result.Failed]);
+            SetSuccess(localizer["Surveys_Admin_Queue_Approved", result.EmailsQueued, result.Failed]);
         }
         catch (InvalidOperationException ex)
         {
@@ -92,7 +92,7 @@ internal sealed class SurveyAdminController(
         {
             var viewer = new SurveyViewer(actorId.Value, RoleChecks.IsAdminOrBoard(User));
             await surveyService.RejectAsync(id, viewer, note, ct);
-            SetSuccess(localizer["Survey_Admin_Queue_Rejected"]);
+            SetSuccess(localizer["Surveys_Admin_Queue_Rejected"]);
         }
         catch (InvalidOperationException ex)
         {
@@ -121,7 +121,7 @@ internal sealed class SurveyAdminController(
         {
             var result = await surveyService.SubmitForApprovalAsync(id, actorId.Value, ct);
             if (result.Succeeded)
-                SetSuccess(localizer["Survey_Admin_Index_Submitted"]);
+                SetSuccess(localizer["Surveys_Admin_Index_Submitted"]);
             else
                 SetError(localizer[result.ErrorKey ?? "Surveys_SubmitFailed"]);
         }
@@ -184,15 +184,22 @@ internal sealed class SurveyAdminController(
         return View("Builder", vm);
     }
 
+    private async Task<(IActionResult? Error, SurveyDetail? Detail)> RequirePreviewAsync(Guid id, CancellationToken ct)
+    {
+        var detail = await surveyService.GetForEditAsync(id, ct);
+        if (detail is null) return (NotFound(), null);
+        var auth = await authorizationService.AuthorizeAsync(
+            User, detail, new SurveyOperationRequirement(SurveyOperation.Preview));
+        return auth.Succeeded ? (null, detail) : (Forbid(), null);
+    }
+
     [HttpGet("Preview/{id:guid}")]
     public async Task<IActionResult> Preview(Guid id, string? culture, CancellationToken ct)
     {
-        var detail = await surveyService.GetForEditAsync(id, ct);
-        if (detail is null) return NotFound();
-        var auth = await authorizationService.AuthorizeAsync(
-            User, detail, new SurveyOperationRequirement(SurveyOperation.Preview));
-        if (!auth.Succeeded) return Forbid();
+        var access = await RequirePreviewAsync(id, ct);
+        if (access.Error is not null) return access.Error;
 
+        var detail = access.Detail!;
         var editable = detail.Editable;
         var resolvedCulture = SurveyPageViewModelFactory.ResolveCulture(culture, editable.DefaultCulture);
         var vm = new SurveyIntroViewModel
@@ -212,12 +219,10 @@ internal sealed class SurveyAdminController(
     [HttpGet("Preview/{id:guid}/Page")]
     public async Task<IActionResult> PreviewPage(Guid id, string? culture, int? page, CancellationToken ct)
     {
-        var detail = await surveyService.GetForEditAsync(id, ct);
-        if (detail is null) return NotFound();
-        var auth = await authorizationService.AuthorizeAsync(
-            User, detail, new SurveyOperationRequirement(SurveyOperation.Preview));
-        if (!auth.Succeeded) return Forbid();
+        var access = await RequirePreviewAsync(id, ct);
+        if (access.Error is not null) return access.Error;
 
+        var detail = access.Detail!;
         var editable = detail.Editable;
         var pages = SurveyWizardFlow.OrderedPages(editable.Questions);
         if (pages.Count == 0)
@@ -244,12 +249,10 @@ internal sealed class SurveyAdminController(
     [HttpGet("Preview/{id:guid}/ThankYou")]
     public async Task<IActionResult> PreviewThankYou(Guid id, string? culture, CancellationToken ct)
     {
-        var detail = await surveyService.GetForEditAsync(id, ct);
-        if (detail is null) return NotFound();
-        var auth = await authorizationService.AuthorizeAsync(
-            User, detail, new SurveyOperationRequirement(SurveyOperation.Preview));
-        if (!auth.Succeeded) return Forbid();
+        var access = await RequirePreviewAsync(id, ct);
+        if (access.Error is not null) return access.Error;
 
+        var detail = access.Detail!;
         var editable = detail.Editable;
         var resolvedCulture = SurveyPageViewModelFactory.ResolveCulture(culture, editable.DefaultCulture);
         var thankYou = editable.ThankYou.Resolve(resolvedCulture, editable.DefaultCulture);
@@ -273,11 +276,8 @@ internal sealed class SurveyAdminController(
         var actorId = GetCurrentUserId();
         if (actorId is null) return Forbid();
 
-        var detail = await surveyService.GetForEditAsync(id, ct);
-        if (detail is null) return NotFound();
-        var auth = await authorizationService.AuthorizeAsync(
-            User, detail, new SurveyOperationRequirement(SurveyOperation.Preview));
-        if (!auth.Succeeded) return Forbid();
+        var access = await RequirePreviewAsync(id, ct);
+        if (access.Error is not null) return access.Error;
 
         try
         {
@@ -309,11 +309,8 @@ internal sealed class SurveyAdminController(
         var actorId = GetCurrentUserId();
         if (actorId is null) return Forbid();
 
-        var detail = await surveyService.GetForEditAsync(id, ct);
-        if (detail is null) return NotFound();
-        var auth = await authorizationService.AuthorizeAsync(
-            User, detail, new SurveyOperationRequirement(SurveyOperation.Preview));
-        if (!auth.Succeeded) return Forbid();
+        var access = await RequirePreviewAsync(id, ct);
+        if (access.Error is not null) return access.Error;
 
         try
         {
@@ -419,13 +416,13 @@ internal sealed class SurveyAdminController(
         if (model.AudienceType == SurveyAudienceType.Team && model.AudienceTeamId is null)
         {
             ModelState.AddModelError(nameof(model.AudienceTeamId),
-                localizer["Survey_Admin_Builder_Error_TeamRequired"]);
+                localizer["Surveys_Admin_Builder_Error_TeamRequired"]);
         }
 
         if (model.AudienceType == SurveyAudienceType.LoggedInSince && model.AudienceLoggedInSince is null)
         {
             ModelState.AddModelError(nameof(model.AudienceLoggedInSince),
-                localizer["Survey_Admin_Builder_Error_LoggedInSinceRequired"]);
+                localizer["Surveys_Admin_Builder_Error_LoggedInSinceRequired"]);
         }
     }
 
@@ -439,13 +436,13 @@ internal sealed class SurveyAdminController(
             SetSuccess(filled > 0
                 ? string.Format(
                     CultureInfo.CurrentCulture,
-                    localizer["Survey_Admin_Builder_Saved_TranslationsFilled"].Value, filled)
-                : localizer["Survey_Admin_Builder_Saved_NoTranslationsNeeded"].Value);
+                    localizer["Surveys_Admin_Builder_Saved_TranslationsFilled"].Value, filled)
+                : localizer["Surveys_Admin_Builder_Saved_NoTranslationsNeeded"].Value);
         }
         catch (InvalidOperationException ex)
         {
             logger.LogWarning("Survey translation failed for {SurveyId}: {Reason}", id, ex.Message);
-            SetError(localizer["Survey_Admin_Builder_Saved_TranslationFailed"]);
+            SetError(localizer["Surveys_Admin_Builder_Saved_TranslationFailed"]);
         }
     }
 

@@ -32,9 +32,9 @@ public class VolunteerSearchScriptTests
         var culture = CultureInfo.GetCultureInfo(language);
         var values = new Dictionary<string, object?>(StringComparer.Ordinal)
         {
-            ["NoResultsText"] = resources.GetString("ShiftDash_NoHumansFound", culture),
-            ["ErrorText"] = resources.GetString("ShiftDash_SearchFailed", culture),
-            ["OverlapLabel"] = resources.GetString("ShiftDash_ScheduleConflict", culture),
+            ["NoResultsText"] = resources.GetString("Shifts_ShiftDash_NoHumansFound", culture),
+            ["ErrorText"] = resources.GetString("Shifts_ShiftDash_SearchFailed", culture),
+            ["OverlapLabel"] = resources.GetString("Shifts_ShiftDash_ScheduleConflict", culture),
             ["SearchUrl"] = "/search?a=1&b=2",
             ["VoluntellUrl"] = "/assign?a=1&b=2",
         };

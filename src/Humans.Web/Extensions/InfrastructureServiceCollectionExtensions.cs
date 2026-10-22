@@ -40,7 +40,7 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddConfigurationMetadata(configuration, configRegistry);
         services.AddTelemetryInfrastructure(configuration);
-        services.AddEmailInfrastructure(configuration, environment);
+        services.AddEmailInfrastructure(configuration);
         services.AddGoogleWorkspaceInfrastructure(configuration);
         services.AddTicketVendorPort(configuration);
 

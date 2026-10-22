@@ -646,11 +646,9 @@ public class MembershipCalculatorTests
 
         var reminders = await _service.GetUsersRequiringStatusUpdateAsync(ct, Duration.FromDays(30));
         var suspensions = await _service.GetUsersRequiringStatusUpdateAsync(ct);
-        var expired = await _service.GetUsersWithAnyExpiredConsentsAsync([userId], ct);
 
         reminders.Contains(userId).Should().Be(remind);
         suspensions.Contains(userId).Should().Be(suspend);
-        expired.Contains(userId).Should().Be(!signed && daysUntilDeadline <= 0);
     }
 
     [HumansFact]
@@ -683,42 +681,6 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid());
 
         var result = await _service.GetUsersWithAllRequiredConsentsAsync([], Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetUsersWithAnyExpiredConsentsAsync_ExpiredUnsigned_ReturnsUser()
-    {
-        var userId = Guid.NewGuid();
-        SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 0,
-            effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
-
-        var result = await _service.GetUsersWithAnyExpiredConsentsAsync([userId], Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().Contain(userId);
-    }
-
-    [HumansFact]
-    public async Task GetUsersWithAnyExpiredConsentsAsync_NoExpiredVersions_ReturnsEmpty()
-    {
-        var userId = Guid.NewGuid();
-        // grace=365 → not expired yet
-        SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 365,
-            effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
-
-        var result = await _service.GetUsersWithAnyExpiredConsentsAsync([userId], Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetUsersWithAnyExpiredConsentsAsync_EmptyInput_ReturnsEmpty()
-    {
-        SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 0,
-            effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
-
-        var result = await _service.GetUsersWithAnyExpiredConsentsAsync([], Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeEmpty();
     }

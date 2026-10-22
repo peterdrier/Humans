@@ -183,7 +183,7 @@ internal sealed class UserEmailService(
         {
             logger.LogWarning("Email verification rejected for user {UserId}, email row {EmailId}: {Reason}",
                 userId, emailId, reason);
-            return new VerifyEmailResult(string.Empty, false, "Profile_InvalidVerificationLink");
+            return new VerifyEmailResult(string.Empty, false, "Users_Profile_InvalidVerificationLink");
         }
     }
 
@@ -248,14 +248,14 @@ internal sealed class UserEmailService(
         if (!string.IsNullOrEmpty(email.Provider))
         {
             // Provider-attached rows must go through UnlinkAsync; this guards non-UI callers.
-            return new DeleteEmailResult(false, "EmailGrid_DeleteRejectedHasProvider");
+            return new DeleteEmailResult(false, "Users_EmailGrid_DeleteRejectedHasProvider");
         }
 
         // Block removing the primary: the user must promote another verified email first, or
         // they can delete their own sign-in/notification target.
         if (email.IsPrimary)
         {
-            return new DeleteEmailResult(false, "EmailGrid_DeletePrimaryBlocked");
+            return new DeleteEmailResult(false, "Users_EmailGrid_DeletePrimaryBlocked");
         }
 
         // Block deleting the last verified row: the user would silently lose all notifications.
@@ -273,7 +273,7 @@ internal sealed class UserEmailService(
         // Block removing a ticket-linked email: the next vendor re-sync could un-match the ticket.
         if (await IsAddressTicketLinkedAsync(userId, email.Email, cancellationToken))
         {
-            return new DeleteEmailResult(false, "EmailGrid_DeleteTicketLinkedBlocked");
+            return new DeleteEmailResult(false, "Users_EmailGrid_DeleteTicketLinkedBlocked");
         }
 
         var removed = await userService.RemoveUserEmailAsync(
@@ -417,23 +417,6 @@ internal sealed class UserEmailService(
             email.VerificationSentAt,
             email.CreatedAt,
             email.UpdatedAt);
-
-    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>> GetEntitiesByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default)
-    {
-        if (userIds.Count == 0)
-            return new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>();
-
-        // Raw, like the singular read above: each id gets its own rows, stamped with itself.
-        var result = new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>(userIds.Count);
-        foreach (var uid in userIds.Distinct())
-        {
-            var info = await userService.GetRawUserInfoAsync(uid, cancellationToken);
-            if (info is null || info.UserEmails.Count == 0) continue;
-            result[uid] = info.UserEmails.Select(e => ToSnapshot(uid, e)).ToList();
-        }
-        return result;
-    }
 
     public async Task<IReadOnlyDictionary<Guid, string>> GetNotificationEmailsByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default)
@@ -631,7 +614,7 @@ internal sealed class UserEmailService(
             logger.LogWarning(
                 "Refused unlink of email {EmailId} for user {UserId}: no other verified sign-in method remains",
                 userEmailId, userId);
-            return new(false, "LinkedAccounts_UnlinkBlockedLastSignInMethod");
+            return new(false, "Users_LinkedAccounts_UnlinkBlockedLastSignInMethod");
         }
 
         var user = await userManager.FindByIdAsync(userId.ToString());

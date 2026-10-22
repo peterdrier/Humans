@@ -1094,6 +1094,13 @@ internal sealed class ShiftManagementService(
         return result.OrderByDescending(u => u.UrgencyScore).ToList();
     }
 
+    private static bool OverlapsDay(Shift shift, EventSettingsInfo calendar, Instant dayStart, Instant dayEnd)
+    {
+        var start = shift.GetAbsoluteStart(calendar);
+        var end = shift.GetAbsoluteEnd(calendar);
+        return start < dayEnd && end > dayStart;
+    }
+
     public async Task<ShiftStaffingSnapshot> GetStaffingSnapshotAsync(
         Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null, CancellationToken ct = default)
@@ -1124,12 +1131,7 @@ internal sealed class ShiftManagementService(
             var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
             var dateLabel = dayDate.ToWeekdayDayMonth();
 
-            var overlapping = shifts.Where(s =>
-            {
-                var start = s.GetAbsoluteStart(es);
-                var end = s.GetAbsoluteEnd(es);
-                return start < dayEnd && end > dayStart;
-            }).ToList();
+            var overlapping = shifts.Where(s => OverlapsDay(s, es, dayStart, dayEnd)).ToList();
 
             var periodLabel = dayOffset < 0 ? "Set-up" : dayOffset <= es.EventEndOffset ? "Event" : "Strike";
             var totalSlots = overlapping.Sum(s => s.MaxVolunteers);
@@ -1777,12 +1779,7 @@ internal sealed class ShiftManagementService(
             var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
             var dateLabel = dayDate.ToWeekdayDayMonth();
 
-            var overlapping = shifts.Where(s =>
-            {
-                var start = s.GetAbsoluteStart(es);
-                var end = s.GetAbsoluteEnd(es);
-                return start < dayEnd && end > dayStart;
-            });
+            var overlapping = shifts.Where(s => OverlapsDay(s, es, dayStart, dayEnd));
 
             var byDept = new Dictionary<Guid, (string Name, int Count)>();
             foreach (var s in overlapping)
@@ -1872,12 +1869,7 @@ internal sealed class ShiftManagementService(
                 var dayStart = day.Date.AtStartOfDayInZone(tz).ToInstant();
                 var dayEnd = day.Date.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
 
-                var overlapping = shifts.Where(s =>
-                {
-                    var start = s.GetAbsoluteStart(es);
-                    var end = s.GetAbsoluteEnd(es);
-                    return start < dayEnd && end > dayStart;
-                }).ToList();
+                var overlapping = shifts.Where(s => OverlapsDay(s, es, dayStart, dayEnd)).ToList();
 
                 var totalSlots = overlapping.Sum(s => s.MaxVolunteers);
                 var filledSlots = overlapping.Sum(s =>

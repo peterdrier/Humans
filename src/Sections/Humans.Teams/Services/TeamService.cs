@@ -542,6 +542,17 @@ internal sealed class TeamService(
             : new TeamJoinResult(ErrorKey: directResult.ErrorKey);
     }
 
+    private static string? SelfJoinRefusal(Team team, bool requiresApproval)
+    {
+        if (!team.IsActive)
+            return "Teams_NotFound";
+        if (team.IsSystemTeam)
+            return "Teams_Team_CannotJoinSystem";
+        if (team.IsHidden)
+            return "Teams_CannotJoinHidden";
+        return team.RequiresApproval != requiresApproval ? "Teams_JoinPolicyChanged" : null;
+    }
+
     public async Task<TeamJoinRequestResult> RequestToJoinTeamAsync(
         Guid teamId,
         Guid userId,
@@ -552,17 +563,8 @@ internal sealed class TeamService(
         if (team is null)
             return new TeamJoinRequestResult(ErrorKey: "Teams_NotFound");
 
-        if (!team.IsActive)
-            return new TeamJoinRequestResult(ErrorKey: "Teams_NotFound");
-
-        if (team.IsSystemTeam)
-            return new TeamJoinRequestResult(ErrorKey: "Teams_Team_CannotJoinSystem");
-
-        if (team.IsHidden)
-            return new TeamJoinRequestResult(ErrorKey: "Teams_CannotJoinHidden");
-
-        if (!team.RequiresApproval)
-            return new TeamJoinRequestResult(ErrorKey: "Teams_JoinPolicyChanged");
+        if (SelfJoinRefusal(team, requiresApproval: true) is { } errorKey)
+            return new TeamJoinRequestResult(ErrorKey: errorKey);
 
         using var joinRequest = await JoinRequestLock.AcquireAsync(logger, cancellationToken);
         var existingRequest = await repo.FindUserPendingRequestAsync(teamId, userId, cancellationToken);
@@ -601,17 +603,8 @@ internal sealed class TeamService(
         if (team is null)
             return new TeamDirectJoinResult(ErrorKey: "Teams_NotFound");
 
-        if (!team.IsActive)
-            return new TeamDirectJoinResult(ErrorKey: "Teams_NotFound");
-
-        if (team.IsSystemTeam)
-            return new TeamDirectJoinResult(ErrorKey: "Teams_Team_CannotJoinSystem");
-
-        if (team.IsHidden)
-            return new TeamDirectJoinResult(ErrorKey: "Teams_CannotJoinHidden");
-
-        if (team.RequiresApproval)
-            return new TeamDirectJoinResult(ErrorKey: "Teams_JoinPolicyChanged");
+        if (SelfJoinRefusal(team, requiresApproval: false) is { } errorKey)
+            return new TeamDirectJoinResult(ErrorKey: errorKey);
 
         var existingMember = await repo.IsActiveMemberAsync(teamId, userId, cancellationToken);
         if (existingMember)
@@ -1496,9 +1489,8 @@ internal sealed class TeamService(
                     assignment.TeamMember?.UserId))
                 .ToList());
 
-    public async Task<TeamRoleAssignment> AssignToRoleAsync(
-        Guid roleDefinitionId, Guid targetUserId, Guid actorUserId,
-        CancellationToken cancellationToken = default)
+    private async Task<(TeamRoleDefinition Definition, Team Team)> RequireRoleAssignmentManagementAsync(
+        Guid roleDefinitionId, Guid actorUserId, CancellationToken cancellationToken)
     {
         var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken)
             ?? throw new InvalidOperationException($"Role definition {roleDefinitionId} not found");
@@ -1507,6 +1499,16 @@ internal sealed class TeamService(
         var canManage = await CanUserApproveRequestsForTeamAsync(definition.TeamId, actorUserId, cancellationToken);
         if (!canManage)
             throw new InvalidOperationException("User does not have permission to manage role assignments for this team");
+
+        return (definition, team);
+    }
+
+    public async Task<TeamRoleAssignment> AssignToRoleAsync(
+        Guid roleDefinitionId, Guid targetUserId, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var (definition, team) = await RequireRoleAssignmentManagementAsync(
+            roleDefinitionId, actorUserId, cancellationToken);
 
         targetUserId = await ResolveMembershipTargetAsync(targetUserId, cancellationToken);
         var existingMember = await repo.FindActiveMemberForMutationAsync(definition.TeamId, targetUserId, cancellationToken);
@@ -1568,13 +1570,8 @@ internal sealed class TeamService(
         Guid roleDefinitionId, Guid teamMemberId, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken)
-            ?? throw new InvalidOperationException($"Role definition {roleDefinitionId} not found");
-        var team = await GetRoleDefinitionTeamAsync(definition, cancellationToken);
-
-        var canManage = await CanUserApproveRequestsForTeamAsync(definition.TeamId, actorUserId, cancellationToken);
-        if (!canManage)
-            throw new InvalidOperationException("User does not have permission to manage role assignments for this team");
+        var (definition, team) = await RequireRoleAssignmentManagementAsync(
+            roleDefinitionId, actorUserId, cancellationToken);
 
         var (_, targetUserId) = await repo.UnassignFromRoleAsync(
             roleDefinitionId, teamMemberId, cancellationToken);
@@ -1944,15 +1941,31 @@ internal sealed class TeamService(
         await repo.RemoveEarlyEntryGrantsForUserAsync(userId, ct);
     }
 
-    private async Task<IReadOnlyDictionary<Guid, TeamInfo>> LoadTeamsByIdAsync(CancellationToken ct = default)
+    private async Task<IReadOnlyDictionary<Guid, TeamInfo>> LoadTeamsByIdAsync(CancellationToken ct = default) =>
+        await ResolveTeamMembersAsync(await GetTeamSnapshotsAsync(ct), ct);
+
+    public async Task<IReadOnlyDictionary<Guid, TeamInfo>> ResolveTeamMembersAsync(
+        IReadOnlyDictionary<Guid, TeamReadSnapshot> teams, CancellationToken ct = default)
+    {
+        var userIds = teams.Values.SelectMany(t => t.Members.Select(m => m.UserId)).Distinct().ToList();
+        var users = userIds.Count == 0
+            ? new Dictionary<Guid, UserInfo>()
+            : await UserService.GetUserInfosAsync(userIds, ct);
+        return teams.ToDictionary(pair => pair.Key, pair => pair.Value.Team with
+        {
+            Members = pair.Value.Members.Select(member =>
+            {
+                users.TryGetValue(member.UserId, out var user);
+                return new TeamMemberInfo(
+                    member.TeamMemberId, member.UserId, user?.BurnerName ?? string.Empty,
+                    user?.Email, user?.ProfilePictureUrl, member.Role, member.JoinedAt);
+            }).ToList(),
+        });
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, TeamReadSnapshot>> GetTeamSnapshotsAsync(CancellationToken ct = default)
     {
         var teams = await repo.GetAllWithMembersAsync(ct);
-        var allUserIds = teams.SelectMany(t => t.Members.Where(m => m.LeftAt is null).Select(m => m.UserId))
-            .Distinct()
-            .ToList();
-        var users = allUserIds.Count == 0
-            ? new Dictionary<Guid, UserInfo>()
-            : await UserService.GetUserInfosAsync(allUserIds, ct);
         var managementHolders = await repo.GetActiveManagementRoleHolderUserIdsByTeamAsync(ct);
         var roleDefinitionsByTeam = await repo.GetAllRoleDefinitionsByTeamAsync(ct);
         var childIdsByParent = teams
@@ -1964,16 +1977,15 @@ internal sealed class TeamService(
 
         return teams.ToDictionary(
             t => t.Id,
-            t => BuildTeamInfo(t, users, managementHolders, roleDefinitionsByTeam, childIdsByParent, pendingCounts));
+            t => BuildTeamSnapshot(t, managementHolders, roleDefinitionsByTeam, childIdsByParent, pendingCounts));
     }
 
-    private static TeamInfo BuildTeamInfo(
+    private static TeamReadSnapshot BuildTeamSnapshot(
         Team team,
-        IReadOnlyDictionary<Guid, UserInfo> users,
         IReadOnlyDictionary<Guid, IReadOnlySet<Guid>> managementHolders,
         IReadOnlyDictionary<Guid, IReadOnlyList<TeamRoleDefinition>> roleDefinitionsByTeam,
         IReadOnlyDictionary<Guid, IReadOnlyList<Guid>> childIdsByParent,
-        IReadOnlyDictionary<Guid, int> pendingCounts) => new(
+        IReadOnlyDictionary<Guid, int> pendingCounts) => new(new TeamInfo(
         Id: team.Id,
         Name: team.Name,
         Description: team.Description,
@@ -1986,21 +1998,7 @@ internal sealed class TeamService(
         IsHidden: team.IsHidden,
         IsPromotedToDirectory: team.IsPromotedToDirectory,
         CreatedAt: team.CreatedAt,
-        Members: team.Members
-            .Where(m => m.LeftAt is null)
-            .Select(m =>
-            {
-                users.TryGetValue(m.UserId, out var u);
-                return new TeamMemberInfo(
-                    TeamMemberId: m.Id,
-                    UserId: m.UserId,
-                    DisplayName: u?.BurnerName ?? string.Empty,
-                    Email: u?.Email,
-                    ProfilePictureUrl: u?.ProfilePictureUrl,
-                    Role: m.Role,
-                    JoinedAt: m.JoinedAt);
-            })
-            .ToList(),
+        Members: [],
         ParentTeamId: team.ParentTeamId,
         GoogleGroupPrefix: team.GoogleGroupPrefix,
         HasBudget: team.HasBudget,
@@ -2018,7 +2016,9 @@ internal sealed class TeamService(
         PageContentUpdatedAt: team.PageContentUpdatedAt,
         PageContentUpdatedByUserId: team.PageContentUpdatedByUserId,
         PendingRequestCount: pendingCounts.TryGetValue(team.Id, out var pending) ? pending : 0,
-        EarlyEntryEnabled: team.EarlyEntryEnabled);
+        EarlyEntryEnabled: team.EarlyEntryEnabled),
+        team.Members.Where(m => m.LeftAt is null)
+            .Select(m => new TeamMemberReference(m.Id, m.UserId, m.Role, m.JoinedAt)).ToList());
 
     private async Task<Team> GetRoleDefinitionTeamAsync(TeamRoleDefinition definition, CancellationToken ct)
     {

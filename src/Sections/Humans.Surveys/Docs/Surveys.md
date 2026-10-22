@@ -180,6 +180,14 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 ## Invariants
 
+- Invited wizard starts reject invalid model binding and undefined anonymity values with HTTP 400 before creating drafts, marking an invitation started or storing wizard state. A malformed privacy choice never silently uses the model’s Identified default.
+
+- UI resource keys use the section prefix `Surveys_` in all six cultures; reflection-resolved `Enum_` keys retain their type-based names.
+
+- Survey create and update share the editable-field mapping, including normalized invitation copy, prepared questions and public slug. Creation identity/status/timestamps and each path’s validation and upload lifecycle remain owned by that path.
+
+- Invitation send/reminder timestamps on the operator send page use the shared display formatter in Europe/Madrid time, with date ordering and month names following the UI culture; missing stamps remain an em dash.
+
 - **Anonymity encoding** is the load-bearing privacy contract:
 
   | Tier | `Response.UserId` | `Response.InvitationId` | `Invitation.Completed` | Resume? | In GDPR export / drill-down / API identity |
@@ -192,7 +200,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - **`Completed` is a boolean with no timestamp** and `survey_invitations` has no `UpdatedAt`: recording *when* a CompletionTracked invitee finished would correlate (user-linked) with the unattributed response's `SubmittedAt` and re-identify them.
 - **Resume is Identified-only.** An in-progress Identified response is a persisted draft (`SubmittedAt is null`), found by `(SurveyId, UserId, SubmittedAt is null)`. CompletionTracked/Anonymous carry no link, are held in session, and **restart** on reopen.
 - **Response finalization is serialized in-process.** A concurrent double-submit cannot insert two unlinked CompletionTracked ballots: the second finalizer re-reads the completed invitation after the first save and does nothing. Identified draft autosaves share the gate so a stale autosave cannot change a completed response or append extra answers. The gate covers the short persistence step only; anonymity fields and the timestamp-free completion marker stay unchanged.
-- **A double-submit or refresh on an already-completed tracked invitation lands on the thank-you page, not a 500.** `AdvanceWizardAsync` treats `PrepareSubmissionAsync` reporting the invitation already `Completed` as a normal `Submitted` outcome (the controller clears the session and redirects); only the standalone `SubmitResponseAsync` entry point still throws on the same condition.
+- **A double-submit or refresh on an already-completed tracked invitation lands on the thank-you page, not a 500.** `AdvanceWizardAsync` treats `PrepareSubmissionAsync` reporting the invitation already `Completed` as a normal `Submitted` outcome (the controller clears the session and redirects). Final submission runs only through the wizard; there is no separate submission entry point.
 - **The thank-you page reads a session completion marker, not the link.** Submit flips `Invitation.Completed`, after which the invite token no longer resolves — so the redirect to thank-you leaves `SurveyCompletion(SurveyId, Culture)` under `survey-thankyou:{token}` / `survey-thankyou:slug:{slug}`, and the page renders the authored copy in the language the respondent *answered* in (not their site UI culture). A thank-you link opened without a marker falls back to resolving the token/slug.
 - **A survey with nothing left to show says so; it never reports itself as completed.** When the wizard reaches a page whose questions are all hidden and there is no next visible page, the respondent gets the `Closed` view with `Reason = "empty"` — not the thank-you page. Nothing has been submitted at that point, so no completion marker is written and the session is left alone. Reaching this state usually means the survey has no questions, or its branching hides all of them, and it is meant to be visible as such rather than disguised as a finished response.
 - **Branching is server-side and authoritative.** A null `ShowIf` is visible; hidden questions are never treated as required; at submit the full branching is re-evaluated and answers to hidden questions are **dropped/rejected** (the client cannot smuggle them). Author-save rejects `ShowIf` forward-references (`SurveyBranchingEvaluator.ValidateNoForwardReferences`).
@@ -208,6 +216,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - **Question help text is sanitized Markdown.** Existing plain text remains valid; respondent and preview rendering use the shared Markdown renderer/sanitizer. Prompts remain plain text.
 - **The invitation email's custom message has a builder-time "Preview" button** (distinct from the send-a-preview-to-self flow below) that renders the typed Markdown through the shared `_EmailComposer` component, which posts to Email's `POST /Email/PreviewMarkdown` endpoint (`IEmailPreviewManagement.RenderMarkdown`, section-internal) — no invitation is sent and no outbox row is created.
 - **Invitation send is additive with at-least-once delivery.** Each send resolves the audience and skips invitations whose `SentAt` records outbox acceptance. Failed unsent rows are reused on retry, including public participation rows; **sends never revoke**. `SentAt` is stamped only after enqueue acceptance. An uncertain enqueue or a failed post-enqueue status save can cause a duplicate email on retry. The Send page previews that exact net-new count, not the raw audience size. Requires the survey Open with a valid audience configuration (`Team` requires a team; `LoggedInSince` requires a cutoff date). Invites are operational (`MessageCategory.System`, always-send) — surveys are never marketing.
+- Intro, page, thank-you, email-render and preview-email-send actions share one survey lookup and Preview authorization gate; email actions still require a signed-in actor before that lookup.
 - **Survey preview is side-effect-free and status-independent.** An author may rehearse their own
   survey — Draft, Open, or Closed — through the respondent views, and Board/Admin may rehearse any;
   `SurveyOperation.Preview` refuses a survey you neither wrote nor administer. Preview page

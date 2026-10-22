@@ -51,6 +51,12 @@ commit shas, their PR-body lines, and this brief:
 > GOOD for a plain, correct change — style is not a defect. Return a table
 > `sha | claim | verdict | reason (≤20 words) | repair (if REPAIR)` and nothing else.
 
+**Production readings — verify, never trust.** For every commit that retires a data
+migration (deletes a registration, its legacy fallback or its obsolete fields), fetch
+`https://humans.nobodies.team/api/data-migrations` yourself and quote the live reading in the
+§5 report. A key that is missing or reads anything but `"pending":0,"done":true` makes that
+commit a REVERT. Codex's quoted reading is a claim, not evidence.
+
 Spot-check any REVERT or REPAIR verdict yourself against the code before accepting it.
 A REPAIR you are not certain of is a REVERT. A reverted commit's ledger/doc edits go with
 it — `git revert` handles that.
@@ -119,6 +125,7 @@ Push, then reply in every thread with its verdict and the sha, react, resolve (m
 One PR comment, starting `## Debt review`:
 
 - the commit verdict table (all commits, one row each)
+- the live production reading for each retired data migration, fetched this run
 - the /fix triage table
 - issues filed, owner-qualified, and the rows they replaced
 - the ledger line: open rows before → after this review

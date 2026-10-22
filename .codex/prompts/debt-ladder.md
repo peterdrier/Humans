@@ -213,10 +213,10 @@ For each line: find the method's caller(s) — **read the consumer first**,
 don't just delete the sort. A prior PR (peterdrier/Humans#1002) had to revert two premature
 deletions where the view rendered in repo order with no re-sort.
 
-**Seed check (2026-10-11):** The former `TeamRepository.GetAllRoleDefinitionsAsync`
+**Seed check (2026-10-22):** The former `TeamRepository.GetAllRoleDefinitionsAsync`
 seed is resolved: the repository `OrderBy` was removed and `TeamController.Roster`
-sorts by priority, team name, role name and slot number. The detector currently returns only the parked `TicketRepository`
-entries. Re-run Finds for new actionable view moves.
+sorts by priority, team name, role name and slot number. The display-sort baseline
+is empty. Re-run Finds for new actionable view moves.
 
 **Drained when:** the grep above (minus TicketRepository) returns nothing.
 

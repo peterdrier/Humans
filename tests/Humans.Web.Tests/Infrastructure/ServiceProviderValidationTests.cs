@@ -29,6 +29,22 @@ namespace Humans.Web.Tests.Infrastructure;
 public sealed class ServiceProviderValidationTests
 {
     [HumansTheory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t")]
+    public void Email_registration_allows_missing_or_blank_smtp_configuration(string? host)
+    {
+        var configuration = BuildMinimalConfiguration();
+        configuration["Email:SmtpHost"] = host;
+        var registrations = new ServiceCollection();
+        Extensions.Infrastructure.EmailInfrastructureExtensions.AddEmailInfrastructure(registrations, configuration);
+        using var services = registrations.BuildServiceProvider();
+
+        services.GetRequiredService<IOptions<EmailSettings>>().Value.SmtpHost.Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData("https://example.com/", "/Account/MagicLinkConfirm")]
     [InlineData("https://example.com", "/Account/MagicLinkConfirm")]
     [InlineData("https://example.com/humans/", "/humans/Account/MagicLinkConfirm")]
@@ -38,7 +54,7 @@ public sealed class ServiceProviderValidationTests
         configuration["Email:BaseUrl"] = baseUrl;
         var registrations = new ServiceCollection();
         Extensions.Infrastructure.EmailInfrastructureExtensions.AddEmailInfrastructure(
-            registrations, configuration, new StubHostEnvironment());
+            registrations, configuration);
         using var services = registrations.BuildServiceProvider();
         var settings = services.GetRequiredService<IOptions<EmailSettings>>().Value;
 

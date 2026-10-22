@@ -213,11 +213,6 @@ internal sealed class MembershipCalculator(
         return result;
     }
 
-    public Task<IReadOnlySet<Guid>> GetUsersWithAnyExpiredConsentsAsync(
-        IEnumerable<Guid> userIds,
-        CancellationToken cancellationToken = default) =>
-        GetUsersWithConsentDeadlineByAsync(userIds, clock.GetCurrentInstant(), cancellationToken);
-
     private async Task<IReadOnlySet<Guid>> GetUsersWithConsentDeadlineByAsync(
         IEnumerable<Guid> userIds, Instant deadline, CancellationToken cancellationToken)
     {

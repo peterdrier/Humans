@@ -149,42 +149,16 @@ public class ProfileViewControllerPopoverTests
     }
 
     [HumansFact]
-    public async Task Popover_UserWithoutProfile_RendersFallbackWithoutEmail()
+    public async Task Popover_UserWithoutProfile_Returns404()
     {
-        // The popover is reachable by any authenticated user. Surfacing email
-        // (verified or not) for the imported-no-profile path is a GDPR PII leak.
-        // Admins who need email use /Users/Admin/{id}.
         var id = Guid.NewGuid();
-        var user = new User
-        {
-            Id = id,
-            BurnerName = "Imported Human",
-            DisplayName = "Imported Human",
-            Email = "stale-legacy@example.com",
-            PreferredLanguage = "es",
-            ProfilePictureUrl = null,
-        };
-        var userEmails = new List<UserEmail>
-        {
-            new() { Id = Guid.NewGuid(), UserId = id, Email = "primary@example.com", IsVerified = true, IsPrimary = true },
-        };
+        var user = new User { Id = id, BurnerName = "Imported Human", PreferredLanguage = "es" };
         _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
-            .Returns(BuildUserInfo(user, profile: null, userEmails));
+            .Returns(BuildUserInfo(user, profile: null, userEmails: null));
 
         var result = await _controller.Popover(id, TestContext.Current.CancellationToken);
 
-        var partial = result.Should().BeOfType<PartialViewResult>().Subject;
-        partial.ViewName.Should().Be("_HumanPopover");
-        var vm = partial.Model.Should().BeOfType<ProfileSummaryViewModel>().Subject;
-        vm.HasProfile.Should().BeFalse();
-        vm.DisplayName.Should().Be("Imported Human");
-        vm.Email.Should().BeNull();
-        vm.PreferredLanguage.Should().Be("es");
-        vm.MembershipTier.Should().BeNull();
-        vm.MembershipStatus.Should().BeNull();
-        vm.City.Should().BeNull();
-        vm.Teams.Should().BeEmpty();
-        vm.Languages.Should().BeEmpty();
+        result.Should().BeOfType<NotFoundResult>();
     }
 
     [HumansFact]

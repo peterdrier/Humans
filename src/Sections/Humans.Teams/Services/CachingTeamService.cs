@@ -13,12 +13,13 @@ using Humans.Users.Contracts;
 namespace Humans.Teams.Services;
 
 /// <summary>
-/// Serves bulk reads, so /Debug/CacheStats records no per-key hits or misses: entry and invalidation counts are the
-/// meaningful diagnostics.
+/// Caches only Teams-owned snapshots; member display fields are resolved through Users on each read. Serves bulk
+/// reads, so /Debug/CacheStats records no per-key hits or misses: entry and invalidation counts are the meaningful
+/// diagnostics.
 /// </summary>
 internal sealed class CachingTeamService(
     IServiceScopeFactory scopeFactory,
-    ILogger<CachingTeamService> logger) : TrackedCache<Guid, TeamInfo>("Team.TeamInfo", warmOnStartup: true, logger),
+    ILogger<CachingTeamService> logger) : TrackedCache<Guid, TeamReadSnapshot>("Team.TeamInfo", warmOnStartup: true, logger),
     ITeamManagementService, ITeamSeeding, IUserMerge, IUserDataContributor, IEntityNameContributor
 {
     public const string InnerServiceKey = "team-inner";
@@ -158,7 +159,7 @@ internal sealed class CachingTeamService(
                 continue;
 
             result.Add(new UserTeamMembershipInfo(
-                membership.TeamMemberId, team.Id, team.Name, team.Slug, team.IsSystemTeam,
+                membership.TeamMemberId, team.Team.Id, team.Team.Name, team.Team.Slug, team.Team.IsSystemTeam,
                 membership.Role, membership.JoinedAt));
         }
 
@@ -434,8 +435,7 @@ internal sealed class CachingTeamService(
         IReadOnlyCollection<Guid> teamIds,
         CancellationToken cancellationToken = default)
     {
-        await EnsureWarmedAsync(cancellationToken);
-        var snapshot = AsReadOnlyDictionary;
+        var snapshot = await GetTeamsByIdAsync(cancellationToken);
         var result = new Dictionary<Guid, TeamInfo>();
         foreach (var teamId in teamIds)
         {
@@ -620,13 +620,23 @@ internal sealed class CachingTeamService(
 
     private async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsByIdAsync(CancellationToken ct)
     {
+        var teams = await GetTeamSnapshotsAsync(ct);
+        return await ResolveTeamMembersAsync(teams, ct);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, TeamReadSnapshot>> GetTeamSnapshotsAsync(CancellationToken ct = default)
+    {
         await EnsureWarmedAsync(ct);
         return AsReadOnlyDictionary;
     }
 
+    public Task<IReadOnlyDictionary<Guid, TeamInfo>> ResolveTeamMembersAsync(
+        IReadOnlyDictionary<Guid, TeamReadSnapshot> teams, CancellationToken ct = default) =>
+        WithInnerAsync(inner => inner.ResolveTeamMembersAsync(teams, ct));
+
     protected override async Task WarmAllAsync(CancellationToken ct)
     {
-        var teams = await WithInnerAsync(inner => inner.GetTeamsAsync(ct));
+        var teams = await WithInnerAsync(inner => inner.GetTeamSnapshotsAsync(ct));
 
         foreach (var (teamId, team) in teams)
             Set(teamId, team);
@@ -637,7 +647,7 @@ internal sealed class CachingTeamService(
             foreach (var member in team.Members)
             {
                 var set = _teamIdsByUserId.GetOrAdd(member.UserId, static _ => new HashSet<Guid>());
-                set.Add(team.Id);
+                set.Add(team.Team.Id);
             }
         }
     }

@@ -77,7 +77,7 @@ internal sealed class Service(
             teams.Select(t => t.Id).ToList(), year, ct);
         var productIds = campOrders.Concat(teamOrders)
             .SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList();
-        var productNames = await LoadProductNamesAsync(productIds, ct);
+        var productNames = await orderReader.LoadProductNamesAsync(productIds, ct);
         var currentPrices = await LoadCurrentPricesAsync(ct);
         var campOrdersBySeason = campOrders.ToLookup(o => o.CampSeasonId);
         var teamOrdersByTeam = teamOrders.ToLookup(o => o.TeamId);
@@ -88,7 +88,7 @@ internal sealed class Service(
             // delete the rest.
             var allOrders = new List<OrderDto>();
             foreach (var order in campOrdersBySeason[season.Id])
-                allOrders.Add(await MapOrderAsync(order, productNames, currentPrices, ct, season.Name));
+                allOrders.Add(await orderReader.MapOrderAsync(order, productNames, currentPrices, ct, season.Name));
             var primary = allOrders
                 .OrderByDescending(o => o.BalanceEur)
                 .FirstOrDefault();
@@ -106,7 +106,7 @@ internal sealed class Service(
             var existing = teamOrdersByTeam[team.Id].FirstOrDefault();
             IReadOnlyList<OrderDto> orders = existing is null
                 ? []
-                : [await MapOrderAsync(existing, productNames, currentPrices, ct, team.Name)];
+                : [await orderReader.MapOrderAsync(existing, productNames, currentPrices, ct, team.Name)];
             counterparties.Add(new CounterpartyOrders(
                 OrderCounterpartyType.Team,
                 team.Id,
@@ -181,18 +181,10 @@ internal sealed class Service(
         var product = new Product
         {
             Id = Guid.NewGuid(),
-            Year = draft.Year,
-            Name = draft.Name.Trim(),
-            Description = draft.Description,
-            UnitPriceEur = draft.UnitPriceEur,
-            VatRatePercent = draft.VatRatePercent,
-            DepositAmountEur = draft.DepositAmountEur,
-            HoldedRevenueAccountNum = draft.HoldedRevenueAccountNum,
-            OrderableUntil = draft.OrderableUntil,
-            IsActive = draft.IsActive,
             CreatedAt = now,
             UpdatedAt = now
         };
+        ApplyProductFields(product, draft);
         await repo.AddProductAsync(product, ct);
         await audit.LogAsync(
             AuditAction.StoreProductCreated, AuditEntityTypes.Product, product.Id,
@@ -213,15 +205,7 @@ internal sealed class Service(
 
         var oldPrice = product.UnitPriceEur;
 
-        product.Year = draft.Year;
-        product.Name = draft.Name.Trim();
-        product.Description = draft.Description;
-        product.UnitPriceEur = draft.UnitPriceEur;
-        product.VatRatePercent = draft.VatRatePercent;
-        product.DepositAmountEur = draft.DepositAmountEur;
-        product.HoldedRevenueAccountNum = draft.HoldedRevenueAccountNum;
-        product.OrderableUntil = draft.OrderableUntil;
-        product.IsActive = draft.IsActive;
+        ApplyProductFields(product, draft);
         product.UpdatedAt = clock.GetCurrentInstant();
 
         await repo.UpdateProductAsync(product, ct);
@@ -301,6 +285,19 @@ internal sealed class Service(
         return AdminMutationResult.Refused(reason);
     }
 
+    private static void ApplyProductFields(Product product, ProductDto draft)
+    {
+        product.Year = draft.Year;
+        product.Name = draft.Name.Trim();
+        product.Description = draft.Description;
+        product.UnitPriceEur = draft.UnitPriceEur;
+        product.VatRatePercent = draft.VatRatePercent;
+        product.DepositAmountEur = draft.DepositAmountEur;
+        product.HoldedRevenueAccountNum = draft.HoldedRevenueAccountNum;
+        product.OrderableUntil = draft.OrderableUntil;
+        product.IsActive = draft.IsActive;
+    }
+
     private static string? GetProductDraftRefusal(ProductDto draft)
     {
         if (string.IsNullOrWhiteSpace(draft.Name))
@@ -321,9 +318,9 @@ internal sealed class Service(
         var o = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
         if (o is null) return null;
         var productIds = o.Lines.Select(l => l.ProductId).Distinct().ToList();
-        var productNames = await LoadProductNamesAsync(productIds, ct);
+        var productNames = await orderReader.LoadProductNamesAsync(productIds, ct);
         var currentPrices = await LoadCurrentPricesAsync(ct);
-        return await MapOrderAsync(o, productNames, currentPrices, ct);
+        return await orderReader.MapOrderAsync(o, productNames, currentPrices, ct);
     }
 
     public async Task<OrderYearRepairReport> GetOrderYearRepairReportAsync(CancellationToken ct = default)
@@ -1358,61 +1355,6 @@ internal sealed class Service(
         new(p.Id, p.Year, p.Name, p.Description, p.UnitPriceEur, p.VatRatePercent,
             p.DepositAmountEur, p.OrderableUntil, p.IsActive, p.HoldedRevenueAccountNum);
 
-    private async Task<IReadOnlyDictionary<Guid, string>> LoadProductNamesAsync(
-        IReadOnlyCollection<Guid> productIds, CancellationToken ct) =>
-        (await repo.GetProductsByIdsAsync(productIds, ct)).ToDictionary(p => p.Id, p => p.Name);
-
     private Task<IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice>> LoadCurrentPricesAsync(
         CancellationToken ct) => orderReader.LoadCurrentPricesAsync(ct);
-
-    private async Task<OrderDto> MapOrderAsync(
-        Order o,
-        IReadOnlyDictionary<Guid, string> productNames,
-        IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice> currentPrices,
-        CancellationToken ct,
-        string? displayName = null)
-    {
-        var balance = BalanceCalculator.Compute(o, currentPrices);
-        var totalsByLine = balance.Lines.ToDictionary(t => t.LineId);
-        var lines = o.Lines.Select(l =>
-        {
-            var t = totalsByLine[l.Id];
-            return new OrderLineDto(
-                l.Id, l.OrderId, l.ProductId,
-                productNames.GetValueOrDefault(l.ProductId, "(unknown product)"),
-                l.Qty, t.EffectiveUnitPrice, t.EffectiveVatRate, t.EffectiveDeposit, l.AddedAt,
-                t.SubtotalEur, t.VatEur, t.DepositEur, t.TotalEur);
-        }).ToList();
-
-        var payments = o.Payments
-            .Select(p => new OrderPaymentDto(
-                p.Id, p.AmountEur, p.Method, p.Status, p.StripePaymentIntentId, p.ExternalRef, p.ReceivedAt, p.Notes))
-            .ToList();
-
-        var counterpartyType = o.TeamId is not null
-            ? OrderCounterpartyType.Team
-            : OrderCounterpartyType.Camp;
-
-        displayName ??= await ResolveCounterpartyDisplayNameAsync(o, ct);
-
-        return new OrderDto(
-            o.Id,
-            o.CampSeasonId,
-            o.TeamId,
-            counterpartyType,
-            displayName,
-            o.Year,
-            o.State,
-            o.CounterpartyName, o.CounterpartyVatId, o.CounterpartyAddress, o.CounterpartyCountryCode, o.CounterpartyEmail,
-            o.IssuedInvoiceId,
-            lines,
-            payments,
-            balance.LinesSubtotalEur, balance.VatTotalEur, balance.DepositTotalEur,
-            balance.PaymentsTotalEur, balance.BalanceEur,
-            o.CreatedAt);
-    }
-
-    private Task<string> ResolveCounterpartyDisplayNameAsync(Order order, CancellationToken ct) =>
-        orderReader.ResolveCounterpartyDisplayNameAsync(order, ct);
-
 }

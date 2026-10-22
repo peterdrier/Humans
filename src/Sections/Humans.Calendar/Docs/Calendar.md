@@ -126,6 +126,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 
 - Member event history supplies localized empty text to the shared audit component in all six cultures; its event predicate and history entries are unchanged.
 
+- Grid and list browser titles use Base’s invariant `yyyy-MM` formatter for their month identifier.
 - Month headings, grid weekday headings and recurrence weekday labels follow the selected UI culture in all six languages. Input culture stays English; Monday-first ordering, recurrence codes and timezone handling are unchanged.
 
 - Recurrence lookback stops at the series start, keeping BCL date boundaries safe. Start-moved overrides may still appear before the series; end-only extensions still use their original recurrence identities.

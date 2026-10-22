@@ -249,6 +249,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         var queued = await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken);
         queued.HtmlBody.Should().Contain(WebUtility.HtmlEncode(expected));
         queued.HtmlBody.Should().Contain(WebUtility.HtmlEncode(unsubscribeUrl));
+        queued.PlainTextBody.Should().Be($"Body\n\n{expected} ({unsubscribeUrl})");
         System.Globalization.CultureInfo.CurrentUICulture.Name.Should().Be("de");
     }
 

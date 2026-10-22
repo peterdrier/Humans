@@ -1,8 +1,6 @@
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
-using Humans.Users.Controllers;
 using Humans.Users.Models;
-using Humans.Base.Helpers;
 using Humans.Teams.Contracts;
 using Humans.Base.Enums;
 using Microsoft.AspNetCore.Mvc;
@@ -48,52 +46,17 @@ public sealed class HumanSummaryViewComponent(
             });
         }
 
-        var profile = info.Profile;
-        var memberships = (await teamService.GetTeamsAsync(ct))
-            .Values
+        var memberships = (await teamService.GetTeamsAsync(ct)).Values
             .Where(t => t.IsActive && t.SystemTeamType != SystemTeamType.Volunteers)
-            .Select(t => new
-            {
-                TeamInfo = t,
-                Membership = t.Members.FirstOrDefault(m => m.UserId == userId)
-            })
-            .Where(m => m.Membership is not null)
-            .OrderBy(m => m.TeamInfo.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(t => new { TeamInfo = t, Membership = t.Members.FirstOrDefault(m => m.UserId == userId) })
+            .Where(x => x.Membership is not null)
+            .Select(x => new TeamMembership(x.TeamInfo.Name, x.Membership!.Role) { IsHidden = x.TeamInfo.IsHidden })
             .ToList();
-        var publicTeams = memberships.Where(m => !m.TeamInfo.IsHidden).Select(m => m.TeamInfo.Name).ToList();
-        var hiddenTeams = memberships.Where(m => m.TeamInfo.IsHidden).Select(m => m.TeamInfo.Name).ToList();
 
-        var effectivePictureUrl = profile.HasCustomPicture
-            ? Url.Action(nameof(ProfileViewController.Picture), "ProfileView",
-                new { id = profile.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
-            : info.ProfilePictureUrl;
-
-        var isSuspended = info.IsSuspended;
         var tier = await governanceService.GetMembershipTierAsync(userId, ct);
         var isApproved = (await consentService.GetConsentReviewAsync(userId, ct)).IsApproved;
 
-        var vm = new ProfileSummaryViewModel
-        {
-            UserId = userId,
-            DisplayName = info.BurnerName,
-            Email = info.Email,
-            ProfilePictureUrl = effectivePictureUrl,
-            PreferredLanguage = info.PreferredLanguage,
-            MembershipTier = tier.ToString(),
-            MembershipStatus = isSuspended ? "Suspended"
-                : isApproved ? "Active" : "Pending",
-            City = profile.City,
-            CountryCode = profile.CountryCode,
-            IsSuspended = isSuspended,
-            Teams = publicTeams,
-            HiddenTeams = hiddenTeams,
-            Languages = profile.Languages.Select(pl => new ProfileLanguageDisplayViewModel
-            {
-                LanguageCode = pl.LanguageCode,
-                LanguageName = LanguageCatalog.GetDisplayName(pl.LanguageCode),
-                Proficiency = pl.Proficiency
-            }).ToList(),
-        };
+        var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(info, memberships, tier, isApproved);
 
         return View("Default", vm);
     }

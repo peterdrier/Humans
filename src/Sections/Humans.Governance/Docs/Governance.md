@@ -267,10 +267,12 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 
 ## Invariants
 
+- Consent deadline audiences use `GetUsersRequiringStatusUpdateAsync`: a zero horizon selects active-role holders already due, while reminder callers supply their look-ahead horizon. Both use the same deadline calculation.
+
 - Membership snapshots and required-team reads resolve merged IDs to the survivor before querying
   memberships or consent requirements. Snapshot memoization uses that same resolved identity.
 
-Approval and rejection share one committed-decision path: capture Board ids, finalize the application and delete votes, invalidate the badges, then audit the reviewer and record processing metrics. Approval alone changes the membership tier and syncs the system team.
+Approval and rejection share the same ordered eligibility check (application exists, is Submitted, and has at least one Board vote) before either decision mutates it. They also share one committed-decision path: capture Board ids, finalize the application and delete votes, invalidate the badges, then audit the reviewer and record processing metrics. Approval alone changes the membership tier and syncs the system team.
 
 - Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
 

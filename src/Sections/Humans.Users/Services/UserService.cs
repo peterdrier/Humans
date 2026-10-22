@@ -588,7 +588,7 @@ internal sealed class UserService(
             if (email is null) return new UpdateEmailResult(false, "Users_EmailUpdate_NotFound");
 
             if (email.IsVerified || email.Provider is not null)
-                return new UpdateEmailResult(false, "Profile_InvalidVerificationLink");
+                return new UpdateEmailResult(false, "Users_Profile_InvalidVerificationLink");
 
             email.IsVerified = true;
             email.UpdatedAt = clock.GetCurrentInstant();

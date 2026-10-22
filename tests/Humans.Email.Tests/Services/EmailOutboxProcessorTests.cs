@@ -117,6 +117,27 @@ public class EmailOutboxProcessorTests : IDisposable
         updated.NextRetryAt.Should().Be(expectedRetryAt);
     }
 
+    [HumansFact]
+    public async Task ProcessQueuedAsync_MissingSmtpHost_RemainsRetryableWithoutMarkingSent()
+    {
+        await SeedMessageAsync(EmailOutboxStatus.Queued);
+        var settings = Options.Create(new EmailSettings { SmtpHost = string.Empty });
+        var transport = new SmtpEmailTransport(settings, NullLogger<SmtpEmailTransport>.Instance);
+        var processor = WithoutThrottle(new EmailOutboxProcessor(
+            _repo, _outboxService, _campaignService, transport, _metrics, _meters, _clock, settings,
+            NullLogger<EmailOutboxProcessor>.Instance));
+
+        await processor.ProcessQueuedAsync(TestContext.Current.CancellationToken);
+
+        var updated = await FreshQuery().SingleAsync(TestContext.Current.CancellationToken);
+        updated.Status.Should().Be(EmailOutboxStatus.Failed);
+        updated.SentAt.Should().BeNull();
+        updated.RetryCount.Should().Be(1);
+        updated.LastError.Should().Contain("Email:SmtpHost");
+        updated.NextRetryAt.Should().Be(_clock.GetCurrentInstant() + Duration.FromMinutes(2));
+        updated.PickedUpAt.Should().BeNull();
+    }
+
     [HumansFact(Timeout = 30000)]
     public async Task ProcessQueuedAsync_RespectsBatchSize()
     {

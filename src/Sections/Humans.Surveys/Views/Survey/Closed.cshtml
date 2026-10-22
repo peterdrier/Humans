@@ -1,15 +1,15 @@
 @model Humans.Surveys.Models.SurveyClosedViewModel
 
 @{
-    ViewData["Title"] = Localizer["Survey_Closed_Title"].Value;
+    ViewData["Title"] = Localizer["Surveys_Closed_Title"].Value;
 
     var (headingKey, bodyKey) = Model.Reason switch
     {
-        "closed" => ("Survey_Closed_Heading", "Survey_Closed_Body"),
-        "empty" => ("Survey_NothingToAnswer_Heading", "Survey_NothingToAnswer_Body"),
-        "ineligible" => ("Survey_Ineligible_Heading", "Survey_Ineligible_Body"),
-        "ineligible-asociado" => ("Survey_AsociadoIneligible_Heading", "Survey_AsociadoIneligible_Body"),
-        _ => ("Survey_InvalidLink_Heading", "Survey_InvalidLink_Body"),
+        "closed" => ("Surveys_Closed_Heading", "Surveys_Closed_Body"),
+        "empty" => ("Surveys_NothingToAnswer_Heading", "Surveys_NothingToAnswer_Body"),
+        "ineligible" => ("Surveys_Ineligible_Heading", "Surveys_Ineligible_Body"),
+        "ineligible-asociado" => ("Surveys_AsociadoIneligible_Heading", "Surveys_AsociadoIneligible_Body"),
+        _ => ("Surveys_InvalidLink_Heading", "Surveys_InvalidLink_Body"),
     };
     var heading = Localizer[headingKey];
     var body = Localizer[bodyKey];

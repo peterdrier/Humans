@@ -296,7 +296,7 @@ public class VolunteerTrackingControllerTests
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
-        ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("VolTrack_Msg_CampSetupSaved");
+        ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("Shifts_VolTrack_Msg_CampSetupSaved");
     }
 
     [HumansFact]
@@ -317,7 +317,7 @@ public class VolunteerTrackingControllerTests
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
-        ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("VolTrack_Err_BadRequest");
+        ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("Shifts_VolTrack_Err_BadRequest");
         await _service.DidNotReceive().SetCampSetupAsync(
             Arg.Any<Guid>(), Arg.Any<LocalDate>(), Arg.Any<string?>(),
             Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -340,7 +340,7 @@ public class VolunteerTrackingControllerTests
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
-        ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("VolTrack_Err_BadDate");
+        ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("Shifts_VolTrack_Err_BadDate");
         await _service.DidNotReceive().SetCampSetupAsync(
             Arg.Any<Guid>(), Arg.Any<LocalDate>(), Arg.Any<string?>(),
             Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -392,7 +392,7 @@ public class VolunteerTrackingControllerTests
         redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
         await _service.Received(1).ClearCampSetupAsync(
             target, current.Id, Arg.Any<CancellationToken>());
-        ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("VolTrack_Msg_CampSetupCleared");
+        ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("Shifts_VolTrack_Msg_CampSetupCleared");
     }
 
     [HumansFact]
@@ -406,7 +406,7 @@ public class VolunteerTrackingControllerTests
         Assert.IsType<RedirectToActionResult>(result);
         await _service.DidNotReceive().ClearCampSetupAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("VolTrack_Err_BadRequest");
+        ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("Shifts_VolTrack_Err_BadRequest");
     }
 
     [HumansFact]
@@ -424,7 +424,7 @@ public class VolunteerTrackingControllerTests
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
-        ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("VolTrack_Msg_DayOffMarked");
+        ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("Shifts_VolTrack_Msg_DayOffMarked");
     }
 
     [HumansFact]
@@ -434,14 +434,14 @@ public class VolunteerTrackingControllerTests
         var target = Guid.NewGuid();
         _service.SetDayOffAsync(
                 target, -3, Arg.Any<string?>(), current.Id, Arg.Any<CancellationToken>())
-            .Returns(new SetDayOffResult(Ok: false, ErrorMessageKey: "VolTrack_Err_DayOffWithSignups"));
+            .Returns(new SetDayOffResult(Ok: false, ErrorMessageKey: "Shifts_VolTrack_Err_DayOffWithSignups"));
         var ctrl = BuildSut(current);
         var form = new SetDayOffForm { UserId = target, DayOffset = -3, Reason = null };
 
         var result = await ctrl.SetDayOff(form, null, TestContext.Current.CancellationToken);
 
         Assert.IsType<RedirectToActionResult>(result);
-        ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("VolTrack_Err_DayOffWithSignups");
+        ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("Shifts_VolTrack_Err_DayOffWithSignups");
     }
 
     [HumansFact]
@@ -458,7 +458,7 @@ public class VolunteerTrackingControllerTests
         var result = await ctrl.ClearDayOff(form, null, TestContext.Current.CancellationToken);
 
         Assert.IsType<RedirectToActionResult>(result);
-        ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("VolTrack_Msg_DayOffCleared");
+        ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("Shifts_VolTrack_Msg_DayOffCleared");
     }
 
     [HumansFact]
@@ -591,7 +591,7 @@ public class VolunteerTrackingControllerTests
             .SetDayAvailabilityAsync(target, esId, -2, true, current.Id, Arg.Any<CancellationToken>());
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
-        ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("VolTrack_Msg_AvailabilitySet");
+        ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("Shifts_VolTrack_Msg_AvailabilitySet");
     }
 
     [HumansFact]
@@ -630,7 +630,7 @@ public class VolunteerTrackingControllerTests
             .SetDayAvailabilityAsync(target, esId, dayOffset, false, current.Id, Arg.Any<CancellationToken>());
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
-        ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("VolTrack_Msg_AvailabilityCleared");
+        ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("Shifts_VolTrack_Msg_AvailabilityCleared");
     }
 
     [HumansFact]
@@ -696,7 +696,7 @@ public class VolunteerTrackingControllerTests
                 Arg.Any<int>(),
                 Arg.Any<bool>(),
                 Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("VolTrack_Err_BadRequest");
+        ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("Shifts_VolTrack_Err_BadRequest");
     }
 
     private static UserInfo StubUserInfo(Guid userId, string burnerName)

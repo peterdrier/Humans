@@ -4,10 +4,9 @@
     ViewData["Title"] = "Send survey";
 
     var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-    var instantPattern = ZonedDateTimePattern.CreateWithInvariantCulture("dd MMM yyyy HH:mm", DateTimeZoneProviders.Tzdb);
 
     string FormatInstant(Instant? instant) =>
-        instant is null ? "—" : instantPattern.Format(instant.Value.InZone(zone));
+        instant is null ? "—" : instant.Value.ToDateTime(zone);
 
     static string StatusBadge(SurveyStatus s) => s switch
     {

@@ -97,9 +97,9 @@ The shapes imply one register with one cache and one write funnel:
 
 - Drop of the shadow `users.GoogleEmail`, `users.GoogleEmailStatus`, and
   `user_emails.IsNotificationTarget`-named columns waits on prod verification.
-- Retiring `Profile.BurnerName/FirstName/LastName` once the `users.names-onto-user` data
-  migration reports done on production's `/api/data-migrations` (nobodies-collective/Humans#1098).
-- Users' four data migrations (`SectionDataMigrations`) retire on the same signal, each by its own key.
+- `Profile.BurnerName/FirstName/LastName` remain dual-written and read by current consumers;
+  retiring those columns requires migrating those readers first (nobodies-collective/Humans#1098).
+- Users' remaining data migrations (`SectionDataMigrations`) retire on the same signal, each by its own key. `users.names-onto-user`, `users.legacy-gdpr-tombstones`, `users.profile-pictures-to-filesystem` and `users.stub-profiles` retired after production reported done on 2026-10-22.
 - `AccountMergeRequest` still carries `User` navs; strip when the nav-strip pattern is
   generalised.
 - `PolicyNames.HumanAdminOnly` is registered with no call site.

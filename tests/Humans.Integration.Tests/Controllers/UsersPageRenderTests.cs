@@ -42,7 +42,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
     [
         "Profile_", "ProfileEdit_", "ProfilePrivacy_", "ProfileCard_", "CommPrefs_",
         "Emails_", "EmailGrid_", "Email_Outbox_", "LinkedAccounts_", "VerifyEmail_",
-        "SendMessage_", "Users_Unsubscribe_", "AccountStatus_",
+        "SendMessage_", "Users_", "AccountStatus_",
         "AdminHuman_", "AdminHumans_", "AdminHumanDetail_", "AdminDetail_",
         "Enum_",
         "Dashboard_", "Governance_", "Common_", "Nav_",
@@ -51,11 +51,11 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
     /// <summary>No fixture: each has a no-data branch that still renders its own chrome.</summary>
     private static (string Url, string Copy)[] SecondaryPages =>
     [
-        ("/Profile/Me/Edit", "Edit Profile"),                                // ProfileEdit_Title
-        ("/Profile/Me/Emails", "Email Addresses"),                           // Emails_Title
+        ("/Profile/Me/Edit", "Edit Profile"),                                // Users_ProfileEdit_Title
+        ("/Profile/Me/Emails", "Email Addresses"),                           // Users_Emails_Title
         ("/Consent/MyData", "My Data"),                                      // Consent_MyData_Title (served by Consent)
-        ("/Profile/Me/Medical", "Medical conditions"),                       // Profile_DietaryMedical_MedicalConditions_Title
-        ("/Email/CommunicationPreferences", "Communication Preferences"),    // CommPrefs_Title (served by Email)
+        ("/Profile/Me/Medical", "Medical conditions"),                       // Users_Profile_DietaryMedical_MedicalConditions_Title
+        ("/Email/CommunicationPreferences", "Communication Preferences"),    // Users_CommPrefs_Title (served by Email)
         ("/Email/Outbox", "My Emails"),                                      // Email_Outbox_MyTitle (served by Email)
     ];
 
@@ -187,16 +187,16 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
         profile.StatusCode.Should().Be(HttpStatusCode.OK);
         var profileHtml = await profile.Content.ReadAsStringAsync(ct);
 
-        profileHtml.Should().Contain("Mi perfil");                  // Profile_Title
-        profileHtml.Should().NotContain("Profile Information",      // Profile_Information
+        profileHtml.Should().Contain("Mi perfil");                  // Users_Profile_Title
+        profileHtml.Should().NotContain("Profile Information",      // Users_Profile_Information
             because: "an English string here means the .es satellite was not found");
         AssertRenderedCleanly(profileHtml, "GET /Profile/Me (es)");
 
-        // One page per prefix family, so a satellite that resolves for Profile_ but not its neighbours still fails.
+        // One page per prefix family, so a satellite that resolves for Users_Profile_ but not its neighbours still fails.
         foreach (var (url, copy) in new[]
                  {
-                     ("/Profile/Me/Edit", "Editar perfil"),          // ProfileEdit_Title
-                     ("/Profile/Me/Emails", "Direcciones de correo"),// Emails_Title
+                     ("/Profile/Me/Edit", "Editar perfil"),          // Users_ProfileEdit_Title
+                     ("/Profile/Me/Emails", "Direcciones de correo"),// Users_Emails_Title
                      ("/Consent/MyData", "Mis datos"),               // Consent_MyData_Title (served by Consent)
                  })
         {

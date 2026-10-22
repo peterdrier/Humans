@@ -1207,7 +1207,7 @@ public sealed class BudgetServiceTests
         var taxed = Row("Stripe fees (fee VAT): Mar 2–Mar 8");
         taxed.Amount.Should().Be(-12.10m, because: "the taxed row records the gross cash cost, fee VAT included");
         taxed.VatRate.Should().Be(21);
-        BudgetService.ComputeVatPortion(taxed.Amount, taxed.VatRate).Should().Be(2.10m);
+        VatCalculation.ComputePortion(taxed.Amount, taxed.VatRate).Should().Be(2.10m);
         Row("TT fees: Mar 2–Mar 8").VatRate
             .Should().Be(21, because: "Stripe's tax bucket says nothing about Ticket Tailor's fee");
 

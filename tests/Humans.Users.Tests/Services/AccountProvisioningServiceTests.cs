@@ -149,9 +149,6 @@ public class AccountProvisioningServiceTests
         public Task<(string ContentType, string? StorageKey)?> GetProfilePictureLocationAsync(
             Guid profileId, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<(Guid ProfileId, Guid UserId, string BurnerName, string ContentType, string? StorageKey, Instant UpdatedAt)>>
-            GetCustomPictureRowsAsync(CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<IReadOnlyList<ProfileLanguage>> GetLanguagesAsync(
             Guid profileId, CancellationToken ct = default) =>
             throw new NotSupportedException();

@@ -8,21 +8,6 @@ namespace Humans.Users.Models;
 
 internal static class ProfileSummaryViewModelBuilder
 {
-    public static ProfileSummaryViewModel BuildWithoutProfile(UserInfo info)
-    {
-        ArgumentNullException.ThrowIfNull(info);
-
-        // Email is deliberately absent: any authenticated user sees this popover, so it would leak PII.
-        return new ProfileSummaryViewModel
-        {
-            UserId = info.Id,
-            DisplayName = info.BurnerName,
-            ProfilePictureUrl = info.ProfilePictureUrl,
-            PreferredLanguage = info.PreferredLanguage,
-            HasProfile = false,
-        };
-    }
-
     public static ProfileSummaryViewModel BuildWithProfile(
         UserInfo info,
         IReadOnlyList<TeamMembership> memberships,

@@ -16,6 +16,34 @@ namespace Humans.Base.Tests.ViewComponents;
 public class HumanNameLocalizationTests
 {
     [HumansTheory]
+    [InlineData("https://example.com/avatar.jpg")]
+    [InlineData(null)]
+    public async Task Picture_UsesTheCanonicalUserInfoFallback(string? fallbackPictureUrl)
+    {
+        var users = Substitute.For<IUserService>();
+        var userId = Guid.NewGuid();
+        var info = UserInfo.Create(new User
+        {
+            Id = userId,
+            BurnerName = "Sparkle",
+            ProfilePictureUrl = fallbackPictureUrl,
+        }, [], [], [], null, []);
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
+        var component = new HumanViewComponent(users, Substitute.For<IUrlHelperFactory>(),
+            Substitute.For<IStringLocalizer<SharedResource>>())
+        {
+            ViewComponentContext = new ViewComponentContext
+            {
+                ViewContext = new ViewContext { HttpContext = new DefaultHttpContext() },
+            },
+        };
+
+        var result = (ViewViewComponentResult)await component.InvokeAsync(userId, link: HumanLink.None);
+
+        ((HumanViewModel)result.ViewData!.Model!).ProfilePictureUrl.Should().Be(fallbackPictureUrl);
+    }
+
+    [HumansTheory]
     [InlineData("en", "Unknown")]
     [InlineData("es", "Desconocido")]
     [InlineData("de", "Unbekannt")]

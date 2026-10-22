@@ -36,8 +36,8 @@ internal sealed class ProfileSummaryViewModel
     public IReadOnlyList<string> CampRoles { get; set; } = [];
 
     /// <summary>
-    /// False for a user with no Profile row (e.g. imports); the popover renders a sparse card
-    /// instead of 404'ing.
+    /// False for inline summaries whose referenced user or Profile row is unavailable.
+    /// The hover-popover endpoint requires a Profile and returns 404 without one.
     /// </summary>
     public bool HasProfile { get; set; } = true;
 }

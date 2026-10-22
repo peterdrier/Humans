@@ -141,8 +141,6 @@ public sealed record UserInfo(
     string? FallbackPictureUrl,
     Instant CreatedAt,
     Instant? LastLoginAt,
-    [property: Obsolete("Moved to Consent's consent_reminders. The one reader left is Consent's ConsentReminderService: its legacy fallback and the consent.reminder-stamps copy.", DiagnosticId = "HUM_USER_CONSENT_REMINDER")]
-    Instant? LastConsentReminderSentAt,
     Instant? DeletionRequestedAt,
     Instant? DeletionScheduledFor,
     Instant? DeletionEligibleAfter,
@@ -309,9 +307,11 @@ public sealed record UserInfo(
             .OrderBy(c => c.Category)
             .ToList();
 
-        var legacyDisplayName = user.DisplayName;
-        var burnerName = ResolveBurnerName(user.BurnerName, legacyDisplayName);
         var isGdprAnonymized = IsGdprTombstone(user);
+        // Some erased rows carry the minted email with a blank BurnerName.
+        var burnerName = !string.IsNullOrWhiteSpace(user.BurnerName) ? user.BurnerName
+            : isGdprAnonymized ? GdprAnonymizedBurnerName
+            : string.Empty;
 
         var info = new UserInfo(
             Id: user.Id,
@@ -321,7 +321,6 @@ public sealed record UserInfo(
             FallbackPictureUrl: user.ProfilePictureUrl,
             CreatedAt: user.CreatedAt,
             LastLoginAt: user.LastLoginAt,
-            LastConsentReminderSentAt: user.LastConsentReminderSentAt,
             DeletionRequestedAt: user.DeletionRequestedAt,
             DeletionScheduledFor: user.DeletionScheduledFor,
             DeletionEligibleAfter: user.DeletionEligibleAfter,
@@ -348,26 +347,6 @@ public sealed record UserInfo(
     /// <c>UserStateEvaluator.IsGdprTombstoned</c>, which is internal to the section: change both together.
     /// </summary>
     private static bool IsGdprTombstone(User user) =>
-        (user.IdentityEmailColumn is { } email
-            && email.EndsWith("@deleted.local", StringComparison.OrdinalIgnoreCase))
-        // Legacy only: rows anonymized before the email scrub carry the name sentinel with a blank BurnerName, which
-        // a member can't reproduce.
-        || (string.IsNullOrWhiteSpace(user.BurnerName)
-            && string.Equals(user.DisplayName, GdprAnonymizedBurnerName, StringComparison.Ordinal)
-            && string.Equals(user.FirstName, "Deleted", StringComparison.Ordinal)
-            && string.Equals(user.LastName, "User", StringComparison.Ordinal));
-
-    /// <summary>
-    /// <c>User.BurnerName</c> is the sole source. The one exception: a row the old erasure path anonymized has
-    /// it blank, with the erasure sentinel in <c>DisplayName</c>. Goes with the <c>DisplayName</c> column.
-    /// </summary>
-    private static string ResolveBurnerName(string? userBurnerName, string legacyDisplayName)
-    {
-        if (!string.IsNullOrWhiteSpace(userBurnerName))
-            return userBurnerName;
-
-        return string.Equals(legacyDisplayName, GdprAnonymizedBurnerName, StringComparison.Ordinal)
-            ? GdprAnonymizedBurnerName
-            : string.Empty;
-    }
+        user.IdentityEmailColumn is { } email
+        && email.EndsWith("@deleted.local", StringComparison.OrdinalIgnoreCase);
 }

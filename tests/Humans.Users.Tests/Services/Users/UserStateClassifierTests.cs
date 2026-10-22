@@ -132,23 +132,21 @@ public class UserStateClassifierTests
     }
 
     [HumansFact]
-    public void Classify_entity_recognises_the_legacy_tombstone_shape_without_the_scrubbed_email()
+    public void Classify_entity_does_not_recognise_the_retired_name_only_tombstone()
     {
-        // Rows anonymized before the email scrub was added to the erasure path keep a normal-looking
-        // email but carry the complete legacy tombstone shape across all three name columns.
+        // Production migration is complete: only the minted email identifies erasure.
         var user = NewUser(displayName: UserStateClassifier.GdprAnonymizedDisplayName);
         user.FirstName = "Deleted";
         user.LastName = "User";
         user.Email = "legacy@example.com";
 
-        UserStateEvaluator.Classify(user, profile: null).Should().Be(UserState.Deleted);
+        UserStateEvaluator.Classify(user, profile: null).Should().Be(UserState.Bare);
     }
 
     [HumansFact]
     public void Classify_entity_does_not_treat_the_DisplayName_sentinel_alone_as_deletion()
     {
-        // The legacy fallback requires the complete tombstone shape, not the DisplayName sentinel
-        // on its own: a normal FirstName/LastName/email must stay Active.
+        // The DisplayName sentinel never supplies the erasure signal.
         var user = NewUser(displayName: UserStateClassifier.GdprAnonymizedDisplayName);
         user.FirstName = "First";
         user.LastName = "Last";

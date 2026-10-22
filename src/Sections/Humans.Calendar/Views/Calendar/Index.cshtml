@@ -1,6 +1,6 @@
 @model Humans.Calendar.Models.CalendarMonthViewModel
 @{
-    ViewData["Title"] = $"{Localizer["Calendar_Title"].Value} — {Model.Month.Year}-{Model.Month.Month:D2}";
+    ViewData["Title"] = $"{Localizer["Calendar_Title"].Value} — {Model.Month.ToInvariantYearMonth()}";
     ViewData["ActiveView"] = "grid";
     var zone = DateTimeZoneProviders.Tzdb[Model.ViewerTimezoneLabel];
     var prev = Model.Month.PlusMonths(-1);
