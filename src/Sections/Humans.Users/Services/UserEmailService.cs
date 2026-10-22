@@ -435,23 +435,6 @@ internal sealed class UserEmailService(
             email.CreatedAt,
             email.UpdatedAt);
 
-    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>> GetEntitiesByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default)
-    {
-        if (userIds.Count == 0)
-            return new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>();
-
-        // Raw, like the singular read above: each id gets its own rows, stamped with itself.
-        var result = new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>(userIds.Count);
-        foreach (var uid in userIds.Distinct())
-        {
-            var info = await userService.GetRawUserInfoAsync(uid, cancellationToken);
-            if (info is null || info.UserEmails.Count == 0) continue;
-            result[uid] = info.UserEmails.Select(e => ToSnapshot(uid, e)).ToList();
-        }
-        return result;
-    }
-
     public async Task<IReadOnlyDictionary<Guid, string>> GetNotificationEmailsByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default)
     {

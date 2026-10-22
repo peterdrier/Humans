@@ -236,17 +236,6 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Returns every <see cref="UserEmail"/> grouped by <c>UserId</c>. Used
-    /// by cross-section callers that need to bulk-load row-level metadata
-    /// for a known set of users (e.g. the Google sync hot path that calls
-    /// this once per reconcile). Users with no emails are absent from the
-    /// returned dictionary.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>> GetEntitiesByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Returns the notification-target email for each of the given user ids
     /// (batch query). Users with no notification target are absent from the
     /// returned dictionary. Used by cross-section callers (Tickets "who

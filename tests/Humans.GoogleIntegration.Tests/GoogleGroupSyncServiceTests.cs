@@ -1038,30 +1038,6 @@ public sealed class GoogleGroupSyncServiceTests
                 return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
             });
 
-        _userEmailService.GetEntitiesByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                var requested = call.ArgAt<IReadOnlyCollection<Guid>>(0).ToHashSet();
-                return users
-                    .Where(u => requested.Contains(u.UserId))
-                    .ToDictionary(
-                        u => u.UserId,
-                        u => (IReadOnlyList<UserEmailRowSnapshot>)
-                        [
-                            new UserEmailRowSnapshot(
-                                Guid.NewGuid(),
-                                u.UserId,
-                                u.Email,
-                                IsVerified: true,
-                                Provider: null,
-                                ProviderKey: null,
-                                IsPrimary: false,
-                                Visibility: null,
-                                VerificationSentAt: null,
-                                CreatedAt: _clock.GetCurrentInstant(),
-                                UpdatedAt: _clock.GetCurrentInstant())
-                        ]);
-            });
 
         foreach (var u in users)
         {

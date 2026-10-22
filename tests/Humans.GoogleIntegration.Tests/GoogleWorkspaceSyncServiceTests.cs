@@ -412,9 +412,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo> { [TestTeamId] = teamInfo });
 
-        _userEmailService
-            .GetEntitiesByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>());
 
         // Google Drive reports one direct user permission for an extra email.
         const string extraEmail = "extra@example.com";
@@ -1070,19 +1067,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo> { [TestTeamId] = teamInfo });
 
-        _userEmailService
-            .GetEntitiesByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>
-            {
-                [TestUserId] =
-                [
-                    new UserEmailRowSnapshot(
-                        Guid.NewGuid(), TestUserId, plusAddressedEmail,
-                        IsVerified: true, Provider: null, ProviderKey: null,
-                        IsPrimary: false, Visibility: null, VerificationSentAt: null,
-                        CreatedAt: default, UpdatedAt: default)
-                ]
-            });
 
         // Drive reports the permission it actually granted — the
         // canonicalized address, matching what AddUserToDriveAsync targets.
@@ -1132,9 +1116,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo> { [TestTeamId] = teamInfo });
 
-        _userEmailService
-            .GetEntitiesByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>());
 
         _drivePermissions
             .ListPermissionsAsync(TestGoogleFolderId, Arg.Any<CancellationToken>())
@@ -1183,9 +1164,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
         _teamService
             .GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo> { [TestTeamId] = teamInfo });
-        _userEmailService
-            .GetEntitiesByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>());
 
         _drivePermissions
             .ListPermissionsAsync(TestGoogleFolderId, Arg.Any<CancellationToken>())
