@@ -33,6 +33,22 @@ namespace Humans.Web.Tests.Infrastructure;
 public sealed class ServiceProviderValidationTests
 {
     [HumansTheory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t")]
+    public void Production_rejects_missing_or_blank_smtp_host_with_the_correct_key(string? host)
+    {
+        var configuration = BuildMinimalConfiguration();
+        configuration["Email:SmtpHost"] = host;
+        var act = () => Extensions.Infrastructure.EmailInfrastructureExtensions.AddEmailInfrastructure(
+            new ServiceCollection(), configuration,
+            new StubHostEnvironment { EnvironmentName = Environments.Production });
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Email:SmtpHost*");
+    }
+
+    [HumansTheory]
     [InlineData("https://example.com/", "/Account/MagicLinkConfirm")]
     [InlineData("https://example.com", "/Account/MagicLinkConfirm")]
     [InlineData("https://example.com/humans/", "/humans/Account/MagicLinkConfirm")]

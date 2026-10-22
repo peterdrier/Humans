@@ -1,5 +1,8 @@
 using AwesomeAssertions;
 using Humans.Base.Authorization;
+using Humans.Email.Services;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Email.Tests;
 
@@ -10,6 +13,27 @@ namespace Humans.Email.Tests;
 /// </summary>
 public sealed class SectionSettingsTests
 {
+    [HumansTheory]
+    [Xunit.InlineData(null, true)]
+    [Xunit.InlineData("", true)]
+    [Xunit.InlineData("   ", true)]
+    [Xunit.InlineData("\t", true)]
+    [Xunit.InlineData("smtp.example.org", false)]
+    public void Transport_uses_the_stub_only_when_no_smtp_host_is_configured(string? host, bool stub)
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?>(StringComparer.Ordinal) { ["Email:SmtpHost"] = host }).Build();
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddOptions();
+        new Section().Register(registrations, configuration);
+        using var services = registrations.BuildServiceProvider();
+        using var scope = services.CreateScope();
+
+        var transport = scope.ServiceProvider.GetRequiredService<IEmailTransport>();
+
+        transport.GetType().Should().Be(stub ? typeof(StubEmailTransport) : typeof(SmtpEmailTransport));
+    }
+
     [HumansFact]
     public void Tabs_ReturnsTheEmailTabAdminOnly()
     {

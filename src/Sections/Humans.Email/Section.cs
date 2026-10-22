@@ -40,7 +40,7 @@ public sealed class Section : ISection
         // SmtpEmailTransport when Email:SmtpHost is configured, the logging stub
         // otherwise. Shell keeps the "required in Production" guard, where IHostEnvironment
         // is available at startup rather than at first resolve.
-        if (!string.IsNullOrEmpty(configuration["Email:SmtpHost"]))
+        if (!string.IsNullOrWhiteSpace(configuration["Email:SmtpHost"]))
         {
             services.AddScoped<IEmailTransport, SmtpEmailTransport>();
         }

@@ -38,10 +38,10 @@ internal static class EmailInfrastructureExtensions
         // The section binds the transport off the same key; this is the startup half of
         // that decision, kept here because IHostEnvironment is not a Section.Register
         // argument and a deferred throw would first fire on a real send.
-        if (string.IsNullOrEmpty(configuration["Email:SmtpHost"]) && environment.IsProduction())
+        if (string.IsNullOrWhiteSpace(configuration["Email:SmtpHost"]) && environment.IsProduction())
         {
             throw new InvalidOperationException(
-                "Email SMTP configuration is required in production. Set Email:Host.");
+                "Email SMTP configuration is required in production. Set Email:SmtpHost.");
         }
 
         // The registration stays in Shell even though the implementation moved into the

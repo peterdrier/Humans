@@ -166,6 +166,8 @@ The communication-preference routes moved from Users in decomposition commit 14 
 
 ## Invariants
 
+- An absent, empty or whitespace-only `Email:SmtpHost` selects the logging stub outside production. Production refuses startup and names `Email:SmtpHost` in the diagnostic; a nonblank host selects SMTP.
+
 - Guest unsubscribe success copy is HTML-encoded and JSON-serialized before insertion into the scripted banner, preserving translated text and markup without raw JavaScript delimiters.
 
 - Communication preferences expose unsubscribe headers, browser links and token validation; raw token generation stays in the token provider used by those live paths.
