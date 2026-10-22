@@ -52,6 +52,8 @@ public sealed class DateFormattingExtensionsTests
 
         date.ToInvariantDate().Should().Be("2026-06-05");
         localDate.ToInvariantDate().Should().Be("2026-06-05");
+        localDate.ToInvariantWeekdayAbbrev().Should().Be("Fri");
+        localDate.ToInvariantDayMonthYear().Should().Be("05/06/2026");
         date.ToInvariantTimestamp().Should().Be("2026-06-05 12:34:56");
         date.ToInvariantTime().Should().Be("12:34");
         date.ToInvariantLongDate().Should().Be("5 June 2026");
