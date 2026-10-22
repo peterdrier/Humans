@@ -21,18 +21,9 @@ using Humans.Application.Services.Users;
 namespace Humans.Web.Tests.Controllers;
 
 /// <summary>
-/// Issue nobodies-collective/Humans#697: the OAuth callback drives every
-/// <see cref="UserEmail"/> mutation through
-/// <see cref="IUserEmailService.ReconcileOAuthIdentityAsync"/>. No audit rows
-/// are written on the OAuth path — audit ownership lives in the reconcile
-/// service. These tests pin the 5 OAuth-success paths listed in the issue's
-/// acceptance criteria.
-/// <para>
-/// Driven through the controller with a <b>real</b>
-/// <see cref="ExternalLoginService"/> behind it, so the assertions cover the
-/// whole callback (parse → decide → sign in → redirect) rather than one half
-/// of the seam introduced by nobodies-collective/Humans#857.
-/// </para>
+/// The OAuth callback drives every <see cref="UserEmail"/> mutation through
+/// <see cref="IUserEmailService.ReconcileOAuthIdentityAsync"/>, which owns the audit. Driven through a real
+/// <see cref="ExternalLoginService"/>, so the whole callback is covered.
 /// </summary>
 public class AccountControllerOAuthReconcileTests
 {
@@ -107,8 +98,6 @@ public class AccountControllerOAuthReconcileTests
             HttpContext = new DefaultHttpContext()
         };
 
-        // Default reconcile result — tests override per-scenario when they
-        // need the result to drive a controller branch.
         _userEmailService.ReconcileOAuthIdentityAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
@@ -135,8 +124,6 @@ public class AccountControllerOAuthReconcileTests
         return new ExternalLoginInfo(principal, Provider, ProviderKey, "Google");
     }
 
-    // ─── Path 1: existing-user sign-in success ───────────────────────────────
-
     [HumansFact]
     public async Task ExistingUserSignInSuccess_CallsReconcileOnceWithVerifiedClaim()
     {
@@ -156,10 +143,6 @@ public class AccountControllerOAuthReconcileTests
         await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
             userId, Provider, ProviderKey, "user@example.com",
             claimEmailVerified: true, Arg.Any<CancellationToken>());
-
-        // Controller writes no audit on the OAuth path — audit is service-owned.
-        // (The controller no longer takes an IAuditLogService dependency,
-        // so it is structurally impossible to write one from this branch.)
 
         _loginMethods.Google.Should().Be(1);
         _loginMethods.MagicLink.Should().Be(0);
@@ -184,12 +167,10 @@ public class AccountControllerOAuthReconcileTests
                 Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns<OAuthReconcileResult>(_ => throw new InvalidOperationException("boom"));
 
-        // The action must complete without throwing — sign-in NEVER blocks.
+        // Sign-in never blocks.
         var result = await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
         result.Should().NotBeNull();
     }
-
-    // ─── Path 2: already-authenticated link ──────────────────────────────────
 
     [HumansFact]
     public async Task AlreadyAuthenticatedLink_CallsReconcileForCurrentUser()
@@ -212,8 +193,7 @@ public class AccountControllerOAuthReconcileTests
         };
 
         var currentUser = new User { Id = currentUserId };
-        // The signed-in user is resolved from the NameIdentifier claim the
-        // controller reads, not from the principal itself.
+        // The controller resolves the user from the NameIdentifier claim, not the principal.
         _userManager.FindByIdAsync(currentUserId.ToString()).Returns(currentUser);
         _userManager.AddLoginAsync(currentUser, Arg.Any<UserLoginInfo>())
             .Returns(IdentityResult.Success);
@@ -233,8 +213,6 @@ public class AccountControllerOAuthReconcileTests
         // ...and linking is not a sign-in, so the dashboard tally doesn't move.
         _loginMethods.Google.Should().Be(0);
     }
-
-    // ─── Path 3: lockout-relink ──────────────────────────────────────────────
 
     [HumansTheory]
     [Xunit.InlineData("session", UserState.Deleted)]
@@ -293,12 +271,9 @@ public class AccountControllerOAuthReconcileTests
             activeTargetId, Provider, ProviderKey, email,
             claimEmailVerified: true, Arg.Any<CancellationToken>());
 
-        // The relink resolves to a different account than the one Identity
-        // matched, so the cookie must be issued for the active target.
+        // The relink resolves to a different account than Identity matched; the cookie goes to the active target.
         await _signInManager.Received(1).SignInAsync(activeTarget, true);
     }
-
-    // ─── Path 4: email-match link (unauthenticated, address already known) ───
 
     [HumansTheory]
     [Xunit.InlineData(false)]
@@ -350,12 +325,9 @@ public class AccountControllerOAuthReconcileTests
             existingUserId, Provider, ProviderKey, email,
             claimEmailVerified: true, Arg.Any<CancellationToken>());
 
-        // Identity's external sign-in failed (no login row yet), so the cookie
-        // for the email-matched account is issued by the callback itself.
+        // No login row yet, so Identity's sign-in failed and the callback issues the cookie itself.
         await _signInManager.Received(1).SignInAsync(existingUser, true);
     }
-
-    // ─── Path 5: new-user creation ───────────────────────────────────────────
 
     [HumansFact]
     public async Task NewUserCreation_CallsReconcileForCreatedUserWithVerifiedClaim()
@@ -416,7 +388,6 @@ public class AccountControllerOAuthReconcileTests
         _controller.ModelState.Values.SelectMany(value => value.Errors)
             .Should().ContainSingle().Which.ErrorMessage.Should().Be("Login_SetupFailed");
 
-        // Failed reconcile rolls back: DeleteAsync called for the newly-created user.
         await _userManager.Received(1).DeleteAsync(Arg.Any<User>());
 
         // ...and the rollback must not leave a session pointing at a deleted account.
@@ -427,12 +398,8 @@ public class AccountControllerOAuthReconcileTests
     [HumansFact]
     public async Task NewUserCreation_CrossUserBlocked_RollsBackUser()
     {
-        // Distinct code path from ReconcileThrows: reconcile returns
-        // normally with Outcome=CrossUserBlocked (provider's email_verified
-        // claim was false while another user verified-holds the address).
-        // The controller must still roll back the newly-created User +
-        // AspNetUserLogins — otherwise an orphan is left in the database
-        // un-notifiable + magic-link-unreachable.
+        // Reconcile returns CrossUserBlocked rather than throwing (email_verified false, another user holds the
+        // address). The new user must still be rolled back, or an unreachable orphan is left behind.
         var newEmail = "blocked@example.com";
         var info = MakeInfo(newEmail, emailVerified: false);
 
@@ -462,8 +429,6 @@ public class AccountControllerOAuthReconcileTests
         await _userManager.Received(1).DeleteAsync(Arg.Any<User>());
     }
 
-    // ─── email_verified claim plumbing ───────────────────────────────────────
-
     [HumansFact]
     public async Task ExistingUserSignInSuccess_UnverifiedEmailClaim_PassedThroughAsFalse()
     {
@@ -484,8 +449,6 @@ public class AccountControllerOAuthReconcileTests
             userId, Provider, ProviderKey, "user@example.com",
             claimEmailVerified: false, Arg.Any<CancellationToken>());
     }
-
-    // ─── Cookie issuance across the controller/service seam (#857) ───────────
 
     [HumansFact]
     public async Task LockoutWithNoActiveTarget_DoesNotSignAnyoneIn()
@@ -509,7 +472,7 @@ public class AccountControllerOAuthReconcileTests
         await _userManager.DidNotReceive().CreateAsync(Arg.Any<User>());
     }
 
-    // ExternalLoginService resolves a verified-email owner via FindByAddressAsync, then loads the entity by id.
+    // ExternalLoginService finds the owner via FindByAddressAsync, then loads the entity by id.
     private void StubVerifiedEmailOwner(string email, User? owner)
     {
         _userEmailService.FindByAddressAsync(email, true, true, Arg.Any<CancellationToken>())

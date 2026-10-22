@@ -13,14 +13,7 @@ using Humans.Users.Data;
 using Humans.Shifts.Contracts;
 namespace Humans.Integration.Tests.Repositories.Shifts;
 
-/// <summary>
-/// Integration tests for <see cref="VolunteerTrackingRepository"/>. Takes the
-/// assembly-shared <see cref="HumansWebApplicationFactory"/> through
-/// <see cref="IntegrationTestBase"/>, resolves the Scoped
-/// <see cref="UsersDbContext"/> per test through a DI scope off
-/// <see cref="IntegrationTestBase.Factory"/>, and exercises the repository
-/// against the run's single PostgreSQL container.
-/// </summary>
+/// <summary><see cref="VolunteerTrackingRepository"/> against real PostgreSQL.</summary>
 public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
     : IntegrationTestBase(database)
 {
@@ -101,19 +94,16 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
         var teamId = (await SeedTeamAsync(teamsDb)).Id;
         var userId = (await SeedUserAsync(db)).Id;
 
-        // Build-period rota with a shift at -7 — shift exists but no signup,
-        // so this should NOT appear in the result.
+        // A Build shift with no signup: excluded.
         var buildRotaA = SeedRota(shiftsDb, es.Id, teamId, RotaPeriod.Build);
         SeedShift(shiftsDb, buildRotaA.Id, dayOffset: -7);
 
-        // Event-period rota with a shift at +1 and a Confirmed signup.
-        // Period is Event → NOT eligible.
+        // An Event-period shift with a Confirmed signup: excluded, wrong period.
         var eventRota = SeedRota(shiftsDb, es.Id, teamId, RotaPeriod.Event);
         var shiftEvent = SeedShift(shiftsDb, eventRota.Id, dayOffset: 1);
         SeedSignup(shiftsDb, userId, shiftEvent.Id, SignupStatus.Confirmed);
 
-        // Build-period rota with a shift at -3 (Confirmed signup) and another
-        // at -2 (Bailed signup). Only the -3 Confirmed should be returned.
+        // Build shifts at -3 (Confirmed) and -2 (Bailed): only -3 is returned.
         var buildRotaB = SeedRota(shiftsDb, es.Id, teamId, RotaPeriod.Build, name: "BuildB");
         var shiftBuildBNeg3 = SeedShift(shiftsDb, buildRotaB.Id, dayOffset: -3);
         var shiftBuildBNeg2 = SeedShift(shiftsDb, buildRotaB.Id, dayOffset: -2);
@@ -131,13 +121,8 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
         result[0].RotaName.Should().Be("BuildB");
     }
 
-    // ---------------------------------------------------------------------
-    // Day-off jsonb round-trips. These exercise the NodaTime-aware converter
-    // configured on VolunteerBuildStatusConfiguration; without it,
-    // DayOffEntry.MarkedAt would deserialize as Instant.MinValue and these
-    // assertions would fail.
-    // ---------------------------------------------------------------------
-
+    // The day-off tests fail without the NodaTime-aware jsonb converter on VolunteerBuildStatusConfiguration:
+    // DayOffEntry.MarkedAt would deserialize as Instant.MinValue.
     [HumansFact(Timeout = 30000)]
     public async Task UpsertDayOffAsync_inserts_first_entry_and_creates_row_if_absent()
     {
@@ -263,13 +248,11 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
         var t = SystemClock.Instance.GetCurrentInstant();
         var sut = new VolunteerTrackingRepository(shiftsDb);
 
-        // Seed three day-offs at offsets -8, -5, -3.
         await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-8, "a", actor, t), TestContext.Current.CancellationToken);
         await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-5, "b", actor, t), TestContext.Current.CancellationToken);
         await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-3, "c", actor, t), TestContext.Current.CancellationToken);
 
-        // Camp setup at offset -4 → trim threshold is -4 (auto-clear day-offs >= -4).
-        // Only -3 should be auto-cleared; -8 and -5 stay.
+        // Camp setup at -4 auto-clears day-offs at -4 and later, so only -3 goes.
         var trimmed = await sut.UpsertCampSetupAsync(
             userId, es.Id,
             barrioSetupStartDate: new LocalDate(2026, 6, 27),
@@ -284,11 +267,7 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
         fetched.DayOffs.Select(d => d.DayOffset).Should().Equal(-8, -5);
     }
 
-    /// <summary>
-    /// Seeds a fresh <see cref="EventSettings"/> row with a unique name so each
-    /// test gets an isolated event id (the test container is shared across
-    /// tests in the fixture).
-    /// </summary>
+    /// <summary>A uniquely named <see cref="EventSettings"/> row, so each test gets its own event id.</summary>
     private static async Task<EventSettings> SeedActiveEventAsync(ShiftsDbContext shiftsDb)
     {
         var now = SystemClock.Instance.GetCurrentInstant();

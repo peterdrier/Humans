@@ -5,13 +5,7 @@ using Xunit;
 
 namespace Humans.Integration.Tests.Infrastructure;
 
-/// <summary>
-/// Coverage for nobodies-collective/Humans#1060 criterion 4: <c>/api/version</c> must stay
-/// answerable without a database, so it remains a usable liveness probe rather than another
-/// 404 when something DB-related is unhealthy. The endpoint already reads only assembly
-/// metadata, so this pins that against regression — a database outage after boot must never
-/// take it down with everything else.
-/// </summary>
+/// <summary><c>/api/version</c> answers without a database, so it stays a usable liveness probe.</summary>
 public sealed class ApiVersionDatabaseIndependenceTests(HumansTestDatabase database)
 {
     [HumansFact]
@@ -26,15 +20,10 @@ public sealed class ApiVersionDatabaseIndependenceTests(HumansTestDatabase datab
         using var client = factory.CreateClient(
             new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-        // Sanity: the endpoint works while the database is healthy.
         var healthy = await client.GetAsync("/api/version", ct);
         healthy.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        // Drop the database out from under the already-running app — the shape of a
-        // database that disappears after boot (restart, credential rotation, network
-        // partition). If /api/version ever gained a database dependency, this is what
-        // would catch it: everything else on the site would degrade too, but the
-        // liveness probe must not.
+        // A database that disappears after boot.
         await database.DropDatabaseAsync(dbName, ct);
 
         var afterOutage = await client.GetAsync("/api/version", ct);

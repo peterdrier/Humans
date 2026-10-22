@@ -1,5 +1,4 @@
-// BannedApi: this file is the project-approved replacement for Xunit.FactAttribute.
-// It is the only legitimate place to reference FactAttribute directly.
+// BannedApi: the approved replacement for Xunit.FactAttribute, the only place allowed to reference it.
 #pragma warning disable RS0030
 
 using System.Runtime.CompilerServices;

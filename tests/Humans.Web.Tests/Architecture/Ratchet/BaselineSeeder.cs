@@ -3,15 +3,8 @@ using Humans.Web.Tests.Architecture.Rules;
 namespace Humans.Web.Tests.Architecture.Ratchet;
 
 /// <summary>
-/// One-shot baseline-seeder. Gated by environment variable
-/// <c>HUMANS_SEED_RATCHET_BASELINES=1</c>. Writes/overwrites every rule's
-/// baseline file from the current scan output.
-///
-/// Run via:
-///   <c>HUMANS_SEED_RATCHET_BASELINES=1 dotnet test tests/Humans.Web.Tests --filter Seed_all_baselines -v quiet</c>
-///
-/// Without the env var the test is a silent no-op so it doesn't churn
-/// baselines on every CI run.
+/// Overwrites every rule's baseline from the current scan; a no-op unless
+/// <c>HUMANS_SEED_RATCHET_BASELINES=1</c>.
 /// </summary>
 public class BaselineSeeder
 {
@@ -23,10 +16,8 @@ public class BaselineSeeder
 
         var repoRoot = RatchetTestRunner.LocateRepoRoot();
 
-        // NoDestructiveMigrationOps is deliberately NOT seeded: its baseline is the approval
-        // ledger (per-entry Approval:/Evidence: comment blocks, hand-maintained), and a generic
-        // reseed would overwrite those comments with bare locators — destroying the record and
-        // failing Every_baseline_entry_is_covered_by_an_approval_note. Edit that file by hand.
+        // NoDestructiveMigrationOps is not seeded: its baseline is a hand-maintained approval ledger, and a reseed would
+        // wipe the Approval:/Evidence: notes. Edit that file by hand.
 
         WriteBaseline(
             repoRoot,
@@ -48,11 +39,7 @@ public class BaselineSeeder
         var dir = Path.GetDirectoryName(path);
         if (dir is not null) Directory.CreateDirectory(dir);
 
-        // Strip any trailing " # …" diagnostic suffix the rule attached
-        // (line numbers, lines/cc, etc.) before writing — the baseline file
-        // stores stable keys ONLY so unrelated edits never cause baseline
-        // churn in git. The runner still receives the rich strings at
-        // scan time and uses them to build informative failure messages.
+        // Baselines store stable keys only, so unrelated edits never churn them.
         var sorted = new SortedSet<string>(
             violations.Select(RatchetTestRunner.StripTrailingComment),
             StringComparer.Ordinal);

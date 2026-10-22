@@ -13,12 +13,7 @@ using Humans.Users.Data;
 
 namespace Humans.Integration.Tests.AccountMerge;
 
-/// <summary>
-/// Proves the engine self-reconciles merge requests: merging a pair through
-/// <see cref="IAccountMergeService.MergeAsync"/> closes any pending request for
-/// that pair (via the internal CloseRequestsForPairAsync), so the unified merge
-/// flow never leaves orphaned Pending rows behind.
-/// </summary>
+/// <summary>MergeAsync closes any pending request for the pair, so no orphaned Pending rows remain.</summary>
 public class ReconcileOrphanTests(HumansTestDatabase database)
     : IntegrationTestBase(database)
 {
@@ -29,7 +24,6 @@ public class ReconcileOrphanTests(HumansTestDatabase database)
         var (requestId, targetId, sourceId) =
             await Factory.SeedPendingMergeRequestAsync($"shared-{Guid.NewGuid():N}@example.com");
 
-        // Merge the pair through the engine (survivor = target, archived = source).
         await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var sut = scope.ServiceProvider.GetRequiredService<IAccountMergeService>();
@@ -42,10 +36,6 @@ public class ReconcileOrphanTests(HumansTestDatabase database)
             .Should().Be(AccountMergeRequestStatus.Accepted,
                 "merging the pair must auto-close its pending request — no orphan is left behind");
     }
-
-    // ==================================================================
-    // Helpers
-    // ==================================================================
 
     private async Task<Guid> SeedAdminUserAsync()
     {

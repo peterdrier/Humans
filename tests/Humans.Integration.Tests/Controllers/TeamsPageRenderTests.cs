@@ -4,43 +4,12 @@ using Humans.Integration.Tests.Infrastructure;
 
 namespace Humans.Integration.Tests.Controllers;
 
-/// <summary>
-/// Renders every Teams page through the real app, as the standing form of the §15 step 12
-/// check for the section's move into <c>src/Sections/Humans.Teams</c>
-/// (nobodies-collective/Humans#866, G5).
-/// </summary>
+/// <summary>Renders every Teams page through the real app.</summary>
 /// <remarks>
-/// <para>
-/// The failure modes a G5 move introduces all render as a <b>200 with degraded content</b>, so
-/// "the page loads" is not the assertion:
-/// </para>
-/// <list type="number">
-/// <item><description>
-/// A section RCL does not inherit the host's <c>Views/_ViewImports.cshtml</c> — a missing
-/// <c>@@using</c> or <c>@@addTagHelper</c> ships literal markup with a green build, and an
-/// unrendered <c>&lt;vc:…&gt;</c> element is inert text the browser simply drops. The section's
-/// views open with four of them (<c>human</c>, <c>human-search</c>, <c>audit-log</c> and
-/// <c>access-matrix</c>), all four bound through <c>@@addTagHelper *, Humans.Interfaces</c>.
-/// </description></item>
-/// <item><description>
-/// The resx carve moved 193 keys across thirteen prefixes out of <c>SharedResource</c>. A key
-/// the carve missed, or a call site left on the wrong localizer, renders the raw key — in every
-/// language, with no error. Five keys deliberately stayed shared (<c>Teams_Title</c>,
-/// <c>Teams_Member</c>, <c>MyTeams_View</c>, <c>MyTeams_Role</c>, <c>TeamDetail_Actions</c>),
-/// so the assertion sweeps the carved prefixes and the shared ones both.
-/// </description></item>
-/// <item><description>
-/// The Spanish request is the only thing that proves the section RCL's satellite assemblies
-/// reach the host's probing path at all; an English-only check passes either way.
-/// </description></item>
-/// </list>
-/// <para>
-/// The fixture is the seeded dev personas and nothing else. Every page falls through to its
-/// no-data or few-teams branch, which still renders the header, the nav, the table headings and
-/// the empty state — and <c>CachingTeamService</c> is a Singleton that warms at startup, before
-/// the test body, so seeding through <c>TeamsDbContext</c> here would be invisible to every read
-/// anyway (Calendar's finding).
-/// </para>
+/// Failures render as a 200 with degraded content: unbound tags ship as markup, a mis-bound key renders as its name,
+/// and only Spanish proves the satellites ship. Five keys stay in SharedResource, so the sweep covers carved and shared
+/// prefixes. The fixture is the dev personas only: <c>CachingTeamService</c> warms at startup, so a direct context seed
+/// would be invisible anyway.
 /// </remarks>
 public class TeamsPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
@@ -76,8 +45,7 @@ public class TeamsPageRenderTests(HumansTestDatabase database) : IntegrationTest
             var html = await response.Content.ReadAsStringAsync(ct);
             html.Should().Contain(copy, $"GET {url} must render its own copy");
 
-            // ReSharper rewrites <vc:name> to <name-view-component> when it mistakes the
-            // element for a type reference; that also renders as inert markup.
+            // ReSharper can rewrite <vc:name> to <name-view-component>, which also renders inert.
             html.Should().NotContain("-view-component", $"GET {url} has a rewritten vc tag");
 
             foreach (var prefix in CarvedPrefixes)
@@ -85,8 +53,7 @@ public class TeamsPageRenderTests(HumansTestDatabase database) : IntegrationTest
                 html.Should().NotContain(prefix, $"GET {url} rendered a raw {prefix}* resource key");
             }
 
-            // The five keys that deliberately stayed in SharedResource, plus the ordinary
-            // shared vocabulary the section still reads through SharedLocalizer.
+            // Shared keys the section still reads through SharedLocalizer.
             html.Should().NotContain("Common_", $"GET {url} rendered a raw shared key");
         }
     }
@@ -94,10 +61,7 @@ public class TeamsPageRenderTests(HumansTestDatabase database) : IntegrationTest
     [HumansFact(Timeout = 120000)]
     public async Task The_directory_renders_the_access_matrix_tag_helper()
     {
-        // AccessMatrixViewComponent moved into Humans.UI (nobodies-collective/Humans#1056),
-        // so the call site is <vc:access-matrix section="Teams" /> bound through
-        // @addTagHelper *, Humans.Interfaces. An unbound <vc:> ships as inert literal markup with a
-        // green build and no log line, so the emitted modal id is the proof — not the 200.
+        // An unbound <vc:> ships as inert markup, so the emitted modal id is the proof, not the 200.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
@@ -109,12 +73,7 @@ public class TeamsPageRenderTests(HumansTestDatabase database) : IntegrationTest
     [HumansFact(Timeout = 120000)]
     public async Task A_volunteer_cannot_reach_the_teams_admin_pages()
     {
-        // The section's negative access rule. Worth pinning at the move because the
-        // controllers are now internal types in another assembly, routed through
-        // SectionControllerFeatureProvider, while TeamsAdminBoardOrAdmin stayed in Shell's
-        // AuthorizationPolicyExtensions. The shape is a 302 to
-        // Program.cs's AccessDeniedPath, not a bare 403 — cookie authentication redirects an
-        // authenticated-but-unauthorized request, app-wide (Cantina's finding).
+        // Cookie auth redirects an authenticated-but-unauthorized request to AccessDeniedPath: a 302, not a 403.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
@@ -130,16 +89,13 @@ public class TeamsPageRenderTests(HumansTestDatabase database) : IntegrationTest
     [HumansFact(Timeout = 120000)]
     public async Task The_directory_renders_in_spanish_from_the_sections_satellite_assemblies()
     {
-        // An English-only check passes whether or not the RCL's satellites shipped — the
-        // neutral set is embedded in the main assembly and the fallback is silent.
-        // Razor's default HtmlEncoder escapes non-ASCII to numeric entities, so the
-        // assertions stay on ASCII-only runs of the Spanish copy.
+        // The neutral set is embedded in the main assembly and fallback is silent, so only Spanish proves the
+        // satellites. HtmlEncoder escapes non-ASCII, so the checks stay on ASCII runs.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
-        // Accept-Language does not reach a signed-in user: Program.cs's initial culture
-        // provider returns the user's PreferredLanguage and short-circuits the rest of the
-        // chain, and every Teams page is [Authorize]. Switch the language the way the UI does.
+        // Accept-Language doesn't reach a signed-in user: the PreferredLanguage provider short-circuits the chain. Switch
+        // the way the UI does.
         var switcherPage = await (await Client.GetAsync("/Teams", ct)).Content.ReadAsStringAsync(ct);
         var token = ExtractAntiForgeryToken(switcherPage);
         token.Should().NotBeNullOrEmpty();

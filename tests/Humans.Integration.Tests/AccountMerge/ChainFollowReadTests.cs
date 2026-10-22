@@ -17,28 +17,14 @@ using Humans.Users.Contracts;
 namespace Humans.Integration.Tests.AccountMerge;
 
 /// <summary>
-/// Phase 6.3 of the AccountMergeService fold-into-target redesign:
-/// integration tests that verify per-user reads on AuditLog, Consent, and
-/// BudgetAuditLog correctly union source-tombstone ids via
-/// <c>UserInfo.MergedUserIds</c> after a fold.
-///
-/// Each test seeds a source/target user pair plus a per-section row attached
-/// to the source, runs <c>AcceptAsync</c> (which sets
-/// <c>User.MergedToUserId</c> on the source via
-/// <c>IUserService.AnonymizeForMergeAsync</c>), then queries the read path
-/// for the target and asserts the source-attributed row surfaces.
+/// Per-user reads on AuditLog, Consent and BudgetAuditLog surface the merged source's rows through
+/// <c>UserInfo.MergedUserIds</c>.
 /// </summary>
 public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
-    // ==================================================================
-    // AuditLog — chain-follow GetByUserAsync (Phase 4.1)
-    // ==================================================================
-
     [HumansFact(Timeout = 30_000)]
     public async Task AuditLog_ReadByUserId_FollowsMergedToUserIdChain()
     {
-        // Per-test description so the post-merge query doesn't pick up rows
-        // seeded by other tests in the same shared-DB class fixture.
         var description = $"chain-follow-audit-{Guid.NewGuid():N}";
 
         var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
@@ -50,8 +36,6 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        // Act: query the AuditLog read path for the TARGET — chain-follow
-        // should union the source-tombstone id and surface source's row.
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var auditReader = assertScope.ServiceProvider.GetRequiredService<IAuditLogReader>();
         var entries = await auditReader.GetByUserAsync(targetId, count: 100, ct: TestContext.Current.CancellationToken);
@@ -62,10 +46,6 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
                  && e.EntityId == sourceId,
             "chain-follow surfaces the source-attributed audit entry under target reads");
     }
-
-    // ==================================================================
-    // Consent — chain-follow GetConsentDashboardAsync history (Phase 4.2)
-    // ==================================================================
 
     [HumansFact(Timeout = 30_000)]
     public async Task ConsentRecords_ReadByUserId_FollowsMergedToUserIdChain()
@@ -87,12 +67,7 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        // Act: the per-user consent read for the TARGET should surface
-        // source's append-only consent record via the chain-follow union.
-        // GetConsentDashboardAsync builds its History list from the same
-        // chain-follow read; the uniquely-seeded version id is consented to
-        // by the source only, so a History match under a target read proves
-        // the source-tombstone id was unioned in.
+        // Only the source consented to this version, so a match under a target read proves the union.
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var consentService = assertScope.ServiceProvider.GetRequiredService<IConsentManagement>();
         var dashboard = await consentService.GetConsentDashboardAsync(targetId, TestContext.Current.CancellationToken);
@@ -102,13 +77,7 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
             "chain-follow surfaces the source-attributed consent record under target reads");
     }
 
-    // ==================================================================
-    // BudgetAuditLog — chain-follow ContributeForUserAsync (Phase 4.3)
-    //
-    // Only the GDPR contributor path chain-follows; the year-scoped
-    // GetAuditLogAsync(budgetYearId) does NOT (it's not a per-user read).
-    // ==================================================================
-
+    // Only the GDPR contributor path chain-follows; the year-scoped GetAuditLogAsync is not a per-user read.
     [HumansFact(Timeout = 30_000)]
     public async Task BudgetAuditLog_ContributeForUserAsync_FollowsMergedToUserIdChain()
     {
@@ -129,20 +98,13 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        // Act: GDPR contributor path for the TARGET should surface the
-        // source-attributed BudgetAuditLog row. BudgetService implements
-        // both IBudgetService and IUserDataContributor; resolve the former
-        // (single DI registration to that ID) and cast for the contributor
-        // method.
+        // BudgetService has one DI registration, as IBudgetService; cast for the contributor method.
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var budgetService = assertScope.ServiceProvider.GetRequiredService<IBudgetService>();
         var contributor = (IUserDataContributor)budgetService;
         var slices = await contributor.ContributeForUserAsync(targetId, TestContext.Current.CancellationToken);
 
-        // BudgetService.ContributeForUserAsync returns a single anonymized
-        // slice whose Data is a List<{EntityType, FieldName, Description,
-        // OccurredAt}>. The fold MUST NOT have mutated the row, so the
-        // chain-follow is the only way the target's export sees it.
+        // The fold never mutates the row, so chain-follow is the only way the target's export sees it.
         slices.Should().ContainSingle();
         var entries = slices[0].Data as System.Collections.IEnumerable;
         entries.Should().NotBeNull();
@@ -154,16 +116,10 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
             "chain-follow surfaces the source-attributed BudgetAuditLog row under target's GDPR export");
     }
 
-    // ==================================================================
-    // Helpers — mirrors AcceptAsyncFoldTests
-    // ==================================================================
-
     private async Task<Guid> SeedAdminUserAsync()
     {
-        // AcceptAsync writes ResolvedByUserId = adminUserId on the merge request
-        // and ActorUserId = adminUserId on the audit row, both FK'd to AspNetUsers.
-        // It also calls TeamService.RemoveMemberAsync for non-system team folds,
-        // which requires the actor to be Admin / Board / TeamsAdmin.
+        // An admin user with an active Admin role: AcceptAsync FKs the request and audit row to it, and team folds
+        // need an actor allowed to remove members.
         await using var scope = Factory.Services.CreateAsyncScope();
         var um = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
         var authDb = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
@@ -204,7 +160,7 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var mergeService = scope.ServiceProvider.GetRequiredService<IAccountMergeService>();
-        // Chain-follow tests assert source→target (target survives); pick the request target.
+        // These tests assert source to target, so the request target survives.
         var request = await mergeService.GetByIdAsync(requestId, TestContext.Current.CancellationToken)
             ?? throw new InvalidOperationException($"Merge request {requestId} not found.");
         await mergeService.AcceptAsync(requestId, adminUserId, survivorUserId: request.TargetUser.Id, ct: TestContext.Current.CancellationToken);

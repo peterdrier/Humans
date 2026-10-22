@@ -14,10 +14,8 @@ using Humans.Users.Data;
 namespace Humans.Integration.Tests.AccountMerge;
 
 /// <summary>
-/// Integration tests for the ordered <see cref="IAccountMergeService.MergeAsync"/>
-/// primitive: fan out <c>IUserMerge.ReassignAsync</c> (archived → survivor), settle
-/// the optional pending email (non-fatal), then tombstone the archived account LAST.
-/// No cross-section transaction — the tombstone is the commit point and source of truth.
+/// Reassigns, settles the optional pending email (non-fatal), then tombstones the archived account last. No
+/// cross-section transaction: the tombstone is the commit point.
 /// </summary>
 public class MergeAsyncOrderedTests(HumansTestDatabase database)
     : IntegrationTestBase(database)
@@ -25,11 +23,7 @@ public class MergeAsyncOrderedTests(HumansTestDatabase database)
     [HumansFact(Timeout = 60_000)]
     public async Task MergeAsync_FoldsArchivedIntoSurvivor_AndTombstonesArchivedOnly()
     {
-        // The fixture returns (sourceId, targetId). The admin keeps the target
-        // ("keep@") and archives the source ("dupe@"), matching the existing
-        // source→target fold convention. Addresses are unique per run because the
-        // class fixture shares one Postgres DB and the verified-email uniqueness
-        // index would otherwise trip across tests.
+        // The fixture's target survives and its source is archived, as in the other fold tests.
         var runTag = Guid.NewGuid().ToString("N");
         var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
@@ -72,8 +66,7 @@ public class MergeAsyncOrderedTests(HumansTestDatabase database)
         await using var scope = Factory.Services.CreateAsyncScope();
         var sut = scope.ServiceProvider.GetRequiredService<IAccountMergeService>();
 
-        // A pending-email id that no longer exists must NOT throw — a gone email is the
-        // desired end state — and the archived account MUST still be tombstoned.
+        // A pending email that is already gone is the desired end state: no throw, and the tombstone still lands.
         var act = async () => await sut.MergeAsync(
             survivorId, archivedId, adminId, pendingEmailIdToVerify: Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
 
@@ -85,16 +78,10 @@ public class MergeAsyncOrderedTests(HumansTestDatabase database)
             .Should().Be(survivorId, "the tombstone must still be written when the pending email is gone");
     }
 
-    // ==================================================================
-    // Helpers
-    // ==================================================================
-
     private async Task<Guid> SeedAdminUserAsync()
     {
-        // MergeAsync writes ActorUserId = adminUserId on the audit row (FK'd to
-        // AspNetUsers) and the IUserMerge fan-out hits TeamService authorization,
-        // which requires an active Admin role. Seed both per call so those FKs
-        // resolve and authorization succeeds.
+        // An admin user with an active Admin role: MergeAsync FKs the audit row to it, and the fan-out hits team
+        // authorization.
         await using var scope = Factory.Services.CreateAsyncScope();
         var um = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
         var authDb = scope.ServiceProvider.GetRequiredService<AuthDbContext>();

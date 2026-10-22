@@ -13,31 +13,13 @@ using NodaTime;
 namespace Humans.Integration.Tests.Controllers;
 
 /// <summary>
-/// The page chrome — <c>_AdminLayout</c>, <c>_LoginPartial</c>, <c>_LanguageChooser</c>,
-/// <c>_AuthorizationPill</c>, <c>_VersionInfo</c> — moved out of <c>Humans.UI</c> into
-/// <c>Humans.Web</c> in G5 lane 4b-ii (nobodies-collective/Humans#866). This file is the
-/// standing proof that the move did not quietly take the chrome off any page.
+/// The admin and member chrome still reaches every page that names it.
 /// </summary>
 /// <remarks>
-/// <para>
-/// <b>Why a render test and not the build.</b> A layout or partial that fails to resolve by
-/// name across application parts is not a compile error and, for a partial, not even a
-/// runtime one: 24 projects reach <c>_AdminLayout</c> through nothing but the string
-/// <c>Layout = "_AdminLayout"</c>, and <c>&lt;partial name="…"/&gt;</c> resolution is the same
-/// late, name-based lookup. The failure ships as a 200 with the nav, sidebar and breadcrumb
-/// simply absent. So the assertions are on markers unique to the chrome — the
-/// <c>admin-shell</c> body class, the "Exit admin" link, <c>_LoginPartial</c>'s
-/// <c>data-testid="user-nav"</c> — never on the status code alone.
-/// </para>
-/// <para>
-/// <b>Cross-part resolution in this direction was already proven</b> by the section views
-/// that set <c>Layout = "_Layout"</c> inline (CityPlanning's <c>ContainerMap</c>, Debug's
-/// <c>ColorPalette</c> and <c>WidgetGallery</c>), resolving it out of <c>Humans.Web</c>.
-/// What was new in 4b-ii is the volume: 41 call sites (27
-/// <c>_ViewStart.cshtml</c> files and 14 inline <c>Layout = "_AdminLayout"</c> overrides)
-/// across 24 projects. The render tests below cover one page from most of them; the two
-/// source scans cover the whole set structurally, and cover whatever call site is added next.
-/// </para>
+/// Layouts and partials resolve by name at runtime, so a miss is no compile error and, for a partial, not even a
+/// runtime one: it ships as a 200 with the nav, sidebar and breadcrumb absent. So the assertions are on markers only
+/// the chrome emits, never on the status code alone. The render tests cover one page per assembly; the source scans
+/// cover every call site.
 /// </remarks>
 public partial class AdminLayoutRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
@@ -47,27 +29,25 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
     [GeneratedRegex("<partial\\s+name=\"(?<name>[^\"]+)\"", RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
     private static partial Regex PartialTag();
 
-    /// <summary>The sidebar's active-row marker — <c>class="active"</c> on the group row's anchor.</summary>
+    /// <summary><c>class="active"</c> on the sidebar group row's anchor.</summary>
     [GeneratedRegex("<a class=\"active\" data-group=", RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
     private static partial Regex ActiveSidebarLink();
 
-    /// <summary>The tab strip's active-tab marker.</summary>
     [GeneratedRegex("<a class=\"active\" aria-current=\"page\"", RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
     private static partial Regex ActiveTab();
 
-    /// <summary>Body class set only by <c>_AdminLayout</c>; the member <c>_Layout</c> has no such class.</summary>
+    /// <summary>Set only by <c>_AdminLayout</c>; the member <c>_Layout</c> has no such class.</summary>
     private const string AdminShellMarker = "admin-shell";
 
-    /// <summary>The admin nav's exit link — <c>_AdminLayout</c>'s own copy, in no other view.</summary>
+    /// <summary><c>_AdminLayout</c>'s own copy, in no other view.</summary>
     private const string AdminNavMarker = "Exit admin";
 
-    /// <summary><c>_LoginPartial</c>'s signed-in dropdown, rendered from inside both layouts.</summary>
+    /// <summary>Rendered from inside both layouts.</summary>
     private const string LoginPartialMarker = "data-testid=\"user-nav\"";
 
     /// <summary>
-    /// One page per assembly that names <c>_AdminLayout</c>, drawn from the URLs each
-    /// section's own render test already proves reachable for the Admin persona. The
-    /// second element records which form the site takes, so a failure names the shape.
+    /// One page per assembly that names <c>_AdminLayout</c>, from URLs each section's render test proves reachable for
+    /// Admin. The second element names the call-site form, so a failure says which shape broke.
     /// </summary>
     private static (string Url, string Site)[] AdminPages =>
     [
@@ -94,10 +74,6 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
         ("/Tickets/Admin/Transfers", "Humans.Tickets — Views/TicketTransferAdmin/_ViewStart"),
     ];
 
-    /// <summary>
-    /// The chrome reaches a page in every assembly that names the layout, proved by markers
-    /// the layout alone emits.
-    /// </summary>
     [HumansFact(Timeout = 600000)]
     public async Task The_admin_layout_wraps_a_page_in_every_assembly_that_names_it()
     {
@@ -105,7 +81,6 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
         await SeedActiveBurnAsync();
         var adminId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
-        // Humans.Users' busiest admin page, an inline override in UsersAdmin/AdminDetail.cshtml.
         var pages = AdminPages
             .Append(($"/Users/Admin/{adminId}", "Humans.Users — inline override in UsersAdmin/AdminDetail.cshtml"))
             .ToList();
@@ -131,24 +106,12 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
     }
 
     /// <summary>
-    /// The sidebar shows a full Admin every group in the tree, and a group's tab strip every
-    /// item gated on <c>AdminOnly</c>.
+    /// A full Admin sees every sidebar group, and every <c>AdminOnly</c> tab on Debug's group.
     /// </summary>
     /// <remarks>
-    /// This was the <c>admin</c> row of <c>tests/e2e/admin-shell.spec.ts</c>'s visibility
-    /// matrix until nobodies-collective/Humans#1332 made <c>/dev/login/admin</c> a 404
-    /// outside a dev host, which leaves the E2E suite — it runs against QA, a Staging
-    /// host — with no way to mint the session. The narrower roles keep their rows there;
-    /// the widest one only exists here.
-    /// <para>
-    /// Derived from the composed admin nav (<see cref="AdminNavComposition"/>) rather than a
-    /// pinned list, so a group or an <c>AdminOnly</c> item added later is covered without
-    /// touching this file. Items render as tabs on their group's pages, not in the sidebar, so
-    /// they are asserted on Debug's, the group with the most. Only <c>AdminOnly</c> items are
-    /// asserted individually: every other
-    /// item carries a policy whose satisfaction this test would have to re-derive, and
-    /// re-deriving the view component's own filter proves nothing.
-    /// </para>
+    /// The E2E suite runs on QA, where <c>/dev/login/admin</c> is a 404, so the Admin row can only live here. Derived
+    /// from <see cref="AdminNavComposition"/>, never a pinned list. Only <c>AdminOnly</c> items are asserted: any other
+    /// policy would mean re-deriving the view component's own filter.
     /// </remarks>
     [HumansFact(Timeout = 180000)]
     public async Task The_sidebar_shows_an_admin_every_group_and_every_admin_only_item()
@@ -185,16 +148,10 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
         }
     }
 
-    /// <summary>
-    /// The dashboard's two <c>AdminOnly</c> panels render for a full Admin.
-    /// </summary>
+    /// <summary>The dashboard's two <c>AdminOnly</c> panels render for a full Admin.</summary>
     /// <remarks>
-    /// The feedback tile (its contribution's <c>Policy</c>) and the recent-activity card
-    /// (<c>authorize-policy="AdminOnly"</c>) are AdminOnly (nobodies-collective/Humans#977):
-    /// every other admin-shaped role opens <c>/Admin</c> without them. That left no E2E persona to
-    /// assert them once #1332 took the admin one away, and a tile that silently stops
-    /// rendering looks identical to one the viewer was never entitled to.
-    /// Filed here because this is the suite's only <c>/Admin</c> render.
+    /// No E2E persona can assert them, and a tile that silently stops rendering looks the same as one the viewer was
+    /// never entitled to.
     /// </remarks>
     [HumansFact(Timeout = 120000)]
     public async Task The_admin_dashboard_renders_its_admin_only_panels()
@@ -209,8 +166,7 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
         html.Should().Contain("Open feedback", "Feedback's AdminOnly contributed tile must render for an Admin");
         html.Should().Contain("Recent activity", "Admin/Index's AdminOnly panel must render for an Admin");
 
-        // The tag helper strips the attribute when it lets an element through; an element
-        // that keeps it never went through AuthorizeTagHelper at all.
+        // The tag helper strips the attribute from elements it lets through, so one that keeps it was never bound.
         html.Should().NotContain("authorize-policy", "an unbound authorize-policy leaves the element visible to everyone");
     }
 
@@ -218,10 +174,7 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
     /// The breadcrumb names the group and the item, and exactly one sidebar row and one tab are active.
     /// </summary>
     /// <remarks>
-    /// Regression guard for ddfdb6c1, where the active-item match was on controller alone:
-    /// every item under <c>controller=Debug</c> lit up at once. Ported from
-    /// <c>tests/e2e/admin-shell.spec.ts</c> with the persona (see the sidebar test above);
-    /// <c>/Debug/Logs</c> is <c>AdminOnly</c>, so there is no other role to port it to.
+    /// Regression guard: a controller-only match lit up every item under <c>controller=Debug</c>.
     /// </remarks>
     [HumansFact(Timeout = 120000)]
     public async Task The_breadcrumb_and_the_active_sidebar_link_name_one_page()
@@ -251,15 +204,9 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
     }
 
     /// <summary>
-    /// <c>_AuthorizationPill</c> moved with the two layouts that are its only renderers.
+    /// The pill renders only when <c>AuthorizationPillFilter</c> set <c>ViewData["AuthPillRoles"]</c>, so a 200 proves
+    /// nothing; the pill's own text is the marker.
     /// </summary>
-    /// <remarks>
-    /// The pill renders nothing unless <c>Humans.Web</c>'s <c>AuthorizationPillFilter</c> put
-    /// <c>ViewData["AuthPillRoles"]</c> there, so "the page returned 200" and even "no literal
-    /// &lt;partial&gt; survived" both pass on a page that never rendered it. <c>/Debug/Logs</c>
-    /// is <c>AdminOnly</c>, which is the filter's "Admin only" case, so the pill's own text is
-    /// the marker.
-    /// </remarks>
     [HumansFact(Timeout = 120000)]
     public async Task The_authorization_pill_renders_inside_the_admin_layout()
     {
@@ -277,10 +224,6 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
             "the pill must carry AuthorizationPillFilter's text, not just an empty wrapper");
     }
 
-    /// <summary>
-    /// The member shell's own two chrome partials, <c>_LanguageChooser</c> and
-    /// <c>_LoginPartial</c>, still render from <c>_Layout</c> after the move.
-    /// </summary>
     [HumansFact(Timeout = 120000)]
     public async Task The_member_layout_still_renders_its_chrome_partials()
     {
@@ -300,16 +243,9 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
     }
 
     /// <summary>
-    /// Every <c>Layout = "_AdminLayout"</c> in the tree resolves to exactly one layout file,
-    /// and that file sits in Shell's <c>Views/Shared</c>.
+    /// Every <c>Layout = "_AdminLayout"</c> resolves to exactly one file, in Shell's <c>Views/Shared</c>. Two copies
+    /// would be worse than none: whichever the view engine found first would win, per request.
     /// </summary>
-    /// <remarks>
-    /// The render test above covers one page per assembly. This covers the other call sites —
-    /// and every call site added later — structurally, because a Roslyn analyzer cannot see
-    /// <c>.cshtml</c> (peters-hard-rules.md prefers analyzers wherever they can reach). Two
-    /// copies of the layout would be worse than none: whichever the view engine found first
-    /// would win silently, per request.
-    /// </remarks>
     [HumansFact]
     public void Every_admin_layout_call_site_resolves_to_the_one_layout_in_the_shell()
     {
@@ -335,13 +271,9 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
     }
 
     /// <summary>
-    /// Every <c>&lt;partial name="…"/&gt;</c> the two layouts render resolves to exactly one file.
+    /// Every <c>&lt;partial name="…"/&gt;</c> the two layouts render resolves to exactly one file. A partial left
+    /// behind still compiles and returns 200; it just renders nothing.
     /// </summary>
-    /// <remarks>
-    /// The chrome partials travel with the layouts. Moving a layout and leaving one of its
-    /// partials behind still compiles and still returns 200 — the partial just renders nothing
-    /// — so this pins the set rather than the individual names 4b-ii happened to move.
-    /// </remarks>
     [HumansFact]
     public void Every_partial_the_layouts_render_resolves_to_exactly_one_file()
     {
@@ -373,10 +305,8 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
     }
 
     /// <summary>
-    /// Every Shifts page short-circuits to a redirect when no burn is active, and a 302 proves
-    /// nothing about chrome. Seeded through the section's own leaf verb, not its DbContext —
-    /// the section's view is a Singleton decorator warmed before the test body runs
-    /// (ShiftsPageRenderTests' finding).
+    /// Shifts pages redirect when no burn is active, and a 302 proves nothing about chrome. Seeded through the
+    /// section's verb because its Singleton view is warmed before the test body runs.
     /// </summary>
     private async Task SeedActiveBurnAsync()
     {

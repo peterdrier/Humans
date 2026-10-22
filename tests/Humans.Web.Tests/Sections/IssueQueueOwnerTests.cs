@@ -9,11 +9,8 @@ using Xunit;
 namespace Humans.Web.Tests.Sections;
 
 /// <summary>
-/// The issue-queue seam, pinned once over every shipped section rather than once per section
-/// ([`universal-enforcement-over-per-section`](memory/architecture/universal-enforcement-over-per-section.md)).
-/// Issues routes on what DI discovered, so the declarations composed here are the whole routing
-/// table — a section joining or leaving a queue edits <see cref="DeclaredQueues"/> and nothing in
-/// Issues.
+/// Issues routes on what DI discovered, so the declarations here are the whole routing table: a section joining or
+/// leaving a queue edits <see cref="DeclaredQueues"/>, never Issues.
 /// </summary>
 public class IssueQueueOwnerTests
 {
@@ -24,11 +21,8 @@ public class IssueQueueOwnerTests
             .OrderBy(o => o.Name, StringComparer.Ordinal)];
 
     /// <summary>
-    /// Section → the queue key it declares and the roles that handle it. <c>Admin</c> handles
-    /// every queue and is never declared. Two keys do not match their section's name: Users
-    /// declares <c>Profiles</c> (merged in at nobodies-collective/Humans#866) and Consent
-    /// declares <c>Legal</c> (renamed at the 2026-08-03 freeze), because stored rows carry the
-    /// old spelling.
+    /// <c>Admin</c> handles every queue and is never declared. Users declares <c>Profiles</c> and Consent <c>Legal</c>
+    /// because stored rows carry those spellings.
     /// </summary>
     private static readonly (string Section, string Key, string[] Roles)[] Declared =
     [

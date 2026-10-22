@@ -9,38 +9,14 @@ using NodaTime;
 
 namespace Humans.Integration.Tests.Controllers;
 
-/// <summary>
-/// Renders every Budget page through the real app, as the standing form of the §15 step 12
-/// check for the section's move into <c>src/Sections/Humans.Budget</c>
-/// (nobodies-collective/Humans#866, G5).
-/// </summary>
+/// <summary>Renders every Budget page through the real app.</summary>
 /// <remarks>
-/// <para>
-/// The failure modes a G5 move introduces all render as a <b>200 with degraded content</b>, so
-/// "the page loads" is not the assertion:
-/// </para>
-/// <list type="number">
-/// <item><description>
-/// A section RCL does not inherit the host's <c>Views/_ViewImports.cshtml</c> — a missing
-/// <c>@@using</c> or <c>@@addTagHelper</c> ships literal markup with a green build, and an
-/// unrendered <c>&lt;vc:…&gt;</c> element is inert text the browser simply drops.
-/// <c>&lt;vc:human&gt;</c> on the audit log is the one Budget uses.
-/// </description></item>
-/// <item><description>
-/// The resx carve moved all 21 <c>Budget_*</c> keys out of <c>SharedResource</c>. A key the
-/// carve missed, or a call site bound to the wrong set, renders the raw key — in every
-/// language, with no error. The Spanish request is the only thing that proves the section
-/// RCL's satellite assemblies reach the host's probing path at all.
-/// </description></item>
-/// </list>
-/// <para>
-/// Budget ships no <c>wwwroot/</c>, so there is no static-asset half here.
-/// </para>
+/// Failures render as a 200 with degraded content: an unbound <c>&lt;vc:human&gt;</c> ships as markup, a mis-bound key
+/// renders as its name, and only Spanish proves the satellites ship.
 /// </remarks>
 public class BudgetPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
-    // /Finance is BudgetAdminController's prefix — the URL did not move when the Holded half
-    // left for Humans.Finance (A2, peterdrier/Humans#1239).
+    // /Finance is BudgetAdminController's route prefix.
     private static readonly string[] Pages =
     [
         "/Budget",
@@ -52,11 +28,8 @@ public class BudgetPageRenderTests(HumansTestDatabase database) : IntegrationTes
     ];
 
     /// <summary>
-    /// Writes one active year → group → category → line item straight through the section's
-    /// own DbContext. Without it every page falls through to its no-active-year view and the
-    /// twenty <c>Budget_*</c> keys on Index/Summary — the whole point of the carve check —
-    /// never render. <c>/Finance/CashFlow</c> 302s home without it too. Each integration test
-    /// class owns its database (nobodies-collective/Humans#983), so this disturbs nothing.
+    /// Without an active year every page renders its no-active-year view, the keys never show, and
+    /// <c>/Finance/CashFlow</c> redirects home.
     /// </summary>
     private async Task SeedActiveBudgetYearAsync(CancellationToken ct)
     {
@@ -124,7 +97,6 @@ public class BudgetPageRenderTests(HumansTestDatabase database) : IntegrationTes
 
             var html = await response.Content.ReadAsStringAsync(ct);
 
-            // The fallback for a key the carve missed is the key itself.
             html.Should().NotContain("Budget_", $"GET {url} rendered a raw resource key");
         }
     }
@@ -145,17 +117,14 @@ public class BudgetPageRenderTests(HumansTestDatabase database) : IntegrationTes
     [HumansFact(Timeout = 120000)]
     public async Task Budget_pages_render_in_spanish_from_the_sections_satellite_assemblies()
     {
-        // An English-only check passes whether or not the RCL's satellites shipped — the neutral
-        // set is embedded in the main assembly and the fallback is silent.
-        // Razor's default HtmlEncoder escapes non-ASCII to numeric entities, so the assertions
-        // stay on ASCII-only runs of the Spanish copy.
+        // The neutral set is embedded in the main assembly and fallback is silent, so only Spanish proves the
+        // satellites. HtmlEncoder escapes non-ASCII, so the checks stay on ASCII runs.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await SeedActiveBudgetYearAsync(ct);
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
-        // Accept-Language does not reach a signed-in user: Program.cs's initial culture provider
-        // returns the user's PreferredLanguage and short-circuits the rest of the chain, and
-        // every Budget page is [Authorize]. Switch the language the way the UI does.
+        // Accept-Language doesn't reach a signed-in user: the PreferredLanguage provider short-circuits the chain. Switch
+        // the way the UI does.
         var switcherPage = await (await Client.GetAsync("/Budget/Summary", ct)).Content.ReadAsStringAsync(ct);
         var token = ExtractAntiForgeryToken(switcherPage);
         token.Should().NotBeNullOrEmpty();
@@ -179,10 +148,7 @@ public class BudgetPageRenderTests(HumansTestDatabase database) : IntegrationTes
     [HumansFact(Timeout = 120000)]
     public async Task The_expenses_grid_resolves_budgets_carved_category_key()
     {
-        // Budget_ColCategory went home to BudgetResource at Budget's G5 rather than staying in
-        // SharedResource, because both owners are now sections (§15.3b). Expenses' report grid
-        // is the one call site outside Budget; it binds IStringLocalizer<BudgetResource>, and a
-        // miss there renders the raw key with a green build.
+        // Expenses' report grid is the one call site outside Budget binding BudgetResource; a miss renders the raw key.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 

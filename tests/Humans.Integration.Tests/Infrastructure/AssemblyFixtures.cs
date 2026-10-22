@@ -3,21 +3,9 @@ using Xunit;
 using Xunit.Sdk;
 using Xunit.v3;
 
-// One Postgres container and one migration pass for the whole assembly
-// (nobodies-collective/Humans#764). Before this, each test class owned an
-// IClassFixture<HumansWebApplicationFactory>, so a run started 30 Testcontainers
-// Postgres instances and ran the full migration chain in every one of them — the
-// resource contention behind the timeout-shaped "pre-existing failures".
+// One Postgres container and one migration pass for the whole assembly.
 [assembly: AssemblyFixture(typeof(HumansTestDatabase))]
 
-// Parallelization is back on. It was disabled by nobodies-collective/Humans#764
-// because the assembly shared one database, one set of Singleton caches and one set
-// of NSubstitute stubs behind one app host; per-test isolation
-// (nobodies-collective/Humans#983) means it shares none of those, so classes no
-// longer observe each other. It also pays for the isolation: 2m39s sequential
-// against 52s parallel, versus 33s for the shared-everything scheme it replaced.
-//
-// The one thing still shared is the Postgres container, and each concurrent app
-// host holds a connection pool against it — see HumansTestDatabase for the
-// max_connections headroom that assumes.
+// Safe because each test has its own database, app host and stubs. The shared container's connection headroom is set
+// in HumansTestDatabase.
 [assembly: Parallelization(Mode = ParallelMode.Collections)]

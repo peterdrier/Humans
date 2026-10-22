@@ -7,11 +7,8 @@ using Microsoft.Extensions.Primitives;
 namespace Humans.Web.Tests.Infrastructure;
 
 /// <summary>
-/// Coverage for the parsing-culture pin (nobodies-collective/Humans#1067): HTML forms
-/// (<c>type="number"</c>, decimal model binding) always POST dot-format regardless of
-/// display language, so a comma-decimal request culture silently corrupts values —
-/// <c>decimal.Parse("60.00", es)</c> == 6000. Every request-culture provider is wrapped so
-/// its result always reports "en" for the parsing culture, keeping only the UI culture.
+/// Forms POST dot-decimals whatever the display language, so a comma-decimal parsing culture corrupts values
+/// (<c>decimal.Parse("60.00", es)</c> is 6000). Providers are wrapped to keep only the UI culture.
 /// </summary>
 public class UiCultureOnlyRequestCultureProviderTests
 {
@@ -31,10 +28,8 @@ public class UiCultureOnlyRequestCultureProviderTests
     [HumansFact]
     public async Task Preserves_full_ui_culture_fallback_chain()
     {
-        // AcceptLanguageHeaderRequestCultureProvider can return several ordered candidates
-        // in one result (e.g. "pt-BR, es;q=0.9" with pt-BR unsupported); the middleware
-        // walks the whole list to find the first supported one. Collapsing to just the
-        // first candidate would silently drop "es" and fall back to the default culture.
+        // Accept-Language can yield several candidates; the middleware walks them all, so collapsing to the first would
+        // drop "es" for the default.
         var uiCultures = new List<StringSegment> { "pt-BR", "es" };
         var inner = new FixedRequestCultureProvider(
             new ProviderCultureResult(new List<StringSegment> { "en" }, uiCultures));

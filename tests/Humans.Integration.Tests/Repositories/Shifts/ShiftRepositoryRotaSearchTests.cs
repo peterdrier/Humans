@@ -12,17 +12,14 @@ using Humans.Shifts.Contracts;
 namespace Humans.Integration.Tests.Repositories.Shifts;
 
 /// <summary>
-/// The admin-only-rota half of the global-search privacy guarantee. The filter is a
-/// Postgres <c>ILike</c> predicate, so it cannot be exercised against the in-memory
-/// provider the Application tests use — it needs the run's real PostgreSQL container.
-///
-/// <para>
-/// Per the ruling on nobodies-collective/Humans#985, a text query is still filtered:
-/// a rota with <c>IsVisibleToVolunteers = false</c> must never match by name for anyone.
-/// The by-GUID counterpart (which deliberately skips this filter) is pinned in
-/// <c>ShiftManagementServiceTests.SearchAsync_GuidQuery_ResolvesARotaHiddenFromVolunteers</c>.
-/// </para>
+/// The admin-only-rota half of the global-search privacy guarantee: a rota with
+/// <c>IsVisibleToVolunteers = false</c> must never match a text query by name, for anyone.
 /// </summary>
+/// <remarks>
+/// The filter is a Postgres <c>ILike</c> predicate, so it needs a real database. The by-GUID counterpart, which
+/// deliberately skips the filter, is
+/// <c>ShiftManagementServiceTests.SearchAsync_GuidQuery_ResolvesARotaHiddenFromVolunteers</c>.
+/// </remarks>
 public class ShiftRepositoryRotaSearchTests(HumansTestDatabase database)
     : IntegrationTestBase(database)
 {

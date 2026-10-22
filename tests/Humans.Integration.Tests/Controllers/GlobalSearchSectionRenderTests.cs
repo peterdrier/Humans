@@ -27,35 +27,13 @@ using NodaTime;
 namespace Humans.Integration.Tests.Controllers;
 
 /// <summary>
-/// The four non-human buckets of the global <c>/Search</c> page now render their owning
-/// section's own view component — <c>&lt;vc:teams-search-result&gt;</c>,
-/// <c>&lt;vc:camps-search-result&gt;</c>, <c>&lt;vc:shifts-search-result&gt;</c>,
-/// <c>&lt;vc:events-search-result&gt;</c> — invoked with the entity's Guid and nothing else
-/// (nobodies-collective/Humans#1062).
+/// The four non-human <c>/Search</c> buckets render their section's own view component, invoked with the entity's
+/// Guid only.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Each element binds only through one <c>@addTagHelper</c> line in Search's
-/// <c>Views/_ViewImports.cshtml</c>. A missing line is silent: the row ships as literal
-/// <c>&lt;vc:…&gt;</c> markup on a green build and a 200. So this seeds one real row per
-/// bucket behind a single unique token and asserts on markers only the component writes —
-/// the name it fetched itself, and the link it built. That a tag <i>can</i> bind at all is
-/// checked statically and page-wide by <c>ViewComponentTagHelperBindingTests</c>
-/// (nobodies-collective/Humans#1434); what is left for a rendered page is whether the row
-/// the component produced is the right one.
-/// </para>
-/// <para>
-/// Negative probe (2026-08-20): deleting any one of the four <c>@addTagHelper</c> lines
-/// turns this test red on that bucket's marker, and the static check red on the call site.
-/// </para>
-/// <para>
-/// The second test measures the other half of the acceptance bar: one component
-/// instance per row must not mean one query per row.
-/// </para>
-/// <para>
-/// The third covers the other call site — <c>/Debug/WidgetGallery</c>, which catalogs all four
-/// and needs its own <c>@addTagHelper</c> lines in <c>Humans.Debug</c>.
-/// </para>
+/// Each binds through one <c>@addTagHelper</c> line in Search's <c>_ViewImports</c>. Whether a tag can bind is checked
+/// statically by <c>ViewComponentTagHelperBindingTests</c>; this checks the row it produced is the right one, by
+/// markers only the component writes. One instance per row must also not mean one query per row.
 /// </remarks>
 public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
@@ -86,16 +64,11 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
         html.Should().Contain("/Events/Browse?q=", because: "Events' component built the Browse link");
     }
 
-    /// <summary>
-    /// The widget gallery catalogs all four rows, so it needs its own <c>@addTagHelper</c>
-    /// lines — Teams and Events had none before these components existed.
-    /// </summary>
+    /// <summary>The widget gallery catalogs all four rows, so it needs its own <c>@addTagHelper</c> lines.</summary>
     /// <remarks>
-    /// The gallery keys each card off the first real row it can find, not off a fixture, so
-    /// this cannot assert on a token for the two the environment already has rows of. Instead
-    /// it pins both halves: the fallback line is absent (a key resolved, so the component was
-    /// invoked at all) and no literal tag survives (it bound). The rota and the event are the
-    /// only ones a fresh database holds, so those two carry the token assertion outright.
+    /// The gallery keys each card off the first real row it finds, so for the two kinds the environment already has
+    /// it asserts the fallback is absent and no literal tag survives. The rota and the event are the only ones a fresh
+    /// database holds, so those carry the token assertion.
     /// </remarks>
     [HumansFact(Timeout = 180000)]
     public async Task The_widget_gallery_binds_all_four_rows()
@@ -120,11 +93,7 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
         html.Should().Contain($"{token} Event", because: "the seeded event is the only one, so Events' card must show it");
     }
 
-    /// <summary>
-    /// One component instance per result row is only cheap if every one of them reads a
-    /// cache the section already holds, so measure it rather than assert it in a comment:
-    /// tripling the rows in each bucket must not move the query count.
-    /// </summary>
+    /// <summary>Tripling the rows in each bucket must not move the query count.</summary>
     [HumansFact(Timeout = 180000)]
     public async Task Tripling_the_rows_costs_no_extra_query()
     {
@@ -133,15 +102,13 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
         await SeedOneRowPerBucketAsync(token, 0, Factory.Services, ct);
 
         var counter = new DbCommandCounter();
-        // Replace the factory outright rather than adding a provider: Program.cs calls
-        // UseSerilog, which swaps ILoggerFactory wholesale and drops added providers.
-        // Scoped to this host, so a parallel test class cannot bleed into the count.
+        // Replace the factory outright: Program.cs's UseSerilog swaps ILoggerFactory and drops added providers. Scoped to
+        // this host, so a parallel test can't bleed into the count.
         await using var counted = Factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(
             services => services.AddSingleton<ILoggerFactory>(new LoggerFactory([counter]))));
         var client = counted.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        // Dev login straight against this host: the factory helper resolves the seeded id
-        // through the *other* host's caches, which never saw it. A fresh clone has no
-        // required legal documents, so the consent seeding it also does is a no-op here.
+        // Dev login against this host directly: the factory helper resolves the id through the other host's caches,
+        // which never saw it.
         await client.GetAsync($"/dev/login/{DevPersona.Admin.Slug}", ct);
 
         // A counter that never moves would make the comparison below pass vacuously.
@@ -154,8 +121,6 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
         await SeedOneRowPerBucketAsync(token, 2, counted.Services, ct);
         var threeRowsPerBucket = await MeasureSearchAsync(counter, client, token, ct);
 
-        // Measured 2026-08-20, before and after the Guid re-key: two commands for the whole
-        // page either way — per-request auth reads, nothing from the result rows.
         threeRowsPerBucket.Should().Be(oneRowPerBucket,
             because: "every row is served from its section's cache, so row count must not reach the database");
     }
@@ -163,8 +128,7 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
     private static async Task<int> MeasureSearchAsync(
         DbCommandCounter counter, HttpClient client, string token, CancellationToken ct)
     {
-        // Warm first — the per-rota view cache fills one row at a time, so the cold
-        // pass is not the steady state. Then measure the request after it.
+        // Warm first: the per-rota view cache fills a row at a time, so the cold pass isn't the steady state.
         await client.GetAsync($"/Search?q={token}", ct);
         counter.Reset();
         var response = await client.GetAsync($"/Search?q={token}", ct);
@@ -172,7 +136,7 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
         return counter.Count;
     }
 
-    /// <summary>Counts executed commands across every section's context, off EF's own log.</summary>
+    /// <summary>Counts executed commands across every section's context, off EF's log.</summary>
     private sealed class DbCommandCounter : ILoggerProvider, ILogger
     {
         private int _count;
@@ -203,11 +167,10 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
 
     private sealed record SeededRows(string TeamSlug, Guid TeamId, string CampSlug);
 
-    /// <summary>Seeds one matchable row per search bucket and returns the refs the assertions need.</summary>
-    /// <param name="token">The search text shared by this set of seeded rows.</param>
-    /// <param name="rootServices">The application’s root service provider.</param>
-    /// <param name="ct">Cancellation token for seeding.</param>
-    /// <param name="index">Distinguishes repeat seedings under one token; row 0 keeps the bare names the bind test asserts on.</param>
+    /// <summary>
+    /// <paramref name="index"/> distinguishes repeat seedings under one token; row 0 keeps the bare names the bind test
+    /// asserts on.
+    /// </summary>
     private static async Task<SeededRows> SeedOneRowPerBucketAsync(
         string token, int index, IServiceProvider rootServices, CancellationToken ct)
     {
@@ -288,8 +251,7 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
             UpdatedAt = now,
         };
         shiftsDb.Rotas.Add(rota);
-        // One slot under it: a rota with no shifts is invisible to every rota-listing read
-        // the app has, so a shiftless fixture would make the gallery card untestable.
+        // A rota with no shifts is invisible to every rota-listing read, so the gallery card would be untestable.
         shiftsDb.Shifts.Add(new Shift
         {
             Id = Guid.NewGuid(),
@@ -332,10 +294,8 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
         });
         await eventsDb.SaveChangesAsync(ct);
 
-        // Teams, Camps and Events all serve search from a singleton snapshot warmed at
-        // startup, so rows written straight to their contexts are invisible until it reloads.
-        // Events has no reload hook of its own — a category save is the section's own signal
-        // that every approved-event projection is stale, so drive that.
+        // Teams, Camps and Events serve search from Singleton snapshots warmed at startup. Events has no reload hook,
+        // so a category save, its stale-projection signal, drives the reload.
         sp.GetRequiredService<CachingTeamService>().InvalidateActiveTeamsCache();
         sp.GetRequiredService<CachingCampService>().Clear();
         await sp.GetRequiredService<IEventManagement>().UpdateCategoryAsync(category, ct);

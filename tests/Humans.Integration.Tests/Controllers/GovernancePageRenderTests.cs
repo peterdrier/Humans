@@ -3,8 +3,6 @@ using System.Net;
 using AwesomeAssertions;
 using Humans.Governance.Data;
 using Humans.Governance.Domain;
-// Humans.Application is a sibling namespace inside this project, so the bare name
-// `Application` resolves to it rather than to the entity.
 using MemberApplication = Humans.Governance.Domain.Application;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,42 +10,11 @@ using NodaTime;
 
 namespace Humans.Integration.Tests.Controllers;
 
-/// <summary>
-/// Renders every Governance page through the real app, as the standing form of the §15 step 12
-/// check for the section's move into <c>src/Sections/Humans.Governance</c>
-/// (nobodies-collective/Humans#866, G5).
-/// </summary>
+/// <summary>Renders every Governance page through the real app.</summary>
 /// <remarks>
-/// <para>
-/// The failure modes a G5 move introduces all render as a <b>200 with degraded content</b>:
-/// </para>
-/// <list type="number">
-/// <item><description>
-/// A section RCL does not inherit the host's <c>Views/_ViewImports.cshtml</c> — a missing
-/// <c>@@using</c> or <c>@@addTagHelper</c> ships literal markup with a green build, and an
-/// unrendered <c>&lt;vc:…&gt;</c> element is inert text the browser drops. Governance renders
-/// <c>&lt;vc:human&gt;</c> on four pages, and two components it cannot bind at all:
-/// <c>ProfileCard</c> and <c>AccessMatrix</c> both live in Shell and are invoked by name across
-/// application parts, which <b>throws</b> when it fails rather than degrading.
-/// </description></item>
-/// <item><description>
-/// The resx carve moved 112 keys across nine prefixes out of <c>SharedResource</c>. A key the
-/// carve missed, or a call site left bound to the wrong set, renders the raw key in every
-/// language with no error. Four prefixes deliberately stayed shared (<c>Application_*</c>,
-/// <c>ApplicationStatus_*</c>, <c>AdminApp_Applicant</c> and the Profile / OnboardingReview
-/// singles) because Shell's <c>ProfileController</c> and the onboarding review queue render
-/// them too — so the assertions below check the carved prefixes are gone <i>and</i> that the
-/// shared ones still resolve.
-/// </description></item>
-/// <item><description>
-/// Three Shell partials moved in with the section (<c>_ApplicationsListContent</c>,
-/// <c>_ApplicationResponseSections</c>, <c>_ApplicationHistory</c>) and are now reached by
-/// name rather than by <c>~/Views/Shared/…</c> path.
-/// </description></item>
-/// </list>
-/// <para>
-/// Governance ships no <c>wwwroot/</c>, so there is no static-asset half here.
-/// </para>
+/// Failures render as a 200 with degraded content: unbound tags ship as markup, and a mis-bound key renders as its
+/// name. <c>ProfileCard</c> and <c>AccessMatrix</c> are invoked by name and throw instead. Some prefixes stay shared
+/// because Shell renders them too, so the checks assert the carved prefixes are gone and the shared ones resolve.
 /// </remarks>
 public class GovernancePageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
@@ -55,12 +22,8 @@ public class GovernancePageRenderTests(HumansTestDatabase database) : Integratio
     private const string SeededContribution = "Rebuilt the greywater system in 2025.";
 
     /// <summary>
-    /// Writes one Submitted application straight through the section's own DbContext. There is
-    /// no §15 caching decorator in front of <c>ApplicationDecisionService</c> — it caches only
-    /// the per-board-member voting badge — so the context write is what every read below sees.
-    /// Without a row, <c>/Governance/Applications</c>, the admin list and the voting dashboard
-    /// all render their empty views and most of the carved keys never render at all. Each
-    /// integration test class owns its database (nobodies-collective/Humans#983).
+    /// Written straight to the context: no caching decorator fronts <c>ApplicationDecisionService</c>. Without a row the
+    /// list pages render empty and most keys never show.
     /// </summary>
     private async Task<Guid> SeedApplicationAsync(Guid userId, CancellationToken ct)
     {
@@ -95,7 +58,6 @@ public class GovernancePageRenderTests(HumansTestDatabase database) : Integratio
         return applicationId;
     }
 
-    /// <summary>Every prefix the carve took into <c>GovernanceResource</c>.</summary>
     private static readonly string[] CarvedPrefixes =
     [
         "Governance_", "Governance_Create_", "Governance_Application_", "Governance_BoardVoting_",
@@ -125,10 +87,7 @@ public class GovernancePageRenderTests(HumansTestDatabase database) : Integratio
         AssertRenderedCleanly(html, "GET /Governance");
 
         html.Should().Contain("Who Should Apply?");            // Governance_WhoShouldApply
-        // AccessMatrixViewComponent moved into Humans.UI (nobodies-collective/Humans#1056), so
-        // <vc:access-matrix section="Governance" /> binds through @addTagHelper *, Humans.Interfaces.
-        // An unbound <vc:> ships as inert literal markup with a green build and no log line, so
-        // the emitted modal id is the proof — the 200 alone is not.
+        // An unbound <vc:> ships as inert markup, so the emitted modal id is the proof, not the 200.
         html.Should().Contain("sectionHelp-Governance",
             because: "the access-matrix component renders a modal id built from the section key; "
                    + "an unbound tag helper renders nothing at all");
@@ -155,9 +114,7 @@ public class GovernancePageRenderTests(HumansTestDatabase database) : Integratio
         AssertRenderedCleanly(detailHtml, "GET /Governance/Applications/Details/{id}");
         detailHtml.Should().Contain("Application Information");       // Governance_ApplicationDetail_ApplicationInfo
         detailHtml.Should().Contain(SeededMotivation);
-        // _ApplicationResponseSections and _ApplicationHistory moved into the section and are
-        // now resolved by name; a partial that fails to resolve throws, one that resolves
-        // against the wrong set renders raw keys.
+        // These partials resolve by name: a miss throws, and the wrong resource set renders raw keys.
         detailHtml.Should().Contain(SeededContribution);
         detailHtml.Should().NotContain("Application_",
             "the Application_* keys stayed shared and must still resolve");
@@ -176,8 +133,7 @@ public class GovernancePageRenderTests(HumansTestDatabase database) : Integratio
         AssertRenderedCleanly(html, "GET /Governance/Applications/Create");
 
         html.Should().Contain("New Application");   // Governance_Create_NewApplication (carved)
-        // The tier radios and the Asociado question labels are Profile*/Application_* keys the
-        // carve deliberately left in SharedResource; they bind SharedLocalizer in the section.
+        // The tier radios and Asociado labels stay in SharedResource and bind SharedLocalizer.
         html.Should().NotContain("ProfileEdit_");
         html.Should().NotContain("Profile_MembershipTier");
         html.Should().NotContain("Application_");
@@ -196,8 +152,7 @@ public class GovernancePageRenderTests(HumansTestDatabase database) : Integratio
         var listHtml = await list.Content.ReadAsStringAsync(ct);
         AssertRenderedCleanly(listHtml, "GET /Governance/Applications/Admin");
         listHtml.Should().Contain("Asociado Applications");   // Governance_AdminApplications_Title
-        // _ApplicationsListContent moved in from Shell's Views/Shared and is now reached by
-        // name across application parts rather than by ~/Views/Shared/ path.
+        // _ApplicationsListContent is resolved by name across application parts.
         listHtml.Should().Contain("Applicant");               // AdminApp_Applicant, in the partial
         listHtml.Should().NotContain("AdminApp_",
             "AdminApp_Applicant stayed shared and must still resolve");
@@ -229,25 +184,20 @@ public class GovernancePageRenderTests(HumansTestDatabase database) : Integratio
         var detailHtml = await detail.Content.ReadAsStringAsync(ct);
         AssertRenderedCleanly(detailHtml, "GET /Governance/BoardVoting/{id}");
         detailHtml.Should().Contain("Votes So Far");                // Governance_BoardVoting_VotesSoFar
-        // <vc:profile-card> became Component.InvokeAsync("ProfileCard", …) because the
-        // component stays in Shell; the enum argument moved to Humans.UI so the section can
-        // name it. An unresolvable invocation throws, so reaching this assertion is the proof.
+        // ProfileCard is invoked by name and throws if unresolvable, so reaching this is the proof.
         detailHtml.Should().Contain("Strong contributor.");
     }
 
     [HumansFact(Timeout = 120000)]
     public async Task Governance_pages_render_in_spanish_from_the_sections_satellite_assemblies()
     {
-        // An English-only check passes whether or not the RCL's satellites shipped — the
-        // neutral set is embedded in the main assembly and the fallback is silent.
-        // Razor's default HtmlEncoder escapes non-ASCII to numeric entities, so the assertions
-        // stay on ASCII-only runs of the Spanish copy.
+        // The neutral set is embedded in the main assembly and fallback is silent, so only Spanish proves the
+        // satellites. HtmlEncoder escapes non-ASCII, so the checks stay on ASCII runs.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
-        // Accept-Language does not reach a signed-in user: Program.cs's initial culture provider
-        // returns the user's PreferredLanguage and short-circuits the rest of the chain, and
-        // every Governance page is [Authorize]. Switch the language the way the UI does.
+        // Accept-Language doesn't reach a signed-in user: the PreferredLanguage provider short-circuits the chain. Switch
+        // the way the UI does.
         var switcherPage = await (await Client.GetAsync("/Governance", ct)).Content.ReadAsStringAsync(ct);
         var token = ExtractAntiForgeryToken(switcherPage);
         token.Should().NotBeNullOrEmpty();

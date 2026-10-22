@@ -105,8 +105,7 @@ public class IssueSectionInferenceTests
     [InlineData("   ")]
     [InlineData("/SomeUnknownPage")]
     [InlineData("/Foo/Bar")]
-    // "/City" was the old mapping and matches no route in the app — CityPlanningController
-    // is [Route("CityPlanning")]. It must not resolve, or the outlier comes back.
+    // No route is "/City" (the controller is [Route("CityPlanning")]), so it must not resolve.
     [InlineData("/City/zone")]
     public void FromPath_returns_null_for_unknown_or_empty(string? input)
     {

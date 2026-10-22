@@ -10,39 +10,13 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Web.Tests.Architecture;
 
 /// <summary>
-/// Every <c>&lt;vc:...&gt;</c> call site in the tree resolves to a tag helper call at compile
-/// time: its view component is public, and its assembly's tag helpers are opened by an
-/// <c>@addTagHelper</c> directive somewhere in the folder chain above the view.
+/// Every <c>&lt;vc:...&gt;</c> call site compiles to a tag helper: its component is public and an
+/// <c>@addTagHelper</c> above the view opens its assembly.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Razor's tag-helper generation requires the component type to be public. A section's
-/// <c>internal</c> types resolve fine at RUNTIME via
-/// <see cref="SectionViewComponentFeatureProvider"/> (<c>Component.InvokeAsync("Name")</c>),
-/// but nothing relaxes the compile-time check, so an internal component — or a missing
-/// directive — never gets a tag helper generated. The element then ships to the browser as
-/// literal markup: green build, no exception, no log line (nobodies-collective/Humans#1055;
-/// caught in production by a human on <c>&lt;vc:profile-card&gt;</c> after
-/// <c>ProfileCardViewComponent</c> became internal during the Users G5 move,
-/// nobodies-collective/Humans#866, PR peterdrier/Humans#1297).
-/// </para>
-/// <para>
-/// This is a test rather than an analyzer because an unresolved or non-public <c>&lt;vc:...&gt;</c>
-/// never generates any C# for an analyzer to see — it ships as inert markup with no compiled
-/// call site at all, not a diagnosable one (peters-hard-rules.md prefers analyzers wherever
-/// they can reach; Roslyn does see <c>.cshtml</c> for a hand-written, resolved call —
-/// nobodies-collective/Humans#1815's spike). It boots nothing and
-/// touches no database, and it covers every page deterministically without rendering any of
-/// them — including pages no browser has ever hit, which
-/// <see cref="ViewComponentTagSurvivalMiddleware"/> (the Dev/QA response-scanning middleware
-/// that also guards #1055) cannot see until someone requests that page.
-/// </para>
-/// <para>
-/// The view-component set is discovered by reflection over every assembly with a component in
-/// it — the same discovery <see cref="SectionViewComponentFeatureProvider"/> itself uses —
-/// never a hand-maintained literal list, so a new or renamed component is covered
-/// automatically.
-/// </para>
+/// Internal components still resolve at runtime by name, but Razor generates no tag helper for them, so the element
+/// ships as literal markup on a green build. It generates no C#, so no analyzer can see it; this covers every page
+/// without rendering, unlike <see cref="ViewComponentTagSurvivalMiddleware"/>.
 /// </remarks>
 public class ViewComponentTagHelperBindingTests
 {
@@ -95,11 +69,7 @@ public class ViewComponentTagHelperBindingTests
 
     private sealed record ViewComponentInfo(string TypeName, string AssemblyName, bool IsPublic);
 
-    /// <summary>
-    /// Every view component reachable from Shell's own dependency graph plus Shell and Base
-    /// themselves, which are not sections. Assemblies with none contribute nothing and are
-    /// skipped implicitly.
-    /// </summary>
+    /// <summary>Every view component reachable from Shell's dependency graph, plus Shell and Base themselves.</summary>
     private static Dictionary<string, ViewComponentInfo> DiscoverViewComponents()
     {
         var assemblies = SectionDiscoveryExtensions.SectionAssemblies()
@@ -116,9 +86,7 @@ public class ViewComponentTagHelperBindingTests
                 if (!IsViewComponentType(type))
                     continue;
 
-                // A collision would mean two components resolve to the same tag ambiguously;
-                // none exist today. Keeping the first is deliberately conservative — silently
-                // picking a winner is not this test's job.
+                // Two components on one tag would be ambiguous; none exist, and picking a winner is not this test's job.
                 components.TryAdd(
                     ComponentTagName(type),
                     new ViewComponentInfo(type.FullName ?? type.Name, assembly.GetName().Name!, type.IsPublic));
@@ -154,7 +122,6 @@ public class ViewComponentTagHelperBindingTests
         return ToKebabCase(shortName);
     }
 
-    /// <summary>ASP.NET Core's own PascalCase-to-tag-name convention: <c>ProfileCard</c> -&gt; <c>profile-card</c>.</summary>
     private static string ToKebabCase(string pascalCase)
     {
         var builder = new StringBuilder(pascalCase.Length + 4);
@@ -171,12 +138,7 @@ public class ViewComponentTagHelperBindingTests
     private static readonly Regex RazorComment = new(
         @"@\*.*?\*@", RegexOptions.Singleline | RegexOptions.Compiled, TimeSpan.FromSeconds(5));
 
-    /// <summary>
-    /// Every distinct <c>&lt;vc:name</c> call site in one view, tag name plus its 1-based line
-    /// number. Razor comments are stripped first — <c>_ViewImports.cshtml</c> files routinely
-    /// document a component's binding inside a <c>@* ... *@</c> block (e.g. "invoked by name,
-    /// not a tag helper"), and that documentation is not a real call site.
-    /// </summary>
+    /// <summary>Razor comments are stripped first: <c>_ViewImports</c> files document components inside them.</summary>
     private static IEnumerable<(string Path, string Tag, int Line)> CallSites(string path)
     {
         var text = StripComments(File.ReadAllText(path));
@@ -198,22 +160,15 @@ public class ViewComponentTagHelperBindingTests
         }
     }
 
-    /// <summary>The 1-based line number of <paramref name="index"/> within <paramref name="text"/>.</summary>
     private static int LineNumber(string text, int index) =>
         1 + text.AsSpan(0, index).Count('\n');
 
-    /// <summary>
-    /// Strips <c>@* ... *@</c> comments, keeping every newline the comment contained so line
-    /// numbers computed on the result still match the original file.
-    /// </summary>
+    /// <summary>Keeps the comments' newlines so line numbers still match the file.</summary>
     private static string StripComments(string text) =>
         RazorComment.Replace(text, m => new string('\n', m.Value.Count(c => c == '\n')));
 
-    // Razor applies every _ViewImports.cshtml from the project root down to the view's folder.
-    // Comments are stripped first for the same reason call sites are: several _ViewImports
-    // files quote the exact `@addTagHelper *, Humans.Base` text inside a `@* ... *@` block to
-    // explain why the directive is there (e.g. Humans.Email's), and a quoted directive binds
-    // nothing — counting it would let the real directive be deleted with this test still green.
+    // Razor applies every _ViewImports.cshtml from the project root down. Comments are stripped because some
+    // _ViewImports quote the directive inside @* *@, and counting a quote would let the real one be deleted unnoticed.
     private static bool ImportsAssembly(string viewPath, string srcRoot, string assemblyName)
     {
         var directive = $"@addTagHelper *, {assemblyName}";

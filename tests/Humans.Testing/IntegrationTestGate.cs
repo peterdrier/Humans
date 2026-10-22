@@ -1,10 +1,8 @@
 namespace Humans.Testing;
 
 /// <summary>
-/// Humans.Integration.Tests is opt-in: unless <c>HUMANS_INTEGRATION_TESTS=1</c>, its
-/// facts self-skip and its Postgres fixture never starts (covers IDE runners that
-/// ignore the csproj's <c>IsTestProject=false</c>). A test that sets its own
-/// <c>Skip</c>/<c>SkipUnless</c> (the localization sweep) replaces this gate.
+/// Unless <c>HUMANS_INTEGRATION_TESTS=1</c>, integration facts self-skip and the Postgres fixture never starts, even
+/// in IDE runners that ignore <c>IsTestProject=false</c>. A test's own <c>Skip</c>/<c>SkipUnless</c> replaces this gate.
 /// </summary>
 internal static class IntegrationTestGate
 {

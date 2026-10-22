@@ -1,5 +1,4 @@
-// BannedApi: this file is the project-approved replacement for Xunit.TheoryAttribute.
-// It is the only legitimate place to reference TheoryAttribute directly.
+// BannedApi: the approved replacement for Xunit.TheoryAttribute, the only place allowed to reference it.
 #pragma warning disable RS0030
 
 using System.Runtime.CompilerServices;

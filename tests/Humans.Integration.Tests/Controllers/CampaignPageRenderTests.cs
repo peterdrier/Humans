@@ -8,36 +8,18 @@ using NodaTime;
 
 namespace Humans.Integration.Tests.Controllers;
 
-/// <summary>
-/// Renders every Campaigns page through the real app, as the standing form of the §15 step 12
-/// check for the section's move into <c>src/Sections/Humans.Campaigns</c>
-/// (nobodies-collective/Humans#866, G5).
-/// </summary>
+/// <summary>Renders every Campaigns page through the real app.</summary>
 /// <remarks>
-/// <para>
-/// The failure mode a G5 move introduces renders as a <b>200 with degraded content</b>: a
-/// section RCL does not inherit the host's <c>Views/_ViewImports.cshtml</c>, so a missing
-/// <c>@@using</c> or <c>@@addTagHelper</c> ships literal markup with a green build, and an
-/// unrendered <c>&lt;vc:…&gt;</c> element is inert text the browser simply drops.
-/// <c>&lt;vc:human&gt;</c> on the grants grid is the one Campaigns uses — and it only appears
-/// once a grant exists, which is why the fixture seeds one.
-/// </para>
-/// <para>
-/// There is no resx half here: Campaigns' views carry no <c>Localizer[…]</c> call and
-/// <c>SharedResource</c> has no <c>Campaign_</c> key, so the section ships no resource set and
-/// no satellite assemblies (§15 step 3b — Finance and Gate are the other two). The structural
-/// guard for that is <c>CampaignsArchitectureTests.SectionTypesTakeNoStringLocalizer</c>.
-/// Campaigns ships no <c>wwwroot/</c> either, so there is no static-asset half.
-/// </para>
+/// A missing <c>@@using</c> or <c>@@addTagHelper</c> ships literal markup with a 200. <c>&lt;vc:human&gt;</c> on the
+/// grants grid appears only once a grant exists, which is why the fixture seeds one. No resource set or
+/// <c>wwwroot/</c>; <c>CampaignsArchitectureTests.SectionTypesTakeNoStringLocalizer</c> guards the former.
 /// </remarks>
 public class CampaignPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     /// <summary>
-    /// One Active campaign, one code, one grant to the signed-in admin. Without a grant the
-    /// Detail page renders an empty grants grid and the <c>&lt;vc:human&gt;</c> check —
-    /// the whole point of the render pass — asserts nothing. Each integration test class owns
-    /// its database (nobodies-collective/Humans#983), so this disturbs nothing. Campaigns has
-    /// no §15 caching decorator, so seeding through the section's own context is enough.
+    /// One Active campaign, one code, one grant to the signed-in admin. Without a grant the grants grid renders empty
+    /// and the <c>&lt;vc:human&gt;</c> check asserts nothing. No caching decorator, so seeding through the section's
+    /// own context is enough.
     /// </summary>
     private async Task<Guid> SeedCampaignWithGrantAsync(Guid adminUserId, CancellationToken ct)
     {
@@ -105,8 +87,7 @@ public class CampaignPageRenderTests(HumansTestDatabase database) : IntegrationT
 
             var html = await response.Content.ReadAsStringAsync(ct);
 
-            // ReSharper's rename refactoring rewrites <vc:name> to <name-view-component>,
-            // which is equally inert (the "<vc:*> rename hazard" in G5-SECTION-TEMPLATE.md).
+            // ReSharper can rewrite <vc:name> to <name-view-component>, which also renders inert.
             html.Should().NotContain("-view-component", $"GET {url} left a renamed view-component tag unrendered");
         }
     }

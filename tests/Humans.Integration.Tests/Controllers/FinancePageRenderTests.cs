@@ -4,22 +4,13 @@ using Humans.Integration.Tests.Infrastructure;
 
 namespace Humans.Integration.Tests.Controllers;
 
-/// <summary>
-/// Renders <c>/Finance/Holded</c> — the connector index added by
-/// nobodies-collective/Humans#1000 — through the real app.
-/// </summary>
+/// <summary>Renders <c>/Finance/Holded</c> through the real app.</summary>
 /// <remarks>
-/// The page is pure link-out plus three cached tables, so its failure modes are the silent ones
-/// a green build does not catch. A section RCL does not inherit the host's
-/// <c>Views/_ViewImports.cshtml</c>, and an anchor tag helper naming a controller/action pair
-/// that resolves to no endpoint omits its <c>href</c> entirely while still returning 200 with a
-/// link-shaped element that goes nowhere (the A2 incident behind
-/// <see cref="AdminNavTreeRoutingTests"/>). This page's whole purpose is those links, so each one
-/// is asserted as a real href rather than as "the page loaded".
+/// An anchor tag helper whose controller/action resolves to no endpoint omits its <c>href</c> and still returns 200,
+/// and this page is all links, so each is asserted as a real href.
 /// <para>
-/// Nothing is seeded: the empty database is the state the staleness alarm has to be legible in —
-/// a connector that has never synced is exactly as wrong as a stalled one, and rendering that
-/// blank was the gap the issue names.
+/// Nothing is seeded: a connector that has never synced is as wrong as a stalled one, and the staleness alarm must be
+/// legible on an empty database.
 /// </para>
 /// </remarks>
 public class FinancePageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
@@ -37,8 +28,7 @@ public class FinancePageRenderTests(HumansTestDatabase database) : IntegrationTe
 
         html.Should().Contain("Holded Connector");
 
-        // "Link out, don't rebuild" is the issue's constraint; an href-less anchor silently
-        // breaks it while the page still looks right.
+        // The page links out rather than rebuilding; an href-less anchor breaks that while looking right.
         foreach (var href in new[]
                  {
                      "/Finance/HoldedAccounts",
@@ -54,16 +44,13 @@ public class FinancePageRenderTests(HumansTestDatabase database) : IntegrationTe
     [HumansFact(Timeout = 120000)]
     public async Task The_connector_index_offers_no_write_action()
     {
-        // Read-only is the issue's constraint, not an accident of what got built: every trigger —
-        // Sync now, Provision, Bind, Unbind — stays on the screen that already owns it. A stray
-        // POST form here would be the first step back toward a second place to mutate from.
+        // Read-only by design: every trigger stays on the screen that owns it, so there's one place to mutate from.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
         var html = await (await Client.GetAsync("/Finance/Holded", ct)).Content.ReadAsStringAsync(ct);
 
-        // Named routes, not "no <form>": the admin layout's own chrome (language switcher,
-        // sign-out) posts, so the assertion has to be about this section's write endpoints.
+        // Named routes, not "no <form>": the admin chrome's language switcher and sign-out post.
         foreach (var writeRoute in new[]
                  {
                      "/Finance/HoldedSync/Run",

@@ -9,11 +9,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Web.Tests.Authorization;
 
-/// <summary>
-/// Verifies that <see cref="RoleAssignmentClaimsTransformation"/> stamps the user's stored
-/// <see cref="UserState"/> as the access claim from cached <see cref="UserInfo.State"/>,
-/// and adds role claims from <see cref="IRoleAssignmentService"/>.
-/// </summary>
 public class RoleAssignmentClaimsTransformationTests
 {
     private readonly IRoleAssignmentService _roleAssignments;
@@ -82,10 +77,8 @@ public class RoleAssignmentClaimsTransformationTests
     [HumansFact]
     public async Task Transform_stamps_Merged_for_a_tombstone_never_the_survivors_state()
     {
-        // #1704: the cross-section read resolves a merge tombstone forward to the surviving
-        // account. If the claims path used it, a principal carrying the tombstone's id would
-        // be stamped with the survivor's Active state and admitted as that member. The raw
-        // read is what keeps UserState.Merged flowing.
+        // The cross-section read resolves a merge tombstone forward to its survivor; used here it would admit a
+        // tombstone principal as the surviving member. The raw read keeps UserState.Merged.
         var tombstoneId = Guid.NewGuid();
         var survivorId = Guid.NewGuid();
         _userService.GetRawUserInfoAsync(tombstoneId, Arg.Any<CancellationToken>())
@@ -138,9 +131,7 @@ public class RoleAssignmentClaimsTransformationTests
     [HumansFact]
     public async Task Transform_reflects_a_state_or_role_change_on_the_very_next_request()
     {
-        // No per-user claims cache: both inputs are already in-memory caches their owners
-        // keep current, so a suspension or a role change shows on the next request
-        // without anyone evicting anything here.
+        // No per-user claims cache: both inputs are caches their owners keep current, so changes show next request.
         var userId = Guid.NewGuid();
         _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(

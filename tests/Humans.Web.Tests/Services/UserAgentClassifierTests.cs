@@ -53,8 +53,7 @@ public class UserAgentClassifierTests
 
         var result = UserAgentClassifier.Classify(ua);
 
-        // A recognised crawler carries its specific name (not the "Other bot" fallback)
-        // so the ClientStats screen can break the collapsed "Bot" bucket down.
+        // A specific name, not the "Other bot" fallback, so ClientStats can break the Bot bucket down.
         result.BotName.Should().NotBeNullOrEmpty();
         result.BotName.Should().NotBe("Other bot");
     }

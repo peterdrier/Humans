@@ -4,47 +4,16 @@ using Humans.Integration.Tests.Infrastructure;
 
 namespace Humans.Integration.Tests.Controllers;
 
-/// <summary>
-/// Renders every Tickets page through the real app, as the standing form of the §15 step 12
-/// check for the section's move into <c>src/Sections/Humans.Tickets</c>
-/// (nobodies-collective/Humans#866, G5).
-/// </summary>
+/// <summary>Renders every Tickets page through the real app.</summary>
 /// <remarks>
 /// <para>
-/// The failure modes a G5 move introduces all render as a <b>200 with degraded content</b>, so
-/// "the page loads" is not the assertion:
+/// Failures render as a 200 with degraded content: unbound tags ship as markup, a mis-bound key renders as its name,
+/// and only the Spanish request proves the satellite assemblies ship. <c>HumanSummary</c> is invoked by name and
+/// throws instead. The admin controllers name views by absolute path, so moving those folders compiles and then 500s.
 /// </para>
-/// <list type="number">
-/// <item><description>
-/// A section RCL does not inherit the host's <c>Views/_ViewImports.cshtml</c> — a missing
-/// <c>@@using</c> or <c>@@addTagHelper</c> ships literal markup with a green build, and an
-/// unrendered <c>&lt;vc:…&gt;</c> element is inert text the browser simply drops. Tickets is
-/// the first section to ship a <c>&lt;vc:&gt;</c> component of its <em>own</em> (the ticket
-/// stub, public under <c>Contracts/</c>), alongside <c>&lt;vc:access-matrix&gt;</c> bound
-/// through <c>@@addTagHelper *, Humans.Interfaces</c> and <c>HumanSummary</c>, still Shell's and
-/// invoked by name — the latter <b>throws</b> when it fails to resolve rather than degrading.
-/// </description></item>
-/// <item><description>
-/// The resx carve moved the 25 <c>TicketTransfer_*</c> keys out of <c>SharedResource</c>. A
-/// key the carve missed, or a call site bound to the wrong set, renders the raw key — in
-/// every language, with no error. The Spanish request is the only thing that proves the
-/// section RCL's satellite assemblies reach the host's probing path at all.
-/// </description></item>
-/// <item><description>
-/// The two admin controllers that name their view by absolute path
-/// (<c>~/Views/Tickets/Admin/…</c>) pin the folder layout: an RCL's compiled view paths are
-/// project-relative, so tidying <c>Views/Tickets/Admin/</c> into the <c>Views/&lt;Controller&gt;/</c>
-/// shape compiles and then 500s on request.
-/// </description></item>
-/// </list>
 /// <para>
-/// The fixture is an empty database. Every admin page falls through to its no-data branch,
-/// which still renders the header, the nav, the table headings and the empty state — and the
-/// section's copy all lives on the transfer wizard, which renders its whole set with no
-/// tickets held. Seeding orders would exercise <c>TicketQueryService</c>, which is
-/// <c>Humans.Tickets.Tests</c>' business, and would have to go through the service rather than
-/// the context anyway: <c>CachingTicketQueryService</c> is a Singleton that warms at startup,
-/// before the test body (Calendar's finding).
+/// The database is empty: every admin page renders its no-data branch, and the transfer wizard renders all the copy
+/// with no tickets held.
 /// </para>
 /// </remarks>
 public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
@@ -60,10 +29,8 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
         ("/Tickets/Participation/Backfill", "Backfill Participation Data"),
         ("/Tickets/Admin/Transfers", "Ticket transfer requests"),
         ("/Tickets/Admin/Onsite", "Who's Onsite"),
-        // /Tickets/Admin/Contacts is deliberately absent: AttendeeContactImportService.BuildPlanAsync
-        // throws "No active vendor event id — sync has not run" against an empty database, which
-        // predates this move and is the page's designed behaviour. Its view is covered by
-        // Humans.Tickets.Tests/Controllers/TicketsContactsAdminControllerTests instead.
+        // /Tickets/Admin/Contacts is left out: it throws by design until a vendor sync has run. Its view is covered by
+        // TicketsContactsAdminControllerTests.
     ];
 
     [HumansFact(Timeout = 180000)]
@@ -80,11 +47,9 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
             var html = await response.Content.ReadAsStringAsync(ct);
             html.Should().Contain(copy, $"GET {url} must render its own copy");
 
-            // ReSharper rewrites <vc:name> to <name-view-component> when it mistakes the
-            // element for a type reference; that also renders as inert markup.
+            // ReSharper can rewrite <vc:name> to <name-view-component>, which also renders inert.
             html.Should().NotContain("-view-component", $"GET {url} has a rewritten vc tag");
 
-            // The fallback for a key the carve missed is the key itself.
             html.Should().NotContain("TicketTransfer_", $"GET {url} rendered a raw resource key");
         }
     }
@@ -92,10 +57,7 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
     [HumansFact(Timeout = 120000)]
     public async Task The_dashboard_renders_the_access_matrix_tag_helper()
     {
-        // AccessMatrixViewComponent moved into Humans.UI (nobodies-collective/Humans#1056),
-        // so the call site is <vc:access-matrix section="Tickets" /> bound through
-        // @addTagHelper *, Humans.Interfaces. An unbound <vc:> ships as inert literal markup with a
-        // green build and no log line, so the emitted modal id is the proof — not the 200.
+        // An unbound <vc:> ships as inert markup, so the emitted modal id is the proof, not the 200.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
@@ -107,10 +69,7 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
     [HumansFact(Timeout = 120000)]
     public async Task The_transfer_wizard_renders_the_sections_own_resource_set_and_ticket_stub()
     {
-        // Every Localizer[…] call in the section is on this page, so it is the whole resx
-        // half of step 12. It is also the only place <vc:ticket-stub> is reached from a
-        // section view — the component moved out of Humans.UI into Humans.Tickets/Contracts/,
-        // public so MVC's default provider discovers it and the tag helper is generated.
+        // Every Localizer call in the section is on this page, and it is the only section view reaching <vc:ticket-stub>.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
@@ -118,10 +77,8 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var html = await response.Content.ReadAsStringAsync(ct);
-        // The signed-in persona holds no tickets, so the page takes its no-tickets branch —
-        // which still renders three of the carved keys plus the shared Common_Back. The
-        // apostrophe in Tickets_TicketTransfer_NoTickets is typographic and Razor's HtmlEncoder turns
-        // it into a numeric entity, so the assertion stays on an ASCII-only run.
+        // The no-tickets branch. The apostrophe in NoTickets is typographic and encodes to an entity, so the check
+        // stays on an ASCII run.
         html.Should().Contain("Transfer a ticket");                    // Tickets_TicketTransfer_Title
         html.Should().Contain("have any tickets to transfer");         // Tickets_TicketTransfer_NoTickets
         html.Should().Contain("Your transfer requests");               // Tickets_TicketTransfer_YourRequests
@@ -133,12 +90,7 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
     [HumansFact(Timeout = 120000)]
     public async Task A_volunteer_cannot_reach_the_ticket_admin_pages()
     {
-        // The section's negative access rule. Worth pinning at the move because the
-        // controllers are now internal types in another assembly, routed through
-        // SectionControllerFeatureProvider, while TicketAdminBoardOrAdmin stayed in Shell's
-        // AuthorizationPolicyExtensions. The shape is a 302 to
-        // Program.cs's AccessDeniedPath, not a bare 403 — cookie authentication redirects an
-        // authenticated-but-unauthorized request, app-wide (Cantina's finding).
+        // Cookie auth redirects an authenticated-but-unauthorized request to AccessDeniedPath: a 302, not a 403.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
@@ -154,16 +106,13 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
     [HumansFact(Timeout = 120000)]
     public async Task The_transfer_wizard_renders_in_spanish_from_the_sections_satellite_assemblies()
     {
-        // An English-only check passes whether or not the RCL's satellites shipped — the
-        // neutral set is embedded in the main assembly and the fallback is silent.
-        // Razor's default HtmlEncoder escapes non-ASCII to numeric entities, so the
-        // assertions stay on ASCII-only runs of the Spanish copy.
+        // The neutral set is embedded in the main assembly and fallback is silent, so only Spanish proves the
+        // satellites. HtmlEncoder escapes non-ASCII, so the checks stay on ASCII runs.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
-        // Accept-Language does not reach a signed-in user: Program.cs's initial culture
-        // provider returns the user's PreferredLanguage and short-circuits the rest of the
-        // chain, and the wizard is [Authorize]. Switch the language the way the UI does.
+        // Accept-Language doesn't reach a signed-in user: the PreferredLanguage provider short-circuits the chain. Switch
+        // the way the UI does.
         var switcherPage = await (await Client.GetAsync("/Tickets/Transfers", ct)).Content.ReadAsStringAsync(ct);
         var token = ExtractAntiForgeryToken(switcherPage);
         token.Should().NotBeNullOrEmpty();
@@ -186,17 +135,9 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
     [HumansFact(Timeout = 120000)]
     public async Task Shell_renders_the_sections_ticket_stub_component()
     {
-        // The section-view call site is covered above; this is the *Shell* half, and it is a
-        // separate assertion because it fails separately. TicketStubViewComponent moved out of
-        // Humans.UI into Humans.Tickets/Contracts/, and an @using of the namespace does not
-        // import the tag helper — Shell needs its own `@addTagHelper *, Humans.Tickets` in
-        // Views/_ViewImports.cshtml. Without it the element ships as inert literal markup:
-        // 200, correct-looking source, and the ticket cards simply absent from the homepage
-        // dashboard, the holdings list and this page.
-        //
-        // /Debug/WidgetGallery is the probe because it renders three stub variants from inline
-        // sample data — no seeded orders, and it is the only page that exercises the void and
-        // early-entry branches together.
+        // The Shell half, which fails separately: an @using doesn't import the tag helper, so Shell needs its own
+        // @addTagHelper *, Humans.Tickets or the stubs ship as inert markup. WidgetGallery renders three variants from
+        // inline data, including the void and early-entry branches.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 

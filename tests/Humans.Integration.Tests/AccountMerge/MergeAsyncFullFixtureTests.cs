@@ -16,11 +16,7 @@ using Humans.AuditLog.Contracts;
 
 namespace Humans.Integration.Tests.AccountMerge;
 
-/// <summary>
-/// Integration test for <see cref="IAccountMergeService.MergeAsync"/>:
-/// seeds a full two-user fixture, invokes a direct admin fold (no
-/// AccountMergeRequest), and asserts all six post-conditions.
-/// </summary>
+/// <summary>A direct admin fold, with no AccountMergeRequest.</summary>
 public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     [HumansFact(Timeout = 60_000)]
@@ -34,25 +30,18 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
 
         Guid sourceOnlyTeamId;
 
-        // Stage 1 — seed source/target user pair with their primary verified
-        // emails, a login, and a role assignment.
         var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
-            // Source: primary verified email.
             b.WithSourceEmail(sourceEmail, verified: true, isPrimary: true);
 
-            // Target: primary verified email (with IsGoogle so preservation
-            // of IsPrimary + IsGoogle is assertable).
+            // IsGoogle too, so preserving IsPrimary and IsGoogle is assertable.
             b.WithTargetEmail(targetEmail, verified: true, isPrimary: true, isGoogle: true);
 
-            // Source login — must move to target.
             b.WithSourceLogin("Google", sourceLoginKey);
 
-            // Source role assignment — must re-FK to target.
             b.WithSourceRoleAssignment(sourceOnlyRole);
         });
 
-        // Stage 2 — seed a source-only team membership (requires ad-hoc Team row).
         await using (var seedScope = Factory.Services.CreateAsyncScope())
         {
             var builder = new MergeFixtureBuilder(seedScope, sourceId, targetId);
@@ -61,7 +50,6 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
             await builder.SaveAllAsync();
         }
 
-        // Act — direct admin fold (no AccountMergeRequest): survivor = target, archived = source.
         var adminId = await SeedAdminUserAsync();
         await using (var actScope = Factory.Services.CreateAsyncScope())
         {
@@ -69,16 +57,14 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
             await mergeService.MergeAsync(targetId, sourceId, adminId, ct: TestContext.Current.CancellationToken);
         }
 
-        // Assert — all six post-conditions from the EmailProblems spec case 5.
+        // The six post-conditions of the EmailProblems spec, case 5.
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var teamsDb = assertScope.ServiceProvider.GetRequiredService<TeamsDbContext>();
         var authDb = assertScope.ServiceProvider.GetRequiredService<AuthDbContext>();
         var auditLogDb = assertScope.ServiceProvider.GetRequiredService<AuditLogDbContext>();
 
-        // ----------------------------------------------------------------
-        // Post-condition 1: exactly one UserEmail row per normalized email.
-        // ----------------------------------------------------------------
+        // 1: exactly one UserEmail row per normalized email.
         var sourceEmailRows = await db.UserEmails.AsNoTracking()
             .Where(e => e.Email == sourceEmail).ToListAsync(TestContext.Current.CancellationToken);
         sourceEmailRows.Should().ContainSingle(
@@ -91,15 +77,11 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
         targetEmailRows.Should().ContainSingle(
             "target's primary email should exist exactly once");
 
-        // ----------------------------------------------------------------
-        // Post-condition 2: source has zero UserEmail rows.
-        // ----------------------------------------------------------------
+        // 2: the source has no UserEmail rows.
         (await db.UserEmails.AsNoTracking().CountAsync(e => e.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0, "all UserEmails must be moved off the source user");
 
-        // ----------------------------------------------------------------
-        // Post-condition 3: source has zero AspNetUserLogins rows.
-        // ----------------------------------------------------------------
+        // 3: the source has no logins.
         (await db.Set<IdentityUserLogin<Guid>>().AsNoTracking().CountAsync(l => l.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0, "all logins must be re-FK'd to target");
 
@@ -108,9 +90,7 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
                     && l.LoginProvider == "Google" && l.ProviderKey == sourceLoginKey, TestContext.Current.CancellationToken))
             .Should().BeTrue("source login must be re-FK'd to target");
 
-        // ----------------------------------------------------------------
-        // Post-condition 4: target's pre-existing IsPrimary / IsGoogle preserved.
-        // ----------------------------------------------------------------
+        // 4: the target's IsPrimary and IsGoogle are preserved.
         var survivingTargetEmail = await db.UserEmails.AsNoTracking()
             .FirstOrDefaultAsync(e => e.UserId == targetId && e.Email == targetEmail, TestContext.Current.CancellationToken);
         survivingTargetEmail.Should().NotBeNull();
@@ -119,9 +99,7 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
         survivingTargetEmail.IsGoogle.Should().BeTrue(
             "target's pre-existing IsGoogle must remain true after fold");
 
-        // ----------------------------------------------------------------
-        // Post-condition 5: source tombstoned with MergedToUserId + MergedAt.
-        // ----------------------------------------------------------------
+        // 5: the source is tombstoned.
         var sourceUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sourceId, TestContext.Current.CancellationToken);
         sourceUser.Should().NotBeNull();
         sourceUser.MergedToUserId.Should().Be(targetId,
@@ -129,11 +107,7 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
         sourceUser.MergedAt.Should().NotBeNull(
             "source MergedAt must be set after admin-initiated fold");
 
-        // ----------------------------------------------------------------
-        // Post-condition 6: AuditLogEntry with AccountMergeAccepted action,
-        // EntityType == nameof(User), EntityId == sourceId (the archived account),
-        // and the unified MergeAsync description.
-        // ----------------------------------------------------------------
+        // 6: an AccountMergeAccepted audit row on the archived account.
         var auditRow = await auditLogDb.AuditLogEntries.AsNoTracking()
             .FirstOrDefaultAsync(a =>
                 a.Action == AuditAction.AccountMergeAccepted
@@ -143,7 +117,6 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
         auditRow.Description.Should().StartWith($"Folded archived {sourceId} into survivor {targetId}",
             "the audit description records the archived→survivor fold");
 
-        // Bonus: source's team membership and role assignment moved to target.
         (await teamsDb.TeamMembers.AsNoTracking()
                 .AnyAsync(tm => tm.UserId == targetId && tm.TeamId == sourceOnlyTeamId
                     && tm.LeftAt == null, TestContext.Current.CancellationToken))
@@ -153,10 +126,6 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
                 .AnyAsync(ra => ra.UserId == targetId && ra.RoleName == sourceOnlyRole, TestContext.Current.CancellationToken))
             .Should().BeTrue("source-only role assignment must be re-FK'd to target");
     }
-
-    // ==================================================================
-    // Helpers
-    // ==================================================================
 
     private async Task<Guid> SeedAdminUserAsync()
     {

@@ -4,49 +4,12 @@ using Microsoft.Extensions.Caching.Memory;
 namespace Humans.Web.Tests.Architecture.Rules;
 
 /// <summary>
-/// Generic rule: no concrete Application service takes <see cref="IMemoryCache"/>
-/// unless it is on the explicit allowlist of services that legitimately cache.
-///
-/// <para>
-/// The §15 caching pattern governs which services may hold a cache. Most
-/// sections use Option A (no caching) or B (caching inside the repository or
-/// a dedicated decorator). A service that adds <see cref="IMemoryCache"/> to
-/// its own constructor without being in the allowlist is drifting the pattern.
-/// </para>
-///
-/// <para>
-/// Allowlisted services (audited 2026-05-25, Wave B drift reconciliation):
-/// <list type="bullet">
-///   <item><c>Humans.Camps.Services.CampContactService</c> — contact name cache</item>
-///   <item><c>IssuesService</c> — issues cache</item>
-///   <item><c>Humans.Consent.Services.LegalDocumentService</c> — document version cache</item>
-///   <item><c>Humans.Notifications.Services.NotificationEmitter</c> — throttle-key cache</item>
-///   <item><c>Humans.Notifications.Services.NotificationInboxService</c> — inbox cache</item>
-///   <item><c>Humans.Notifications.Services.NotificationMeterProvider</c> — meter cache</item>
-///   <item><c>Humans.Notifications.Services.NotificationService</c> — notification preferences cache</item>
-///   <item><c>Humans.Shifts.Services.ShiftManagementService</c> — shift data cache</item>
-///   <item><c>Humans.Feedback.Services.FeedbackService</c> — feedback-badge count cache (nav badges)</item>
-///   <item><c>Humans.Governance.Services.ApplicationDecisionService</c> — voting-badge count cache (nav badges)</item>
-///   <item><c>Humans.Finance.Services.Service</c> — Holded contact-list cache (nobodies-collective/Humans#976)</item>
-///   <item><c>Humans.Guide.Services.GuideContentService</c> — rendered guide-page cache</item>
-///   <item><c>Humans.Auth.Services.MagicLinkRateLimiter</c> — magic-link replay + signup-cooldown state</item>
-/// </list>
-/// Removed (caching moved to decorators):
-/// <list type="bullet">
-///   <item><c>CalendarService</c> — no longer injects IMemoryCache (Wave B reconciliation)</item>
-///   <item><c>CampService</c> — caching moved to CachingCampService decorator (T-06)</item>
-///   <item><c>TicketTailorService</c> — vendor event-summary cache moved to Tickets'
-///     CachingTicketVendorService decorator (peterdrier/Humans#1653)</item>
-/// </list>
-/// </para>
+/// Under the §15 caching pattern a service caches through a decorator or not at all; the allowlist holds the
+/// reviewed exceptions.
 /// </summary>
 public class ApplicationServicesTakeNoMemoryCacheRule
 {
-    /// <summary>
-    /// Services that legitimately inject <see cref="IMemoryCache"/>.
-    /// Audited 2026-05-25 (Wave B drift reconciliation). Add to this set only when a new cache usage is
-    /// intentional and reviewed.
-    /// </summary>
+    /// <summary>Add only after review, with a comment giving the caching reason.</summary>
     private static readonly HashSet<Type> Allowlist =
     [
         SectionType("Humans.Camps.Services.CampContactService"),
@@ -57,44 +20,21 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         SectionType("Humans.Notifications.Services.NotificationMeterProvider"),
         SectionType("Humans.Notifications.Services.NotificationService"),
         SectionType("Humans.Shifts.Services.ShiftManagementService"),
-        // Nav-badge count caches moved out of NavBadgesViewComponent into their
-        // owning services (memory/code/viewcomponent-no-cache.md) — same inline
-        // badge-count caching IssuesService/NotificationMeterProvider already do.
-        // Each wraps a real repo/DB query and evicts its own key. (AdminDashboardService
-        // is NOT here — its reads are already cache-served by CachingUserService, so it
-        // stays cache-free; double-caching it would be §4b.)
+        // Nav-badge counts: each wraps a real query and evicts its own key. AdminDashboardService is not here: its
+        // reads are already served by CachingUserService.
         SectionType("Humans.Feedback.Services.FeedbackService"),  // FeedbackService.BadgeCacheKey
         SectionType("Humans.Governance.Services.ApplicationDecisionService"),  // ApplicationDecisionService.VotingBadgeCacheKey(userId)
-        // CacheKeys.HoldedContacts — 2-min TTL so /Finance/Creditors and /Expenses/{id} don't
-        // call Holded live on every admin page load (nobodies-collective/Humans#976).
+        // CacheKeys.HoldedContacts, 2-min TTL, so admin pages don't call Holded live on every load.
         SectionType("Humans.Finance.Services.Service"),
-        // guide:<stem> — the rendered HTML of 28 markdown files fetched from GitHub, held
-        // with a sliding TTL from Guide:CacheTtlHours. Not an entity read, so §15's
-        // repository/decorator options do not apply: the service *is* the cache, and
-        // Guide owns no tables to decorate. Pre-existing and documented as accepted in the
-        // section's invariants doc; it entered this sweep at Guide's G5 move, because the
-        // rule scans Humans.Application plus the section assemblies and Guide's code used
-        // to sit in Humans.Infrastructure, which neither covers.
+        // Rendered guide pages fetched from GitHub: not an entity read, and Guide owns no tables to decorate, so the
+        // service is the cache.
         SectionType("Humans.Guide.Services.GuideContentService"),
-        // CacheKeys.MagicLinkUsed(token) and CacheKeys.MagicLinkSignupRateLimit(email) — not a
-        // read cache at all, but the two pieces of short-TTL sign-in state that have to survive
-        // between HTTP requests: single-use consumption of a login token (15 min) and the 60-second
-        // signup-send cooldown. §15's repository/decorator options do not apply because there is
-        // nothing to read; the cache *is* the state, and Auth owns no table for it. Fourth sighting
-        // of Guide's rule after Development's and TicketTailor's: the code is byte-identical and
-        // used to sit in Humans.Infrastructure/Services/Auth, which this sweep covers neither
-        // before nor after — it entered scope when the magic-link path moved into Humans.Auth
-        // (nobodies-collective/Humans#866 G5 lane 4b-2i).
+        // Not a read cache: single-use login-token consumption and the signup-send cooldown, short-TTL state that
+        // must survive between requests. Auth owns no table for it.
         SectionType("Humans.Auth.Services.MagicLinkRateLimiter")
     ];
 
-    /// <summary>
-    /// A G5 section's service is <c>internal</c> to its own assembly
-    /// (nobodies-collective/Humans#866), so it cannot be named with <c>typeof</c> here.
-    /// Resolved by reflection instead — the same mechanism
-    /// <c>GdprExportDependencyInjectionTests</c> uses, so there is one way to name a moved
-    /// section type from this project rather than two.
-    /// </summary>
+    /// <summary>Section services are internal, so they are named by string and resolved by reflection.</summary>
     private static Type SectionType(string fullName) =>
         Extensions.SectionDiscoveryExtensions.SectionAssemblies()
             .Select(a => a.GetType(fullName, throwOnError: false))
@@ -105,13 +45,6 @@ public class ApplicationServicesTakeNoMemoryCacheRule
     [HumansFact]
     public void Application_services_do_not_take_IMemoryCache_unless_allowlisted()
     {
-        // Scan Humans.Application *and* every G5 section assembly. Scoping this to
-        // Humans.Application alone would let a section quietly leave the sweep the moment it
-        // moved out — the §10 silent-drop shape: the rule keeps passing while covering less.
-        // ApplicationSweepScope holds the anchor and asserts its assembly identity — the anchor
-        // has silently drifted out of Humans.Application four times, most recently to
-        // Humans.Interfaces, which meant this rule had never once scanned the project it is
-        // named for.
         var assemblies = ApplicationSweepScope.Assemblies();
 
         var violations = assemblies

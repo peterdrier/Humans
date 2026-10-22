@@ -66,12 +66,6 @@ public class SecurityHeaderTests(HumansTestDatabase database) : IntegrationTestB
         values.Should().ContainSingle().Which.Should().Contain("geolocation=()");
     }
 
-    // The auth-cookie policy from nobodies-collective#925 lives here rather than in its own
-    // class simply because it asserts on response headers like the rest of this class. The
-    // original reason — one Testcontainers Postgres per test class, so co-locating saved a
-    // container — no longer applies: the factory is an assembly fixture and the whole run
-    // shares a single container.
-
     [HumansFact]
     public async Task SignIn_IssuesPersistentCookie_NotSessionCookie()
     {

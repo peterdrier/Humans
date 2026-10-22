@@ -10,12 +10,7 @@ using Xunit;
 
 namespace Humans.Web.Tests.Infrastructure;
 
-/// <summary>
-/// MVC model-binding coverage for datetime-local wire values
-/// (nobodies-collective/Humans#932). Runs the real binder against a form value
-/// provider; the full form-POST path is covered by
-/// Humans.Integration.Tests SurveyAdminControllerTests (Docker required).
-/// </summary>
+/// <summary>The full form-POST path is covered by the integration <c>SurveyAdminControllerTests</c>.</summary>
 public class LocalDateTimeModelBinderTests
 {
     [HumansTheory]

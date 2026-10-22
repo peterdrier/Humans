@@ -7,28 +7,16 @@ using NodaTime;
 
 namespace Humans.Integration.Tests.Controllers;
 
-/// <summary>
-/// Renders the Early Entry roster through the real app, as the standing form of the §15 step 12
-/// check for the section's move into <c>src/Sections/Humans.EarlyEntry</c>
-/// (nobodies-collective/Humans#866, G5 lane 4b-2b).
-/// </summary>
+/// <summary>Renders the Early Entry roster through the real app.</summary>
 /// <remarks>
 /// <para>
-/// The page has an empty branch and a table branch, and <b>only the table branch exercises
-/// anything the move can break</b>: <c>TableModel</c>, the <c>_Table</c> partial and the
-/// <c>&lt;vc:human&gt;</c> tag helper all live behind <c>Model.Rows.Count != 0</c>. An
-/// unseeded GET returns 200 with a body containing no <c>&lt;vc:</c> at all, which satisfies a
-/// naive "no unrendered tag helper" assertion while proving nothing — the failure lane 4b-1
-/// recorded as finding 37's sibling. So the roster is seeded first, and the assertions are on
-/// the rendered row.
+/// Only the table branch exercises anything: <c>TableModel</c>, <c>_Table</c> and <c>&lt;vc:human&gt;</c> all sit
+/// behind <c>Model.Rows.Count != 0</c>. An unseeded GET has no <c>&lt;vc:</c> at all and passes a "no unrendered tag
+/// helper" check while proving nothing, so the roster is seeded and the assertions are on the rendered row.
 /// </para>
 /// <para>
-/// Seeding goes through Teams' own provider path rather than a stub: the section owns no
-/// tables, so the only way a row reaches the roster is a real <c>IEarlyEntryProvider</c>
-/// contributing one. That also covers the DI wiring the move rearranged — Shell's
-/// <c>AddEarlyEntrySection()</c> became <c>Humans.EarlyEntry.Section.Register</c>, discovered
-/// rather than called, and a section outside Shell's dependency graph registers nothing while
-/// the build stays green.
+/// The section owns no tables, so seeding goes through Teams' real <c>IEarlyEntryProvider</c>. That also covers
+/// discovery: a section outside Shell's dependency graph registers nothing while the build stays green.
 /// </para>
 /// </remarks>
 public class EarlyEntryPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
@@ -48,7 +36,7 @@ public class EarlyEntryPageRenderTests(HumansTestDatabase database) : Integratio
 
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        // The section's own copy — proves the moved view resolved, not just the route.
+        // Proves the view resolved, not just the route.
         html.Should().Contain("Early Entry Roster");
         html.Should().Contain("Everyone granted early entry");
 
@@ -67,9 +55,7 @@ public class EarlyEntryPageRenderTests(HumansTestDatabase database) : Integratio
     [HumansFact(Timeout = 120000)]
     public async Task A_volunteer_cannot_reach_the_roster()
     {
-        // The section's negative access rule, end to end: the controller is an internal type in
-        // another assembly routed through SectionControllerFeatureProvider, and the policy is
-        // registered by Shifts (SectionPolicies.cs), not by this section.
+        // An internal controller in another assembly, guarded by a policy Shifts registers, not this section.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
@@ -86,8 +72,7 @@ public class EarlyEntryPageRenderTests(HumansTestDatabase database) : Integratio
         await using var scope = Factory.Services.CreateAsyncScope();
         var write = scope.ServiceProvider.GetRequiredService<ITeamManagementService>();
 
-        // A fresh team rather than one of the dev-login seeded system teams: the flag flip
-        // below is a real write, and the seeded set is shared with every other fixture.
+        // A fresh team: the flag flip below is a real write, and the seeded system teams are shared.
         var team = await write.CreateTeamAsync(
             "Build Crew", "EE fixture", requiresApproval: false, cancellationToken: ct);
 

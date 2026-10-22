@@ -4,22 +4,9 @@ using NodaTime;
 
 namespace Humans.Testing;
 
-/// <summary>
-/// Builds <see cref="ShiftUserSummary"/> / <see cref="ShiftSignupSummary"/>
-/// for tests that stub <c>IShiftView</c>.
-/// </summary>
-/// <remarks>
-/// Same reason as <see cref="BurnFixtures"/>: the signup record is positional
-/// with nineteen members and is stubbed from six section test projects, so
-/// every parameter is defaulted and a test that only cares about the status
-/// writes <c>ShiftFixtures.Signup(status: SignupStatus.Pending)</c>. The shape
-/// is the boundary projection the Shifts section publishes in place of the
-/// <c>ShiftSignup</c> / <c>Shift</c> / <c>Rota</c> rows it used to hand out
-/// (nobodies-collective/Humans#866).
-/// </remarks>
+/// <summary>Every parameter is defaulted: <c>ShiftFixtures.Signup(status: SignupStatus.Pending)</c>.</summary>
 public static class ShiftFixtures
 {
-    /// <summary>The date every fixture signup falls on unless overridden.</summary>
     public static readonly LocalDate DefaultDate = new(2026, 8, 1);
 
     public static ShiftUserSummary UserSummary(

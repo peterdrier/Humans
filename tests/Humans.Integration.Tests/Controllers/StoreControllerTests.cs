@@ -52,7 +52,7 @@ public class StoreControllerTests(HumansTestDatabase database) : IntegrationTest
     [HumansFact(Timeout = 30000)]
     public async Task Volunteer_cannot_create_order_against_someone_elses_camp_season()
     {
-        // Make sure barrio-1's camp + season are seeded (lead persona seeds them).
+        // The lead persona seeds barrio-1's camp and season.
         using (var leadClient = Factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false
@@ -79,11 +79,8 @@ public class StoreControllerTests(HumansTestDatabase database) : IntegrationTest
     }
 
     /// <summary>
-    /// The order page's price-change panel renders through
-    /// <c>&lt;vc:audit-log layout="table" since="..."&gt;</c> since the read moved out of
-    /// <c>StoreService</c> (nobodies-collective/Humans#816). Asserting a seeded marker is the
-    /// only probe that catches an unbound tag helper: it ships as inert literal markup with a
-    /// green build and no runtime error.
+    /// The price-change panel renders through <c>&lt;vc:audit-log&gt;</c>. Only a seeded marker catches an unbound tag
+    /// helper: it ships as inert markup with no runtime error.
     /// </summary>
     [HumansFact(Timeout = 60000)]
     public async Task Order_page_renders_price_changes_through_the_audit_view_component()

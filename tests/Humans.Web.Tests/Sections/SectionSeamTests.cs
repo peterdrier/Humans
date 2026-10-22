@@ -14,9 +14,8 @@ using NSubstitute;
 namespace Humans.Web.Tests.Sections;
 
 /// <summary>
-/// The contribution seams (nobodies-collective/Humans#1073): composition order and the
-/// generic job-scheduling call, which are the two places a section's contribution can be
-/// silently dropped or mis-shaped.
+/// Composition order and the generic job-scheduling call: the two places a section's contribution can be silently
+/// dropped or mis-shaped.
 /// </summary>
 public class SectionSeamTests
 {
@@ -59,10 +58,7 @@ public class SectionSeamTests
         composed.Select(g => g.Label).Should().Equal("Agent", "budget", "Users");
     }
 
-    /// <summary>
-    /// Equal weights keep declared order — the sort is stable, so a group's item order survives
-    /// being merged into by another section's contribution.
-    /// </summary>
+    /// <summary>The sort is stable, so a group's item order survives another section merging into it.</summary>
     [HumansFact]
     public void Weight_Places_A_Contribution_Around_The_Existing_Items()
     {
@@ -145,11 +141,8 @@ public class SectionSeamTests
     }
 
     /// <summary>
-    /// Discovery activates the real section contributions. Separate contribution classes are
-    /// <c>internal sealed</c>: a class's compiler-generated default constructor is public even
-    /// when the class is not, so <c>Activator.CreateInstance(Type)</c> reaches them without
-    /// non-public binding flags. The public <c>Section : ISection</c> entry point may carry
-    /// seams itself (memory/architecture/section-contribution-seams.md).
+    /// A class's implicit constructor is public even when the class is internal, so
+    /// <c>Activator.CreateInstance(Type)</c> reaches <c>internal sealed</c> contributions.
     /// </summary>
     [HumansFact]
     public void Internal_Section_Contributions_Are_Reflection_Constructible()
@@ -183,10 +176,7 @@ public class SectionSeamTests
             .Which.Method.Name.Should().Be(nameof(IRecurringJob.ExecuteAsync));
     }
 
-    /// <summary>
-    /// The <c>ISystemTeamSync</c> case: scheduled against an interface whose ExecuteAsync
-    /// returns a report, so the built lambda must still type as <c>Func&lt;T, Task&gt;</c>.
-    /// </summary>
+    /// <summary>ExecuteAsync returns a report, so the built lambda must still type as <c>Func&lt;T, Task&gt;</c>.</summary>
     [HumansFact]
     public void Job_Call_Is_Built_For_An_Interface_Returning_A_Report()
     {
@@ -200,9 +190,8 @@ public class SectionSeamTests
     private sealed class NotAJob;
 
     /// <summary>
-    /// The roll-call is built before the per-job try/catch runs, so a section naming a type
-    /// with no ExecuteAsync must not throw while the list is assembled — that would stop the
-    /// app booting for every other job too.
+    /// The roll-call is built outside the per-job try/catch, so a type with no ExecuteAsync must not throw there: it
+    /// would stop the app booting.
     /// </summary>
     [HumansFact]
     public void Malformed_Job_Descriptor_Fails_At_Schedule_Time_Not_While_Listing()
@@ -233,9 +222,8 @@ public class SectionSeamTests
     }
 
     /// <summary>
-    /// Top-level items sort by weight alone. Equal weights keep declared order rather than
-    /// alphabetizing on the label — the same stable-order contract as
-    /// <see cref="AdminNavComposition"/>, which is why neither carries a tie-break.
+    /// Equal weights keep declared order rather than sorting on the label, as in <see cref="AdminNavComposition"/>;
+    /// neither has a tie-break.
     /// </summary>
     [HumansFact]
     public async Task Top_Level_Items_Order_By_Weight_And_Keep_Declared_Order()
@@ -248,10 +236,6 @@ public class SectionSeamTests
         model.Select(i => i.Label).Should().Equal("first", "zulu", "alpha");
     }
 
-    /// <summary>
-    /// Children carry the same Weight field as top-level items, so they order by it too. The
-    /// sort is stable, which is what lets equal weights keep declared order.
-    /// </summary>
     [HumansFact]
     public async Task Dropdown_Children_Order_By_Weight()
     {
@@ -301,12 +285,8 @@ public class SectionSeamTests
     }
 
     /// <summary>
-    /// Contributions are <c>internal sealed</c> with no declared constructor, and
-    /// <see cref="SectionDiscoveryExtensions.DiscoverImplementations{T}"/> activates them with
-    /// the plain <c>Activator.CreateInstance(Type)</c> overload, which only finds public
-    /// constructors. That works because C# emits the implicit constructor as public regardless
-    /// of the class's accessibility — pinned here because declaring a non-public or
-    /// parameterised constructor instead would break section discovery at startup.
+    /// Pinned because declaring a non-public or parameterised constructor on a contribution would break section
+    /// discovery at startup: <c>Activator.CreateInstance(Type)</c> finds only public constructors.
     /// </summary>
     [HumansFact]
     public void Internal_Contribution_With_An_Implicit_Constructor_Activates()
@@ -320,11 +300,7 @@ public class SectionSeamTests
     }
 }
 
-/// <summary>
-/// The documented contribution shape, top-level so its accessibility is the real thing rather
-/// than a nested type's. Exists only for
-/// <see cref="SectionSeamTests.Internal_Contribution_With_An_Implicit_Constructor_Activates"/>.
-/// </summary>
+/// <summary>Top-level so its accessibility is real, not a nested type's.</summary>
 internal sealed class InternalNavContribution : ISectionNav
 {
     public IEnumerable<MemberNavItem> Items() => [new MemberNavItem("Contributed")];

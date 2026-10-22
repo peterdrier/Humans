@@ -11,37 +11,11 @@ using NodaTime;
 
 namespace Humans.Integration.Tests.Controllers;
 
-/// <summary>
-/// Renders every Consent page through the real app, as the standing form of the §15 step 12
-/// check for the section's move into <c>src/Sections/Humans.Consent</c>
-/// (nobodies-collective/Humans#866, G5).
-/// </summary>
+/// <summary>Renders every Consent page through the real app.</summary>
 /// <remarks>
-/// <para>
-/// The failure modes a G5 move introduces all render as a <b>200 with degraded content</b>:
-/// </para>
-/// <list type="number">
-/// <item><description>
-/// A section RCL does not inherit the host's <c>Views/_ViewImports.cshtml</c> — a missing
-/// <c>@@using</c> or <c>@@addTagHelper</c> ships literal markup with a green build.
-/// </description></item>
-/// <item><description>
-/// The resx carve moved 36 keys out of <c>SharedResource</c>. A key the carve missed, or a
-/// call site left bound to the wrong set, renders the raw key in every language with no error.
-/// Two of those call sites are <b>outside</b> the section — Shell's onboarding widget and
-/// Governance's statutes page both bind <c>IStringLocalizer&lt;ConsentResource&gt;</c> now —
-/// and <c>_ConsentReviewBody</c> reads three of the keys through a
-/// <c>ResourceManager</c> keyed on the marker type, which the compiler cannot check.
-/// </description></item>
-/// <item><description>
-/// <c>_ConsentReviewBody</c> moved into the section's <c>Views/Shared/</c> and is still
-/// rendered from Shell's onboarding widget by name across application parts, with
-/// <c>ConsentReviewFormViewModel</c> in the section's <c>Contracts/</c> folder so Shell can construct it.
-/// </description></item>
-/// </list>
-/// <para>
-/// Consent ships no <c>wwwroot/</c>, so there is no static-asset half here.
-/// </para>
+/// Failures render as a 200 with degraded content: a mis-bound key renders as its name. Two
+/// <c>ConsentResource</c> call sites live outside the section, and <c>_ConsentReviewBody</c> reads three keys through
+/// a <c>ResourceManager</c> the compiler can't check. Shell's onboarding widget renders that partial by name.
 /// </remarks>
 public class ConsentPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
@@ -50,11 +24,8 @@ public class ConsentPageRenderTests(HumansTestDatabase database) : IntegrationTe
     private const string SpanishBody = "Este es el cuerpo en espanol del acuerdo de prueba.";
 
     /// <summary>
-    /// Writes one required document + version straight through the section's own DbContext and
-    /// then clears the §15 decorator. <c>CachingLegalDocumentSyncService</c> is a Singleton with
-    /// <c>warmOnStartup: true</c>, so it has already snapshotted an empty document set before the
-    /// test body runs and a plain context write is invisible to every read (Calendar's rule).
-    /// Each integration test class owns its database (nobodies-collective/Humans#983).
+    /// Written to the context, then the cache is cleared: <c>CachingLegalDocumentSyncService</c> snapshotted an empty
+    /// document set at startup, so a plain write is invisible to every read.
     /// </summary>
     private async Task<Guid> SeedRequiredDocumentAsync(Guid teamId, CancellationToken ct)
     {
@@ -101,7 +72,6 @@ public class ConsentPageRenderTests(HumansTestDatabase database) : IntegrationTe
         return versionId;
     }
 
-    /// <summary>Every prefix the carve took into <c>ConsentResource</c>.</summary>
     private static readonly string[] CarvedPrefixes = ["Consent_", "Consent_Review_", "Consent_Index_"];
 
     private static void AssertRenderedCleanly(string html, string what)
@@ -129,8 +99,7 @@ public class ConsentPageRenderTests(HumansTestDatabase database) : IntegrationTe
         html.Should().Contain("Agreements");            // Consent_Index_Title
         html.Should().Contain("Consent History");       // Consent_History
         html.Should().Contain("About Consent");         // Consent_AboutTitle
-        // Nav_Consents stayed in SharedResource (Humans.UI's login partial renders it too), so
-        // the section binds a second localizer for it.
+        // Nav_Consents stays in SharedResource (the login partial renders it too), through a second localizer.
         html.Should().NotContain("Nav_Consents");
     }
 
@@ -149,9 +118,8 @@ public class ConsentPageRenderTests(HumansTestDatabase database) : IntegrationTe
 
         html.Should().Contain(DocumentName);
         html.Should().Contain(EnglishBody);
-        // _ConsentReviewBody's checkbox copy and the ResourceManager-driven per-language JSON
-        // both come from ConsentResource; a marker left pointing at SharedResource renders the
-        // raw key here and nowhere else.
+        // The checkbox copy and the ResourceManager-driven JSON come from ConsentResource; a marker left on
+        // SharedResource renders the raw key here only.
         html.Should().Contain("I have read and understood this document");   // Consent_Review_ConsentCheckbox
         html.Should().Contain("Give Consent");                               // Consent_Review_GiveConsent
     }
@@ -161,17 +129,15 @@ public class ConsentPageRenderTests(HumansTestDatabase database) : IntegrationTe
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
-        // Seeded after sign-in, so the fixture's auto-consent has not covered it and the widget
-        // has an unsigned document to show.
+        // Seeded after sign-in, so dev login hasn't auto-consented to it.
         await SeedRequiredDocumentAsync(SystemTeamIds.Volunteers, ct);
 
         var response = await Client.GetAsync("/OnboardingWidget/Consents", ct);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var html = await response.Content.ReadAsStringAsync(ct);
-        // Shell's widget view constructs ConsentReviewFormViewModel from Consent's Contracts/ folder and
-        // renders the section's _ConsentReviewBody by name; a partial that fails to resolve
-        // throws, so a 200 with the checkbox copy is the proof both halves landed.
+        // Shell renders the section's _ConsentReviewBody by name and a miss throws, so a 200 with the checkbox copy is
+        // the proof.
         AssertRenderedCleanly(html, "GET /OnboardingWidget/Consents");
         html.Should().Contain(DocumentName);
         html.Should().Contain("I have read and understood this document");
@@ -183,8 +149,7 @@ public class ConsentPageRenderTests(HumansTestDatabase database) : IntegrationTe
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
 
-        // /Legal is [AllowAnonymous] and reads GitHub, not the database; when the fetch yields
-        // nothing the tabs render their empty message rather than failing.
+        // /Legal is anonymous and reads GitHub; with nothing fetched the tabs render their empty message.
         var statutes = await Client.GetAsync("/Legal", ct);
         statutes.StatusCode.Should().Be(HttpStatusCode.OK);
         AssertRenderedCleanly(await statutes.Content.ReadAsStringAsync(ct), "GET /Legal");
@@ -202,17 +167,14 @@ public class ConsentPageRenderTests(HumansTestDatabase database) : IntegrationTe
     [HumansFact(Timeout = 120000)]
     public async Task Consent_pages_render_in_spanish_from_the_sections_satellite_assemblies()
     {
-        // An English-only check passes whether or not the RCL's satellites shipped — the
-        // neutral set is embedded in the main assembly and the fallback is silent.
-        // Razor's default HtmlEncoder escapes non-ASCII to numeric entities, so the assertions
-        // stay on ASCII-only runs of the Spanish copy.
+        // The neutral set is embedded in the main assembly and fallback is silent, so only Spanish proves the
+        // satellites. HtmlEncoder escapes non-ASCII, so the checks stay on ASCII runs.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
         await SeedRequiredDocumentAsync(SystemTeamIds.Volunteers, ct);
 
-        // Accept-Language does not reach a signed-in user: Program.cs's initial culture provider
-        // returns the user's PreferredLanguage and short-circuits the rest of the chain, and
-        // /Consent is [Authorize]. Switch the language the way the UI does.
+        // Accept-Language doesn't reach a signed-in user: the PreferredLanguage provider short-circuits the chain. Switch
+        // the way the UI does.
         var switcherPage = await (await Client.GetAsync("/Consent", ct)).Content.ReadAsStringAsync(ct);
         var token = ExtractAntiForgeryToken(switcherPage);
         token.Should().NotBeNullOrEmpty();
