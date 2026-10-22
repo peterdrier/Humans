@@ -37,15 +37,15 @@ public sealed class ServiceProviderValidationTests
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("\t")]
-    public void Production_rejects_missing_or_blank_smtp_host_with_the_correct_key(string? host)
+    public void Email_registration_allows_missing_or_blank_smtp_configuration(string? host)
     {
         var configuration = BuildMinimalConfiguration();
         configuration["Email:SmtpHost"] = host;
-        var act = () => Extensions.Infrastructure.EmailInfrastructureExtensions.AddEmailInfrastructure(
-            new ServiceCollection(), configuration,
-            new StubHostEnvironment { EnvironmentName = Environments.Production });
+        var registrations = new ServiceCollection();
+        Extensions.Infrastructure.EmailInfrastructureExtensions.AddEmailInfrastructure(registrations, configuration);
+        using var services = registrations.BuildServiceProvider();
 
-        act.Should().Throw<InvalidOperationException>().WithMessage("*Email:SmtpHost*");
+        services.GetRequiredService<IOptions<EmailSettings>>().Value.SmtpHost.Should().BeEmpty();
     }
 
     [HumansTheory]
@@ -58,7 +58,7 @@ public sealed class ServiceProviderValidationTests
         configuration["Email:BaseUrl"] = baseUrl;
         var registrations = new ServiceCollection();
         Extensions.Infrastructure.EmailInfrastructureExtensions.AddEmailInfrastructure(
-            registrations, configuration, new StubHostEnvironment());
+            registrations, configuration);
         using var services = registrations.BuildServiceProvider();
         var settings = services.GetRequiredService<IOptions<EmailSettings>>().Value;
 

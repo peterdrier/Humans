@@ -27,6 +27,9 @@ internal sealed class SmtpEmailTransport(IOptions<EmailSettings> settings, ILogg
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(_settings.SmtpHost))
+                throw new InvalidOperationException("Email SMTP is not configured. Set Email:SmtpHost.");
+
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress(_settings.FromName, _settings.FromAddress));
             message.To.Add(recipientName is not null

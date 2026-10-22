@@ -7,20 +7,22 @@ namespace Humans.Web.Extensions.Infrastructure;
 /// What is left in Shell after the Email section's G5 move: the <c>EmailSettings</c>
 /// binding — read by Auth's magic-link URL builder, Profiles' unsubscribe token provider,
 /// <c>SendReConsentReminderJob</c> and <c>SmtpHealthCheck</c>, so it is Base configuration
-/// the section is merely named after — plus the startup guard that Production must have
-/// SMTP configured. Everything else, including the two Hangfire job registrations that used
-/// to live here, moved into <c>Humans.Email</c>'s <c>Section.Register</c> (#1074's jobs seam).
+/// the section is merely named after. Everything else, including the two Hangfire job
+/// registrations that used to live here, moved into <c>Humans.Email</c>'s <c>Section.Register</c> (#1074's jobs seam).
 /// </summary>
 internal static class EmailInfrastructureExtensions
 {
     internal static IServiceCollection AddEmailInfrastructure(
         this IServiceCollection services,
-        IConfiguration configuration,
-        IHostEnvironment environment)
+        IConfiguration configuration)
     {
         services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
         services.PostConfigure<EmailSettings>(settings =>
         {
+            // Keep the transport and health probe aligned with the raw host setting.
+            var smtpHost = configuration["Email:SmtpHost"];
+            settings.SmtpHost = string.IsNullOrWhiteSpace(smtpHost) ? string.Empty : smtpHost;
+
             // Link builders append their own route separator.
             settings.BaseUrl = settings.BaseUrl.TrimEnd('/');
 
@@ -34,15 +36,6 @@ internal static class EmailInfrastructureExtensions
                     "Check Coolify environment variable override.");
             }
         });
-
-        // The section binds the transport off the same key; this is the startup half of
-        // that decision, kept here because IHostEnvironment is not a Section.Register
-        // argument and a deferred throw would first fire on a real send.
-        if (string.IsNullOrWhiteSpace(configuration["Email:SmtpHost"]) && environment.IsProduction())
-        {
-            throw new InvalidOperationException(
-                "Email SMTP configuration is required in production. Set Email:SmtpHost.");
-        }
 
         // The registration stays in Shell even though the implementation moved into the
         // section at G5 lane 5b-1: Program.cs treats the HangfireImmediateOutboxProcessor →

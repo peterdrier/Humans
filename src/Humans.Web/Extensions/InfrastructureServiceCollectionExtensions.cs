@@ -41,7 +41,7 @@ public static class InfrastructureServiceCollectionExtensions
         // Cross-cutting infrastructure — options bindings, integrations, config metadata.
         services.AddConfigurationMetadata(configuration, configRegistry);
         services.AddTelemetryInfrastructure(configuration);
-        services.AddEmailInfrastructure(configuration, environment);
+        services.AddEmailInfrastructure(configuration);
         services.AddGoogleWorkspaceInfrastructure(configuration);
         services.AddTicketVendorPort(configuration);
         // Stripe's own registrations moved with it to Humans.Stripe's Section.Register
