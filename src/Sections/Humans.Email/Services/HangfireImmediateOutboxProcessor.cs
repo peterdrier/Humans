@@ -1,9 +1,9 @@
 using Hangfire;
 using Humans.Email.Jobs;
 
-namespace Humans.Email.Contracts;
+namespace Humans.Email.Services;
 
-public sealed class HangfireImmediateOutboxProcessor(IBackgroundJobClient backgroundJobClient)
+internal sealed class HangfireImmediateOutboxProcessor(IBackgroundJobClient backgroundJobClient)
     : IImmediateOutboxProcessor
 {
     public void TriggerImmediate() =>

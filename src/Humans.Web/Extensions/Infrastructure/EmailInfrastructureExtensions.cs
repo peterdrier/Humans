@@ -1,4 +1,3 @@
-using Humans.Email.Contracts;
 using Humans.Base.Configuration;
 
 namespace Humans.Web.Extensions.Infrastructure;
@@ -32,10 +31,6 @@ internal static class EmailInfrastructureExtensions
                     "Check Coolify environment variable override.");
             }
         });
-
-        // Registered in Shell: the section's OutboxEmailService depends on it, and Program.cs skips the Hangfire
-        // stack in Testing, so ValidateOnBuild fails at startup without it.
-        services.AddScoped<IImmediateOutboxProcessor, HangfireImmediateOutboxProcessor>();
 
         return services;
     }

@@ -52,14 +52,14 @@ surviving account on a merge.
 
 | Shape | Surface | Notes |
 |---|---|---|
-| **Send one message** | `IEmailService.SendAsync` | The single transport path. |
+| **Send one message** | `IEmailService.SendAsync`; `/Email/SendMarkdownToSelf` | The single transport path. The composer's "Send to me" is one more sender on it, addressed to its author only. |
 | **Describe the relay** | `IEmailMessageFactory.FacilitatedMessage` | The one template Email writes; every other section builds its own `EmailMessage`. |
 | **Relay one volunteer's words** | `/Email/SendMessage/{id}` | The member-facing composer for the relay. Sending as a team is Teams'. |
-| **Show me a message without sending it** | `IEmailPreviewService.RenderSystemMessage`; `/Email/PreviewMarkdown`; `/Email/SendMarkdownToSelf` | A finished always-send message; a half-typed Markdown body; that body sent to its author only. |
+| **Show me a message without sending it** | `IEmailPreviewService.RenderSystemMessage`; `/Email/PreviewMarkdown` | A finished always-send message; a half-typed Markdown body. |
 | **Put my templates in the gallery** | `IEmailPreviewContributor`, `/Email/EmailPreview` | The fan-out keeps the gallery from naming other sections. |
 | **This message cannot wait** | `EmailMessage.Urgent` | Set by the sender; stored on the row, read by the immediate drain and the batch order. |
 | **What have we sent this person?** | `/Email/Outbox`, `/Email/Admin/{id}/Outbox`, the admin-detail outbox card | All inside Email. |
-| **Drain and prune the queue** | `ProcessEmailOutboxJob`, `CleanupEmailOutboxJob`, `IImmediateOutboxProcessor` | Shell registers the immediate trigger. |
+| **Drain and prune the queue** | `ProcessEmailOutboxJob`, `CleanupEmailOutboxJob`, `IImmediateOutboxProcessor` | All section-internal; `Section.cs` registers the immediate trigger. |
 | **Which categories may this person not change?** | `ICommunicationPreferenceLock` | The fan-out Tickets implements to lock Ticketing for a ticket holder. |
 | **What kinds of mail does this person accept?** | `ICommunicationPreferenceService`; `ICommunicationPreferenceWrite` (MailerLite's import) | Read by Notifications, MailerLite, Debug, Users and Teams. |
 | **Change my mind** | `/Email/CommunicationPreferences`, `/Email/Guest/CommunicationPreferences`, the admin-detail preferences card | Own page, no-login page, read-only admin card. |
@@ -213,8 +213,6 @@ no-login page adds the inbox column and the highlighted row.
   recurring drain share them.
 - **Load-mutate-save instead of `ExecuteUpdate`/`ExecuteDelete`**, so the EF InMemory
   provider the unit tests use still exercises the path.
-- **`HangfireImmediateOutboxProcessor` is public under `Contracts/`** because Shell
-  registers it, and it is not an `IRecurringJob`.
 - **The 1-second throttle between sends** is a mail-server rate limit.
 - **The tally is written outside the transaction that marks the message.** A crash between
   the two drops one message from that day's count; accepted.

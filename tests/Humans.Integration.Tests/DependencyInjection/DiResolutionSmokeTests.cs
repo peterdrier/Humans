@@ -1,5 +1,5 @@
 using System.Text;
-using Humans.Email.Contracts;
+using Humans.Email.Services;
 using Humans.Integration.Tests.Infrastructure;
 using Humans.Web.Extensions;
 using Microsoft.Extensions.DependencyInjection;

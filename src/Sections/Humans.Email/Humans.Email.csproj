@@ -41,7 +41,7 @@
   <ItemGroup>
     <!--
       Hangfire.Core only (no server, no storage): the two recurring jobs and the
-      immediate-outbox trigger under Contracts/ need [DisableConcurrentExecution] and
+      immediate-outbox trigger under Services/ need [DisableConcurrentExecution] and
       IBackgroundJobClient. Hosting stays in Shell.
     -->
     <PackageReference Include="Hangfire.Core" />

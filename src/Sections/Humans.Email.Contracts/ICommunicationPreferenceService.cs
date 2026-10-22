@@ -5,7 +5,7 @@ namespace Humans.Email.Contracts;
 
 /// <summary>
 /// Reads of a member's per-category communication preferences. Every read resolves a merged-away id to
-/// its survivor. Reads never create rows: a missing category reads as <see cref="MessageCategoryExtensions.DefaultOptedOut"/>.
+/// its survivor. Reads never create rows: a missing category reads as opted in, except Marketing, which reads as opted out.
 /// </summary>
 public interface ICommunicationPreferenceService : IApplicationService
 {
