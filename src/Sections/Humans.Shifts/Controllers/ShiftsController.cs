@@ -369,7 +369,7 @@ internal sealed class ShiftsController(
         }
 
         var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
-        if (es is null) return BadRequest(localizer["VolTrack_NoActiveEvent"].Value);
+        if (es is null) return BadRequest(localizer["Shifts_VolTrack_NoActiveEvent"].Value);
 
         if (!await volunteerTrackingService.SetAvailabilityAsync(user.Id, es.Id, dayOffsets ?? []))
         {

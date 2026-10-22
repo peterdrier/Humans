@@ -1,6 +1,6 @@
 @model Humans.Shifts.Models.EmailTeamRotasViewModel
 @{
-    ViewData["Title"] = string.Format(Localizer["EmailTeamRotas_Title"].Value, Model.TeamName);
+    ViewData["Title"] = string.Format(Localizer["Shifts_EmailTeamRotas_Title"].Value, Model.TeamName);
 }
 
 <div class="container py-4">
@@ -8,11 +8,11 @@
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
             <li class="breadcrumb-item"><a asp-controller="ShiftAdmin" asp-action="Index" asp-route-slug="@Model.TeamSlug">@Localizer["Shifts_Title"]</a></li>
-            <li class="breadcrumb-item active" aria-current="page">@Localizer["EmailTeamRotas_Breadcrumb"]</li>
+            <li class="breadcrumb-item active" aria-current="page">@Localizer["Shifts_EmailTeamRotas_Breadcrumb"]</li>
         </ol>
     </nav>
 
-    <h2>@string.Format(Localizer["EmailTeamRotas_Heading"].Value, Model.TeamName)</h2>
+    <h2>@string.Format(Localizer["Shifts_EmailTeamRotas_Heading"].Value, Model.TeamName)</h2>
 
 
     <div class="row mt-3">
@@ -29,17 +29,17 @@
 
                         @if (Model.AudienceChanged)
                         {
-                            <div class="alert alert-warning" role="alert">@Localizer["EmailTeamRotas_AudienceChanged"]</div>
+                            <div class="alert alert-warning" role="alert">@Localizer["Shifts_EmailTeamRotas_AudienceChanged"]</div>
                         }
 
                         @await Html.PartialAsync("_EmailComposer", new EmailComposerViewModel
                         {
                             BodyName = "Message",
                             BodyValue = Model.Message,
-                            BodyLabel = Localizer["EmailTeamRotas_MessageLabel"].Value,
+                            BodyLabel = Localizer["Shifts_EmailTeamRotas_MessageLabel"].Value,
                             BodyRows = 10,
                             BodyMaxLength = 4000,
-                            BodyHelpText = Localizer["EmailTeamRotas_MessageHelp"].Value,
+                            BodyHelpText = Localizer["Shifts_EmailTeamRotas_MessageHelp"].Value,
                             Category = nameof(Humans.Email.Contracts.MessageCategory.VolunteerUpdates),
                             RecipientCount = Model.RecipientCount,
                             RecipientSummary = Model.TeamName,
@@ -47,45 +47,45 @@
 
                         <div class="form-check mb-3">
                             <input class="form-check-input" type="checkbox" asp-for="IncludeShifts" id="include-shifts" />
-                            <label class="form-check-label" for="include-shifts">@Localizer["EmailTeamRotas_IncludeShifts"]</label>
+                            <label class="form-check-label" for="include-shifts">@Localizer["Shifts_EmailTeamRotas_IncludeShifts"]</label>
                         </div>
 
                         <fieldset class="mb-3">
-                            <legend class="form-label fs-6">@Localizer["EmailTeamRotas_ScopeLabel"]</legend>
+                            <legend class="form-label fs-6">@Localizer["Shifts_EmailTeamRotas_ScopeLabel"]</legend>
                             <div class="form-check">
                                 <input class="form-check-input js-scope" type="radio" asp-for="UpcomingOnly" value="true" id="scope-upcoming" />
-                                <label class="form-check-label" for="scope-upcoming">@Localizer["EmailTeamRotas_ScopeUpcoming"]</label>
+                                <label class="form-check-label" for="scope-upcoming">@Localizer["Shifts_EmailTeamRotas_ScopeUpcoming"]</label>
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input js-scope" type="radio" asp-for="UpcomingOnly" value="false" id="scope-all" />
-                                <label class="form-check-label" for="scope-all">@Localizer["EmailTeamRotas_ScopeAll"]</label>
+                                <label class="form-check-label" for="scope-all">@Localizer["Shifts_EmailTeamRotas_ScopeAll"]</label>
                             </div>
                         </fieldset>
 
                         <fieldset class="mb-3 ms-4 @(Model.UpcomingOnly ? "d-none" : null)" id="period-filters">
-                            <legend class="form-label fs-6">@Localizer["EmailTeamRotas_PeriodsLabel"]</legend>
+                            <legend class="form-label fs-6">@Localizer["Shifts_EmailTeamRotas_PeriodsLabel"]</legend>
                             <div class="form-check form-check-inline">
                                 <input class="form-check-input js-audience" type="checkbox" asp-for="IncludeBuild" id="period-build" />
-                                <label class="form-check-label" for="period-build">@Localizer["EmailTeamRotas_PeriodBuild"]</label>
+                                <label class="form-check-label" for="period-build">@Localizer["Shifts_EmailTeamRotas_PeriodBuild"]</label>
                             </div>
                             <div class="form-check form-check-inline">
                                 <input class="form-check-input js-audience" type="checkbox" asp-for="IncludeEvent" id="period-event" />
-                                <label class="form-check-label" for="period-event">@Localizer["EmailTeamRotas_PeriodEvent"]</label>
+                                <label class="form-check-label" for="period-event">@Localizer["Shifts_EmailTeamRotas_PeriodEvent"]</label>
                             </div>
                             <div class="form-check form-check-inline">
                                 <input class="form-check-input js-audience" type="checkbox" asp-for="IncludeStrike" id="period-strike" />
-                                <label class="form-check-label" for="period-strike">@Localizer["EmailTeamRotas_PeriodStrike"]</label>
+                                <label class="form-check-label" for="period-strike">@Localizer["Shifts_EmailTeamRotas_PeriodStrike"]</label>
                             </div>
                         </fieldset>
 
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary" @(Model.RecipientCount == 0 ? "disabled" : null)>
-                                @string.Format(Localizer["EmailTeamRotas_Send"].Value, Model.RecipientCount)
+                                @string.Format(Localizer["Shifts_EmailTeamRotas_Send"].Value, Model.RecipientCount)
                             </button>
                             <button type="submit" class="btn btn-outline-secondary" id="refresh-recipients"
                                     name="intent" value="@EmailTeamRotasViewModel.RefreshIntent"
                                     formnovalidate>
-                                @Localizer["EmailTeamRotas_Refresh"]
+                                @Localizer["Shifts_EmailTeamRotas_Refresh"]
                             </button>
                             <a asp-action="Index" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-secondary">@SharedLocalizer["Common_Cancel"]</a>
                         </div>
@@ -97,13 +97,13 @@
         <div class="col-lg-4">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">@string.Format(Localizer["EmailTeamRotas_RecipientsHeading"].Value, Model.RecipientCount)</h5>
-                    <small class="text-muted">@string.Format(Localizer["EmailTeamRotas_RotaCount"].Value, Model.RotaCount)</small>
+                    <h5 class="mb-0">@string.Format(Localizer["Shifts_EmailTeamRotas_RecipientsHeading"].Value, Model.RecipientCount)</h5>
+                    <small class="text-muted">@string.Format(Localizer["Shifts_EmailTeamRotas_RotaCount"].Value, Model.RotaCount)</small>
                 </div>
                 <div class="card-body">
                     @if (Model.RecipientCount == 0)
                     {
-                        <p class="text-muted mb-0">@Localizer["EmailTeamRotas_NoRecipients"]</p>
+                        <p class="text-muted mb-0">@Localizer["Shifts_EmailTeamRotas_NoRecipients"]</p>
                     }
                     else
                     {

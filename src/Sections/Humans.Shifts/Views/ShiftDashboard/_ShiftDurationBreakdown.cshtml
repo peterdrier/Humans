@@ -15,17 +15,17 @@
 
 <div class="card mb-4">
     <div class="card-header">
-        <strong>@Localizer["ShiftDash_DurationMix_Title"]</strong>
-        <span class="text-muted small ms-2">@Localizer["ShiftDash_DurationMix_Subtitle"]</span>
+        <strong>@Localizer["Shifts_ShiftDash_DurationMix_Title"]</strong>
+        <span class="text-muted small ms-2">@Localizer["Shifts_ShiftDash_DurationMix_Subtitle"]</span>
     </div>
     <div class="table-responsive">
         <table class="table table-sm align-middle mb-0">
             <thead class="table-light">
                 <tr>
-                    <th>@Localizer["ShiftDash_DurationMix_Col_Duration"]</th>
-                    <th class="text-end">@Localizer["ShiftDash_DurationMix_Col_Slots"]</th>
-                    <th class="text-end">@Localizer["ShiftDash_DurationMix_Col_Filled"]</th>
-                    <th class="text-end">@Localizer["ShiftDash_DurationMix_Col_Pct"]</th>
+                    <th>@Localizer["Shifts_ShiftDash_DurationMix_Col_Duration"]</th>
+                    <th class="text-end">@Localizer["Shifts_ShiftDash_DurationMix_Col_Slots"]</th>
+                    <th class="text-end">@Localizer["Shifts_ShiftDash_DurationMix_Col_Filled"]</th>
+                    <th class="text-end">@Localizer["Shifts_ShiftDash_DurationMix_Col_Pct"]</th>
                 </tr>
             </thead>
             <tbody>
@@ -36,11 +36,11 @@
                         <td>
                             @if (row.IsAllDay)
                             {
-                                <span class="badge bg-info me-1">@Localizer["ShiftDash_DurationMix_FullDay"]</span>
+                                <span class="badge bg-info me-1">@Localizer["Shifts_ShiftDash_DurationMix_FullDay"]</span>
                             }
                             else
                             {
-                                @string.Format(Localizer["ShiftDash_DurationMix_HourLabel"].Value, row.DurationHours)
+                                @string.Format(Localizer["Shifts_ShiftDash_DurationMix_HourLabel"].Value, row.DurationHours)
                             }
                         </td>
                         <td class="text-end">@row.TotalSlots</td>
@@ -51,7 +51,7 @@
             </tbody>
             <tfoot class="table-light">
                 <tr>
-                    <th>@Localizer["ShiftDash_DurationMix_Total"]</th>
+                    <th>@Localizer["Shifts_ShiftDash_DurationMix_Total"]</th>
                     <th class="text-end">@totalSlots</th>
                     <th class="text-end">@totalFilled</th>
                     <th class="text-end"><span class="badge @PctClass(totalPct)">@totalPct.ToString("0")%</span></th>

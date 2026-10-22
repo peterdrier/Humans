@@ -238,6 +238,8 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 
 ## Invariants
 
+- Section-owned resource keys use `Shifts_` in all six cultures, including dynamically selected wizard skill, time-preference and quirk labels; reflection-resolved `Enum_` keys retain their type-based names.
+
 - Coordinator single-day availability add/remove routes share event/viewer resolution, bound-input validation and mutation dispatch; each route retains its VolunteerTrackingWrite policy and operation-specific success feedback.
 
 - Post-event overall, department and period rates share one calculation: no-shows round to the nearest whole percent away from zero at midpoints; completion is the clamped complement. Both rates are zero when there are no confirmed/no-show signups.

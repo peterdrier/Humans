@@ -8,7 +8,7 @@
     if (Model.Rows.Count == 0)
     {
         <div class="alert alert-info">
-            <i class="fa-solid fa-circle-info me-2"></i>@Localizer["VolTrack_Main_Empty"]
+            <i class="fa-solid fa-circle-info me-2"></i>@Localizer["Shifts_VolTrack_Main_Empty"]
         </div>
         return;
     }
@@ -29,13 +29,13 @@
 
     string CellAria(VolunteerCellState s) => s switch
     {
-        VolunteerCellState.Confirmed => Localizer["VolTrack_State_Confirmed"].Value,
-        VolunteerCellState.Pending => Localizer["VolTrack_State_Pending"].Value,
-        VolunteerCellState.Gap => Localizer["VolTrack_State_Gap"].Value,
-        VolunteerCellState.CampSetup => Localizer["VolTrack_State_CampSetup"].Value,
-        VolunteerCellState.DayOff => Localizer["VolTrack_State_DayOff"].Value,
-        VolunteerCellState.Outside => Localizer["VolTrack_State_Outside"].Value,
-        VolunteerCellState.Expected => Localizer["VolTrack_State_Expected"].Value,
+        VolunteerCellState.Confirmed => Localizer["Shifts_VolTrack_State_Confirmed"].Value,
+        VolunteerCellState.Pending => Localizer["Shifts_VolTrack_State_Pending"].Value,
+        VolunteerCellState.Gap => Localizer["Shifts_VolTrack_State_Gap"].Value,
+        VolunteerCellState.CampSetup => Localizer["Shifts_VolTrack_State_CampSetup"].Value,
+        VolunteerCellState.DayOff => Localizer["Shifts_VolTrack_State_DayOff"].Value,
+        VolunteerCellState.Outside => Localizer["Shifts_VolTrack_State_Outside"].Value,
+        VolunteerCellState.Expected => Localizer["Shifts_VolTrack_State_Expected"].Value,
         _ => "",
     };
 }
@@ -109,20 +109,20 @@
         }
         else
         {
-            <strong><i class="fa-solid fa-table-cells me-2"></i>@Localizer["VolTrack_Main_Title"]</strong>
-            <span class="text-muted small ms-2">@string.Format(Localizer["VolTrack_Main_Subtitle"].Value, Model.Rows.Count)</span>
+            <strong><i class="fa-solid fa-table-cells me-2"></i>@Localizer["Shifts_VolTrack_Main_Title"]</strong>
+            <span class="text-muted small ms-2">@string.Format(Localizer["Shifts_VolTrack_Main_Subtitle"].Value, Model.Rows.Count)</span>
         }
         @* Scroll arrows: hidden until JS detects horizontal overflow. *@
         <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="Heatmap horizontal scroll" data-vt-scroll-group hidden>
-            <button type="button" class="btn btn-outline-secondary" data-vt-scroll="left" aria-label="@Localizer["VolTrack_Scroll_Left"]"><i class="fa-solid fa-chevron-left"></i></button>
-            <button type="button" class="btn btn-outline-secondary" data-vt-scroll="right" aria-label="@Localizer["VolTrack_Scroll_Right"]"><i class="fa-solid fa-chevron-right"></i></button>
+            <button type="button" class="btn btn-outline-secondary" data-vt-scroll="left" aria-label="@Localizer["Shifts_VolTrack_Scroll_Left"]"><i class="fa-solid fa-chevron-left"></i></button>
+            <button type="button" class="btn btn-outline-secondary" data-vt-scroll="right" aria-label="@Localizer["Shifts_VolTrack_Scroll_Right"]"><i class="fa-solid fa-chevron-right"></i></button>
         </div>
     </div>
     <div class="table-responsive vt-heatmap-scroll">
         <table class="table table-sm table-bordered align-middle mb-0 vt-heatmap-table">
             <thead class="table-light">
                 <tr>
-                    <th class="vt-sticky-head">@Localizer["VolTrack_Col_Volunteer"]</th>
+                    <th class="vt-sticky-head">@Localizer["Shifts_VolTrack_Col_Volunteer"]</th>
                     @foreach (var d in dayOffsets)
                     {
                         var date = Model.GateOpeningDate.PlusDays(d);
@@ -145,7 +145,7 @@
                     var displayName = Model.DisplayNameByUserId.GetValueOrDefault(row.UserId, "");
                     if (string.IsNullOrEmpty(displayName))
                     {
-                        displayName = Localizer["VolTrack_UnknownUser"].Value;
+                        displayName = Localizer["Shifts_VolTrack_UnknownUser"].Value;
                     }
 
                     // Build the day-off tooltip ("Wed 24 Jun — doctor; Fri 26 Jun") for the row badge.
@@ -160,17 +160,17 @@
                             <div class="small">
                                 @if (row.GapCount > 0)
                                 {
-                                    <span class="badge bg-danger me-1">@string.Format(Localizer["VolTrack_GapBadge"].Value, row.GapCount)</span>
+                                    <span class="badge bg-danger me-1">@string.Format(Localizer["Shifts_VolTrack_GapBadge"].Value, row.GapCount)</span>
                                 }
                                 @if (row.DayOffs.Count > 0)
                                 {
                                     <span class="badge bg-secondary-subtle border text-dark me-1" title="@dayOffTooltip">
-                                        <i class="fa-solid fa-calendar-xmark me-1"></i>@string.Format(Localizer["VolTrack_DayOffBadge"].Value, row.DayOffs.Count)
+                                        <i class="fa-solid fa-calendar-xmark me-1"></i>@string.Format(Localizer["Shifts_VolTrack_DayOffBadge"].Value, row.DayOffs.Count)
                                     </span>
                                 }
                                 @if (row.BarrioSetupStartDate.HasValue)
                                 {
-                                    <span class="badge bg-primary" title="@Localizer["VolTrack_CampSetupTooltip"]">
+                                    <span class="badge bg-primary" title="@Localizer["Shifts_VolTrack_CampSetupTooltip"]">
                                         <i class="fa-solid fa-campground me-1"></i>@row.BarrioSetupStartDate.Value.ToDate()
                                     </span>
                                 }
@@ -195,7 +195,7 @@
                                     @if (cell.RotaNames.Count > 0)
                                     {
                                         <div class="mb-2">
-                                            <div class="text-muted small text-uppercase">@Localizer["VolTrack_Popover_Rotas"]</div>
+                                            <div class="text-muted small text-uppercase">@Localizer["Shifts_VolTrack_Popover_Rotas"]</div>
                                             <ul class="mb-1 ps-3 small">
                                                 @foreach (var rotaName in cell.RotaNames)
                                                 {
@@ -210,7 +210,7 @@
                                     <a href="/Shifts/Dashboard?startDate=@date.ToInvariantDate()&endDate=@date.ToInvariantDate()#urgencyAccordion"
                                        target="_blank" rel="noopener"
                                        class="btn btn-sm btn-outline-success w-100 mb-2">
-                                        <i class="fa-solid fa-up-right-from-square me-1"></i>@Localizer["VolTrack_Popover_OpenDashboard"]
+                                        <i class="fa-solid fa-up-right-from-square me-1"></i>@Localizer["Shifts_VolTrack_Popover_OpenDashboard"]
                                     </a>
                                     @if (canWrite)
                                     {
@@ -224,7 +224,7 @@
                                                 <input type="hidden" name="Date" value="@date.ToInvariantDate()" />
                                                 <input type="hidden" name="returnUrl" value="@returnUrl" />
                                                 <button type="submit" class="btn btn-sm btn-primary w-100">
-                                                    <i class="fa-solid fa-campground me-1"></i>@Localizer["VolTrack_Popover_MarkCampSetup"]
+                                                    <i class="fa-solid fa-campground me-1"></i>@Localizer["Shifts_VolTrack_Popover_MarkCampSetup"]
                                                 </button>
                                             </form>
                                         }
@@ -241,7 +241,7 @@
                                                     <input type="hidden" name="Date" value="@date.ToInvariantDate()" />
                                                     <input type="hidden" name="returnUrl" value="@returnUrl" />
                                                     <button type="submit" class="btn btn-sm btn-outline-primary w-100">
-                                                        <i class="fa-solid fa-arrows-left-right me-1"></i>@Localizer["VolTrack_Popover_MoveCampSetup"]
+                                                        <i class="fa-solid fa-arrows-left-right me-1"></i>@Localizer["Shifts_VolTrack_Popover_MoveCampSetup"]
                                                     </button>
                                                 </form>
                                             }
@@ -250,7 +250,7 @@
                                                 <input type="hidden" name="userId" value="@row.UserId" />
                                                 <input type="hidden" name="returnUrl" value="@returnUrl" />
                                                 <button type="submit" class="btn btn-sm btn-outline-warning w-100">
-                                                    <i class="fa-solid fa-rotate-left me-1"></i>@Localizer["VolTrack_Popover_ClearCampSetup"]
+                                                    <i class="fa-solid fa-rotate-left me-1"></i>@Localizer["Shifts_VolTrack_Popover_ClearCampSetup"]
                                                 </button>
                                             </form>
                                         }
@@ -266,7 +266,7 @@
                                                 }
                                                 else
                                                 {
-                                                    <em class="opacity-75">— @Localizer["VolTrack_State_DayOff"]</em>
+                                                    <em class="opacity-75">— @Localizer["Shifts_VolTrack_State_DayOff"]</em>
                                                 }
                                             </div>
                                             <form method="post" asp-controller="VolunteerTracking" asp-action="ClearDayOff">
@@ -275,14 +275,14 @@
                                                 <input type="hidden" name="DayOffset" value="@cell.DayOffset" />
                                                 <input type="hidden" name="returnUrl" value="@returnUrl" />
                                                 <button type="submit" class="btn btn-sm btn-outline-warning w-100">
-                                                    <i class="fa-solid fa-rotate-left me-1"></i>@Localizer["VolTrack_Popover_CancelDayOff"]
+                                                    <i class="fa-solid fa-rotate-left me-1"></i>@Localizer["Shifts_VolTrack_Popover_CancelDayOff"]
                                                 </button>
                                             </form>
                                         }
                                         else if (cell.State == VolunteerCellState.Confirmed || cell.State == VolunteerCellState.Pending)
                                         {
                                             <div class="small text-muted">
-                                                <i class="fa-solid fa-circle-info me-1"></i>@Localizer["VolTrack_Popover_DayOffBlockedBySignups"]
+                                                <i class="fa-solid fa-circle-info me-1"></i>@Localizer["Shifts_VolTrack_Popover_DayOffBlockedBySignups"]
                                             </div>
                                         }
                                         else if (cell.State == VolunteerCellState.Gap)
@@ -294,9 +294,9 @@
                                                 <input type="hidden" name="returnUrl" value="@returnUrl" />
                                                 <input type="text" name="Reason" maxlength="200"
                                                        class="form-control form-control-sm mb-2"
-                                                       placeholder="@Localizer["VolTrack_Popover_ReasonLabel"]" />
+                                                       placeholder="@Localizer["Shifts_VolTrack_Popover_ReasonLabel"]" />
                                                 <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
-                                                    <i class="fa-solid fa-calendar-xmark me-1"></i>@Localizer["VolTrack_Popover_MarkDayOff"]
+                                                    <i class="fa-solid fa-calendar-xmark me-1"></i>@Localizer["Shifts_VolTrack_Popover_MarkDayOff"]
                                                 </button>
                                             </form>
                                         }
@@ -315,7 +315,7 @@
                                                     <input type="hidden" name="dayOffset" value="@cell.DayOffset" />
                                                     <input type="hidden" name="returnUrl" value="@returnUrl" />
                                                     <button type="submit" class="btn btn-sm btn-outline-danger w-100">
-                                                        <i class="fa-solid fa-minus me-1"></i>@Localizer["VolTrack_Popover_UnmarkAvailable"]
+                                                        <i class="fa-solid fa-minus me-1"></i>@Localizer["Shifts_VolTrack_Popover_UnmarkAvailable"]
                                                     </button>
                                                 </form>
                                             }
@@ -327,7 +327,7 @@
                                                     <input type="hidden" name="dayOffset" value="@cell.DayOffset" />
                                                     <input type="hidden" name="returnUrl" value="@returnUrl" />
                                                     <button type="submit" class="btn btn-sm btn-outline-success w-100">
-                                                        <i class="fa-solid fa-plus me-1"></i>@Localizer["VolTrack_Popover_MarkAvailable"]
+                                                        <i class="fa-solid fa-plus me-1"></i>@Localizer["Shifts_VolTrack_Popover_MarkAvailable"]
                                                     </button>
                                                 </form>
                                             }

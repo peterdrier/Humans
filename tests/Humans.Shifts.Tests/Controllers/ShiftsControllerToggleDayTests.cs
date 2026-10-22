@@ -142,7 +142,7 @@ public class ShiftsControllerToggleDayTests
     {
         var userId = Guid.NewGuid();
         var sut = BuildSut(userId, MakeUserInfo(userId, "Alice", "Alice", "Example"));
-        _localizer["VolTrack_NoActiveEvent"].Returns(new LocalizedString("VolTrack_NoActiveEvent", "No hay ningún evento activo."));
+        _localizer["Shifts_VolTrack_NoActiveEvent"].Returns(new LocalizedString("Shifts_VolTrack_NoActiveEvent", "No hay ningún evento activo."));
 
         var result = await sut.SaveAvailability([1, 2]);
 

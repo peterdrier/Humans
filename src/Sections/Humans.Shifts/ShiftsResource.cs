@@ -13,9 +13,8 @@ namespace Humans.Shifts;
 /// <c>GetExportedTypes()</c>; an internal marker is skipped in silence (§15 step 3b).
 /// </para>
 /// <para>
-/// The set holds every <c>ShiftDash_</c>, <c>VolTrack_</c>, <c>ShiftInfo_</c>, <c>EmailRota_</c>,
-/// <c>EmailTeamRotas_</c>, <c>GetInvolved_</c>, <c>Dashboard_</c> and <c>DietaryMissingBanner_</c>
-/// key and every <c>Shifts_</c> key no other section's view binds. The keys below stay in
+/// Section-owned keys use <c>Shifts_</c>, including the dashboard, volunteer tracking,
+/// shift-profile wizard and rota-email families. The keys below stay in
 /// <c>SharedResource</c>, each for a renderer that cannot see this set:
 /// </para>
 /// <list type="bullet">

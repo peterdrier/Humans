@@ -1,6 +1,6 @@
 @model Humans.Shifts.Models.ShiftInfoViewModel
 @{
-    ViewData["Title"] = Localizer["ShiftInfo_Title"].Value;
+    ViewData["Title"] = Localizer["Shifts_ShiftInfo_Title"].Value;
 }
 
 <div class="row">
@@ -8,15 +8,15 @@
         <nav aria-label="@Localizer["Shifts_BreadcrumbNavigation"]">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a asp-controller="Profile" asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a></li>
-                <li class="breadcrumb-item active" aria-current="page">@Localizer["ShiftInfo_Title"]</li>
+                <li class="breadcrumb-item active" aria-current="page">@Localizer["Shifts_ShiftInfo_Title"]</li>
             </ol>
         </nav>
 
 
         <div class="text-center mb-4">
-            <div class="text-muted text-uppercase small" id="stepLabel">@string.Format(Localizer["ShiftInfo_StepOf"].Value, 1, 3)</div>
-            <h1 class="h4 mt-1 mb-1" id="stepTitle">@Localizer["ShiftInfo_SkillsTitle"]</h1>
-            <p class="text-muted small" id="stepSubtitle">@Localizer["ShiftInfo_SkillsSubtitle"]</p>
+            <div class="text-muted text-uppercase small" id="stepLabel">@string.Format(Localizer["Shifts_ShiftInfo_StepOf"].Value, 1, 3)</div>
+            <h1 class="h4 mt-1 mb-1" id="stepTitle">@Localizer["Shifts_ShiftInfo_SkillsTitle"]</h1>
+            <p class="text-muted small" id="stepSubtitle">@Localizer["Shifts_ShiftInfo_SkillsSubtitle"]</p>
             <div class="d-flex justify-content-center gap-2 mt-3" id="progressDots">
                 <span class="progress-dot active" data-step="0"></span>
                 <span class="progress-dot" data-step="1"></span>
@@ -37,18 +37,18 @@
                         <label class="chip @(isSelected ? "selected" : "")" role="checkbox" aria-checked="@(isSelected ? "true" : "false")" tabindex="0">
                             <input type="checkbox" name="SelectedSkills" value="@skill" class="d-none"
                                    @(isSelected ? "checked" : "") />
-                            <span class="chip-emoji">@emoji</span> @(string.Equals(skill, "Other", StringComparison.Ordinal) ? SharedLocalizer["Common_Other"] : Localizer[$"ShiftInfo_Skill_{skill.Replace(" ", "", StringComparison.Ordinal)}"])
+                            <span class="chip-emoji">@emoji</span> @(string.Equals(skill, "Other", StringComparison.Ordinal) ? SharedLocalizer["Common_Other"] : Localizer[$"Shifts_ShiftInfo_Skill_{skill.Replace(" ", "", StringComparison.Ordinal)}"])
                         </label>
                     }
                 </div>
                 <div class="other-text-input mt-3" style="display: @(Model.SelectedSkills.Contains("Other") ? "block" : "none");">
                     <input type="text" name="SkillOtherText" class="form-control" maxlength="200"
-                           value="@Model.SkillOtherText" placeholder="@Localizer["ShiftInfo_OtherSkills"].Value" />
+                           value="@Model.SkillOtherText" placeholder="@Localizer["Shifts_ShiftInfo_OtherSkills"].Value" />
                 </div>
             </div>
 
             <div class="step-pane" id="step-1">
-                <p class="fw-bold small text-muted mb-2">@Localizer["ShiftInfo_WorkTime"]</p>
+                <p class="fw-bold small text-muted mb-2">@Localizer["Shifts_ShiftInfo_WorkTime"]</p>
                 <div class="radio-card-grid">
                     @foreach (var tp in ShiftInfoViewModel.TimePreferenceOptions)
                     {
@@ -59,20 +59,20 @@
                             <input type="radio" name="TimePreference" value="@tp" class="d-none"
                                    @(isSelected ? "checked" : "") />
                             <div class="rc-emoji">@emoji</div>
-                            <div class="rc-label">@Localizer[$"ShiftInfo_Time_{preferenceKey}"]</div>
-                            <div class="rc-desc">@Localizer[$"ShiftInfo_Time_{preferenceKey}_Description"]</div>
+                            <div class="rc-label">@Localizer[$"Shifts_ShiftInfo_Time_{preferenceKey}"]</div>
+                            <div class="rc-desc">@Localizer[$"Shifts_ShiftInfo_Time_{preferenceKey}_Description"]</div>
                         </label>
                     }
                 </div>
 
-                <p class="fw-bold small text-muted mb-2 mt-4">@Localizer["ShiftInfo_OtherPrefs"]</p>
+                <p class="fw-bold small text-muted mb-2 mt-4">@Localizer["Shifts_ShiftInfo_OtherPrefs"]</p>
                 @foreach (var quirk in ShiftInfoViewModel.ToggleQuirkOptions)
                 {
                     var isChecked = Model.SelectedQuirks.Contains(quirk);
                     <div class="form-check form-switch mb-2">
                         <input type="checkbox" name="SelectedQuirks" value="@quirk" class="form-check-input"
                                id="quirk-@quirk.Replace(" ", "-")" @(isChecked ? "checked" : "") />
-                        <label class="form-check-label" for="quirk-@quirk.Replace(" ", "-")">@Localizer[$"ShiftInfo_Quirk_{quirk.Replace(" ", "", StringComparison.Ordinal)}"]</label>
+                        <label class="form-check-label" for="quirk-@quirk.Replace(" ", "-")">@Localizer[$"Shifts_ShiftInfo_Quirk_{quirk.Replace(" ", "", StringComparison.Ordinal)}"]</label>
                     </div>
                 }
 
@@ -108,7 +108,7 @@
                 </div>
                 <div class="other-text-input mt-3" style="display: @(Model.SelectedLanguages.Contains("Other") ? "block" : "none");">
                     <input type="text" name="LanguageOtherText" class="form-control" maxlength="200"
-                           value="@Model.LanguageOtherText" placeholder="@Localizer["ShiftInfo_OtherLanguages"].Value" />
+                           value="@Model.LanguageOtherText" placeholder="@Localizer["Shifts_ShiftInfo_OtherLanguages"].Value" />
                 </div>
             </div>
 
@@ -118,7 +118,7 @@
                 </button>
                 <div></div>
                 <button type="button" class="btn btn-primary" id="nextBtn">
-                    @Localizer["ShiftInfo_Continue"] &rarr;
+                    @Localizer["Shifts_ShiftInfo_Continue"] &rarr;
                 </button>
                 <button type="submit" class="btn btn-primary" id="saveBtn" style="display:none">
                     @SharedLocalizer["Common_Save"]
@@ -180,9 +180,9 @@
 <script>
 (function() {
     const STEPS = [
-        { label: '@Html.Raw(string.Format(Localizer["ShiftInfo_StepOf"].Value, 1, 3))', title: '@Html.Raw(Localizer["ShiftInfo_SkillsTitle"].Value.Replace("'", "\\'"))', subtitle: '@Html.Raw(Localizer["ShiftInfo_SkillsSubtitle"].Value.Replace("'", "\\'"))' },
-        { label: '@Html.Raw(string.Format(Localizer["ShiftInfo_StepOf"].Value, 2, 3))', title: '@Html.Raw(Localizer["ShiftInfo_WorkStyleTitle"].Value.Replace("'", "\\'"))', subtitle: '@Html.Raw(Localizer["ShiftInfo_WorkStyleSubtitle"].Value.Replace("'", "\\'"))' },
-        { label: '@Html.Raw(string.Format(Localizer["ShiftInfo_StepOf"].Value, 3, 3))', title: '@Html.Raw(Localizer["ShiftInfo_LanguagesTitle"].Value.Replace("'", "\\'"))', subtitle: '@Html.Raw(Localizer["ShiftInfo_LanguagesSubtitle"].Value.Replace("'", "\\'"))' }
+        { label: '@Html.Raw(string.Format(Localizer["Shifts_ShiftInfo_StepOf"].Value, 1, 3))', title: '@Html.Raw(Localizer["Shifts_ShiftInfo_SkillsTitle"].Value.Replace("'", "\\'"))', subtitle: '@Html.Raw(Localizer["Shifts_ShiftInfo_SkillsSubtitle"].Value.Replace("'", "\\'"))' },
+        { label: '@Html.Raw(string.Format(Localizer["Shifts_ShiftInfo_StepOf"].Value, 2, 3))', title: '@Html.Raw(Localizer["Shifts_ShiftInfo_WorkStyleTitle"].Value.Replace("'", "\\'"))', subtitle: '@Html.Raw(Localizer["Shifts_ShiftInfo_WorkStyleSubtitle"].Value.Replace("'", "\\'"))' },
+        { label: '@Html.Raw(string.Format(Localizer["Shifts_ShiftInfo_StepOf"].Value, 3, 3))', title: '@Html.Raw(Localizer["Shifts_ShiftInfo_LanguagesTitle"].Value.Replace("'", "\\'"))', subtitle: '@Html.Raw(Localizer["Shifts_ShiftInfo_LanguagesSubtitle"].Value.Replace("'", "\\'"))' }
     ];
 
     let current = 0;

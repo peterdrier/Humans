@@ -114,7 +114,7 @@ internal sealed class VolunteerTrackingController(
         var eventSettings = await burnSettings.GetActiveAsync(ct);
         if (eventSettings is null)
         {
-            SetError(localizer["VolTrack_NoActiveEvent"]);
+            SetError(localizer["Shifts_VolTrack_NoActiveEvent"]);
             return RedirectToAction(nameof(Index));
         }
 
@@ -186,14 +186,14 @@ internal sealed class VolunteerTrackingController(
     {
         if (!ModelState.IsValid)
         {
-            SetError(localizer["VolTrack_Err_BadRequest"]);
+            SetError(localizer["Shifts_VolTrack_Err_BadRequest"]);
             return RedirectBack(returnUrl);
         }
 
         var parseResult = LocalDatePattern.Iso.Parse(form.Date);
         if (!parseResult.Success)
         {
-            SetError(localizer["VolTrack_Err_BadDate"]);
+            SetError(localizer["Shifts_VolTrack_Err_BadDate"]);
             return RedirectBack(returnUrl);
         }
         var parsed = parseResult.Value;
@@ -210,11 +210,11 @@ internal sealed class VolunteerTrackingController(
         var result = await service.SetCampSetupAsync(form.UserId, parsed, form.Notes, current.Id, ct);
         if (!result.Ok)
         {
-            SetError(localizer[result.ErrorMessageKey ?? "VolTrack_Err_Unknown"]);
+            SetError(localizer[result.ErrorMessageKey ?? "Shifts_VolTrack_Err_Unknown"]);
             return RedirectBack(returnUrl);
         }
 
-        SetSuccess(localizer["VolTrack_Msg_CampSetupSaved"]);
+        SetSuccess(localizer["Shifts_VolTrack_Msg_CampSetupSaved"]);
         return RedirectBack(returnUrl);
     }
 
@@ -225,7 +225,7 @@ internal sealed class VolunteerTrackingController(
     {
         if (userId == Guid.Empty)
         {
-            SetError(localizer["VolTrack_Err_BadRequest"]);
+            SetError(localizer["Shifts_VolTrack_Err_BadRequest"]);
             return RedirectBack(returnUrl);
         }
 
@@ -234,7 +234,7 @@ internal sealed class VolunteerTrackingController(
 
         await service.ClearCampSetupAsync(userId, current.Id, ct);
 
-        SetSuccess(localizer["VolTrack_Msg_CampSetupCleared"]);
+        SetSuccess(localizer["Shifts_VolTrack_Msg_CampSetupCleared"]);
         return RedirectBack(returnUrl);
     }
 
@@ -245,7 +245,7 @@ internal sealed class VolunteerTrackingController(
     {
         if (!ModelState.IsValid)
         {
-            SetError(localizer["VolTrack_Err_BadRequest"]);
+            SetError(localizer["Shifts_VolTrack_Err_BadRequest"]);
             return RedirectBack(returnUrl);
         }
 
@@ -266,11 +266,11 @@ internal sealed class VolunteerTrackingController(
             ct);
         if (!result.Ok)
         {
-            SetError(localizer[result.ErrorMessageKey ?? "VolTrack_Err_Unknown"]);
+            SetError(localizer[result.ErrorMessageKey ?? "Shifts_VolTrack_Err_Unknown"]);
             return RedirectBack(returnUrl);
         }
 
-        SetSuccess(localizer["VolTrack_Msg_DayOffMarked"]);
+        SetSuccess(localizer["Shifts_VolTrack_Msg_DayOffMarked"]);
         return RedirectBack(returnUrl);
     }
 
@@ -281,7 +281,7 @@ internal sealed class VolunteerTrackingController(
     {
         if (!ModelState.IsValid)
         {
-            SetError(localizer["VolTrack_Err_BadRequest"]);
+            SetError(localizer["Shifts_VolTrack_Err_BadRequest"]);
             return RedirectBack(returnUrl);
         }
 
@@ -295,11 +295,11 @@ internal sealed class VolunteerTrackingController(
             ct);
         if (result.Removed)
         {
-            SetSuccess(localizer["VolTrack_Msg_DayOffCleared"]);
+            SetSuccess(localizer["Shifts_VolTrack_Msg_DayOffCleared"]);
         }
         else
         {
-            SetInfo(localizer["VolTrack_Msg_DayOffNotSet"]);
+            SetInfo(localizer["Shifts_VolTrack_Msg_DayOffNotSet"]);
         }
 
         return RedirectBack(returnUrl);
@@ -323,7 +323,7 @@ internal sealed class VolunteerTrackingController(
         Guid? userId, int? dayOffset, string? returnUrl, bool available, CancellationToken ct)
     {
         var es = await burnSettings.GetActiveAsync(ct);
-        if (es is null) { SetError(localizer["VolTrack_Err_BadRequest"]); return RedirectBack(returnUrl); }
+        if (es is null) { SetError(localizer["Shifts_VolTrack_Err_BadRequest"]); return RedirectBack(returnUrl); }
 
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
@@ -345,7 +345,7 @@ internal sealed class VolunteerTrackingController(
             ct);
         if (changed)
         {
-            SetSuccess(localizer[available ? "VolTrack_Msg_AvailabilitySet" : "VolTrack_Msg_AvailabilityCleared"]);
+            SetSuccess(localizer[available ? "Shifts_VolTrack_Msg_AvailabilitySet" : "Shifts_VolTrack_Msg_AvailabilityCleared"]);
         }
         return RedirectBack(returnUrl);
     }

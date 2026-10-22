@@ -16,17 +16,17 @@
 
     string Label(TrendWindow w) => w switch
     {
-        TrendWindow.Last7Days => Localizer["ShiftDash_Trends_Window_7d"].Value,
-        TrendWindow.Last30Days => Localizer["ShiftDash_Trends_Window_30d"].Value,
-        TrendWindow.Last90Days => Localizer["ShiftDash_Trends_Window_90d"].Value,
-        TrendWindow.All => Localizer["ShiftDash_Trends_Window_All"].Value,
+        TrendWindow.Last7Days => Localizer["Shifts_ShiftDash_Trends_Window_7d"].Value,
+        TrendWindow.Last30Days => Localizer["Shifts_ShiftDash_Trends_Window_30d"].Value,
+        TrendWindow.Last90Days => Localizer["Shifts_ShiftDash_Trends_Window_90d"].Value,
+        TrendWindow.All => Localizer["Shifts_ShiftDash_Trends_Window_All"].Value,
         _ => w.ToString(),
     };
 
-    var newSignupsLabel = Localizer["ShiftDash_Trends_NewSignups"].Value;
-    var newTicketsLabel = Localizer["ShiftDash_Trends_NewTicketSales"].Value;
-    var dauLabel = Localizer["ShiftDash_Trends_DAU"].Value;
-    var dauNote = Localizer["ShiftDash_Trends_DAUNote"].Value;
+    var newSignupsLabel = Localizer["Shifts_ShiftDash_Trends_NewSignups"].Value;
+    var newTicketsLabel = Localizer["Shifts_ShiftDash_Trends_NewTicketSales"].Value;
+    var dauLabel = Localizer["Shifts_ShiftDash_Trends_DAU"].Value;
+    var dauNote = Localizer["Shifts_ShiftDash_Trends_DAUNote"].Value;
 
     // TEMP: ticket figures are not shareable yet. Flip to true once ticket data is publishable.
     // The underlying trend series still computes new-ticket-sales in ShiftManagementService.
@@ -35,7 +35,7 @@
 
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <strong>@Localizer["ShiftDash_Trends_Title"]</strong>
+        <strong>@Localizer["Shifts_ShiftDash_Trends_Title"]</strong>
         <div class="btn-group btn-group-sm" role="group" id="dashboardTrendsWindow">
             @foreach (var w in new[] { TrendWindow.Last7Days, TrendWindow.Last30Days, TrendWindow.Last90Days, TrendWindow.All })
             {
@@ -45,7 +45,7 @@
         </div>
     </div>
     <div class="card-body">
-        <canvas id="dashboardTrendsChart" height="180" role="img" aria-label="@Localizer["ShiftDash_Trends_Title"]"></canvas>
+        <canvas id="dashboardTrendsChart" height="180" role="img" aria-label="@Localizer["Shifts_ShiftDash_Trends_Title"]"></canvas>
     </div>
 </div>
 

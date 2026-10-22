@@ -1,18 +1,18 @@
 <div class="alert alert-info d-flex flex-wrap align-items-center gap-2 mb-3" role="status">
     <i class="fa-solid fa-utensils me-2"></i>
     <div class="flex-grow-1">
-        <strong>@Localizer["DietaryMissingBanner_Title"]</strong>
-        <div class="small">@Localizer["DietaryMissingBanner_Body"]</div>
+        <strong>@Localizer["Shifts_DietaryMissingBanner_Title"]</strong>
+        <div class="small">@Localizer["Shifts_DietaryMissingBanner_Body"]</div>
     </div>
     <a class="btn btn-sm btn-primary"
        asp-controller="CantinaProfile" asp-action="Dietary"
        asp-route-returnAction="shifts">
-        @Localizer["DietaryMissingBanner_Cta"]
+        @Localizer["Shifts_DietaryMissingBanner_Cta"]
     </a>
     @* Opt-out: Cantina records the choice and this banner stops (Cantina Docs/features/dietary-nudge.md). *@
     <form asp-controller="CantinaProfile" asp-action="Dietary" method="post" class="m-0">
         <input type="hidden" name="DeclineToAnswer" value="true" />
         <input type="hidden" name="ReturnAction" value="shifts" />
-        <button type="submit" class="btn btn-sm btn-outline-secondary">@Localizer["DietaryMissingBanner_Decline"]</button>
+        <button type="submit" class="btn btn-sm btn-outline-secondary">@Localizer["Shifts_DietaryMissingBanner_Decline"]</button>
     </form>
 </div>

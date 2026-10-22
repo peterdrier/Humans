@@ -1,6 +1,6 @@
 @model Humans.Shifts.Models.EmailRotaViewModel
 @{
-    ViewData["Title"] = string.Format(Localizer["EmailRota_Title"].Value, Model.RotaName);
+    ViewData["Title"] = string.Format(Localizer["Shifts_EmailRota_Title"].Value, Model.RotaName);
 }
 
 <div class="container py-4">
@@ -8,11 +8,11 @@
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
             <li class="breadcrumb-item"><a asp-controller="ShiftAdmin" asp-action="Index" asp-route-slug="@Model.TeamSlug">@Localizer["Shifts_Title"]</a></li>
-            <li class="breadcrumb-item active" aria-current="page">@Localizer["EmailRota_Breadcrumb"]</li>
+            <li class="breadcrumb-item active" aria-current="page">@Localizer["Shifts_EmailRota_Breadcrumb"]</li>
         </ol>
     </nav>
 
-    <h2>@string.Format(Localizer["EmailRota_Heading"].Value, Model.RotaName)</h2>
+    <h2>@string.Format(Localizer["Shifts_EmailRota_Heading"].Value, Model.RotaName)</h2>
 
 
     <div class="row mt-3">
@@ -31,10 +31,10 @@
                         {
                             BodyName = "Message",
                             BodyValue = Model.Message,
-                            BodyLabel = Localizer["EmailRota_MessageLabel"].Value,
+                            BodyLabel = Localizer["Shifts_EmailRota_MessageLabel"].Value,
                             BodyRows = 10,
                             BodyMaxLength = 4000,
-                            BodyHelpText = Localizer["EmailRota_MessageHelp"].Value,
+                            BodyHelpText = Localizer["Shifts_EmailRota_MessageHelp"].Value,
                             Category = nameof(Humans.Email.Contracts.MessageCategory.VolunteerUpdates),
                             RecipientCount = Model.RecipientCount,
                             RecipientSummary = Model.RotaName,
@@ -42,12 +42,12 @@
 
                         <div class="form-check mb-3">
                             <input class="form-check-input" type="checkbox" asp-for="IncludeShifts" id="include-shifts" />
-                            <label class="form-check-label" for="include-shifts">@Localizer["EmailRota_IncludeShifts"]</label>
+                            <label class="form-check-label" for="include-shifts">@Localizer["Shifts_EmailRota_IncludeShifts"]</label>
                         </div>
 
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary" @(Model.RecipientCount == 0 ? "disabled" : null)>
-                                @string.Format(Localizer["EmailRota_Send"].Value, Model.RecipientCount)
+                                @string.Format(Localizer["Shifts_EmailRota_Send"].Value, Model.RecipientCount)
                             </button>
                             <a asp-action="Index" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-secondary">@SharedLocalizer["Common_Cancel"]</a>
                         </div>
@@ -59,12 +59,12 @@
         <div class="col-lg-4">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">@string.Format(Localizer["EmailRota_RecipientsHeading"].Value, Model.RecipientCount)</h5>
+                    <h5 class="mb-0">@string.Format(Localizer["Shifts_EmailRota_RecipientsHeading"].Value, Model.RecipientCount)</h5>
                 </div>
                 <div class="card-body">
                     @if (Model.RecipientCount == 0)
                     {
-                        <p class="text-muted mb-0">@Localizer["EmailRota_NoRecipients"]</p>
+                        <p class="text-muted mb-0">@Localizer["Shifts_EmailRota_NoRecipients"]</p>
                     }
                     else
                     {

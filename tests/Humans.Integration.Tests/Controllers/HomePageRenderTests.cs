@@ -21,7 +21,7 @@ public class HomePageRenderTests(HumansTestDatabase database) : IntegrationTestB
 {
     /// <summary>Prefixes the carve moved off <c>SharedResource</c> into Shifts'/Governance's own sets.</summary>
     private static readonly string[] CarvedPrefixes =
-        ["GetInvolved_", "Dashboard_SlotsSingular", "Dashboard_SlotsPlural", "Dashboard_GetInvolved",
+        ["GetInvolved_", "Shifts_Dashboard_SlotsSingular", "Shifts_Dashboard_SlotsPlural", "Shifts_Dashboard_GetInvolved",
          "Governance_Dashboard_AgreementSingular", "Governance_Dashboard_AgreementPlural", "Governance_Dashboard_GovernanceCardDescription"];
 
     private static void AssertRenderedCleanly(string html, string what)

@@ -289,7 +289,7 @@ public class VolunteerTrackingServiceTests
             userId, es.GateOpeningDate, notes: null, coordinatorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Ok.Should().BeFalse();
-        result.ErrorMessageKey.Should().Be("VolTrack_Err_SetupAtOrAfterGateOpen");
+        result.ErrorMessageKey.Should().Be("Shifts_VolTrack_Err_SetupAtOrAfterGateOpen");
     }
 
     [HumansFact]
@@ -309,7 +309,7 @@ public class VolunteerTrackingServiceTests
             userId, es.GateOpeningDate.PlusDays(-8), notes: null, coordinatorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Ok.Should().BeFalse();
-        result.ErrorMessageKey.Should().Be("VolTrack_Err_SetupBeforeFirstSignup");
+        result.ErrorMessageKey.Should().Be("Shifts_VolTrack_Err_SetupBeforeFirstSignup");
     }
 
     [HumansFact]
@@ -391,9 +391,9 @@ public class VolunteerTrackingServiceTests
             Guid.NewGuid(), 0, reason: null, coordinatorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
 
         below.Ok.Should().BeFalse();
-        below.ErrorMessageKey.Should().Be("VolTrack_Err_DayOffOutsideBuild");
+        below.ErrorMessageKey.Should().Be("Shifts_VolTrack_Err_DayOffOutsideBuild");
         above.Ok.Should().BeFalse();
-        above.ErrorMessageKey.Should().Be("VolTrack_Err_DayOffOutsideBuild");
+        above.ErrorMessageKey.Should().Be("Shifts_VolTrack_Err_DayOffOutsideBuild");
     }
 
     [HumansFact]
@@ -411,7 +411,7 @@ public class VolunteerTrackingServiceTests
             userId, -3, reason: null, coordinatorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Ok.Should().BeFalse();
-        result.ErrorMessageKey.Should().Be("VolTrack_Err_DayOffWithSignups");
+        result.ErrorMessageKey.Should().Be("Shifts_VolTrack_Err_DayOffWithSignups");
     }
 
     [HumansFact]
@@ -429,7 +429,7 @@ public class VolunteerTrackingServiceTests
             userId, -3, reason: null, coordinatorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Ok.Should().BeFalse();
-        result.ErrorMessageKey.Should().Be("VolTrack_Err_DayOffWithSignups");
+        result.ErrorMessageKey.Should().Be("Shifts_VolTrack_Err_DayOffWithSignups");
     }
 
     [HumansFact]
