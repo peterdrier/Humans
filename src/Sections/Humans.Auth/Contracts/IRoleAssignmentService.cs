@@ -29,7 +29,7 @@ public interface IRoleAssignmentService : IApplicationService
     Task<IReadOnlyList<Guid>> GetActiveUserIdsInRoleAsync(
         string roleName, CancellationToken ct = default);
 
-    /// <summary>Served from the row cache.</summary>
+    /// <summary>Active means ValidFrom &lt;= now &lt; ValidTo, with a null ValidTo open-ended. Served from the row cache.</summary>
     Task<IReadOnlyList<RoleAssignmentSnapshot>> GetActiveForUserAsync(Guid userId, CancellationToken ct = default);
 }
 
