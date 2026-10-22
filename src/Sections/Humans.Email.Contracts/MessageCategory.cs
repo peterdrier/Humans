@@ -36,10 +36,6 @@ public enum MessageCategory
 
 public static class MessageCategoryExtensions
 {
-    /// <summary>Hidden from the UI.</summary>
-    public static bool IsDeprecated(this MessageCategory category) => category is
-        MessageCategory.EventOperations or MessageCategory.CommunityUpdates;
-
     public static bool IsAlwaysOn(this MessageCategory category) => category is
         MessageCategory.System or MessageCategory.CampaignCodes;
 
@@ -62,34 +58,4 @@ public static class MessageCategoryExtensions
         MessageCategory.Governance,
         MessageCategory.Marketing
     ];
-
-    public static string ToDisplayName(this MessageCategory category) => category switch
-    {
-        MessageCategory.System => "System",
-        MessageCategory.EventOperations => "Event Operations",
-        MessageCategory.CommunityUpdates => "Community Updates",
-        MessageCategory.Marketing => "Marketing",
-        MessageCategory.Governance => "Governance",
-        MessageCategory.CampaignCodes => "Campaign Codes",
-        MessageCategory.FacilitatedMessages => "Facilitated Messages",
-        MessageCategory.Ticketing => "Ticketing",
-        MessageCategory.VolunteerUpdates => "Volunteer Updates",
-        MessageCategory.TeamUpdates => "Team Updates",
-        _ => category.ToString(),
-    };
-
-    public static string ToDescription(this MessageCategory category) => category switch
-    {
-        MessageCategory.System => "Critical account, consent, and security notifications. Always on.",
-        MessageCategory.EventOperations => "Shift changes, schedule updates, and team notifications.",
-        MessageCategory.CommunityUpdates => "General community news and facilitated messages.",
-        MessageCategory.Marketing => "Mailing list and promotions.",
-        MessageCategory.Governance => "Board voting, tier applications, role assignments, and onboarding reviews.",
-        MessageCategory.CampaignCodes => "Discount codes, grants, and campaign redemption codes. Always on.",
-        MessageCategory.FacilitatedMessages => "Messages sent to you by other humans via Humans.",
-        MessageCategory.Ticketing => "Purchase confirmations and event information.",
-        MessageCategory.VolunteerUpdates => "Shift changes, schedule updates, and volunteer notifications.",
-        MessageCategory.TeamUpdates => "Drive permissions, team member additions, and removals.",
-        _ => string.Empty,
-    };
 }
