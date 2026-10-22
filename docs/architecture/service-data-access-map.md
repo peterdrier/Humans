@@ -386,7 +386,7 @@ separately below the key table.
 | Cache | Section | Key | Type | Populated By | Invalidated By |
 |-------|---------|-----|------|-------------|----------------|
 | `TrackedCache<Guid, UserInfo>` | Users (+Profiles) | `User.UserInfo` | Per-User | CachingUserService warmup + lazy load | own write pass-throughs + section-internal `IUserInfoSliceRefresher` (`UserInfoSaveChangesInterceptor`, Users' own services) |
-| `TrackedCache<Guid, TeamInfo>` | Teams | `Team.TeamInfo` | Per-Entity | CachingTeamService warmup + lazy load | own writes, `IUserMerge`, GDPR erasure + `ITeamWrite.InvalidateActiveTeamsCache` (Users' merge tail) |
+| `TrackedCache<Guid, TeamReadSnapshot>` | Teams | `Team.TeamInfo` | Per-Entity | CachingTeamService warmup + lazy load | own writes, `IUserMerge`, GDPR erasure; member display data resolves live from Users |
 | `TrackedCache<Guid, ShiftUserView>` / `TrackedCache<Guid, ShiftRotaView>` | Shifts | `ShiftView.UserView` / `ShiftView.RotaView` | Per-User / Per-Entity | CachingShiftViewService lazy load | `InvalidateUser` / `InvalidateRota`, called only by Shifts' own services |
 | `TrackedCache<Guid, TicketOrderInfo>` | Tickets | `Tickets.Orders` | Per-Entity | CachingTicketQueryService warmup + lazy load | own write pass-throughs (clear-all on sync, transfer, contact import, erasure, merge) |
 | `TrackedCache<Guid, CachedUserTicketHoldings>` | Tickets | `Tickets.UserHoldings` | Per-User (5-min freshness in value) | CachingTicketQueryService lazy load | own write pass-throughs (both users on merge; clear-all otherwise) |

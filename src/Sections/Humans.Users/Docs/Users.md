@@ -269,7 +269,7 @@ The deletion cascade is `AccountDeletionService` (`Humans.Users/Services/`), the
 - **Gdpr:** `IGdprService.EraseForUserAsync` — the erasure fan-out lives in Gdpr; `AccountDeletionService` resolves the merge chain, calls it per id, and invalidates each archived id's cache as its erasure completes. It names no section to erase; Gdpr fans out over its own `IUserDataContributor` roster.
 - Auth role projections for contact visibility, duplicate detection and profile cards use `IRoleAssignmentService`. Deletion-time revocation goes through `IRoleAssignmentWrite` (Auth evicts its own caches, merge fold included); the admin assign/end pages are Auth's own.
 - **Auth:** `IRoleAssignmentWrite.RevokeAllActiveAsync` (grace-period revoke on the deletion *request*).
-- **Teams:** `ITeamWrite.RevokeAllMembershipsAsync` (same grace-period revoke); Teams evicts its own team graph on revoke and erasure. Account merge calls `ITeamWrite.InvalidateActiveTeamsCache` after the tombstone.
+- **Teams:** `ITeamWrite.RevokeAllMembershipsAsync` (same grace-period revoke); Teams evicts its own team graph on revoke and erasure. Teams resolves member display data live through `IUserService`, including archived ids after the merge tombstone; Users sends no Teams cache flush.
 - **Shifts:** nothing direct. Its GDPR contributor erases the Shifts data and evicts Shifts' own view cache.
 
 Communication preferences are Email's (Users decomposition commit 14). The only remaining write to the frozen `communication_preferences` table is erasure; `UserInfoSaveChangesInterceptor` still pattern-matches `CommunicationPreference` saves and refreshes the legacy slice (`RefreshCommunicationPreferencesAsync`).

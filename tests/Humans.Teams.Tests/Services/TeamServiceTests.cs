@@ -2679,6 +2679,65 @@ public sealed class TeamServiceTests : TeamsTestHarness
         member.DisplayName.Should().Be("Alice");
     }
 
+    [HumansTheory]
+    [InlineData("id", false)]
+    [InlineData("slug", false)]
+    [InlineData("all", false)]
+    [InlineData("parents", false)]
+    [InlineData("id", true)]
+    [InlineData("slug", true)]
+    [InlineData("all", true)]
+    [InlineData("parents", true)]
+    public async Task CachedTeamReads_UseCurrentMemberDetails(string read, bool merged)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var team = SeedTeam("Alpha");
+        var user = SeedUser(displayName: "Alice");
+        var membership = SeedTeamMember(team.Id, user.Id);
+        await SaveAllAsync(ct);
+        using var provider = new ServiceCollection()
+            .AddKeyedScoped<ITeamManagementService>(CachingTeamService.InnerServiceKey, (_, _) => _service)
+            .BuildServiceProvider();
+        var cache = new CachingTeamService(provider.GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<CachingTeamService>.Instance);
+        var before = await cache.GetTeamAsync(team.Id, ct);
+        before!.Members.Should().ContainSingle().Which.DisplayName.Should().Be("Alice");
+        var invalidations = cache.BulkInvalidations;
+        team.Name = "Changed outside the cached snapshot";
+        await SaveAllAsync(ct);
+        var replacement = new User
+        {
+            Id = merged ? Guid.NewGuid() : user.Id,
+            BurnerName = "Updated Human",
+            Email = "updated@example.test",
+            ProfilePictureUrl = "/updated-photo.png",
+        }.ToUserInfo();
+        // Users keys its merge-resolved read by the requested id, even when the value is a survivor.
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [user.Id] = replacement });
+
+        var after = read switch
+        {
+            "id" => await cache.GetTeamAsync(team.Id, ct),
+            "slug" => await cache.GetTeamBySlugAsync(team.Slug, ct),
+            "all" => (await cache.GetTeamsAsync(ct))[team.Id],
+            _ => (await cache.GetTeamsWithParentsAsync([team.Id], ct))[team.Id],
+        };
+
+        after!.Name.Should().Be("Alpha", "Teams-owned facts still come from the warmed snapshot");
+        var member = after.Members.Should().ContainSingle().Subject;
+        member.DisplayName.Should().Be(replacement.BurnerName);
+        member.Email.Should().Be(replacement.Email);
+        member.ProfilePictureUrl.Should().Be(replacement.ProfilePictureUrl);
+        member.UserId.Should().Be(user.Id);
+        member.TeamMemberId.Should().Be(membership.Id);
+        before.Members.Single().DisplayName.Should().Be("Alice");
+        cache.BulkInvalidations.Should().Be(invalidations);
+        var snapshot = (await cache.GetTeamSnapshotsAsync(ct))[team.Id];
+        snapshot.Team.Members.Should().BeEmpty();
+        snapshot.Members.Should().ContainSingle().Which.UserId.Should().Be(user.Id);
+    }
+
     [HumansFact]
     public async Task GetTeamAsync_NoMembers_ReturnsEmpty()
     {

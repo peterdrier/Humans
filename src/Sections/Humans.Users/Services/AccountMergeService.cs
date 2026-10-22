@@ -7,7 +7,6 @@ using Humans.Users.Data;
 using Humans.AuditLog.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Teams.Contracts;
 
 namespace Humans.Users.Services;
 
@@ -21,7 +20,6 @@ internal sealed class AccountMergeService(
     IClock clock,
     IEnumerable<IUserMerge> userMerges,
     IUserManagement userService,
-    ITeamWrite teamService,
     INotificationService notificationService) : IAccountMergeService, IUserDataContributor
 {
     /// <summary>GDPR export JSON key for this contributor's data.</summary>
@@ -158,10 +156,6 @@ internal sealed class AccountMergeService(
         finally
         {
             notificationService.InvalidateBadgeCachesForUsers([archivedUserId, survivorUserId]);
-            // After the tombstone, not inside Teams' own ReassignAsync: the team graph stitches
-            // each member's UserInfo, and system-team rows still name the archived id, which
-            // now resolves forward to the survivor.
-            teamService.InvalidateActiveTeamsCache();
         }
     }
 

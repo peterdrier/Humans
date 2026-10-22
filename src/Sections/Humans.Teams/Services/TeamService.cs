@@ -1975,15 +1975,31 @@ internal sealed class TeamService(
         await repo.RemoveEarlyEntryGrantsForUserAsync(userId, ct);
     }
 
-    private async Task<IReadOnlyDictionary<Guid, TeamInfo>> LoadTeamsByIdAsync(CancellationToken ct = default)
+    private async Task<IReadOnlyDictionary<Guid, TeamInfo>> LoadTeamsByIdAsync(CancellationToken ct = default) =>
+        await ResolveTeamMembersAsync(await GetTeamSnapshotsAsync(ct), ct);
+
+    public async Task<IReadOnlyDictionary<Guid, TeamInfo>> ResolveTeamMembersAsync(
+        IReadOnlyDictionary<Guid, TeamReadSnapshot> teams, CancellationToken ct = default)
+    {
+        var userIds = teams.Values.SelectMany(t => t.Members.Select(m => m.UserId)).Distinct().ToList();
+        var users = userIds.Count == 0
+            ? new Dictionary<Guid, UserInfo>()
+            : await UserService.GetUserInfosAsync(userIds, ct);
+        return teams.ToDictionary(pair => pair.Key, pair => pair.Value.Team with
+        {
+            Members = pair.Value.Members.Select(member =>
+            {
+                users.TryGetValue(member.UserId, out var user);
+                return new TeamMemberInfo(
+                    member.TeamMemberId, member.UserId, user?.BurnerName ?? string.Empty,
+                    user?.Email, user?.ProfilePictureUrl, member.Role, member.JoinedAt);
+            }).ToList(),
+        });
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, TeamReadSnapshot>> GetTeamSnapshotsAsync(CancellationToken ct = default)
     {
         var teams = await repo.GetAllWithMembersAsync(ct);
-        var allUserIds = teams.SelectMany(t => t.Members.Where(m => m.LeftAt is null).Select(m => m.UserId))
-            .Distinct()
-            .ToList();
-        var users = allUserIds.Count == 0
-            ? new Dictionary<Guid, UserInfo>()
-            : await UserService.GetUserInfosAsync(allUserIds, ct);
         var managementHolders = await repo.GetActiveManagementRoleHolderUserIdsByTeamAsync(ct);
         var roleDefinitionsByTeam = await repo.GetAllRoleDefinitionsByTeamAsync(ct);
         var childIdsByParent = teams
@@ -1995,16 +2011,15 @@ internal sealed class TeamService(
 
         return teams.ToDictionary(
             t => t.Id,
-            t => BuildTeamInfo(t, users, managementHolders, roleDefinitionsByTeam, childIdsByParent, pendingCounts));
+            t => BuildTeamSnapshot(t, managementHolders, roleDefinitionsByTeam, childIdsByParent, pendingCounts));
     }
 
-    private static TeamInfo BuildTeamInfo(
+    private static TeamReadSnapshot BuildTeamSnapshot(
         Team team,
-        IReadOnlyDictionary<Guid, UserInfo> users,
         IReadOnlyDictionary<Guid, IReadOnlySet<Guid>> managementHolders,
         IReadOnlyDictionary<Guid, IReadOnlyList<TeamRoleDefinition>> roleDefinitionsByTeam,
         IReadOnlyDictionary<Guid, IReadOnlyList<Guid>> childIdsByParent,
-        IReadOnlyDictionary<Guid, int> pendingCounts) => new(
+        IReadOnlyDictionary<Guid, int> pendingCounts) => new(new TeamInfo(
         Id: team.Id,
         Name: team.Name,
         Description: team.Description,
@@ -2017,21 +2032,7 @@ internal sealed class TeamService(
         IsHidden: team.IsHidden,
         IsPromotedToDirectory: team.IsPromotedToDirectory,
         CreatedAt: team.CreatedAt,
-        Members: team.Members
-            .Where(m => m.LeftAt is null)
-            .Select(m =>
-            {
-                users.TryGetValue(m.UserId, out var u);
-                return new TeamMemberInfo(
-                    TeamMemberId: m.Id,
-                    UserId: m.UserId,
-                    DisplayName: u?.BurnerName ?? string.Empty,
-                    Email: u?.Email,
-                    ProfilePictureUrl: u?.ProfilePictureUrl,
-                    Role: m.Role,
-                    JoinedAt: m.JoinedAt);
-            })
-            .ToList(),
+        Members: [],
         ParentTeamId: team.ParentTeamId,
         GoogleGroupPrefix: team.GoogleGroupPrefix,
         HasBudget: team.HasBudget,
@@ -2049,7 +2050,9 @@ internal sealed class TeamService(
         PageContentUpdatedAt: team.PageContentUpdatedAt,
         PageContentUpdatedByUserId: team.PageContentUpdatedByUserId,
         PendingRequestCount: pendingCounts.TryGetValue(team.Id, out var pending) ? pending : 0,
-        EarlyEntryEnabled: team.EarlyEntryEnabled);
+        EarlyEntryEnabled: team.EarlyEntryEnabled),
+        team.Members.Where(m => m.LeftAt is null)
+            .Select(m => new TeamMemberReference(m.Id, m.UserId, m.Role, m.JoinedAt)).ToList());
 
     private async Task<Team> GetRoleDefinitionTeamAsync(TeamRoleDefinition definition, CancellationToken ct)
     {

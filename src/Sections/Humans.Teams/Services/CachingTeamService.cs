@@ -15,7 +15,8 @@ namespace Humans.Teams.Services;
 /// <summary>
 /// Transparent singleton decorator for <see cref="ITeamManagement"/> team reads.
 /// The scoped inner service owns Teams behavior and writes; this decorator owns the
-/// process-local team read model and invalidates it after writes. Inherits
+/// process-local Teams-owned snapshot and invalidates it after writes. Member display
+/// fields are resolved by the inner service through Users on each read. Inherits
 /// <see cref="TrackedCache{TKey, TValue}"/> for hit/miss/invalidation tracking
 /// surfaced on /Debug/CacheStats — note that this service serves bulk reads
 /// (<see cref="GetTeamsByIdAsync"/>) so per-key hit/miss counts are not
@@ -24,14 +25,14 @@ namespace Humans.Teams.Services;
 /// </summary>
 internal sealed class CachingTeamService(
     IServiceScopeFactory scopeFactory,
-    ILogger<CachingTeamService> logger) : TrackedCache<Guid, TeamInfo>("Team.TeamInfo", warmOnStartup: true, logger),
+    ILogger<CachingTeamService> logger) : TrackedCache<Guid, TeamReadSnapshot>("Team.TeamInfo", warmOnStartup: true, logger),
     ITeamManagementService, ITeamSeeding, IUserMerge, IUserDataContributor, IEntityNameContributor
 {
     public const string InnerServiceKey = "team-inner";
 
     /// <summary>
     /// Secondary user→teams index, populated during <see cref="WarmAllAsync"/>
-    /// alongside the primary <c>teamId → TeamInfo</c> dict. Serves
+    /// alongside the primary team snapshot dictionary. Serves
     /// <see cref="GetUserTeamMembershipsAsync"/> without touching the inner scoped
     /// <see cref="ITeamManagement"/> / EF.
     ///
@@ -139,7 +140,7 @@ internal sealed class CachingTeamService(
         string query, int max,
         CancellationToken cancellationToken = default)
     {
-        // Served entirely from the cached TeamInfo snapshot — search must never hit the DB
+        // Team names come from the cached snapshot — search must never hit the Teams DB
         // (mirrors CachingUserService.SearchUsersAsync; the inner service + repo search are gone).
         if (string.IsNullOrWhiteSpace(query) || max <= 0)
             return [];
@@ -187,7 +188,7 @@ internal sealed class CachingTeamService(
                 continue;
 
             result.Add(new UserTeamMembershipInfo(
-                membership.TeamMemberId, team.Id, team.Name, team.Slug, team.IsSystemTeam,
+                membership.TeamMemberId, team.Team.Id, team.Team.Name, team.Team.Slug, team.Team.IsSystemTeam,
                 membership.Role, membership.JoinedAt));
         }
 
@@ -471,8 +472,7 @@ internal sealed class CachingTeamService(
         IReadOnlyCollection<Guid> teamIds,
         CancellationToken cancellationToken = default)
     {
-        await EnsureWarmedAsync(cancellationToken);
-        var snapshot = AsReadOnlyDictionary;
+        var snapshot = await GetTeamsByIdAsync(cancellationToken);
         var result = new Dictionary<Guid, TeamInfo>();
         foreach (var teamId in teamIds)
         {
@@ -674,12 +674,22 @@ internal sealed class CachingTeamService(
 
     private async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsByIdAsync(CancellationToken ct)
     {
+        var teams = await GetTeamSnapshotsAsync(ct);
+        return await ResolveTeamMembersAsync(teams, ct);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, TeamReadSnapshot>> GetTeamSnapshotsAsync(CancellationToken ct = default)
+    {
         await EnsureWarmedAsync(ct);
         return AsReadOnlyDictionary;
     }
 
+    public Task<IReadOnlyDictionary<Guid, TeamInfo>> ResolveTeamMembersAsync(
+        IReadOnlyDictionary<Guid, TeamReadSnapshot> teams, CancellationToken ct = default) =>
+        WithInnerAsync(inner => inner.ResolveTeamMembersAsync(teams, ct));
+
     /// <summary>
-    /// Bulk-loads every active team's projected <see cref="TeamInfo"/>. Called by
+    /// Bulk-loads Teams-owned snapshots, without member display fields. Called by
     /// <see cref="TrackedCache{TKey,TValue}.EnsureWarmedAsync"/> at startup and
     /// again on demand after <see cref="InvalidateTeamsCache"/> drops the dict
     /// (post-write re-warm pattern). The base owns concurrency coalescing via
@@ -687,7 +697,7 @@ internal sealed class CachingTeamService(
     /// </summary>
     protected override async Task WarmAllAsync(CancellationToken ct)
     {
-        var teams = await WithInnerAsync(inner => inner.GetTeamsAsync(ct));
+        var teams = await WithInnerAsync(inner => inner.GetTeamSnapshotsAsync(ct));
 
         // No defensive Clear() — InvalidateTeamsCache already emptied the cache
         // before flipping the warmed flag to false (or the cache is empty on first
@@ -704,7 +714,7 @@ internal sealed class CachingTeamService(
             foreach (var member in team.Members)
             {
                 var set = _teamIdsByUserId.GetOrAdd(member.UserId, static _ => new HashSet<Guid>());
-                set.Add(team.Id);
+                set.Add(team.Team.Id);
             }
         }
     }

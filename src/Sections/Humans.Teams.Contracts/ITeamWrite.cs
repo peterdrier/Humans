@@ -51,18 +51,6 @@ public interface ITeamWrite : IApplicationService
         Guid teamId,
         CancellationToken cancellationToken = default);
 
-    // ==========================================================================
-    // Cache Helpers
-    // ==========================================================================
-
-    /// <summary>
-    /// Drops the cached team graph so the next read repopulates from the database.
-    /// The graph stitches each member's <c>UserInfo</c>; Users' account merge calls this
-    /// after its tombstone, which no Teams write sees. The inner service has no cache;
-    /// only the decorator does anything here.
-    /// </summary>
-    void InvalidateActiveTeamsCache();
-
     /// <summary>
     /// Ends all active team memberships for a user, removes their team role assignments,
     /// and returns the count of ended memberships. Used during account deletion.
