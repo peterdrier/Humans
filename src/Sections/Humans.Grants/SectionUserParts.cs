@@ -3,11 +3,7 @@ using Humans.Grants.ViewComponents;
 
 namespace Humans.Grants;
 
-/// <summary>
-/// Contributes the member's "My grants" card to the profile page and the admin "Grants" card
-/// to the admin human-detail page. Discovered by <c>RegisterContributions</c>
-/// (parameterless ctor).
-/// </summary>
+/// <summary>Discovered by <c>RegisterContributions</c>, so it needs a parameterless ctor.</summary>
 internal sealed class SectionUserParts : IUserPart
 {
     public IEnumerable<UserPart> Parts() =>

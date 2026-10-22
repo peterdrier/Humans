@@ -3,8 +3,7 @@
     var el = document.querySelector('input[name="__RequestVerificationToken"]');
     return el ? el.value : '';
   }
-  // Create, update, or remove the "My Shifts" tab count badge. The server only
-  // renders the badge when count > 0, so we must be able to add/remove it too.
+  // The server renders the badge only when count > 0, so it must be addable and removable here.
   function updateMineBadge(count) {
     var tabs = document.querySelectorAll('.shifts-nav-tabs .nav-link');
     var mineTab = tabs.length > 1 ? tabs[tabs.length - 1] : null;
@@ -33,7 +32,7 @@
       else div.remove();
     }, 4000);
   }
-  // Localized client-side network-error message, supplied by the page (data-error-msg).
+  // Localized, from the page's data-error-msg.
   function errorMsg() {
     var c = document.querySelector('.shifts-toast-container');
     return (c && c.getAttribute('data-error-msg')) || 'Something went wrong. Please try again.';
@@ -42,8 +41,7 @@
     var btn = e.target.closest('.js-day-toggle');
     if (!btn || btn.disabled) return;
     btn.disabled = true;
-    // Keep the existing label and prefix a small spinner — avoids the button
-    // collapsing to icon-width (layout shift) and keeps an accessible name.
+    // Prefix a spinner to the label: no collapse to icon width, and the accessible name stays.
     var original = btn.innerHTML;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>' + original;
     var fd = new FormData();
@@ -67,14 +65,10 @@
       if (html === null || html === undefined) return;
       var row = btn.closest('tr');
       if (!row) return;
-      // Event-shift rows are followed by their own description <tr> (td.shift-description).
-      // The returned fragment already contains a fresh description row, so drop the stale
-      // sibling first — otherwise the old one is orphaned and they accumulate on each toggle.
-      // Build/Strike flat rows have no description sibling.
+      // The fragment carries a fresh description row, so drop the stale sibling or they pile up on each toggle.
       var sib = row.nextElementSibling;
       if (sib && sib.querySelector('td.shift-description')) sib.remove();
-      // Swap via insert-then-remove (not row.outerHTML) so we keep a handle on the new
-      // node and can restore keyboard focus — outerHTML would drop focus to <body>.
+      // Insert-then-remove, not outerHTML, keeps a handle on the new node to restore focus; outerHTML drops it to <body>.
       row.insertAdjacentHTML('afterend', html);
       var newRow = row.nextElementSibling;
       row.remove();

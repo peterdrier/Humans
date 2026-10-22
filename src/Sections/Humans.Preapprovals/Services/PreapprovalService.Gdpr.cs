@@ -7,10 +7,8 @@ using NodaTime;
 namespace Humans.Preapprovals.Services;
 
 /// <summary>
-/// The GDPR surface. Export: the person's own grants, and what they did as a creator, manager
-/// or decider. Erasure deletes what was never decided (Applied rows, manager rows); every
-/// decided grant is a commitment of the association's money and is kept under Art. 17(3)(b).
-/// Merge re-keys every user-id column onto the surviving account.
+/// Erasure deletes only what was never decided: every decided grant commits the association's money and is kept under
+/// Art. 17(3)(b).
 /// </summary>
 internal sealed partial class PreapprovalService : IUserDataContributor, IUserMerge
 {

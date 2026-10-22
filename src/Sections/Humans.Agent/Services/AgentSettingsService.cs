@@ -12,10 +12,6 @@ internal sealed class AgentSettingsService(IAgentRepository repo, IAgentSettings
 {
     public AgentSettingsDto Current => ToDto(store.Current);
 
-    /// <summary>
-    /// The whole of Shell's read of this section: the help widget shows the assistant panel
-    /// when this is true, and the two agent health checks skip their probes when it is false.
-    /// </summary>
     public bool IsEnabled => store.Current.Enabled;
 
     public async Task LoadAsync(CancellationToken cancellationToken)

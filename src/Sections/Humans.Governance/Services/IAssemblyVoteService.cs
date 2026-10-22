@@ -5,36 +5,17 @@ using NodaTime;
 namespace Humans.Governance.Services;
 
 /// <summary>
-/// The business rules for assembly votes: drafting, opening with a frozen roster, accepting
-/// and amending ballots, closing, counting, and the embargo that keeps the tally invisible
-/// until close.
+/// <strong>The embargo is enforced here, not in the controllers.</strong> Only
+/// <see cref="GetResultsAsync"/>, <see cref="PeekAsync"/> and <see cref="GetBallotsForBoardAsync"/>
+/// return anything derived from ballot content; a fourth is a change to the association's voting
+/// guarantees, not a refactor.
 /// </summary>
 /// <remarks>
-/// <para>
-/// <strong>The embargo is enforced here, not in the controllers.</strong> Only three members
-/// of this interface can return anything derived from ballot content:
-/// <see cref="GetResultsAsync"/> (which serves the stored result and refuses while the vote
-/// is open), <see cref="PeekAsync"/> (which writes its audit entry and peek row in the same
-/// unit of work as the read), and <see cref="GetBallotsForBoardAsync"/> (post-close and
-/// audited). Everything else returns counts and timestamps only. Adding a fourth content
-/// path is a change to the association's voting guarantees, not a refactor.
-/// </para>
-/// <para>
-/// Every read and write first settles the vote's state: a vote whose <c>ClosesAt</c> has
-/// passed is closed — result computed, stored and audited — before the caller is served, so
-/// the hourly sweep is a backstop rather than the thing that makes closing correct.
-/// </para>
-/// <para>
-/// Nothing here is on <c>Humans.Governance.Contracts</c>. No other section reads votes, and
-/// the roster is derived from Governance's own data.
-/// </para>
+/// Every read and write first settles the vote: one past <c>ClosesAt</c> is closed before the
+/// caller is served, so the hourly sweep is a backstop.
 /// </remarks>
 internal interface IAssemblyVoteService : IApplicationService
 {
-    // ==========================================================================
-    // Member-facing
-    // ==========================================================================
-
     /// <summary>
     /// Every vote, open first, as seen by <paramref name="userId"/>. Every logged-in member
     /// sees every vote; roster membership only changes whether they can cast.
@@ -62,23 +43,15 @@ internal interface IAssemblyVoteService : IApplicationService
         CancellationToken ct = default);
 
     /// <summary>
-    /// The results of a closed vote: the stored result, the peek list, the acta block, and
-    /// individual ballots where disclosure allows. Returns null while the vote is open —
-    /// this is the embargo, and it applies to Board and Admin too.
+    /// The results of a closed vote. Null while the vote is open — the embargo applies to Board
+    /// and Admin too.
     /// </summary>
-    /// <param name="viewerIsBoardOrAdmin">
-    /// Grants the individual-ballot list regardless of the vote's disclosure switch, and
-    /// causes the view to be audited.
-    /// </param>
-    /// <param name="voteId">The vote whose closed results are requested.</param>
-    /// <param name="userId">The member viewing the results.</param>
-    /// <param name="ct">Token used to cancel the request.</param>
+    /// <remarks>
+    /// <paramref name="viewerIsBoardOrAdmin"/> grants the individual-ballot list regardless of the
+    /// disclosure switch, and the view is audited.
+    /// </remarks>
     Task<AssemblyVoteResultsView?> GetResultsAsync(
         Guid voteId, Guid userId, bool viewerIsBoardOrAdmin, CancellationToken ct = default);
-
-    // ==========================================================================
-    // Drafting — BoardOrAdmin
-    // ==========================================================================
 
     /// <summary>Every vote in every state, for the admin list.</summary>
     Task<IReadOnlyList<AssemblyVoteListItem>> GetAllForAdminAsync(CancellationToken ct = default);
@@ -98,15 +71,8 @@ internal interface IAssemblyVoteService : IApplicationService
         Guid voteId, AssemblyVoteDraft draft, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Machine-translates the draft's authored text — title, official text and every option
-    /// label — from its <c>OfficialCulture</c> into the target cultures, filling only what is
-    /// blank. Authored text is never overwritten, so this is an authoring assist and not a
-    /// source of truth: the official-culture text stays the binding version.
-    /// <para>
-    /// Draft-only. A vote's content is immutable once Open, and a machine translation of a
-    /// motion the electorate is already voting on would change what some members are reading
-    /// mid-vote.
-    /// </para>
+    /// Machine-translates the draft's blank cultures from its <c>OfficialCulture</c>; authored text
+    /// is never overwritten. Draft-only: translating a motion mid-vote would change what members read.
     /// </summary>
     /// <returns>How many blanks were filled; 0 when there was nothing to fill.</returns>
     Task<int> PreFillTranslationsAsync(
@@ -116,10 +82,6 @@ internal interface IAssemblyVoteService : IApplicationService
     /// <summary>Deletes a draft. Never permitted once the vote has opened.</summary>
     Task<AssemblyVoteActionResult> DeleteDraftAsync(
         Guid voteId, Guid actorUserId, CancellationToken ct = default);
-
-    // ==========================================================================
-    // Lifecycle — AdminOnly
-    // ==========================================================================
 
     /// <summary>
     /// Opens a draft: snapshots the roster (active Asociados and Board role holders as
@@ -149,15 +111,9 @@ internal interface IAssemblyVoteService : IApplicationService
         Guid voteId, string reason, Guid adminUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// The live tally of an open vote, for an Admin who has to make a call at the assembly.
-    /// Writes the audit entry and the peek row in the same unit of work as the read, and the
-    /// peek is listed on the results page afterwards. Returns a null result when there is no
-    /// such vote.
-    /// <para>
-    /// <c>Recorded</c> is false when the vote was already closed — a late look is the ordinary
-    /// results page and logs nothing — so the caller can send the reader there rather than
-    /// render a peek page that claims a peek was recorded.
-    /// </para>
+    /// The live tally of an open vote, with the audit entry and peek row written in the same unit
+    /// of work. <c>Recorded</c> is false when the vote had already closed, so the caller can send
+    /// the reader to the results page instead.
     /// </summary>
     Task<(AssemblyVoteResult? Result, bool Recorded)> PeekAsync(
         Guid voteId, Guid adminUserId, CancellationToken ct = default);
@@ -168,10 +124,6 @@ internal interface IAssemblyVoteService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<AssemblyBallotDisclosureRow>?> GetBallotsForBoardAsync(
         Guid voteId, Guid actorUserId, CancellationToken ct = default);
-
-    // ==========================================================================
-    // Automation
-    // ==========================================================================
 
     /// <summary>
     /// The hourly sweep: closes votes whose deadline has passed and sends the T-24h

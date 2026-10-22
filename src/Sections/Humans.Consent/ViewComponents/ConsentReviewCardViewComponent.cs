@@ -5,11 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Consent.ViewComponents;
 
-/// <summary>
-/// The Consent review card, contributed to <c>UserPartSlots.AdminDetail</c>: the consent-check
-/// status and, for a Rejected account, the rejection reason, time and reviewer. Renders for the
-/// admin view mode only; the host page's own policy decides who reaches it.
-/// </summary>
+/// <summary>Admin view mode only; the host page's own policy decides who reaches it.</summary>
 public sealed class ConsentReviewCardViewComponent(
     IConsentService consent,
     IUserService users) : ViewComponent
@@ -38,7 +34,6 @@ public sealed class ConsentReviewCardViewComponent(
     }
 }
 
-/// <summary>What the Consent review card renders.</summary>
 internal sealed record ConsentReviewCardViewModel(
     bool IsRejected,
     ConsentCheckStatus? Status,

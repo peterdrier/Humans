@@ -19,7 +19,6 @@ internal sealed class WorkgroupDocumentConfiguration : IEntityTypeConfiguration<
         b.Property(d => d.Body).HasColumnType("text").IsRequired();
         b.Property(d => d.Status).IsRequired().HasConversion<string>().HasMaxLength(50);
 
-        // Comment categories as jsonb (List<string>) — mirrors SurveyAnswerConfiguration.
         b.Property(d => d.CommentCategories).HasColumnType("jsonb")
             .HasConversion(
                 v => JsonSerializer.Serialize(v, WorkgroupsJson.Options),
@@ -31,8 +30,6 @@ internal sealed class WorkgroupDocumentConfiguration : IEntityTypeConfiguration<
 
         b.Property(d => d.Disposition).HasConversion<string>().HasMaxLength(50);
         b.Property(d => d.DispositionNote).HasMaxLength(4000);
-        // DispositionByUserId, CreatedByUserId and UpdatedByUserId are bare cross-section
-        // references: no FK, no navigation.
         b.Property(d => d.CreatedAt).IsRequired();
         b.Property(d => d.UpdatedAt).IsRequired();
 

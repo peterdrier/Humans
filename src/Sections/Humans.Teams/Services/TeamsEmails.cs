@@ -8,15 +8,6 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.Teams.Services;
 
-/// <summary>
-/// Teams' own email templates: one method per template, each returning a ready
-/// <see cref="EmailMessage"/> (content plus the routing policy Teams chooses —
-/// template name and opt-out category) for the single
-/// <see cref="IEmailService.SendAsync"/> path. Copy lives in Teams' own resx set
-/// and is rendered in the recipient's culture inside a <see cref="CultureScope"/>
-/// (memory/architecture/email-templates-live-in-sender.md, peterdrier/Humans#1651).
-/// Pure — no I/O, no persistence.
-/// </summary>
 internal sealed class TeamsEmails(
     IOptions<EmailSettings> settings,
     IStringLocalizer<TeamsResource> localizer,
@@ -32,7 +23,7 @@ internal sealed class TeamsEmails(
                 ResourcesSection(resources), Encode($"{_settings.BaseUrl}/Teams/{teamSlug}")),
             "added_to_team", MessageCategory.TeamUpdates));
 
-    /// <summary>The team's resource list — omitted entirely rather than rendered as an empty list.</summary>
+    /// <summary>Omitted entirely rather than rendered as an empty list.</summary>
     private string ResourcesSection(IEnumerable<(string Name, string? Url)> resources)
     {
         var items = resources.OrderBy(r => r.Name, StringComparer.Ordinal).ToList();

@@ -5,10 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Agent.Tests;
 
-/// <summary>
-/// Architecture tests enforcing the section shape for Agent
-/// (nobodies-collective/Humans#866).
-/// </summary>
 public class AgentArchitectureTests
 {
     [HumansFact]

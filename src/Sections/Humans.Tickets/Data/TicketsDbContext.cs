@@ -4,24 +4,6 @@ using Humans.Tickets.Domain;
 
 namespace Humans.Tickets.Data;
 
-/// <summary>
-/// Per-section database context for the Tickets section: maps only <c>ticket_orders</c>,
-/// <c>ticket_attendees</c>, <c>ticket_sync_state</c>,
-/// <c>ticket_transfer_requests</c> and <c>tickets_event_participations</c>, with its own
-/// <c>__EFMigrationsHistory_Tickets</c> table and migrations under
-/// <c>Data/Migrations/</c>. Same database, same connection — the split is a
-/// code-side partition of the EF model.
-/// </summary>
-/// <remarks>
-/// Internal-sealed like every section context: repositories
-/// are the only consumers. Configurations are applied explicitly (not by
-/// assembly scanning) so this model can never accrete another section's tables.
-/// Purchasers and matched attendees are bare Guid references, so the Identity
-/// tables stay in <c>UsersDbContext</c> and are deliberately absent
-/// here; the Budget-owned <c>ticketing_projections</c> table is likewise
-/// absent. <c>TicketSyncState</c> carries a model-level <c>HasData</c>
-/// singleton with an identity int PK.
-/// </remarks>
 internal sealed class TicketsDbContext(DbContextOptions<TicketsDbContext> options)
     : DbContext(options)
 {

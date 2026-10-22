@@ -13,10 +13,8 @@ using Humans.Users.Services;
 namespace Humans.Users.Tests.Services;
 
 /// <summary>
-/// Tests for <see cref="IUserEmailService.ReconcileOAuthIdentityAsync"/>.
-/// The reconcile method is the
-/// single OAuth-callback entry point that mutates <see cref="UserEmail"/>
-/// rows; it owns every audit row written for the OAuth path.
+/// The reconcile is the single OAuth-callback entry point that mutates <see cref="UserEmail"/>
+/// rows, and it writes every audit row for the OAuth path.
 /// </summary>
 public class UserEmailServiceReconcileOAuthTests
 {
@@ -78,8 +76,6 @@ public class UserEmailServiceReconcileOAuthTests
         return new UserEmailReconcilePlanResult(mutatedUserIds);
     }
 
-    // ─── NoChange ────────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task NoChange_TaggedRowAtClaimEmail_NoMutation_NoAudit()
     {
@@ -112,8 +108,6 @@ public class UserEmailServiceReconcileOAuthTests
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
-
-    // ─── EmailRewritten ──────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task EmailRewritten_TaggedRowAtDifferentEmail_NoSiblingHoldsClaim_RewritesInPlace()
@@ -157,8 +151,6 @@ public class UserEmailServiceReconcileOAuthTests
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
-
-    // ─── TagMoved (tagged-row + sibling-at-claim) ────────────────────────────
 
     [HumansFact]
     public async Task TagMoved_TaggedRowExistsAndSiblingHoldsClaim_UnionsFlagsForceVerifyDeletesOld()
@@ -266,8 +258,6 @@ public class UserEmailServiceReconcileOAuthTests
             Arg.Any<CancellationToken>());
     }
 
-    // ─── NewRowCreated ───────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task NewRowCreated_NoTaggedRow_NoSibling_NoCrossUser_InsertsVerifiedTaggedRow()
     {
@@ -302,8 +292,6 @@ public class UserEmailServiceReconcileOAuthTests
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
-
-    // ─── CrossUserDisplaced ──────────────────────────────────────────────────
 
     [HumansFact]
     public async Task CrossUserDisplaced_ClaimVerified_OtherUserHoldsClaim_DeletesOtherRowProceedsAndAudits()
@@ -408,8 +396,6 @@ public class UserEmailServiceReconcileOAuthTests
             Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
-
-    // ─── CrossUserBlocked ────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task CrossUserBlocked_ClaimNotVerified_OtherUserHoldsClaim_NoMutation_AuditedAttempt()

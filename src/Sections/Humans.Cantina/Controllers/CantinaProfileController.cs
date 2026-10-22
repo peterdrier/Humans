@@ -10,15 +10,9 @@ using Microsoft.Extensions.Localization;
 namespace Humans.Cantina.Controllers;
 
 /// <summary>
-/// The member's own dietary profile at <c>/Cantina/Dietary</c>: save answers, or choose
-/// "I don't want to answer" (Docs/features/dietary-nudge.md). Dietary info is opt-in and never
-/// gates a shift signup.
+/// Owner-only: every action acts on the signed-in member. Dietary info is opt-in and never gates a shift signup.
+/// Medical conditions live in Users at <c>/Profile/Me/Medical</c>.
 /// </summary>
-/// <remarks>
-/// Reads and writes <c>cantina_dietary_profiles</c>, a Cantina table. Owner-only: every action acts on the
-/// signed-in member. Medical conditions are not here; Users serves them at
-/// <c>/Profile/Me/Medical</c>.
-/// </remarks>
 [Authorize]
 [Route("Cantina")]
 internal sealed class CantinaProfileController(
@@ -59,8 +53,7 @@ internal sealed class CantinaProfileController(
         if (!ModelState.IsValid)
             return View(model);
 
-        // Field-targeted, localized primary path for "Other text required iff Other selected";
-        // the service refuses the same case as a backstop.
+        // Field-targeted and localized; the service refuses the same case as a backstop.
         if (model.OtherAllergyWithoutText)
         {
             ModelState.AddModelError(nameof(model.AllergyOtherText), localizer["Cantina_Dietary_AllergyOther_Required"].Value);
@@ -96,8 +89,7 @@ internal sealed class CantinaProfileController(
         }
     }
 
-    // "I don't want to answer", from the form or the /Shifts banner. Skips the answer validation:
-    // nothing posted besides the choice is kept.
+    // Skips answer validation: nothing posted besides the choice is kept.
     private async Task<IActionResult> DeclineAsync(string? returnAction)
     {
         try

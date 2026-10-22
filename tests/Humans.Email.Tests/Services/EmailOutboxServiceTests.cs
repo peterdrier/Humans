@@ -237,10 +237,6 @@ public sealed class EmailOutboxServiceTests
         await _repo.Received(1).DeleteForUserAsync(userId, Arg.Any<CancellationToken>());
     }
 
-    // ==========================================================================
-    // Daily send counts (nobodies-collective/Humans#1195)
-    // ==========================================================================
-
     [HumansFact]
     public async Task GetDailySendCountsAsync_AggregatesAcrossTemplatesPerDay()
     {
@@ -346,7 +342,7 @@ public sealed class EmailOutboxServiceTests
     [HumansFact]
     public async Task PreviewDailySendCountBackfillAsync_NeverBackfillsFailedCount()
     {
-        // Per issue nobodies-collective/Humans#1195: a failed message's actual failure day isn't recoverable
+        // A failed message's actual failure day isn't recoverable
         // from the outbox's final-state-only rows, so a backfilled row carries only
         // the deliveries — FailedCount stays 0 and the failure day is left for the
         // live processor. The row below is the tempting case: RetryCount says it

@@ -4,20 +4,8 @@ using NodaTime;
 
 namespace Humans.CityPlanning.Data;
 
-/// <summary>
-/// EF-backed implementation of <see cref="ICityPlanningRepository"/>. The only
-/// non-test file that touches <c>DbContext.CampPolygons</c>,
-/// <c>DbContext.CampPolygonHistories</c>, or <c>DbContext.CityPlanningSettings</c>.
-/// Uses
-/// <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>CityPlanningDbContext</c> remains Scoped.
-/// </summary>
 internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbContext> factory) : ICityPlanningRepository
 {
-    // ==========================================================================
-    // Reads — CampPolygon
-    // ==========================================================================
-
     public async Task<IReadOnlyList<CampPolygon>> GetPolygonsByCampSeasonIdsAsync(
         IReadOnlyCollection<Guid> campSeasonIds, CancellationToken ct = default)
     {
@@ -49,17 +37,11 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
             .ToListAsync(ct);
     }
 
-    // ==========================================================================
-    // Reads — CampPolygonHistory
-    // ==========================================================================
-
     public async Task<IReadOnlyList<CampPolygonHistory>> GetHistoryForCampSeasonAsync(
         Guid campSeasonId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Display ordering (newest first) is applied by the controller
-        // (CityPlanningApiController.GetCampPolygonHistory) per
-        // memory/architecture/display-sort-in-controllers.md.
+        // Unordered: the controller sorts for display.
         return await ctx.CampPolygonHistories
             .AsNoTracking()
             .Where(h => h.CampSeasonId == campSeasonId)
@@ -74,10 +56,6 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
             .AsNoTracking()
             .FirstOrDefaultAsync(h => h.Id == historyId && h.CampSeasonId == campSeasonId, ct);
     }
-
-    // ==========================================================================
-    // Writes — CampPolygon + CampPolygonHistory
-    // ==========================================================================
 
     public async Task<CampPolygon> SavePolygonAndAppendHistoryAsync(
         Guid campSeasonId,
@@ -126,7 +104,7 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
 
         await ctx.SaveChangesAsync(ct);
 
-        // Detach so callers cannot accidentally mutate through a disposed context.
+        // Detach so callers cannot mutate through a disposed context.
         ctx.Entry(polygon).State = EntityState.Detached;
         return polygon;
     }
@@ -141,8 +119,7 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
 
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        // Load-and-remove rather than ExecuteDelete: a camp has a handful of seasons
-        // and one polygon each, and this stays provider-agnostic for the test suite.
+        // Load-and-remove rather than ExecuteDelete keeps this provider-agnostic for the test suite.
         var history = await ctx.CampPolygonHistories
             .Where(h => campSeasonIds.Contains(h.CampSeasonId))
             .ToListAsync(ct);
@@ -161,10 +138,6 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
         await ctx.SaveChangesAsync(ct);
         return history.Count + polygons.Count;
     }
-
-    // ==========================================================================
-    // Reads / Writes — CityPlanningSettings
-    // ==========================================================================
 
     public async Task<CityPlanningSettings?> GetSettingsAsync(int year, CancellationToken ct = default)
     {

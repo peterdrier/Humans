@@ -8,22 +8,6 @@ using NodaTime.Testing;
 
 namespace Humans.GoogleIntegration.Tests;
 
-/// <summary>
-/// Behavior tests for <see cref="GoogleResourceRepository"/> — the only
-/// non-test file that touches <c>DbSet&lt;GoogleResource&gt;</c> after the
-/// §15 <c>#540c</c> migration.
-///
-/// <para>
-/// The tests drive the real repository against an EF in-memory database
-/// wrapped in a minimal <see cref="IDbContextFactory{T}"/> so each method
-/// creates and disposes its own short-lived context (matching the
-/// production singleton-plus-factory shape documented in design-rules §15b).
-/// Every scenario below exists because an earlier version of the code — or
-/// a prospective refactor — got it wrong and cost real debugging time:
-/// grouping preserves the contract the service depends on, reactivation
-/// clears error state, bulk deactivation is single-transaction, etc.
-/// </para>
-/// </summary>
 public sealed class GoogleResourceRepositoryTests : IDisposable
 {
     private readonly DbContextOptions<GoogleIntegrationDbContext> _options;
@@ -244,12 +228,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
         return resource;
     }
 
-    /// <summary>
-    /// Minimal context factory that backs every <c>CreateDbContextAsync</c>
-    /// with the same <see cref="DbContextOptions"/>. This mirrors the
-    /// production Singleton-plus-factory shape (§15b) without requiring a
-    /// real provider.
-    /// </summary>
+    /// <summary>Backs every <c>CreateDbContextAsync</c> with the same options, like the production factory.</summary>
     private sealed class SingleContextFactory(DbContextOptions<GoogleIntegrationDbContext> options)
         : IDbContextFactory<GoogleIntegrationDbContext>
     {

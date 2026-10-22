@@ -15,7 +15,7 @@ using NodaTime;
 
 namespace Humans.Application.Services.Users.AccountLifecycle;
 
-// Orchestrates user/profile deletion cascade — sits above User/Profile so foundational services stay dependency-free of Teams/Shifts/Tickets.
+// Sits above User/Profile so the foundational services stay free of Teams/Shifts/Tickets.
 internal sealed class AccountDeletionService(
     IUserManagement userService,
     IUserEmailService userEmailService,
@@ -31,13 +31,11 @@ internal sealed class AccountDeletionService(
     IHostEnvironment environment,
     ILogger<AccountDeletionService> logger) : IAccountDeletionService, IOrchestrator
 {
-    /// <summary><see cref="PurgeAsync"/> refusal: purge is a dev/QA tool, never run in production.</summary>
+    /// <summary>Purge is a dev/QA tool, never run in production.</summary>
     internal const string PurgeRefusedInProduction = "Production";
 
-    /// <summary><see cref="PurgeAsync"/> refusal: an admin may not purge their own account.</summary>
+    /// <summary>An admin may not purge their own account.</summary>
     internal const string PurgeRefusedSelf = "Self";
-
-    // --- User-initiated deletion request (30-day scheduled) ---
 
     public async Task<DeletionRequestResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default)
     {
@@ -51,7 +49,7 @@ internal sealed class AccountDeletionService(
         var now = clock.GetCurrentInstant();
         var deletionDate = now.Plus(Duration.FromDays(30));
 
-        // Ticket hold: held until after the event so the ticket remains usable.
+        // Held until after the event so the ticket stays usable.
         Instant? eligibleAfter = null;
         var ticketHoldings = await ticketQueryService.GetUserTicketHoldingsAsync(userId, ct);
         if (ticketHoldings.HasCurrentEventTicket)
@@ -64,7 +62,7 @@ internal sealed class AccountDeletionService(
 
         await userService.SetDeletionPendingAsync(userId, now, deletionDate, eligibleAfter, ct);
 
-        // User loses access during grace period.
+        // Access ends during the grace period.
         var endedMemberships = await teamService.RevokeAllMembershipsAsync(userId, ct);
 
         var endedRoles = await roleAssignmentService.RevokeAllActiveAsync(userId, ct);
@@ -114,8 +112,6 @@ internal sealed class AccountDeletionService(
         return new OnboardingResult(true);
     }
 
-    // --- Admin-initiated immediate purge ---
-
     public async Task<OnboardingResult> PurgeAsync(Guid userId, Guid? actorId = null, CancellationToken ct = default)
     {
         if (environment.IsProduction())
@@ -133,21 +129,15 @@ internal sealed class AccountDeletionService(
             return new OnboardingResult(false, PurgeRefusedSelf);
         }
 
-        // Same Article 17 fan-out as the expiry path — an admin purge must not
-        // erase less than the scheduled job does. The Account contributor inside
-        // it owns the identity collapse (tombstone name and address, external
-        // logins, permanent lockout); a second pass here would capture the
-        // tombstone instead of the real name and break IsGdprAnonymized.
+        // The same fan-out as the expiry path, so a purge erases no less. The Account contributor
+        // owns the identity collapse; a second pass here would capture the tombstone instead of
+        // the real name and break IsGdprAnonymized.
         await EraseEverySectionAsync(userId, ct);
 
-        // Match AnonymizeExpiredAccountAsync's invalidation surface — contributors
-        // run against the inner UserService, so nothing behind the caching
-        // decorator has seen the collapse yet.
+        // Contributors run against the inner UserService, so the decorator hasn't seen the collapse.
         await userInfoRefresher.RefreshAsync(userId, ct);
 
-        // GDPR audit — right-of-access reads from the audit log. Like the scheduled
-        // path, the description must not name the human: the audit log survives
-        // erasure, so quoting the purged identity here would put it straight back.
+        // Must not name the human: the audit log survives erasure.
         const string description = "Admin-initiated purge: identity collapsed";
         if (actorId is Guid actor)
         {
@@ -164,12 +154,10 @@ internal sealed class AccountDeletionService(
         return new OnboardingResult(true);
     }
 
-    // --- Expiry-triggered anonymization (scheduled job) ---
-
     public async Task<AnonymizedAccountSummary?> AnonymizeExpiredAccountAsync(
         Guid userId, CancellationToken ct = default)
     {
-        // Capture identity slice BEFORE any writes — caller still needs it if the cascade throws.
+        // Captured before any write: the caller still needs it if the cascade throws.
         var user = await userService.GetRawUserInfoAsync(userId, ct);
         if (user is null)
             return null;
@@ -181,34 +169,21 @@ internal sealed class AccountDeletionService(
         // mid-cascade failure retries the whole fan-out tomorrow.
         await EraseEverySectionAsync(userId, ct);
 
-        // Cross-section cache invalidations (each contributor drops its own; these are the shared ones).
-        // The UserInfo entry first: contributors are registered against the inner
-        // UserService, so nothing behind the caching decorator has seen these writes
-        // and admin search would keep matching the erased human by their real name.
+        // Contributors write through the inner UserService, so the decorator hasn't seen these
+        // writes and admin search would keep matching the erased human by their real name.
         await userInfoRefresher.RefreshAsync(userId, ct);
 
         return summary;
     }
 
-    // --- GDPR Article 17 fan-out (delegated to Gdpr) ---
-
     /// <summary>
-    /// Erases every section's personal data for the account and for every account
-    /// previously merged into it. Resolves the merge chain here and calls
-    /// <see cref="IGdprService.EraseForUserAsync"/> per id — the loop over contributors
-    /// lives in Gdpr now, beside the export fan-out — invalidating each archived id's
-    /// cache entry as its erasure completes.
+    /// Erases the account and every account merged into it, sources first and the survivor last.
+    /// Sections without <see cref="IUserMerge"/> leave rows on the archived ids, and to the human
+    /// it was always one account.
     /// </summary>
     /// <remarks>
-    /// Merged-source ids are erased first, and only then the survivor. Merge moves rows for
-    /// the sections that implement <see cref="IUserMerge"/>; the ones that do not leave their
-    /// rows keyed to the archived source id, where erasing the survivor alone would never
-    /// reach them. To the human there was only ever one account, so all of it is their data.
-    /// <para>
-    /// Invalidation is interleaved with erasure, not batched after it: a contributor that
-    /// throws partway through the chain still leaves every id erased before it with its
-    /// cache dropped — an admin <see cref="PurgeAsync"/> has no daily retry to fix it later.
-    /// </para>
+    /// Cache invalidation is interleaved, not batched: a contributor that throws mid-chain still
+    /// leaves every earlier id erased and dropped, and a <see cref="PurgeAsync"/> has no daily retry.
     /// </remarks>
     private async Task EraseEverySectionAsync(Guid userId, CancellationToken ct)
     {
@@ -216,23 +191,16 @@ internal sealed class AccountDeletionService(
         {
             await gdprService.EraseForUserAsync(subjectId, ct);
 
-            // An archived id's own cache entry, dropped here: contributors write through the
-            // inner UserService, and the callers only invalidate the survivor. A stale entry
-            // would keep the merge tombstone's name searchable after it was erased.
+            // Callers only invalidate the survivor; a stale entry would keep the tombstone's name
+            // searchable after it was erased.
             if (subjectId != userId)
                 await userInfoRefresher.RefreshAsync(subjectId, ct);
         }
     }
 
     /// <summary>
-    /// Every archived id folded into <paramref name="userId"/>, with the survivor itself
-    /// last. The order is the contract, not <see cref="UserInfo.MergedUserIds"/>'s: erasure
-    /// runs contributors per id and a contributor that throws partway must leave every id
-    /// before it erased, so the survivor goes last. Typically returns one archived id.
-    /// <para>
-    /// Read raw, not through the redirecting read: erasing a tombstone id directly must
-    /// erase that one row, not jump to the living survivor and take the whole human with it.
-    /// </para>
+    /// Archived ids folded into <paramref name="userId"/>, survivor last — the order is the contract.
+    /// Read raw: erasing a tombstone id directly must erase that row, not jump to the survivor.
     /// </summary>
     private async Task<IReadOnlyList<Guid>> MergeChainAsync(Guid userId, CancellationToken ct)
     {

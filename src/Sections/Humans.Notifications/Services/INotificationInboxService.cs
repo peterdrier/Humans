@@ -3,99 +3,52 @@ using Humans.Notifications.Contracts;
 
 namespace Humans.Notifications.Services;
 
-/// <summary>
-/// Service for notification inbox read models and write operations:
-/// inbox/popup queries, resolve/dismiss, mark-read, and badge cache invalidation.
-/// Complements INotificationService (which handles dispatching new notifications).
-/// </summary>
-/// <remarks>
-/// Internal: nothing outside the section renders an inbox. The two calls other sections
-/// do make — auto-resolve by source and by source key — are inherited from
-/// <see cref="INotificationAutoResolve"/> on the contracts leaf, and the nightly purge
-/// from <see cref="INotificationRetention"/>, so the read models below stay internal too.
-/// </remarks>
 internal interface INotificationInboxService
     : IApplicationService, INotificationAutoResolve, INotificationRetention
 {
-    /// <summary>
-    /// Builds the notification inbox for a user with filtering, search, and tab support.
-    /// </summary>
     Task<NotificationInboxResult> GetInboxAsync(
         Guid userId, string? search, string filter, string tab,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Builds the notification popup (unresolved notifications) for a user.
-    /// </summary>
     Task<NotificationPopupResult> GetPopupAsync(
         Guid userId,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Resolves a notification (marks it as handled by the user).
-    /// NotFound if the notification does not exist; Forbidden if the user is not a recipient.
-    /// </summary>
+    /// <summary>NotFound when missing; Forbidden when the user isn't a recipient or it isn't actionable.</summary>
     Task<NotificationActionResult> ResolveAsync(
         Guid notificationId, Guid userId,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Dismisses an informational notification.
-    /// NotFound if the notification does not exist; Forbidden if the user is not a recipient
-    /// or the notification is actionable (cannot be dismissed).
-    /// </summary>
+    /// <summary>NotFound when missing; Forbidden when the user isn't a recipient or it is actionable.</summary>
     Task<NotificationActionResult> DismissAsync(
         Guid notificationId, Guid userId,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Marks a notification as read for the user.
-    /// </summary>
     Task<NotificationActionResult> MarkReadAsync(
         Guid notificationId, Guid userId,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Marks all unread notifications as read for the user.
-    /// </summary>
     Task MarkAllReadAsync(
         Guid userId,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Bulk-resolves selected actionable notifications.
-    /// </summary>
     Task BulkResolveAsync(
         List<Guid> notificationIds, Guid userId,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Bulk-dismisses selected informational notifications.
-    /// </summary>
     Task BulkDismissAsync(
         List<Guid> notificationIds, Guid userId,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Click-through: marks a notification as read and returns the action URL.
-    /// Returns null if the notification is not found, the user is not a recipient,
-    /// or the notification has no action URL.
-    /// </summary>
+    /// <summary>Marks it read. Null when not found, not a recipient, or there is no action URL.</summary>
     Task<string?> ClickThroughAsync(
         Guid notificationId, Guid userId,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Gets unread notification badge counts for a user (actionable + informational).
-    /// Used by the notification bell ViewComponent.
-    /// </summary>
     Task<(int Actionable, int Informational)> GetUnreadBadgeCountsAsync(
         Guid userId, CancellationToken ct = default);
 }
 
-/// <summary>
-/// A single notification row in inbox/popup views.
-/// </summary>
 internal sealed record NotificationRowDto
 {
     public Guid Id { get; init; }
@@ -111,9 +64,6 @@ internal sealed record NotificationRowDto
     public string? ResolvedByName { get; init; }
 }
 
-/// <summary>
-/// Result of the inbox query.
-/// </summary>
 internal sealed record NotificationInboxResult
 {
     public List<NotificationRowDto> NeedsAttention { get; init; } = [];
@@ -122,25 +72,18 @@ internal sealed record NotificationInboxResult
     public int UnreadCount { get; init; }
 
     /// <summary>
-    /// The tab actually queried ("all" or "unread"), which is not always the tab
-    /// asked for — the resolved filter forces "all". The view highlights this, so
-    /// the pill can never disagree with the rows underneath it.
+    /// The tab actually queried: the Resolved filter forces "all". The view highlights this one, so the pill
+    /// always matches the rows.
     /// </summary>
     public string EffectiveTab { get; init; } = "unread";
 }
 
-/// <summary>
-/// Result of the popup query.
-/// </summary>
 internal sealed record NotificationPopupResult
 {
     public List<NotificationRowDto> Actionable { get; init; } = [];
     public List<NotificationRowDto> Informational { get; init; } = [];
 }
 
-/// <summary>
-/// Result of a single notification action (resolve, dismiss, mark-read).
-/// </summary>
 internal sealed record NotificationActionResult(
     bool Success,
     bool NotFound = false,

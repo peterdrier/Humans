@@ -1,6 +1,5 @@
 namespace Humans.Surveys.Domain;
 
-/// <summary>Predicate operator for a single branching clause against a referenced question's answer.</summary>
 internal enum BranchOperator
 {
     Is = 0,

@@ -4,9 +4,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Auth.Services;
 
-/// <summary>
-/// Owns the Auth-section observable gauge: active role-assignment counts by role.
-/// </summary>
 internal sealed class AuthMetricsService : PolledGaugeService
 {
     private static readonly Meter HumansMeter = new("Humans.Metrics");

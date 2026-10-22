@@ -27,7 +27,6 @@ internal sealed class AttendeeContactImportService(
         var unmatched = await ticketRepository.GetUnmatchedActiveAttendeesAsync(eventId, ct);
         var decisions = new List<AttendeeImportDecision>();
 
-        // No email = one decision each (ungroupable).
         foreach (var a in unmatched.Where(a => string.IsNullOrWhiteSpace(a.AttendeeEmail)))
         {
             decisions.Add(await ClassifyAsync(a, [], [], ct));

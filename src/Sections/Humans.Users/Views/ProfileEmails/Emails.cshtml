@@ -2,14 +2,10 @@
 @model Humans.Users.Models.EmailsViewModel
 @{
     ViewData["Title"] = Localizer["Emails_Title"].Value;
-    // N>1 violation detection: self users normally toggle exclusively, so we
-    // hide Clear in the self grid. But when the data is already in violation
-    // (multiple verified Primary rows), the user is stuck — radios can't
-    // unselect — so expose Clear on the offending rows.
+    // Self users toggle exclusively, so Clear is hidden, except on rows already in violation
+    // (several verified Primary rows), where radios can't unselect.
     var hasMultiplePrimary = Model.Emails.Count(e => e.IsPrimary && e.IsVerified) > 1;
-    // Manual verify is gated by PolicyNames.AdminOnly server-side; surface the
-    // gate in the view so HumanAdmin/Board (who reach the page via
-    // UserEmailOperations.Edit) don't see a button that 403s on click.
+    // Manual verify is AdminOnly server-side; hide it from HumanAdmin/Board rather than 403.
     var canManuallyVerify = Model.IsAdminContext
         && (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
 }
@@ -83,7 +79,6 @@
             </div>
         }
 
-        @* Google sync rejection banner — GoogleIntegration's (nobodies-collective/Humans#677). *@
         <vc:workspace-identity user-id="@Model.TargetUserId" mode="banner" />
 
         <div class="card mb-4">
@@ -156,7 +151,7 @@
                                         var primaryChecked = isLockedRow ? true : row.IsPrimary;
                                         var primaryDisabled = workspaceLocked || !row.IsVerified;
                                     }
-                                    @* Buttons not radios (see #650): independent forms can't form a real radio group; admin needs unselect path *@
+                                    @* Buttons, not radios: independent forms can't form a radio group, and admins need to unselect. *@
                                     @{
                                         var showClearPrimary = !isLockedRow && row.IsPrimary
                                             && hasMultiplePrimary;
@@ -204,7 +199,6 @@
                                     }
                                 </td>
                                 <td>
-                                    @* The Google identity is GoogleIntegration's (Users decomposition commit 15). *@
                                     <vc:workspace-identity user-id="@Model.TargetUserId" mode="cell" email-id="@row.Id" admin-context="@Model.IsAdminContext" />
                                 </td>
                                 <td>
@@ -274,10 +268,8 @@
                                                 </form>
                                             }
                                         }
-                                        @* see nobodies-collective/Humans#758 — never offer delete for the
-                                           primary email (promote another first) or a ticket-linked email
-                                           (removing it could disconnect the user's event ticket). Admins
-                                           use the AdminDelete path which re-validates server-side. *@
+                                        @* Never offer delete for the primary (promote another first) or a
+                                           ticket-linked email. Admins use AdminDelete, which re-validates. *@
                                         else if (row.IsPrimary)
                                         {
                                             <span class="text-muted small" title="@Localizer["EmailGrid_DeletePrimaryBlocked"].Value">
@@ -355,7 +347,6 @@
             </div>
         }
 
-        @* see nobodies-collective/Humans#697 — admin AspNetUserLogins snapshot + disagreement flags *@
         @if (Model.IsAdminContext)
         {
             <div class="card mb-4 border-danger" id="external-logins">
@@ -543,7 +534,7 @@
 
         @if (!Model.IsAdminContext)
         {
-            @* see nobodies-collective/Humans#731 — Linked Accounts dashboard (server-validates CanUnlink) *@
+            @* CanUnlink is re-validated server-side. *@
             <div class="card mb-4" id="linked-accounts">
                 <div class="card-header">
                     <h5 class="mb-0"><i class="fa-solid fa-link me-2"></i>@Localizer["LinkedAccounts_Title"]</h5>
@@ -675,5 +666,5 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-    @* No local listeners — site.js global handlers cover these forms (duplicates double-submit) *@
+    @* No local listeners: site.js's global handlers cover these forms, and duplicates double-submit. *@
 }

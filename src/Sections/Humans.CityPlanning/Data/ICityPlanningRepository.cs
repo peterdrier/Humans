@@ -5,72 +5,28 @@ using NodaTime;
 namespace Humans.CityPlanning.Data;
 
 /// <summary>
-/// Repository for the City Planning section's owned tables:
-/// <c>city_planning_settings</c>, <c>camp_polygons</c>, and
-/// <c>camp_polygon_histories</c>. The only non-test file that may write to or
-/// query those DbSets.
+/// Reads are <c>AsNoTracking</c>. <see cref="CampPolygonHistory"/> is append-only: no update or delete of a single
+/// history row. <see cref="DeletePolygonsForCampSeasonsAsync"/> is the one exception.
 /// </summary>
-/// <remarks>
-/// Read methods are <c>AsNoTracking</c>. Per <see cref="CampPolygonHistory"/>'s
-/// append-only invariant (design-rules §12), this repository exposes no update or
-/// delete for a single history row; restores write a new one and update the
-/// corresponding <see cref="CampPolygon"/>. The season-scoped
-/// <see cref="DeletePolygonsForCampSeasonsAsync"/> is the one exception, and it
-/// removes the polygon with the history.
-/// </remarks>
 internal interface ICityPlanningRepository : IRepository
 {
-    // ==========================================================================
-    // Reads — CampPolygon
-    // ==========================================================================
-
-    /// <summary>
-    /// Returns every camp polygon whose <c>CampSeasonId</c> is in the given
-    /// collection. Read-only (AsNoTracking). Empty input returns an empty list.
-    /// </summary>
+    /// <summary>Empty input returns an empty list.</summary>
     Task<IReadOnlyList<CampPolygon>> GetPolygonsByCampSeasonIdsAsync(
         IReadOnlyCollection<Guid> campSeasonIds, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the subset of the given camp season ids that already have a
-    /// polygon row. Read-only (AsNoTracking).
-    /// </summary>
+    /// <summary>The subset of the given ids that already have a polygon row.</summary>
     Task<IReadOnlyList<Guid>> GetCampSeasonIdsWithPolygonAsync(
         IReadOnlyCollection<Guid> campSeasonIds, CancellationToken ct = default);
 
-    // ==========================================================================
-    // Reads — CampPolygonHistory
-    // ==========================================================================
-
-    /// <summary>
-    /// Returns all history entries for a single camp season, in no defined order —
-    /// display ordering belongs to the controller
-    /// (<c>memory/architecture/display-sort-in-controllers.md</c>). Read-only
-    /// (AsNoTracking). The returned rows carry only the FK <c>ModifiedByUserId</c>;
-    /// user display data is resolved through <c>IUserService</c> at the service
-    /// layer.
-    /// </summary>
+    /// <summary>In no defined order: the controller sorts for display.</summary>
     Task<IReadOnlyList<CampPolygonHistory>> GetHistoryForCampSeasonAsync(
         Guid campSeasonId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the history entry identified by <paramref name="historyId"/> if and
-    /// only if it belongs to <paramref name="campSeasonId"/>. Read-only
-    /// (AsNoTracking). Returns <c>null</c> when no match exists.
-    /// </summary>
+    /// <summary>Null unless the entry belongs to <paramref name="campSeasonId"/>.</summary>
     Task<CampPolygonHistory?> GetHistoryEntryAsync(
         Guid campSeasonId, Guid historyId, CancellationToken ct = default);
 
-    // ==========================================================================
-    // Writes — CampPolygon + CampPolygonHistory (atomic upsert + history append)
-    // ==========================================================================
-
-    /// <summary>
-    /// Upserts the <see cref="CampPolygon"/> for the given camp season and appends
-    /// a new <see cref="CampPolygonHistory"/> row in the same unit of work.
-    /// Returns the persisted polygon (detached); the appended history row is a side
-    /// effect, readable via <see cref="GetHistoryForCampSeasonAsync"/>.
-    /// </summary>
+    /// <summary>Upserts the polygon and appends a history row in one unit of work. Returns the polygon, detached.</summary>
     Task<CampPolygon> SavePolygonAndAppendHistoryAsync(
         Guid campSeasonId,
         string geoJson,
@@ -81,44 +37,20 @@ internal interface ICityPlanningRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Deletes every polygon and history row belonging to the given camp seasons,
-    /// in one unit of work. Returns the number of rows removed across both tables.
-    /// Empty input is a no-op returning 0.
+    /// One unit of work; returns rows removed across both tables. No FK ties these rows to a season, so nothing in
+    /// the database cascades when one goes.
     /// </summary>
-    /// <remarks>
-    /// This section's tables carry no FK to <c>CampSeason</c> — the column is a bare
-    /// <c>Guid</c> — so nothing in the database cascades when a camp season goes.
-    /// Camps calls this through <c>ICityPlanningWrite</c> inside its own delete,
-    /// never repository-to-repository.
-    /// </remarks>
     Task<int> DeletePolygonsForCampSeasonsAsync(
         IReadOnlyCollection<Guid> campSeasonIds, CancellationToken ct = default);
 
-    // ==========================================================================
-    // Reads / Writes — CityPlanningSettings
-    // ==========================================================================
-
-    /// <summary>
-    /// Returns the <see cref="CityPlanningSettings"/> row for the given year, detached,
-    /// or null when none exists. Never writes — the read path's lookup.
-    /// </summary>
+    /// <summary>Detached; null when none exists. Never writes: the read path's lookup.</summary>
     Task<CityPlanningSettings?> GetSettingsAsync(int year, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the <see cref="CityPlanningSettings"/> row for the given year,
-    /// creating a new one (no override, no schedule) if it does not
-    /// exist yet. Always returns a detached, up-to-date row. Write paths only —
-    /// reads use <see cref="GetSettingsAsync"/>.
-    /// </summary>
+    /// <summary>Creates the row (no override, no schedule) when missing. Write paths only.</summary>
     Task<CityPlanningSettings> GetOrCreateSettingsAsync(
         int year, Instant now, CancellationToken ct = default);
 
-    /// <summary>
-    /// Loads the settings row for the given year (creating on demand), applies
-    /// <paramref name="mutate"/>, sets <c>UpdatedAt</c> to <paramref name="now"/>,
-    /// and persists. Read the result back through
-    /// <see cref="GetOrCreateSettingsAsync"/> when a caller needs it.
-    /// </summary>
+    /// <summary>Creates the row on demand, applies <paramref name="mutate"/>, stamps <c>UpdatedAt</c>, and saves.</summary>
     Task MutateSettingsAsync(
         int year,
         Action<CityPlanningSettings> mutate,

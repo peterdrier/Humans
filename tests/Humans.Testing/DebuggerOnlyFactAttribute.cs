@@ -3,14 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace Humans.Testing;
 
-/// <summary>
-/// Marks a test that should only run when a debugger is attached. When no
-/// debugger is present the test is reported as skipped, keeping the suite
-/// green in CI while still allowing the test to be exercised by hand.
-///
-/// Intended for harness and diagnostic tests you run intentionally under a
-/// debugger rather than in the automated suite.
-/// </summary>
+/// <summary>Runs only with a debugger attached; skipped otherwise, so CI stays green.</summary>
 public sealed class DebuggerOnlyFactAttribute : HumansFactAttribute
 {
     private const string SkipMessage = "This test only runs under a debugger (attach one to execute it).";
@@ -26,11 +19,6 @@ public sealed class DebuggerOnlyFactAttribute : HumansFactAttribute
     }
 }
 
-/// <summary>
-/// Condition type for <see cref="DebuggerOnlyFactAttribute"/>.
-/// xUnit v3 reads <see cref="IsDebuggerAttached"/> at runtime to decide
-/// whether to run or skip the test.
-/// </summary>
 public static class DebuggerRunCondition
 {
     public static bool IsDebuggerAttached => Debugger.IsAttached;

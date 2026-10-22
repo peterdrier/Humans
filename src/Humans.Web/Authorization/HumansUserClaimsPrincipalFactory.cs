@@ -6,13 +6,9 @@ using Humans.Users.Contracts;
 namespace Humans.Web.Authorization;
 
 /// <summary>
-/// Replaces the default <c>Name</c> claim (which Identity sources from
-/// <c>UserName</c>) with the user's resolved BurnerName. After PR 1
-/// of the email-identity-decoupling spec, <c>UserName</c> is the user's GUID
-/// for any account created via the OAuth callback or magic-link signup, so
-/// reading <c>User.Identity.Name</c> would otherwise show a GUID in the topbar
-/// avatar and dashboard greeting. <c>NameIdentifier</c> still carries the
-/// user id, so authorization is unaffected.
+/// Replaces the default <c>Name</c> claim (Identity sources it from <c>UserName</c>, which is the user's GUID for
+/// OAuth and magic-link accounts) with the BurnerName, so the topbar never shows a GUID. <c>NameIdentifier</c> still
+/// carries the user id, so authorization is unaffected.
 /// </summary>
 public sealed class HumansUserClaimsPrincipalFactory(
     UserManager<User> userManager,

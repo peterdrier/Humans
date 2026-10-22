@@ -6,19 +6,8 @@ using Xunit;
 namespace Humans.GoogleIntegration.Tests.Infrastructure;
 
 /// <summary>
-/// Focused unit tests for <see cref="GoogleDrivePermissionsClient.IsDuplicatePermissionError"/>,
-/// the classifier that decides whether an HTTP 400 from
-/// <c>drive.permissions.create</c> should be treated as an idempotent
-/// <see cref="DrivePermissionCreateOutcome.AlreadyExists"/>
-/// (the user already has a permission) or a real failure that should
-/// surface to the caller for retry / investigation.
-///
-/// <para>
-/// Treating every 400 as
-/// "already exists" silently swallows malformed-payload / bad-role /
-/// rate-limit failures. This classifier is the guard that prevents the
-/// regression.
-/// </para>
+/// Treating every 400 from <c>drive.permissions.create</c> as AlreadyExists would silently swallow
+/// malformed-payload, bad-role and rate-limit failures.
 /// </summary>
 public class GoogleDrivePermissionsClientClassifierTests
 {
@@ -108,11 +97,8 @@ public class GoogleDrivePermissionsClientClassifierTests
 }
 
 /// <summary>
-/// Focused unit tests for <see cref="GoogleDrivePermissionsClient.IsInheritedPermissionError"/>,
-/// the classifier that decides whether an HTTP 403 from
-/// <c>drive.permissions.delete</c> is the terminal "permission is inherited
-/// from a parent folder" case (nobodies-collective/Humans#945) vs. any other
-/// 403 that should surface to the caller for retry / investigation.
+/// Separates the terminal "permission is inherited from a parent folder" 403 on
+/// <c>drive.permissions.delete</c> from any other 403, which must surface for retry.
 /// </summary>
 public class GoogleDrivePermissionsClientInheritedErrorClassifierTests
 {

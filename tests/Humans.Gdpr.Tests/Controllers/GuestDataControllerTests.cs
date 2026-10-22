@@ -16,9 +16,8 @@ using Xunit;
 namespace Humans.Gdpr.Tests.Controllers;
 
 /// <summary>
-/// <see cref="GuestDataController"/>'s deletion request and cancellation for profileless accounts
-/// (moved from Users' <c>GuestAccountController</c> in Users decomposition commit 14): Gdpr routes,
-/// flash mapping, anti-forgery and the signed-in-only gate.
+/// <see cref="GuestDataController"/>'s deletion request and cancellation for profileless accounts:
+/// Gdpr routes, flash mapping, anti-forgery and the signed-in-only gate.
 /// </summary>
 public sealed class GuestDataControllerTests
 {

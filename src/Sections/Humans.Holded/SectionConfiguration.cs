@@ -4,10 +4,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace Humans.Holded;
 
-/// <summary>
-/// Holded's own settings — both bound in <c>Section.Register</c>'s
-/// <c>HoldedClientOptions</c>. BaseUrl has a default; the key is env-var only.
-/// </summary>
+/// <summary>BaseUrl has a default; the key is env-var only.</summary>
 internal sealed class SectionConfiguration : ISectionConfiguration
 {
     public void DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)

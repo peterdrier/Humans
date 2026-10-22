@@ -5,26 +5,8 @@ using NodaTime;
 
 namespace Humans.Notifications.Data;
 
-/// <summary>
-/// EF-backed implementation of <see cref="INotificationRepository"/>. The
-/// only non-test file that touches <see cref="NotificationsDbContext.Notifications"/>
-/// and <see cref="NotificationsDbContext.NotificationRecipients"/>. Uses
-/// <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>NotificationsDbContext</c> remains Scoped.
-/// </summary>
-/// <remarks>
-/// Read methods deliberately do not <c>.Include</c> cross-domain user data
-/// (recipient <see cref="NotificationRecipient.UserId"/>,
-/// resolver <see cref="Notification.ResolvedByUserId"/>). Callers resolve
-/// display names through <c>IUserService</c> and stitch results in memory,
-/// preserving table ownership and eliminating cross-domain joins.
-/// </remarks>
 internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbContext> factory) : INotificationRepository
 {
-    // ==========================================================================
-    // Writes — notifications
-    // ==========================================================================
-
     public async Task AddRangeAsync(IReadOnlyList<Notification> notifications, CancellationToken ct = default)
     {
         if (notifications.Count == 0) return;
@@ -260,10 +242,6 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
         return (toDelete.Count, toDelete.SelectMany(n => n.Recipients).Select(r => r.UserId).Distinct().ToList());
     }
 
-    // ==========================================================================
-    // Reads — inbox / popup
-    // ==========================================================================
-
     public async Task<IReadOnlyList<NotificationRecipient>> GetInboxAsync(
         Guid userId,
         string? search,
@@ -370,10 +348,6 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
             .ToListAsync(ct);
     }
 
-    // ==========================================================================
-    // Account-merge fold
-    // ==========================================================================
-
     public async Task<int> EraseForUserAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -424,10 +398,8 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
 
         foreach (var src in sourceRows)
         {
-            // NotificationRecipient.UserId is init-only (composite-key field),
-            // so re-FK is implemented as remove + add a fresh row preserving
-            // ReadAt. Same-NotificationId collision: target already has a
-            // recipient row, so drop source's without re-adding.
+            // UserId is init-only (composite key), so re-FK is remove + add, keeping ReadAt. When the target
+            // already has a row, the source's is just dropped.
             ctx.NotificationRecipients.Remove(src);
 
             if (targetNotificationIdSet.Contains(src.NotificationId))
@@ -443,9 +415,7 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
             });
         }
 
-        // Re-FK shared-resolution attribution from source to target so that
-        // "Resolved by" lookups after merge keep pointing to a live user
-        // rather than a tombstone.
+        // So "Resolved by" keeps pointing at a live user rather than a tombstone.
         var resolvedBySource = await ctx.Notifications
             .Where(n => n.ResolvedByUserId == sourceUserId)
             .ToListAsync(ct);

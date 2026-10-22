@@ -9,14 +9,9 @@ using Humans.Users.Contracts;
 namespace Humans.Governance.Jobs;
 
 /// <summary>
-/// Daily Colaborador / Asociado term expiry: every member whose tier has no Approved application
-/// still in term drops to their other in-term tier, or to Volunteer, with one
-/// <see cref="AuditAction.TierDowngraded"/> entry each. The schedule lives in <c>SectionJobs.cs</c>.
-/// </summary>
-/// <remarks>
 /// System-team membership does not wait on this job: Teams' sync reads the date-filtered active
 /// approvals, so a lapsed term leaves the team on the first sync after the date turns.
-/// </remarks>
+/// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 internal sealed class MembershipTierExpiryJob(
     IGovernanceManagement governance,

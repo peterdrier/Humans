@@ -9,18 +9,9 @@ using SdkPermission = Google.Apis.Drive.v3.Data.Permission;
 namespace Humans.GoogleIntegration.Services.Workspace;
 
 /// <summary>
-/// Real Google-backed implementation of <see cref="IGoogleDrivePermissionsClient"/>.
-/// Talks to the Google Drive v3 API using the configured service account.
-/// This is the only file that imports <c>Google.Apis.*</c> for Drive
-/// folder and permission management performed by
-/// <c>GoogleWorkspaceSyncService</c>.
+/// Every request sets <c>SupportsAllDrives</c> (Shared Drives only); permission lists request
+/// <c>permissionDetails</c> to tell inherited from direct.
 /// </summary>
-/// <remarks>
-/// Every request is issued with <c>SupportsAllDrives = true</c> per the
-/// "Shared Drives only" rule. Permission list requests explicitly request
-/// <c>permissionDetails</c> so callers can distinguish inherited from
-/// direct permissions.
-/// </remarks>
 internal sealed class GoogleDrivePermissionsClient(
     IOptions<GoogleWorkspaceSettings> settings,
     ILogger<GoogleDrivePermissionsClient> logger) : IGoogleDrivePermissionsClient
@@ -108,19 +99,15 @@ internal sealed class GoogleDrivePermissionsClient(
         }
         catch (Google.GoogleApiException ex) when (ex.Error?.Code == 400 && IsDuplicatePermissionError(ex.Error))
         {
-            // Drive returns HTTP 400 with an "already exists"-style reason
-            // when the same user already has a permission on the file.
-            // Other 400s (malformed payload, unsupported role, etc.) are
-            // real failures and fall through to the generic handler below
-            // so callers can surface and retry them.
+            // A 400 with an "already exists" reason: the user already has the permission. Other 400s fall
+            // through to the generic handler.
             return new DrivePermissionMutationResult(
                 DrivePermissionCreateOutcome.AlreadyExists,
                 Error: null);
         }
         catch (Google.GoogleApiException ex)
         {
-            // Debug only — GoogleWorkspaceSyncService logs the failure with
-            // resource/role context (nobodies-collective/Humans#893).
+            // Debug only: GoogleWorkspaceSyncService logs the failure with resource and role context.
             logger.LogDebug(ex,
                 "Google API error granting {Role} to {Email} on {FileId}: Code={Code} Message={Message}",
                 role, userEmail, fileId, ex.Error?.Code, ex.Error?.Message);
@@ -170,18 +157,15 @@ internal sealed class GoogleDrivePermissionsClient(
         }
         catch (Google.GoogleApiException ex) when (ex.Error?.Code == 403 && IsInheritedPermissionError(ex.Error))
         {
-            // Drive returns HTTP 403 when the permission is inherited from a
-            // parent folder — it can never be deleted at this level. Terminal:
-            // GoogleWorkspaceSyncService records this so it stops re-attempting
-            // the same delete on future nightly passes (nobodies-collective/Humans#945).
+            // A 403 means the permission is inherited and can never be deleted here. Terminal, so the sync
+            // stops re-attempting it every night.
             return new DrivePermissionDeleteResult(
                 DrivePermissionDeleteOutcome.InheritedPermission,
                 new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
         }
         catch (Google.GoogleApiException ex)
         {
-            // Debug only — GoogleWorkspaceSyncService logs the failure with
-            // resource context (nobodies-collective/Humans#893).
+            // Debug only: GoogleWorkspaceSyncService logs the failure with resource context.
             logger.LogDebug(ex,
                 "Google API error deleting permission {PermissionId} on {FileId}: Code={Code} Message={Message}",
                 permissionId, fileId, ex.Error?.Code, ex.Error?.Message);
@@ -309,14 +293,8 @@ internal sealed class GoogleDrivePermissionsClient(
     }
 
     /// <summary>
-    /// Classifies an HTTP 400 error as a duplicate-permission case (safe to
-    /// treat as idempotent success) vs. any other bad-request failure
-    /// (malformed payload, invalid role, etc.). Matches Google's
-    /// "already exists" wording in both the top-level message and each
-    /// <c>errors[].message</c> / <c>errors[].reason</c> so that wording
-    /// changes on one side still fall into the correct bucket. Any error
-    /// that does not match defaults to Failed so real problems are not
-    /// silently swallowed.
+    /// A duplicate permission (safe as idempotent success) vs any other 400. Matches "already exists" in the message and
+    /// each <c>errors[]</c> entry; anything unmatched is a failure, so real problems are not swallowed.
     /// </summary>
     internal static bool IsDuplicatePermissionError(Google.Apis.Requests.RequestError error)
     {
@@ -351,16 +329,8 @@ internal sealed class GoogleDrivePermissionsClient(
         text.Contains("already exist", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Classifies an HTTP 403 from <c>drive.permissions.delete</c> as an
-    /// inherited-permission failure (terminal — the permission can never be
-    /// deleted at this level, per
-    /// https://developers.google.com/workspace/drive/api/guides/limited-expansive-access)
-    /// vs. any other 403 (caller lacks delete rights, rate limiting, etc.).
-    /// Matches Google's <c>cannotDeletePermission</c> reason and "inherited"
-    /// wording in both the top-level message and each
-    /// <c>errors[].message</c>/<c>errors[].reason</c>. Any error that does not
-    /// match defaults to Failed so real problems surface for retry/investigation
-    /// (nobodies-collective/Humans#945).
+    /// An inherited permission (terminal: https://developers.google.com/workspace/drive/api/guides/limited-expansive-access)
+    /// vs any other 403. Matches <c>cannotDeletePermission</c> and "inherited"; anything unmatched is a failure.
     /// </summary>
     internal static bool IsInheritedPermissionError(Google.Apis.Requests.RequestError error)
     {
@@ -394,11 +364,8 @@ internal sealed class GoogleDrivePermissionsClient(
 
     private static DrivePermission MapPermission(SdkPermission p)
     {
-        // Issue nobodies-collective/Humans#945 — ANY inherited permissionDetails
-        // entry, not just an all-inherited permission, makes the permission
-        // undeletable at this level (Drive 403s "cannot delete an inherited
-        // permission" even when the same permission also has a direct
-        // component).
+        // ANY inherited permissionDetails entry makes the permission undeletable here, even with a direct
+        // component.
         var hasInheritedComponent =
             p.PermissionDetails is { Count: > 0 } details &&
             details.Any(d => d.Inherited == true);

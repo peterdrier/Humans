@@ -6,13 +6,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Auth.Services;
 
-/// <summary>
-/// The magic-link sign-in orchestrator. Owns no table and writes none: <see cref="UserManager{TUser}"/>
-/// is read-only here (user lookup). Token minting and URL shape sit behind
-/// <see cref="IMagicLinkUrlBuilder"/>; replay and cooldown state behind
-/// <see cref="IMagicLinkRateLimiter"/>, so this type names no <c>DbContext</c>,
-/// no <c>IDataProtectionProvider</c> and no <c>IMemoryCache</c>.
-/// </summary>
+/// <summary><see cref="UserManager{TUser}"/> is for lookup only: this service writes no table.</summary>
 internal sealed class MagicLinkService(
     UserManager<User> userManager,
     IUserEmailService userEmailService,
@@ -111,7 +105,7 @@ internal sealed class MagicLinkService(
         if (!await rateLimiter.TryReserveUserSendAsync(user.Id, RateLimitCooldown.ToTimeSpan()))
         {
             logger.LogDebug("Magic link rate-limited for user {UserId}", user.Id);
-            return; // Silently skip — same "check your email" message shown to user
+            return; // Same "check your email" message either way: no enumeration.
         }
 
         try

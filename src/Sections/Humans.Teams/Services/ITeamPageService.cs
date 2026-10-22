@@ -105,10 +105,8 @@ internal sealed record TeamPageShiftsSummary(
 internal sealed record TeamPageTeamLink(Guid Id, string Name, string Slug);
 
 /// <summary>
-/// One row of the department page's subteam-member rollup: a child-team member
-/// (coordinator lead, or an ordinary member not already a direct department
-/// member). <see cref="RoleTitle"/> is the child team's management role name,
-/// populated only for coordinators.
+/// A child-team coordinator, or a member not already directly in the department. <see cref="RoleTitle"/> is set for
+/// coordinators only.
 /// </summary>
 internal sealed record TeamPageChildTeamMemberSummary(
     Guid UserId,
@@ -158,23 +156,15 @@ internal sealed record TeamPageDetailResult(
 
 internal interface ITeamPageService : IApplicationService
 {
-    /// <summary>
-    /// Gets the summarized team directory for anonymous or authenticated viewers.
-    /// </summary>
     Task<TeamDirectoryResult> GetTeamDirectoryAsync(Guid? userId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Gets the public roster summary with optional filters applied.
-    /// </summary>
     Task<IReadOnlyList<TeamRosterSlotSummary>> GetRosterAsync(
         string? priority,
         string? status,
         string? period,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Gets the current user's team memberships with viewer-specific pending-request counts.
-    /// </summary>
+    /// <summary>With viewer-specific pending-request counts.</summary>
     Task<IReadOnlyList<MyTeamMembershipSummary>> GetMyTeamMembershipsAsync(
         Guid userId,
         CancellationToken cancellationToken = default);

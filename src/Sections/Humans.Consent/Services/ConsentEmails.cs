@@ -9,17 +9,9 @@ using Microsoft.Extensions.Options;
 namespace Humans.Consent.Services;
 
 /// <summary>
-/// Consent's own email templates: one method per template, each returning a ready
-/// <see cref="EmailMessage"/> (content plus the routing policy Consent chooses — template
-/// name and opt-out category) for the single <see cref="IEmailService.SendAsync"/> path.
-/// Copy lives in Consent's own resx set and is rendered in the recipient's culture inside
-/// a <see cref="CultureScope"/> (memory/architecture/email-templates-live-in-sender.md,
-/// peterdrier/Humans#1651). Pure — no I/O, no persistence.
+/// Both templates are always-send (no <c>Category</c>): a member who hasn't signed a required document loses
+/// access, so the notice isn't something to opt out of.
 /// </summary>
-/// <remarks>
-/// Both templates are always-send (no <c>Category</c>): a member who has not signed a
-/// required document loses access, so the notice is not marketing they may opt out of.
-/// </remarks>
 internal sealed class ConsentEmails(
     IOptions<EmailSettings> settings,
     IStringLocalizer<ConsentResource> localizer,

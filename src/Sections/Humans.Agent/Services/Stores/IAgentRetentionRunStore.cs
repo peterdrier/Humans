@@ -3,12 +3,7 @@ using Humans.Agent.Models;
 
 namespace Humans.Agent.Services.Stores;
 
-/// <summary>
-/// Singleton, in-process record of the last <c>AgentConversationRetentionJob</c>
-/// run. The job writes; the admin status page reads. State is intentionally
-/// not persisted — a process restart resets the snapshot to "never run" and
-/// the next scheduled job execution refreshes it.
-/// </summary>
+/// <summary>Not persisted: a restart resets it to "never run" until the next job run.</summary>
 internal interface IAgentRetentionRunStore
 {
     AgentRetentionRunSnapshot Snapshot { get; }

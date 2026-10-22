@@ -1,10 +1,6 @@
 namespace Humans.Tickets.Domain;
 
-/// <summary>
-/// Lifecycle states for a ticket transfer request.
-/// Transitions: Pending → Approved | Rejected | Cancelled.
-/// Approved/Rejected/Cancelled are terminal.
-/// </summary>
+/// <summary>Pending, then one of the three terminal states.</summary>
 internal enum TicketTransferStatus
 {
     Pending,

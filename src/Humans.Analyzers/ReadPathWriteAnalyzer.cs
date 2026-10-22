@@ -41,7 +41,7 @@ public sealed class ReadPathWriteAnalyzer : DiagnosticAnalyzer
 {
     public const string DiagnosticId = "HUM0038";
 
-    /// <summary>Derived from the attribute class, never a literal (nobodies-collective/Humans#1057).</summary>
+    /// <summary>Derived from the attribute class, never a literal.</summary>
     public static readonly string ExternalWriteAttributeFullName =
         typeof(ExternalWriteAttribute).FullName!;
 

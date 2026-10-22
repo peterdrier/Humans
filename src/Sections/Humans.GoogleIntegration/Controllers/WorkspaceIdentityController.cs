@@ -9,11 +9,8 @@ using Microsoft.Extensions.Localization;
 namespace Humans.GoogleIntegration.Controllers;
 
 /// <summary>
-/// Designates which verified address is a member's Google Workspace identity, from the Emails grid
-/// (the member's own <c>/Profile/Me/Emails</c> and the admin grid <c>/Profile/{id}/Admin/Emails</c>).
-/// Same self-or-HumanAdmin/Board/Admin gate as the grid. Moved out of Users'
-/// <c>ProfileEmailsController</c> in Users decomposition commit 15; served at
-/// <c>/Google/WorkspaceEmail</c> (self) and <c>/Google/Admin/{id}/WorkspaceEmail</c> (admin).
+/// Designates which verified address is a member's Google Workspace identity, from the Emails grid.
+/// Same self-or-HumanAdmin/Board/Admin gate as the grid.
 /// </summary>
 [Authorize]
 [Route("Google")]

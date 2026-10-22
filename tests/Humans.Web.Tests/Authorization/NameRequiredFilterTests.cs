@@ -14,18 +14,10 @@ using Humans.Users.Contracts;
 
 namespace Humans.Web.Tests.Authorization;
 
-/// <summary>
-/// Verifies the onboarding name-gate (<see cref="NameRequiredFilter"/>): authenticated
-/// users with a blank BurnerName are redirected to the name form, while named users,
-/// unauthenticated requests, the gate page itself, and allow-listed routes pass through.
-/// Covers redirect-loop safety for nobodies-collective/Humans#812.
-/// </summary>
 public class NameRequiredFilterTests
 {
 
-    // OnboardingWidgetController is internal to Humans.Onboarding since that section's G5,
-    // so it cannot be named by typeof here. Resolved by reflection through the discovered
-    // section assemblies, throwing on a miss so a rename cannot quietly drop the row.
+    // Internal to Humans.Onboarding, so resolved by name; a miss throws rather than dropping the row.
     private static readonly Type OnboardingWidgetControllerType =
         SectionDiscoveryExtensions.SectionAssemblies()
             .Select(a => a.GetType("Humans.Onboarding.Controllers.OnboardingWidgetController", throwOnError: false))
@@ -112,12 +104,8 @@ public class NameRequiredFilterTests
         Assert.Null(ctx.Result);
     }
 
-    // Regression for the onboarding-shift bypass (Codex review on #812): only the
-    // Names form is exempt, so every other OnboardingWidget route — the dispatcher,
-    // and the shift-signup/consent POSTs that don't all re-check names — must
-    // redirect a nameless user to the form rather than let them act. Before this,
-    // the whole controller was exempt and a nameless user could POST
-    // OnboardingWidget/SignUp to create a rota signup with a blank-name profile.
+    // Only the Names form is exempt. When the whole controller was, a nameless user could POST
+    // OnboardingWidget/SignUp and create a rota signup with a blank-name profile.
     [HumansTheory]
     [InlineData("OnboardingWidget", "Index")]
     [InlineData("OnboardingWidget", "Shifts")]

@@ -15,14 +15,6 @@ using Humans.GoogleIntegration.Services.Workspace;
 
 namespace Humans.GoogleIntegration.Tests;
 
-/// <summary>
-/// End-to-end test of the sync removal-notification flow (issue
-/// peterdrier/Humans#639). Wires <see cref="GoogleGroupSyncService"/> to a
-/// real <see cref="GoogleRemovalNotificationService"/> and asserts the
-/// resulting <see cref="IEmailService"/> calls. The integration boundary is
-/// now a confirmed Google Group membership delete inside the group
-/// orchestrator.
-/// </summary>
 public sealed class GoogleSyncRemovalNotificationIntegrationTests
 {
     private readonly IGoogleGroupMembershipClient _groupMembership = Substitute.For<IGoogleGroupMembershipClient>();

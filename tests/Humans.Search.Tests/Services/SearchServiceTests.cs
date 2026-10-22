@@ -13,13 +13,8 @@ using Xunit;
 namespace Humans.Search.Tests.Services;
 
 /// <summary>
-/// Orchestration tests for <see cref="SearchService"/> against substitutes for the five
-/// section read interfaces. Pinned here and nowhere else: the field mask the human bucket
-/// asks for (<see cref="PersonSearchFields.PublicAll"/>, the only search-time privacy
-/// filter this service owns) and the key/sort-key pass-through. Scoring and the per-section
-/// visibility filters are pinned where they live — <c>CachingTeamServiceTests</c>,
-/// <c>CachingCampServiceTests</c>, <c>CachingEventServiceTests</c>,
-/// <c>ShiftManagementServiceTests</c> and <c>ShiftRepositoryRotaSearchTests</c>.
+/// Pinned here and nowhere else: the human bucket's field mask (<see cref="PersonSearchFields.PublicAll"/>,
+/// this service's only search-time privacy filter) and the key/sort-key pass-through.
 /// </summary>
 public sealed class SearchServiceTests
 {
@@ -40,10 +35,6 @@ public sealed class SearchServiceTests
         StubRotas(new RotaSearchHit(Guid.NewGuid(), "Kitchen", ScoreExact));
         StubEvents(new EventSearchHit(Guid.NewGuid(), "Kitchen Takeover", ScoreExact));
     }
-
-    // ==========================================================================
-    // Query-length gate
-    // ==========================================================================
 
     [HumansTheory]
     [InlineData("")]
@@ -87,10 +78,6 @@ public sealed class SearchServiceTests
         await _camps.Received(1).SearchAsync("Kitchen", Arg.Any<int>(), Arg.Any<CancellationToken>());
         await _shifts.Received(1).SearchAsync("Kitchen", Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
-
-    // ==========================================================================
-    // onlyType short-circuit
-    // ==========================================================================
 
     /// <summary>
     /// Each <c>onlyType</c> value queries just that section and skips the other four. One
@@ -146,10 +133,6 @@ public sealed class SearchServiceTests
         results.Events.Should().ContainSingle();
     }
 
-    // ==========================================================================
-    // Keys and ordering fields pass through untouched
-    // ==========================================================================
-
     [HumansFact]
     public async Task SearchAsync_CarriesEachSectionsOwnScore_WithoutRescoring()
     {
@@ -194,14 +177,10 @@ public sealed class SearchServiceTests
         ev.SortKey.Should().Be("Fire & Ice");
     }
 
-    // ==========================================================================
-    // The ruling: a GUID hit is a routing convenience, not an authorization statement
-    // ==========================================================================
-
     [HumansFact]
     public async Task SearchAsync_GuidQuery_ReturnsWhateverEachSectionResolved()
     {
-        // By-GUID lookups skip the visibility filter (nobodies-collective/Humans#985): the
+        // By-GUID lookups skip the visibility filter: the
         // destination page decides whether the caller may open it. Each section owns that
         // branch; this service passes the hits through unchanged.
         var id = Guid.NewGuid();
@@ -230,10 +209,6 @@ public sealed class SearchServiceTests
         results.Camps.Should().BeEmpty();
         results.Shifts.Should().BeEmpty();
     }
-
-    // ==========================================================================
-    // The one search-time privacy filter this service owns
-    // ==========================================================================
 
     [HumansFact]
     public async Task SearchAsync_HumanBucket_AlwaysAsksForPublicFieldsOnly()
@@ -277,10 +252,6 @@ public sealed class SearchServiceTests
         await _events.Received(1).SearchAsync(Arg.Any<string>(), int.MaxValue, Arg.Any<CancellationToken>());
     }
 
-    // ==========================================================================
-    // Features:Events flag
-    // ==========================================================================
-
     [HumansFact]
     public async Task SearchAsync_EventsFeatureOff_ReturnsNoEvents_AndNeverCallsTheEventsSection()
     {
@@ -291,10 +262,6 @@ public sealed class SearchServiceTests
         await _events.DidNotReceive().SearchAsync(
             Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
-
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
 
     private SearchService Build(bool eventsEnabled = true) =>
         new(_users, _teams, _camps, _shifts, _events,

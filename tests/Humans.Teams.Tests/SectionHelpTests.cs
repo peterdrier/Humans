@@ -4,10 +4,7 @@ using Humans.Base.Models;
 namespace Humans.Teams.Tests;
 
 /// <summary>
-/// The help widget and the agent's glossary corpus read this section's help content through
-/// the <c>ISectionHelp</c> seam, so what it contributes is pinned here rather than in Base.
-/// The markdown itself lives in <c>Docs/help/</c> and ships as an embedded resource — a
-/// renamed file or a missing csproj entry surfaces as a null Guide or Glossary below.
+/// Docs/help/ ships as an embedded resource: a renamed file or missing csproj entry shows as a null Guide or Glossary.
 /// </summary>
 public class SectionHelpTests
 {

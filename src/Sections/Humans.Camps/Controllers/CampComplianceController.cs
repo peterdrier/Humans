@@ -6,10 +6,8 @@ using Humans.Users.Contracts;
 namespace Humans.Camps.Controllers;
 
 /// <summary>
-/// Read-only Barrios role-compliance matrix at <c>/Barrios/Admin/Compliance</c>.
-/// Split out from <see cref="CampAdminController"/> so it can be gated by the
-/// broader <see cref="PolicyNames.CampComplianceAccess"/> (CampAdmin/Admin OR any
-/// team coordinator) while the camp-management actions stay CampAdmin-only.
+/// Split from <see cref="CampAdminController"/> so the broader <see cref="PolicyNames.CampComplianceAccess"/> can
+/// gate it while camp management stays CampAdmin-only.
 /// </summary>
 [Authorize(Policy = PolicyNames.CampComplianceAccess)]
 [Route("Barrios/Admin")]

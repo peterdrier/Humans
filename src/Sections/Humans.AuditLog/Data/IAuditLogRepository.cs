@@ -4,71 +4,24 @@ using Humans.AuditLog.Contracts;
 
 namespace Humans.AuditLog.Data;
 
-/// <summary>
-/// Repository for the Audit Log section's tables: <c>audit_log</c>. The only
-/// non-test file that writes to <c>DbContext.AuditLogEntries</c> after the
-/// Audit Log migration lands.
-/// </summary>
-/// <remarks>
-/// <para>
-/// <c>audit_log</c> is append-only per design-rules §12 — only
-/// <see cref="AddAsync"/> is exposed; there are no <c>UpdateAsync</c>,
-/// <c>DeleteAsync</c>, <c>RemoveAsync</c>, or similar methods. New state =
-/// new row.
-/// </para>
-/// <para>
-/// Uses <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{TContext}"/>
-/// so the repository can be registered as Singleton while
-/// <c>AuditLogDbContext</c> remains Scoped.
-/// </para>
-/// </remarks>
 internal interface IAuditLogRepository : IRepository
 {
-    // ==========================================================================
-    // Writes — append-only
-    // ==========================================================================
-
-    /// <summary>
-    /// Append a new audit log entry. Persisted immediately (auto-saved).
-    /// This is the only write method; there are no updates or deletes.
-    /// </summary>
+    /// <summary>The only write: saves at once.</summary>
     Task AddAsync(AuditLogEntry entry, CancellationToken ct = default);
 
-    // ==========================================================================
-    // Reads — audit log entries
-    // ==========================================================================
-
-    /// <summary>
-    /// Returns filtered audit entries with pagination, plus total counts.
-    /// </summary>
     Task<(IReadOnlyList<AuditLogEntry> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
         AuditAction? actionFilter, int page, int pageSize, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns audit entries where the user is either the primary subject
-    /// (EntityType=User, EntityId=userId) or the related entity.
-    /// </summary>
+    /// <summary>Where the user is the subject (a User entity) or the related entity.</summary>
     Task<IReadOnlyList<AuditLogEntry>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default);
 
-    /// <summary>
-    /// Multi-id overload of <see cref="GetByUserAsync"/> used by the
-    /// service-layer chain-follow read path so a target's history transparently
-    /// includes rows that stayed attributed to merged-source tombstones.
-    /// Returns audit entries where the entry references any user id in
-    /// <paramref name="userIds"/> as primary subject (EntityType=User,
-    /// EntityId in userIds) or related entity (RelatedEntityId in userIds).
-    /// </summary>
+    /// <summary>For merge chain-follow: pass the target plus its merged-away ids.</summary>
     Task<IReadOnlyList<AuditLogEntry>> GetByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds, int count, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns audit entries matching flexible filter criteria. Used by the
-    /// shared AuditLog ViewComponent. The <paramref name="userIds"/> filter
-    /// (when non-empty) matches an entry whose <c>ActorUserId</c>,
-    /// <c>RelatedEntityId</c>, or (<c>EntityType=User</c>, <c>EntityId</c>)
-    /// is contained in the set — so the service-layer chain-follow read
-    /// path can pass {target ∪ merged-source ids} to surface fold-target
-    /// history transparently.
+    /// A non-empty <paramref name="userIds"/> matches the actor, the related entity or a User entity, so callers can
+    /// pass the target plus its merged-away ids.
     /// </summary>
     Task<IReadOnlyList<AuditLogEntry>> GetFilteredEntriesAsync(
         string? entityType,
@@ -78,39 +31,17 @@ internal interface IAuditLogRepository : IRepository
         int limit,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns every entry affecting the given user (EntityId=userId,
-    /// RelatedEntityId=userId, or ActorUserId=userId), newest first. Used by
-    /// the GDPR export contributor.
-    /// </summary>
+    /// <summary>Actor, entity or related entity; newest first. For the GDPR export.</summary>
     Task<IReadOnlyList<AuditLogEntry>> GetAllForUserContributorAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Multi-id overload of <see cref="GetAllForUserContributorAsync"/> used
-    /// by the service-layer chain-follow read path so a fold-target's GDPR
-    /// export transparently includes rows that stayed attributed to merged
-    /// source tombstones.
-    /// </summary>
     Task<IReadOnlyList<AuditLogEntry>> GetAllForUserIdsContributorAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the distinct set of <c>AuditLogEntry.EntityId</c> values
-    /// across all-time audit rows whose
-    /// <c>AuditLogEntry.EntityType</c> matches <paramref name="entityType"/>
-    /// and whose <c>AuditLogEntry.Action</c> is one of
-    /// <paramref name="actions"/>. Read-only.
-    /// </summary>
     Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
         string entityType,
         IReadOnlyList<AuditAction> actions,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Every row carrying a Google resource id — the history the retired
-    /// <c>LogGoogleSyncAsync</c> path left behind — oldest first, uncapped.
-    /// Backs <see cref="Contracts.ILegacyGoogleSyncAuditReader"/> and goes
-    /// with the columns.
-    /// </summary>
+    /// <summary>Oldest first, uncapped. Goes with the Google columns.</summary>
     Task<IReadOnlyList<AuditLogEntry>> GetLegacyGoogleSyncEntriesAsync(CancellationToken ct = default);
 }

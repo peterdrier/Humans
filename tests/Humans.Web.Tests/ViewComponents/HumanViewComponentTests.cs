@@ -59,11 +59,8 @@ public class HumanViewComponentTests
     }
 
     /// <summary>
-    /// <see cref="HumanViewComponent"/> lives in Base and names Users' controllers by string, so a
-    /// controller split leaves it pointing at a route that no longer exists. <c>Url.Action</c> then
-    /// returns null and every avatar silently degrades to its initial — no exception, no log
-    /// (peterdrier/Humans#1603 moved <c>Picture</c> to <c>ProfileViewController</c>). Resolved
-    /// against the real Users routes so a stale name fails here.
+    /// Base names Users' controllers by string; a stale name makes <c>Url.Action</c> return null and every avatar
+    /// silently degrades to its initial.
     /// </summary>
     [HumansFact]
     public async Task Custom_picture_and_profile_link_resolve_against_real_routes()

@@ -31,11 +31,6 @@ using Humans.GoogleIntegration.Contracts;
 
 namespace Humans.Users.Tests.Controllers;
 
-/// <summary>
-/// Self-route <c>ProfileEmailsController</c> actions over the UserEmailService grid:
-/// Link, Unlink, SetPrimary. (The Google identity routes moved to GoogleIntegration's
-/// <c>WorkspaceIdentityController</c> in Users decomposition commit 15.)
-/// </summary>
 public class ProfileEmailsControllerGridTests
 {
     private readonly ILogger<ProfileEmailsController> _logger = Substitute.For<ILogger<ProfileEmailsController>>();
@@ -119,9 +114,7 @@ public class ProfileEmailsControllerGridTests
             .Returns(new User { Id = _userId });
         _userManager.GetUserId(Arg.Any<ClaimsPrincipal>()).Returns(_userId.ToString());
 
-        // GetCurrentUserInfoAsync helper reads through IUserManagement; default
-        // stub returns a minimal UserInfo for the test user so the actions
-        // continue past the null-guard. Per-test overrides can replace this.
+        // A minimal UserInfo for the test user, so the actions pass the null-guard.
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(new User { Id = _userId }.ToUserInfo()));
 
@@ -299,11 +292,7 @@ public class ProfileEmailsControllerGridTests
     [HumansFact]
     public async Task Link_AsSelf_ReturnsChallengeResult_WithProvider()
     {
-        // Url.Action returns the callback URL (with returnUrl appended) when
-        // invoked with the ExternalLoginCallback target; the constructor's
-        // generic Url.Action stub already returns "/Profile/Me/Emails", but
-        // we override the callback-specific call so the props.RedirectUri
-        // assertion below is meaningful.
+        // Override the callback-specific Url.Action so the RedirectUri assertion below is meaningful.
         _controller.Url.Action(Arg.Is<UrlActionContext>(ctx =>
                 ctx.Action == "ExternalLoginCallback" && ctx.Controller == "Account"))
             .Returns("/Account/ExternalLoginCallback?returnUrl=%2FProfile%2FMe%2FEmails");
@@ -387,15 +376,7 @@ public class ProfileEmailsControllerGridTests
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
-    // -------------------------------------------------------------------------
-    // Task 16 — admin grid actions parameterized by {userId}.
-    // Actor user is _userId (current user). Target user is a separate guid passed
-    // via the route. AuthorizeAsync is set up to succeed in the constructor; the
-    // Edit + Edit-equivalent UserEmailOperations.Edit handler will succeed for
-    // self-or-admin via the resource-based authorization path. These tests assert
-    // the controller passes the route userId (target) to the service and the
-    // current user's id as actorUserId.
-    // -------------------------------------------------------------------------
+    // Admin grid actions: the route userId is the target, the signed-in user is the actor.
 
     [HumansFact]
     public async Task AdminSetPrimary_AsAdmin_CallsServiceWithRouteUserId()
@@ -593,8 +574,7 @@ public class ProfileEmailsControllerGridTests
         const string newEmail = "mine@example.com";
         const string token = "verification-token-self";
 
-        // Only a link asked for this controller carries the token; VerifyEmail
-        // no longer lives on ProfileController, so "Profile" would not route.
+        // Only a link asked for this controller carries the token; "Profile" would not route to VerifyEmail.
         _controller.Url.Action(Arg.Is<UrlActionContext>(ctx => ctx.Action == "VerifyEmail" && ctx.Controller == "ProfileEmails"))
             .Returns(ci =>
             {
@@ -664,13 +644,7 @@ public class ProfileEmailsControllerGridTests
             .Which.ActionName.Should().Be("AdminEmails");
     }
 
-    // -------------------------------------------------------------------------
-    // Findings O, P, Q — self-path auth gates and audit-log symmetry.
-    // O: DeleteEmail self-action must call AuthorizeAsync (UserEmailOperations.Edit).
-    // P: SetEmailVisibility self-action must call AuthorizeAsync.
-    // Q: SetPrimary, DeleteEmail, SetEmailVisibility self-actions must audit-log,
-    //    matching the admin path that already audits.
-    // -------------------------------------------------------------------------
+    // Self-path actions must authorize (UserEmailOperations.Edit) and audit, like the admin path.
 
     [HumansFact]
     public async Task DeleteEmail_AuthorizationFails_ReturnsForbid()
@@ -805,14 +779,8 @@ public class ProfileEmailsControllerGridTests
             .Which.ActionName.Should().Be("Emails");
     }
 
-    // -------------------------------------------------------------------------
-    // Issue nobodies-collective/Humans#731 — user-facing Linked OAuth Accounts
-    // dashboard. The dashboard surface lives on /Profile/Emails and routes
-    // through a new UnlinkLinkedAccount action keyed by (Provider, ProviderKey)
-    // rather than UserEmail row id. The auth-method invariant is enforced
-    // server-side: cannot unlink when no verified UserEmail row would remain
-    // (which is how magic-link sign-in is preserved).
-    // -------------------------------------------------------------------------
+    // Linked OAuth accounts: unlink is keyed by (Provider, ProviderKey), and is refused when no
+    // verified UserEmail row would remain (that row is what keeps magic-link sign-in working).
 
     private static UserEmailRowSnapshot Snapshot(
         Guid userId, Guid id, string email, bool isVerified,
@@ -869,11 +837,8 @@ public class ProfileEmailsControllerGridTests
     [InlineData(false)]
     public async Task UnlinkLinkedAccount_RefusalIsLocalizedAndKeepsLogin(bool lastSignInMethod)
     {
-        // Auth-method invariant: user has exactly one verified UserEmail row
-        // and that row carries the OAuth tag. Unlinking would leave the user
-        // with zero verified emails — no magic-link, no OAuth, no way back in.
-        // The guard lives in UserEmailService.UnlinkAsync (ValidationException);
-        // the controller surfaces it as an error flash and the linkage remains.
+        // The only verified row carries the OAuth tag, so unlinking would leave no way back in.
+        // UnlinkAsync refuses with a ValidationException; the controller flashes an error.
         var rowId = Guid.NewGuid();
         const string provider = "Google";
         const string providerKey = "google-sub-only";

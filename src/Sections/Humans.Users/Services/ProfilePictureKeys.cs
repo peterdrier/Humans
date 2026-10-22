@@ -3,9 +3,8 @@ using Humans.Users.Contracts;
 namespace Humans.Users.Services;
 
 /// <summary>
-/// Resolves the <c>IFileStorage</c> key a profile's picture lives at. Each upload gets a fresh
-/// versioned key so a replacement never overwrites the previous bytes before metadata commits;
-/// profiles that predate versioning (null stored key) still resolve the legacy deterministic key.
+/// Each upload gets a fresh versioned key, so a replacement never overwrites the previous bytes
+/// before metadata commits. A null stored key resolves the legacy deterministic key.
 /// </summary>
 internal static class ProfilePictureKeys
 {

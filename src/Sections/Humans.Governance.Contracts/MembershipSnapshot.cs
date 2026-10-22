@@ -1,8 +1,5 @@
 namespace Humans.Governance.Contracts;
 
-/// <summary>
-/// Consolidated membership/consent state used by web entry points.
-/// </summary>
 public sealed record MembershipSnapshot(
     MembershipStatus Status,
     bool IsVolunteerMember,

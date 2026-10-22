@@ -5,26 +5,12 @@ using Xunit;
 namespace Humans.Web.Tests.Architecture;
 
 /// <summary>
-/// The T-09 ratchet (issue #720): the agent surface reads user signups through the
-/// cached <see cref="IShiftView"/>, not through the Shifts section's own signup service.
+/// The agent reads user signups through the cached <see cref="IShiftView"/>, not the Shifts signup service: the read
+/// runs on every snapshot and tool turn. Lives here because resolving Agent's internal types needs
+/// <c>SectionDiscoveryExtensions</c> from Humans.Web.
 /// </summary>
-/// <remarks>
-/// The rest of <c>ShiftViewArchitectureTests</c> moved into
-/// <c>tests/Humans.Shifts.Tests/Architecture</c> at the section's G5
-/// (nobodies-collective/Humans#866). This half stayed because it is about
-/// <em>Agent's</em> constructors, and resolving them needs
-/// <c>SectionDiscoveryExtensions</c>, which lives in Humans.Web — a reference a section
-/// test project does not have.
-/// </remarks>
 public class AgentShiftViewReadTests
 {
-    // The agent surface used to call IShiftSignupService.GetByUserAsync on
-    // every snapshot / get_shift_details turn. T-09 (issue #720) migrated
-    // those reads to the cached IShiftView. Pin the dependency direction so
-    // the next refactor can't quietly regress the hot path.
-    // Both types are internal to Humans.Agent since its G5 move, so they are resolved by
-    // reflection rather than named with typeof — the sweep must widen with the section,
-    // not quietly stop covering it.
     public static TheoryData<Type> AgentTypesThatReadShiftSignups =>
     [
         SectionType("Humans.Agent.Services.AgentUserSnapshotProvider"),

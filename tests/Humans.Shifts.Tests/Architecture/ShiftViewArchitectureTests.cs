@@ -9,11 +9,6 @@ using VolunteerTrackingService = Humans.Shifts.Services.VolunteerTrackingService
 
 namespace Humans.Shifts.Tests.Architecture;
 
-/// <summary>
-/// Architecture tests for the cached <see cref="IShiftView"/> surface
-/// (issue nobodies-collective/Humans#720): inner / decorator placement, EF-reference boundaries,
-/// invalidator fan-in at every Shifts-section service.
-/// </summary>
 public class ShiftViewArchitectureTests
 {
     [HumansFact]
@@ -40,8 +35,6 @@ public class ShiftViewArchitectureTests
         typeof(VolunteerTrackingService)
     ];
 
-    // ── CachingShiftViewService (Singleton decorator) ────────────────────────
-
     [HumansFact]
     public void CachingShiftViewService_LivesInShiftsServices()
     {
@@ -56,14 +49,11 @@ public class ShiftViewArchitectureTests
         typeof(CachingShiftViewService).Should().BeAssignableTo<IShiftView>();
     }
 
-    // ── IShiftView contract ──────────────────────────────────────────────────
-
     [HumansFact]
     public void IShiftView_AllMethodsReturnValueTask()
     {
-        // ValueTask<T> lets the decorator complete synchronously on dict hits
-        // (no Task allocation, no thread hop) while still supporting the
-        // awaiting load path on miss. Mirrors IProfileService.GetFullProfileAsync.
+        // ValueTask<T> lets the decorator complete synchronously on dict hits (no Task
+        // allocation, no thread hop) while still awaiting the load on a miss.
         var methods = typeof(IShiftView).GetMethods();
         foreach (var method in methods)
         {
@@ -75,8 +65,6 @@ public class ShiftViewArchitectureTests
                 because: $"IShiftView methods return ValueTask<T> for cache-friendly async (issue nobodies-collective/Humans#720) — '{method.Name}' returned '{rt.Name}'");
         }
     }
-
-    // ── Eviction fan-in ──────────────────────────────────────────────────
 
     [HumansTheory]
     [MemberData(nameof(ShiftsServicesThatInvalidate))]

@@ -4,7 +4,6 @@
 }
 
 
-@* ─── Header ─── *@
 <div class="row justify-content-center mb-4">
     <div class="col-lg-8">
         <div class="d-flex align-items-center">
@@ -23,7 +22,6 @@
     </div>
 </div>
 
-@* ─── Rejection alert ─── *@
 @if (Model.IsRejected)
 {
     <div class="row justify-content-center mb-4">
@@ -41,7 +39,7 @@
     </div>
 }
 
-@* ─── Things to do (auto-hides when all complete; profile-completion nudge lives inside as a graded item) ─── *@
+@* Things to do auto-hides when all are complete; the profile-completion nudge is one of its graded items. *@
 <div class="row justify-content-center mb-4">
     <div class="col-lg-8">
         <vc:things-to-do />
@@ -52,7 +50,6 @@
    and brings its own row markup, so an empty slot leaves no empty row behind. *@
 <vc:chrome-slot name="member-dashboard" />
 
-@* ─── Your stuff ─── *@
 <div class="row justify-content-center mb-4">
     <div class="col-lg-8">
         <h5 class="text-muted mb-1">@Localizer["Dashboard_YourStuff"]</h5>

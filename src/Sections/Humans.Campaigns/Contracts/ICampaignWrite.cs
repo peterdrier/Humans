@@ -4,31 +4,18 @@ using NodaTime;
 
 namespace Humans.Campaigns.Contracts;
 
-/// <summary>
-/// The writes other sections drive on Campaigns, alongside the read-only
-/// <see cref="ICampaignService"/>: Tickets marking codes redeemed and Email recording delivery
-/// state. Campaign/code CRUD, activation, wave sending, resend and retry stay internal to
-/// <c>Humans.Campaigns</c>.
-/// </summary>
+/// <summary>Cross-section writes: Tickets marking codes redeemed and Email recording delivery state.</summary>
 public interface ICampaignWrite : IApplicationService
 {
     /// <summary>
-    /// Marks campaign grants as redeemed based on discovered discount-code redemptions.
-    /// Matches codes case-insensitively against active/completed campaigns' unredeemed grants.
-    /// When a code matches grants in multiple campaigns, the most recently created campaign wins.
-    /// Returns the number of grants marked as redeemed.
+    /// Matches codes case-insensitively against Active and Completed campaigns' unredeemed grants, one grant per
+    /// redemption. When a code matches grants in several campaigns, the newest campaign wins. Returns grants marked.
     /// </summary>
     Task<int> MarkGrantsRedeemedAsync(
         IReadOnlyCollection<DiscountCodeRedemption> redemptions,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Updates a campaign grant's denormalized email delivery status
-    /// (<c>LatestEmailStatus</c>) and timestamp (<c>LatestEmailAt</c>).
-    /// Returns <c>true</c> if the grant was found and updated. Used by the
-    /// email outbox processor so the job can record Sent/Failed without
-    /// touching <c>campaign_grants</c> directly.
-    /// </summary>
+    /// <summary>Sets <c>LatestEmailStatus</c> and <c>LatestEmailAt</c>. False when the grant does not exist.</summary>
     Task<bool> UpdateGrantEmailStatusAsync(
         Guid grantId,
         EmailOutboxStatus status,

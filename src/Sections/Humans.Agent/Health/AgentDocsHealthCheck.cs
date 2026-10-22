@@ -6,18 +6,8 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 namespace Humans.Agent.Health;
 
 /// <summary>
-/// Verifies the agent's grounding docs are reachable on GitHub at runtime. The
-/// section/feature guides are fetched live from <c>nobodies-collective/Humans@main</c>;
-/// if GitHub is unreachable, the token is wrong, or the canary file moves, every
-/// <c>fetch_section_guide</c> / <c>fetch_feature_spec</c> call returns null and the
-/// preload index ships empty. This check turns that into a visible Degraded status
-/// instead of Unhealthy (the agent feature is non-critical for the rest of the app).
-/// Skipped (Healthy) when the agent feature is disabled.
-///
-/// Goes through <see cref="IGuideContentSource"/> directly rather than the cached
-/// readers inside Humans.Agent so the probe genuinely re-tests GitHub on every call.
-/// A cached reader would refresh the sliding expiration off one warm fetch and keep
-/// reporting Healthy through a revoked token / outage / moved canary.
+/// Degraded, not Unhealthy, when the grounding docs are unreachable: the agent is non-critical. Goes through
+/// <see cref="IGuideContentSource"/> directly, not the cached readers, so every probe really re-tests GitHub.
 /// </summary>
 internal sealed class AgentDocsHealthCheck(
     IAgentAvailability agent,
@@ -26,17 +16,13 @@ internal sealed class AgentDocsHealthCheck(
 {
     private const string FeaturesFolder = "docs/features/global";
 
-    // The section-guide canary: this section's own invariants doc, at the per-section folder
-    // convention fetch_section_guide reads. The key is pinned: if the section or its doc is
-    // renamed, AgentDocsHealthCheckTests.Healthy_when_both_canaries_exist_in_this_repo fails.
+    // Pinned: renaming the section or its doc fails
+    // AgentDocsHealthCheckTests.Healthy_when_both_canaries_exist_in_this_repo.
     private const string ProbeSectionDoc = "Agent";
     private static readonly string SectionsFolder = AgentSectionDocReader.SectionProjectFolder(ProbeSectionDoc);
 
-    // A stable feature-spec canary — fetched from a different folder (docs/features/global)
-    // than sections, so a folder-level fetch regression on one folder doesn't mask
-    // the other. Per-section specs live in each section's own Docs/ folder and move with
-    // the section; docs/features/global holds the cross-section ones, which belong to no
-    // section and so have nowhere to move to. GDPR export is the most load-bearing of them.
+    // From docs/features/global, a different folder than the section canary, so a fetch regression in one folder
+    // doesn't mask the other.
     private const string ProbeFeature = "gdpr-export";
 
     public async Task<HealthCheckResult> CheckHealthAsync(
@@ -68,10 +54,7 @@ internal sealed class AgentDocsHealthCheck(
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            // Any source-side failure (404 on canary, network, auth) means GitHub
-            // reachability for the agent docs is broken — convert to Degraded via the
-            // caller. Log per memory/code/always-log-problems.md so the prod log viewer
-            // (Warning+) shows why /health/ready flipped to Degraded.
+            // Logged so the prod log viewer (Warning+) shows why /health/ready went Degraded.
             logger.LogWarning(
                 "Agent docs probe failed: {Folder}/{Stem}.md — {Message}",
                 folderPath, stem, ex.Message);

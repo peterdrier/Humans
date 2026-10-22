@@ -20,12 +20,8 @@ public class StripeBootJobTests
     private static readonly TimeSpan Settle = TimeSpan.FromSeconds(5);
 
     /// <summary>
-    /// How long a test that asserts <em>silence</em> waits before believing it. Asserting an
-    /// absence here is time-bounded by nature — the registrar's fire-and-forget task is not
-    /// observable from outside — so unlike <see cref="Settle"/>, which is an upper bound a
-    /// passing test never reaches, this window is paid in full on every run. Do not shave it to
-    /// tens of milliseconds: under CI load the <c>Task.Run</c> body may not have been scheduled
-    /// yet, and the test would pass without the code having had a chance to speak.
+    /// How long a test asserting <em>silence</em> waits, paid in full on every run. Do not shave it:
+    /// under CI load the <c>Task.Run</c> body may not be scheduled yet, and the test would pass vacuously.
     /// </summary>
     private static readonly TimeSpan SilenceWindow = TimeSpan.FromMilliseconds(500);
 
@@ -53,12 +49,9 @@ public class StripeBootJobTests
         var start = probe.StartAsync(CancellationToken.None);
 
         start.IsCompleted.Should().BeTrue("boot must not wait on a Stripe round trip");
-        // Tickets key, Store key, webhook secret — one warning each, and no throw.
-        // Count, not Count(predicate): CapturingLogger appends to a plain List, so enumerating it
-        // while the probe is still logging is a concurrent read/write. The count field is not an
-        // enumeration; and with nothing configured the probe logs these three and then awaits an
-        // empty probe set, so once the third lands nobody is writing and the assertion below is
-        // free to enumerate. The dropped level predicate is not lost — the next line asserts it.
+        // Tickets key, Store key, webhook secret — one warning each, and no throw. Count, not
+        // Count(predicate): enumerating the logger's List while the probe still logs is a race; once
+        // the third entry lands nobody is writing, so the next line may enumerate.
         await WaitUntilAsync(() => log.Entries.Count >= 3);
         log.Entries.Should().HaveCount(3).And.OnlyContain(e => e.Level == LogLevel.Warning);
 

@@ -6,10 +6,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Cantina.Tests;
 
-/// <summary>
-/// Architecture tests enforcing the section shape for Cantina
-/// (nobodies-collective/Humans#866, G5).
-/// </summary>
 public class CantinaArchitectureTests
 {
     [HumansFact]

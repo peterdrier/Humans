@@ -24,15 +24,12 @@ internal sealed class DevLoginController(
     ConfigurationRegistry configRegistry,
     ILogger<DevLoginController> logger) : Controller
 {
-    // Rendered by the section's own Views/Shared/_DevLoginPanel.cshtml, which Shell's
-    // /Account/Login pulls in by name across application parts. The list is internal, so it
-    // never leaves the section.
+    // Rendered by Views/Shared/_DevLoginPanel.cshtml, which Shell's /Account/Login pulls in by name.
     internal static IReadOnlyList<DevPersonaInfo> AllPersonas { get; } = BuildPersonaList();
 
     /// <summary>
-    /// The personas offered on this host. Admin is dropped unless the host allows it — see
-    /// <see cref="AdminSignInAllowed"/>. Used by the panel so the buttons and the route agree
-    /// on one predicate.
+    /// Drops Admin unless <see cref="AdminSignInAllowed"/>. The panel calls this so the buttons and the route share
+    /// one predicate.
     /// </summary>
     internal static IEnumerable<DevPersonaInfo> PersonasFor(
         IWebHostEnvironment environment, IConfiguration configuration) =>
@@ -84,8 +81,7 @@ internal sealed class DevLoginController(
         try
         {
             resolvedUserId = await personaSeeder.EnsurePersonaAsync(info.Slug, info.DisplayName, id);
-            // No-Name persona: re-blank the legal names on every sign-in so the
-            // onboarding name-gate (#812) re-triggers each time it's used.
+            // Re-blank the legal names on every sign-in so the onboarding name gate re-triggers.
             if (string.Equals(info.Slug, "no-name", StringComparison.OrdinalIgnoreCase))
                 await personaSeeder.ResetLegalNamesAsync(resolvedUserId);
             if (string.Equals(info.Slug, "coordinator", StringComparison.OrdinalIgnoreCase))
@@ -179,20 +175,15 @@ internal sealed class DevLoginController(
     }
 
     /// <summary>
-    /// Whether this host may hand out an Admin session through dev login. QA runs Staging with
-    /// <c>DevAuth:Enabled</c> on and real Google Workspace data, so anonymous Admin there is a
-    /// live privilege escalation. "Testing" is the in-process integration host, the same
-    /// discriminator Program.cs uses. <c>DevAuth:AllowAdmin</c> opts a host back in: per-PR
-    /// previews set it from <c>docker-entrypoint.sh</c>, which is the only place that can tell
-    /// a preview container from QA — both run Staging, but a preview holds a throwaway cloned
-    /// database and no integration credentials worth escalating to.
+    /// QA runs Staging with <c>DevAuth:Enabled</c> and real Google Workspace data, so anonymous Admin there is a live
+    /// privilege escalation. <c>DevAuth:AllowAdmin</c> opts a host back in: only <c>docker-entrypoint.sh</c> can tell
+    /// a per-PR preview (throwaway cloned database) from QA, and it sets the flag.
     /// </summary>
     private static bool AdminSignInAllowed(IWebHostEnvironment environment, IConfiguration configuration) =>
         environment.IsDevelopment()
         || environment.IsEnvironment("Testing")
         || configuration.GetValue("DevAuth:AllowAdmin", false);
 
-    /// <summary>The persona whose seeded governance role is <see cref="RoleNames.Admin"/>.</summary>
     private static bool IsAdminPersona(DevPersonaInfo persona) =>
         string.Equals(
             DevPersonaSeeder.RoleNameFromSlug(persona.Slug), RoleNames.Admin, StringComparison.Ordinal);

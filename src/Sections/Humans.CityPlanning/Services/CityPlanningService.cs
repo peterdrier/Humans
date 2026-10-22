@@ -15,13 +15,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.CityPlanning.Services;
 
-/// <summary>
-/// The City Planning section service. Implements the cross-section surface
-/// (<see cref="ICityPlanningService"/> and <see cref="ICityPlanningWrite"/> on the contracts leaf) and, beyond it, the polygon,
-/// placement-phase, zone and export operations the section's own controllers call directly.
-/// Cross-section reads via ICampService/ITeamService/IUserService; the current year is the
-/// active event's (ISettingsService); settings writes record their actor through the Audit crosscut.
-/// </summary>
 internal sealed class CityPlanningService(
     ICityPlanningRepository repo,
     IClock clock,
@@ -34,7 +27,7 @@ internal sealed class CityPlanningService(
 {
     private const long MaxGeoJsonUploadBytes = 10 * 1024 * 1024;
 
-    /// <summary>The current city-planning year: the active event's. Null when no event is active.</summary>
+    /// <summary>The active event's year. Null when no event is active.</summary>
     private async Task<int?> GetCurrentYearAsync(CancellationToken cancellationToken) =>
         await settingsService.GetActiveEventSettingsAsync(cancellationToken) is { Year: > 0 } activeEvent
             ? activeEvent.Year
@@ -45,23 +38,14 @@ internal sealed class CityPlanningService(
         ?? throw new InvalidOperationException("No active event: city planning has no current year to write to.");
 
     /// <summary>
-    /// Applies a settings change for the active event's year and records who made it. Every caller is
-    /// an organiser acting on the members' behalf, and <c>CityPlanningSettings</c> stores only
-    /// when a value changed — the actor exists nowhere but the audit log.
-    ///
-    /// <para><c>LogAsync</c> deliberately takes no cancellation token, so nothing cancellable may
-    /// sit between the committing write and the audit call. Two things follow. The row id is
-    /// resolved <em>before</em> the write, so no post-save re-read stands in the way. And the write
-    /// itself runs on <see cref="CancellationToken.None"/>: the repository passes its token into
-    /// <c>SaveChangesAsync</c>, and a request aborted while that command is in flight can leave the
-    /// row committed on the server while the await reports cancellation — the change lands and its
-    /// actor record does not. Everything up to that point stays cancellable, because abandoning it
-    /// writes no value change worth an entry.</para>
-    ///
-    /// <para>Both repository calls create the row on demand — the first admin write is what
-    /// persists a year's row; reads never do — and nothing deletes it, so the id read here is the
-    /// id the mutation writes.</para>
+    /// The actor exists nowhere but the audit log, so every settings change records it here.
     /// </summary>
+    /// <remarks>
+    /// <c>LogAsync</c> takes no cancellation token, so nothing cancellable may sit between the commit and the audit
+    /// call: the row id is resolved before the write, and the write runs on <see cref="CancellationToken.None"/>. A
+    /// request aborted mid-<c>SaveChangesAsync</c> can commit the row while the await reports cancellation, landing the
+    /// change without its actor. Rows are created on demand and never deleted, so the id read here is the one written.
+    /// </remarks>
     private async Task MutateSettingsAndAuditAsync(
         Action<CityPlanningSettings, Instant> mutate,
         AuditAction action,
@@ -80,8 +64,6 @@ internal sealed class CityPlanningService(
         await auditLog.LogAsync(
             action, nameof(CityPlanningSettings), settings.Id, description, userId);
     }
-
-    // --- Polygon reads ---
 
     public async Task<List<CampPolygonDto>> GetCampPolygonsAsync(
         int year, CancellationToken cancellationToken = default)
@@ -125,10 +107,6 @@ internal sealed class CityPlanningService(
             .ToList();
     }
 
-    /// <summary>
-    /// Builds the season-id → display-data map via LINQ over the cached
-    /// <see cref="ICampService.GetCampsForYearAsync"/> projection.
-    /// </summary>
     private async Task<Dictionary<Guid, (string Name, string CampSlug, SoundZone? SoundZone, SpaceSize? SpaceRequirement, Guid CampId)>> BuildSeasonDisplayDataAsync(
         int year, CancellationToken cancellationToken)
     {
@@ -139,7 +117,7 @@ internal sealed class CityPlanningService(
             .ToDictionary(x => x.SeasonId, x => x.Data);
     }
 
-    // Keep in sync with SpaceSize enum — adding a new enum value requires a matching case here.
+    // Adding a SpaceSize value needs a matching case here.
     private static double? SpaceSizeToSqm(SpaceSize? size) => size switch
     {
         SpaceSize.Sqm150 => 150,
@@ -157,9 +135,8 @@ internal sealed class CityPlanningService(
     };
 
     /// <summary>
-    /// Projects a settings row, resolving its barrio placement window against
-    /// <paramref name="scheduleAnchor"/> — the active event, when the row is that event's year.
-    /// Any other year has no gate opening to count from, so only its override decides.
+    /// <paramref name="scheduleAnchor"/> is the active event when the row is that event's year. Any other year has no
+    /// gate opening to count from, so only its override decides.
     /// </summary>
     private CityPlanningSettingsDto ToDto(CityPlanningSettings settings, EventSettingsInfo? scheduleAnchor)
     {
@@ -194,10 +171,9 @@ internal sealed class CityPlanningService(
         gateOpening is { } gate && offset is { } days ? gate.PlusDays(days) : null;
 
     /// <summary>
-    /// The barrio placement window in effect now. A manual override wins outright. Otherwise the
-    /// schedule decides, by today's date in the event's time zone: open from the opening day through
-    /// the closing day (inclusive), then adjust-only through the changeable-until day, then closed.
-    /// No opening day — or no event to count from — means closed.
+    /// A manual override wins. Otherwise, by today's date in the event's time zone: open from the opening day through
+    /// the closing day (inclusive), then adjust-only through the changeable-until day, then closed. No opening day, or
+    /// no event to count from, means closed.
     /// </summary>
     private BarrioPlacementState GetPlacementState(
         bool? placementOverride,
@@ -251,8 +227,6 @@ internal sealed class CityPlanningService(
                 h.GeoJson);
         }).ToList();
     }
-
-    // --- Polygon writes ---
 
     public async Task<CampPolygonSaveResult> SaveCampPolygonAsync(
         Guid campSeasonId, string geoJson, double areaSqm, Guid modifiedByUserId,
@@ -350,14 +324,10 @@ internal sealed class CityPlanningService(
         IReadOnlyCollection<Guid> campSeasonIds, CancellationToken cancellationToken = default) =>
         repo.DeletePolygonsForCampSeasonsAsync(campSeasonIds, cancellationToken);
 
-    // --- Authorization ---
-
     public async Task<bool> IsCityPlanningTeamMemberAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        // Both sides are lower-cased before comparing, so a stored slug's case doesn't
-        // affect matching. The option defaults to string.Empty; no configured slug means
-        // no exemption, not a blanket one.
+        // Both sides lower-cased, so case never decides. No configured slug means no exemption, not a blanket one.
         var configuredSlug = options.Value.CityPlanningTeamSlug;
         if (string.IsNullOrWhiteSpace(configuredSlug)) return false;
 
@@ -391,8 +361,6 @@ internal sealed class CityPlanningService(
             || (await repo.GetCampSeasonIdsWithPolygonAsync([campSeasonId], cancellationToken)).Count > 0;
     }
 
-    // --- Settings ---
-
     public async Task<CityPlanningSettingsDto?> GetSettingsAsync(
         CancellationToken cancellationToken = default, int? year = null)
     {
@@ -402,8 +370,7 @@ internal sealed class CityPlanningService(
         if ((year ?? activeEvent?.Year) is not { } settingsYear)
             return null;
 
-        // Side-effect free: a year nobody has configured yet reads as the defaults, unpersisted
-        // (Id = Guid.Empty). The first admin write creates the row.
+        // Never writes: an unconfigured year reads as unpersisted defaults (Id = Guid.Empty).
         var settings = await repo.GetSettingsAsync(settingsYear, cancellationToken)
             ?? new CityPlanningSettings { Id = Guid.Empty, Year = settingsYear };
         return ToDto(settings, activeEvent?.Year == settingsYear ? activeEvent : null);
@@ -433,7 +400,6 @@ internal sealed class CityPlanningService(
             userId,
             cancellationToken);
 
-    /// <summary>Drops the manual override so barrio placement follows the day-offset schedule again.</summary>
     public Task ClearPlacementOverrideAsync(Guid userId, CancellationToken cancellationToken = default) =>
         MutateSettingsAndAuditAsync(
             (s, _) => s.PlacementOverride = null,
@@ -543,9 +509,8 @@ internal sealed class CityPlanningService(
     internal const int MaxPlacementOffsetDays = 366;
 
     /// <summary>
-    /// Sets the barrio placement schedule as day offsets from the active event's gate opening
-    /// (negative = before). Null clears that marker. The days must run open ≤ close ≤ changeable-until,
-    /// and a changeable-until day needs a closing day to follow.
+    /// Null clears that marker. The days must run open ≤ close ≤ changeable-until, and a changeable-until day needs a
+    /// closing day.
     /// </summary>
     public async Task<PlacementScheduleUpdateResult> UpdatePlacementScheduleAsync(
         int? opensOffset, int? closesOffset, int? changeableUntilOffset,
@@ -607,8 +572,7 @@ internal sealed class CityPlanningService(
             userId);
     }
 
-    // Key registration-info to the highest open season (Register page targets it), else the
-    // active event's year. Null when neither exists.
+    // The Register page targets the highest open season, else the active event's year.
     private async Task<int?> GetRegistrationTargetYearAsync(CancellationToken ct)
     {
         var campSettings = await campService.GetSettingsAsync(ct);
@@ -616,8 +580,6 @@ internal sealed class CityPlanningService(
             ? campSettings.OpenSeasons.Max()
             : await GetCurrentYearAsync(ct);
     }
-
-    // --- Export ---
 
     public async Task<string> ExportAsGeoJsonAsync(int year, CancellationToken cancellationToken = default)
     {

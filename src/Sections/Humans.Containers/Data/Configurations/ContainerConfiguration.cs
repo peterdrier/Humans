@@ -16,8 +16,6 @@ internal sealed class ContainerConfiguration : IEntityTypeConfiguration<Containe
         builder.Property(c => c.ImageContentType).HasMaxLength(64);
         builder.Property(c => c.ImageFileName).HasMaxLength(256);
 
-        // Bare FK column (no HasOne / nav) — Camp lives in a different section.
-        // See memory/architecture/no-cross-section-ef-joins.md.
         builder.HasIndex(c => c.CampId);
     }
 }

@@ -20,10 +20,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Web.Tests.Authorization;
 
-/// <summary>
-/// Verifies registered authorization policies through the real ASP.NET Core
-/// authorization pipeline.
-/// </summary>
+/// <summary>Runs the registered policies through the real ASP.NET Core authorization pipeline.</summary>
 public class AuthorizationPolicyTests : IDisposable
 {
     private readonly ServiceProvider _serviceProvider;
@@ -39,23 +36,12 @@ public class AuthorizationPolicyTests : IDisposable
         services.AddScoped(_ => Substitute.For<ICityPlanningService>());
         services.AddScoped(_ => Substitute.For<ITeamService>());
         services.AddScoped(_ => Substitute.For<ITeamService>());
-        // Agent's rate-limit handler moved into Humans.Agent with the section and is registered
-        // by its Section.Register, so this graph no longer needs its collaborators; its coverage
-        // lives in Humans.Agent.Tests.
-        // Expenses' two resource-based handlers moved into the section with it and are
-        // registered by Humans.Expenses' Section.Register, not by
-        // AddHumansAuthorizationPolicies — so this graph no longer needs their collaborators.
-        // Their coverage lives in Humans.Expenses.Tests.
-        // IsAnyTeamManagerOrCoordinatorHandler reads team-coord ids through this service
-        // (cached path); register a single shared substitute so per-test setups stick.
+        // One shared substitute, so per-test setups reach IsAnyTeamManagerOrCoordinatorHandler.
         _shiftManagement = Substitute.For<IShiftService>();
         _shiftManagement.GetCoordinatorTeamIdsAsync(Arg.Any<Guid>()).Returns([]);
         services.AddSingleton(_shiftManagement);
         services.AddSingleton<IClock>(SystemClock.Instance);
-        // PolicyNames.ShiftDepartmentManager and PolicyNames.HumanAdminOnly are registered by
-        // Humans.Shifts' and Humans.Users' own Policies contribution (nobodies-collective/Humans#1076);
-        // their handlers are registered by those sections' Section.Register, not by
-        // AddHumansAuthorizationPolicies, so this graph registers them directly.
+        // Section-contributed policies: their handlers come from each Section.Register, so register them here.
         services.AddScoped<IAuthorizationHandler, IsAnyTeamManagerOrCoordinatorHandler>();
         services.AddSingleton<IAuthorizationHandler, HumanAdminOnlyHandler>();
         services.AddHumansAuthorizationPolicies();
@@ -234,8 +220,6 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().BeFalse();
     }
 
-    // --- AnyAdminRole (admin-shell entry point) ---
-
     [HumansTheory]
     [InlineData(RoleNames.Admin, true)]
     [InlineData(RoleNames.Board, true)]
@@ -265,13 +249,9 @@ public class AuthorizationPolicyTests : IDisposable
     [HumansFact]
     public async Task AnyAdminRole_DeniesAuthenticatedNonAdmin()
     {
-        // Authenticated user with no admin-shaped role (e.g. a regular member)
-        // must not reach the admin shell.
         var result = await AuthorizeAsync(PolicyNames.AnyAdminRole, "SomeNonAdminRole");
         result.Succeeded.Should().BeFalse();
     }
-
-    // --- BoardOnly ---
 
     [HumansTheory]
     [InlineData(RoleNames.Board, true)]
@@ -290,8 +270,6 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().BeFalse();
     }
 
-    // --- BoardOrAdmin ---
-
     [HumansTheory]
     [InlineData(RoleNames.Board, true)]
     [InlineData(RoleNames.Admin, true)]
@@ -303,8 +281,6 @@ public class AuthorizationPolicyTests : IDisposable
         var result = await AuthorizeAsync(PolicyNames.BoardOrAdmin, role);
         result.Succeeded.Should().Be(expected);
     }
-
-    // --- HumanAdminBoardOrAdmin ---
 
     [HumansTheory]
     [InlineData(RoleNames.HumanAdmin, true)]
@@ -318,8 +294,6 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().Be(expected);
     }
 
-    // --- HumanAdminOrAdmin ---
-
     [HumansTheory]
     [InlineData(RoleNames.HumanAdmin, true)]
     [InlineData(RoleNames.Admin, true)]
@@ -330,8 +304,6 @@ public class AuthorizationPolicyTests : IDisposable
         var result = await AuthorizeAsync(PolicyNames.HumanAdminOrAdmin, role);
         result.Succeeded.Should().Be(expected);
     }
-
-    // --- TeamsAdminBoardOrAdmin ---
 
     [HumansTheory]
     [InlineData(RoleNames.TeamsAdmin, true)]
@@ -345,8 +317,6 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().Be(expected);
     }
 
-    // --- CampAdminOrAdmin ---
-
     [HumansTheory]
     [InlineData(RoleNames.CampAdmin, true)]
     [InlineData(RoleNames.Admin, true)]
@@ -357,8 +327,6 @@ public class AuthorizationPolicyTests : IDisposable
         var result = await AuthorizeAsync(PolicyNames.CampAdminOrAdmin, role);
         result.Succeeded.Should().Be(expected);
     }
-
-    // --- TicketAdminBoardOrAdmin ---
 
     [HumansTheory]
     [InlineData(RoleNames.TicketAdmin, true)]
@@ -372,8 +340,6 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().Be(expected);
     }
 
-    // --- TicketAdminOrAdmin ---
-
     [HumansTheory]
     [InlineData(RoleNames.TicketAdmin, true)]
     [InlineData(RoleNames.Admin, true)]
@@ -384,8 +350,6 @@ public class AuthorizationPolicyTests : IDisposable
         var result = await AuthorizeAsync(PolicyNames.TicketAdminOrAdmin, role);
         result.Succeeded.Should().Be(expected);
     }
-
-    // --- ScannerAccess (gate terminal) ---
 
     [HumansFact]
     public async Task ScannerAccess_AllowsGateTerminalAccountById()
@@ -404,8 +368,6 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().BeFalse();
     }
 
-    // --- GateAdmit (gate write actions) ---
-
     [HumansFact]
     public async Task GateAdmit_AllowsGateTerminalAccountById()
     {
@@ -423,11 +385,8 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().BeFalse();
     }
 
-    // --- Feedback screens (nobodies-collective/Humans#977) ---
-    //
-    // Feedback is retired: read-only and full-Admin only. These run the policy
-    // that FeedbackController actually carries through the real authorization
-    // pipeline, so the gate cannot silently loosen by editing the attribute.
+    // Feedback is retired and Admin-only. These read the policy off FeedbackController itself, so loosening the
+    // attribute fails here.
 
     [HumansFact]
     public async Task FeedbackController_DeniesAuthenticatedUserWithNoRoles()
@@ -440,7 +399,6 @@ public class AuthorizationPolicyTests : IDisposable
     [HumansFact]
     public async Task FeedbackController_DeniesFeedbackAdminWithoutAdmin()
     {
-        // FeedbackAdmin alone no longer reaches /Feedback or /Feedback/{id}.
         var result = await _authorizationService.AuthorizeAsync(
             CreateUserWithRoles(RoleNames.FeedbackAdmin), FeedbackControllerPolicy);
         result.Succeeded.Should().BeFalse();
@@ -467,21 +425,13 @@ public class AuthorizationPolicyTests : IDisposable
         ?? throw new InvalidOperationException(
             "FeedbackController must carry a policy-bearing [Authorize] attribute.");
 
-    /// <summary>
-    /// A G5 section's controller is <c>internal</c> to its own assembly
-    /// (nobodies-collective/Humans#866), so it cannot be named with <c>typeof</c> here.
-    /// Resolved by reflection instead — the same helper
-    /// <c>EndpointAuthorizationTests</c> carries — and it throws on a miss, so a renamed
-    /// or dropped controller fails the test rather than quietly leaving the sweep.
-    /// </summary>
+    /// <summary>Section controllers are internal; throws on a miss so a rename can't drop a row silently.</summary>
     private static Type SectionType(string fullName) =>
         Extensions.SectionDiscoveryExtensions.SectionAssemblies()
             .Select(a => a.GetType(fullName, throwOnError: false))
             .FirstOrDefault(t => t is not null)
         ?? throw new InvalidOperationException(
             $"{fullName} not found in any section assembly — did the section move or rename it?");
-
-    // --- FinanceAdminOrAdmin ---
 
     [HumansTheory]
     [InlineData(RoleNames.FinanceAdmin, true)]
@@ -494,8 +444,6 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().Be(expected);
     }
 
-    // --- EventsAdminOrAdmin ---
-
     [HumansTheory]
     [InlineData(RoleNames.EventsAdmin, true)]
     [InlineData(RoleNames.Admin, true)]
@@ -506,8 +454,6 @@ public class AuthorizationPolicyTests : IDisposable
         var result = await AuthorizeAsync(PolicyNames.EventsAdminOrAdmin, role);
         result.Succeeded.Should().Be(expected);
     }
-
-    // --- ReviewQueueAccess ---
 
     [HumansTheory]
     [InlineData(RoleNames.ConsentCoordinator, true)]
@@ -522,8 +468,6 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().Be(expected);
     }
 
-    // --- ConsentCoordinatorBoardOrAdmin ---
-
     [HumansTheory]
     [InlineData(RoleNames.ConsentCoordinator, true)]
     [InlineData(RoleNames.Board, true)]
@@ -536,8 +480,6 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().Be(expected);
     }
 
-    // --- ShiftDashboardAccess ---
-
     [HumansTheory]
     [InlineData(RoleNames.Admin, true)]
     [InlineData(RoleNames.NoInfoAdmin, true)]
@@ -549,8 +491,6 @@ public class AuthorizationPolicyTests : IDisposable
         var result = await AuthorizeAsync(PolicyNames.ShiftDashboardAccess, role);
         result.Succeeded.Should().Be(expected);
     }
-
-    // --- ShiftDepartmentManager ---
 
     [HumansTheory]
     [InlineData(RoleNames.Admin, true)]
@@ -598,10 +538,6 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().BeTrue();
         await _shiftManagement.DidNotReceive().GetCoordinatorTeamIdsAsync(Arg.Any<Guid>());
     }
-
-    // CampComplianceAccessHandler moved into Humans.Shifts with the section and is
-    // registered by its Section.Register, not by AddHumansAuthorizationPolicies, so this
-    // graph cannot exercise the policy. Coverage lives in Humans.Shifts.Tests.
 
     [HumansFact]
     public async Task AppAccess_AllowsActiveStateUserWithNoRole()

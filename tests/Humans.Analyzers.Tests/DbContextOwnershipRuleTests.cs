@@ -5,11 +5,8 @@ namespace Humans.Analyzers.Tests;
 
 public class DbContextOwnershipRuleTests
 {
-    // UsersDbContext lives in Humans.Infrastructure; the IRepository marker
-    // lives in Humans.Application. The analyzer keys off these full names and
-    // off the GrandfatheredAttribute. All four are stubbed in the synthetic
-    // compilation so the analyzer can resolve them — the real build
-    // references them transitively.
+    // The analyzer keys off the full names of UsersDbContext, the IRepository marker and
+    // GrandfatheredAttribute; all are stubbed so the synthetic compilation can resolve them.
     private const string Stubs = """
         namespace Microsoft.EntityFrameworkCore
         {
@@ -342,7 +339,7 @@ public class DbContextOwnershipRuleTests
     {
         // Detection is structural (any DbContext-derived type), so the message
         // must name the actual context used rather than a hardcoded
-        // "UsersDbContext" (nobodies-collective/Humans#960).
+        // "UsersDbContext".
         var source = Stubs + """
 
             namespace Humans.Infrastructure.Jobs

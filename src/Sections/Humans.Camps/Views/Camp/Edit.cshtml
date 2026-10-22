@@ -238,7 +238,6 @@
     </div>
 
     <div class="col-md-4">
-        @* Members & Roles — dedicated page *@
         <div class="card mb-4">
             <div class="card-header">
                 <i class="fa-solid fa-users-gear me-1"></i> @Localizer["Camps_Edit_MembersRolesHeading"]
@@ -289,7 +288,6 @@
                                             var currentIdx = moveUpIds.IndexOf(image.Id);
                                             if (currentIdx > 0)
                                             {
-                                                // Swap with previous
                                                 (moveUpIds[currentIdx], moveUpIds[currentIdx - 1]) = (moveUpIds[currentIdx - 1], moveUpIds[currentIdx]);
                                             }
                                         }

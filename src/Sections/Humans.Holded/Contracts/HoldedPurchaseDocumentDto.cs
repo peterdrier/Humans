@@ -12,35 +12,31 @@ public sealed record HoldedPurchaseDocumentDto
     public required decimal PaymentsTotal { get; init; }
     public required decimal PaymentsPending { get; init; }
     public Instant? ApprovedAt { get; init; }
-    /// <summary><c>notes</c> — the doc's notes field, null when blank or absent. Only this single
-    /// GET returns it; the v2 purchase list never does (verified live 2026-10-21).</summary>
+    /// <summary>Null when blank. Only this single GET returns it; the v2 purchase list never does.</summary>
     public string? Notes { get; init; }
     public IReadOnlyList<string> Tags { get; init; } = [];
-    /// <summary><c>payments_detail</c>: one entry per payment recorded on the document, in Holded's
-    /// order. The only place a payment's id can be read — <c>POST purchases/{id}/payments</c> answers
-    /// <c>{"status":"paid"}</c> and nothing else (verified live 2026-10-18).</summary>
+    /// <summary>In Holded's order. The only place a payment's id can be read: <c>POST purchases/{id}/payments</c>
+    /// answers <c>{"status":"paid"}</c> and nothing else.</summary>
     public IReadOnlyList<HoldedPaymentDetailDto> Payments { get; init; } = [];
 }
 
-/// <summary>One payment on a purchase document, as <c>payments_detail[]</c> reports it:
-/// <c>{"id","amount","date","bank_id"}</c>. <paramref name="Date"/> is the plain <c>YYYY-MM-DD</c>
-/// the payment was posted with; <paramref name="BankId"/> is the treasury account it left.</summary>
+/// <summary><paramref name="Date"/> is the plain <c>YYYY-MM-DD</c> the payment was posted with;
+/// <paramref name="BankId"/> is the treasury account it left.</summary>
 public sealed record HoldedPaymentDetailDto(string Id, decimal Amount, LocalDate Date, string? BankId);
 
 public sealed record HoldedPurchaseDocumentLineInput
 {
     public required string Description { get; init; }
     public required decimal Amount { get; init; }
-    /// <summary>The mapped Holded expense-account id (`holded_category_map.HoldedAccountId`) to book
-    /// this line to — the doc is booked to the right department from creation, so no retag is ever
-    /// needed later. Null when the report's category has no active mapping.</summary>
+    /// <summary>Booked to the right department from creation, so no retag is ever needed. Null when the
+    /// report's category has no active mapping.</summary>
     public string? AccountId { get; init; }
 }
 
 public sealed record HoldedPurchaseDocumentInput
 {
     public required string ContactName { get; init; }
-    /// <summary>The Holded contact to link the purchase doc to — required by v2's POST /purchases.</summary>
+    /// <summary>Required by v2's POST /purchases.</summary>
     public required string ContactId { get; init; }
     public required Instant Date { get; init; }
     public required IReadOnlyList<HoldedPurchaseDocumentLineInput> Lines { get; init; }

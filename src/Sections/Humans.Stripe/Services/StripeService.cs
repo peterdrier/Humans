@@ -4,10 +4,8 @@ using Humans.Stripe.Contracts;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
-// Resolved against the global namespace because the directive sits at compilation-unit
-// level: inside `Humans.Stripe.Services` the bare name `Stripe` would bind to the section
-// itself. Never write an inline `Stripe.Xxx` qualification in this project — use the
-// simple type name, or `global::Stripe.Xxx`.
+// Inside `Humans.Stripe.Services` the bare name `Stripe` binds to this section. Never write `Stripe.Xxx`
+// inline here: use the simple name or `global::Stripe.Xxx`.
 using Stripe;
 using Stripe.Checkout;
 
@@ -15,40 +13,30 @@ namespace Humans.Stripe.Services;
 
 internal sealed class StripeSettings
 {
-    // Convention: one key per Stripe account. Production keys must be Restricted API Keys (rk_*) with
-    // the minimum scopes the integration uses; refunds/payouts/chargebacks stay 100% dashboard-manual.
-
-    /// <summary>Tickets-account key. Populated from STRIPE_TICKETS_KEY. Scopes used: PaymentIntent + BalanceTransaction reads for fee enrichment.</summary>
+    /// <summary>STRIPE_TICKETS_KEY: PaymentIntent and BalanceTransaction reads.</summary>
     public string TicketsKey { get; set; } = string.Empty;
 
-    /// <summary>Store-account key. Populated from STRIPE_STORE_KEY. Scopes used: checkout_session:write — Write ⊇ Read, which is what lets the smoke probe and reconciliation list sessions with this key.</summary>
+    /// <summary>STRIPE_STORE_KEY: <c>checkout_session:write</c>, which includes read, so it can also list sessions.</summary>
     public string StoreKey { get; set; } = string.Empty;
 
-    /// <summary>Store-account webhook signing secret (whsec_*). Populated from STRIPE_STORE_WEBHOOK_SECRET.</summary>
     public string StoreWebhookSecret { get; set; } = string.Empty;
 
-    /// <summary>Store-account key with <c>webhook_endpoint:read/write</c> scope. Populated from STRIPE_STORE_WEBHOOK_REGISTRAR_KEY. Set ONLY in ephemeral environments (PR previews) where webhooks self-register at boot — never in QA or production. Kept separate from <see cref="StoreKey"/> so PR-preview testing exercises the production-scoped checkout path with the same scope production has.</summary>
+    /// <summary>STRIPE_STORE_WEBHOOK_REGISTRAR_KEY (<c>webhook_endpoint:read/write</c>). PR previews only; never QA or production.</summary>
     public string WebhookRegistrarKey { get; set; } = string.Empty;
 
-    /// <summary>True when the Tickets-account key is set (fee enrichment available).</summary>
     public bool IsConfigured => !string.IsNullOrEmpty(TicketsKey);
 
-    /// <summary>True when the Store-account key is set (Checkout Session creation available).</summary>
     public bool IsStoreCheckoutConfigured => !string.IsNullOrEmpty(StoreKey);
 
-    /// <summary>True when the Store webhook signing secret is set (webhook signature verification available).</summary>
     public bool IsStoreWebhookConfigured => !string.IsNullOrEmpty(StoreWebhookSecret);
 
-    /// <summary>True when the dedicated webhook-registrar key is set (auto-registration available — ephemeral envs only).</summary>
     public bool IsWebhookRegistrarConfigured => !string.IsNullOrEmpty(WebhookRegistrarKey);
 
-    /// <summary>GitHub owner (org/user) the webhook registrar queries for the open-PR list when sweeping stale endpoints. Populated from Stripe:WebhookCleanupOwner. Set only when STRIPE_STORE_WEBHOOK_REGISTRAR_KEY is set.</summary>
+    /// <summary>GitHub owner whose open-PR list the registrar's sweep reads.</summary>
     public string WebhookCleanupGitHubOwner { get; set; } = string.Empty;
 
-    /// <summary>GitHub repository the webhook registrar queries for the open-PR list. Populated from Stripe:WebhookCleanupRepository.</summary>
     public string WebhookCleanupGitHubRepository { get; set; } = string.Empty;
 
-    /// <summary>True when both the cleanup owner and repository are configured (cross-PR sweep available).</summary>
     public bool IsWebhookCleanupConfigured =>
         !string.IsNullOrEmpty(WebhookCleanupGitHubOwner) && !string.IsNullOrEmpty(WebhookCleanupGitHubRepository);
 
@@ -65,13 +53,10 @@ internal sealed class StripeService(
 
     public bool IsStoreWebhookConfigured => _settings.IsStoreWebhookConfigured;
 
-    /// <summary>
-    /// EUR (decimal) → Stripe minor units (long, cents). Half-cent rounds away from zero.
-    /// </summary>
+    /// <summary>Half a cent rounds away from zero.</summary>
     public static long ToStripeMinorUnits(decimal amountEur) =>
         (long)Math.Round(amountEur * 100m, MidpointRounding.AwayFromZero);
 
-    /// <summary>Stripe minor units (cents) → EUR (decimal). Inverse of <see cref="ToStripeMinorUnits"/>.</summary>
     public static decimal FromStripeMinorUnits(long cents) => cents / 100m;
 
     public async Task<string> CreateCheckoutSessionAsync(
@@ -118,10 +103,7 @@ internal sealed class StripeService(
             {
                 ["humans_store_order_id"] = storeOrderId.ToString(),
             },
-            // Stamp the same order-id metadata and a legible description onto the PaymentIntent
-            // itself (not only the session) so the Stripe dashboard, customer receipt, and PI
-            // search can match a payment back to its order. See Store's
-            // Docs/2026-06-04-store-stripe-payment-reconciliation-design.md.
+            // Stamp the order id on the PaymentIntent too, so the dashboard, receipt and PI search can match it.
             PaymentIntentData = new SessionPaymentIntentDataOptions
             {
                 Description = lineItemDescription,
@@ -212,7 +194,6 @@ internal sealed class StripeService(
                 var amount = FromStripeMinorUnits(fd.Amount);
                 switch (fd.Type)
                 {
-                    // Pass-through network/method fees are processing cost, same as Stripe's own fee.
                     case "stripe_fee" or "payment_method_passthrough_fee":
                         stripeFee += amount;
                         break;
@@ -321,11 +302,7 @@ internal sealed class StripeService(
         return results;
     }
 
-    /// <summary>
-    /// Projects a Stripe SDK <see cref="Session"/> to the connector DTO. Shared by the
-    /// webhook-parse and reconciliation-list paths so both read the order-id metadata,
-    /// amount, payment status, and creation time identically.
-    /// </summary>
+    /// <summary>Shared by the webhook and reconciliation paths so both read a session identically.</summary>
     private StoreCheckoutSessionData? MapSession(Session s)
     {
         if (!string.Equals(s.Currency, "eur", StringComparison.OrdinalIgnoreCase))

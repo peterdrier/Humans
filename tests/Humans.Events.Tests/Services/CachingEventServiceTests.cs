@@ -14,9 +14,8 @@ using Xunit;
 namespace Humans.Events.Tests.Services;
 
 /// <summary>
-/// Covers <see cref="CachingEventService.SearchAsync"/> — Events' scored search hit
-/// (nobodies-collective/Humans#1062). Served entirely from the approved-event cache warmed
-/// off the substitute inner <see cref="IEventManagement"/>; no DB involved.
+/// <see cref="CachingEventService.SearchAsync"/> is served entirely from the approved-event cache
+/// warmed off the substitute inner <see cref="IEventManagement"/>; no DB involved.
 /// </summary>
 public sealed class CachingEventServiceTests
 {

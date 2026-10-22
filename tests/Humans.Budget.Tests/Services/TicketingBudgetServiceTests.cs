@@ -11,7 +11,7 @@ using NSubstitute;
 namespace Humans.Budget.Tests.Services;
 
 /// <summary>
-/// Unit tests for the Application-layer <see cref="TicketingBudgetService"/>.
+/// Unit tests for <see cref="TicketingBudgetService"/>.
 /// Covers the ISO-week bucketing, exclusion of the current (not-yet-complete)
 /// week, and delegation of Budget-owned mutations to <see cref="IBudgetManagement"/>.
 /// Ticket reads are stubbed via NSubstitute; no DB involvement.

@@ -6,11 +6,6 @@ using MemberApplication = Humans.Governance.Domain.Application;
 
 namespace Humans.Governance.Data;
 
-/// <summary>
-/// EF-backed implementation of <see cref="IApplicationRepository"/>. The only
-/// non-test file that touches <c>DbContext.Applications</c>,
-/// <c>DbContext.BoardVotes</c> or <c>DbContext.ApplicationStateHistories</c>.
-/// </summary>
 internal sealed class ApplicationRepository(IDbContextFactory<GovernanceDbContext> factory) : IApplicationRepository
 {
     public async Task<MemberApplication?> GetByIdAsync(Guid applicationId, CancellationToken ct = default)
@@ -87,12 +82,8 @@ internal sealed class ApplicationRepository(IDbContextFactory<GovernanceDbContex
         // yet, so Attach marks them Added alongside the modified application root.
         ctx.Applications.Attach(application).State = EntityState.Modified;
 
-        // Remove BoardVotes for this application through the change tracker
-        // so they commit in the same SaveChangesAsync transaction as the
-        // Application update. Load first (the aggregate-local nav may not
-        // carry every vote when called directly with a loose entity), then
-        // RemoveRange. ExecuteDeleteAsync would be cheaper at scale but is
-        // not supported by the EF InMemory provider used in unit tests.
+        // Load then RemoveRange so the deletes commit in the same SaveChangesAsync as the
+        // update; ExecuteDeleteAsync is unsupported by the InMemory provider the tests use.
         var votes = await ctx.BoardVotes
             .Where(bv => bv.ApplicationId == application.Id)
             .ToListAsync(ct);
@@ -361,10 +352,7 @@ internal sealed class ApplicationRepository(IDbContextFactory<GovernanceDbContex
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
-        // Plain re-FK — applications are historical records (Colaborador /
-        // Asociado tier applications over multiple years). Both source and
-        // target may have applied independently; every row is preserved.
-        // No conflict rule, no dedup. UpdatedAt stamped on every moved row.
+        // Plain re-FK: a person may hold applications on both sides, so every row is kept.
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var sourceRows = await ctx.Applications
             .Where(a => a.UserId == sourceUserId)

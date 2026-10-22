@@ -1,12 +1,5 @@
-// Gate admissions terminal client.
-//
-// Flow: a keyboard-wedge scan (or manual entry) submits the barcode → /Gate/Evaluate
-// returns a verdict card. If the card asks for an ID check, the agent taps
-// Yes/No (or Child) → /Gate/Decision records the decision and returns the final
-// card. Distinct sounds + haptics let the agent keep their eyes on the guest,
-// and the Yes/No buttons arm only after a short delay to defeat autopilot taps.
-// Typing "logout" (any case) instead of a barcode offers a confirm card that ends
-// the kiosk session — the only logout path on the route-restricted gate account.
+// Typing "logout" instead of a barcode offers a confirm card that ends the kiosk session: the only logout path on the
+// route-restricted gate account.
 
 export function initGate(refs) {
     const { form, input, result, override, evaluateUrl, decisionUrl, logoutUrl, token } = refs;
@@ -18,12 +11,8 @@ export function initGate(refs) {
     const overrideController = initOverride();
     const overrideOpen = () => override && !override.classList.contains('d-none');
 
-    // After a result, auto-return to the Ready screen so the previous guest's name never lingers on
-    // the shared kiosk (PII) and the screen is never stuck on the last scan. Durations differ by
-    // outcome: an ADMIT is a glance, but a STOP/AMBER refusal gets explained to the guest, so it
-    // lingers longer; the interim ID-confirm card gets a long *safety* timeout only (it shows a name
-    // but the operator is mid-decision). Any tap on the card pushes the deadline back (active use
-    // keeps it up); terminal cards also get a "Next ticket" button with a visible countdown.
+    // Auto-return to Ready so the previous guest's name never lingers on the shared kiosk. A refusal lingers longer
+    // than an admit (it gets explained); the ID-confirm card gets only a long safety timeout. Any tap pushes it back.
     const readyCard = result.firstElementChild ? result.firstElementChild.cloneNode(true) : null;
     const RESET_MS = { Admit: 10000, Stop: 30000, Amber: 30000, IdConfirm: 60000, LogoutConfirm: 60000 };
     let resetTimer = null, resetCountdown = null, resetDeadline = 0, resetMs = 0, resetLabel = null, resetLabelKind = 'next';
@@ -60,9 +49,8 @@ export function initGate(refs) {
     function armAutoReset(card, kind) {
         clearResetTimer();
         resetMs = RESET_MS[kind] || 10000;
-        // Terminal cards (no pending Yes/No) get a Next button + countdown. The ID-confirm card is
-        // mid-decision, so instead of a Next button it shows a visible "auto-clears in Ns · tap to
-        // keep" hint — a long, *non-silent* safety net so it can't vanish unannounced mid-ID-check.
+        // The ID-confirm card is mid-decision: a visible "auto-clears" hint instead of a Next button, so it can't
+        // vanish unannounced.
         if (card.querySelector('.gate-decide')) {
             resetLabel = ensureIdHint(card);
             resetLabelKind = 'hint';
@@ -95,10 +83,7 @@ export function initGate(refs) {
         return hint;
     }
 
-    // A tap anywhere on the result card means "still using this" — push the deadline back. We only
-    // reschedule the setTimeout and leave the countdown setInterval running (its tick reads
-    // resetDeadline live and self-corrects), so rapid taps don't rebuild the interval or make the
-    // visible number stutter. One delegated listener (not per-card) so it never accumulates.
+    // Only reschedule the timeout; the countdown interval reads resetDeadline live, so rapid taps don't stutter it.
     function bumpReset() {
         if (!resetTimer) return;
         resetDeadline = Date.now() + resetMs;
@@ -107,13 +92,11 @@ export function initGate(refs) {
     }
     result.addEventListener('pointerdown', bumpReset, { passive: true });
 
-    // The freshness line is a reload affordance on the chromeless kiosk (no browser reload button).
+    // A reload affordance on the chromeless kiosk, which has no reload button.
     const asofEl = document.querySelector('.gate-asof');
     if (asofEl) asofEl.addEventListener('click', () => location.reload());
 
-    // Render the "loaded HH:mm · N min ago" indicator and redden it once the terminal
-    // has been open a while — a nudge to re-open the page so its data view isn't stale.
-    // A once-a-minute text update only (no network, no scan-loop cost).
+    // Reddens once the terminal has been open a while: a nudge to reload.
     function initFreshness() {
         const el = document.querySelector('.gate-asof');
         const t0 = el ? Date.parse(el.getAttribute('data-asof')) : NaN;
@@ -133,8 +116,7 @@ export function initGate(refs) {
     // re-scan, must not fire two overlapping lookups whose later response wins.
     let busy = false;
 
-    // Keep the scan field focused so a wedge scan always lands somewhere useful, except
-    // while the agent is interacting with the Yes/No buttons or the override panel.
+    // Keep the scan field focused, except while the agent uses the buttons or the override panel.
     document.addEventListener('click', (e) => {
         if (overrideOpen()) return;
         if (!e.target.closest('.gate-decide') && !e.target.closest('.gate-override')
@@ -143,29 +125,22 @@ export function initGate(refs) {
         }
     });
 
-    // Don't depend on the imager's Enter-suffix config to submit: a wedge scan arrives as a fast
-    // burst of characters, so once the field has a plausible barcode and goes quiet for a beat,
-    // submit anyway. An Enter suffix still submits immediately (the form handler clears the timer).
-    // Manual mode turns the quiet-timer off — a human typing pauses far longer than a wedge burst
-    // and presses Enter/Go themselves.
+    // Don't depend on the imager's Enter suffix: submit once a plausible barcode goes quiet. Manual mode turns this
+    // off; a human pauses far longer than a wedge burst.
     const SCAN_QUIET_MS = 300;
     const SCAN_MIN_LENGTH = 5;
     let scanTimer = null;
     let manualMode = false;
     const clearScanTimer = () => { if (scanTimer) { clearTimeout(scanTimer); scanTimer = null; } };
     input.addEventListener('input', () => {
-        // A character in flight means a scan (or manual entry) is mid-stream: push the card's
-        // auto-return deadline back so resetToReady can't clear the field between keystrokes —
-        // a wipe mid-burst truncates the barcode into a false STOP or a silently dropped scan.
+        // A scan is mid-stream: push the auto-return back, or a reset mid-burst truncates the barcode.
         bumpReset();
         clearScanTimer();
         if (manualMode || input.value.trim().length < SCAN_MIN_LENGTH) return;
         scanTimer = setTimeout(() => form.requestSubmit(), SCAN_QUIET_MS);
     });
 
-    // Manual-entry toggle: flips inputmode so the touch keyboard comes up (it stays suppressed in
-    // scan mode) for typing a damaged/unreadable code. Blur-then-focus forces the keyboard to
-    // follow the new inputmode while the field keeps receiving wedge input either way.
+    // Blur-then-focus makes the keyboard follow the new inputmode.
     const manualToggle = document.getElementById('gate-manual-toggle');
     if (manualToggle) manualToggle.addEventListener('click', () => {
         manualMode = !manualMode;
@@ -182,10 +157,7 @@ export function initGate(refs) {
         clearScanTimer();
         const code = input.value.trim();
         if (!code || busy || overrideOpen()) return; // ignore scans mid-override
-        // Escape hatch for a device stuck on the kiosk account (the route-restriction
-        // middleware hides every normal logout affordance): typing "logout" into the scan
-        // field offers to end the session. Confirm-tap only — a scanned barcode that
-        // *encodes* "logout" must not be able to knock the terminal offline by itself.
+        // Confirm-tap only: a barcode that encodes "logout" must not knock the terminal offline by itself.
         if (code.toLowerCase() === 'logout') {
             showLogoutConfirm();
             return;
@@ -201,7 +173,7 @@ export function initGate(refs) {
     });
 
     async function render(url, body) {
-        clearResetTimer(); // a new scan/decision is incoming — cancel any pending auto-return
+        clearResetTimer();
         try {
             const opts = body
                 ? { method: 'POST', headers: { 'RequestVerificationToken': token }, body }
@@ -217,8 +189,7 @@ export function initGate(refs) {
         }
     }
 
-    // Never leave the operator staring at the previous (neutral-tinted) card on a
-    // failed request — show an explicit, audible error state.
+    // Never leave the operator staring at the previous card on a failed request.
     function renderError() {
         result.innerHTML =
             '<div class="gate-card gate-stop" data-kind="Stop" role="status">' +
@@ -228,10 +199,7 @@ export function initGate(refs) {
         signal('Stop');
     }
 
-    // Local confirm card for the "logout" escape hatch — never touches the server until
-    // confirmed. Confirm POSTs the standard /Account/Logout via a real form (the browser
-    // then follows the redirect out of the kiosk); Cancel returns to Ready. The card
-    // auto-clears like any other so an abandoned prompt can't linger on the shared screen.
+    // Touches no server until confirmed, and auto-clears so an abandoned prompt can't linger.
     function showLogoutConfirm() {
         input.value = '';
         result.innerHTML =
@@ -249,8 +217,7 @@ export function initGate(refs) {
         const card = result.firstElementChild;
         card.querySelector('[data-logout-cancel]').addEventListener('click', resetToReady);
 
-        // Same anti-mistap arming as the Yes/No buttons: a wedge-scanned "logout" barcode
-        // auto-submits, so the confirm must never be tappable in the same motion.
+        // Same anti-mistap arming as Yes/No: a wedge-scanned "logout" auto-submits, so confirm can't be in the same motion.
         const confirmBtn = card.querySelector('[data-logout-confirm]');
         confirmBtn.setAttribute('disabled', 'disabled');
         setTimeout(() => confirmBtn.removeAttribute('disabled'), 350);
@@ -276,7 +243,6 @@ export function initGate(refs) {
         const kind = card.getAttribute('data-kind');
         signal(kind);
 
-        // Supervisor-override affordance (too-early card, or a failed-override retry card).
         const overrideBtn = card.querySelector('[data-override="early"]');
         if (overrideBtn) {
             overrideBtn.addEventListener('click', () =>
@@ -285,8 +251,7 @@ export function initGate(refs) {
 
         const decide = card.querySelector('.gate-decide');
         if (!decide) {
-            // Terminal result (admit / stop / amber / too-early) — no decision pending, so arm the
-            // per-kind auto-return + Next-ticket button. The override panel pauses this while open.
+            // The override panel pauses this while open.
             armAutoReset(card, kind);
             return;
         }
@@ -294,7 +259,7 @@ export function initGate(refs) {
         const barcode = decide.getAttribute('data-barcode');
         const buttons = decide.querySelectorAll('.gate-btn');
 
-        // Anti-mistap: disable for 350ms, then arm — kills the "scan, tap-tap" carry-over.
+        // Anti-mistap: disabled for 350ms kills the "scan, tap-tap" carry-over.
         buttons.forEach(b => { b.setAttribute('disabled', 'disabled'); });
         setTimeout(() => buttons.forEach(b => b.removeAttribute('disabled')), 350);
 
@@ -304,19 +269,15 @@ export function initGate(refs) {
             }));
         });
 
-        // The child-without-ID waiver is a supervisor override too — open the panel.
         const childBtn = decide.querySelector('[data-child]');
         if (childBtn) {
             childBtn.addEventListener('click', () => overrideController.open('child', barcode));
         }
 
-        // Scanned the wrong code — bail straight back to Ready so the operator can rescan.
         const cancelScan = decide.querySelector('[data-cancel-scan]');
         if (cancelScan) cancelScan.addEventListener('click', resetToReady);
 
-        // The ID-confirm card shows a name, so give it a long *safety* timeout (no Next button): if
-        // it's abandoned (guest walks off / staffer distracted), the name doesn't linger forever.
-        // Any tap — including the Yes/No buttons — pushes the deadline back during active use.
+        // The card shows a name, so a long safety timeout stops it lingering if abandoned.
         armAutoReset(card, kind);
     }
 
@@ -338,9 +299,6 @@ export function initGate(refs) {
         }
     }
 
-    // The override panel: admits a too-early / unconfirmed-EE or child-without-ID scan, authorized
-    // by the shared supervisor PIN. The keypad auto-submits on the 4th digit; the server verifies
-    // the PIN (and throttles failures) before recording anything.
     function initOverride() {
         if (!override) return { open: () => {} };
 
@@ -376,9 +334,7 @@ export function initGate(refs) {
             focusInput();
         }
 
-        // Cancel returns to the card behind the panel — re-arm its auto-return so the guest's name
-        // doesn't linger. Covers the ID-confirm card too (its timer was paused when the panel opened),
-        // and matches on any card carrying a verdict (never the Ready card, which has no data-kind).
+        // Re-arm the card's auto-return so the guest's name doesn't linger (its timer paused when the panel opened).
         function closeAndReArm() {
             close();
             const current = result.firstElementChild;
@@ -398,19 +354,17 @@ export function initGate(refs) {
         return { open };
     }
 
-    // Brief neutral frame so two greens in a row still visibly "tick over" and the
-    // next guest never sees the previous result.
+    // So two greens in a row still visibly tick over.
     function flashNeutral(container) {
         const card = container.firstElementChild;
         if (card) card.classList.add('gate-neutral');
     }
 
-    // Distinct audio + haptic per outcome so the agent needn't watch the screen.
+    // So the agent needn't watch the screen.
     function signal(kind) {
         if (kind === 'Admit') { beep([660, 990], 0.18); vibrate([30]); }
         else if (kind === 'Stop') { beep([160], 0.25); vibrate([60, 40, 60]); }
         else if (kind === 'Amber') { beep([440], 0.15); vibrate([40]); }
-        // A neutral tick on the ID-confirm card cues the agent that a decision is now needed.
         else if (kind === 'IdConfirm') { beep([1000], 0.05); vibrate([15]); }
     }
 

@@ -35,8 +35,6 @@ public class RepositoryTests
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    // ─── Expense docs ────────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task ReplaceDocs_ReSyncingADoc_RewritesTheFactsAndKeepsCreatedAt()
     {
@@ -134,7 +132,7 @@ public class RepositoryTests
     public async Task GetAllDocs_ReturnsBothSlices_WhichNeitherOtherReadCovers()
     {
         // /Finance/Holded browses every doc. The unmatched read filters to one status and the
-        // matched read to one year, so neither composes into this (nobodies-collective/Humans#1000).
+        // matched read to one year, so neither composes into this.
         var (repo, _) = Make();
         await repo.ReplaceDocsAsync(
         [
@@ -150,8 +148,6 @@ public class RepositoryTests
         rows.Select(d => d.HoldedDocId).Should()
             .BeEquivalentTo(["matched-2026", "matched-2027", "unmatched"]);
     }
-
-    // ─── Creditor bindings ───────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task UpsertCreditorContact_ANullAccountNumberDoesNotEraseAResolvedOne()
@@ -234,8 +230,6 @@ public class RepositoryTests
         (await ctx.HoldedCreditorContacts.SingleAsync(Xunit.TestContext.Current.CancellationToken)).UserId.Should().Be(bo);
     }
 
-    // ─── Sync state ──────────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task DocSyncState_ReadsArePure_AndExplicitSaveCreatesSingleton()
     {
@@ -259,8 +253,6 @@ public class RepositoryTests
         ctx.HoldedDocSyncStates.Should().ContainSingle();
     }
 
-    // ─── Category map ────────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task GetCategoryMap_ReturnsArchivedRowsToo_TheServiceDecidesWhatIsActive()
     {
@@ -279,8 +271,6 @@ public class RepositoryTests
 
         (await repo.GetCategoryMapAsync(Ct)).Should().ContainSingle();
     }
-
-    // ─── SEPA payout booking (nobodies-collective/Humans#1141) ───────────────────
 
     [HumansFact]
     public async Task SaveSepaTransferBooking_StampsBookedAtBookedByAndMovementId()
@@ -452,8 +442,6 @@ public class RepositoryTests
         export.BookedAt.Should().BeNull();
     }
 
-    // ─── Managed accounts ────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task ManagedAccounts_UpsertByNumber_KeepsIdAndCreatedAt_ReplacesTheRest()
     {
@@ -490,8 +478,6 @@ public class RepositoryTests
         row.UpdatedAt.Should().Be(t1);
         row.IsActive.Should().BeFalse();
     }
-
-    // ─── Builders ────────────────────────────────────────────────────────────────
 
     private static HoldedExpenseDoc Doc(
         string holdedDocId,

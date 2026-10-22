@@ -4,16 +4,9 @@ using Humans.Web.Tests.Architecture.Ratchet;
 namespace Humans.Web.Tests.Architecture.Rules;
 
 /// <summary>
-/// Ratcheted rule: display ordering happens in the controller / view-model
-/// assembly, not in the repository.
-///
-/// Source rule:
-/// <c>memory/architecture/display-sort-in-controllers.md</c> (new in this PR).
-///
-/// Detection: scan <c>src/Humans.Infrastructure/Repositories/**/*.cs</c> for
-/// <c>.OrderBy(</c> / <c>.OrderByDescending(</c> calls. Honor an inline
-/// allow-list comment marker <c>// arch:db-sort-ok</c> on the same line OR
-/// the line immediately preceding the call. Everything else is a violation.
+/// Display ordering belongs in the controller, not the repository
+/// (<c>memory/architecture/display-sort-in-controllers.md</c>). <c>// arch:db-sort-ok</c> on the sort's line or the
+/// line above allows one.
 /// </summary>
 public class DisplaySortInControllersRule
 {
@@ -43,8 +36,7 @@ public class DisplaySortInControllersRule
             if (!SortRegex.IsMatch(content)) continue;
             var lines = content.Split('\n');
             var rel = RatchetTestRunner.ToRelativePath(repoRoot, path);
-            // Per-(file, op) ordinal so multiple sorts of the same kind in one
-            // file stay distinct without line numbers.
+            // Per-(file, op) ordinal keeps sorts distinct without line numbers.
             var counts = new Dictionary<string, int>(StringComparer.Ordinal);
 
             foreach (var match in SortRegex.Matches(content).Cast<Match>())
@@ -64,26 +56,8 @@ public class DisplaySortInControllersRule
         }
     }
 
-    /// <summary>
-    /// Every file that owns a repository: Base's <c>Humans.Infrastructure/Repositories</c>
-    /// plus each G5 section's <c>Data/</c> folder.
-    /// </summary>
-    /// <remarks>
-    /// The section half is not cosmetic. Scanning only the Base folder means a section's
-    /// repository silently leaves the sweep on the day it moves — the rule then reports
-    /// success by finding nothing, and the ratchet reads the abandoned baseline rows as
-    /// "fixed" while the code is byte-identical. Campaigns is the first moved section that
-    /// carried a baseline row, so it is where this surfaced; the rows the widening brings
-    /// back are all pre-existing sorts in sections that moved earlier
-    /// (nobodies-collective/Humans#866, G5 template step 11: widen the sweep, never shrink
-    /// the expectation).
-    /// </remarks>
     private static IEnumerable<string> RepositoryFiles(string repoRoot)
     {
-        // Base's repository folder was scanned here until G5 lane 5b-6: the drain finished, the
-        // last repository left, and src/Humans.Infrastructure was deleted. src/Sections below is
-        // the destination, so its absence means the layout moved and the sweep would otherwise
-        // report success by scanning nothing.
         var sections = Path.Combine(repoRoot, "src", "Sections");
         if (!Directory.Exists(sections))
         {

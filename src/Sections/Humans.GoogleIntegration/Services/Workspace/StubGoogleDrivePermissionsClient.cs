@@ -1,11 +1,5 @@
 namespace Humans.GoogleIntegration.Services.Workspace;
 
-/// <summary>
-/// Dev/test <see cref="IGoogleDrivePermissionsClient"/> that keeps an
-/// in-memory store of folders and permissions so the sync service can exercise Drive
-/// flows without a Google service account. The real service runs against this stub —
-/// there is no separate stub service.
-/// </summary>
 internal sealed class StubGoogleDrivePermissionsClient(ILogger<StubGoogleDrivePermissionsClient> logger)
     : IGoogleDrivePermissionsClient
 {
@@ -16,12 +10,7 @@ internal sealed class StubGoogleDrivePermissionsClient(ILogger<StubGoogleDrivePe
     private long _nextFileId = 1;
     private long _nextPermissionId = 1;
 
-    /// <summary>
-    /// Seeds a folder into the in-memory store and returns its stub id.
-    /// Not part of <see cref="IGoogleDrivePermissionsClient"/> — the app never
-    /// creates Drive folders, it only manages permissions on folders linked by
-    /// hand. Dev/test callers use this to give the stub something to act on.
-    /// </summary>
+    /// <summary>Not on the interface: dev and test callers seed folders for the stub to act on.</summary>
     public string SeedFolder(string folderName, string? parentFolderId = null)
     {
         logger.LogInformation("[STUB] Seed folder '{Name}' under parent {Parent}",
@@ -44,10 +33,7 @@ internal sealed class StubGoogleDrivePermissionsClient(ILogger<StubGoogleDrivePe
 
         lock (_gate)
         {
-            // Mirror the real client: the Drive API returns HTTP 404 when
-            // the file does not exist. Returning an empty success list
-            // would let dev/QA silently pass with deleted or mistyped
-            // Google IDs that would fail in production.
+            // Like Drive, 404 an unknown file: an empty success would let dev/QA pass with ids that fail in production.
             if (!_filesById.ContainsKey(fileId))
             {
                 return Task.FromResult(new DrivePermissionListResult(
@@ -77,10 +63,7 @@ internal sealed class StubGoogleDrivePermissionsClient(ILogger<StubGoogleDrivePe
 
         lock (_gate)
         {
-            // Mirror the real client: the Drive API returns HTTP 404 when
-            // the file does not exist. Auto-creating a permissions bucket
-            // for unknown ids would hide invalid / stale Google IDs in
-            // dev/QA that would fail in production with the real client.
+            // Like Drive, 404 an unknown file rather than hide a stale id.
             if (!_filesById.ContainsKey(fileId))
             {
                 return Task.FromResult(new DrivePermissionMutationResult(

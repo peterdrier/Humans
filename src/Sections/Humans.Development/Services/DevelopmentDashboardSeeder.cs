@@ -20,13 +20,7 @@ internal sealed record DashboardResetResult(
     int TeamsDeleted,
     int UsersDeleted);
 
-/// <summary>
-/// Seeds deterministic-ish demo data for the volunteer coordinator dashboard.
-/// Gated to IsDevelopment() only by the calling controller. Not safe to run in QA/prod.
-///
-/// All writes go through the owning section services. The controller keeps destructive
-/// reset behind full Admin authorization.
-/// </summary>
+/// <summary>Not safe outside local Development: the calling controller gates it.</summary>
 internal sealed class DevelopmentDashboardSeeder(
     IShiftSeeding shiftSeeding,
     ISettingsService settingsService,
@@ -42,7 +36,6 @@ internal sealed class DevelopmentDashboardSeeder(
     IClock clock,
     ILogger<DevelopmentDashboardSeeder> logger)
 {
-    /// <summary>The rota fields the fixture needs back after creating one.</summary>
     private sealed record SeededRota(Guid Id, Guid TeamId, RotaPeriod Period);
 
     private static readonly Guid SeededEventId = Guid.Parse("2f38bf0c-46fd-4f7d-a05b-7ec9e26d8e6b");
@@ -91,9 +84,7 @@ internal sealed class DevelopmentDashboardSeeder(
         var now = clock.GetCurrentInstant();
         var todayUtc = now.InUtc().Date;
 
-        // Settings mints event ids and owns "active" (nobodies-collective/Humans#1631) —
-        // deactivates whatever else is active so ours becomes the one GetActiveEventSettingsAsync
-        // resolves.
+        // Settings mints event ids and owns "active": creating this one deactivates any other.
         await eventSettingsSeeding.CreateActiveEventAsync(new EventSettingsInfo(
             Id: SeededEventId,
             EventName: SeededEventName,
@@ -116,8 +107,7 @@ internal sealed class DevelopmentDashboardSeeder(
         // On-demand creates the Shifts knobs row for the event above.
         await shiftSeeding.SetShiftBrowsingOpenAsync(SeededEventId, isOpen: true);
 
-        // Teams: create parents, then subteams. Goes through ITeamSeeding so slug
-        // generation, validation, and cache seeding match production.
+        // Through ITeamSeeding so slugs, validation and cache seeding match production.
         var teamsCreated = 0;
         var parentTeams = new Dictionary<string, TeamInfo>(StringComparer.Ordinal);
         foreach (var name in ParentTeamNames)
@@ -191,12 +181,8 @@ internal sealed class DevelopmentDashboardSeeder(
             allRotas.Add((new SeededRota(rotaId, team.Id, period), confirmedRate));
         }
 
-        // Shifts: 8-12 per rota with varied min/max/duration and day offsets by period.
-        // All-day rotas (Build/Strike) get distinct offsets - duplicate same-date all-day
-        // shifts surface as duplicate dropdown options in the range-signup form and
-        // confuse the confirmation modal's overlap math.
-        // A local row, not the Shift entity: Shift is internal to Humans.Shifts, and the
-        // seeder only needs what it reads back off CreateShiftAsync.
+        // All-day rotas (Build/Strike) get distinct offsets: duplicate same-date all-day shifts show up as duplicate
+        // dropdown options in the range-signup form and confuse the confirmation modal's overlap math.
         var shifts = new List<(SeededShift Shift, double ConfirmedRate)>();
         foreach (var (rota, rate) in allRotas)
         {
@@ -282,9 +268,7 @@ internal sealed class DevelopmentDashboardSeeder(
             users.Add(user);
         }
 
-        // Coordinators: 2 per parent team, routed via ITeamSeeding.AddSeededMemberAsync so
-        // we never touch TeamMembers directly. Infrastructure coords logged in 9 days ago
-        // (stale) to drive the red chip on the dashboard.
+        // Infrastructure coords logged in 9 days ago (stale) to drive the red chip on the dashboard.
         foreach (var parent in parentTeams.Values)
         {
             var isInfrastructure = parent.Name.StartsWith("Infrastructure", StringComparison.Ordinal);
@@ -450,20 +434,15 @@ internal sealed class DevelopmentDashboardSeeder(
     }
 
     /// <summary>
-    /// Deletes all data previously created by <see cref="SeedAsync"/>: the seeded
-    /// event (with its rotas/shifts/signups), known seeded dev teams, and dev
-    /// users (email pattern <c>dev-human-*@seed.local</c>). Safe to call on
-    /// a DB where no seed has ever run.
-    ///
-    /// Deletion goes through the owning section services. The caller is responsible
-    /// for full Admin authorization before invoking reset.
+    /// Deletes what <see cref="SeedAsync"/> created: the seeded event, the known dev teams and the
+    /// <c>dev-human-*@seed.local</c> users. Safe on a database never seeded. The caller must check full Admin.
     /// </summary>
     public async Task<DashboardResetResult> ResetAsync(CancellationToken cancellationToken)
     {
         var eventsDeleted = await shiftSeeding.DeleteEventAsync(SeededEventId, cancellationToken);
 
-        // Settings owns "which event is active" (nobodies-collective/Humans#1631) and must
-        // drop its own row too, or SeedAsync's AlreadySeeded check keeps firing forever.
+        // Settings owns "which event is active" and must drop its own row too, or SeedAsync's AlreadySeeded check
+        // keeps firing forever.
         await eventSettingsSeeding.DeleteEventAsync(SeededEventId, cancellationToken);
 
         var devUserIds = await userEmailService.GetUserIdsByEmailPrefixAndSuffixAsync(
@@ -519,9 +498,5 @@ internal sealed class DevelopmentDashboardSeeder(
         }
     }
 
-    /// <summary>
-    /// The four fields the seeder reads back off a created shift when it fans signups
-    /// out over it.
-    /// </summary>
     private sealed record SeededShift(Guid Id, Guid RotaId, int DayOffset, int MaxVolunteers);
 }

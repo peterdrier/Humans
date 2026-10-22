@@ -5,12 +5,8 @@ using Humans.Agent.Domain;
 namespace Humans.Agent.Services.Preload;
 
 /// <summary>
-/// Loads the agent's GitHub-backed caches into RAM once the app is serving, so the first
-/// real request never pays the cold-fetch latency. Hooks <c>ApplicationStarted</c> and runs
-/// fire-and-forget — it never blocks startup. The caches have no TTL (see the readers and
-/// <see cref="AgentPreloadCorpusBuilder"/>), so there is nothing to re-warm: restart (i.e. a
-/// release) is the refresh. Building the Tier2 corpus warms every section guide as a side
-/// effect; listing community topics warms every community KB file.
+/// Fire-and-forget on <c>ApplicationStarted</c>, so it never blocks startup. The caches have no TTL, so there is
+/// nothing to re-warm: a release is the refresh.
 /// </summary>
 internal sealed class AgentPreloadWarmupHostedService(
     IHostApplicationLifetime lifetime,
@@ -38,8 +34,7 @@ internal sealed class AgentPreloadWarmupHostedService(
         }
         catch (Exception ex)
         {
-            // A warm-up miss must never crash the host; the lazy fetch paths still populate
-            // the caches on first use. Logged per memory/code/always-log-problems.md.
+            // A warm-up miss must never crash the host; the lazy paths still fill the caches on first use.
             logger.LogWarning(ex, "Agent preload warm-up failed; caches will populate lazily on first use");
         }
     }

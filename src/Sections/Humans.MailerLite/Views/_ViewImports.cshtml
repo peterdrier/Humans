@@ -1,16 +1,11 @@
-@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
-   here ships broken markup with a green build and no runtime error. Checked by
-   MailerLitePageRenderTests (integration suite). *@
+@* A section RCL doesn't inherit the host's _ViewImports: a missing line here ships broken markup with a green build. *@
 @using Humans.Base.Extensions
 @using Humans.MailerLite
 @using Humans.MailerLite.Services
 @using Humans.MailerLite.Services.Dtos
 @using Humans.Base
 @using Humans.Base.Models.Tables
-@* MailerLite has no resource set: the admin pages are English operator copy with no
-   Localizer[…] call. *@
+@* No resource set: the admin pages are English operator copy. *@
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
-@* A section can only addTagHelper against assemblies it references — a Shell-resident
-   component renders as inert literal markup. <vc:human>, the one the debug and import
-   pages use, lives in Humans.Base. *@
+@* A section can only addTagHelper assemblies it references. <vc:human> lives in Humans.Base. *@
 @addTagHelper *, Humans.Base

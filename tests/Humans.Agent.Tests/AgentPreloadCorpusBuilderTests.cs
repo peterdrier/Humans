@@ -35,7 +35,7 @@ public class AgentPreloadCorpusBuilderTests
     /// A section the reader can serve but that never appears in the Tier2 index is one the
     /// agent has no reason to ask for — the index is the only place it learns the key set.
     /// Asserting against <c>KnownSections</c> rather than a hand-listed set keeps the two
-    /// lists from drifting apart the way they did before nobodies-collective#951.
+    /// lists from drifting apart.
     /// </summary>
     [HumansFact]
     public async Task Tier2_index_lists_every_section_the_reader_can_serve()

@@ -2,38 +2,11 @@ using NodaTime;
 
 namespace Humans.Camps.Data;
 
-/// <summary>
-/// Repository for the camps aggregate: <c>camps</c>, <c>camp_seasons</c>,
-/// <c>camp_members</c>, <c>camp_role_definitions</c>,
-/// <c>camp_role_assignments</c>, <c>camp_images</c>,
-/// <c>camp_historical_names</c>, and <c>camp_settings</c>.
-/// </summary>
-/// <remarks>
-/// Reads are <c>AsNoTracking</c>. Mutating methods load tracked entities and
-/// save changes atomically inside a single
-/// <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{CampsDbContext}"/>-owned
-/// context so callers never have to reason about the EF context lifetime.
-/// Cross-domain user navigation is not resolved by this repository; the
-/// application service stitches display names from
-/// <see cref="Humans.Users.Contracts.IUserService"/> per design-rules §6.
-/// </remarks>
 internal partial interface ICampRepository : IRepository
 {
-    // ==========================================================================
-    // Reads — Camp
-    // ==========================================================================
-
-    /// <summary>
-    /// Loads a camp with its seasons, active leads (FK-only; no
-    /// <c>User</c> nav), historical names and images, by slug (case-insensitive).
-    /// Returns null if not found. Read-only.
-    /// </summary>
+    /// <summary>Case-insensitive slug match. Leads are FK-only (no <c>User</c> nav).</summary>
     Task<Camp?> GetBySlugAsync(string slug, CancellationToken ct = default);
 
-    /// <summary>
-    /// Loads a camp with its seasons, active leads (FK-only), historical names
-    /// and images, by id. Returns null if not found. Read-only.
-    /// </summary>
     Task<Camp?> GetByIdAsync(Guid campId, CancellationToken ct = default);
 
     /// <summary>
@@ -47,14 +20,7 @@ internal partial interface ICampRepository : IRepository
         IReadOnlyList<CampSeasonStatus>? statusFilter,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns true if <paramref name="slug"/> is already taken by any camp.
-    /// </summary>
     Task<bool> SlugExistsAsync(string slug, CancellationToken ct = default);
-
-    // ==========================================================================
-    // Writes — Camp / Season / Lead (aggregate)
-    // ==========================================================================
 
     /// <summary>
     /// Persist a new camp with its initial season, the creator's Active CampMember,
@@ -93,10 +59,6 @@ internal partial interface ICampRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<string>?> DeleteCampAsync(Guid campId, CancellationToken ct = default);
 
-    // ==========================================================================
-    // Writes — Season
-    // ==========================================================================
-
     /// <summary>
     /// Loads the season tracked inside a short-lived save context, applies
     /// <paramref name="mutate"/> to the tracked entity, and saves. EF's change
@@ -124,14 +86,8 @@ internal partial interface ICampRepository : IRepository
         Func<CampSeason, CampHistoricalName?> mutate,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns true if a season exists for the given camp/year.
-    /// </summary>
     Task<bool> SeasonExistsAsync(Guid campId, int year, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the most recent season (by year desc) for the camp, read-only.
-    /// </summary>
     Task<CampSeason?> GetLatestSeasonAsync(Guid campId, CancellationToken ct = default);
 
     /// <summary>
@@ -146,9 +102,6 @@ internal partial interface ICampRepository : IRepository
     /// </summary>
     Task AddSeasonAsync(CampSeason season, CancellationToken ct = default);
 
-    /// <summary>
-    /// Sets the <c>NameLockDate</c> for every season in the given year, returning the changed count.
-    /// </summary>
     Task<int> SetNameLockDateForYearAsync(int year, LocalDate lockDate, CancellationToken ct = default);
 
     /// <summary>
@@ -159,38 +112,12 @@ internal partial interface ICampRepository : IRepository
         IReadOnlyCollection<int> years,
         CancellationToken ct = default);
 
-    // ==========================================================================
-    // Cross-service queries (CampSeason by id)
-    // ==========================================================================
-
-    /// <summary>Read-only fetch by id; null if not found.</summary>
     Task<CampSeason?> GetSeasonByIdAsync(Guid campSeasonId, CancellationToken ct = default);
 
-    // ==========================================================================
-    // Reads — Lead (backed by camp_role_assignments against the Camp Lead
-    // special role)
-    // ==========================================================================
-
-    /// <summary>
-    /// Returns the distinct set of user ids who currently hold the Camp Lead
-    /// special role on any camp. Used by <c>SystemTeamSyncJob</c> to sync the
-    /// Barrio Leads team membership.
-    /// </summary>
     Task<IReadOnlyList<Guid>> GetActiveLeadUserIdsAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns true if the user currently holds the Camp Lead special role on any
-    /// camp. Used by <c>SystemTeamSyncJob</c>.
-    /// </summary>
     Task<bool> IsLeadAnywhereAsync(Guid userId, CancellationToken ct = default);
 
-    // ==========================================================================
-    // Writes / reads — Historical names
-    // ==========================================================================
-
-    /// <summary>
-    /// Persist a new historical name record.
-    /// </summary>
     Task AddHistoricalNameAsync(CampHistoricalName historicalName, CancellationToken ct = default);
 
     /// <summary>
@@ -198,13 +125,6 @@ internal partial interface ICampRepository : IRepository
     /// </summary>
     Task<bool> RemoveHistoricalNameAsync(Guid historicalNameId, CancellationToken ct = default);
 
-    // ==========================================================================
-    // Writes / reads — Images
-    // ==========================================================================
-
-    /// <summary>
-    /// Returns the count of images on the camp.
-    /// </summary>
     Task<int> CountImagesAsync(Guid campId, CancellationToken ct = default);
 
     /// <summary>
@@ -233,10 +153,6 @@ internal partial interface ICampRepository : IRepository
         IReadOnlyList<Guid> imageIdsInOrder,
         CancellationToken ct = default);
 
-    // ==========================================================================
-    // Writes / reads — Settings
-    // ==========================================================================
-
     /// <summary>
     /// Returns the (singleton) camp settings row, read-only.
     /// </summary>
@@ -253,10 +169,6 @@ internal partial interface ICampRepository : IRepository
     /// if the list changed.
     /// </summary>
     Task<bool> CloseSeasonAsync(int year, CancellationToken ct = default);
-
-    // ==========================================================================
-    // Camp membership (camp_members)
-    // ==========================================================================
 
     /// <summary>
     /// Idempotent insert of a Pending membership row. Handles the 23505
@@ -298,9 +210,6 @@ internal partial interface ICampRepository : IRepository
     /// <summary>All of a user's memberships, across years and statuses, with camp/season loaded for GDPR export.</summary>
     Task<IReadOnlyList<CampMember>> GetAllMembershipsForUserAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Persists a previously-loaded membership with its scalar mutations applied.
-    /// </summary>
     Task SaveMemberAsync(CampMember member, CancellationToken ct = default);
 
     /// <summary>
@@ -316,10 +225,6 @@ internal partial interface ICampRepository : IRepository
     Task<(Guid CampSeasonId, Guid UserId, CampMemberStatus Status)?> GetMemberLookupAsync(
         Guid campMemberId, CancellationToken ct = default);
 
-    // ==========================================================================
-    // Early Entry
-    // ==========================================================================
-
     /// <summary>
     /// Sets <c>EeSlotCount</c> on the given season. Returns (OldValue, NewValue, CampId),
     /// or null if the season was not found. When old == new, the row is not updated
@@ -332,9 +237,6 @@ internal partial interface ICampRepository : IRepository
         Guid campSeasonId, CancellationToken cancellationToken = default);
 }
 
-/// <summary>
-/// Outcome of <see cref="ICampRepository.RequestMembershipAsync"/>.
-/// </summary>
 internal enum CampMemberInsertOutcome
 {
     /// <summary>A new pending row was inserted.</summary>

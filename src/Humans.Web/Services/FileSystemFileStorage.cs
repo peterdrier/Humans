@@ -23,10 +23,6 @@ public sealed class FileSystemFileStorage(IHostEnvironment environment, ILogger<
 {
     private readonly string _root = Path.Combine(environment.ContentRootPath, "wwwroot");
 
-    // wwwroot is conventional for an ASP.NET Core app; Infrastructure
-    // does not reference Microsoft.AspNetCore.Hosting so we resolve it
-    // from ContentRootPath instead of IWebHostEnvironment.WebRootPath.
-
     public async Task SaveAsync(string key, Stream content, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(content);

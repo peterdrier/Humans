@@ -7,30 +7,7 @@ using NodaTime;
 
 namespace Humans.Cantina.Models;
 
-/// <summary>
-/// Renders a <see cref="DailyMatrixDto"/> as a UTF-8 CSV byte payload — the
-/// per-day drill-down companion to <see cref="CantinaRosterCsvWriter"/>
-/// (feature #36 — src/Sections/Humans.Cantina/Docs/features/daily-roster.md). Quoting and OWASP
-/// injection escaping come from the shared <see cref="HumansCsv"/> conventions.
-///
-/// <para>
-/// Output layout (top to bottom):
-/// <list type="number">
-///   <item>3-line header: title (with the ISO date), total on site,
-///         unanswered count.</item>
-///   <item>Blank separator row.</item>
-///   <item>Column-header row: <c>Burner</c>, dietary columns, allergy
-///         chip columns + "Other allergy" flag + "Other allergy text",
-///         intolerance chip columns + "Other intolerance" flag +
-///         "Other intolerance text".</item>
-///   <item>One row per person — <c>x</c> for ticked, empty cell otherwise.</item>
-///   <item>"TOTALS" row — column-by-column counts. Free-text columns get
-///         <c>—</c> since they can't be summed.</item>
-/// </list>
-/// Column order mirrors the on-screen matrix in <c>Views/Cantina/Day.cshtml</c>
-/// so coordinators can read the export the same way as the screen.
-/// </para>
-/// </summary>
+/// <summary>Column order mirrors the on-screen matrix in <c>Views/Cantina/Day.cshtml</c>.</summary>
 internal static class CantinaDailyMatrixCsvWriter
 {
     public static byte[] Write(DailyMatrixDto dto)
@@ -39,16 +16,13 @@ internal static class CantinaDailyMatrixCsvWriter
 
         return HumansCsv.WriteBytes(csv =>
         {
-            // ---- Header section (3 lines + blank separator) -----------------
             csv.WriteRow(string.Format(CultureInfo.InvariantCulture, "Cantina — {0}", FormatIsoDate(dto.CalendarDate)));
             csv.WriteRow(string.Format(CultureInfo.InvariantCulture, "Total on site: {0}", dto.TotalOnSite));
             csv.WriteRow(string.Format(CultureInfo.InvariantCulture, "Unanswered: {0}", dto.UnansweredCount));
             csv.NextRecord();
 
-            // ---- Column headers --------------------------------------------
             var diet = DietaryOptions.DietaryPreferences;
-            // Filter out the "Other" sentinel from chip columns — it gets its
-            // own dedicated flag + free-text column to keep the layout regular.
+            // "Other" gets its own flag and free-text columns instead.
             var allergyChips = WithoutOther(DietaryOptions.AllergyOptions);
             var intoleranceChips = WithoutOther(DietaryOptions.IntoleranceOptions);
 
@@ -65,7 +39,6 @@ internal static class CantinaDailyMatrixCsvWriter
             cols.Add("Other intolerance text");
             csv.WriteRow([.. cols]);
 
-            // ---- People rows -----------------------------------------------
             foreach (var p in dto.People)
             {
                 var row = new List<string>(cols.Count) { p.BurnerName };
@@ -82,7 +55,6 @@ internal static class CantinaDailyMatrixCsvWriter
                 csv.WriteRow([.. row]);
             }
 
-            // ---- TOTALS row (only when there's at least one person) --------
             if (dto.People.Count > 0)
             {
                 var totals = new List<string>(cols.Count) { "TOTALS" };
@@ -114,9 +86,7 @@ internal static class CantinaDailyMatrixCsvWriter
 
     private static string CountAsString(int n) => n.ToString(CultureInfo.InvariantCulture);
 
-    // yyyy-MM-dd, invariant: a CSV cell is machine-read as often as it is
-    // eyeballed. The on-screen matrix uses a culture-ordered abbreviated date
-    // instead (Day.cshtml's FormatLong).
+    // Invariant ISO: a CSV cell is machine-read as often as it is eyeballed.
     private static string FormatIsoDate(LocalDate? d) =>
         d.HasValue ? d.Value.ToInvariantDate() : "(no active event)";
 }

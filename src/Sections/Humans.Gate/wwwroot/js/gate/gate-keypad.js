@@ -1,15 +1,5 @@
-// Shared numeric PIN keypad for the gate terminal.
-//
-// Deliberately a *classic* script (not an ES module): it's loaded via a tag-helper
-// <script src asp-append-version> so the URL is content-hashed and can never go stale on the
-// kiosk — unlike a module `import` specifier, which the version tag-helper can't reach. Both
-// the full-screen claim keypad (Pin.cshtml) and the inline supervisor-override panel
-// (Index.cshtml) call window.initGateKeypad, so the keypad logic lives in exactly one place.
-//
-// Given a container holding [data-gate-dots] (the 4 masked dots) and [data-gate-pad] (the
-// number buttons: [data-digit] for 0–9, [data-action="back"]/[data-action="clear"]), it
-// collects a 4-digit PIN, masks it, and calls onComplete(pin) once the 4th digit lands.
-// Returns { reset } so the caller can clear it (e.g. when reopening the panel).
+// A classic script, not an ES module, so asp-append-version can content-hash its URL and it never goes stale on the
+// kiosk. Calls onComplete(pin) on the 4th digit and returns { reset }.
 window.initGateKeypad = function (container, onComplete) {
     if (!container) return { reset: function () {} };
 

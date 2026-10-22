@@ -9,12 +9,7 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.Calendar.Services;
 
-/// <summary>
-/// Orchestrator: fans the personal iCal feed out across <see cref="ICalendarFeedContributor"/>s
-/// into one VCALENDAR. Sequential, not Task.WhenAll — not for safety (each contributor's
-/// factory-created context is safe to run concurrently, design-rules §8a) but for consistency
-/// with the other contributor fan-outs.
-/// </summary>
+/// <summary>Sequential only for consistency with the other contributor fan-outs; concurrency would be safe.</summary>
 internal sealed class ICalFeedService(
     IUserService users,
     ICalendarFeedTokenService tokens,
@@ -38,8 +33,7 @@ internal sealed class ICalFeedService(
             }
             catch (Exception ex)
             {
-                // Never swallow: silently omitting a section's items would look
-                // like the user has no commitments there.
+                // Never swallow: a silently missing section would look like the member has no commitments there.
                 logger.LogError(
                     ex,
                     "iCal feed contributor {Contributor} failed for user {UserId}",
@@ -59,10 +53,8 @@ internal sealed class ICalFeedService(
 
     public async Task<string?> GetFeedIcsAsync(Guid userId, Guid token, CancellationToken ct = default)
     {
-        // #1704: the read resolves merges forward, so a tombstone id answers with the survivor.
-        // Comparing the row back against the requested id keeps the documented contract that a
-        // merged user's feed is a 404 — no oracle telling the holder of an old URL who absorbed
-        // the account, and no feed served under an id that no longer names a human.
+        // The read resolves merges forward; comparing ids keeps a merged user's feed a 404, so an old URL
+        // reveals nothing about who absorbed the account.
         var user = await users.GetUserInfoAsync(userId, ct);
         if (user is null || user.Id != userId)
         {
@@ -88,9 +80,7 @@ internal sealed class ICalFeedService(
                 Summary = item.Summary,
                 Description = item.Description,
                 Location = item.Location,
-                // ToDateTimeUtc() keeps Kind=Utc so DTSTART serializes with a Z suffix
-                // (version-sensitive Ical.Net behavior — the DTSTART:...Z test assertion
-                // guards it; fallback is the CalDateTime(DateTime, "UTC") overload).
+                // ToDateTimeUtc keeps Kind=Utc so DTSTART gets its Z suffix (Ical.Net version-sensitive; a test guards it).
                 DtStart = new CalDateTime(item.Start.ToDateTimeUtc()),
                 DtEnd = new CalDateTime(item.End.ToDateTimeUtc()),
                 Categories = [item.Source],

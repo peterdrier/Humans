@@ -6,12 +6,6 @@ using Humans.Base.Configuration;
 
 namespace Humans.Auth.Services;
 
-/// <summary>
-/// Implementation of <see cref="IMagicLinkUrlBuilder"/>. Uses
-/// ASP.NET Core <see cref="IDataProtectionProvider"/> for token
-/// protection/validation and <see cref="EmailSettings.BaseUrl"/> for URL
-/// construction.
-/// </summary>
 internal sealed class MagicLinkUrlBuilder(
     IDataProtectionProvider dataProtection,
     IOptions<EmailSettings> emailSettings) : IMagicLinkUrlBuilder

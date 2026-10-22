@@ -27,9 +27,6 @@ internal sealed class BoardVoteConfiguration : IEntityTypeConfiguration<BoardVot
             .HasForeignKey(bv => bv.ApplicationId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // BoardMemberUserId is a bare cross-section Guid column — no FK constraint, no nav.
-
-        // One vote per Board member per application
         builder.HasIndex(bv => new { bv.ApplicationId, bv.BoardMemberUserId })
             .IsUnique();
 

@@ -7,9 +7,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.GoogleIntegration.Controllers;
 
-// One-time audit_log → google_sync_log history move (nobodies-collective/Humans#1083).
-// GET is the dry run; POST copies. Source rows are never touched, and a re-run moves
-// nothing because the copy keeps the audit row's id. Remove with the six audit columns.
+// One-time audit_log → google_sync_log history move. GET is the dry run; POST copies. Source rows are never
+// touched, and a re-run moves nothing because the copy keeps the audit row's id. Remove with the six audit columns.
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Google/Admin/SyncHistoryMigration")]
 internal sealed class GoogleSyncHistoryMigrationAdminController(

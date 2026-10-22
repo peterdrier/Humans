@@ -14,10 +14,6 @@ using Humans.Settings.Contracts;
 
 namespace Humans.Email.Tests.Services;
 
-/// <summary>
-/// The retention rule behind <see cref="IEmailOutboxRetention"/>; <c>CleanupEmailOutboxJob</c>
-/// is a try/catch and a metric, so it has no test of its own.
-/// </summary>
 public class EmailOutboxRetentionTests : IDisposable
 {
     private readonly EmailDbContext _dbContext;
@@ -97,8 +93,7 @@ public class EmailOutboxRetentionTests : IDisposable
     [HumansFact]
     public async Task PurgeExpiredAsync_LeavesDailySendCountsUntouched()
     {
-        // CleanupEmailOutboxJob (via IEmailOutboxRetention) must never purge
-        // email_daily_send_counts — it's the durable denominator (nobodies-collective/Humans#1195).
+        // The retention sweep must never purge email_daily_send_counts: it's the durable denominator.
         var oldRow = new EmailDailySendCount
         {
             Date = new LocalDate(2025, 1, 1),

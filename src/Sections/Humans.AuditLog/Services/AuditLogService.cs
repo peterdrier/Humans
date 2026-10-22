@@ -9,10 +9,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.AuditLog.Services;
 
-/// <summary>
-/// <see cref="IAuditLogService"/> impl. Append-only (design-rules §12); best-effort — repo failures logged and swallowed (§7a).
-/// Callers must audit AFTER business save. Also <see cref="IUserDataContributor"/> for GDPR export.
-/// </summary>
 [DontFix(
     reason: "Audit (crosscut) reads merged-account source IDs via IUserService so queries follow merged identities. Extracting merge-id resolution to a standalone leaf is deferred and Peter-owned.",
     since: "2026-05-25")]
@@ -24,8 +20,6 @@ internal sealed class AuditLogService(
     : IAuditLogService, IAuditLogReader, IUserDataContributor, ILegacyGoogleSyncAuditReader
 {
     internal const string AuditLog = "AuditLog";
-
-    // ─── Writes (append-only) ───
 
     /// <inheritdoc />
     public async Task LogAsync(AuditAction action, string entityType, Guid entityId,
@@ -83,14 +77,12 @@ internal sealed class AuditLogService(
         }
         catch (Exception ex)
         {
-            // Best-effort: log loudly, do not propagate (would break the business op).
+            // Best-effort: never break the business operation.
             logger.LogError(ex,
                 "Failed to persist audit entry {EntryId} ({Action} on {EntityType} {EntityId})",
                 entry.Id, entry.Action, entry.EntityType, entry.EntityId);
         }
     }
-
-    // ─── Reads ───
 
     private static AuditLogEntrySnapshot ToSnapshot(AuditLogEntry entry) =>
         new(
@@ -157,8 +149,6 @@ internal sealed class AuditLogService(
         return entries.Select(ToSnapshot).ToList();
     }
 
-    // ─── IUserDataContributor (GDPR export) ───
-
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         // Rows attributed to an account merged into this one belong to the same human; the
@@ -186,8 +176,6 @@ internal sealed class AuditLogService(
         return [new UserDataSlice(AuditLog, shaped)];
     }
 
-    // ─── IUserDataContributor (GDPR erasure) ───
-
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
@@ -209,8 +197,6 @@ internal sealed class AuditLogService(
         IReadOnlyList<AuditAction> actions,
         CancellationToken ct = default) =>
         repo.GetEntityIdsForEntityTypeActionsAsync(entityType, actions, ct);
-
-    // ─── ILegacyGoogleSyncAuditReader (goes with the six Google columns) ───
 
     public async Task<IReadOnlyList<LegacyGoogleSyncAuditRow>> GetLegacyGoogleSyncRowsAsync(
         CancellationToken ct = default)

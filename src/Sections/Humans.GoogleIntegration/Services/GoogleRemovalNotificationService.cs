@@ -6,8 +6,8 @@ using Humans.Users.Contracts;
 namespace Humans.GoogleIntegration.Services;
 
 /// <summary>
-/// Decides Variant 1 (loss of access) vs Variant 2 (secondary cleanup) and sends as MessageCategory.System.
-/// Suppresses orphan addresses (#639). EmailRotation is plumbed for telemetry but doesn't suppress.
+/// Picks Variant 1 (loss of access) or Variant 2 (secondary cleanup). Orphan addresses are suppressed;
+/// EmailRotation is telemetry only and does not suppress.
 /// </summary>
 internal sealed class GoogleRemovalNotificationService(
     IUserEmailService userEmailService,
@@ -31,18 +31,13 @@ internal sealed class GoogleRemovalNotificationService(
             return;
         }
 
-        // Resolve recipient from the removed address. Orphan = no UserEmail
-        // row; this captures user-deleted/anonymized and self-unlink cases
-        // (the UserEmail row is gone before reconciliation runs).
+        // Orphan = no UserEmail row: the member was deleted or anonymized, or unlinked it before reconciliation ran.
         var userId = (await userEmailService.FindByAddressAsync(
                 removedEmail, aliased: false, verifiedOnly: true, cancellationToken))
             .FirstOrDefault()?.UserId;
         if (userId is null)
         {
-            // Expected condition (deleted user, anonymized human, self-unlink,
-            // OAuth-rename-in-place) but visible-in-prod-log per
-            // memory/code/always-log-problems.md — incident investigation
-            // needs to see suppressed notifications.
+            // Expected, but logged so an incident investigation can see suppressed notifications.
             logger.LogWarning(
                 "Suppressing Google removal notification for {Email} — no UserEmail row matches " +
                 "(orphan, deleted user, or self-unlink)", removedEmail);
@@ -86,18 +81,14 @@ internal sealed class GoogleRemovalNotificationService(
             return;
         }
 
-        // Variant 1 — sub-template by resource type. Drive variants
-        // (DriveFolder, SharedDrive, DriveFile) all map to the Drive
-        // sub-template since the message is "your access to {resource} has
-        // been removed".
+        // Variant 1. All Drive types share the Drive sub-template.
         var displayName = !string.IsNullOrWhiteSpace(resourceName)
             ? resourceName
             : (!string.IsNullOrWhiteSpace(resourceIdentifier) ? resourceIdentifier : "(unknown)");
 
         if (resourceType == GoogleResourceType.Group)
         {
-            // Spec: surface the group email in subject + body. Fall back to
-            // the resource name when the identifier is missing.
+            // Spec: the group email goes in subject and body; the resource name is the fallback.
             var groupEmail = !string.IsNullOrWhiteSpace(resourceIdentifier)
                 ? resourceIdentifier
                 : displayName;

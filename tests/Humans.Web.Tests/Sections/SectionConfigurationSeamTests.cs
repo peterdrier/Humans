@@ -8,13 +8,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Web.Tests.Sections;
 
-/// <summary>
-/// The configuration seam: the admin Configuration page's inventory is what the sections
-/// declare plus the host's own keys, never a roll-call Shell maintains.
-/// </summary>
 public class SectionConfigurationSeamTests
 {
-    /// <summary>The keys Shell declares itself, because the host is what reads them.</summary>
+    /// <summary>Declared by Shell because the host is what reads them.</summary>
     private static readonly string[] HostOwnedKeys =
     [
         "GitHub:Owner", "GitHub:Repository", "GitHub:AccessToken",
@@ -39,10 +35,7 @@ public class SectionConfigurationSeamTests
             fromSeams.GetAll().Select(e => e.Key).Concat(HostOwnedKeys));
     }
 
-    /// <summary>
-    /// Every section that declares settings declares at least one — an empty contribution is
-    /// a seam implemented and then left unfilled.
-    /// </summary>
+    /// <summary>An empty contribution is a seam implemented and left unfilled.</summary>
     [HumansFact]
     public void Every_Contribution_Declares_At_Least_One_Key()
     {

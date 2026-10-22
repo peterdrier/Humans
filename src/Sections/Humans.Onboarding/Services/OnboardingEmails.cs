@@ -8,15 +8,6 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.Onboarding.Services;
 
-/// <summary>
-/// Onboarding's own email templates: one method per template, each returning a ready
-/// <see cref="EmailMessage"/> (content plus the routing policy Onboarding chooses —
-/// template name and opt-out category) for the single
-/// <see cref="IEmailService.SendAsync"/> path. Copy lives in Onboarding's own resx set
-/// and is rendered in the recipient's culture inside a <see cref="CultureScope"/>
-/// (memory/architecture/email-templates-live-in-sender.md, peterdrier/Humans#1651).
-/// Pure — no I/O, no persistence.
-/// </summary>
 internal sealed class OnboardingEmails(
     IOptions<EmailSettings> settings,
     IStringLocalizer<OnboardingResource> localizer,
@@ -31,7 +22,6 @@ internal sealed class OnboardingEmails(
             Lf("Onboarding_Email_SignupRejected_Body", Encode(userName), ReasonLine(reason), _settings.AdminAddress),
             "signup_rejected", MessageCategory.System));
 
-    /// <summary>Optional rejection reason — omitted entirely rather than rendered empty.</summary>
     private string ReasonLine(string? reason) =>
         string.IsNullOrEmpty(reason) ? "" : Lf("Onboarding_Email_ReasonLine", Encode(reason));
 

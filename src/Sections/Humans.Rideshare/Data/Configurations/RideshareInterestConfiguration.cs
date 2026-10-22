@@ -11,7 +11,6 @@ internal sealed class RideshareInterestConfiguration : IEntityTypeConfiguration<
         builder.ToTable("rideshare_interests");
         builder.HasKey(i => i.Id);
 
-        // FromUserId is a bare cross-section reference: index for the per-user reads, no FK.
         builder.Property(i => i.FromUserId).IsRequired();
         builder.Property(i => i.TripId).IsRequired();
         builder.Property(i => i.Seats).IsRequired();
@@ -21,7 +20,6 @@ internal sealed class RideshareInterestConfiguration : IEntityTypeConfiguration<
 
         builder.HasIndex(i => i.FromUserId);
 
-        // Intra-section FKs (the seat anchor and the optional origin pointer).
         builder.HasOne(i => i.Trip)
             .WithMany(t => t.Interests)
             .HasForeignKey(i => i.TripId)

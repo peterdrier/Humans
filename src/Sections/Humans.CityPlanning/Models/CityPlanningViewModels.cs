@@ -45,8 +45,8 @@ internal sealed class CityPlanningBarrioMapViewModel
     public List<Services.CampSeasonSummaryDto> SeasonsWithoutCampPolygon { get; set; } =
         [];
     /// <summary>
-    /// The help modal's model: the schedule's calendar days, each null when unset. A tuple, not a
-    /// type, because Camps' Details page renders the same partial and sees only the contracts.
+    /// Each day null when unset. A tuple, not a type, because Camps' Details page renders the same partial and sees
+    /// only the contracts.
     /// </summary>
     public (NodaTime.LocalDate? OpensOn, NodaTime.LocalDate? ClosesOn, NodaTime.LocalDate? ChangeableUntilOn) PlacementSchedule { get; set; }
 }

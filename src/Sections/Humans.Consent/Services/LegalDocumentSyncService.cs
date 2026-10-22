@@ -16,17 +16,8 @@ using Humans.Users.Contracts;
 namespace Humans.Consent.Services;
 
 /// <summary>
-/// Sole writer for the Legal-document aggregate (<c>legal_documents</c>,
-/// <c>document_versions</c>). Owns both the admin write surface
-/// (<see cref="IAdminLegalDocumentService"/> — create/update/archive/version-summary
-/// edits from <c>/Legal/Admin/Documents</c>) and the GitHub-sync write surface
-/// (<see cref="ILegalDocumentSyncManagement"/> — version add, sync touch). Being the
-/// single writer lets it evict its own section's cache
-/// (<see cref="CachingLegalDocumentSyncService.InvalidateAll"/>) directly after each
-/// successful repository write instead of relying on a cross-cutting SaveChanges
-/// interceptor (nobodies-collective/Humans#751). The eviction stays here, not in the
-/// decorator's pass-through, because it must land before the version-publish
-/// notification fan-out and before the next document of a full sync.
+/// Evicts the section's cache itself after each write rather than in the decorator's pass-through: the eviction
+/// must land before the version-publish fan-out and before the next document of a full sync.
 /// </summary>
 internal sealed partial class LegalDocumentSyncService(
     ILegalDocumentRepository repository,
@@ -44,10 +35,6 @@ internal sealed partial class LegalDocumentSyncService(
 
     private readonly GitHubSettings _githubSettings = githubSettings.Value;
 
-    // ==========================================================================
-    // IAdminLegalDocumentService — admin write/read surface
-    // ==========================================================================
-
     public async Task<IReadOnlyList<AdminLegalDocumentListItem>> GetLegalDocumentsAsync(
         Guid? teamId,
         CancellationToken cancellationToken = default)
@@ -58,7 +45,6 @@ internal sealed partial class LegalDocumentSyncService(
 
         var now = clock.GetCurrentInstant();
 
-        // Stitch team names in memory (no .Include).
         var teamIds = documents.Select(d => d.TeamId).Distinct().ToList();
         var teams = await teamService.GetTeamsWithParentsAsync(teamIds, cancellationToken);
 
@@ -319,10 +305,6 @@ internal sealed partial class LegalDocumentSyncService(
         RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
     private static partial Regex GitHubUrlPattern();
 
-    // ==========================================================================
-    // ILegalDocumentSyncManagement — GitHub-sync write/read surface
-    // ==========================================================================
-
     public async Task<IReadOnlyList<LegalDocument>> SyncAllDocumentsAsync(
         CancellationToken cancellationToken = default)
     {
@@ -343,17 +325,14 @@ internal sealed partial class LegalDocumentSyncService(
             }
             catch (GitHubApiException ex) when (ex.IsTransient)
             {
-                // Transient GitHub outage — the next scheduled run self-heals. Log without
-                // the exception object so GitHub's HTML error page stays out of the logs
-                // (nobodies-collective/Humans#927).
+                // The next run self-heals. No exception object: it can carry GitHub's HTML error page.
                 logger.LogWarning(
                     "Transient GitHub error syncing document {DocumentName} ({DocumentId}): {StatusCode}, will retry next run",
                     document.Name, document.Id, ex.StatusCode);
             }
             catch (GitHubApiException ex)
             {
-                // Permanent (auth/scope/config) — repeats every run until a human acts, so
-                // escalate to Error; still status-code only to keep the HTML body out.
+                // Repeats every run until a human acts, so Error; still status code only.
                 logger.LogError(
                     "GitHub API error syncing document {DocumentName} ({DocumentId}): {StatusCode} — not transient, check GitHub token/config",
                     document.Name, document.Id, ex.StatusCode);
@@ -463,7 +442,6 @@ internal sealed partial class LegalDocumentSyncService(
         var documents = await repository.GetActiveRequiredDocumentsForTeamsAsync(teamIds, cancellationToken);
         if (documents.Count == 0) return [];
 
-        // Team names via ITeamService — no cross-section EF join (memory/architecture/no-cross-section-ef-joins.md).
         var distinctTeamIds = documents.Select(d => d.TeamId).Distinct().ToList();
         var teams = await teamService.GetTeamsWithParentsAsync(distinctTeamIds, cancellationToken);
 
@@ -601,7 +579,7 @@ internal sealed partial class LegalDocumentSyncService(
 
         if (!persisted)
         {
-            // Document row vanished between read and write — bail without log/fanout.
+            // The row vanished between read and write: no fan-out.
             logger.LogWarning(
                 "Skipped version add for document {Name} ({DocumentId}): document row not found during persist.",
                 document.Name, document.Id);
@@ -610,7 +588,6 @@ internal sealed partial class LegalDocumentSyncService(
 
         cache.InvalidateAll();
 
-        // Mirror write onto in-memory aggregate so callers see the same shape as the old tracked-entity path.
         document.Versions.Add(newVersion);
         document.CurrentCommitSha = commitSha;
         document.LastSyncedAt = now;

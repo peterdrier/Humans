@@ -14,10 +14,7 @@ using NSubstitute;
 
 namespace Humans.Email.Tests.Controllers;
 
-/// <summary>
-/// The gallery is built entirely from the registered <see cref="IEmailPreviewContributor"/>s
-/// now that the sending sections own their templates (peterdrier/Humans#1651).
-/// </summary>
+/// <summary>The gallery is built entirely from the registered <see cref="IEmailPreviewContributor"/>s.</summary>
 public sealed class EmailPreviewGalleryTests
 {
     private sealed class StubContributor(params string[] ids) : IEmailPreviewContributor

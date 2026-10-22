@@ -29,10 +29,6 @@ namespace Humans.Development.Tests;
 /// real Google Workspace data, so both the <c>admin</c> persona route and impersonation of
 /// a human holding an active Admin assignment must 404 there. Per-PR previews run the same
 /// <c>Staging</c> name but opt back in with <c>DevAuth:AllowAdmin</c>.
-///
-/// Same shape as <see cref="DevSeedControllerTests"/>: the environment gate runs inside the
-/// action, so both branches are exercised through a substituted
-/// <see cref="IWebHostEnvironment"/>.
 /// </summary>
 public class DevLoginControllerTests
 {

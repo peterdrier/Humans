@@ -3,22 +3,12 @@ using Humans.Expenses.Contracts;
 namespace Humans.Expenses.Models;
 
 /// <summary>
-/// Badge CSS classes for <see cref="ExpenseReportStatus"/>. The single source: the section's
-/// Detail and Review pages call it directly, and <c>Section.cs</c> projects it into
-/// <c>EnumBadgeMap</c> for the table-column half of the same page.
+/// The single source of badge classes: the views call it, and <c>Section.cs</c> projects it into <c>EnumBadgeMap</c>.
 /// </summary>
 /// <remarks>
-/// It lives in the section rather than Base because Base cannot name a section enum
-/// (memory/architecture/base-ui-registries-are-section-populated.md).
-/// <para>
-/// <b>The default arm throws, deliberately.</b> Because <c>Section.Register</c> projects this
-/// over <c>Enum.GetValues</c>, a fallback <em>colour</em> here would register every future
-/// status as handled, and <c>EnumBadgeMap.For</c>'s unhandled-value warning — the only thing
-/// that says a status was missed — would never fire again. Throwing instead moves that signal
-/// earlier and makes it louder: the projection runs at composition time, so adding a member to
-/// <see cref="ExpenseReportStatus"/> without a colour fails <c>AddSections()</c> at startup
-/// rather than shipping a silent grey badge. A named member must be listed below.
-/// </para>
+/// The default arm throws on purpose. The projection runs over <c>Enum.GetValues</c> at startup, so a fallback colour
+/// would mark every future status as handled and silence <c>EnumBadgeMap.For</c>'s warning. Throwing fails
+/// <c>AddSections()</c> instead of shipping a silent grey badge.
 /// </remarks>
 internal static class StatusBadgeExtensions
 {

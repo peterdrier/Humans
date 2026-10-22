@@ -12,8 +12,6 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
-// The subject is internal to Humans.Auth; this project reaches it through that assembly's
-// InternalsVisibleTo.
 using MagicLinkService = Humans.Auth.Services.MagicLinkService;
 
 namespace Humans.Auth.Tests.Services;
@@ -94,8 +92,7 @@ public sealed class MagicLinkServiceTests : IDisposable
             UserName = "alice@gmail.com",
             Email = "alice@gmail.com",
             DisplayName = "Alice",
-            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
             BurnerName = "Alice",
             CreatedAt = Clock.GetCurrentInstant()
         };
@@ -131,8 +128,7 @@ public sealed class MagicLinkServiceTests : IDisposable
         {
             Id = userId,
             DisplayName = "Alice",
-            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
             BurnerName = "Alice",
             CreatedAt = Clock.GetCurrentInstant()
         };
@@ -417,7 +413,7 @@ public sealed class MagicLinkServiceTests : IDisposable
     [HumansFact]
     public async Task VerifyAndConsumeSignupTokenAsync_TokenAlreadyConsumed_ReturnsNull()
     {
-        // F41: a consumed signup link must not redeem again. The payload still decodes —
+        // A consumed signup link must not redeem again. The payload still decodes —
         // only the reservation stops the second redemption.
         _urlBuilder.UnprotectSignupToken("good-token").Returns("new@test.com");
         _rateLimiter.TryConsumeTokenAsync("good-token", Arg.Any<TimeSpan>()).Returns(false);

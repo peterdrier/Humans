@@ -3,13 +3,8 @@ using System.ComponentModel.DataAnnotations;
 namespace Humans.Shifts.Models;
 
 /// <summary>
-/// Form payload for the coord's "Mark day off" action posted from the
-/// volunteer-tracking heatmap popover. <c>UserId</c> is the target volunteer
-/// (the coord is the current ClaimsPrincipal). <c>DayOffset</c> is the
-/// build-window offset relative to gate-open. <c>Reason</c> is optional;
-/// the service trims and (silently) caps at 200 chars — the
-/// <c>StringLength</c> attribute rejects oversized POST bodies before the
-/// service ever runs.
+/// The service trims and silently caps <c>Reason</c> at 200; <c>StringLength</c> rejects oversized bodies before it
+/// runs.
 /// </summary>
 internal sealed class SetDayOffForm
 {
@@ -18,9 +13,6 @@ internal sealed class SetDayOffForm
     [StringLength(200)] public string? Reason { get; set; }
 }
 
-/// <summary>
-/// Form payload for the coord's "Cancel day off" action.
-/// </summary>
 internal sealed class ClearDayOffForm
 {
     public Guid UserId { get; set; }

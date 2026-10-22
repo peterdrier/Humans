@@ -3,10 +3,6 @@ using Humans.Teams.Contracts;
 
 namespace Humans.Teams.Services;
 
-/// <summary>
-/// One node of the team tree: a department or one of its (recursively nested) sub-teams.
-/// <see cref="IsLinkable"/> says whether the viewer can open the team's Details page.
-/// </summary>
 internal sealed record TeamTreeNode(
     string Name,
     string? Description,
@@ -18,10 +14,8 @@ internal sealed record TeamTreeNode(
 internal static class TeamDirectoryBuilder
 {
     /// <summary>
-    /// Departments with their sub-teams nested beneath them, name-sorted at every level.
-    /// Inactive, hidden and system teams are left out, along with everything under them.
-    /// An anonymous viewer gets only the departments that opted into a public page
-    /// (the anonymous directory rule); their sub-teams are listed but link only when promoted.
+    /// Name-sorted at every level. Inactive, hidden and system teams are left out with everything under them. Anonymous
+    /// viewers get only public-page departments; their sub-teams link only when promoted.
     /// </summary>
     public static IReadOnlyList<TeamTreeNode> BuildTree(
         IReadOnlyDictionary<Guid, TeamInfo> teamsById,

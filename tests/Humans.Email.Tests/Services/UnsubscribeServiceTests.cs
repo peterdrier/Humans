@@ -9,12 +9,6 @@ using NSubstitute;
 
 namespace Humans.Email.Tests.Services;
 
-/// <summary>
-/// Unit tests for the Application-layer <see cref="UnsubscribeService"/>.
-/// Dependencies are mocked; the user service
-/// replacement simply returns the seeded user by id so we can verify the
-/// service's decision paths (valid / expired / legacy / missing user).
-/// </summary>
 public class UnsubscribeServiceTests
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();

@@ -24,15 +24,13 @@ internal enum Audience
 internal sealed record RouteCandidate(string Url, Audience Audience, string Controller, string Action);
 
 /// <summary>
-/// Builds the list of crawlable GET pages straight from the MVC action descriptors, so the page
-/// inventory and the public/admin split are both authoritative (no hand-maintained list, no view
-/// markers). Parameterized routes that can't be satisfied without seed data are reported as gaps.
+/// The crawlable GET pages, built from the MVC action descriptors so the inventory and the public/admin split are
+/// authoritative. Routes that need seed data are reported as gaps.
 /// </summary>
 internal static class SweepRouteCatalog
 {
-    // Dev/operational tooling that is not a localizable member page; GET to these is noise (and a
-    // GET to a seeder could mutate state), so they are excluded up front. ColorPalette is the
-    // anonymous design-reference page — developer-facing and English-only by design.
+    // Dev tooling, not member pages: a GET is noise, and a GET to a seeder could mutate state. ColorPalette is the
+    // English-only design reference.
     private static readonly HashSet<string> ExcludedControllers = new(StringComparer.OrdinalIgnoreCase)
     {
         "DevLogin", "DevSeed", "ColorPalette",
@@ -119,9 +117,8 @@ internal static class SweepRouteCatalog
                 .Replace("[controller]", action.ControllerName, StringComparison.OrdinalIgnoreCase)
                 .Replace("[action]", action.ActionName, StringComparison.OrdinalIgnoreCase);
 
-            // Optional ({x?}) and defaulted ({x=…}) segments can be omitted to form a valid URL;
-            // only a required {param} genuinely needs seed data. Drop the omittable ones and skip
-            // only if something required is left (e.g. /Legal from [HttpGet("{slug?}")] is scannable).
+            // Optional and defaulted segments can be omitted, so skip only when a required {param} is left
+            // (/Legal from [HttpGet("{slug?}")] is scannable).
             var kept = new List<string>();
             foreach (var segment in resolved.Split('/', StringSplitOptions.RemoveEmptyEntries))
             {

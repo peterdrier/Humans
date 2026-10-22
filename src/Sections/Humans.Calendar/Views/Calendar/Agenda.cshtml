@@ -4,8 +4,7 @@
     ViewData["ActiveView"] = "agenda";
     var zone = DateTimeZoneProviders.Tzdb[Model.ViewerTimezoneLabel];
 
-    // Expand each occurrence across every day it covers (inclusive) so multi-day events
-    // appear on each day they span, not just the start day.
+    // A multi-day event appears on every day it spans.
     var windowStart = Model.FromUtc.InZone(zone).Date;
     var windowEnd = Model.ToUtc.Minus(Duration.FromNanoseconds(1)).InZone(zone).Date;
 

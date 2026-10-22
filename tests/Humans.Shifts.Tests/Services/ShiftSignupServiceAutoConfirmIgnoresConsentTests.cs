@@ -230,12 +230,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
         ShiftsDb.Shifts.Add(shift);
     }
 
-    /// <summary>
-    /// The persisted signup row a <see cref="SignupResult"/> refers to.
-    /// The result carries the id rather than the entity — the row is the
-    /// section's own and does not cross the boundary
-    /// (nobodies-collective/Humans#866).
-    /// </summary>
+    /// <summary>The persisted row a <see cref="SignupResult"/> refers to; the result carries only its id.</summary>
     private ShiftSignup Saved(SignupResult result) =>
         ShiftsDb.ShiftSignups.Single(s => s.Id == result.SignupId!.Value);
 

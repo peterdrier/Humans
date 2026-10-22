@@ -28,12 +28,6 @@ internal static class ConfigurationMetadataExtensions
             // Per-PR previews only, set by docker-entrypoint.sh; QA leaves it off.
             configuration.GetOptionalSetting(configRegistry, "DevAuth:AllowAdmin", "Development");
 
-            // The five machine-API keys that used to live here (FEEDBACK_API_KEY,
-            // ISSUES_API_KEY, SURVEY_API_KEY, LOG_API_KEY, AGENT_API_KEY) are gone:
-            // /api/backdoor/* authenticates against per-person rows an admin allocates at
-            // /Backdoor, not against deploy-time environment variables
-            // (nobodies-collective/Humans#1128).
-
             foreach (var section in SectionDiscoveryExtensions.DiscoverImplementations<ISectionConfiguration>())
             {
                 section.DeclareSettings(configuration, configRegistry);

@@ -6,18 +6,10 @@ using Microsoft.AspNetCore.Authorization;
 namespace Humans.Camps;
 
 /// <summary>
-/// Camps' authorization policies, at the project root by convention. Discovered by Shell
-/// alongside <see cref="Section"/> — nothing names it.
+/// <c>CampComplianceAccess</c> registers here, not in Shifts, because the section-dependency graph can't see a
+/// policy-name reference: a Shifts-owned registration would leave Camps 500ing "policy not found" if Shifts were
+/// deactivated alone.
 /// </summary>
-/// <remarks>
-/// <c>CampComplianceAccess</c> registers here — not in Shifts, whose coordinator lookup
-/// its handler reads — because this section is the policy's consumer
-/// (<c>CampComplianceController</c>, the Compliance nav entry) and the derived
-/// section-dependency graph can't see a policy-name reference: a Shifts-owned
-/// registration could leave Camps 500ing "policy not found" if Shifts were ever
-/// deactivated alone. Registered from Camps, the policy leaves with its consumers
-/// (nobodies-collective/Humans#1091).
-/// </remarks>
 internal sealed class SectionPolicies : ISectionPolicies
 {
     public void AddPolicies(AuthorizationOptions options)

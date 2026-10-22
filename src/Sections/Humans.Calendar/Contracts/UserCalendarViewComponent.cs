@@ -3,17 +3,10 @@ using Humans.Users.Contracts;
 
 namespace Humans.Calendar.Contracts;
 
-/// <summary>
-/// Admin visibility into a user's personal iCal feed: renders the same
-/// aggregated items the /api/ical endpoint serializes (one code path via
-/// IICalFeedService). Never shows the secret token or feed URL.
-/// </summary>
+/// <summary>Admin view of a member's feed items. Never shows the token or feed URL.</summary>
 /// <remarks>
-/// Public, under <c>Contracts/</c>, so MVC's default provider discovers it and the
-/// tag helper is generated — Shell's widget gallery renders it as
-/// <c>&lt;vc:user-calendar&gt;</c> and Users' admin detail invokes it by <see cref="Type"/>
-/// through the <c>IUserPart</c> seam. An internal view component ships the element as
-/// inert literal markup with a green build (HUM0034's carve-out is the folder).
+/// Public so MVC discovers it and generates the tag helper: an internal view component renders as inert markup
+/// with a green build.
 /// </remarks>
 public sealed class UserCalendarViewComponent(
     IICalFeedService feed,

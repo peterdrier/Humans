@@ -4,12 +4,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Finance.Data;
 
-/// <summary>
-/// Finance's own context (nobodies-collective/Humans#858): the five holded_* tables, the two
-/// sepa_payout_* tables and finance_payment_details it owns, its own
-/// <c>__EFMigrationsHistory_Finance</c>, same database and connection. Configurations are applied
-/// explicitly, never by assembly scan, so this model cannot accrete another section's tables.
-/// </summary>
 internal sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
     : DbContext(options)
 {

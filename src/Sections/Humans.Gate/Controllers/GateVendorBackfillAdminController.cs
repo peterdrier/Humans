@@ -11,13 +11,8 @@ using Humans.Users.Contracts;
 
 namespace Humans.Gate.Controllers;
 
-// One-off vendor check-in backfill (temp page, remove after use). Recovers gate admits that
-// GateVendorCheckInJob never mirrored to TicketTailor while Gate:VendorMirrorEnabled was unset:
-// shows the diff of local admits vs the vendor's check-in status (last ticket sync), lets an
-// admin send a single test check-in first, then the whole pending set. TicketTailor check-ins
-// double-record on repeat, so two guards apply: both POSTs recompute the diff server-side (a
-// client-supplied id is never enqueued blindly), and GateVendorMirrorLedger keeps every
-// already-enqueued id out of both send paths until the ticket sync confirms it.
+// One-off backfill; remove after use. Vendor check-ins double-record, so both POSTs recompute the diff server-side
+// and GateVendorMirrorLedger keeps already-enqueued ids out until the ticket sync confirms them.
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Gate/Admin/VendorCheckInBackfill")]
 internal sealed class GateVendorBackfillAdminController(
@@ -37,8 +32,7 @@ internal sealed class GateVendorBackfillAdminController(
             snapshot, pending, sent, MirrorEnabled: configuration.GetValue<bool>(MirrorEnabledKey)));
     }
 
-    // Send ONE pending check-in so the result can be verified on the vendor dashboard
-    // before the bulk run.
+    // One check-in, to verify on the vendor dashboard before the bulk run.
     [HttpPost("RunOne")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RunOne(string vendorTicketId, CancellationToken ct)
@@ -75,8 +69,6 @@ internal sealed class GateVendorBackfillAdminController(
         return RedirectToAction(nameof(Index));
     }
 
-    // The ledger remembers enqueued ids until the vendor's check-in flows back
-    // through the ticket sync.
     private async Task<(GateVendorBackfillSnapshot Snapshot, IReadOnlyList<GateVendorBackfillRow> Pending, IReadOnlyList<GateVendorBackfillRow> Sent)>
         GetPendingSplitAsync(CancellationToken ct)
     {
@@ -86,10 +78,8 @@ internal sealed class GateVendorBackfillAdminController(
         return (snapshot, pending, sent);
     }
 
-    // ExecuteBackfillAsync (not the live ExecuteAsync) so TicketTailor records the ORIGINAL
-    // gate admit time as check_in_at, not the moment the admin clicked Send. The ledger claim
-    // is atomic and happens BEFORE the enqueue: two overlapping requests (double-click, second
-    // admin) must never both enqueue the same non-idempotent vendor check-in.
+    // ExecuteBackfillAsync records the original admit time. The ledger claim is atomic and precedes the enqueue, so
+    // overlapping requests never both enqueue the same non-idempotent check-in.
     private bool TryEnqueue(GateVendorBackfillRow row)
     {
         var vendorTicketId = row.VendorTicketId!;

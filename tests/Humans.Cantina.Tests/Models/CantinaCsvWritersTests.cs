@@ -92,7 +92,7 @@ public sealed class CantinaCsvWritersTests
     [HumansFact]
     public void WeeklyRoster_ArrivalDayHuman_AppearsInCsvWithArrivalDate()
     {
-        // Arrange: human arrives on 2026-07-12 (day 5 of week), shifts only on 2026-07-13 (day 6).
+        // Human arrives on 2026-07-12 (day 5 of week), shifts only on 2026-07-13 (day 6).
         // NoShift covers the first 5 days of the week (Mon–Sat with no signup).
         var arrivalDay = WeekStart.PlusDays(5); // 2026-07-12
         var shiftDay = WeekStart.PlusDays(6); // 2026-07-13
@@ -128,10 +128,9 @@ public sealed class CantinaCsvWritersTests
             People: [person],
             EventTodayDate: null);
 
-        // Act
         var lines = RosterLines(roster);
 
-        // Assert: person row exists and ArrivesOn column is the arrival date.
+        // The person row exists and its ArrivesOn column is the arrival date.
         var personRow = lines[5];
         personRow.Should().StartWith("Arrival,2026-07-12");
     }

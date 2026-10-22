@@ -1,7 +1,5 @@
 (function () {
-    // Note: the panel is opened by the parent help-menu (#helpWidgetAgentItem
-    // in the merged HelpWidget). This script wires the panel's own controls
-    // (close, composer, streaming).
+    // The parent help menu opens the panel; this wires the panel's own controls.
     const panel = document.getElementById('agentPanel');
     const closeBtn = document.getElementById('agentPanelClose');
     const messagesEl = document.getElementById('agentMessages');
@@ -36,9 +34,7 @@
         });
     }
 
-    // Allowed tags for sanitized markdown output (forbid img, iframe, script,
-    // event handlers — DOMPurify defaults already strip those, but we are
-    // explicit about the allow-list).
+    // Explicit allow-list, though DOMPurify's defaults already strip img, iframe, script and handlers.
     const PURIFY_CONFIG = {
         ALLOWED_TAGS: [
             'p', 'br', 'hr',
@@ -63,10 +59,8 @@
         closeBtn.addEventListener('click', function () { panel.style.display = 'none'; });
     }
 
-    // Enter submits the message; Shift+Enter inserts a newline (textarea default).
-    // Guard on sendBtn.disabled so rapid Enter can't double-send while a turn is in-flight.
-    // Skip while an IME composition is active so confirming a CJK candidate with
-    // Enter doesn't submit mid-compose.
+    // Guard on sendBtn.disabled so rapid Enter can't double-send mid-turn, and skip during IME composition so
+    // confirming a CJK candidate doesn't submit.
     if (input) {
         input.addEventListener('keydown', function (e) {
             if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
@@ -87,9 +81,7 @@
 
         appendMessage('user', message);
         const bubble = appendMessage('assistant', '');
-        // Track raw accumulated markdown per assistant bubble so we can
-        // re-parse + sanitize on each delta. innerHTML write below is safe
-        // ONLY because DOMPurify gates it.
+        // innerHTML below is safe ONLY because DOMPurify gates it.
         bubble.dataset.rawMarkdown = '';
         let finalized = false;
 
@@ -164,21 +156,12 @@
             // Final-frame placeholders are trusted strings — render as plain text.
             if (reason === 'disabled') bubble.textContent = panel.dataset.disabledText;
             if (reason === 'rate_limited') bubble.textContent = panel.dataset.rateLimitedText;
-            // A turn that threw mid-stream now finishes as a well-formed 200/SSE
-            // 'error' finalizer instead of a broken connection, so neither the
-            // !resp.ok branch nor the catch below fires — the user must be told
-            // here or not at all. Replace an empty bubble; append to one that
-            // already has content so a partial answer, or the propose branch's
-            // handoff line, survives while the user still learns the turn didn't
-            // finish. The bubble starts as appendMessage('assistant', ''), so
-            // textContent is only non-empty once one of those branches filled it.
+            // A turn that threw mid-stream ends as a well-formed 'error' finalizer, so neither !resp.ok nor the catch
+            // fires: tell the user here. Append to a bubble that already has content so a partial answer survives.
             if (reason === 'error') {
                 showError(bubble, panel.dataset.turnErrorText);
             }
-            // Capture the conversation id from the first successful turn so the
-            // next send continues the same conversation server-side. Bail-out
-            // finalizers (disabled, rate_limited) carry an empty Guid; ignore
-            // those so we don't clobber an existing in-progress conversation.
+            // Keep the conversation id for the next send. Bail-out finalizers carry an empty Guid: ignore those.
             const newId = parsed.finalizer.conversationId;
             if (newId && newId !== '00000000-0000-0000-0000-000000000000') {
                 currentConversationId = newId;

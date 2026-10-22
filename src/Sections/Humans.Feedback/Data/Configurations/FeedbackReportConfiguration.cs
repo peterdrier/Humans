@@ -45,12 +45,9 @@ internal sealed class FeedbackReportConfiguration : IEntityTypeConfiguration<Fee
             .HasMaxLength(50)
             .IsRequired();
 
-        // Sentinel = (FeedbackSource)(-1) — not a real enum member — so EF can
-        // distinguish "explicitly assigned" from "unset". Without it the CLR
-        // default (UserReport == 0) trips EF's sentinel detection: explicit
-        // `Source = FeedbackSource.UserReport` assignments are silently
-        // dropped in favor of the DB default. The DB default stays for
-        // migration backfill of existing rows.
+        // Sentinel (FeedbackSource)(-1), not a real member: with the CLR default (UserReport == 0) as sentinel, EF
+        // silently drops an explicit `Source = UserReport` in favor of the DB default. The DB default backfilled
+        // existing rows.
         builder.Property(f => f.Source)
             .HasConversion<string>()
             .HasMaxLength(32)
@@ -63,14 +60,6 @@ internal sealed class FeedbackReportConfiguration : IEntityTypeConfiguration<Fee
 
         builder.Property(f => f.CreatedAt).IsRequired();
         builder.Property(f => f.UpdatedAt).IsRequired();
-
-        // UserId / ResolvedByUserId / AssignedToUserId / AssignedToTeamId are bare
-        // cross-section Guid columns — no FK constraint, no nav. Resolve users via
-        // IUserService and teams via ITeamService.
-        // No cross-section FK to agent_conversations. AgentConversationId is
-        // a plain nullable Guid column on feedback_reports — Feedback owns the
-        // column, Agent owns the referenced rows, and EF does not model the
-        // join.
 
         builder.HasIndex(f => f.Status);
         builder.HasIndex(f => f.CreatedAt);

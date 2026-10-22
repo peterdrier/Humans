@@ -3,9 +3,8 @@ using Humans.Users.Contracts;
 namespace Humans.Users.Domain;
 
 /// <summary>
-/// Classifies <see cref="UserState"/> from the section's entities. The precedence itself lives in
-/// <see cref="UserStateClassifier"/> on the leaf — this only reads the fields to feed it, and is
-/// here because <see cref="Profile"/> is internal to the section.
+/// Feeds <see cref="UserStateClassifier"/> from the section's entities; lives here because
+/// <see cref="Profile"/> is internal.
 /// </summary>
 internal static class UserStateEvaluator
 {
@@ -44,16 +43,9 @@ internal static class UserStateEvaluator
     }
 
     /// <summary>
-    /// A row erased via GDPR Article 17. Keyed on the minted tombstone email
-    /// (<c>deleted-&lt;id&gt;@deleted.local</c>, written by
-    /// <see cref="Humans.Users.Data.Repositories.IUserRepository.ApplyExpiredDeletionAnonymizationAsync"/>)
-    /// rather than any user-editable name field — a member cannot produce that email themselves
-    /// (nobodies-collective/Humans#1742: a burner/display name of "Deleted User" must not read as
-    /// erased). Reads <see cref="User.IdentityEmailColumn"/> (the raw Identity column), not the
-    /// <see cref="User.Email"/> override, both because the erasure path writes the tombstone there
-    /// and because <c>UserEmail</c> rows are removed by the same erasure, so the raw column is the
-    /// only place the tombstone can live; it is null for a live user whose address lives only in
-    /// <c>UserEmail</c> rows, so a null value is never treated as erased.
+    /// A row erased via GDPR Article 17, keyed on the minted tombstone email rather than a name a
+    /// member could type. Reads <see cref="User.IdentityEmailColumn"/>: erasure removes the
+    /// UserEmail rows, so the raw column is the only place the tombstone lives (null never means erased).
     /// </summary>
     internal static bool IsGdprTombstoned(User user) =>
         (user.IdentityEmailColumn is { } email && email.EndsWith(DeletedEmailSuffix, StringComparison.OrdinalIgnoreCase))
@@ -71,18 +63,9 @@ internal static class UserStateEvaluator
     internal const string DeletedEmailSuffix = "@deleted.local";
 
     /// <summary>
-    /// Legacy-only: rows anonymized before the email scrub was added to the erasure path lack the
-    /// tombstoned email, so recognise the pre-email tombstone shape instead. The blank BurnerName
-    /// is what makes the shape unreachable by a member: erasure clears it
-    /// (<c>AnonymizeForDeletionByUserIdAsync</c> sets <c>Profile.BurnerName = string.Empty</c> and
-    /// mirrors it onto the User row), and it was only from #1098 onward that erasure wrote the
-    /// sentinel there instead. A member who types "Deleted User" / "Deleted" / "User" carries
-    /// their burner name in all three columns, so they never match.
-    ///
-    /// This arm is a guard, not the shape: the three name columns it reads are all member-editable
-    /// and only the blank BurnerName keeps it safe. The shape fix is to delete it and key erasure
-    /// solely on the minted email, which is gated on confirming no pre-scrub erased rows survive in
-    /// production (nobodies-collective/Humans#1742). Retires with the #1102 DisplayName column drop.
+    /// Legacy-only: rows anonymized before erasure scrubbed the email. Safe only because erasure
+    /// blanked BurnerName, which a member typing "Deleted User" never does. Delete once no pre-scrub
+    /// erased rows survive in production, keying erasure solely on the minted email.
     /// </summary>
     private static bool IsLegacyGdprTombstone(User user) =>
         string.IsNullOrWhiteSpace(user.BurnerName)

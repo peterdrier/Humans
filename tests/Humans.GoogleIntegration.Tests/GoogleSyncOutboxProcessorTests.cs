@@ -41,8 +41,7 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
         _userService = Substitute.For<IUserService>();
         _identities = Substitute.For<IWorkspaceIdentityManagement>();
         // No test here seeds a user; the drain only reads this lookup to name the human in
-        // its failure log, so an empty result is the whole fixture. Was an empty in-memory
-        // UsersDbContext through Humans.Application.Tests' stub helper before the G5 move.
+        // its failure log, so an empty result is the whole fixture.
         _userService
             .GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
@@ -325,7 +324,7 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
     [HumansFact]
     public async Task ProcessQueuedAsync_AddUserEventForAMergedAwayId_MarksTheSurvivorsEmailValid()
     {
-        // #1704: the sync carried the event out for the survivor, so the status lands there.
+        // The sync carried the event out for the survivor, so the status lands there.
         var outboxEvent = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
         var survivorId = Guid.NewGuid();
         _userService

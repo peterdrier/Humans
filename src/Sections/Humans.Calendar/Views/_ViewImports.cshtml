@@ -1,7 +1,6 @@
 @* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
    here ships broken markup with a green build and no runtime error.
-   Nothing in CI guards it: CalendarPageRenderTests lives in Humans.Integration.Tests,
-   which CI does not run. The preview deploy is where a missing line shows up. *@
+   CI doesn't guard it (CalendarPageRenderTests is integration-only); the preview deploy shows it. *@
 @using Humans.Base.Extensions
 @using Humans.Calendar
 @using Humans.Calendar.Domain
@@ -12,8 +11,7 @@
 @using Microsoft.Extensions.Localization
 @using NodaTime
 @inject IStringLocalizer<CalendarResource> Localizer
-@* Common_* and Profile_Location stay in SharedResource: they are genuinely shared copy,
-   not Calendar's vocabulary, and other sections render them too (§15.3b). *@
+@* SharedLocalizer covers Common_ keys and Profile_Location, which other sections render too. *@
 @inject IStringLocalizer<SharedResource> SharedLocalizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @addTagHelper *, Humans.Base

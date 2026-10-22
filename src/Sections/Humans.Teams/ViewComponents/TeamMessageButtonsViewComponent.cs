@@ -8,10 +8,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Teams.ViewComponents;
 
 /// <summary>
-/// The "Send a message from {team}" buttons, contributed to <c>UserPartSlots.Profile</c>. They
-/// show on another member's profile (never the viewer's own) when that member accepts facilitated
-/// messages, one per team the viewer may send as (<see cref="ITeamMessageOptionsProvider"/>);
-/// nothing otherwise. <c>TeamMessageController</c> re-checks the team, so these buttons only offer.
+/// Never on the viewer's own profile, and only when the member accepts facilitated messages. These buttons only offer:
+/// <c>TeamMessageController</c> re-checks the team.
 /// </summary>
 internal sealed class TeamMessageButtonsViewComponent(
     ITeamMessageOptionsProvider options,
@@ -40,7 +38,6 @@ internal sealed class TeamMessageButtonsViewComponent(
     }
 }
 
-/// <summary>What the team message buttons render.</summary>
 internal sealed record TeamMessageButtonsViewModel(
     Guid UserId,
     string DisplayName,

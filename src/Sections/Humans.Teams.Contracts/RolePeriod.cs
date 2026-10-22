@@ -1,9 +1,6 @@
 namespace Humans.Teams.Contracts;
 
-/// <summary>
-/// Period tag on a TeamRoleDefinition indicating when the role is active.
-/// Stored as string in DB. Used for roster page filtering.
-/// </summary>
+/// <summary>When a role is active; filters the roster. Stored as a string.</summary>
 public enum RolePeriod
 {
     YearRound = 0,

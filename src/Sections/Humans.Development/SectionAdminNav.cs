@@ -3,7 +3,6 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Development;
 
-/// <summary>Development's admin sidebar contribution — the "Development" group (nobodies-collective/Humans#1077).</summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>

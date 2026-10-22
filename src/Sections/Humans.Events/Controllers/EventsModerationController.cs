@@ -54,7 +54,6 @@ internal sealed class EventsModerationController(
             Events = events.Select(e => BuildRow(e, tz, campsById, submitterInfoById)).ToList()
         };
 
-        // Duplicate detection for camp events
         var campEvents = events.Where(e => e.CampId.HasValue).ToList();
         if (campEvents.Count > 0)
         {
@@ -127,8 +126,6 @@ internal sealed class EventsModerationController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RequestEdit(ModerationActionFormModel model)
         => await ProcessActionAsync(model.EventId, EventModerationActionType.ResubmitRequested, model.Reason);
-
-    // ─── Admin in-place edit (any event, any state, status preserved) ─────
 
     [HttpGet("{eventId:guid}/Edit")]
     public async Task<IActionResult> Edit(Guid eventId, CancellationToken ct = default)
@@ -233,8 +230,6 @@ internal sealed class EventsModerationController(
         return RedirectToAction(nameof(Index), new { tab = guideEvent.Status });
     }
 
-    // ─── Helpers ──────────────────────────────────────────────────
-
     private async Task<(EventSettingsInfo? eventSettings, DateTimeZone? tz)> LoadEventSettingsAsync(CancellationToken ct = default)
     {
         var eventSettings = await LoadBurnSettingsAsync(guide, await guide.GetGuideSettingsAsync(ct), ct);
@@ -278,8 +273,6 @@ internal sealed class EventsModerationController(
         model.TimeZoneId = burn.TimeZoneId;
     }
 
-    // Parses the posted form into the edit. Camp events carry a priority rank;
-    // individual events carry a venue and the all-day flag.
     private static EventEdit BuildEdit(AdminEventFormViewModel model, bool isCampEvent, DateTimeZone? tz)
     {
         var (startTime, durationMinutes) = Event.ResolveAllDaySchedule(
@@ -305,8 +298,6 @@ internal sealed class EventsModerationController(
             return RedirectToAction(nameof(Index));
         }
 
-        // The submitter-edit URL is Web routing turf; the decision notification
-        // itself is part of ApplyModerationAsync's workflow.
         string? campSlug = null;
         if (guideEvent.CampId.HasValue)
         {

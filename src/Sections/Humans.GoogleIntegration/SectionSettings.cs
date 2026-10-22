@@ -4,9 +4,6 @@ using Humans.GoogleIntegration.ViewComponents;
 
 namespace Humans.GoogleIntegration;
 
-/// <summary>
-/// GoogleIntegration's /Settings tab (peterdrier/Humans#1634) — the sync settings.
-/// </summary>
 internal sealed class SectionSettings : ISectionSettings
 {
     public IEnumerable<SettingsTab> Tabs() =>

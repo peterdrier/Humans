@@ -4,28 +4,23 @@ using NodaTime;
 namespace Humans.Workgroups.Services;
 
 /// <summary>
-/// The reporting rhythm of design §13, as pure functions over a
-/// <see cref="WorkgroupInfo"/> and a clock. Kept out of the projection on purpose: the
-/// register snapshot is cached, so anything derived from "now" has to be computed at
-/// read time or it would go stale in the cache. The daily job and the views ask the
-/// same questions here, so page badge and job action can never disagree.
+/// Kept out of the projection: the register is cached, so anything derived from "now" is computed at read time.
+/// The job and the views both ask here, so a page badge and a job action can't disagree.
 /// </summary>
 internal static class WorkgroupRhythm
 {
-    /// <summary>Monthly update due after this long without an Update entry or a meeting.</summary>
     public static readonly Duration UpdateDueAfter = Duration.FromDays(30);
 
-    /// <summary>The Secretary has this long to act on an application (clause 1's fourteen days).</summary>
+    /// <summary>Clause 1's fourteen days for the Secretary to act on an application.</summary>
     public static readonly Duration RegistrationDueAfter = Duration.FromDays(14);
 
     /// <summary>A delivered document with no disposition after this long is highlighted for the Board.</summary>
     public static readonly Duration DispositionOverdueAfter = Duration.FromDays(60);
 
-    /// <summary>Current members — a soft leave keeps the row but drops off the roster; a pending request is not on it yet.</summary>
+    /// <summary>A soft leave keeps the row off the roster; a pending request isn't on it yet.</summary>
     public static IEnumerable<WorkgroupMemberInfo> CurrentMembers(this WorkgroupInfo w) =>
         w.Members.Where(m => m.LeftAt is null && !m.IsPending);
 
-    /// <summary>Join requests awaiting a coordinator's approval.</summary>
     public static IEnumerable<WorkgroupMemberInfo> PendingMembers(this WorkgroupInfo w) =>
         w.Members.Where(m => m.LeftAt is null && m.IsPending);
 
@@ -35,7 +30,6 @@ internal static class WorkgroupRhythm
     public static bool IsCoordinator(this WorkgroupInfo w, Guid userId) =>
         w.Coordinators().Any(m => m.UserId == userId);
 
-    /// <summary>The one or two people named on the register.</summary>
     public static IEnumerable<WorkgroupMemberInfo> Coordinators(this WorkgroupInfo w) =>
         w.CurrentMembers().Where(m => m.Role == WorkgroupMemberRole.Coordinator);
 
@@ -48,20 +42,16 @@ internal static class WorkgroupRhythm
     public static bool IsMember(this WorkgroupInfo w, Guid userId) =>
         w.CurrentMembers().Any(m => m.UserId == userId);
 
-    /// <summary>Member mutations are frozen once a group ends, and before it is registered.</summary>
     public static bool AcceptsMemberWork(this WorkgroupInfo w) => w.Status == WorkgroupStatus.Active;
 
-    /// <summary>Meetings not yet started, soonest first.</summary>
+    /// <summary>Not yet started, soonest first.</summary>
     public static IEnumerable<WorkgroupMeetingInfo> UpcomingMeetings(this WorkgroupInfo w, Instant now) =>
         w.Meetings.Where(m => m.StartUtc >= now).OrderBy(m => m.StartUtc);
 
     public static WorkgroupMeetingInfo? NextMeeting(this WorkgroupInfo w, Instant now) =>
         w.UpcomingMeetings(now).FirstOrDefault();
 
-    /// <summary>
-    /// The last time the group showed a sign of life: an Update entry or a meeting.
-    /// A Note or a Disclosure is not activity — §13 counts Update or Meeting only.
-    /// </summary>
+    /// <summary>An Update entry or a meeting; a Note or Disclosure doesn't count.</summary>
     public static Instant? LastActivityAt(this WorkgroupInfo w, Instant now)
     {
         var lastUpdate = w.LogEntries
@@ -79,10 +69,7 @@ internal static class WorkgroupRhythm
         };
     }
 
-    /// <summary>
-    /// Silence measured from the last Update or meeting, or from registration when the
-    /// group has never shown one.
-    /// </summary>
+    /// <summary>Measured from registration when the group has never shown activity.</summary>
     public static Duration? SilenceFor(this WorkgroupInfo w, Instant now)
     {
         var since = w.LastActivityAt(now) ?? w.RegisteredAt;
@@ -98,7 +85,6 @@ internal static class WorkgroupRhythm
         w.Status is WorkgroupStatus.Applied or WorkgroupStatus.Referred
         && now - w.AppliedAt >= RegistrationDueAfter;
 
-    /// <summary>A document is open for comment when now falls inside its window.</summary>
     public static bool IsOpenForComment(this WorkgroupDocumentInfo d, Instant now) =>
         d.Status == WorkgroupDocumentStatus.Published
         && d.CommentsOpenAt is { } from
@@ -109,7 +95,6 @@ internal static class WorkgroupRhythm
     public static bool IsOpenForComment(this WorkgroupInfo w, Instant now) =>
         w.Documents.Any(d => d.IsOpenForComment(now));
 
-    /// <summary>Delivered documents the Board still owes a written reply.</summary>
     public static IEnumerable<WorkgroupDocumentInfo> AwaitingDisposition(this WorkgroupInfo w) =>
         w.Documents.Where(d => d.Status == WorkgroupDocumentStatus.Delivered
             && d.Disposition is null or WorkgroupDisposition.Deferred);

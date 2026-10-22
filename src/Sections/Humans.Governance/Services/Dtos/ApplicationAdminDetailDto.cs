@@ -3,12 +3,6 @@ using NodaTime;
 
 namespace Humans.Governance.Services.Dtos;
 
-/// <summary>
-/// Detail projection for the admin application detail view
-/// (<c>Views/Governance/Applications/AdminDetail.cshtml</c>). All user-related fields are stitched
-/// from <c>IUserService</c> so the Application entity has no cross-domain
-/// navigation properties.
-/// </summary>
 internal sealed record ApplicationAdminDetailDto(
     Guid Id,
     Guid UserId,

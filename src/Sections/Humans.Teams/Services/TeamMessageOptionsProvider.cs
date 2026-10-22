@@ -5,21 +5,16 @@ using Humans.Teams.Contracts;
 namespace Humans.Teams.Services;
 
 /// <summary>
-/// The teams a viewer may send a facilitated message on behalf of: active teams the viewer
-/// coordinates whose Google Group is linked and synced. The profile-page buttons
-/// (<c>TeamMessageButtonsViewComponent</c>) render the list and <c>TeamMessageController</c>
-/// authorizes the requested team by looking it up in the same list.
+/// Active teams the viewer coordinates whose Google Group is linked and synced. The profile buttons render this list
+/// and <c>TeamMessageController</c> authorizes against the same one.
 /// </summary>
 internal interface ITeamMessageOptionsProvider
 {
     Task<IReadOnlyList<TeamMessageOption>> GetOptionsAsync(Guid viewerId, CancellationToken ct = default);
 }
 
-/// <summary>A team the viewer may send a facilitated message as, with the group address replies go to.</summary>
 internal sealed record TeamMessageOption(Guid TeamId, string TeamName, string GoogleGroupEmail);
 
-// Teams' own rule over its teams, with the group's sync state read through GoogleIntegration's
-// ITeamResourceService.
 internal sealed class TeamMessageOptionsProvider(
     ITeamService teamService,
     ITeamResourceService teamResourceService) : ITeamMessageOptionsProvider
@@ -44,11 +39,8 @@ internal sealed class TeamMessageOptionsProvider(
             .ToList();
     }
 
-    // Url is the one field both GoogleIntegration write paths (GoogleWorkspaceSyncService
-    // provisioning and TeamResourceService.LinkGroupAsync) store as
-    // https://groups.google.com/a/{domain}/g/{prefix}, and the one they key their own
-    // duplicate checks on. Name differs per path (team name vs group email) and GoogleId is
-    // Google's numeric id, so neither identifies the group on every row.
+    // Url is the one field both GoogleIntegration write paths store the same way and key their duplicate checks on.
+    // Name differs per path and GoogleId is Google's numeric id, so neither identifies the group on every row.
     private static string GroupUrl(string prefix) =>
         $"https://groups.google.com/a/{DomainConstants.GoogleGroupDomain}/g/{prefix}";
 

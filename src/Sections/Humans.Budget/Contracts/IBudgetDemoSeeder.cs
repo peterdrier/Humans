@@ -1,16 +1,11 @@
 namespace Humans.Budget.Contracts;
 
 /// <summary>
-/// The seam Development's <c>/dev/seed/budget</c> action uses to fill a non-production
-/// environment with demo budget data. One method, because that is what the caller does —
-/// exposing the section's write methods in the Contracts/ folder to serve a dev
-/// button is what the Contracts rule forbids.
+/// For Development's <c>/dev/seed/budget</c> only. One method on purpose: exposing the section's write methods to serve
+/// a dev button is what the Contracts rule forbids.
 /// </summary>
 public interface IBudgetDemoSeeder
 {
-    /// <summary>
-    /// Seeds demo teams, groups, categories and line items under a demo budget year.
-    /// Returns the operator-facing success message.
-    /// </summary>
+    /// <summary>Returns the operator-facing success message.</summary>
     Task<string> SeedAsync(Guid actorUserId, CancellationToken cancellationToken = default);
 }

@@ -22,8 +22,6 @@ namespace Humans.Rideshare.Tests;
 /// </summary>
 public class RideshareArchitectureTests
 {
-    // ── Routes and policies ───────────────────────────────────────────────
-
     [HumansFact]
     public void RideshareRoutes_UseTheRideshareSlug()
     {
@@ -46,8 +44,6 @@ public class RideshareArchitectureTests
         PolicyFor<RideshareAdminController>().Should().Be(PolicyNames.RideshareAdminOrAdmin,
             because: "settings, season stats and the day roster are RideshareAdmin tooling; Admin is always a superset");
     }
-
-    // ── DI shape ──────────────────────────────────────────────────────────
 
     [HumansFact]
     public void Repository_IsASingletonOverTheContextFactory()

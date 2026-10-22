@@ -5,16 +5,7 @@ using Humans.Workgroups.Domain;
 
 namespace Humans.Workgroups.Services.Contributors;
 
-/// <summary>
-/// Workgroups' half of GoogleIntegration's Drive access fan-out (design §9). It claims
-/// each registered group's own subfolder and the configured root, and says who should hold
-/// what on each. GoogleIntegration owns everything else: email hydration, diffing, the
-/// mutation, the sync log and reconciliation.
-/// </summary>
-/// <remarks>
-/// User ids only, never emails — the orchestrator hydrates them in one bulk call and
-/// applies the user-state filtering uniformly across every source.
-/// </remarks>
+/// <summary>User ids only, never emails: GoogleIntegration hydrates and filters them uniformly across sources.</summary>
 internal sealed class WorkgroupDriveAccessSource(
     IWorkgroupService workgroups,
     ITeamService teams) : IGoogleDriveAccessSource
@@ -30,8 +21,8 @@ internal sealed class WorkgroupDriveAccessSource(
             if (workgroup.DriveFolderId is not { Length: > 0 } id)
                 continue;
 
-            // Active: the members are doing the work, so they write and organize (move, trash).
-            // Dormant: the folder is the association's record of what they did, so it goes read-only.
+            // Active: the members do the work, so they write and organize. Dormant: the folder is the association's
+            // record, so it goes read-only.
             var level = workgroup.Status switch
             {
                 WorkgroupStatus.Active => DrivePermissionLevel.ContentManager,
@@ -51,20 +42,15 @@ internal sealed class WorkgroupDriveAccessSource(
             claimed[root] = new GoogleDriveAccessClaim(await RootReadersAsync(ct), ResourceName: RootFolderName);
         }
 
-        // The orchestrator asked about one folder; anything else this source claims is not
-        // its business on this pass.
+        // Asked about one folder: anything else this source claims isn't this pass's business.
         return claimed.Where(e => folderId is null || string.Equals(e.Key, folderId, StringComparison.Ordinal))
             .ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal);
     }
 
-    /// <summary>What a Board member sees named in a removal email or the sync log for the root folder.</summary>
+    /// <summary>Shown in removal emails and the sync log for the root folder.</summary>
     private const string RootFolderName = "Workgroups";
 
-    /// <summary>
-    /// The root folder is the register's shelf: the Board reads it, and nobody writes to it
-    /// but the section's own subfolder calls. Everyone else reaches only the subfolders of
-    /// the groups they belong to.
-    /// </summary>
+    /// <summary>The Board reads the root; everyone else reaches only their own groups' subfolders.</summary>
     private async Task<Dictionary<Guid, DrivePermissionLevel>> RootReadersAsync(CancellationToken ct)
     {
         var readers = new HashSet<Guid>();

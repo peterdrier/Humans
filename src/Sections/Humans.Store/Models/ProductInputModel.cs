@@ -31,7 +31,6 @@ internal sealed class ProductInputModel
     [Range(0.0, 1_000_000.0)]
     public decimal? DepositAmountEur { get; set; }
 
-    /// <summary>Holded chart number this item's external revenue books to, from Acountax.</summary>
     [Range(10_000_000, 99_999_999, ErrorMessage = "Use the 8-digit Holded chart number, e.g. 75900002")]
     public int? HoldedRevenueAccountNum { get; set; }
 

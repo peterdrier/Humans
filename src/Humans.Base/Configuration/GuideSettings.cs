@@ -1,8 +1,5 @@
 namespace Humans.Base.Configuration;
 
-/// <summary>
-/// Configuration for the in-app Guide section. Source location and cache behaviour.
-/// </summary>
 public class GuideSettings
 {
     public const string SectionName = "Guide";

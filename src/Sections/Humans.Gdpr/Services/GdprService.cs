@@ -5,12 +5,6 @@ using NodaTime;
 
 namespace Humans.Gdpr.Services;
 
-/// <summary>
-/// Fans both halves of GDPR subject rights out across <see cref="IUserDataContributor"/>s:
-/// Article 15 export into one keyed document, and Article 17 erasure in turn. Sequential,
-/// not Task.WhenAll — a simplicity choice, not a correctness one, which keeps failure
-/// attribution and log order plain.
-/// </summary>
 internal sealed class GdprService(
     IEnumerable<IUserDataContributor> contributors,
     IUserService users,
@@ -19,11 +13,10 @@ internal sealed class GdprService(
 {
     public async Task<GdprExport> ExportForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        // Resolve once for both the envelope and contributors. Moved rows belong to the
-        // survivor; contributors with retained history still expand its merge chain.
+        // Resolve once: contributors get the survivor, which owns any moved rows.
         var info = await users.GetUserInfoAsync(userId, ct);
         var resolvedUserId = info?.Id ?? userId;
-        // Survivor first, then every archived id: for contributors that can't resolve the chain.
+        // For contributors that can't resolve the chain themselves.
         var allUserIds = info?.AllUserIds ?? [userId];
 
         var sections = new Dictionary<string, object?>(StringComparer.Ordinal);

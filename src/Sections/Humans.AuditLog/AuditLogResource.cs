@@ -1,4 +1,4 @@
 namespace Humans.AuditLog;
 
-/// <summary>Member-facing audit entry resources; public for localization discovery.</summary>
+/// <summary>Public so the boot localization check finds it.</summary>
 public class AuditLogResource;

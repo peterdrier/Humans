@@ -8,13 +8,7 @@ using Xunit;
 
 namespace Humans.Web.Tests.Resources;
 
-/// <summary>
-/// Resx parity gate for every section's own <c>&lt;Section&gt;Resource</c> set — the
-/// section-scoped sibling of <see cref="SharedResourceParityTests"/>
-/// (nobodies-collective/Humans#1095). Derives the set from
-/// <see cref="SectionDiscoveryExtensions.SectionResourceTypes"/>, so a section added or
-/// renamed later needs no edit here.
-/// </summary>
+/// <summary>The section-scoped sibling of <see cref="SharedResourceParityTests"/>; the set is discovered, never listed.</summary>
 public class SectionResourceParityTests
 {
     public static TheoryData<Type> ResourceTypes()
@@ -44,8 +38,7 @@ public class SectionResourceParityTests
         var localizer = factory.Create(resourceType);
         var gallery = TranslationsGalleryModelBuilder.Build(localizer);
 
-        // Same vacuous-pass guard as SharedResourceParityTests: a resx the localizer
-        // can't find yields zero keys, zero gaps, and a silent pass over this set.
+        // A resx the localizer can't find yields zero keys and a silent pass.
         gallery.TotalKeys.Should().BeGreaterThan(
             0,
             $"{resourceType.Name}: resolved 0 keys — localizer could not find its resx");

@@ -2,11 +2,7 @@ using Humans.Base.Models;
 
 namespace Humans.Camps;
 
-/// <summary>
-/// Section-help Guide and Glossary content for the Barrios (camps) pages — was a row in
-/// Base's deleted <c>SectionHelpContent</c> tables. The markdown itself lives beside this
-/// section's other docs in <c>Docs/help/</c> and is embedded into this assembly.
-/// </summary>
+/// <summary>The markdown lives in <c>Docs/help/</c> and is embedded into this assembly.</summary>
 internal sealed class SectionHelp : ISectionHelp
 {
     public IReadOnlyList<SectionHelpEntry> HelpEntries => Entries;

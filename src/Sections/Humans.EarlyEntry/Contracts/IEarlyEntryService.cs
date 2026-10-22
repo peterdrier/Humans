@@ -3,20 +3,16 @@ using NodaTime;
 
 namespace Humans.EarlyEntry.Contracts;
 
-/// <summary>
-/// Where every source of early entry is added up: earliest date wins, distinct
-/// reasons listed.
-/// </summary>
+/// <summary>Every source of early entry added up: earliest date wins, distinct sources listed.</summary>
 public interface IEarlyEntryService : IOrchestrator
 {
-    /// <summary>Every holder for the active event, one row each. Live on every call — never cached.</summary>
+    /// <summary>Every holder for the active event, one row each. Gathered once per request scope.</summary>
     Task<IReadOnlyList<EarlyEntryRosterRow>> GetRosterAsync(CancellationToken ct);
 
-    /// <summary>One person's roster row, or null. Cached per person, negatives included; only eviction refreshes it.</summary>
+    /// <summary>Null when the member holds no early entry. Gathered once per request scope.</summary>
     Task<EarlyEntryRosterRow?> GetForUserAsync(Guid userId, CancellationToken ct);
 }
 
-/// <summary>One roster row: a holder's earliest entry date and the distinct sources that granted it.</summary>
 public sealed record EarlyEntryRosterRow(
     Guid UserId,
     LocalDate EarliestEntryDate,

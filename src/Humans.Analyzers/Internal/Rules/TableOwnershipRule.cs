@@ -11,43 +11,12 @@ namespace Humans.Analyzers.Internal.Rules;
 /// HUM0025 — a DbSet table must be referenced by exactly one repository.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Enforces two of Peter's hard rules at once (<c>peters-hard-rules.md</c>):
-/// "only the repository writes its section's tables" and "a table must only
-/// exist in one repository." Ownership is <b>emergent</b>, not declared: the
-/// single repository that references an application DbContext's <c>DbSet</c> is
-/// its owner. When more than one repository references the same DbSet, there is
-/// no single owner — the table is shared across the repository (and usually
-/// section) boundary, which bypasses the owning section's service and its §15
-/// cache. Reads count as well as writes: a foreign read bypasses the owner's
-/// cache and observes stale state, so it is a coherence bug, not soft coupling.
-/// </para>
-/// <para>
-/// Mechanism: across the <c>Humans.Infrastructure</c> compilation, collect every
-/// reference (read or write) to an application DbContext's DbSet from inside a type
-/// implementing <c>Humans.Base.Interfaces.Repositories.IRepository</c>,
-/// then build <c>DbSet → {referencing repository types}</c>. A table referenced by
-/// N&gt;1 repositories produces a diagnostic at each access site. Phase 1 detects
-/// only direct references: <c>ctx.&lt;DbSet&gt;</c> property access (including DbSets
-/// inherited from <c>IdentityDbContext</c>, e.g. <c>Users</c>) and
-/// <c>ctx.Set&lt;TEntity&gt;()</c>.
-/// </para>
-/// <para>
-/// Existing shared tables carry
-/// <c>[Grandfathered("HUM0025", …, scope: "&lt;DbSet&gt;")]</c> on each participating
-/// repository — one entry per shared table (the attribute allows multiples). The
-/// diagnostic downgrades to a warning for that (repository, table) pair only; a
-/// new repository that starts sharing a grandfathered table is not covered by the
-/// existing attributes and still errors. The attribute is a TODO for migration,
-/// not a permanent exemption.
-/// </para>
-/// <para>
-/// Counting unit is top-level types implementing <c>IRepository</c>. Framework
-/// stores (ASP.NET Identity <c>UserStore</c> etc.) are not repositories and do not
-/// count — their DbContext access is governed by HUM0009. Runs in
-/// <c>Humans.Infrastructure</c> only, the one compilation where every
-/// application DbContext and repository implementation are visible.
-/// </para>
+/// Ownership is emergent: the single repository that references a DbSet owns it. Reads count as well as writes: a
+/// foreign read bypasses the owner's cache and sees stale state. Only direct references are detected:
+/// <c>ctx.&lt;DbSet&gt;</c> (including DbSets inherited from <c>IdentityDbContext</c>, e.g. <c>Users</c>) and
+/// <c>ctx.Set&lt;TEntity&gt;()</c>. <c>[Grandfathered("HUM0025", …, scope: "&lt;DbSet&gt;")]</c> downgrades one
+/// (repository, table) pair, so a new repository sharing a grandfathered table still errors. Framework stores such as
+/// <c>UserStore</c> are not repositories; HUM0009 governs them.
 /// </remarks>
 internal static class TableOwnershipRule
 {
@@ -83,11 +52,7 @@ internal static class TableOwnershipRule
 
     public static void Register(CompilationStartAnalysisContext context)
     {
-        // Since the per-section split (nobodies-collective/Humans#858) tables are
-        // spread across every application context; DbSet access is matched on any of
-        // them via SectionDbContexts, which finds contexts structurally (declared in
-        // this assembly, derived from EF's DbContext), so peeled tables stay policed
-        // wherever the contexts live.
+        // SectionDbContexts finds contexts structurally, so tables stay policed wherever the contexts live.
         var efDbContext = SectionDbContexts.ResolveEfDbContext(context.Compilation);
         if (efDbContext is null)
             return;

@@ -3,92 +3,40 @@ using Humans.Base.Interfaces;
 namespace Humans.Gdpr.Contracts;
 
 /// <summary>
-/// Contributes one or more sections of the GDPR Article 15 data export for a
-/// single user.
-///
-/// <para>
-/// Every service that owns user-scoped tables MUST implement this interface so
-/// the orchestrator (<see cref="IGdprService"/>) can fan out and assemble
-/// a complete per-user document without any cross-section database reads.
-/// A contributor reads only from its owning section's tables — cross-section
-/// data flows through other contributors, not through <c>Include</c> chains.
-/// </para>
-///
-/// <para>
-/// Some contributors own several user-scoped tables and therefore emit several
-/// top-level sections (for example <c>ShiftSignupService</c> returns
-/// <c>ShiftSignups</c>, <c>VolunteerEventProfiles</c>, <c>GeneralAvailability</c>,
-/// and <c>ShiftTagPreferences</c>). Returning a list keeps each one its own
-/// top-level key in the export file.
-/// </para>
+/// Implemented by every service that owns user-scoped tables. Reads only its own section's tables;
+/// other sections' data arrives through their own contributors.
 /// </summary>
 public interface IUserDataContributor : IFanout
 {
     /// <summary>
-    /// Returns every personal-data slice this contributor owns for
-    /// <paramref name="userId"/>. The export orchestrator resolves merged accounts
-    /// to the survivor before calling contributors. Contributors whose rows stay
-    /// on archived accounts still expand the survivor's merge chain.
-    /// Implementations must be read-only.
-    /// A slice whose <see cref="UserDataSlice.Data"/> is <c>null</c> is dropped
-    /// from the final export by the orchestrator. Every
-    /// <see cref="UserDataSlice.SectionName"/> returned here must be a key of
-    /// <see cref="ErasureDeclaration"/>, so a category a person can download is
-    /// accounted for under Article 17 too; the orchestrator logs an error for one
-    /// that isn't and still exports it. The reverse isn't required: a contributor
-    /// may declare erasure-only keys it never exports (see
-    /// <see cref="ErasureDeclaration"/>).
+    /// Read-only. Receives the surviving account id. Every section name returned must be a key of
+    /// <see cref="ErasureDeclaration"/> (the orchestrator logs an error otherwise); a <c>null</c>
+    /// <see cref="UserDataSlice.Data"/> is dropped.
     /// </summary>
     Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct);
 
     /// <summary>
-    /// Second Article 15 call, made for every contributor right after
-    /// <see cref="ContributeForUserAsync"/>: <paramref name="allUserIds"/> is the
-    /// survivor's whole identity chain — <paramref name="userId"/> first, then every
-    /// archived account merged into it. For a contributor that cannot resolve the
-    /// chain itself (a crosscut that may not call Users) and still holds rows keyed
-    /// to archived ids. The default returns nothing. Same rules as
-    /// <see cref="ContributeForUserAsync"/>: read-only, every section name declared
-    /// in <see cref="ErasureDeclaration"/>, and a section name unique across the
-    /// whole export — returning one name from both methods fails the export.
+    /// Called right after <see cref="ContributeForUserAsync"/> with the survivor's whole chain
+    /// (<paramref name="userId"/> first, then archived ids), for a contributor that can't resolve the chain
+    /// itself. Same rules; a section name returned by both methods fails the export.
     /// </summary>
     Task<IReadOnlyList<UserDataSlice>> ContributeForIdentityChainAsync(
         Guid userId, IReadOnlyList<Guid> allUserIds, CancellationToken ct) =>
         Task.FromResult<IReadOnlyList<UserDataSlice>>([]);
 
     /// <summary>
-    /// Article 17 counterpart of <see cref="ContributeForUserAsync"/>: one entry
-    /// for every export section name this contributor owns, plus any category it
-    /// erases without ever exporting it. A <c>null</c> value means
-    /// <see cref="EraseForUserAsync"/> erases or anonymizes that category
-    /// in full; a non-empty value means something in it is deliberately kept, and
-    /// the string says what survives and under which lawful basis.
-    ///
-    /// <para>
-    /// MUST be a static table — the erasure-coverage architecture test reads it
-    /// from an uninitialized instance, so an implementation may not touch
-    /// instance state, the database, or the clock.
-    /// </para>
+    /// Section name → <c>null</c> when erased in full, or the reason (and lawful basis) for what is kept.
+    /// Covers every export section name, plus any category erased without being exported.
+    /// Must be static: the erasure-coverage test reads it from an uninitialized instance.
     /// </summary>
     IReadOnlyDictionary<string, string?> ErasureDeclaration { get; }
 
-    /// <summary>
-    /// Erases this contributor's personal data for <paramref name="userId"/>:
-    /// every category <see cref="ErasureDeclaration"/> maps to <c>null</c> is
-    /// deleted or anonymized in full, and every category mapped to a retention
-    /// reason keeps exactly what that reason names. Implementations must be
-    /// idempotent — the deletion job retries the whole cascade the next day
-    /// after a mid-cascade failure.
-    /// </summary>
+    /// <summary>Must be idempotent: the deletion job retries the whole cascade the next day after a failure.</summary>
     Task EraseForUserAsync(Guid userId, CancellationToken ct);
 
     /// <summary>
-    /// True for the one contributor that owns the person's identity/account
-    /// record: it erases last, after every other contributor, so a section that
-    /// still needs the person's address to reach an external processor (for
-    /// example a Workspace suspend) can resolve it before identity collapses.
-    /// The orchestrator orders erasure by this flag, not by naming a specific
-    /// contributor type. Exactly one contributor should return <c>true</c>.
+    /// True only for the identity owner, which erases after everyone else so sections that still need the
+    /// person's address (a Workspace suspend) can resolve it.
     /// </summary>
     bool ErasesLast => false;
 }

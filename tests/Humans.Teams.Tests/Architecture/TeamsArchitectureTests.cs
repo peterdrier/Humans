@@ -15,19 +15,12 @@ namespace Humans.Teams.Tests.Architecture;
 /// </summary>
 public class TeamsArchitectureTests
 {
-    // ── ITeamRepository + TeamRepository ─────────────────────────────────────
-
     [HumansFact]
     public void TeamRepository_ImplementsITeamRepository()
     {
         typeof(ITeamRepository).IsAssignableFrom(typeof(TeamRepository))
             .Should().BeTrue();
     }
-
-    // Cross-section injection of ITeamRepository is structurally impossible: the
-    // interface is internal to Humans.Teams, so no other assembly can name it.
-
-    // ── Public faces share one instance ──────────────────────────────────────
 
     [HumansFact]
     public void ITeamManagement_ITeamService_And_ITeamWrite_ResolveToSameSingleton()

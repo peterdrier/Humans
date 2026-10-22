@@ -1,7 +1,6 @@
 namespace Humans.Expenses.Domain;
 
-/// <summary>Spanish per-diem (dieta) kind, selecting the tax-exempt daily rate. Not persisted —
-/// a parameter to <c>AddPerDiemLineWithResultAsync</c> only.</summary>
+/// <summary>Selects the tax-exempt daily rate. Not persisted.</summary>
 internal enum PerDiemKind
 {
     DayTrip = 0,

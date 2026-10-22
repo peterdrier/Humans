@@ -11,9 +11,8 @@ using Humans.Users.Contracts;
 namespace Humans.Shifts.Models;
 
 /// <summary>
-/// The Shifts-owned knobs for the active event cycle. The app-wide calendar
-/// (name, dates, offsets, early entry) is Settings' — edited at
-/// <c>/Settings#event</c> — and is not on this form (nobodies-collective/Humans#1631).
+/// Shifts-owned knobs only. The app-wide calendar (name, dates, offsets, early entry) is Settings', edited at
+/// <c>/Settings#event</c>.
 /// </summary>
 internal sealed class EventSettingsViewModel
 {
@@ -132,22 +131,13 @@ internal sealed class ShiftBrowseViewModel
     public string? FilterToDate { get; set; }
     public string? FilterPeriod { get; set; }
 
-    /// <summary>
-    /// Active period filters for multiselect phase cards (Build, Event, Strike).
-    /// When all three are selected (or none explicitly set), no period filtering is applied.
-    /// </summary>
+    /// <summary>All three selected, or none set, means no period filtering.</summary>
     public List<string> FilterPeriods { get; set; } = [];
 
-    /// <summary>
-    /// Selected single-day filter (ISO date string). Empty/null means "all days".
-    /// </summary>
+    /// <summary>ISO date; empty means all days.</summary>
     public string? FilterDay { get; set; }
 
-    /// <summary>
-    /// Every calendar day that carries at least one browsable shift for the active
-    /// event, for the day-filter dropdown. Independent of the current department/tag/
-    /// period/day filters so the option list stays stable as the viewer filters.
-    /// </summary>
+    /// <summary>Independent of the current filters, so the option list stays stable as the viewer filters.</summary>
     public List<DayFilterOption> DayOptions { get; set; } = [];
 
     public bool ShowFullShifts { get; set; }
@@ -157,28 +147,18 @@ internal sealed class ShiftBrowseViewModel
     public bool ShowSignups { get; set; }
 
     /// <summary>
-    /// True when early-entry (build) signups have closed
-    /// (<see cref="IBurnSettingsInfo.EarlyEntryClose"/> passed) and the viewer is not
-    /// privileged. Row partials combine this with <see cref="ShiftInfo.IsEarlyEntry"/>
-    /// so only build shifts lock; mirrors the server gate in ShiftSignupService.
+    /// Early-entry close has passed for a non-privileged viewer. Rows combine it with
+    /// <see cref="ShiftInfo.IsEarlyEntry"/> so only build shifts lock; mirrors the server gate in ShiftSignupService.
     /// </summary>
     public bool EarlyEntrySignupsClosed { get; set; }
 
-    /// <summary>
-    /// Department coverage pies rendered above the page. One row per
-    /// top-level department + each promoted sub-team. Empty when the event
-    /// has no rotas that contribute pie hours.
-    /// </summary>
+    /// <summary>One per top-level department plus each promoted sub-team.</summary>
     public IReadOnlyList<DepartmentCoveragePie> CoveragePies { get; set; } = [];
 
-    /// <summary>
-    /// Current sort mode: "urgency" for most-needed-first, null/empty for default by-department grouping.
-    /// </summary>
+    /// <summary>"urgency" for most-needed-first; empty groups by department.</summary>
     public string? Sort { get; set; }
 
-    /// <summary>
-    /// Flat list of rotas sorted by urgency score (populated only when Sort == "urgency").
-    /// </summary>
+    /// <summary>Populated only when <see cref="Sort"/> is "urgency".</summary>
     public List<RotaShiftGroup> UrgencyRankedRotas { get; set; } = [];
 
     public List<ShiftTagSummary> AllTags { get; set; } = [];
@@ -189,10 +169,7 @@ internal sealed class ShiftBrowseViewModel
 
     public int MySignupCount { get; set; }
 
-    /// <summary>
-    /// All active signups across all events for the current user, projected for the
-    /// build/strike conflict-confirmation modal in the dashboard view.
-    /// </summary>
+    /// <summary>Across all events, for the build/strike conflict-confirmation modal.</summary>
     public IReadOnlyList<UserSignupConflictItem> UserActiveSignups { get; set; } = [];
 }
 
@@ -216,10 +193,9 @@ internal sealed class RotaShiftGroup
     public RotaInfo Rota { get; set; } = null!;
     public List<ShiftDisplayItem> Shifts { get; set; } = [];
 
-    /// <summary>Department name, populated for urgency-sorted view where rotas are shown flat.</summary>
+    /// <summary>Set only in the urgency view, where rotas are shown flat.</summary>
     public string? DepartmentName { get; set; }
 
-    /// <summary>Department slug for linking, populated for urgency-sorted view.</summary>
     public string? DepartmentSlug { get; set; }
 
     public double MaxUrgencyScore { get; set; }
@@ -230,10 +206,8 @@ internal sealed class RotaShiftGroup
 }
 
 /// <summary>
-/// One selectable day for the Volunteering page's day-filter dropdown.
-/// <see cref="SubPeriod"/> is populated only for <see cref="ShiftPeriod.Build"/> days
-/// that fall within one of the four named sub-windows (<see cref="BuildSubPeriodClassifier"/>);
-/// null for Event/Strike days and for build days outside those windows.
+/// <see cref="SubPeriod"/> is set only for Build days inside one of the named sub-windows
+/// (<see cref="BuildSubPeriodClassifier"/>).
 /// </summary>
 internal sealed record DayFilterOption(LocalDate Date, ShiftPeriod Period, BuildSubPeriod? SubPeriod);
 
@@ -268,19 +242,12 @@ internal sealed class MySignupItem
     public Instant AbsoluteEnd { get; set; }
 
     /// <summary>
-    /// True when the Mine view must lock the bail/withdraw control for this signup:
-    /// it's an early-entry (build) shift, early-entry close has passed, and the viewer
-    /// cannot approve signups for the signup's own department — the per-team gate
-    /// ShiftSignupService.BailAsync/BailRangeAsync enforces server-side.
-    /// Only the Mine action sets this; other MySignupItem surfaces leave it false.
+    /// Locks bail on an early-entry shift after close when the viewer cannot approve for its department, mirroring
+    /// ShiftSignupService.BailAsync. Only the Mine action sets it.
     /// </summary>
     public bool BailLocked { get; set; }
 }
 
-/// <summary>
-/// A pending signup on the department admin page's approval list, with the shift it
-/// is for, that shift's confirmed count (capacity check) and its rota's name.
-/// </summary>
 internal sealed record ShiftAdminPendingSignup(
     Guid Id,
     Guid UserId,
@@ -302,12 +269,7 @@ internal sealed class ShiftAdminViewModel
     public bool CanApproveSignups { get; set; }
     public Dictionary<Guid, VolunteerBadgesViewModel> VolunteerProfiles { get; set; } = new();
 
-    /// <summary>
-    /// User display data (BurnerName, ProfilePictureUrl) keyed by UserId for every signup
-    /// in <see cref="Rotas"/> and <see cref="PendingSignups"/>. Resolved by the controller via
-    /// <c>IUserService.GetUserInfosAsync</c>; the view reads from this dictionary instead of
-    /// navigating <c>ShiftSignup.User</c> (cross-domain nav, removed per design-rules §6c).
-    /// </summary>
+    /// <summary>Keyed by UserId for every signup on the page; views read this, never <c>ShiftSignup.User</c>.</summary>
     public IReadOnlyDictionary<Guid, UserInfo> Users { get; set; } = new Dictionary<Guid, UserInfo>();
 
     public bool CanViewMedical { get; set; }
@@ -318,11 +280,7 @@ internal sealed class ShiftAdminViewModel
 
     public List<ShiftTagSummary> AllTags { get; set; } = [];
 
-    /// <summary>
-    /// True when the coordinator has activated the "Incomplete onboarding" filter
-    /// chip on the Pending Approvals list (only show signups whose users are
-    /// missing required Volunteer consents).
-    /// </summary>
+    /// <summary>Shows only signups whose users are missing required Volunteer consents.</summary>
     public bool IncompleteOnboardingFilter { get; set; }
 }
 
@@ -337,10 +295,9 @@ internal sealed class ShiftInfoViewModel
     [StringLength(200, ErrorMessage = "Validation_MaxLength")]
     public string? LanguageOtherText { get; set; }
 
-    /// <summary>Tag catalog for the preference picker. Not posted back; repopulated on every render.</summary>
+    /// <summary>Not posted back; repopulated on every render.</summary>
     public IReadOnlyList<ShiftTagSummary> AllShiftTags { get; set; } = [];
 
-    /// <summary>IDs of the shift tags the volunteer marked as preferred.</summary>
     public List<Guid> EditableShiftTagIds { get; set; } = [];
 
     internal static readonly string[] SkillOptions = ["Bartending", "First Aid", "Driving", "Sound", "Electrical", "Construction", "Cooking", "Art", "DJ", "Other"];
@@ -525,15 +482,8 @@ internal sealed class VolunteerSearchResult
     public string? MedicalConditions { get; set; }
 }
 
-// === Shift Signups ViewComponent ===
-//
-// ShiftSignupsViewMode is public beside the component under Contracts/ — it is a
-// parameter of the public InvokeAsync.
-
 /// <summary>
-/// How a shift table renders its signup affordance.
-/// FormPost = legacy range form + per-shift POST (OnboardingWidget wizard).
-/// InstantToggle = per-day AJAX toggle button (the /Shifts browse page).
+/// FormPost: range form plus per-shift POST (onboarding widget). InstantToggle: per-day AJAX toggle (/Shifts).
 /// </summary>
 internal enum ShiftSignupInteraction
 {
@@ -542,10 +492,8 @@ internal enum ShiftSignupInteraction
 }
 
 /// <summary>
-/// Bound by the <c>&lt;vc:shift-signups&gt;</c> card. Its rows are the leaf
-/// <see cref="ShiftSignupSummary"/> rather than entity-bearing MySignupItems, because
-/// the component is public and cannot inject the section-internal row view (CS0051) —
-/// see <c>Contracts/ShiftSignupsViewComponent.cs</c>.
+/// Rows are the leaf <see cref="ShiftSignupSummary"/>: the component is public and cannot take the
+/// section-internal row view (CS0051).
 /// </summary>
 internal sealed class ShiftSignupsViewModel
 {
@@ -587,19 +535,13 @@ internal sealed class BuildStrikeRotaTableViewModel
 {
     public RotaShiftGroup RotaGroup { get; set; } = null!;
 
-    /// <summary>
-    /// The burn this rota belongs to, as the cross-section read DTO. Every consumer
-    /// of this partial — browse, onboarding, and the widget gallery — resolves the
-    /// active burn through <see cref="IBurnSettingsService"/>, so the EF entity never
-    /// reaches a view model.
-    /// </summary>
+    /// <summary>The cross-section DTO, so the EF entity never reaches a view model.</summary>
     public BurnSettingsInfo EventSettings { get; set; } = null!;
     public HashSet<Guid> UserSignupShiftIds { get; set; } = [];
     public Dictionary<Guid, SignupStatus> UserSignupStatuses { get; set; } = new();
     public bool ShowSignups { get; set; }
 
-    /// <summary>True when early-entry signups have closed for a non-privileged
-    /// viewer; propagated to each build/strike row (see ShiftBrowseViewModel).</summary>
+    /// <summary>Propagated to each build/strike row; see <see cref="ShiftBrowseViewModel"/>.</summary>
     public bool EarlyEntrySignupsClosed { get; set; }
 
     public Guid? FilterDepartmentId { get; set; }
@@ -612,9 +554,7 @@ internal sealed class BuildStrikeRotaTableViewModel
     public IReadOnlyList<UserSignupConflictItem> UserActiveSignups { get; set; } = [];
     public IReadOnlyDictionary<int, ShiftWindow> RotaWindowsByDayOffset { get; set; } = new Dictionary<int, ShiftWindow>();
 
-    /// <summary>Controller the date-range Sign Up form posts to. Default = the
-    /// public Shifts controller; the onboarding widget overrides this so the
-    /// inline rota table posts back into the widget flow.</summary>
+    /// <summary>Defaults to the onboarding widget so its inline rota table posts back into the widget flow.</summary>
     public string SignUpRangeController { get; set; } = "OnboardingWidget";
     public string SignUpRangeAction { get; set; } = "SignUpRange";
 
@@ -631,8 +571,7 @@ internal sealed class EventRotaTableViewModel
     public Dictionary<Guid, SignupStatus> UserSignupStatuses { get; set; } = new();
     public bool ShowSignups { get; set; }
 
-    /// <summary>True when early-entry signups have closed for a non-privileged
-    /// viewer; propagated to each event row (see ShiftBrowseViewModel).</summary>
+    /// <summary>Propagated to each event row; see <see cref="ShiftBrowseViewModel"/>.</summary>
     public bool EarlyEntrySignupsClosed { get; set; }
 
     public Guid? FilterDepartmentId { get; set; }
@@ -643,16 +582,14 @@ internal sealed class EventRotaTableViewModel
     public List<Guid> FilterTagIds { get; set; } = [];
     public string? Sort { get; set; }
 
-    /// <summary>Controller the per-shift Sign Up form posts to. The FormPost
-    /// branch is only used by the onboarding widget, so the default targets it;
-    /// the browse page uses InstantToggle and never renders this form.</summary>
+    /// <summary>FormPost only, which only the onboarding widget uses, hence the default.</summary>
     public string SignUpController { get; set; } = "OnboardingWidget";
     public string SignUpAction { get; set; } = "SignUp";
 
     public ShiftSignupInteraction Interaction { get; set; } = ShiftSignupInteraction.FormPost;
 }
 
-/// <summary>One Build/Strike all-day day-row. Action cell varies by Interaction.</summary>
+/// <summary>One Build/Strike all-day row.</summary>
 internal sealed class BuildStrikeRotaRowViewModel
 {
     public ShiftDisplayItem Item { get; set; } = null!;
@@ -662,16 +599,14 @@ internal sealed class BuildStrikeRotaRowViewModel
     public bool IsSignedUp { get; set; }
     public SignupStatus? SignupStatus { get; set; }
 
-    /// <summary>Page-level early-entry-closed flag; the row combines it with
-    /// <see cref="ShiftInfo.IsEarlyEntry"/> to lock only build shifts.</summary>
+    /// <summary>Combined with <see cref="ShiftInfo.IsEarlyEntry"/> to lock only build shifts.</summary>
     public bool EarlyEntrySignupsClosed { get; set; }
     public ShiftSignupInteraction Interaction { get; set; } = ShiftSignupInteraction.FormPost;
 }
 
 /// <summary>
-/// The instant per-day toggle button, shared by the Event and Build/Strike row
-/// partials so the JS contract (class, data-* and ARIA attributes) stays in one
-/// place. A Pending signup renders the "applied, awaiting approval" state.
+/// Shared by the Event and Build/Strike rows so the JS contract (class, data-* and ARIA attributes) stays in one
+/// place.
 /// </summary>
 internal sealed class ShiftToggleButtonModel
 {
@@ -680,16 +615,11 @@ internal sealed class ShiftToggleButtonModel
     public SignupStatus? Status { get; set; }
     public bool IsFull { get; set; }
 
-    /// <summary>
-    /// True when this is an early-entry (build) shift, early-entry signups have
-    /// closed (<see cref="IBurnSettingsInfo.EarlyEntryClose"/> passed) and the viewer
-    /// is not privileged. The button is rendered as a disabled "set-up closed"
-    /// state; the server-side gate in ShiftSignupService still enforces it.
-    /// </summary>
+    /// <summary>Renders disabled; the server-side gate in ShiftSignupService still enforces it.</summary>
     public bool EarlyEntryClosed { get; set; }
 }
 
-/// <summary>One timed Event-shift row. Action cell varies by Interaction; FormPost reuses the per-row signup form.</summary>
+/// <summary>One timed Event-shift row; FormPost reuses the per-row signup form.</summary>
 internal sealed class EventRotaRowViewModel
 {
     public ShiftDisplayItem Item { get; set; } = null!;
@@ -699,13 +629,11 @@ internal sealed class EventRotaRowViewModel
     public bool IsSignedUp { get; set; }
     public SignupStatus? SignupStatus { get; set; }
 
-    /// <summary>Page-level early-entry-closed flag; the row combines it with
-    /// <see cref="ShiftInfo.IsEarlyEntry"/> to lock only build shifts.</summary>
+    /// <summary>Combined with <see cref="ShiftInfo.IsEarlyEntry"/> to lock only build shifts.</summary>
     public bool EarlyEntrySignupsClosed { get; set; }
     public ShiftSignupInteraction Interaction { get; set; } = ShiftSignupInteraction.FormPost;
 
-    // FormPost-only: where the per-row signup form posts, plus filter context for the PRG redirect.
-    // Default targets the onboarding widget (the only FormPost consumer); the browse page uses InstantToggle.
+    // FormPost only, which only the onboarding widget uses, hence the default.
     public string SignUpController { get; set; } = "OnboardingWidget";
     public string SignUpAction { get; set; } = "SignUp";
     public Guid? FilterDepartmentId { get; set; }

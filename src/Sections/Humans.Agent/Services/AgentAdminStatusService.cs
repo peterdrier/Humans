@@ -7,7 +7,6 @@ using Humans.Agent.Services.Anthropic;
 
 namespace Humans.Agent.Services;
 
-/// <summary>Read-only assembler for /Agent/Admin/Status. One 30-day projection, all sub-windows computed in memory (small user base; fits in RAM).</summary>
 internal sealed class AgentAdminStatusService(
     IAgentRepository repo,
     IAgentSettingsService settings,
@@ -104,11 +103,8 @@ internal sealed class AgentAdminStatusService(
             output += r.OutputTokens;
             cached += r.CachedTokens;
             messageCount++;
-            // Latency panel measures completed turns only. User rows carry no duration at
-            // all, and refusal/error rows (rate_limited, abuse_flag, "error" traces) never
-            // finished a timed provider turn — their DurationMs is a structural 0, not a
-            // real sample. Mixing either into the average/percentile dilutes both toward
-            // roughly half the real figure (nobodies-collective/Humans#990).
+            // Completed turns only: user rows carry no duration, and refusal/error rows never finished a timed
+            // provider turn (a structural 0). Either would drag the average toward half the real figure.
             if (r.Role == AgentRole.Assistant && string.IsNullOrEmpty(r.RefusalReason))
                 durations.Add(r.DurationMs);
             uniqueUsers.Add(r.UserId);
@@ -116,9 +112,8 @@ internal sealed class AgentAdminStatusService(
 
         var cacheBase = prompt + cached;
         var cacheRatio = cacheBase > 0 ? (double)cached / cacheBase : 0.0;
-        // Guard on the sample list, not messageCount: a window can hold rows that all fail
-        // the timed-turn filter above (user rows only, or nothing but refusals), leaving
-        // messageCount positive and durations empty — Average() throws on empty.
+        // Guard on the samples, not messageCount: every row in a window can fail the filter above, and Average()
+        // throws on empty.
         var avgMs = durations.Count > 0 ? (int)durations.Average() : 0;
         var p95Ms = Percentile(durations, 0.95);
 

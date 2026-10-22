@@ -1,34 +1,32 @@
 namespace Humans.Users.Contracts;
 
 /// <summary>
-/// Bit-flags scoping a person-search to specific Profile/User field buckets.
-/// Flags ARE the authorization model: caller picks buckets, service confines matching.
-/// Emergency-contact fields never searchable. Implicit scope: not-rejected + not-deleted.
+/// The flags are the authorization model: the caller picks buckets, the service confines matching. Emergency
+/// contacts are never searchable.
 /// </summary>
 [Flags]
 public enum PersonSearchFields
 {
-    /// <summary>No fields. Returns no results.</summary>
     None = 0,
 
-    /// <summary>Resolved display name (User.BurnerName; nobodies-collective/Humans#1098). Public.</summary>
+    /// <summary><c>User.BurnerName</c>. Public.</summary>
     Name = 1 << 0,
 
     /// <summary>Bio, city, contribution-interests, CV, pronouns, AllActiveProfiles-visible ContactFields, and publicly-exposed emails. Public.</summary>
     Bio = 1 << 1,
 
-    /// <summary>Verified email addresses (any visibility) + non-public ContactFields. Controller MUST gate with Admin/Board auth.</summary>
+    /// <summary>Verified emails (any visibility) and non-public contact fields. The controller must gate with Admin/Board.</summary>
     Admin = 1 << 2,
 
-    /// <summary>Legal FirstName/LastName. Controller MUST gate with admin/coordinator auth — never on public endpoints (deanonymizes burners).</summary>
+    /// <summary>Legal names. The controller must gate with admin/coordinator auth: it deanonymizes burners.</summary>
     LegalName = 1 << 3,
 
-    /// <summary>Resolved display name, matched by exact accent-/case-folded full-string equality (not substring/token). Public. Used to count exact burner-name collisions.</summary>
+    /// <summary>Exact accent- and case-folded full-name equality. Public. Counts burner-name collisions.</summary>
     ExactName = 1 << 4,
 
-    /// <summary>Name + Bio — public endpoints.</summary>
+    /// <summary>Public endpoints.</summary>
     PublicAll = Name | Bio,
 
-    /// <summary>Name + Bio + LegalName + Admin — admin/board endpoints only.</summary>
+    /// <summary>Admin and Board endpoints only.</summary>
     AdminAll = Name | Bio | LegalName | Admin,
 }

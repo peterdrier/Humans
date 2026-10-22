@@ -2,14 +2,6 @@ using NodaTime;
 
 namespace Humans.GoogleIntegration.Services.Workspace;
 
-/// <summary>
-/// Stub implementation of <see cref="IWorkspaceUserDirectoryClient"/> for
-/// development environments without Google Admin SDK credentials. Returns
-/// fake data so the admin UI and higher-level workflows can be developed
-/// and tested locally. The real
-/// <see cref="Humans.GoogleIntegration.Services.GoogleWorkspaceUserService"/>
-/// runs against this stub — there is no separate stub service.
-/// </summary>
 internal sealed class StubWorkspaceUserDirectoryClient(
     ILogger<StubWorkspaceUserDirectoryClient> logger,
     IClock clock)

@@ -12,36 +12,32 @@ internal sealed class ExpensesIndexViewModel
     public required IReadOnlyList<ExpenseReportDto> Reports { get; init; }
     public bool HasActiveYear { get; init; }
     public bool HasIban { get; init; }
-    /// <summary>Report id → the account (or legacy category) it books to, for display.</summary>
+    /// <summary>The account, or legacy category, each report books to.</summary>
     public IReadOnlyDictionary<Guid, string> BookingLabels { get; init; } =
         new Dictionary<Guid, string>();
 
-    /// <summary>Pre-approvals the viewer may file an expense against today, soonest deadline first.</summary>
+    /// <summary>Soonest deadline first.</summary>
     public IReadOnlyList<GrantOption> OpenGrants { get; init; } = [];
-    /// <summary>Today in Europe/Madrid, the zone claim deadlines are read in.</summary>
+    /// <summary>Europe/Madrid, the zone claim deadlines are read in.</summary>
     public LocalDate Today { get; init; }
 
-    /// <summary>The member's own Holded creditor account statement (real ledger lines), once bound. Read-only.
-    /// Null both when unbound and when bound with no cached journal activity — <see cref="BoundAccountNum"/>
-    /// is what separates the two.</summary>
+    /// <summary>Null both when unbound and when bound with no cached activity; <see cref="BoundAccountNum"/> tells
+    /// them apart.</summary>
     public HoldedCreditorLedger? AccountLedger { get; init; }
 
-    /// <summary>The member's bound 400000xx account, or null if they have no binding yet.</summary>
     public int? BoundAccountNum { get; init; }
 
-    /// <summary>Bound, but Holded has booked nothing to the account yet — expected for a new account
-    /// before its first journal entry, and not the same thing as an unresolved binding.</summary>
+    /// <summary>Expected for a new account before its first journal entry; not an unresolved binding.</summary>
     public bool AwaitingFirstLedgerActivity => BoundAccountNum is not null && AccountLedger is null;
 
-    /// <summary>Unbound although a report already reached Holded — auto-bind failed and only a manual
-    /// bind clears it (nobodies-collective/Humans#972). Unbound with no pushed report is just "not yet".</summary>
+    /// <summary>Unbound although a report already reached Holded: auto-bind failed and only a manual bind clears it.
+    /// Unbound with no pushed report is just "not yet".</summary>
     public bool CreditorBindingFailed =>
         BoundAccountNum is null && Reports.Any(r => r.HoldedDocIds.Count > 0);
 
-    /// <summary>True when this user is a coordinator for any budget-year team, regardless of queue depth.</summary>
+    /// <summary>Regardless of queue depth.</summary>
     public bool IsCoordinator { get; init; }
 
-    /// <summary>Reports awaiting this member as camp coordinator; surfaces the queue entry point.</summary>
     public int CoordinatorQueueCount { get; init; }
 }
 
@@ -49,23 +45,19 @@ internal sealed class ExpenseNewViewModel
 {
     public IReadOnlyList<HoldedExpenseAccountOption> Accounts { get; set; } = [];
 
-    /// <summary>The Holded expense account the report books to. Its budget category, when it has
-    /// one, is derived by the service; the form never names a category directly.</summary>
+    /// <summary>The service derives the budget category; the form never names one.</summary>
     [Range(1, int.MaxValue, ErrorMessage = "Validation_Required")]
     public int HoldedAccountNumber { get; set; }
 
     [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? Note { get; set; }
 
-    /// <summary>The member the report will belong to. Defaults to the viewer; only a finance admin
-    /// can post anything else, and the picker that changes it renders only for them.</summary>
+    /// <summary>Only a finance admin can post anyone but the viewer; the picker renders only for them.</summary>
     public Guid? SubmitterUserId { get; set; }
 
-    /// <summary>The pre-approval to file against, or null for an ordinary report. The service
-    /// takes the account from the grant; the posted account is ignored when this is set.</summary>
+    /// <summary>When set, the service takes the account from the grant and ignores the posted one.</summary>
     public Guid? PreapprovalGrantId { get; set; }
-    /// <summary>The grants the form offers: the viewer's claimable ones, plus the one <c>?grant=</c>
-    /// preselected when it is not among them (an admin filing on a member's behalf).</summary>
+    /// <summary>The viewer's claimable grants, plus the one <c>?grant=</c> preselected when it is not among them.</summary>
     public IReadOnlyList<GrantOption> Grants { get; set; } = [];
     public LocalDate Today { get; set; }
 }
@@ -81,21 +73,20 @@ internal sealed class ExpenseEditViewModel
     [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? Note { get; set; }
 
-    /// <summary>The pre-approval the report files against, or null. Changeable on a Draft only.</summary>
+    /// <summary>Changeable on a Draft only.</summary>
     public Guid? PreapprovalGrantId { get; set; }
     /// <summary>The submitter's claimable grants plus the one the report already holds.</summary>
     public IReadOnlyList<GrantOption> Grants { get; set; } = [];
     public LocalDate Today { get; set; }
-    /// <summary>The grant the report holds, for the deadline banner; null when none or missing.</summary>
+    /// <summary>For the deadline banner; null when none or missing.</summary>
     public GrantOption? HeldGrant => Report?.PreapprovalGrantId is { } id ? Grants.FirstOrDefault(g => g.Id == id) : null;
 }
 
 internal sealed class ExpenseDetailViewModel
 {
     public required ExpenseReportDto Report { get; init; }
-    /// <summary>The account (or, on a report that predates accounts, the category) it books to.</summary>
     public required string BookingLabel { get; init; }
-    /// <summary>The pre-approval the report files against, in whatever state it is now; null when none.</summary>
+    /// <summary>In whatever state it is now; null when none.</summary>
     public GrantOption? PreapprovalGrant { get; init; }
     public LocalDate Today { get; init; }
     public bool CanEdit { get; init; }
@@ -104,78 +95,62 @@ internal sealed class ExpenseDetailViewModel
 
     public bool IsSubmitter { get; init; }
 
-    /// <summary>The *report submitter's* current profile IBAN state — who this report will pay, not
-    /// who is looking at it. Loaded only for a viewer who may act on it (<see cref="CanEditIban"/>).</summary>
+    /// <summary>The submitter's profile IBAN state, not the viewer's. Loaded only for a viewer who may act on it.</summary>
     public bool HasIban { get; init; }
     public string? MaskedIban { get; init; }
-    /// <summary>Mirrors what the Iban action accepts: the submitter at any status, or a finance admin
-    /// filing on their behalf. Anyone else offered the button would get a guaranteed 403.</summary>
+    /// <summary>Mirrors what the Iban action accepts, so nobody is offered a button that 403s.</summary>
     public bool CanEditIban => IsSubmitter || CanEdit;
 
-    /// <summary>Payee identity is snapshotted at submit, and the legal name shows unmasked — so it goes
-    /// no wider than the submitter and the finance admins who approve the payment.</summary>
+    /// <summary>The legal name shows unmasked, so no wider than the submitter and the finance admins who approve the
+    /// payment.</summary>
     public bool CanSeePayee => IsSubmitter || CanBindCreditor;
 
-    /// <summary>The submitter's burner (display) name and legal name show to the submitter and to anyone
-    /// holding a review grant on the report (category coordinator, finance admin) — a wider audience than
-    /// <see cref="CanSeePayee"/>, which also unlocks the IBAN. The page is only reachable with the View
-    /// grant, which only those three hold; the controller sets this explicitly all the same.</summary>
+    /// <summary>Submitter and reviewers (category coordinator, finance admin): wider than <see cref="CanSeePayee"/>,
+    /// which also unlocks the IBAN. Set explicitly even though only those hold View.</summary>
     public bool CanSeeNames { get; init; }
-    /// <summary>Submitter's burner name from their profile; null unless <see cref="CanSeeNames"/>.</summary>
+    /// <summary>Null unless <see cref="CanSeeNames"/>.</summary>
     public string? SubmitterBurnerName { get; init; }
-    /// <summary>What the Submitter card renders: the burner name, only for a viewer who may see names.</summary>
     public string? VisibleBurnerName => CanSeeNames ? SubmitterBurnerName : null;
-    /// <summary>What the Submitter card renders: the legal name, only for a viewer who may see names.</summary>
     public string? VisibleLegalName => CanSeeNames ? SubmitterLegalName : null;
-    /// <summary>Submitter's legal name: the frozen snapshot once submitted, else their current profile.</summary>
+    /// <summary>The frozen snapshot once submitted, else their current profile.</summary>
     public string? SubmitterLegalName { get; init; }
 
-    /// <summary>Legal name frozen onto the report at submit — who Holded will actually pay, regardless
-    /// of later profile edits. Null on a draft (not yet snapshotted). Not masked.</summary>
+    /// <summary>Frozen at submit: who Holded pays, whatever later profile edits say. Null on a draft. Not masked.</summary>
     public string? PayeeName =>
         CanSeePayee && !string.IsNullOrEmpty(Report.PayeeName) ? Report.PayeeName : null;
 
-    /// <summary>Masked form of the IBAN frozen onto the report at submit.</summary>
+    /// <summary>The IBAN frozen at submit, masked.</summary>
     public string? PayeeMaskedIban =>
         CanSeePayee && !string.IsNullOrEmpty(Report.PayeeIban) ? IbanFormatter.Mask(Report.PayeeIban) : null;
 
-    /// <summary>Non-null when the report was previously rejected.</summary>
     public string? LastRejectionReason => Report.LastRejectionReason;
 
     public ExpenseHoldedTimeline? HoldedTimeline { get; init; }
 
-    /// <summary>True when the viewer is a finance admin who may bind the submitter to a Holded account.</summary>
     public bool CanBindCreditor { get; init; }
-    /// <summary>The submitter's currently-bound 400000xx account, or null if unbound.</summary>
     public int? BoundAccountNum { get; init; }
-    /// <summary>Holded's name for <see cref="BoundAccountNum"/>; blank when Holded has no contact for it.</summary>
+    /// <summary>Blank when Holded has no contact for it.</summary>
     public string? BoundAccountName { get; init; }
-    /// <summary>True when the submitter already has a Holded creditor contact — with or without a
-    /// 400000xx number yet. False means the push will create one, which is the expected new-member state.</summary>
+    /// <summary>With or without a 400000xx yet. False means the push will create one, the normal new-member state.</summary>
     public bool HasCreditorContact { get; init; }
-    /// <summary>Creditor accounts available to bind to (finance-admin only).</summary>
     public IReadOnlyList<HoldedCreditorAccountRow> CreditorAccounts { get; init; } = [];
 
-    /// <summary>Finance approval is available: the viewer may approve and the report is still pending.</summary>
     public bool CanApprove { get; init; }
-    /// <summary>Finance rejection is available — returns the report to the submitter as a draft.</summary>
+    /// <summary>Returns the report to the submitter as a draft.</summary>
     public bool CanFinanceReject { get; init; }
-    /// <summary>Coordinator endorsement is available (Submitted reports in a category they coordinate).</summary>
     public bool CanEndorse { get; init; }
-    /// <summary>Coordinator rejection is available, under the same conditions as <see cref="CanEndorse"/>.</summary>
     public bool CanCoordinatorReject { get; init; }
 
-    /// <summary>The viewer may decline or un-decline individual lines (holds Endorse or Approve while the report awaits a decision).</summary>
     public bool CanDeclineLines { get; init; }
 
-    /// <summary>Accounts offered by the approval form's override; empty unless <see cref="CanApprove"/>.</summary>
+    /// <summary>Empty unless <see cref="CanApprove"/>.</summary>
     public IReadOnlyList<HoldedExpenseAccountOption> Accounts { get; init; } = [];
 }
 
 internal sealed class ExpenseLineNewViewModel
 {
     public required Guid ReportId { get; init; }
-    /// <summary>Invoice mode: the payee is a business invoicing the association (VAT-recoverable).</summary>
+    /// <summary>The payee is a business invoicing the association (VAT-recoverable).</summary>
     public required bool IsInvoice { get; init; }
 }
 
@@ -203,10 +178,9 @@ internal sealed class AddLineInputModel
     [Required(ErrorMessage = "Validation_Required"), Range(0.01, 1_000_000, ErrorMessage = "Validation_Range")]
     public decimal Amount { get; set; }
 
-    /// <summary>Receipt (default) or Invoice; the service rejects travel types on this path.</summary>
+    /// <summary>The service rejects travel types on this path.</summary>
     public ExpenseLineType LineType { get; set; } = ExpenseLineType.Receipt;
 
-    /// <summary>Set when adding a proof row under an invoice line.</summary>
     public Guid? ParentLineId { get; set; }
 }
 
@@ -238,41 +212,34 @@ internal sealed class ExpenseReviewViewModel
 {
     public required IReadOnlyList<ExpenseReportDto> Reports { get; init; }
     public required IReadOnlyDictionary<Guid, string> SubmitterNames { get; init; }
-    /// <summary>Budget category id → department. Department-group categories are one per team, so
-    /// the category name is the department; other groups show as "Group / Category".</summary>
-    /// <summary>Report id → the account (or legacy category) it books to, for display.</summary>
     public required IReadOnlyDictionary<Guid, string> BookingLabels { get; init; }
-    /// <summary>Reports whose Holded push was written off and need a finance admin to look at them.
-    /// Empty hides the banner and the Holded column.</summary>
+    /// <summary>Written-off pushes. Empty hides the banner and the Holded column.</summary>
     public required IReadOnlySet<Guid> FailedHoldedPushReportIds { get; init; }
-    /// <summary>Report id → the pre-approval it files against. Empty hides the column; a revoked
-    /// grant flags its row from the moment of revocation.</summary>
+    /// <summary>Empty hides the column; a revoked grant flags its row from the moment of revocation.</summary>
     public required IReadOnlyDictionary<Guid, GrantOption> Grants { get; init; }
-    /// <summary>Shows the Creditor column: the Holded supplier account each report booked to,
-    /// linking to its creditor statement. Finance admins only.</summary>
+    /// <summary>Shows the Creditor column, linking to each report's creditor statement.</summary>
     public bool IsFinanceAdmin { get; init; }
 
     public bool IsRevoked(Guid reportId) =>
         Grants.TryGetValue(reportId, out var grant) && grant.Status == GrantStatus.Revoked;
 
-    /// <summary>Rows grouped for rendering: one table per status, in workflow order.</summary>
+    /// <summary>One table per status, in workflow order.</summary>
     public IEnumerable<IGrouping<ExpenseReportStatus, ExpenseReportDto>> ByStatus =>
         Reports.GroupBy(r => r.Status).OrderBy(g => g.Key);
 }
 
 internal sealed class ApproveInputModel
 {
-    /// <summary>Optional account override applied at approval time; rebooks the report.</summary>
+    /// <summary>Rebooks the report.</summary>
     public int? OverrideAccountNumber { get; set; }
 
-    /// <summary>Optional payout cap; overrides whatever the coordinator authorized at endorsement.</summary>
+    /// <summary>Overrides whatever the coordinator authorized at endorsement.</summary>
     [Range(0.01, 1_000_000)]
     public decimal? MaxAmount { get; set; }
 }
 
 internal sealed class EndorseInputModel
 {
-    /// <summary>Optional payout cap authorized by the coordinator.</summary>
     [Range(0.01, 1_000_000)]
     public decimal? MaxAmount { get; set; }
 }
@@ -289,16 +256,13 @@ internal sealed class ExpenseIbanViewModel
     public string? MaskedIban { get; set; }
     public bool HasIban { get; set; }
 
-    /// <summary>The member whose IBAN this is, when that is not the viewer — an admin setting it on
-    /// their behalf must see whose account they are typing. Null when it is the viewer's own.</summary>
+    /// <summary>Set when it is not the viewer's own, so an admin sees whose account they are typing.</summary>
     public string? MemberName { get; set; }
 
-    /// <summary>The status of the report this page was opened from — it decides whether removal
-    /// is still on offer.</summary>
+    /// <summary>Decides whether removal is still on offer.</summary>
     public ExpenseReportStatus ReportStatus { get; set; }
 
-    /// <summary>False once the report is submitted and awaiting payment: such a report still needs
-    /// an IBAN, so the service refuses to clear one and the form must stop offering it.</summary>
+    /// <summary>A report awaiting payment still needs an IBAN, so the service refuses to clear one.</summary>
     public bool CanRemoveIban =>
         ReportStatus is not (ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed);
 
@@ -306,19 +270,15 @@ internal sealed class ExpenseIbanViewModel
     public string? Iban { get; set; }
 }
 
-/// <summary>The pre-approval banner on the new, edit and detail pages: what the grant promises and,
-/// while the report is still a draft, how long it has to be submitted.</summary>
 internal sealed record PreapprovalBannerModel(GrantOption Grant, LocalDate Today, bool ShowDeadline)
 {
-    /// <summary>Days until the claim deadline; negative once it has passed.</summary>
+    /// <summary>Negative once it has passed.</summary>
     public int DaysLeft => Period.DaysBetween(Today, Grant.ClaimBy);
-    /// <summary>The draft was filed in time and holds the grant: the deadline no longer applies.</summary>
+    /// <summary>Filed in time and holds the grant: the deadline no longer applies.</summary>
     public bool FiledInTime => Grant.Status == GrantStatus.Claimed;
-    /// <summary>Shown from the moment of revocation at every status: the report can no longer be
-    /// approved against the grant.</summary>
+    /// <summary>The report can no longer be approved against the grant.</summary>
     public bool Revoked => Grant.Status == GrantStatus.Revoked;
     public bool Urgent => Revoked || (ShowDeadline && !FiledInTime && DaysLeft <= 7);
 }
 
-/// <summary>The pre-approval picker on the new and edit forms.</summary>
 internal sealed record PreapprovalSelectModel(IReadOnlyList<GrantOption> Grants, Guid? SelectedGrantId, string AccountSelectId);

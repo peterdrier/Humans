@@ -1,22 +1,11 @@
 
 namespace Humans.Users.Contracts;
 
-/// <summary>
-/// The nightly non-compliance sweep: suspends members whose required document
-/// consents are missing past the grace period, and performs the downstream
-/// side effects of each suspension (email, in-app notification, Google team
-/// resource removal, audit entry, claims/authorization cache eviction).
-/// </summary>
-/// <remarks>
-/// Kept though it has no consumer outside the section; shrinking interface surface needs Peter.
-/// </remarks>
-// No marker interface — see Humans.Users.Contracts.csproj.
 public interface INonCompliantMemberSuspension
 {
     /// <summary>
-    /// Suspends every member who is now non-compliant and runs each suspension's
-    /// downstream side effects. Best-effort per user: an email, notification or
-    /// Google-sync failure is logged and does not abort the sweep.
+    /// Suspends members missing required consents past the grace period, with each suspension's side effects.
+    /// Best-effort per user: an email, notification or Google failure is logged and the sweep goes on.
     /// </summary>
     Task SuspendNonCompliantAsync(CancellationToken cancellationToken = default);
 }

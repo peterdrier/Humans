@@ -30,7 +30,7 @@ namespace Humans.Backdoor.Tests.Controllers;
 /// <summary>
 /// The authorization and formatting the machine finance API does on top of
 /// <see cref="IExpenseReportService"/> and <see cref="IHoldedFinanceService"/>
-/// (peterdrier/Humans#1838). Everything below is controller work: the services are substitutes
+/// — everything below is controller work: the services are substitutes
 /// throughout, and <see cref="IAuthorizationService"/> is a substitute too — the actor matrix
 /// itself is <c>ExpenseReportAuthorizationHandlerTests</c>' job.
 /// </summary>
@@ -53,7 +53,7 @@ public class BackdoorFinanceControllerTests
     }
 
     /// <summary>Read-only surface, GET only — no <c>[Http{Post,Put,Patch,Delete}]</c> action anywhere
-    /// on this controller (peterdrier/Humans#1838's acceptance criteria).</summary>
+    /// on this controller.</summary>
     [HumansFact]
     public void Every_action_is_HttpGet_only()
     {
@@ -104,7 +104,7 @@ public class BackdoorFinanceControllerTests
 
     /// <summary>Stubs the exact call <c>CanViewAsync</c> makes — the named policy, against this
     /// report — rather than any requirement against any resource, so a test asserting 403 actually
-    /// proves the controller asked the right question (peterdrier/Humans#1839).</summary>
+    /// proves the controller asked the right question.</summary>
     private void SetCanView(bool canView, ExpenseReportDto report) =>
         _auth.AuthorizeAsync(
                 Arg.Any<ClaimsPrincipal>(), Arg.Is<object?>(o => ReferenceEquals(o, report)),
@@ -140,8 +140,6 @@ public class BackdoorFinanceControllerTests
         TotalPaid = 0m,
         SyncState = ExpenseHoldedSyncState.Pushed,
     };
-
-    // ─── expense-reports (list) ─────────────────────────────────────────────────
 
     [HumansFact]
     public async Task ExpenseReports_NonFinanceAdmin_SeesOnlyTheirOwnReviewQueue()
@@ -215,7 +213,7 @@ public class BackdoorFinanceControllerTests
         json.Should().NotContain($@"""id"":""{submitted.Id}""");
     }
 
-    /// <summary>On the list route (peterdrier/Humans#1839), a coordinator's own
+    /// <summary>On the list route, a coordinator's own
     /// review queue never includes reports they submitted or a finance admin's, so this exercises
     /// the "neither" row shape the detail test already covers.</summary>
     [HumansFact]
@@ -236,7 +234,6 @@ public class BackdoorFinanceControllerTests
         await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!);
     }
 
-    /// <summary>The <c>year</c> query param (peterdrier/Humans#1839).</summary>
     [HumansFact]
     public async Task ExpenseReports_YearFilter_ExcludesOtherYears()
     {
@@ -257,8 +254,6 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain($@"""id"":""{report2026.Id}""");
         json.Should().NotContain($@"""id"":""{report2025.Id}""");
     }
-
-    // ─── expense-reports/{id} (detail) ──────────────────────────────────────────
 
     [HumansFact]
     public async Task ExpenseReport_UnknownId_IsNotFound()
@@ -284,7 +279,7 @@ public class BackdoorFinanceControllerTests
         result.Should().BeOfType<StatusCodeResult>().Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
     }
 
-    /// <summary>The timeline and masked IBAN (peterdrier/Humans#1839) are the
+    /// <summary>The timeline and masked IBAN are the
     /// submitter/finance-admin split <c>ExpensesController.Detail</c> uses, not a blanket grant to
     /// anyone whose <c>View</c> check passes.</summary>
     [HumansFact]
@@ -341,7 +336,7 @@ public class BackdoorFinanceControllerTests
 
     /// <summary>A category coordinator's <c>View</c> succeeds on a different
     /// ground, but they are neither the submitter nor a finance admin — so they get none of the
-    /// payee name, IBAN, or Holded ids (peterdrier/Humans#1839).</summary>
+    /// payee name, IBAN, or Holded ids.</summary>
     [HumansFact]
     public async Task ExpenseReport_CoordinatorNeitherSubmitterNorFinanceAdmin_SeesNoPayeeIbanOrTimeline()
     {
@@ -425,8 +420,6 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(@"""holdedDocId"":""d2""");
     }
 
-    // ─── attachments ────────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Attachment_OutsideTheKeyOwnersView_IsForbidden()
     {
@@ -458,8 +451,6 @@ public class BackdoorFinanceControllerTests
         file.FileDownloadName.Should().Be("receipt.pdf");
         file.FileContents.Should().Equal(1, 2, 3);
     }
-
-    // ─── creditor-accounts ──────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task CreditorAccounts_NonFinanceAdmin_IsForbidden()
@@ -504,8 +495,6 @@ public class BackdoorFinanceControllerTests
         json.RootElement.GetProperty("unresolved")[0].GetProperty("userId").GetGuid().Should().Be(orphan);
     }
 
-    // ─── creditor-accounts/{num}/ledger ─────────────────────────────────────────
-
     [HumansFact]
     public async Task CreditorLedger_NonFinanceAdmin_IsForbidden()
     {
@@ -533,8 +522,6 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(@"""ibanMasked"":""ES79****789""");
         json.Should().NotContain("ES7921000813610123456789");
     }
-
-    // ─── category-map ───────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task CategoryMap_NonFinanceAdmin_IsForbidden()
@@ -568,8 +555,6 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(@"""isActive"":true");
     }
 
-    // ─── sepa-transfers ─────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task SepaTransfers_NonFinanceAdmin_IsForbidden()
     {
@@ -588,8 +573,8 @@ public class BackdoorFinanceControllerTests
         SetFinanceAdmin(true);
         var member = Guid.NewGuid();
         var generatedBy = Guid.NewGuid();
-        // The row already arrives masked from Finance (Backdoor never sees the raw IBAN for this
-        // route, so there is nothing to assert against here — peterdrier/Humans#1839).
+        // The row already arrives masked from Finance: Backdoor never sees the raw IBAN for this
+        // route, so there is nothing to assert against here.
         var maskedIban = IbanFormatter.Mask("ES7921000813610123456789");
         _finance.GetSepaTransfersAsync(Arg.Any<CancellationToken>()).Returns((
             (IReadOnlyList<SepaPayoutTransferRow>)
@@ -610,8 +595,6 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(@"""reconciledAt"":null");
         json.Should().Contain(@"""reconcilePending"":true");
     }
-
-    // ─── holded-sync ────────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task HoldedSync_NonFinanceAdmin_IsForbidden()
@@ -643,15 +626,13 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(@"""docNumber"":""F260001""");
     }
 
-    // ─── IBAN scrub, every route ────────────────────────────────────────────────
-
     private const string SpacedIban = "es79 2100 0813 6101 2345 6789";
     private const string CompactIban = "ES7921000813610123456789";
     private const string Tainted = "see " + SpacedIban + " or " + CompactIban;
 
-    /// <summary>peterdrier/Humans#1838's guarantee — no response carries an unmasked IBAN — held
+    /// <summary>The guarantee that no response carries an unmasked IBAN — held
     /// for every string field of every route and for the download filename, not per field: an
-    /// IBAN planted in each one is masked on the way out (peterdrier/Humans#1839).</summary>
+    /// IBAN planted in each one is masked on the way out.</summary>
     [HumansFact]
     public async Task Every_route_masks_an_Iban_planted_in_every_string_it_emits()
     {
@@ -764,8 +745,7 @@ public class BackdoorFinanceControllerTests
     }
 
     /// <summary>The scrub above is called by hand; this proves MVC itself runs it. A real host,
-    /// the real key filter and a real HTTP GET: an IBAN planted in a note comes back masked
-    /// (peterdrier/Humans#1839).</summary>
+    /// the real key filter and a real HTTP GET: an IBAN planted in a note comes back masked.</summary>
     [HumansFact]
     public async Task Http_get_through_the_mvc_pipeline_masks_an_Iban_planted_in_a_note()
     {

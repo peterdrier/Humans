@@ -9,40 +9,11 @@ using NodaTime;
 
 namespace Humans.Integration.Tests.Controllers;
 
-/// <summary>
-/// Renders every Notifications surface through the real app, as the standing form of the
-/// §15 step 12 check for the section's move into <c>src/Sections/Humans.Notifications</c>
-/// (nobodies-collective/Humans#866, G5).
-/// </summary>
+/// <summary>Renders every Notifications surface through the real app.</summary>
 /// <remarks>
-/// <para>
-/// The failure modes a G5 move introduces all render as a <b>200 with degraded content</b>, so
-/// "the page loads" is not the assertion:
-/// </para>
-/// <list type="number">
-/// <item><description>
-/// A section RCL does not inherit the host's <c>Views/_ViewImports.cshtml</c> — a missing
-/// <c>@@using</c> or <c>@@addTagHelper</c> ships literal markup with a green build.
-/// </description></item>
-/// <item><description>
-/// The resx carve moved all 38 <c>Notification_*</c> keys out of <c>SharedResource</c>. A key
-/// the carve missed, or a call site bound to the wrong set, renders the raw key — in every
-/// language, with no error. The Spanish request is the only thing that proves the section
-/// RCL's satellite assemblies reach the host's probing path.
-/// </description></item>
-/// <item><description>
-/// Two of those keys are on the notification bell, which is section-owned but rendered from
-/// Shell's <c>_Layout</c> and <c>_AdminLayout</c>. The component is
-/// <c>internal</c>, so MVC only finds it through
-/// <c>Humans.Web/Infrastructure/SectionViewComponentFeatureProvider</c>; without that,
-/// <c>Component.InvokeAsync("NotificationBell")</c> throws on every authenticated page. That
-/// one is loud rather than silent — but the bell resolving against the <i>wrong</i> resource
-/// set is not, which is what the aria-label assertions below cover.
-/// </description></item>
-/// </list>
-/// <para>
-/// Notifications ships no <c>wwwroot/</c>, so there is no static-asset half here.
-/// </para>
+/// Failures render as a 200 with degraded content: a mis-bound key renders as its name, and only Spanish proves the
+/// satellites ship. The bell is internal and rendered from Shell's layouts: a discovery miss throws loudly, but the
+/// bell binding the wrong resource set does not, which the aria-label checks cover.
 /// </remarks>
 public class NotificationPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
@@ -50,12 +21,8 @@ public class NotificationPageRenderTests(HumansTestDatabase database) : Integrat
     private const string InformationalTitle = "You were added to the Geeks team";
 
     /// <summary>
-    /// Writes one actionable and one informational notification straight through the section's
-    /// own DbContext. There is no §15 caching decorator in front of the inbox service — it
-    /// caches only the per-user badge count — so the context write is what the inbox and popup
-    /// reads see. Without rows, <c>/Notifications</c> renders its empty state and most of the
-    /// carved keys never render. Each integration test class owns its database
-    /// (nobodies-collective/Humans#983).
+    /// Written straight to the context: no caching decorator fronts the inbox service. Without rows the inbox renders
+    /// its empty state and most keys never show.
     /// </summary>
     private async Task SeedNotificationsAsync(Guid userId, CancellationToken ct)
     {
@@ -104,7 +71,6 @@ public class NotificationPageRenderTests(HumansTestDatabase database) : Integrat
 
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        // The fallback for a key the carve missed is the key itself.
         html.Should().NotContain("Notifications_", "GET /Notifications rendered a raw resource key");
 
         html.Should().Contain("All notifications");        // Notifications_PageTitle
@@ -117,9 +83,8 @@ public class NotificationPageRenderTests(HumansTestDatabase database) : Integrat
     [HumansFact(Timeout = 120000)]
     public async Task The_bell_popup_partial_renders_its_own_copy()
     {
-        // /Notifications/Popup is the partial the bell dropdown fetches. It has its own
-        // localizer bindings and its own row partial, so a _ViewImports gap shows up here
-        // and nowhere else.
+        // The bell dropdown's partial has its own localizer bindings and row partial, so a _ViewImports gap shows here
+        // only.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await SignInAndSeedAsync(ct);
 
@@ -136,11 +101,8 @@ public class NotificationPageRenderTests(HumansTestDatabase database) : Integrat
     [HumansFact(Timeout = 120000)]
     public async Task The_bell_is_discovered_and_rendered_from_shells_layout()
     {
-        // The bell view component is internal to the section. Without
-        // SectionViewComponentFeatureProvider, Component.InvokeAsync("NotificationBell") in
-        // Shell's _Layout throws and this page 500s — so the status code is a real assertion
-        // here. /Teams is a Shell page, so nothing about the section's own routing is in the
-        // way. Its aria-label proves it resolved the section's resource set, not Shell's.
+        // Without SectionViewComponentFeatureProvider the bell throws in _Layout and this Shell page 500s. The
+        // aria-label proves it resolved the section's resource set.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await SignInAndSeedAsync(ct);
 
@@ -158,16 +120,13 @@ public class NotificationPageRenderTests(HumansTestDatabase database) : Integrat
     [HumansFact(Timeout = 120000)]
     public async Task Notification_pages_render_in_spanish_from_the_sections_satellite_assemblies()
     {
-        // An English-only check passes whether or not the RCL's satellites shipped — the neutral
-        // set is embedded in the main assembly and the fallback is silent.
-        // Razor's default HtmlEncoder escapes non-ASCII to numeric entities, so the assertions
-        // stay on ASCII-only runs of the Spanish copy.
+        // The neutral set is embedded in the main assembly and fallback is silent, so only Spanish proves the
+        // satellites. HtmlEncoder escapes non-ASCII, so the checks stay on ASCII runs.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await SignInAndSeedAsync(ct);
 
-        // Accept-Language does not reach a signed-in user: Program.cs's initial culture provider
-        // returns the user's PreferredLanguage and short-circuits the rest of the chain, and
-        // /Notifications is [Authorize]. Switch the language the way the UI does.
+        // Accept-Language doesn't reach a signed-in user: the PreferredLanguage provider short-circuits the chain. Switch
+        // the way the UI does.
         var switcherPage = await (await Client.GetAsync("/Notifications", ct)).Content.ReadAsStringAsync(ct);
         var token = ExtractAntiForgeryToken(switcherPage);
         token.Should().NotBeNullOrEmpty();

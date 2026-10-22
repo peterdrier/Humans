@@ -3,21 +3,10 @@ using NodaTime;
 namespace Humans.Settings.Contracts;
 
 /// <summary>
-/// The app-wide event settings, as every section reads them: identity, the
-/// calendar anchor and build calendar, and the early-entry window and capacity.
-/// Section-specific knobs are not here — the shift-browsing switch, the global
-/// volunteer cap and the reminder lead time stay on the Shifts-owned row.
+/// Shifts' knobs (browsing switch, volunteer cap, reminder lead time) are not here: they stay on the Shifts-owned
+/// row. <see cref="Id"/> is what a section stores to point at a cycle. <see cref="Status"/> is here so a save
+/// round-trips; active-event readers can ignore it. <see cref="IsOffSeason"/> hides the dashboard's in-season cards.
 /// </summary>
-/// <remarks>
-/// The underlying entity is Settings-internal and never leaves the section
-/// (design-rules §2c, <c>memory/architecture/no-cross-section-ef-joins.md</c>).
-/// <see cref="Id"/> is what a section stores when it needs to point at an event
-/// cycle — <c>Rota.EventSettingsId</c>, <c>EventGuideSettings.EventSettingsId</c>.
-/// <see cref="Status"/> is on the DTO so a save round-trips: reads that go
-/// through <c>GetActiveEventSettingsAsync</c> can ignore it. <see cref="IsOffSeason"/>
-/// is the admin-set "cycle is wrapped" switch the member dashboard's in-season cards
-/// (tickets, shifts) hide behind.
-/// </remarks>
 public sealed record EventSettingsInfo(
     Guid Id,
     string EventName,
@@ -39,10 +28,7 @@ public sealed record EventSettingsInfo(
     bool IsOffSeason = false) : IEventSettingsInfo
 {
     /// <summary>
-    /// Step-function lookup: returns the cumulative EE capacity for the
-    /// largest key in <see cref="EarlyEntryCapacity"/> that is ≤
-    /// <paramref name="dayOffset"/>, or 0 if none qualifies. Keeps
-    /// cross-section callers (camps, art) from reimplementing the lookup.
+    /// Step function: the capacity at the largest key ≤ <paramref name="dayOffset"/>, or 0 if none qualifies.
     /// </summary>
     public int GetEarlyEntryCapacityForDay(int dayOffset)
     {

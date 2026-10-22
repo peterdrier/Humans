@@ -2,7 +2,6 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Tickets.Services;
 
-/// <summary>The admin participation backfill (moved from Users in decomposition commit 13).</summary>
 internal interface IUserParticipationBackfillService : IApplicationService
 {
     Task<int> GetDefaultYearAsync(CancellationToken ct = default);

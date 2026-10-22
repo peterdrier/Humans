@@ -4,10 +4,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace Humans.Events.Filters;
 
-/// <summary>
-/// Action filter that returns 404 when the Event Guide feature is disabled
-/// via the <c>Features:Events</c> configuration flag.
-/// </summary>
+/// <summary>404 while the <c>Features:Events</c> flag is off.</summary>
 internal sealed class EventsFeatureFilter(IConfiguration configuration) : IActionFilter
 {
     private readonly bool _enabled = configuration.GetValue<bool>("Features:Events");

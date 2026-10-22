@@ -3,20 +3,13 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Settings.Contracts;
 
-/// <summary>One tab a section contributes to the member-facing /Settings page.</summary>
-/// <remarks>
-/// <paramref name="Key"/> is the URL fragment and the merge identity — two sections
-/// contributing the same <paramref name="Key"/> collapse to one tab, first contributor wins.
-/// <paramref name="Label"/> is a SharedResource key (<c>Humans.Base.SharedResource</c>) —
-/// carve by renderer, not by owner (docs/sections/G5-SECTION-TEMPLATE.md's third direction):
-/// <c>SettingsTabsViewComponent</c> renders every contributed label and cannot see any
-/// contributor's private resource set. A key with no entry renders as itself.
-/// <paramref name="Component"/> is a view component type the owning section ships; it
-/// renders the tab's panel body. <paramref name="Policy"/> null means every authenticated
-/// user sees the tab — the tab decides for itself whether that user gets a read-only or
-/// editable view. <paramref name="Weight"/> orders tabs; sorting is stable, so equal weights
-/// keep discovery order.
-/// </remarks>
+/// <summary>
+/// <paramref name="Key"/> is the URL fragment and the merge identity: a duplicate key collapses to one tab, first
+/// contributor wins. <paramref name="Label"/> is a SharedResource key, because <c>SettingsTabsViewComponent</c>
+/// renders every label and cannot see a contributor's own resource set; a key with no entry renders as itself. A null
+/// <paramref name="Policy"/> shows the tab to every signed-in member, and the tab decides read-only vs editable.
+/// Equal <paramref name="Weight"/>s keep discovery order.
+/// </summary>
 public sealed record SettingsTab(
     string Key,
     string Label,
@@ -24,7 +17,6 @@ public sealed record SettingsTab(
     string? Policy = null,
     int Weight = 0);
 
-/// <summary>The /Settings tabs a section contributes.</summary>
 [ViewComponentSlot]
 public interface ISectionSettings : ISectionContribution
 {

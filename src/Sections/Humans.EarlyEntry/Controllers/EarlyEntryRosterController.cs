@@ -24,8 +24,7 @@ internal sealed class EarlyEntryRosterController(
             .ThenBy(r => r.UserId)
             .ToList();
 
-        // Burner name renders from UserId via <vc:human>; no DisplayName field
-        // (memory/code/no-new-displayname-fields.md). Legal name is the separate read below.
+        // Burner name renders from UserId via <vc:human>; legal name is the separate read below.
         var vms = new List<EarlyEntryRosterRowVm>(ordered.Count);
         foreach (var r in ordered)
         {

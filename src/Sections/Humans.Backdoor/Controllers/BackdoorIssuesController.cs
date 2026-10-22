@@ -11,13 +11,6 @@ using NodaTime;
 
 namespace Humans.Backdoor.Controllers;
 
-/// <summary>
-/// The in-app issue queue, for an agent running triage.
-/// </summary>
-/// <remarks>
-/// Every write passes <c>ActorUserId</c> — the human the presented key belongs to, resolved by
-/// <see cref="BackdoorApiKeyAuthFilter"/>.
-/// </remarks>
 [ApiController]
 [Route("api/backdoor/issues")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
@@ -34,10 +27,8 @@ internal sealed class BackdoorIssuesController(
     private Guid ActorUserId => GetCurrentUserId() ?? Guid.Empty;
 
     /// <summary>
-    /// The key owner as Issues scopes them — their id and the active roles
-    /// <see cref="BackdoorApiKeyAuthFilter"/> installed on the principal. Passed on every call,
-    /// so the key reaches exactly the issues its holder reaches in the browser: the queue lists
-    /// the same rows, and an id outside it is a 404 to read, to comment on and to patch.
+    /// Passed on every call, so the key reaches exactly the issues its holder reaches in the browser: an id outside
+    /// the queue is a 404 to read, comment on and patch.
     /// </summary>
     private IssueViewer Viewer =>
         new(ActorUserId, User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList());
@@ -189,10 +180,8 @@ internal sealed class BackdoorIssuesController(
         PatchAsync(id, "github-issue", () => issues.SetGitHubIssueNumberAsync(id, Viewer, model.GitHubIssueNumber, ActorUserId));
 
     /// <summary>
-    /// The one shape every <c>PATCH /api/backdoor/issues/{id}/*</c> endpoint has: apply the
-    /// one-field change, answer <c>{success:true}</c>, and map failure the same way whichever
-    /// field moved — a missing issue to 404, a rejected move to 422 carrying the service's
-    /// reason, anything else to 500.
+    /// Whichever field moved: a missing issue is 404, a rejected change 422 with the service's reason, anything else
+    /// 500.
     /// </summary>
     private async Task<IActionResult> PatchAsync(Guid id, string field, Func<Task<IssueMutationResult>> apply)
     {

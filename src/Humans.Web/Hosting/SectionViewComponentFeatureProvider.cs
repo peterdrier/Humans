@@ -7,28 +7,14 @@ using Microsoft.AspNetCore.Mvc.ViewComponents;
 namespace Humans.Web.Hosting;
 
 /// <summary>
-/// Lets a section project's view components be <c>internal</c>
-/// (nobodies-collective/Humans#866) — the exact counterpart of
-/// <see cref="SectionControllerFeatureProvider"/>, and needed for the same reason:
-/// MVC's <c>ViewComponentConventions.IsComponent</c> requires <c>IsPublic</c>, so an
-/// internal view component is never discovered and invoking it by <c>Type</c>
-/// (a slot contribution or <c>InvokeAsync&lt;T&gt;</c>) throws at request time.
+/// Lets a section project's view components be <c>internal</c>, for the same reason as
+/// <see cref="SectionControllerFeatureProvider"/>: an internal component is never discovered, and invoking it by
+/// <c>Type</c> throws at request time.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Unlike the controller case there is no base provider to subclass —
-/// <c>ViewComponentFeatureProvider.PopulateFeature</c> is not virtual and
-/// <c>ViewComponentConventions</c> is internal to MVC — so this runs as a second pass
-/// after the default provider and adds only what that one skipped: non-public types in
-/// assemblies declaring an <c>ISection</c> entry point. Every other condition mirrors
-/// <c>ViewComponentConventions.IsComponent</c>.
-/// </para>
-/// <para>
-/// First needed by Notifications, whose bell is chrome rendered from Shell's
-/// <c>_Layout</c> and <c>_AdminLayout</c>. Leaving the component in
-/// Shell would have split the section's 38-key resource set, since its markup renders
-/// two of them.
-/// </para>
+/// <c>ViewComponentFeatureProvider.PopulateFeature</c> is not virtual and <c>ViewComponentConventions</c> is internal
+/// to MVC, so this runs as a second pass adding only non-public types from section assemblies. Every other condition
+/// mirrors <c>ViewComponentConventions.IsComponent</c>.
 /// </remarks>
 internal sealed class SectionViewComponentFeatureProvider
     : IApplicationFeatureProvider<ViewComponentFeature>
@@ -46,8 +32,8 @@ internal sealed class SectionViewComponentFeatureProvider
             }
         }
 
-        // The default provider already took every public one, including from sections this
-        // deployment deactivated; drop those, or they resolve services nobody registered (#1081).
+        // The default provider already took every public one, including from deactivated sections; drop those, or
+        // they resolve services nobody registered.
         for (var i = feature.ViewComponents.Count - 1; i >= 0; i--)
         {
             if (SectionDiscoveryExtensions.IsInactiveSection(feature.ViewComponents[i].Assembly))

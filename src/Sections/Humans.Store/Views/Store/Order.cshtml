@@ -156,8 +156,6 @@ else
     <div class="alert alert-secondary">@Localizer["Store_NoLines"]</div>
 }
 
-@* Price changes on this order's products since it was created (nobodies-collective/Humans#816). The AuditLog section
-   owns the read: one predicate over every product id, not one panel per product. *@
 <vc:audit-log entity-type="@AuditEntityTypes.Product"
               entity-ids="@order.Lines.Select(l => l.ProductId).Distinct().ToList()"
               actions="StoreProductPriceChanged" since="@order.CreatedAt" limit="50"
@@ -249,7 +247,7 @@ else
                         </td>
                         @if (Model.CanDeletePayment)
                         {
-                            @* Admin-only control (localization-admin-exempt): plain strings. *@
+                            @* Admin-only control: plain strings. *@
                             <td class="text-end">
                                 <form asp-action="DeletePayment" asp-route-id="@order.Id" asp-route-paymentId="@payment.Id" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()

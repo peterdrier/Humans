@@ -11,10 +11,8 @@ using NSubstitute;
 namespace Humans.Tickets.Tests.ViewComponents;
 
 /// <summary>
-/// Covers <see cref="TicketHoldingsViewComponent"/>'s viewer gate (nobodies-collective/Humans#1815,
-/// D-C): contributed to <c>UserPartSlots.ProfileSidebar</c> / <c>AdminDetailSidebar</c>, it has no
-/// per-viewer visibility check of its own, so it must render nothing for a Public viewer and must
-/// only show an empty-holdings card for Admin.
+/// The component has no per-viewer visibility check of its own, so it must render nothing for a
+/// Public viewer and only show an empty-holdings card for Admin.
 /// </summary>
 public class TicketHoldingsViewComponentTests
 {

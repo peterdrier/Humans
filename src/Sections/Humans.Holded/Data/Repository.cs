@@ -7,8 +7,6 @@ namespace Humans.Holded.Data;
 internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
     : IHoldedMirrorRepository
 {
-    // ── Ledger mirror ─────────────────────────────────────────────────────────
-
     public async Task ReplaceLedgerWindowAsync(
         Instant from, Instant to, int? accountNum,
         IReadOnlyList<HoldedLedgerLine> rows, Instant now, CancellationToken ct = default)
@@ -77,8 +75,6 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
         return await ctx.HoldedLedgerLines.AsNoTracking().AnyAsync(ct);
     }
 
-    // ── Chart of accounts ─────────────────────────────────────────────────────
-
     public async Task UpsertAccountsAsync(
         IReadOnlyList<HoldedAccount> rows, Instant now, CancellationToken ct = default)
     {
@@ -116,8 +112,6 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
         return await ctx.HoldedAccounts.AsNoTracking().ToListAsync(ct);
     }
 
-    // ── API call metering ─────────────────────────────────────────────────────
-
     public async Task AddApiCallsAsync(IReadOnlyList<HoldedApiCall> rows, CancellationToken ct = default)
     {
         if (rows.Count == 0) return;
@@ -131,8 +125,6 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.HoldedApiCalls.AsNoTracking().ToListAsync(ct);
     }
-
-    // ── Sync state ────────────────────────────────────────────────────────────
 
     public async Task<HoldedSyncState> GetOrCreateSyncStateAsync(
         HoldedSyncKind kind, CancellationToken ct = default)

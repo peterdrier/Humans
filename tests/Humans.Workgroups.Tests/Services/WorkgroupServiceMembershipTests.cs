@@ -171,8 +171,6 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         (await afterContext.LogEntries.AnyAsync(e => e.WorkgroupId == group.Id, Ct)).Should().BeFalse();
     }
 
-    // ── Coordinator count and membership ─────────────────────────────────
-
     [HumansTheory]
     [InlineData(0)]
     [InlineData(3)]
@@ -225,8 +223,6 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         members.Where(m => m.Role == WorkgroupMemberRole.Coordinator).Select(m => m.UserId)
             .Should().BeEquivalentTo([coordinator, second]);
     }
-
-    // ── Leaving as the last coordinator ──────────────────────────────────
 
     [HumansFact]
     public async Task Leave_AsTheLastCoordinator_WithoutReplacement_ReturnsARefusal()
@@ -306,8 +302,6 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.MembershipPending);
     }
-
-    // ── Join requests: a coordinator decides ─────────────────────────────
 
     [HumansFact]
     public async Task Join_CreatesAPendingRow_ThatIsNotAMemberYet()
@@ -577,8 +571,6 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         (await act()).Refusal!.Key.Should().Be(WorkgroupErrorKeys.CoordinatorsMustBeMembers);
     }
 
-    // ── Status requests ──────────────────────────────────────────────────
-
     [HumansFact]
     public async Task RequestStatus_TwiceInARow_BothLand()
     {
@@ -610,8 +602,6 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
                 e => e.WorkgroupId == workgroup.Id && e.Kind == WorkgroupLogKind.StatusRequested, Ct))
             .Should().Be(2);
     }
-
-    // ── Linking a survey ─────────────────────────────────────────────────
 
     [HumansFact]
     public async Task LinkSurvey_ASurveyTheMemberAuthored_WritesTheEntry()
@@ -651,8 +641,6 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
 
         (await act()).Refusal!.Key.Should().Be(WorkgroupErrorKeys.SurveyNotYours);
     }
-
-    // ── Edits that overwrite a row leave an audit entry ──────────────────
 
     [HumansFact]
     public async Task EditingALogEntry_IsAudited()

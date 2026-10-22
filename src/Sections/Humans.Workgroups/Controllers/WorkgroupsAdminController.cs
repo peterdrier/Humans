@@ -12,11 +12,6 @@ using NodaTime;
 
 namespace Humans.Workgroups.Controllers;
 
-/// <summary>
-/// The Secretary's and the Board's screens. Routed under <c>/Workgroups/Admin</c> rather
-/// than <c>/Admin</c>: admin pages belong to their section's URL space
-/// (memory/architecture/no-admin-url-section.md). Localization-exempt, per §19.
-/// </summary>
 [Authorize(Policy = PolicyNames.BoardOrAdmin)]
 [Route("Workgroups/Admin")]
 internal sealed class WorkgroupsAdminController(
@@ -26,8 +21,6 @@ internal sealed class WorkgroupsAdminController(
     IClock clock,
     ILogger<WorkgroupsAdminController> logger) : HumansControllerBase(users)
 {
-    // ── The queue ─────────────────────────────────────────────────────────
-
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
@@ -40,8 +33,6 @@ internal sealed class WorkgroupsAdminController(
             RootDriveFolderId = await workgroups.GetRootDriveFolderIdAsync(ct)
         });
     }
-
-    // ── The decisions of §6 ───────────────────────────────────────────────
 
     [HttpPost("{id:guid}/Register")]
     [ValidateAntiForgeryToken]
@@ -74,14 +65,12 @@ internal sealed class WorkgroupsAdminController(
     public Task<IActionResult> Reactivate(Guid id, string? slug, CancellationToken ct) =>
         ActAsync(actor => workgroups.ReactivateAsync(id, actor, ct), "Group reactivated", ct, id, slug);
 
-    /// <summary>The Board's override of §5's member-run handover — a coordinatorless group needs one.</summary>
+    /// <summary>The Board's override of the member-run handover; a coordinatorless group needs it.</summary>
     [HttpPost("{id:guid}/Coordinators")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Coordinators(Guid id, Guid?[] coordinatorUserIds, string? slug, CancellationToken ct) =>
         ActAsync(actor => workgroups.SetCoordinatorsAsync(id, actor, coordinatorUserIds.OfType<Guid>().ToArray(), asAdmin: true, ct),
             "Coordinators set", ct, id, slug);
-
-    // ── Bootstrapping (§21) ───────────────────────────────────────────────
 
     [HttpGet("RegisterExisting")]
     public Task<IActionResult> RegisterExisting(CancellationToken ct) =>
@@ -95,7 +84,7 @@ internal sealed class WorkgroupsAdminController(
         if (error is not null) return error;
         if (!ModelState.IsValid) return await RegisterExistingViewAsync(model, ct);
 
-        // Backdated to when the group really started; midnight UTC is precise enough.
+        // Midnight UTC is precise enough for a backdated start.
         var registeredAt = model.RegisteredOn.AtMidnight().InUtc().ToInstant();
         var result = await workgroups.RegisterExistingAsync(user.Id,
             new WorkgroupBootstrap(model.Application.ToApplication(), model.CoordinatorUserId, registeredAt,
@@ -111,15 +100,13 @@ internal sealed class WorkgroupsAdminController(
         return RedirectToAction(nameof(Index));
     }
 
-    // A group that already books to a differently named Holded account must be linkable here,
-    // or registering it mints an orphan "Workgroups / {name}" account.
+    // A group already booking to a differently named Holded account must be linkable here, or registering it
+    // mints an orphan "Workgroups / {name}" account.
     private async Task<IActionResult> RegisterExistingViewAsync(RegisterExistingViewModel model, CancellationToken ct)
     {
         model.ExpenseAccounts = await workgroups.ListExpenseAccountsAsync(ct);
         return View(nameof(RegisterExisting), model);
     }
-
-    // ── Budget ────────────────────────────────────────────────────────────
 
     [HttpPost("{id:guid}/Budget")]
     [ValidateAntiForgeryToken]
@@ -153,16 +140,12 @@ internal sealed class WorkgroupsAdminController(
         return RedirectToAction("Details", "Workgroups", new { slug = id });
     }
 
-    // ── The Board's reply ─────────────────────────────────────────────────
-
     [HttpPost("Documents/{id:guid}/Disposition")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Disposition(
         Guid id, [BindRequired] WorkgroupDisposition disposition, string? note, CancellationToken ct) =>
         ActAsync(actor => workgroups.RecordDispositionAsync(id, actor, disposition, note ?? string.Empty, ct),
             "Disposition recorded", ct);
-
-    // ── Settings ──────────────────────────────────────────────────────────
 
     [HttpGet("Settings")]
     public async Task<IActionResult> Settings(CancellationToken ct) =>
@@ -191,15 +174,9 @@ internal sealed class WorkgroupsAdminController(
         return RedirectToAction(nameof(Index));
     }
 
-    // ── Plumbing ──────────────────────────────────────────────────────────
-
-    /// <summary>TempData key for a refused form's preserved draft.</summary>
     internal static string DraftKey(Guid? id, string action) => $"WorkgroupsDraft:{id}:{action}";
 
-    /// <summary>
-    /// Admin POSTs land back on the group's Details page when the form carries its slug,
-    /// otherwise on the queue. A rule failure flashes the error and redirects the same way.
-    /// </summary>
+    /// <summary>Lands on the group's Details page when the form carries its slug, otherwise on the queue.</summary>
     private async Task<IActionResult> ActAsync<T>(
         Func<Guid, Task<T>> action, string success, CancellationToken ct, Guid? id = null, string? slug = null, string? draft = null) where T : WorkgroupMutationResult
     {
@@ -219,7 +196,6 @@ internal sealed class WorkgroupsAdminController(
             logger.LogWarning("Workgroups admin {Action}: rule {Rule}",
                 ControllerContext.ActionDescriptor.ActionName, refusal.Key);
             SetError(localizer[refusal.Key, refusal.Args]);
-            // Preserve the bounded draft so Details can prefill the form.
             if (draft is { Length: <= 4000 }) TempData[DraftKey(id, ControllerContext.ActionDescriptor.ActionName)] = draft;
         }
         else

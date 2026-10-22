@@ -53,11 +53,7 @@ public static class PolicyNames
     /// </summary>
     public const string GateAdmit = nameof(GateAdmit);
 
-    /// <summary>
-    /// Can use the app: <c>UserState == Active</c> (entered legal name).
-    /// The single nav-visibility gate replaces the former
-    /// IsActiveMember / ActiveMemberOrShiftAccess split (there is no separate shift access).
-    /// </summary>
+    /// <summary>Can use the app: <c>UserState == Active</c>. The single nav-visibility gate.</summary>
     public const string AppAccess = nameof(AppAccess);
 
     /// <summary>
@@ -110,11 +106,9 @@ public static class PolicyNames
     public const string RoleAssignmentManage = nameof(RoleAssignmentManage);
 
     /// <summary>
-    /// May view an expense report (the resource): submitter, its budget category's coordinator,
-    /// or FinanceAdmin/Admin. Registered by Expenses' <c>SectionPolicies</c>, wrapping its internal
-    /// <c>ExpenseReportOperationRequirement(View)</c>/handler, so an external caller — Backdoor's
-    /// finance read API (peterdrier/Humans#1838) — can reach the same check
-    /// <c>ExpensesController</c> uses without the requirement type leaving the section.
+    /// May view an expense report (the resource): submitter, its budget category's coordinator, or FinanceAdmin/Admin.
+    /// Registered by Expenses' <c>SectionPolicies</c> so an external caller (Backdoor's finance read API) reaches the
+    /// same check as <c>ExpensesController</c> without the requirement type leaving the section.
     /// </summary>
     public const string ExpenseReportView = nameof(ExpenseReportView);
 }

@@ -14,11 +14,8 @@ public static class RoleChecks
 
     /// <summary>Carries the user's stored <see cref="UserState"/> enum name.</summary>
     /// <remarks>
-    /// Owned here rather than on Shell's <c>RoleAssignmentClaimsTransformation</c> (which
-    /// stamps it) because a section view reads it: Camps' index page renders the
-    /// "register a camp" call to action only for an Active member. A section cannot name a
-    /// <c>Humans.Web</c> type, and the predicate carries no section vocabulary — the same
-    /// test as the rest of this class.
+    /// Here, not on Shell's <c>RoleAssignmentClaimsTransformation</c> which stamps it, because a section view (Camps'
+    /// index) reads it and a section cannot name a <c>Humans.Web</c> type.
     /// </remarks>
     public const string UserStateClaimType = "UserState";
 

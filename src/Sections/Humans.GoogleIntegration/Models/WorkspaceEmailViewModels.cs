@@ -2,9 +2,6 @@ using Humans.GoogleIntegration.Services;
 
 namespace Humans.GoogleIntegration.Models;
 
-/// <summary>
-/// View model for the @nobodies.team email accounts admin page.
-/// </summary>
 internal sealed class WorkspaceEmailListViewModel
 {
     public IReadOnlyList<WorkspaceAccountInfo> Accounts { get; set; } = [];
@@ -15,39 +12,21 @@ internal sealed class WorkspaceEmailListViewModel
     public int UnlinkedAccounts { get; set; }
     public int NotPrimaryCount { get; set; }
 
-    /// <summary>
-    /// Count of active accounts that have not completed 2-Step Verification enrollment.
-    /// These accounts cannot sign in and need attention.
-    /// </summary>
+    /// <summary>Active accounts without 2-Step Verification, which cannot sign in.</summary>
     public int MissingTwoFactorCount { get; set; }
 }
 
-/// <summary>
-/// One-shot recovery credentials shown to the admin in a modal after a
-/// password reset (and optionally a 2FA backup-code grab). Carried in
-/// TempData across the PRG redirect so a refresh after dismissal cannot
-/// re-expose the secret material.
-/// </summary>
+/// <summary>Carried in TempData across the PRG redirect, so a refresh after dismissal cannot re-expose it.</summary>
 internal sealed class WorkspaceRecoveryCredentialsViewModel
 {
     public string Email { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Freshly generated temporary password for the @nobodies.team account.
-    /// Always populated for both flows (reset-only and reset+2FA).
-    /// </summary>
     public string TempPassword { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Single backup verification code, populated only when the admin
-    /// requested the combined "Reset + 2FA" flow. Null for password-only.
-    /// </summary>
+    /// <summary>Only for the combined Reset + 2FA flow.</summary>
     public string? BackupCode { get; set; }
 }
 
-/// <summary>
-/// Form model for provisioning a new @nobodies.team account.
-/// </summary>
 internal sealed class ProvisionWorkspaceAccountModel
 {
     public string EmailPrefix { get; set; } = string.Empty;

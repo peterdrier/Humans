@@ -4,10 +4,6 @@ using Microsoft.Extensions.Configuration;
 
 namespace Humans.GoogleIntegration;
 
-/// <summary>
-/// GoogleIntegration's own settings: the Workspace service account it provisions with, and
-/// the team-resource toggle <c>TeamResourceService</c> binds and reads.
-/// </summary>
 internal sealed class SectionConfiguration : ISectionConfiguration
 {
     public void DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)

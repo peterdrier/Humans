@@ -4,22 +4,9 @@ using Microsoft.CodeAnalysis;
 namespace Humans.Analyzers.Internal;
 
 /// <summary>
-/// Matcher for Humans persistence contexts (nobodies-collective/Humans#858).
-/// Since the per-section DbContext split, the persistence boundary is no longer
-/// a single root context type but every application context — the
-/// main pile plus each <c>&lt;Section&gt;DbContext</c>. Analyzers that police
-/// context access use this helper instead of a hard-coded type name so peeled
-/// sections stay covered.
+/// Matches every Humans persistence context structurally: a class whose base chain reaches EF's <c>DbContext</c>.
+/// Pins neither namespace nor assembly, so relocating the contexts cannot switch the analyzers off.
 /// </summary>
-/// <remarks>
-/// Detection is <b>structural</b>: a class counts when its base chain reaches
-/// <c>Microsoft.EntityFrameworkCore.DbContext</c>. It deliberately pins neither
-/// namespace nor assembly, so relocating the contexts cannot silently switch
-/// the analyzers off. Scoping to production code is unchanged and lives in the
-/// analyzers themselves — each bails unless the compilation is the assembly it
-/// polices (<see cref="AssemblyScope"/>), so test doubles deriving from
-/// <c>DbContext</c> are never analyzed.
-/// </remarks>
 internal static class SectionDbContexts
 {
     private const string EfDbContextFullName = "Microsoft.EntityFrameworkCore.DbContext";
@@ -32,11 +19,8 @@ internal static class SectionDbContexts
         compilation.GetTypeByMetadataName(EfDbContextFullName);
 
     /// <summary>
-    /// True when <paramref name="candidate"/> is a Humans persistence context:
-    /// a class whose base chain includes EF's <c>DbContext</c>. EF's own
-    /// <c>DbContext</c> does not match — the walk starts at the base type — so
-    /// infrastructure plumbing that takes the framework base class (the section
-    /// migration runner, for one) is not mistaken for a context.
+    /// EF's own <c>DbContext</c> does not match (the walk starts at the base type), so plumbing that takes the
+    /// framework base class, like the section migration runner, is not mistaken for a context.
     /// </summary>
     public static bool IsSectionDbContext(ITypeSymbol? candidate, INamedTypeSymbol efDbContext)
     {
@@ -53,19 +37,14 @@ internal static class SectionDbContexts
     }
 
     /// <summary>
-    /// Recursively walks a type and its generic arguments / array elements,
-    /// looking for any Humans persistence context. Handles
-    /// <c>IDbContextFactory&lt;TContext&gt;</c>, <c>UserStore&lt;…, UsersDbContext, …&gt;</c>,
-    /// and arbitrarily-nested constructions.
+    /// Walks generic arguments and array elements too: <c>IDbContextFactory&lt;TContext&gt;</c>,
+    /// <c>UserStore&lt;…, UsersDbContext, …&gt;</c>.
     /// </summary>
     public static bool ReferencesSectionDbContext(ITypeSymbol? candidate, INamedTypeSymbol efDbContext) =>
         FindReferencedSectionDbContext(candidate, efDbContext) is not null;
 
     /// <summary>
-    /// Same walk as <see cref="ReferencesSectionDbContext"/>, but returns the
-    /// specific context type that matched (e.g. <c>ContainersDbContext</c>)
-    /// instead of a bool, so callers can name the actual context in a
-    /// diagnostic message rather than a generic context name.
+    /// Same walk as <see cref="ReferencesSectionDbContext"/>, returning the matched context so a diagnostic can name it.
     /// </summary>
     public static INamedTypeSymbol? FindReferencedSectionDbContext(ITypeSymbol? candidate, INamedTypeSymbol efDbContext)
     {
@@ -92,9 +71,7 @@ internal static class SectionDbContexts
     }
 
     /// <summary>
-    /// Enumerates every persistence context declared in this compilation's own
-    /// assembly, at any namespace depth. Referenced assemblies are out of scope:
-    /// framework contexts (Identity, Data Protection) are not ours to police.
+    /// This compilation's own assembly only: framework contexts (Identity, Data Protection) are not ours to police.
     /// </summary>
     public static IEnumerable<INamedTypeSymbol> EnumerateSectionDbContexts(
         Compilation compilation, INamedTypeSymbol efDbContext)

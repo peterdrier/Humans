@@ -3,11 +3,7 @@ using Humans.Settings.Contracts;
 namespace Humans.Shifts.Services;
 
 /// <summary>
-/// Resolves the app-wide event calendar (<see cref="EventSettingsInfo"/>) for a Shifts
-/// <c>EventSettingsId</c>, via <see cref="ISettingsService"/>
-/// (nobodies-collective/Humans#1630). Scoped, so the small per-id/active cache lives
-/// for one request — callers that need the same rota's or the active event's calendar
-/// more than once should share one resolver call rather than re-fetching.
+/// Scoped, so its per-id cache lives for one request; callers needing a calendar twice should share one resolver.
 /// </summary>
 internal sealed class EventCalendarResolver(ISettingsService settingsService)
 {

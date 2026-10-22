@@ -2,9 +2,7 @@ namespace Humans.Agent.Services;
 
 internal sealed class AgentAbuseDetector : IAgentAbuseDetector
 {
-    // Conservative, language-aware keyword list. False positives route to the standard
-    // refusal reply ("This isn't something I can help with — please contact a coordinator")
-    // rather than blocking, so precision matters more than recall.
+    // False positives get the standard refusal reply rather than a block, so precision matters more than recall.
     private static readonly string[] SelfHarmSignals =
     [
         "hurt myself", "kill myself", "suicide", "end my life",

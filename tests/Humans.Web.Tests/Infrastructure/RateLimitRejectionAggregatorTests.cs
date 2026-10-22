@@ -8,8 +8,6 @@ public class RateLimitRejectionAggregatorTests
 {
     private static readonly TimeSpan ShortWindow = TimeSpan.FromMilliseconds(100);
 
-    // ── helpers ──────────────────────────────────────────────────────────────
-
     private sealed class ListLogger : ILogger
     {
         private readonly List<string> _messages = [];
@@ -38,8 +36,6 @@ public class RateLimitRejectionAggregatorTests
         return logger.Messages;
     }
 
-    // ── only the first rejection in a window asks for the detailed log ───────
-
     [HumansFact]
     public void FirstRejectionInWindowIsDetailed_SubsequentAreNot()
     {
@@ -50,8 +46,6 @@ public class RateLimitRejectionAggregatorTests
         aggregator.RecordRejection("1.2.3.4").Should().BeFalse();
         aggregator.RecordRejection("5.6.7.8").Should().BeTrue("each source IP gets its own window");
     }
-
-    // ── a burst flushes exactly one summary carrying the count ───────────────
 
     [HumansFact]
     public async Task BurstFlushesOneSummaryWithCount()
@@ -67,8 +61,6 @@ public class RateLimitRejectionAggregatorTests
             .Which.Should().Contain("1.2.3.4").And.Contain("5 times");
     }
 
-    // ── a lone rejection was already logged in detail; no summary ────────────
-
     [HumansFact]
     public async Task SingleRejectionProducesNoSummary()
     {
@@ -80,8 +72,6 @@ public class RateLimitRejectionAggregatorTests
         await Task.Delay(ShortWindow * 5);
         logger.Messages.Should().BeEmpty("a count of 1 is already fully covered by the detailed line");
     }
-
-    // ── after the window flushes, the next rejection is detailed again ───────
 
     [HumansFact]
     public async Task NewWindowAfterFlushIsDetailedAgain()

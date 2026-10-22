@@ -36,10 +36,8 @@ using NSubstitute;
 namespace Humans.Shifts.Tests.Controllers;
 
 /// <summary>
-/// A department coordinator may delete only rotas and shifts of the department in the URL.
-/// The id in the route is untrusted: one that belongs to another team is a 404, and the
-/// service is never asked to delete it. Edits validate the posted model before writing,
-/// and invalid edits retain their attempted values and field errors.
+/// The route id is untrusted: an id that belongs to another team is a 404 and never
+/// reaches the service.
 /// </summary>
 public class ShiftAdminControllerTests
 {

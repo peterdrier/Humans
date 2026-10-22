@@ -6,12 +6,7 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.GoogleIntegration.Services.Workspace;
 
-/// <summary>
-/// Real <see cref="IGoogleTranslationClient"/> backed by the Cloud Translation v2 REST API,
-/// authenticated with the same service account as the Workspace connectors (one more enabled API
-/// on the existing GCP project — no new integration). Plain-text NMT; batched per request under
-/// the API's 128-segment limit.
-/// </summary>
+/// <summary>Batched under the API's 128-segment limit per request.</summary>
 internal sealed class GoogleTranslationClient(
     HttpClient httpClient,
     IOptions<GoogleWorkspaceSettings> settings,

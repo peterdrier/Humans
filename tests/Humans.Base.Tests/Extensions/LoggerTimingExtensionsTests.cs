@@ -9,8 +9,6 @@ namespace Humans.Base.Tests.Extensions;
 
 public class LoggerTimingExtensionsTests
 {
-    // ── SelectLogLevel threshold coverage ──────────────────────────────────
-
     [HumansTheory]
     [InlineData(0, LogLevel.None)]
     [InlineData(999, LogLevel.None)]
@@ -26,8 +24,6 @@ public class LoggerTimingExtensionsTests
     {
         LoggerTimingExtensions.SelectLogLevel(ms).Should().Be(expected);
     }
-
-    // ── TimeOperation records into the registry ─────────────────────────────
 
     [HumansFact]
     public void TimeOperation_records_entry_under_derived_key()
@@ -63,8 +59,6 @@ public class LoggerTimingExtensionsTests
         snapshot.Count.Should().BeGreaterThanOrEqualTo(2);
     }
 
-    // ── Eat increments swallowed counter ───────────────────────────────────
-
     [HumansFact]
     public void Eat_increments_swallowed_counter_in_registry()
     {
@@ -79,8 +73,6 @@ public class LoggerTimingExtensionsTests
         var swallowed = registry.GetSwallowed();
         swallowed.Should().Contain(s => s.Key == "EatTestClass.EatTestMethod" && s.Count >= 1);
     }
-
-    // ── OperationTimer disposes correctly ──────────────────────────────────
 
     [HumansFact]
     public void OperationTimer_double_dispose_is_safe()

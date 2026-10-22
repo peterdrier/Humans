@@ -6,11 +6,7 @@ using Humans.Web.Services;
 
 namespace Humans.Users.Tests.Infrastructure;
 
-/// <summary>
-/// Builds a <see cref="HumansMetricsService"/> with no-op collaborators for tests
-/// that depend on the metrics surface but don't assert on it. Centralized so a new
-/// ctor argument on <see cref="HumansMetricsService"/> only touches one site.
-/// </summary>
+/// <summary>No-op collaborators, centralized so a new constructor argument touches one site.</summary>
 internal static class TestMetrics
 {
     public static HumansMetricsService Create(IUserActivityTracker? tracker = null) =>

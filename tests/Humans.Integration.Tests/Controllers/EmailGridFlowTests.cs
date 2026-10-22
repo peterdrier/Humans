@@ -13,29 +13,14 @@ using Humans.Users.Domain;
 namespace Humans.Integration.Tests.Controllers;
 
 /// <summary>
-/// Task 23 of PR 4 (email/OAuth decoupling). Integration tests covering the
-/// cross-user merge flow, admin-route auth gates, and the no-AdminLink
-/// invariant from the email grid spec.
-///
-/// Notes on the patterns used here:
-/// - Cross-user merge creation actually happens inside
-///   <see cref="IUserEmailService.VerifyEmailAsync"/> when the verified email
-///   already belongs to another user. AddEmailAsync only flags the conflict
-///   on the returned token; the merge row is written when the verification
-///   token is presented. Tests 1 and 3 therefore drive the service via DI
-///   scope to exercise the full add → verify path, then exercise the HTTP
-///   surface for the assertions that are HTTP-shaped (the MergePending pill
-///   in test 1).
-/// - Tests 2 and 4 are pure HTTP because they assert routing/authorization
-///   behavior, not service behavior. Antiforgery is satisfied by harvesting
-///   the token + cookie pair from the rendered self-Emails page.
+/// The merge row is written by <see cref="IUserEmailService.VerifyEmailAsync"/>, not on add, so the merge tests drive
+/// add then verify through the service. The authorization tests are pure HTTP.
 /// </summary>
 public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     [HumansFact(Timeout = 30_000)]
     public async Task SelfAddEmail_AlreadyVerifiedOnAnotherUser_CreatesAccountMergeRequest_AndShowsMergePendingPill()
     {
-        // ----- Seed: User B owns a verified UserEmail; User A is the actor.
         var sharedEmail = $"shared-{Guid.NewGuid():N}@x.test";
         Guid userBId;
         Guid userAId;
@@ -45,7 +30,7 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
             userAId = await SeedBareUserAsync(scope, $"a-{Guid.NewGuid():N}@x.test");
         }
 
-        // ----- Drive AddEmail → VerifyEmail via the service. Merge is written on verify.
+        // Merge is written on verify.
         await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var userEmailService = scope.ServiceProvider.GetRequiredService<IUserEmailService>();
@@ -69,26 +54,19 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
             merge.Email.Should().Be(sharedEmail);
         }
 
-        // ----- HTTP assertion: the MergePending badge renders on user A's grid.
-        // Sign in as Admin and view A's grid via the admin route — same view, same
-        // BuildEmailsViewModelAsync, so the MergePending pill renders identically.
+        // The admin route renders the same view model, so the pill renders identically.
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
         var resp = await Client.GetAsync($"/Profile/{userAId}/Admin/Emails", Xunit.TestContext.Current.CancellationToken);
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await resp.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken);
 
-        // Localized string "Merge pending" is registered in SharedResource.resx
-        // under EmailGrid_StatusMergePending; the row also carries the
-        // fa-code-merge icon class. Either is a stable signal that the pill
-        // rendered for the pending row.
         body.Should().ContainAny("Merge pending", "fa-code-merge");
     }
 
     [HumansFact(Timeout = 30_000)]
     public async Task UnprivilegedUser_AdminPostToOtherUserEmails_ReturnsForbid()
     {
-        // Seed an unrelated target user A and capture its primary email row id.
         Guid targetUserId;
         Guid targetEmailId;
         await using (var scope = Factory.Services.CreateAsyncScope())
@@ -102,14 +80,11 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
                 .SingleAsync(Xunit.TestContext.Current.CancellationToken);
         }
 
-        // Sign in as a plain volunteer (not admin, not the target).
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
         var (token, cookie) = await GetAntiforgeryAsync("/Profile/Me/Emails");
 
-        // Workspace-identity set (GoogleIntegration): route is mapped, but the
-        // HumanAdminBoardOrAdmin gate denies a plain volunteer. Cookie auth
-        // converts the controller's Forbid() into a 302 to AccessDenied.
+        // Cookie auth turns the controller's Forbid() into a 302 to AccessDenied.
         var setGoogleResp = await PostFormWithAntiforgeryAsync(
             $"/Google/Admin/{targetUserId}/WorkspaceEmail",
             token,
@@ -120,7 +95,6 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
             });
         AssertForbidden(setGoogleResp);
 
-        // Unlink: same handler, same expected outcome.
         var unlinkResp = await PostFormWithAntiforgeryAsync(
             $"/Profile/{targetUserId}/Admin/Emails/Unlink/{targetEmailId}",
             token,
@@ -128,7 +102,6 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
             new Dictionary<string, string>(StringComparer.Ordinal));
         AssertForbidden(unlinkResp);
 
-        // Sanity check: the underlying email row was not mutated.
         await using var verifyScope = Factory.Services.CreateAsyncScope();
         var verifyDb = verifyScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var row = await verifyDb.Set<UserEmail>().AsNoTracking().SingleAsync(e => e.Id == targetEmailId, Xunit.TestContext.Current.CancellationToken);
@@ -138,7 +111,6 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
     [HumansFact(Timeout = 30_000)]
     public async Task AdminAddEmail_AlreadyVerifiedOnAnotherUser_StillCreatesMergeRequest_NoForceAddBypass()
     {
-        // Seed source user B (verified email) + target user A.
         var sharedEmail = $"adminmerge-{Guid.NewGuid():N}@x.test";
         Guid sourceUserId;
         Guid targetUserId;
@@ -148,12 +120,7 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
             targetUserId = await SeedBareUserAsync(scope, $"target-{Guid.NewGuid():N}@x.test");
         }
 
-        // The admin-Add endpoint internally calls IUserEmailService.AddEmailAsync,
-        // which generates the verification token and flags IsConflict; the merge
-        // row itself is written when the verification link is followed. There is
-        // intentionally NO admin-only "force fold" path — admin mutates via the
-        // same merge flow as the user. Drive add+verify through the service
-        // (mirrors what would happen when the target user clicks the link).
+        // There is deliberately no admin "force fold": admin adds go through the same verify-then-merge flow.
         await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var userEmailService = scope.ServiceProvider.GetRequiredService<IUserEmailService>();
@@ -175,7 +142,6 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
         merges[0].Status.Should().Be(AccountMergeRequestStatus.Pending);
         merges[0].Email.Should().Be(sharedEmail);
 
-        // The source user's verified email still exists; nothing was force-folded.
         var sourceStillHasEmail = await db.Set<UserEmail>()
             .AsNoTracking()
             .AnyAsync(e => e.UserId == sourceUserId && e.Email == sharedEmail && e.IsVerified, Xunit.TestContext.Current.CancellationToken);
@@ -183,18 +149,9 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
     }
 
     /// <summary>
-    /// An Admin sees the manual-verify control on a target's email grid, and using it marks
-    /// the pending row verified.
+    /// The manual-verify control is <c>AdminOnly</c> on a page HumanAdmin and Board also reach, and E2E has no Admin
+    /// persona, so the positive case lives here; the negative half stays in Playwright.
     /// </summary>
-    /// <remarks>
-    /// issue-659's positive case, ported from <c>tests/e2e/profile.spec.ts</c>. Both ends are
-    /// <c>AdminOnly</c> — <c>Emails.cshtml</c>'s <c>canManuallyVerify</c> and
-    /// <c>AdminVerifyEmail</c> itself — while the page around them is reachable by HumanAdmin
-    /// and Board through <c>UserEmailOperations.Edit</c>. So no other role can stand in, and
-    /// nobodies-collective/Humans#1332 leaves the E2E suite without an Admin persona. The
-    /// negative half (a non-admin POST is rejected) stays in Playwright, where a volunteer
-    /// still serves.
-    /// </remarks>
     [HumansFact(Timeout = 30_000)]
     public async Task AdminManualVerify_MarksAPendingEmailVerified()
     {
@@ -208,20 +165,17 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
         {
             targetUserId = await SeedBareUserAsync(scope, $"verifytarget-{Guid.NewGuid():N}@x.test");
 
-            // Added, not verified: AddEmailAsync issues a token and leaves the row pending,
-            // which is the state the manual-verify control exists for.
+            // Added, not verified: the pending state the control exists for.
             var userEmailService = scope.ServiceProvider.GetRequiredService<IUserEmailService>();
             var addResult = await userEmailService.AddEmailAsync(targetUserId, pendingEmail, ct);
             addResult.IsConflict.Should().BeFalse("the seeded address belongs to nobody else");
             emailId = addResult.EmailId;
         }
 
-        // Antiforgery first: the cookie is emitted on the first GET only, so harvesting it
-        // after another GET of the same page finds no Set-Cookie header.
+        // The antiforgery cookie is emitted on the first GET only.
         var (token, cookie) = await GetAntiforgeryAsync($"/Profile/{targetUserId}/Admin/Emails");
 
-        // The button is rendered only where the AdminOnly gate succeeds — a HumanAdmin reaches
-        // this same page and does not get it.
+        // Rendered only where the AdminOnly gate succeeds; a HumanAdmin reaches this page without it.
         var grid = await Client.GetAsync($"/Profile/{targetUserId}/Admin/Emails", ct);
         grid.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await grid.Content.ReadAsStringAsync(ct);
@@ -250,11 +204,8 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
     [HumansFact]
     public async Task AdminLinkRoute_DoesNotExist()
     {
-        // The /Profile/{userId}/Admin/Emails/Link/Google admin route must NOT be
-        // mapped. Linking an OAuth identity is a self-only operation; admins do
-        // not have a backdoor that creates a Google linkage on a target account
-        // without that user's OAuth challenge. A POST to the path should be
-        // rejected by routing (404) or method-not-allowed (405).
+        // Linking an OAuth identity is self-only: no admin route may create a Google link without the user's own OAuth
+        // challenge.
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
         Guid otherUserId;
@@ -273,10 +224,6 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
 
         resp.StatusCode.Should().BeOneOf(HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed);
     }
-
-    // ---------------------------------------------------------------------
-    // Helpers
-    // ---------------------------------------------------------------------
 
     private static async Task<Guid> SeedUserWithVerifiedEmailAsync(IServiceScope scope, string email)
     {
@@ -330,12 +277,6 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
         return user.Id;
     }
 
-    /// <summary>
-    /// Fetches a GET page that contains an antiforgery-protected form and
-    /// returns both the cookie value and the form-field token. The pair is
-    /// what <see cref="Microsoft.AspNetCore.Antiforgery.IAntiforgery"/>
-    /// validates against on subsequent POSTs.
-    /// </summary>
     private async Task<(string FormToken, string Cookie)> GetAntiforgeryAsync(string url)
     {
         var resp = await Client.GetAsync(url, Xunit.TestContext.Current.CancellationToken);
@@ -381,18 +322,14 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
         };
         using var content = new FormUrlEncodedContent(withToken);
         using var req = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };
-        // The CookieContainer behind WebApplicationFactory's HttpClient
-        // re-sends the antiforgery cookie automatically once it's been set,
-        // but adding it explicitly is harmless and documents the dependency.
+        // The CookieContainer would re-send it anyway; explicit is harmless.
         req.Headers.TryAddWithoutValidation("Cookie", antiforgeryCookie);
         return await Client.SendAsync(req, Xunit.TestContext.Current.CancellationToken);
     }
 
     private static void AssertForbidden(HttpResponseMessage resp)
     {
-        // ASP.NET Core cookie auth maps Forbid() to a 302 redirect to
-        // AccessDeniedPath ("/Account/AccessDenied"). Pure auth failures
-        // could in some configurations come back as 403; accept either.
+        // Cookie auth maps Forbid() to a 302 to AccessDeniedPath; some configurations return 403, so accept either.
         if (resp.StatusCode == HttpStatusCode.Forbidden)
             return;
 

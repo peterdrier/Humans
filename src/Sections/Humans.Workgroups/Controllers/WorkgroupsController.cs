@@ -17,9 +17,6 @@ using NodaTime;
 
 namespace Humans.Workgroups.Controllers;
 
-/// <summary>
-/// Member pages and actions. Authorizes resources, dispatches to the service and maps errors.
-/// </summary>
 [Authorize(Policy = PolicyNames.AppAccess)]
 [Route("Workgroups")]
 internal sealed class WorkgroupsController(
@@ -32,8 +29,6 @@ internal sealed class WorkgroupsController(
     IAuthorizationService authorization,
     ILogger<WorkgroupsController> logger) : HumansControllerBase(users)
 {
-    // ── The register ──────────────────────────────────────────────────────
-
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
@@ -70,8 +65,6 @@ internal sealed class WorkgroupsController(
             return (mutation, RedirectToAction(nameof(Details), new { slug = created?.Slug ?? id.ToString() }));
         }, "Workgroups_Applied");
     }
-
-    // ── One group ─────────────────────────────────────────────────────────
 
     [HttpGet("{slug}")]
     public async Task<IActionResult> Details(string slug, CancellationToken ct)
@@ -128,8 +121,6 @@ internal sealed class WorkgroupsController(
         ActAsync(slug, (id, userId) => workgroups.RequestStatusAsync(id, userId, question, ct),
             "Workgroups_StatusRequested", ct, memberOnly: false);
 
-    // ── Membership decisions: coordinators and Board/Admin ────────────────
-
     [HttpPost("{slug}/Members/{userId:guid}/Approve")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> ApproveMember(string slug, Guid userId, CancellationToken ct) =>
@@ -152,8 +143,6 @@ internal sealed class WorkgroupsController(
                 ? workgroups.AddMemberAsync(id, actorId, added, asAdmin, ct)
                 : Task.FromResult(new WorkgroupMutationResult(new WorkgroupRefusal(WorkgroupErrorKeys.NotFound))),
             "Workgroups_MemberAdded", ct);
-
-    // ── Register fields and coordinators ──────────────────────────────────
 
     [HttpGet("{slug}/Edit")]
     public async Task<IActionResult> Edit(string slug, CancellationToken ct)
@@ -193,8 +182,6 @@ internal sealed class WorkgroupsController(
         ActAsync(slug,
             (id, userId) => workgroups.SetCoordinatorsAsync(id, userId, coordinatorUserIds.OfType<Guid>().ToArray(), asAdmin: false, ct),
             "Workgroups_CoordinatorsSaved", ct);
-
-    // ── Meetings ──────────────────────────────────────────────────────────
 
     [HttpGet("{slug}/Meetings/Create")]
     public Task<IActionResult> CreateMeeting(string slug, CancellationToken ct) =>
@@ -239,8 +226,6 @@ internal sealed class WorkgroupsController(
         ActAsync(slug, (_, userId) => workgroups.DeleteMeetingAsync(id, userId, ct),
             "Workgroups_MeetingDeleted", ct, owns: w => w.Meetings.Any(m => m.Id == id));
 
-    // ── The log ───────────────────────────────────────────────────────────
-
     [HttpGet("{slug}/Log/Add")]
     public Task<IActionResult> AddLogEntry(string slug, CancellationToken ct) =>
         MemberFormAsync(slug, ct, w => new LogEntryFormViewModel
@@ -283,23 +268,17 @@ internal sealed class WorkgroupsController(
         ActAsync(slug, (_, userId) => workgroups.DeleteLogEntryAsync(id, userId, ct),
             "Workgroups_LogEntryDeleted", ct, owns: w => w.LogEntries.Any(e => e.Id == id));
 
-    // ── Surveys ───────────────────────────────────────────────────────────
-
     [HttpPost("{slug}/Surveys/Link")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> LinkSurvey(string slug, Guid surveyId, CancellationToken ct) =>
         ActAsync(slug, (id, userId) => workgroups.LinkSurveyAsync(id, userId, surveyId, ct),
             "Workgroups_SurveyLinked", ct);
 
-    // ── Ending the group ──────────────────────────────────────────────────
-
     [HttpPost("{slug}/Done")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Done(string slug, [BindRequired] WorkgroupDormantReason reason, CancellationToken ct) =>
         ActAsync(slug, (id, userId) => workgroups.MarkDoneAsync(id, userId, reason, ct),
             "Workgroups_MarkedDone", ct);
-
-    // ── Documents ─────────────────────────────────────────────────────────
 
     [HttpGet("{slug}/Documents/{id:guid}")]
     public async Task<IActionResult> Document(string slug, Guid id, CancellationToken ct)
@@ -311,8 +290,7 @@ internal sealed class WorkgroupsController(
 
         var isMember = workgroup.IsMember(user.Id);
         var canAdminister = await MayAdministerAsync(workgroup);
-        // A draft is the group's working copy; it is not the register's business yet. A
-        // sensitive group's documents are never anyone else's business.
+        // A draft isn't the register's business yet; a sensitive group's documents never are.
         if ((document.Status == WorkgroupDocumentStatus.Draft || workgroup.IsSensitive) && !isMember && !canAdminister)
             return NotFound();
 
@@ -392,8 +370,6 @@ internal sealed class WorkgroupsController(
         ActAsync(slug, (_, userId) => workgroups.DeliverDocumentAsync(id, userId, ct),
             "Workgroups_DocumentDelivered", ct, documentId: id, owns: OwnsDocument(id));
 
-    // ── Comments ──────────────────────────────────────────────────────────
-
     [HttpPost("{slug}/Documents/{id:guid}/Comments")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> AddComment(
@@ -433,12 +409,7 @@ internal sealed class WorkgroupsController(
         ActAsync(slug, (_, userId) => workgroups.HideCommentAsync(id, userId, reason ?? string.Empty, ct),
             "Workgroups_CommentHidden", ct, documentId: documentId, owns: OwnsComment(documentId, id));
 
-    // ── Plumbing ──────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Slug routes also answer to the group's id, so a link that pre-dates a rename still
-    /// lands (memory/architecture/slug-routes-fallback-to-guid.md).
-    /// </summary>
+    /// <summary>Also answers to the group's id, so a link from before a rename still lands.</summary>
     private async Task<WorkgroupInfo?> ResolveAsync(string slug, CancellationToken ct) =>
         Guid.TryParse(slug, out var id)
             ? await workgroups.GetByIdAsync(id, ct)
@@ -450,7 +421,7 @@ internal sealed class WorkgroupsController(
     private async Task<bool> MayDoMemberWorkAsync(WorkgroupInfo workgroup) =>
         (await authorization.AuthorizeAsync(User, workgroup, WorkgroupOperationRequirement.Member)).Succeeded;
 
-    /// <summary>The nested-resource route checks: the id has to belong to this group.</summary>
+    /// <summary>The nested id must belong to this group.</summary>
     private static Func<WorkgroupInfo, bool> OwnsDocument(Guid documentId) =>
         w => w.Documents.Any(d => d.Id == documentId);
 
@@ -462,13 +433,11 @@ internal sealed class WorkgroupsController(
             .Split([',', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToList();
 
-    /// <summary>Burner names and tiers for every person named anywhere on the page.</summary>
     private async Task<IReadOnlyDictionary<Guid, UserInfo>> PeopleAsync(
         IReadOnlyList<WorkgroupInfo> register, CancellationToken ct)
     {
-        // Every attribution the pages actually render, not just the memberships: a Board or
-        // Secretary user who writes a document or minutes a meeting is named there without
-        // ever joining the group, and a missing id renders as the em dash placeholder.
+        // Every attribution the pages render, not just memberships: a Board member who writes a document or minutes
+        // a meeting is named there without ever joining.
         var ids = register
             .SelectMany(w => w.Members.Select(m => m.UserId)
                 .Concat(w.LogEntries.Select(e => e.AuthorUserId).OfType<Guid>())
@@ -486,7 +455,6 @@ internal sealed class WorkgroupsController(
             : await UserService.GetUserInfosAsync(ids, ct);
     }
 
-    /// <summary>A GET that renders a member-only form, or 403/404 before it.</summary>
     private async Task<IActionResult> MemberFormAsync<TModel>(
         string slug, CancellationToken ct, Func<WorkgroupInfo, TModel?> build, string viewName)
         where TModel : class
@@ -499,7 +467,6 @@ internal sealed class WorkgroupsController(
         return build(workgroup) is { } model ? View(viewName, model) : NotFound();
     }
 
-    /// <summary>Authorize the group and nested resource before mutating, then redirect with feedback.</summary>
     private async Task<IActionResult> ActAsync<T>(
         string slug,
         Func<Guid, Guid, Task<T>> action,
@@ -529,10 +496,7 @@ internal sealed class WorkgroupsController(
             : RedirectToAction(nameof(Details), new { slug = workgroup.Slug });
     }
 
-    /// <summary>
-    /// Membership decisions: a coordinator of an Active group, or Board/Admin (passed through
-    /// as <c>asAdmin</c> so the service skips its own coordinator check). Everyone else gets Forbid.
-    /// </summary>
+    /// <summary>Board/Admin passes <c>asAdmin</c>, so the service skips its own coordinator check.</summary>
     private async Task<IActionResult> ManageMembersAsync(
         string slug, Func<Guid, Guid, bool, Task<WorkgroupMutationResult>> action, string successKey, CancellationToken ct)
     {
@@ -546,7 +510,6 @@ internal sealed class WorkgroupsController(
         return RedirectToAction(nameof(Details), new { slug = workgroup.Slug });
     }
 
-    /// <summary>Form POSTs: a rule re-renders the form with its localized message.</summary>
     private async Task<IActionResult> FormAsync(
         object model, Func<Task<(WorkgroupMutationResult Mutation, IActionResult? Response)>> action,
         string successKey, string? viewName = null)
@@ -563,7 +526,6 @@ internal sealed class WorkgroupsController(
         return response!;
     }
 
-    /// <summary>A redirecting POST's feedback: the refusal's localized message, or the success key.</summary>
     private void Flash(WorkgroupMutationResult result, string successKey)
     {
         if (result.Refusal is { } refusal)

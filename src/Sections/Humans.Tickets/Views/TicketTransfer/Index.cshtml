@@ -1,8 +1,7 @@
 @model Humans.Tickets.Models.TicketTransferWizardViewModel
 @{
     ViewData["Title"] = Localizer["Tickets_TicketTransfer_Title"].Value;
-    // Every ticket the user currently holds (the service already drops the ones they merely
-    // bought for others, and voided ones); only Valid + no-pending ones are selectable.
+    // The service already drops tickets merely bought for others and voided ones.
     var held = Model.MyTickets;
     var sendable = held.Where(t => t.CanSendTransfer).ToList();
     string NotSendableReason(MyAttendeeRowDto t) =>
@@ -124,8 +123,7 @@ else
     <h2 class="h5 mb-3">@Localizer["Tickets_TicketTransfer_Step3"]</h2>
     <div class="alert alert-success" style="max-width:560px">
         @{
-            // AppendFormat HTML-encodes every arg that isn't already IHtmlContent —
-            // AttendeeName goes in plain and is encoded for us.
+            // AppendFormat HTML-encodes every arg that isn't already IHtmlContent.
             var confirmDetails = new HtmlContentBuilder().AppendFormat(
                 Localizer["Tickets_TicketTransfer_ConfirmDetails"].Value,
                 new HtmlString($"<strong>{Html.Encode(c.VendorTicketId)}</strong>"),

@@ -6,32 +6,14 @@ using NodaTime;
 namespace Humans.Auth.Services;
 
 /// <summary>
-/// Singleton caching decorator for <see cref="IRoleAssignmentManagement"/>.
-/// Caches the full set of <c>role_assignments</c> rows so
-/// <see cref="GetActiveCountsByRoleAsync"/> and <see cref="GetActiveForUserAsync"/>
-/// are derived in memory at any clock instant. Cleared wholesale by
-/// <c>RoleAssignmentService</c> right after each of its repository writes, merge fold
-/// (<c>IUserMerge.ReassignAsync</c>) and GDPR erasure included — those two reach the
-/// inner service directly, not through this decorator, and the Board team sync inside
-/// Assign/End must read the new row set, so the eviction cannot wait for the
-/// pass-through to return. No EF interceptor — all writes go through
-/// <c>RoleAssignmentService</c>.
+/// Caches every <c>role_assignments</c> row. <c>RoleAssignmentService</c> clears it right after each repository
+/// write (merge and erasure included, which bypass this decorator), because the Board team sync inside
+/// Assign/End must read the new rows.
 /// </summary>
-/// <remarks>
-/// Warmed on startup via the <see cref="TrackedCache{TKey,TValue}"/> base, wholesale
-/// flush on writes, stats exposed via <c>/Debug/CacheStats</c>. Every other surface
-/// method passes through to the inner service via a freshly resolved scope.
-/// </remarks>
 internal sealed class CachingRoleAssignmentService
     : TrackedCache<Guid, RoleAssignmentRow>,
       IRoleAssignmentManagement
 {
-    /// <summary>
-    /// DI service key under which the undecorated (inner)
-    /// <see cref="IRoleAssignmentManagement"/> is registered. The Singleton
-    /// decorator resolves the Scoped inner per-call via
-    /// <see cref="IServiceScopeFactory"/>.
-    /// </summary>
     public const string InnerServiceKey = "role-assignment-inner";
 
     private readonly IServiceScopeFactory _scopeFactory;

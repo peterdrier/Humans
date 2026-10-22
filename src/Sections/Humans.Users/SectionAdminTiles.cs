@@ -7,7 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Users;
 
-/// <summary>The admin dashboard's people counts — Users formats them, Shell only places them.</summary>
 internal sealed class SectionAdminTiles : ISectionAdminTiles
 {
     public IEnumerable<AdminTile> Tiles() =>

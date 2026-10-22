@@ -12,12 +12,7 @@ public class EnumBadgeMapTests
     [HumansFact]
     public void Mapped_enum_values_get_their_registered_badge_class()
     {
-        // Deliberately Base enums. A moved section's rows reach the map through
-        // EnumBadgeMap.Register from its Section.Register, which does not run in a unit
-        // test — asserting on one here would be asserting on DI having been composed.
-        // (The ShiftPeriod/SignupStatus rows were the sample until Shifts pushed them in
-        // from its own Section.Register — G5 lane 4b-i, nobodies-collective/Humans#866 —
-        // and they are pinned by ShiftsArchitectureTests now.)
+        // Base enums only: a section's rows come from its Section.Register, which a unit test doesn't run.
         EnumBadgeMap.For(EmailOutboxStatus.Queued).Should().Be("bg-warning text-dark");
         EnumBadgeMap.For(EmailOutboxStatus.Sent).Should().Be("bg-success");
         EnumBadgeMap.For(EmailOutboxStatus.Failed).Should().Be("bg-danger");
@@ -28,8 +23,6 @@ public class EnumBadgeMapTests
     {
         EnumBadgeMap.For(MembershipTier.Asociado).Should().Be("bg-secondary");
     }
-
-    // ── issue #1065: unmapped values log a warning naming the enum and value ────
 
     [HumansFact]
     public void Unmapped_enum_values_log_a_warning_naming_the_type_and_value()

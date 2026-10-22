@@ -3,10 +3,7 @@ using NodaTime;
 
 namespace Humans.Camps.Domain;
 
-/// <summary>
-/// Defines a global role that can be assigned to humans within any camp-season.
-/// CampAdmin-managed; the same definition applies across all camps.
-/// </summary>
+/// <summary>Global: one definition applies across every camp-season.</summary>
 internal sealed class CampRoleDefinition
 {
     public Guid Id { get; init; }
@@ -14,9 +11,8 @@ internal sealed class CampRoleDefinition
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
-    /// Kebab-case identifier used in admin URLs and as the per-role component of the
-    /// derived Google Group key (<c>barrios-{year}-{slug}@{domain}</c>).
-    /// Unique case-insensitive; not user-visible.
+    /// The per-role component of the Google Group key (<c>barrios-{year}-{slug}@{domain}</c>). Empty until the role
+    /// needs a group, so several rows may share the empty slug.
     /// </summary>
     public string Slug { get; set; } = string.Empty;
 
@@ -38,12 +34,8 @@ internal sealed class CampRoleDefinition
     public Instant? DeactivatedAt { get; set; }
 
     /// <summary>
-    /// Marker for special, system-managed role definitions with extra authorization
-    /// semantics (Camp Lead, Workshop Lead). <see cref="CampSpecialRole.None"/> is
-    /// the default for regular admin-managed rows. Non-<c>None</c> rows are seeded
-    /// by the CampAdmin "Seed system roles" admin button and are immutable except
-    /// for <see cref="SlotCount"/> and <see cref="Description"/>. Enforced in
-    /// <c>CampRoleService</c>.
+    /// System-managed rows (Camp Lead, Workshop Lead) carry extra authorization semantics and are immutable except
+    /// for <see cref="SlotCount"/> and <see cref="Description"/>, enforced in <c>CampRoleService</c>.
     /// </summary>
     public CampSpecialRole SpecialRole { get; set; } = CampSpecialRole.None;
 

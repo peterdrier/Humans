@@ -14,10 +14,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Controllers;
 
-/// <summary>
-/// Coordinator tracking heatmap + camp-setup/day-block mutations.
-/// Reads gated by ShiftDashboardAccess; writes add VolunteerTrackingWrite.
-/// </summary>
+/// <summary>Reads need ShiftDashboardAccess; writes add VolunteerTrackingWrite.</summary>
 [Route("Shifts/Dashboard/VolunteerTracking")]
 [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
 internal sealed class VolunteerTrackingController(
@@ -45,7 +42,7 @@ internal sealed class VolunteerTrackingController(
             return View(VolunteerTrackingPageViewModel.Empty);
         }
 
-        // BurnerName lookup for sort key + partial tooltips (cell render uses <vc:human>).
+        // The sort key and tooltips; cells render names through <vc:human>.
         var displayUserIds = data.MainCohort.Select(r => r.UserId)
             .Concat(data.UnbookedCohort.Select(r => r.UserId))
             .Distinct()
@@ -71,8 +68,7 @@ internal sealed class VolunteerTrackingController(
                 .ThenBy(r => nameByUserId.GetValueOrDefault(r.UserId, ""), StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-        // Export card form state — the active event's departments. The page is gated on
-        // an active event, so the null fall-back only covers a race between the two reads.
+        // The page is gated on an active event; the null fallback covers a race between the two reads.
         var activeEvent = await burnSettings.GetActiveAsync(ct);
         var departments = activeEvent is null
             ? []
@@ -122,11 +118,8 @@ internal sealed class VolunteerTrackingController(
         var parsedEnd = TryParseLocalDate(endDate);
         var (activeStart, activeEnd) = ShiftFilterResolver.Resolve(period, parsedStart, parsedEnd);
 
-        // Resolve range:
-        //   period=Build + subPeriod set → narrow to that sub-period's day-offset window
-        //   period set → period's window (Build/Event/Strike each have distinct windows)
-        //   period null + explicit dates → those dates
-        //   period null + no dates → whole event (Build → Strike inclusive)
+        // Build with a sub-period narrows to it; any period uses its window; otherwise explicit dates, else the
+        // whole event, Build through Strike.
         LocalDate rangeStart, rangeEnd;
         if (period == ShiftPeriod.Build && subPeriod.HasValue)
         {
@@ -146,8 +139,7 @@ internal sealed class VolunteerTrackingController(
         {
             (rangeStart, rangeEnd) = ShiftFilterResolver.ResolvePeriodRange(null, eventSettings);
         }
-        // Guard against a hand-crafted URL with endDate before startDate (the form's HTML5
-        // validation would block this, but the action is reachable directly).
+        // HTML5 validation blocks this, but the action is reachable directly.
         if (rangeEnd < rangeStart)
         {
             (rangeStart, rangeEnd) = (rangeEnd, rangeStart);

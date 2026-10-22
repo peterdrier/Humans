@@ -6,15 +6,12 @@ namespace Humans.Governance.Domain;
 /// </summary>
 internal enum AssemblyBallotChoice
 {
-    /// <summary>In favour.</summary>
     Yes = 0,
 
-    /// <summary>Against.</summary>
     No = 1,
 
     /// <summary>Present but neither for nor against; counts toward turnout only.</summary>
     Abstain = 2,
 
-    /// <summary>A ranked-choice ballot; the preference order is in the ranking.</summary>
     Ranked = 3
 }

@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace Humans.MailerLite.Services.Dtos;
 
-/// <summary>Post-sync counts for one audience. Mirrors the audit metadata.</summary>
+/// <summary>Mirrors the audit metadata.</summary>
 internal sealed record AudienceSyncResult(
     string Key,
     string GroupId,

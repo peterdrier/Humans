@@ -10,7 +10,7 @@ using NSubstitute;
 
 namespace Humans.Gate.Tests;
 
-/// <summary>The /Settings#gate tab (peterdrier/Humans#1634).</summary>
+/// <summary>The /Settings#gate tab.</summary>
 public sealed class GateSettingsTabViewComponentTests
 {
     [HumansFact]

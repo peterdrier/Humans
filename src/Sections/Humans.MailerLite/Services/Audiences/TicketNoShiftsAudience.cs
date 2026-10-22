@@ -6,17 +6,9 @@ using Humans.Users.Contracts;
 namespace Humans.MailerLite.Services.Audiences;
 
 /// <summary>
-/// "Humans - Ticket no Shifts" — humans with a Valid/CheckedIn matched
-/// ticket attendee in the active vendor event who have NOT signed up for any
-/// shift in the active EventSettings event (Pending and Confirmed signups
-/// count as "has a shift"; Refused/Bailed/Cancelled/NoShow do not).
+/// Pending and Confirmed signups count as a shift; Refused, Bailed, Cancelled and NoShow don't
+/// (<see cref="ShiftUserSummary.HasShift"/>).
 /// </summary>
-/// <remarks>
-/// Reads shifts state through <see cref="IShiftView"/> — the cached read
-/// surface — so opening the MailerLite audience debug page doesn't burn DB
-/// queries on every render. <see cref="ShiftUserSummary.HasShift"/>
-/// already encodes the Pending/Confirmed-on-active-event rule.
-/// </remarks>
 internal sealed class TicketNoShiftsAudience(
     ITicketService tickets,
     IShiftView shiftView,

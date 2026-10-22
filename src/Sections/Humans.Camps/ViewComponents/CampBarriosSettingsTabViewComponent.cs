@@ -2,11 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Camps.ViewComponents;
 
-/// <summary>
-/// The /Settings#barrios tab (peterdrier/Humans#1634). <see cref="SectionSettings"/> gates
-/// it on <c>PolicyNames.CampAdminOrAdmin</c>, so every viewer who reaches this component
-/// may edit.
-/// </summary>
+/// <summary>Every viewer who reaches this tab may edit: <see cref="SectionSettings"/> gates it on CampAdminOrAdmin.</summary>
 internal sealed class CampBarriosSettingsTabViewComponent(ICampManagement campService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()

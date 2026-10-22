@@ -7,10 +7,6 @@ internal sealed class FeedbackReport
 {
     public Guid Id { get; init; }
 
-    /// <summary>
-    /// FK column only — no navigation property. Resolve the reporter's
-    /// display name via <c>IUserService.GetUserInfosAsync</c>.
-    /// </summary>
     public Guid UserId { get; init; }
 
     public FeedbackCategory Category { get; set; }
@@ -37,32 +33,14 @@ internal sealed class FeedbackReport
     /// </summary>
     public FeedbackSource Source { get; set; } = FeedbackSource.UserReport;
 
-    /// <summary>
-    /// FK column only — no navigation property and no EF FK constraint to
-    /// agent_conversations. Agent is a self-contained section; cross-section
-    /// joins are not modeled in EF. Resolve transcripts via the Agent
-    /// section's services when needed.
-    /// </summary>
     public Guid? AgentConversationId { get; set; }
 
     public Instant? ResolvedAt { get; set; }
 
-    /// <summary>
-    /// FK column only — no navigation property. Resolve via
-    /// <c>IUserService.GetUserInfosAsync</c>.
-    /// </summary>
     public Guid? ResolvedByUserId { get; set; }
 
-    /// <summary>
-    /// FK column only — no navigation property. Resolve via
-    /// <c>IUserService.GetUserInfosAsync</c>.
-    /// </summary>
     public Guid? AssignedToUserId { get; set; }
 
-    /// <summary>
-    /// FK column only — no navigation property. Resolve via
-    /// <c>ITeamService</c>.
-    /// </summary>
     public Guid? AssignedToTeamId { get; set; }
 
     public ICollection<FeedbackMessage> Messages { get; set; } = new List<FeedbackMessage>();

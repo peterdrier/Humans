@@ -107,10 +107,9 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task ScanAsync_ExcludesPerUserHygieneProblemsForTombstones()
     {
-        // Per-user email hygiene problems must not be reported for merge-source / GDPR-deleted
-        // tombstones — their scrubbed sentinel emails (…@merged.local / …@deleted.local) yield
-        // only false ZeroIsPrimary / Unverified positives. (Leftover orphan/ghost cleanup rows are
-        // a separate case — see ScanAsync_OrphanAndGhostRowsForTombstones_ArePreserved.)
+        // Per-user hygiene problems must not be reported for merge-source / GDPR-deleted tombstones:
+        // their scrubbed sentinel emails (…@merged.local / …@deleted.local) yield only false
+        // ZeroIsPrimary / Unverified positives.
         var liveId = Guid.NewGuid();
         AddInfo(MakeInfo(liveId, emails:
         [
@@ -138,9 +137,8 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
             DisplayName = "Deleted User",
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            // The minted tombstone email ApplyExpiredDeletionAnonymizationAsync writes →
-            // IsGdprAnonymized → IsTombstone. The DisplayName sentinel alone is user-editable
-            // and no longer sufficient (nobodies-collective/Humans#1742).
+            // The minted tombstone email is what marks IsTombstone; the DisplayName sentinel alone
+            // is user-editable and not enough.
             Email = $"deleted-{deletedId:N}@deleted.local",
         };
         AddInfo(deletedUser.ToUserInfo(
@@ -162,10 +160,9 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task ScanAsync_OrphanAndGhostRowsForTombstones_ArePreserved()
     {
-        // A UserEmail row or external login still pointing at a merged/deleted tombstone is
-        // genuine leftover data from an incomplete merge/deletion — this page is the only place an
-        // admin can clean it up. The tombstone suppression covers per-user hygiene noise only and
-        // must NOT hide these system-level cleanup targets.
+        // A UserEmail row or external login still pointing at a tombstone is real leftover data,
+        // and this page is the only place an admin can clean it up: the tombstone suppression
+        // covers per-user hygiene noise only.
         var mergedId = Guid.NewGuid();
         var mergedUser = new User
         {
@@ -386,9 +383,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task BackfillLegacyIdentityEmails_FlaggedUser_CallsAddVerifiedAndReturnsPair()
     {
-        // The OAuth-aware "tag via LinkAsync when an external login exists"
-        // branch is gone. The legacy
-        // address is added as a plain verified row; the next OAuth sign-in's
+        // The legacy address is added as a plain verified row; the next OAuth sign-in's
         // reconcile attaches the provider tag via TagMoved.
         var userId = Guid.NewGuid();
         AddInfo(MakeInfo(userId, identityEmailColumn: "legacy@x.com"));

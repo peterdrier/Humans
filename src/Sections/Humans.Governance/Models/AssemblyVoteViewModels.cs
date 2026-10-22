@@ -6,21 +6,13 @@ using NodaTime;
 
 namespace Humans.Governance.Models;
 
-// ==========================================================================
-// Member-facing
-// ==========================================================================
-
 /// <summary>Votes list page. The service already orders open votes first.</summary>
 internal sealed class AssemblyVoteListViewModel
 {
     public IReadOnlyList<AssemblyVoteListItem> Votes { get; init; } = [];
 }
 
-/// <summary>
-/// One vote's page: the service DTO carries everything a viewer is allowed to see (text, stats,
-/// own ballot); this only adds the RankedChoice ballot-form scaffolding, which the DTO has no
-/// reason to carry since it is form state, not vote content.
-/// </summary>
+/// <summary>Adds only the RankedChoice form scaffolding to the service DTO; form state is not vote content.</summary>
 internal sealed class AssemblyVoteDetailViewModel
 {
     public required AssemblyVoteDetail Vote { get; init; }
@@ -29,11 +21,8 @@ internal sealed class AssemblyVoteDetailViewModel
     public IReadOnlyList<AssemblyRankedBallotOptionRow> RankedOptions { get; init; } = [];
 
     /// <summary>
-    /// Which choice the form should show as selected. Null on a plain page load, where the
-    /// standing ballot is the answer. Set when redisplaying a submission that was rejected,
-    /// so the voter gets their own answer back: without it the radio falls back to the
-    /// stored ballot, and someone switching from Abstain to a ranking would fix the rank
-    /// the page complained about and silently record an abstention instead.
+    /// Set when redisplaying a rejected submission so the voter gets their own answer back;
+    /// falling back to the stored ballot could have them fix a rank and silently record an abstention.
     /// </summary>
     public AssemblyBallotChoice? SelectedChoice { get; init; }
 
@@ -41,11 +30,7 @@ internal sealed class AssemblyVoteDetailViewModel
     public AssemblyBallotChoice? ChoiceToShow => SelectedChoice ?? Vote.OwnBallot?.Choice;
 }
 
-/// <summary>
-/// One option row of a posted ranked ballot: mirrors Surveys' select-per-row pattern
-/// (<c>_SurveyQuestions.cshtml</c>) — <see cref="Selection"/> is the rank typed into that row's
-/// select, or null when left unranked.
-/// </summary>
+/// <summary><see cref="Selection"/> is the rank chosen in this row, or null when left unranked.</summary>
 internal sealed class AssemblyRankedBallotOptionRow
 {
     public string OptionKey { get; set; } = string.Empty;
@@ -74,16 +59,13 @@ internal sealed class AssemblyBallotFormViewModel
 
     /// <summary>
     /// True when a ranked submission gave two options the same rank. Projecting to keys would
-    /// erase that — two rows ranked 1 sort into two distinct keys, which the service's
-    /// duplicate-key check cannot see — and the ballot would silently be counted in form-row
-    /// order. On a binding vote an ambiguous ballot is rejected, never guessed at.
+    /// hide that from the service's duplicate-key check, and an ambiguous ballot on a binding vote
+    /// is rejected, never guessed at.
     /// </summary>
     public bool HasDuplicateRanks()
     {
-        // Only a ranked submission can be ambiguous. The form posts its rank selectors
-        // whichever radio is chosen, so a half-finished ranking left behind an Abstain is
-        // not the voter contradicting themselves — it is the ranking they have just said
-        // they are not casting, and <see cref="ToRanking"/> drops it for the same reason.
+        // The form posts rank selectors whatever radio is chosen, so a ranking left behind an
+        // Abstain is not a contradiction — ToRanking drops it for the same reason.
         if (Choice != AssemblyBallotChoice.Ranked) return false;
 
         var ranks = RankedOptions
@@ -117,10 +99,6 @@ internal sealed class AssemblyVoteResultsViewModel
     public required AssemblyVoteResultsView Results { get; init; }
 }
 
-// ==========================================================================
-// Admin
-// ==========================================================================
-
 /// <summary>Admin list: every vote in every state.</summary>
 internal sealed class AssemblyVoteAdminListViewModel
 {
@@ -133,7 +111,7 @@ internal sealed class AssemblyVoteAdminListViewModel
 /// </summary>
 internal sealed class AssemblyVoteDraftFormViewModel
 {
-    /// <summary>Association's timezone for <see cref="ClosesAt"/> — every closing time is authored in Madrid local time (Docs/features/assembly-votes.md).</summary>
+    /// <summary>Every closing time is authored in Madrid local time.</summary>
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
     /// <summary>Null on the create form; set on edit.</summary>
@@ -241,10 +219,7 @@ internal sealed class AssemblyVoteBallotsViewModel
     public Guid VoteId { get; init; }
     public IReadOnlyList<AssemblyBallotDisclosureRow> Ballots { get; init; } = [];
 
-    /// <summary>
-    /// The authored options, so a ranking prints the names voters saw rather than the stable
-    /// keys the ballot is stored under — same reason the peek and results views carry them.
-    /// </summary>
+    /// <summary>The authored options, so a ranking prints the names voters saw rather than the keys.</summary>
     public IReadOnlyList<AssemblyVoteOptionView> Options { get; init; } = [];
 
     /// <summary>The option's label, falling back to its key when the option is gone.</summary>

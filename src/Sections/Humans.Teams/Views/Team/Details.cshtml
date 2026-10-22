@@ -310,8 +310,7 @@
                     </a>
 
                     @{
-                        // "Open store": a coordinator of this active top-level department, or an
-                        // Admin / TeamsAdmin (who reach the Store regardless of coordinator status).
+                        // Admin and TeamsAdmin reach the Store regardless of coordinator status.
                         var canOpenStore = (Model.IsCurrentUserCoordinator && Model.ParentTeam is null && Model.IsActive)
                             || (await AuthService.AuthorizeAsync(User, PolicyNames.TeamsAdminOrAdmin)).Succeeded;
                     }

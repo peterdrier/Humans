@@ -11,10 +11,7 @@ using Humans.GoogleIntegration.Services.Workspace;
 
 namespace Humans.GoogleIntegration.Services;
 
-/// <summary>
-/// <see cref="IGoogleSyncManagement"/> impl: Workspace Drive reconciliation, Group provisioning, settings drift remediation.
-/// Group membership reconciliation lives in <see cref="IGoogleGroupSync"/>.
-/// </summary>
+/// <summary>Group membership reconciliation lives in <see cref="IGoogleGroupSync"/>.</summary>
 internal sealed class GoogleWorkspaceSyncService(
     IGoogleGroupProvisioningClient groupProvisioning,
     IGoogleDrivePermissionsClient drivePermissions,
@@ -58,14 +55,8 @@ internal sealed class GoogleWorkspaceSyncService(
         var effectiveLevel = permissionLevelOverride ?? resource.DrivePermissionLevel;
         var apiRole = effectiveLevel.ToApiRole();
 
-        // Issue nobodies-collective/Humans#945 — Drive's permissions.create
-        // rejects a plus-addressed local part (local+tag@domain) with an
-        // opaque HTTP 400. Plus-addressing is only guaranteed equivalent on
-        // Gmail (CanonicalizeGmail leaves non-Gmail domains untouched, since
-        // granting the base address there could resolve to a different
-        // Google identity than the one recorded on the user). Only when Drive
-        // refuses the plus address is the base address tried, and kept on the
-        // identity once Drive accepts it (peterdrier/Humans#2037).
+        // Drive rejects a plus-addressed local part with an opaque 400. Plus addresses are only equivalent on Gmail
+        // (elsewhere the base may be a different identity), so the base is tried only after Drive refuses.
         var driveTargetEmail = DrivePlusAddressFallback.Apply(
             await workspaceIdentities.GetDriveEmailsAsync(cancellationToken),
             userId, identityEmail, EmailNormalization.CanonicalizeGmail(userEmail));
@@ -100,10 +91,7 @@ internal sealed class GoogleWorkspaceSyncService(
                     "Google API error granting {Role} to {Email} on {GoogleId} — HTTP {Code}: {Message}",
                     apiRole, userEmail, resource.GoogleId,
                     result.Error?.StatusCode, result.Error?.RawMessage);
-                // Issue nobodies-collective/Humans#1099 — record the failed
-                // grant so it surfaces on the resource/human monitor pages
-                // and in the GDPR export, matching GoogleGroupSyncService's
-                // failure rows.
+                // Recorded so the failed grant shows on the monitor pages and in the GDPR export, like group failures.
                 await googleSyncLog.LogAsync(
                     GoogleSyncLogAction.AccessGranted, resource.Id,
                     $"Failed to grant Drive access ({effectiveLevel}) to {userEmail} ({resource.Name}): " +
@@ -121,13 +109,8 @@ internal sealed class GoogleWorkspaceSyncService(
     }
 
     /// <summary>
-    /// Issue nobodies-collective/Humans#677 — when Drive's
-    /// <c>permissions.create</c> returns a target-rejection (HTTP 400/403
-    /// referencing "no Google account" / "SendNotificationEmail"), mark the
-    /// owning user's Google identity <see cref="GoogleEmailStatus.Rejected"/>
-    /// so the orchestrator stops
-    /// re-attempting until an admin clears the state. Mirrors the existing
-    /// <c>GoogleGroupSyncService.HandleGroupAddFailureAsync</c> pattern.
+    /// A Drive target rejection marks the owner's identity <see cref="GoogleEmailStatus.Rejected"/>, so retries stop
+    /// until an admin clears it. Mirrors <c>GoogleGroupSyncService.HandleGroupAddFailureAsync</c>.
     /// </summary>
     private async Task HandleDriveAddFailureAsync(
         GoogleResource resource,
@@ -140,17 +123,14 @@ internal sealed class GoogleWorkspaceSyncService(
         var statusCode = error?.StatusCode ?? 0;
         var rawMessage = error?.RawMessage ?? string.Empty;
 
-        // Drive returns 400 when the recipient has no Google account on a
-        // domain that supports notification-free sharing, and 403 "Cannot share a
-        // shared drive with non Google accounts" (#1938). Other 403s are caller-
-        // permission failures (not the target's problem); the phrase predicate
-        // below tells them apart.
+        // 400: no Google account on the recipient's domain; 403: "Cannot share a shared drive with non Google
+        // accounts". Other 403s are caller-permission failures; the phrase predicate below tells them apart.
         if (statusCode is not (400 or 403))
         {
             return;
         }
 
-        // Drive-specific predicate only — generic phrases (sharing-policy) must not flip GoogleEmailStatus (#677).
+        // Drive-specific predicate only: generic sharing-policy phrases must not flip GoogleEmailStatus.
         if (error?.IsDriveTargetRejection != true)
         {
             return;
@@ -175,11 +155,8 @@ internal sealed class GoogleWorkspaceSyncService(
         CancellationToken cancellationToken = default,
         GoogleSyncSource syncSource = GoogleSyncSource.ManualSync)
     {
-        // Merge-fold redirect (issue peterdrier/Humans#646): an outbox event enqueued
-        // before a merge is dequeued after it, so the id here may be an account that was
-        // folded away. Users resolves that forward (#1704). The resolved user's immutable
-        // snapshot supplies both the target and its state; a second email read could
-        // observe a different selection during a user edit.
+        // An event enqueued before a merge may name a folded-away account; Users resolves it forward. One snapshot
+        // supplies target and state: a second read could see a different selection mid-edit.
         var user = await userService.GetUserInfoAsync(userId, cancellationToken);
         var target = user is null ? null : await workspaceIdentities.GetWorkspaceIdentityAsync(user.Id, cancellationToken);
         if (target is null)
@@ -481,10 +458,7 @@ internal sealed class GoogleWorkspaceSyncService(
                 relatedEntityId: teamId, relatedEntityType: "Team");
         }
 
-        // Delegate to the central recon path. ReconcileOneAsync looks up the
-        // group, auto-provisions it (with enforced settings) when missing, and
-        // syncs membership. Returns a diff carrying the Google numeric id on
-        // success — we use it to write the team-side GoogleResource row.
+        // ReconcileOneAsync auto-provisions a missing group and syncs membership; its diff carries the numeric id.
         var diff = await googleGroupSync.ReconcileOneAsync(email, SyncAction.Execute, cancellationToken, scheduleRetries: false, syncSource: GoogleSyncSource.ManualSync);
         if (string.IsNullOrEmpty(diff.GoogleId))
         {
@@ -534,9 +508,6 @@ internal sealed class GoogleWorkspaceSyncService(
 
         var groupResources = await GetActiveGroupResourcesAsync(cancellationToken);
 
-        // Filter to groups whose team is still active. TeamInfo cache provides
-        // the read-model (Name/Slug/GoogleGroupPrefix/IsActive) cross-section
-        // so we never traverse the obsolete cross-section nav on GoogleResource.
         var teamsById = await teamService.GetTeamsAsync(cancellationToken);
         var filtered = groupResources
             .Where(r => teamsById.TryGetValue(r.TeamId, out var t) && t.IsActive)
@@ -690,7 +661,6 @@ internal sealed class GoogleWorkspaceSyncService(
 
         var expectedSettings = BuildExpectedSettingsDictionary();
 
-        // Bounded concurrency for settings fetches.
         using var semaphore = new SemaphoreSlim(5);
         var tasks = allGroups
             .Where(g => !string.IsNullOrEmpty(g.Email))
@@ -973,8 +943,7 @@ internal sealed class GoogleWorkspaceSyncService(
     {
         var identity = await workspaceIdentities.GetWorkspaceIdentityAsync(userId, cancellationToken);
 
-        // If the user's Google identity is Rejected, AddUserToTeamResourcesAsync will
-        // silently skip every enqueued event — don't enqueue at all (nobodies-collective/Humans#847).
+        // AddUserToTeamResourcesAsync would skip every event for a Rejected identity, so enqueue none.
         if (identity?.Status == GoogleEmailStatus.Rejected)
         {
             logger.LogDebug("EnqueueUserSyncAsync skipped for user {UserId} — Google identity is Rejected", userId);
@@ -1015,23 +984,15 @@ internal sealed class GoogleWorkspaceSyncService(
         return level;
     }
 
-    /// <summary>
-    /// Looks up an active Google Group resource by the given web URL, regardless
-    /// of the owning team. Used by EnsureTeamGroup to detect cross-team conflicts.
-    /// </summary>
+    /// <summary>Any team's, for the cross-team conflict check.</summary>
     private async Task<GoogleResource?> FindActiveGroupByUrlAsync(string expectedUrl, CancellationToken ct)
     {
-        // The repository doesn't expose URL-based lookup, so scan active groups.
-        // The set is small (dozens of groups at most).
+        // No URL lookup in the repository; the set is a few dozen groups.
         var all = await GetActiveGroupResourcesAsync(ct);
         return all.FirstOrDefault(r => r.Url is not null &&
             string.Equals(r.Url, expectedUrl, StringComparison.OrdinalIgnoreCase));
     }
 
-    /// <summary>
-    /// Looks up an inactive Google Group resource for the given team by URL.
-    /// Used by EnsureTeamGroup's reactivation path.
-    /// </summary>
     private async Task<GoogleResource?> FindInactiveGroupForTeamByUrlAsync(
         Guid teamId, string expectedUrl, CancellationToken ct)
     {
@@ -1052,11 +1013,6 @@ internal sealed class GoogleWorkspaceSyncService(
             ct);
     }
 
-    /// <summary>
-    /// Returns every active Group resource across all teams. Used by the
-    /// domain-wide drift-check and by the cross-team conflict check in
-    /// EnsureTeamGroup. At our scale this is cheap.
-    /// </summary>
     private async Task<IReadOnlyList<GoogleResource>> GetActiveGroupResourcesAsync(CancellationToken ct)
     {
         var allCounts = await resourceRepository.GetActiveResourceCountsByTeamAsync(ct);
@@ -1096,10 +1052,6 @@ internal sealed class GoogleWorkspaceSyncService(
         };
     }
 
-    /// <summary>
-    /// Projects a <see cref="GroupSettingsSnapshot"/> to the enforced-settings
-    /// dictionary used for drift comparison.
-    /// </summary>
     private static Dictionary<string, string?> SnapshotToEnforcedDict(GroupSettingsSnapshot s) => new(StringComparer.Ordinal)
     {
         ["WhoCanJoin"] = s.WhoCanJoin,
@@ -1118,11 +1070,7 @@ internal sealed class GoogleWorkspaceSyncService(
         ["EnableCollaborativeInbox"] = s.EnableCollaborativeInbox
     };
 
-    /// <summary>
-    /// Populates the full actual-settings dictionary (enforced + deprecated)
-    /// for the domain-wide "all groups" page — deprecated settings stay visible
-    /// to admins.
-    /// </summary>
+    /// <summary>Includes deprecated settings, which stay visible to admins.</summary>
     private static void PopulateActualSettings(Dictionary<string, string> dict, GroupSettingsSnapshot s)
     {
         void Add(string key, string? val) { if (val is not null) dict[key] = val; }

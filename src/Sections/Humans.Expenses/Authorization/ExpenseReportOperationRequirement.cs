@@ -3,11 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 namespace Humans.Expenses.Authorization;
 
 /// <summary>
-/// Resource-based authorization requirement for expense report operations.
-/// Used with IAuthorizationService.AuthorizeAsync(User, reportDto, requirement)
-/// where the resource is an <c>ExpenseReportDto</c>. Internal — an external caller reaches the
-/// <c>View</c> check through the <c>PolicyNames.ExpenseReportView</c> named policy this section's
-/// <c>SectionPolicies</c> registers, never this type directly.
+/// The resource is an <c>ExpenseReportDto</c>. Callers outside the section reach <c>View</c> through the
+/// <c>PolicyNames.ExpenseReportView</c> policy, never this type.
 /// </summary>
 internal sealed class ExpenseReportOperationRequirement(ExpenseReportOperation operation) : IAuthorizationRequirement
 {

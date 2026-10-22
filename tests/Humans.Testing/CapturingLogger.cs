@@ -2,11 +2,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Humans.Testing;
 
-/// <summary>
-/// Minimal <see cref="ILogger{T}"/> that captures log entries in memory so
-/// tests can assert on level and message without involving a real logging
-/// framework.
-/// </summary>
 public sealed class CapturingLogger<T> : ILogger<T>
 {
     public sealed record LogEntry(LogLevel Level, string Message, Exception? Exception);

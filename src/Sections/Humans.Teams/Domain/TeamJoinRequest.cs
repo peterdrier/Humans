@@ -2,27 +2,16 @@ using NodaTime;
 using Humans.Teams.Contracts;
 namespace Humans.Teams.Domain;
 
-/// <summary>
-/// Represents a request to join a team.
-/// </summary>
 internal sealed class TeamJoinRequest
 {
     public Guid Id { get; init; }
     public Guid TeamId { get; init; }
     public Team Team { get; set; } = null!;
-    /// <summary>
-    /// FK column only — no navigation property. Resolve the requester via
-    /// <c>IUserService.GetUserInfoAsync</c>.
-    /// </summary>
     public Guid UserId { get; init; }
     public TeamJoinRequestStatus Status { get; set; } = TeamJoinRequestStatus.Pending;
     public string? Message { get; set; }
     public Instant RequestedAt { get; init; }
     public Instant? ResolvedAt { get; set; }
-    /// <summary>
-    /// FK column only — no navigation property. Resolve the reviewer via
-    /// <c>IUserService.GetUserInfoAsync</c>.
-    /// </summary>
     public Guid? ReviewedByUserId { get; set; }
     public string? ReviewNotes { get; set; }
     public ICollection<TeamJoinRequestStateHistory> StateHistory { get; } = new List<TeamJoinRequestStateHistory>();

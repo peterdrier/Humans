@@ -2,7 +2,6 @@ using Humans.Base.Authorization;
 
 namespace Humans.Camps;
 
-/// <summary>Camps' admin sidebar group, labelled "Barrios" (nobodies-collective/Humans#1077).</summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>

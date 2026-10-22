@@ -454,8 +454,6 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         (await LegalDb.ConsentRecords.CountAsync(TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
-    // --- GetConsentDashboardAsync ---
-
     [HumansFact]
     public async Task GetConsentDashboardAsync_ReturnsDocumentsGroupedByTeam()
     {
@@ -640,8 +638,6 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         history.Should().BeEmpty();
     }
 
-    // --- GetConsentReviewDetailAsync ---
-
     [HumansFact]
     public async Task GetConsentReviewDetailAsync_ReturnsVersionWithDocumentAndConsent()
     {
@@ -712,8 +708,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
     [HumansFact]
     public async Task GetConsentMapForUsersAsync_InputContainsBothSourceAndTarget_DoesNotThrow()
     {
-        // Regression for peterdrier#382 finding 3175264064 (Codex P1):
-        // when input list contains both a source tombstone id and its merge
+        // Regression: when the input list contains both a source tombstone id and its merge
         // target, the chain-follow path used to append the source id again
         // without dedup. The downstream repo's `userIds.ToDictionary(id =>
         // id, ...)` then threw ArgumentException on the duplicate key.
@@ -726,7 +721,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         // The source was merged into the target, so the target's record lists it. The source
-        // id still resolves to the target's record — that is the redirect (#1704) — and the
+        // id still resolves to the target's record (the redirect), and the
         // unrelated id lists nothing.
         var target = WrapInUserInfo(targetId, UserFixtures.Profile(
             burnerName: "Burner", firstName: "First", lastName: "Last",
@@ -778,8 +773,6 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         result[targetId].Should().Contain(versionId,
             "the survivor keeps the consent signed under the id merged into it, whatever the batch order");
     }
-
-    // --- Helpers ---
 
     private Guid SeedDocument(Guid teamId, string name, bool isActive = true, bool isRequired = true, Instant? effectiveFrom = null)
     {
@@ -857,7 +850,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
     [HumansFact]
     public async Task GetConsentMapForUsersAsync_ThroughAMergedAwayId_IncludesTheSurvivorsOwnConsent()
     {
-        // #1704: a caller still holding the archived id gets the survivor's record, and the
+        // A caller still holding the archived id gets the survivor's record, and the
         // chain to union is that record's AllUserIds, survivor first. A union over
         // [archived, ..MergedUserIds] would miss what the survivor signed after the merge.
         var sourceId = Guid.NewGuid();

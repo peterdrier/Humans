@@ -8,9 +8,6 @@ using Xunit;
 
 namespace Humans.Camps.Tests.Authorization;
 
-/// <summary>
-/// Unit tests for <see cref="CampComplianceAccessHandler"/>.
-/// </summary>
 public sealed class CampComplianceAccessHandlerTests
 {
     private readonly IShiftService _shiftManagement = Substitute.For<IShiftService>();

@@ -3,12 +3,8 @@ using CsvHelper.Configuration;
 namespace Humans.Events.Services;
 
 /// <summary>
-/// The CSV shape of one barrio bulk-upload row — the single contract shared by
-/// the template download (writer) and <see cref="BulkEventCsvParser"/>
-/// (reader), so the column set can never drift between the two. All columns
-/// are strings: value parsing and validation stay in the parser and
-/// <c>EventBulkImportValidator.ValidateRows</c> so per-row error messages can be
-/// collected instead of failing on the first bad cell.
+/// Shared by the template download and the parser, so the column set cannot drift. All strings: parsing and
+/// validation stay in the parser and validator so per-row errors can be collected.
 /// </summary>
 internal sealed class BulkEventCsvRecord
 {
@@ -29,11 +25,8 @@ internal sealed class BulkEventCsvRecord
 }
 
 /// <summary>
-/// Column map for <see cref="BulkEventCsvRecord"/>. Matching is by header name
-/// (case- and whitespace-forgiving via the shared read config), so uploaders
-/// may reorder columns, keep extra working columns, or omit the optional ones.
-/// <c>Barrio</c> and <c>Status</c> are informational on download and ignored on
-/// upload; <c>Id</c> is blank for new events.
+/// Matched by header name, so uploaders may reorder columns, keep extra ones, or omit optional ones. <c>Barrio</c> and
+/// <c>Status</c> are ignored on upload; <c>Id</c> is blank for new events.
 /// </summary>
 internal sealed class BulkEventCsvRecordMap : ClassMap<BulkEventCsvRecord>
 {

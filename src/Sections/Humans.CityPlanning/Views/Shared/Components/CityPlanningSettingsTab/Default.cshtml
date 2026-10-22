@@ -4,15 +4,12 @@
     var settings = Model.Settings;
 }
 
-@* Admin/operator-only tab (memory/code/localization-admin-exempt.md): plain string, no resx key. *@
 @if (settings is null)
 {
     <div class="alert alert-info">No active event. City planning takes its year from the active event — set one in the Event tab first.</div>
 }
 
 <div class="row g-4">
-    @* Barrio placement: the effective window, the manual override, and the day-offset schedule
-       (peterdrier/Humans#2102). New text is plain strings — admin-exempt. *@
     @if (settings is not null)
     {
     <div class="col-md-6">
@@ -137,10 +134,7 @@
 
     }
 
-    @* This is CityPlanning's sole editor for CityPlanningService.UpdateRegistrationInfoAsync.
-       Keyed to the highest open season, so it shows without an active event when a season is open.
-       The tab is CityPlanningMapAdmin-gated (admin/operator-only per
-       memory/code/localization-admin-exempt.md), so plain strings, no resx keys. *@
+    @* Keyed to the highest open season, so it shows without an active event when a season is open. *@
     @if (Model.RegistrationInfoEditable)
     {
     <div class="col-md-6">

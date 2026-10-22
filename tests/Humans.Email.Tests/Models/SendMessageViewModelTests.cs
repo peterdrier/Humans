@@ -5,12 +5,8 @@ using AwesomeAssertions;
 namespace Humans.Email.Tests.Models;
 
 /// <summary>
-/// Validation coverage for <see cref="SendMessageViewModel"/>. Browsers submit
-/// textarea line breaks as \r\n, which — uncorrected — inflates the bound string
-/// past what the user counted and pushed a 1985-character message with line
-/// breaks over the 2000-char limit (nobodies-collective/Humans#953). The
-/// property normalises \r\n to \n on bind so the length check agrees with the
-/// user's count.
+/// Browsers submit textarea line breaks as \r\n, which inflates the bound string past what the
+/// user counted; the property normalises \r\n to \n on bind so the length check agrees.
 /// </summary>
 public sealed class SendMessageViewModelTests
 {

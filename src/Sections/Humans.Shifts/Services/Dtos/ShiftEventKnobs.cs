@@ -1,8 +1,6 @@
 namespace Humans.Shifts.Services.Dtos;
 
 /// <summary>
-/// Shifts' own per-event knobs (nobodies-collective/Humans#1631) — a DTO rather than the
-/// <c>EventSettings</c> entity itself, so <see cref="Services.IShiftManagement.GetKnobsAsync"/>
-/// stays off the entity-read ratchet (docs/architecture/service-entity-boundary-ratchet.md).
+/// A DTO, not the entity, to keep <see cref="Services.IShiftManagement.GetKnobsAsync"/> off the entity-read ratchet.
 /// </summary>
 internal sealed record ShiftEventKnobs(bool IsShiftBrowsingOpen, int? GlobalVolunteerCap, int ReminderLeadTimeHours);

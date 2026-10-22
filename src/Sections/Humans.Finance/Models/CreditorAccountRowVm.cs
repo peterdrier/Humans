@@ -1,22 +1,17 @@
 namespace Humans.Finance.Models;
 
-/// <summary>A row of the admin Creditor Accounts overview: a Holded 400000xx balance + its member
-/// bindings. More than one binding is a collision — two members' expense payments pointed at one
-/// creditor account — and the row renders it as such rather than picking a winner.</summary>
-/// <param name="Balance">Inverted for display: credit − debit, so a positive figure is money the
-/// organisation owes the member. The mirror and every derivation elsewhere keep Holded's own sign
-/// (Σdebit − Σcredit); the flip happens here and nowhere else. /Holded/Accounts/{num} shows the
-/// same account unflipped.</param>
-/// <param name="SupplierAccountNum">The creditor's Holded supplier account number.</param>
-/// <param name="Name">The Holded account name.</param>
-/// <param name="Bindings">Members bound to this creditor account.</param>
-/// <param name="IbanMasked">The linked Holded contact's masked IBAN, if available.</param>
-/// <param name="OpenDocs">Approved, still-owing purchase documents on the bound contact; null (shown
-/// as "—") on unbound and colliding rows, or when Holded's document list could not be read.</param>
-/// <param name="PendingPayoutFileName">A generated file still carrying an unbooked, unwithdrawn
-/// transfer to this account; the row is not payable again until it is booked or withdrawn.</param>
-/// <param name="HasDuplicateDocuments">True when the bound member's expense lines match more than
-/// one Holded document (the balance is inflated); null when the check could not run.</param>
+/// <summary>More than one binding is a collision, and the row shows it rather than picking a winner.</summary>
+/// <remarks>
+/// <list type="bullet">
+/// <item><paramref name="Balance"/> is inverted for display (credit − debit, positive = owed to the member). Everything
+/// else keeps Holded's Σdebit − Σcredit; the flip happens here and nowhere else.</item>
+/// <item><paramref name="OpenDocs"/> is null (shown as "—") on unbound and colliding rows, or when Holded's document
+/// list could not be read.</item>
+/// <item><paramref name="PendingPayoutFileName"/>: an unbooked, unwithdrawn transfer to this account; the row is not
+/// payable again until it is booked or withdrawn.</item>
+/// <item><paramref name="HasDuplicateDocuments"/> is null when the check could not run.</item>
+/// </list>
+/// </remarks>
 internal sealed record CreditorAccountRowVm(
     int SupplierAccountNum,
     string Name,
@@ -27,14 +22,12 @@ internal sealed record CreditorAccountRowVm(
     string? PendingPayoutFileName = null,
     bool? HasDuplicateDocuments = false)
 {
-    /// <summary>The reason the page links to <c>/Finance/HoldedDuplicates</c> from.</summary>
     public const string DuplicateDocumentsReason = "duplicate documents in Holded";
 
-    /// <summary>Two or more members on one 400000xx — needs an admin to unbind all but the owner.</summary>
+    /// <summary>Needs an admin to unbind all but the owner.</summary>
     public bool HasCollision => Bindings.Count > 1;
 
-    /// <summary>Why this row cannot be paid, or null when it can. The server re-derives the same
-    /// rules at generation; this is what the page shows instead of a checkbox.</summary>
+    /// <summary>Null when payable. Display only: the server re-derives the same rules at generation.</summary>
     public string? NotPayableReason => Bindings.Count switch
     {
         0 => "unbound",
@@ -47,27 +40,21 @@ internal sealed record CreditorAccountRowVm(
         _ => null,
     };
 
-    /// <summary>Single-bound, positive balance, IBAN known.</summary>
     public bool IsPayable => NotPayableReason is null;
 
-    /// <summary>Sort key for the Member column. Unbound rows sort last rather than first: an admin
-    /// sorting by member is looking for people, not for gaps.</summary>
+    /// <summary>Unbound rows sort last: an admin sorting by member is looking for people, not gaps.</summary>
     public string MemberSortKey => Bindings.Count == 0
         ? "￿"
         : string.Join(", ", Bindings.Select(b => b.MemberName)).ToUpperInvariant();
 }
 
-/// <summary>One member bound to a creditor account, named for display and unbindable by id. Used
-/// for both halves of the page: the bindings on an account row, and the ones with no account yet.</summary>
 internal sealed record CreditorBindingVm(Guid UserId, string MemberName, string Source);
 
-/// <summary>The /Finance/Creditors page model.</summary>
-/// <param name="Unresolved">Bindings with no 400000xx, so no account row to sit on. Nothing retries
-/// the resolution, so this is the only place they can be bound (nobodies-collective/Humans#972).</param>
-/// <param name="SortBy">Active column — "account" (default), "name", "balance", "opendocs" or "member".</param>
-/// <param name="SortDir">"asc" or "desc"; the headers link to the opposite of whatever is active.</param>
-/// <param name="Sepa">Whether the payout column renders at all, and the per-transfer ceiling.</param>
-/// <param name="Accounts">Creditor accounts shown on the page.</param>
+/// <summary>
+/// <paramref name="Unresolved"/> is the bindings with no 400000xx. Nothing retries their resolution, so this is the
+/// only place they can be bound. <paramref name="SortBy"/> is "account" (default), "name", "balance", "opendocs" or
+/// "member".
+/// </summary>
 internal sealed record CreditorsPageVm(
     IReadOnlyList<CreditorAccountRowVm> Accounts,
     IReadOnlyList<CreditorBindingVm> Unresolved,
@@ -75,15 +62,14 @@ internal sealed record CreditorsPageVm(
     string SortDir,
     SepaPayoutSettings Sepa)
 {
-    /// <summary>Accounts whose member has duplicate documents in Holded — the page's banner count.
-    /// Zero means zero: the check ran and found nothing.</summary>
+    /// <summary>Zero means the check ran and found nothing.</summary>
     public int DuplicateFlaggedAccounts => Accounts.Count(a => a.HasDuplicateDocuments == true);
 
-    /// <summary>The check could not run for at least one bound row (Holded's document list unreadable).</summary>
+    /// <summary>Holded's document list was unreadable for at least one bound row.</summary>
     public bool DuplicateCheckUnavailable => Accounts.Any(a => a.HasDuplicateDocuments is null);
 }
 
-/// <summary>Outcome of a manual creditor-account bind: the failure message is admin-facing.</summary>
+/// <summary>The failure message is admin-facing.</summary>
 internal sealed record CreditorBindResult(bool Succeeded, string? ErrorMessage)
 {
     public static CreditorBindResult Success { get; } = new(true, null);

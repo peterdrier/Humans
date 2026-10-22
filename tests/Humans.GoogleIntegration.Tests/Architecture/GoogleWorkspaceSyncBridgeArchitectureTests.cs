@@ -11,10 +11,7 @@ namespace Humans.GoogleIntegration.Tests.Architecture;
 /// </summary>
 public class GoogleWorkspaceSyncBridgeArchitectureTests
 {
-    /// <summary>
-    /// Every bridge interface — enforced below so adding a new one forces the author to
-    /// add it to the architecture test suite as well.
-    /// </summary>
+    /// <summary>Every bridge interface; a new one must be added here too.</summary>
     public static readonly IReadOnlyList<Type> BridgeInterfaces =
     [
         typeof(IGoogleGroupMembershipClient),
@@ -27,16 +24,12 @@ public class GoogleWorkspaceSyncBridgeArchitectureTests
         BridgeInterfaces.Select(t => new object[] { t });
 
     /// <summary>
-    /// The restated form of the old "the bridge lives in Humans.Application" assertion. The
-    /// interface and its implementation share an assembly now, so what the bridge buys is
-    /// asserted where it is still true: no type in the section's service namespace names an
-    /// SDK type.
+    /// The interface and its implementation share an assembly, so what the bridge buys is asserted
+    /// here: no type in the section's service namespace names an SDK type.
     /// </summary>
     [HumansFact]
     public void SectionServiceLayer_NamesNoGoogleSdkType() =>
         GoogleSdkContainment.AssertServiceLayerNamesNoGoogleSdkType();
-
-    // ── Shape-neutral surface ────────────────────────────────────────────────
 
     [HumansTheory]
     [MemberData(nameof(BridgeInterfaceCases))]

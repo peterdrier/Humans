@@ -3,7 +3,7 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Rideshare;
 
-/// <summary>Member top-nav link to the rideshare board; label key lives in SharedResource.</summary>
+/// <summary>The label key lives in SharedResource.</summary>
 internal sealed class SectionNav : ISectionNav
 {
     public IEnumerable<MemberNavItem> Items() =>

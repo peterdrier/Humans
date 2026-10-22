@@ -10,24 +10,17 @@ using NodaTime;
 
 namespace Humans.Workgroups.Models;
 
-/// <summary>
-/// The register (design §15): the three lists the page shows, plus the clock the badges are
-/// measured against. Badges themselves are not baked in — the views ask
-/// <see cref="WorkgroupRhythm"/>, so page and job can never disagree.
-/// </summary>
+/// <summary>Badges aren't baked in: the views ask <see cref="WorkgroupRhythm"/>, so page and job can't disagree.</summary>
 internal sealed class RegisterViewModel
 {
     public required Instant Now { get; init; }
 
     public required IReadOnlyList<WorkgroupInfo> Active { get; init; }
 
-    /// <summary>Applied and Referred: waiting on the Secretary or the Board.</summary>
     public required IReadOnlyList<WorkgroupInfo> Pending { get; init; }
 
-    /// <summary>Dormant, Withdrawn and Refused, each with its reason on the row.</summary>
     public required IReadOnlyList<WorkgroupInfo> Archive { get; init; }
 
-    /// <summary>Burner names for every coordinator on the page, by user id.</summary>
     public required IReadOnlyDictionary<Guid, UserInfo> People { get; init; }
 
     public required Guid CurrentUserId { get; init; }
@@ -57,14 +50,12 @@ internal sealed class RegisterViewModel
         };
 }
 
-/// <summary>The Board/Admin budget form on the group page and on the bootstrap form.</summary>
 internal sealed class WorkgroupBudgetFormViewModel : IValidatableObject
 {
     public bool HasBudget { get; set; }
 
-    /// <summary>Raw posted text, parsed invariantly by <see cref="ParsedAmount"/> — not model-bound
-    /// as a decimal, which uses the request culture: <c>&lt;input type="number"&gt;</c> always posts
-    /// "12.34", and a comma-decimal culture would read that as 1234.</summary>
+    /// <summary>Parsed invariantly by <see cref="ParsedAmount"/>, not model-bound as a decimal: the number input always
+    /// posts "12.34", which a comma-decimal request culture would read as 1234.</summary>
     public string? Amount { get; set; }
 
     /// <summary>"create" (default) or "link".</summary>
@@ -81,8 +72,8 @@ internal sealed class WorkgroupBudgetFormViewModel : IValidatableObject
         HasBudget ? ParsedAmount : null,
         IsLink ? ExistingAccountNum : null);
 
-    // A ticked box with no amount would clear the budget, and "link" with no account would
-    // create one: both are incomplete submissions, not their silent fallbacks.
+    // A ticked box with no amount would clear the budget, and "link" with no account would create one: both are
+    // incomplete submissions, not their silent fallbacks.
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (!HasBudget) yield break;
@@ -95,7 +86,6 @@ internal sealed class WorkgroupBudgetFormViewModel : IValidatableObject
     }
 }
 
-/// <summary>One group's page: the register entry, the people on it, and what this reader may do.</summary>
 internal sealed class WorkgroupPageViewModel
 {
     public required WorkgroupInfo Workgroup { get; init; }
@@ -104,45 +94,38 @@ internal sealed class WorkgroupPageViewModel
 
     public required Guid CurrentUserId { get; init; }
 
-    /// <summary>Burner names and tiers for the roster and the log's attributions.</summary>
     public required IReadOnlyDictionary<Guid, UserInfo> People { get; init; }
 
-    /// <summary>Non-Volunteer membership tiers (Governance), for the roster's tier badge.</summary>
+    /// <summary>Non-Volunteer tiers only.</summary>
     public IReadOnlyDictionary<Guid, MembershipTier> Tiers { get; init; } = new Dictionary<Guid, MembershipTier>();
 
-    /// <summary>Board-team membership, for the roster's Board badge.</summary>
     public required IReadOnlySet<Guid> BoardUserIds { get; init; }
 
     public required bool IsMember { get; init; }
 
     public required bool IsCoordinator { get; init; }
 
-    /// <summary>The reader asked to join and no coordinator has decided yet.</summary>
     public required bool IsPendingMember { get; init; }
 
-    /// <summary>BoardOrAdmin: the decisions of §6 and the disposition.</summary>
     public required bool CanAdminister { get; init; }
 
-    /// <summary>Member work is frozen unless the group is Active — see the authorization handler.</summary>
+    /// <summary>False unless the group is Active.</summary>
     public required bool CanDoMemberWork { get; init; }
 
-    /// <summary>Approve, decline and add members: a coordinator while the group is Active, or Board/Admin.</summary>
     public bool CanManageMembers => CanAdminister || (IsCoordinator && CanDoMemberWork);
 
-    /// <summary>A sensitive group's roster, documents and history are for members and Board/Admin only.</summary>
     public bool CanSeeContent => !Workgroup.IsSensitive || IsMember || CanAdminister;
 
-    /// <summary>Board/Admin, Colaborador and Asociado see the allocation; Volunteers do not.</summary>
+    /// <summary>Board/Admin, Colaborador and Asociado; never Volunteers.</summary>
     public required bool CanSeeBudget { get; init; }
 
-    /// <summary>The live Holded expense chart for the "link existing" picker; empty unless the viewer can administer.</summary>
+    /// <summary>Empty unless the viewer can administer.</summary>
     public IReadOnlyList<HoldedExpenseAccountDto> ExpenseAccounts { get; init; } = [];
 
     public string DisplayName(Guid? userId) =>
         userId is { } id && People.TryGetValue(id, out var info) ? info.BurnerName : "—";
 }
 
-/// <summary>The clause 1 application form, and the same fields when a member edits them.</summary>
 internal sealed class WorkgroupFormViewModel
 {
     public Guid? Id { get; init; }
@@ -153,13 +136,11 @@ internal sealed class WorkgroupFormViewModel
     [StringLength(200, ErrorMessage = "Validation_MaxLength")]
     public string Name { get; set; } = string.Empty;
 
-    /// <summary>Matches the 4,000-character <c>workgroups.Purpose</c> column, so an overlong
-    /// paste is a validation error on the form rather than a SaveChangesAsync failure.</summary>
+    /// <summary>Matches the column, so an overlong paste is a form error rather than a save failure.</summary>
     [Required(ErrorMessage = "Validation_Required")]
     [StringLength(4000, ErrorMessage = "Validation_MaxLength")]
     public string Purpose { get; set; } = string.Empty;
 
-    /// <summary>The group's promise, in one line. Changing it writes a ScopeChanged entry.</summary>
     [Required(ErrorMessage = "Validation_Required")]
     [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string Deliverable { get; set; } = string.Empty;
@@ -173,10 +154,8 @@ internal sealed class WorkgroupFormViewModel
     [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? DiscordChannelUrl { get; set; }
 
-    /// <summary>Roster, documents and history for members and Board/Admin only.</summary>
     public bool IsSensitive { get; set; }
 
-    /// <summary>Optional second name on the register; the applicant is always the first.</summary>
     public Guid? SecondCoordinatorUserId { get; set; }
 
     public static WorkgroupFormViewModel FromWorkgroup(WorkgroupInfo w) => new()
@@ -220,10 +199,8 @@ internal sealed class MeetingFormViewModel
 
     public string? LocationUrl { get; set; }
 
-    /// <summary>A public meeting reaches everyone's community calendar through Calendar's fan-out.</summary>
     public bool IsPublic { get; set; }
 
-    /// <summary>Markdown; "or summarised transcripts", per the guidance.</summary>
     public string? Minutes { get; set; }
 
     public static MeetingFormViewModel FromMeeting(string slug, WorkgroupMeetingInfo m) => new()
@@ -249,7 +226,7 @@ internal sealed class LogEntryFormViewModel
 
     public required string Slug { get; init; }
 
-    /// <summary>Update, Disclosure or Note — the kinds a human writes.</summary>
+    /// <summary>Update, Disclosure or Note.</summary>
     public WorkgroupLogKind Kind { get; set; } = WorkgroupLogKind.Update;
 
     public LocalDate OccurredOn { get; set; }
@@ -285,7 +262,7 @@ internal sealed class DocumentFormViewModel
 
     public WorkgroupDocumentKind Kind { get; set; }
 
-    /// <summary>Markdown, sanitized on render. Groups draft in Drive and paste the publishable text here.</summary>
+    /// <summary>Markdown, sanitized on render.</summary>
     public string Body { get; set; } = string.Empty;
 
     public static DocumentFormViewModel FromDocument(string slug, WorkgroupDocumentInfo d) => new()
@@ -300,7 +277,6 @@ internal sealed class DocumentFormViewModel
     public WorkgroupDocumentSave ToSave() => new(Title, Kind, Body);
 }
 
-/// <summary>One document, read: the body, the comments grouped by category, and what the reader may do.</summary>
 internal sealed class DocumentPageViewModel
 {
     public required WorkgroupInfo Workgroup { get; init; }
@@ -321,14 +297,12 @@ internal sealed class DocumentPageViewModel
 
     public bool IsOpenForComment => Document.IsOpenForComment(Now);
 
-    /// <summary>Hidden comments read as hidden to everyone but the people who can moderate.</summary>
     public bool CanSeeHidden => IsMember || CanAdminister;
 
     public string DisplayName(Guid? userId) =>
         userId is { } id && People.TryGetValue(id, out var info) ? info.BurnerName : "—";
 }
 
-/// <summary>The admin queue of §15: everything waiting on the Secretary or the Board.</summary>
 internal sealed class AdminQueueViewModel
 {
     public required Instant Now { get; init; }
@@ -356,7 +330,6 @@ internal sealed class AdminQueueViewModel
         userId is { } id && People.TryGetValue(id, out var info) ? info.BurnerName : "—";
 }
 
-/// <summary>Bootstrapping (design §21): the same application fields, plus who and since when.</summary>
 internal sealed class RegisterExistingViewModel
 {
     public WorkgroupFormViewModel Application { get; set; } = new();
@@ -364,17 +337,15 @@ internal sealed class RegisterExistingViewModel
     [Required]
     public Guid CoordinatorUserId { get; set; }
 
-    /// <summary>When the group really started; the register is backdated to it.</summary>
+    /// <summary>The register is backdated to it.</summary>
     public LocalDate RegisteredOn { get; set; }
 
     public WorkgroupBudgetFormViewModel Budget { get; set; } = new();
 
-    /// <summary>The live Holded expense chart for the "link existing" picker; filled by the controller, never bound.</summary>
     [BindNever]
     public IReadOnlyList<HoldedExpenseAccountDto> ExpenseAccounts { get; set; } = [];
 }
 
-/// <summary>The one Workgroups setting: the Drive folder every group's subfolder is created under.</summary>
 internal sealed class WorkgroupsSettingsViewModel
 {
     [Required]

@@ -8,9 +8,8 @@ internal sealed class Repository(
     IDbContextFactory<MailerLiteDbContext> factory,
     ILogger<Repository> logger) : IMailerLiteRepository
 {
-    // The daily sync job and an admin's "Sync Audience" click can hit the same key at once,
-    // and a bare read-then-insert would write that key twice. Striped like UserService's
-    // profile-stub locks; single server, so an app-level lock is the whole answer.
+    // The daily job and an admin's click can hit the same key at once, and a bare read-then-insert would write
+    // it twice. Single server, so an app-level lock is the whole answer.
     private static readonly TrackedLock[] UpsertLocks = Enumerable
         .Range(0, 8)
         .Select(i => new TrackedLock($"MailerLite.SyncStateUpsert[{i}]"))

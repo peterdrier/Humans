@@ -7,7 +7,7 @@ using Xunit;
 namespace Humans.Base.Tests.Csv;
 
 /// <summary>
-/// Pins the app-wide CSV conventions every export now relies on: UTF-8 BOM,
+/// Pins the app-wide CSV conventions every export relies on: UTF-8 BOM,
 /// CRLF records, invariant formatting, RFC 4180 conditional quoting, and
 /// OWASP CSV-injection escaping (memory/code/csv-use-csvhelper.md).
 /// </summary>

@@ -4,20 +4,11 @@ using NodaTime;
 
 namespace Humans.GoogleIntegration.Data;
 
-/// <summary>
-/// EF-backed implementation of <see cref="ISyncSettingsRepository"/>. The only
-/// non-test file that touches <c>DbContext.SyncServiceSettings</c>.
-/// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>GoogleIntegrationDbContext</c> remains Scoped.
-/// </summary>
 internal sealed class SyncSettingsRepository(IDbContextFactory<GoogleIntegrationDbContext> factory) : ISyncSettingsRepository
 {
     public async Task<IReadOnlyList<SyncServiceSettings>> GetAllAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Cross-domain nav UpdatedByUser intentionally NOT loaded — callers
-        // resolve display names via IUserService (design-rules §6).
-        // Display ordering is the controller's job (display-sort-in-controllers atom).
         return await ctx.SyncServiceSettings
             .AsNoTracking()
             .ToListAsync(ct);

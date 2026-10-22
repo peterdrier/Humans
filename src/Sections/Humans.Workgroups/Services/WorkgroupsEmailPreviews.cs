@@ -2,19 +2,12 @@ using Humans.Email.Contracts;
 
 namespace Humans.Workgroups.Services;
 
-/// <summary>
-/// Workgroups' contribution to the template gallery at <c>/Email/EmailPreview</c>: one
-/// sample per notice kind <see cref="WorkgroupsEmails"/> can send, built through the
-/// same builder the real send path uses, so the gallery cannot drift from what members
-/// receive (peterdrier/Humans#1651). Sample data only — no recipient is real and nothing
-/// is sent.
-/// </summary>
+/// <summary>Built through the real send path's builder, so the gallery can't drift from what members receive.</summary>
 internal sealed class WorkgroupsEmailPreviews(WorkgroupsEmails emails) : IEmailPreviewContributor
 {
     private const string SampleName = "Health & Safety";
     private const string SampleSlug = "health-safety";
 
-    /// <summary>The kinds that carry a <c>Detail</c> line, and the sample that fills it.</summary>
     private static readonly Dictionary<WorkgroupNoticeKind, string> Details = new()
     {
         [WorkgroupNoticeKind.Refused] = "The scope overlaps an existing working group.",
@@ -36,8 +29,7 @@ internal sealed class WorkgroupsEmailPreviews(WorkgroupsEmails emails) : IEmailP
                 emails.WorkgroupNotice(new WorkgroupNoticeRequest(
                     persona.Email, persona.Name, kind, SampleName, SampleSlug,
                     Details.GetValueOrDefault(kind), persona.Culture)))),
-            // RecipientName null/empty is the role-inbox case (e.g. the Board), which takes
-            // the Greeting_Generic arm instead of the named greeting above.
+            // A null RecipientName is the role-inbox case, which takes the generic greeting.
             new EmailPreviewSample("workgroup-notice-role-inbox", "Workgroup Notice (role inbox, generic greeting)",
                 emails.WorkgroupNotice(new WorkgroupNoticeRequest(
                     persona.Email, null, WorkgroupNoticeKind.Registered, SampleName, SampleSlug,

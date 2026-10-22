@@ -1,5 +1,4 @@
 @model GrantsCardViewModel
-@* Admin-only card on /Users/Admin/{id}: no localization keys (memory/code/localization-admin-exempt.md). *@
 @{
     Func<GrantInfo, IHtmlContent> stateCell = @<text><span class="badge @EnumBadgeMap.For(item.State(Model.Today))">@item.State(Model.Today)</span></text>;
     Func<GrantInfo, IHtmlContent> programCell = @<text>@if (Model.LinkablePrograms.Contains(item.ProgramId))

@@ -8,13 +8,6 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.GoogleIntegration.Services.Workspace;
 
-/// <summary>
-/// Real Google-backed implementation of <see cref="ITeamResourceGoogleClient"/>.
-/// Authenticates as the service account itself (no impersonation) since the
-/// resources being linked are pre-shared with that service account. Mirrors
-/// the pre-migration behavior of <c>TeamResourceService</c>'s inline Google
-/// API calls.
-/// </summary>
 internal sealed class TeamResourceGoogleClient(
     IOptions<GoogleWorkspaceSettings> settings,
     ILogger<TeamResourceGoogleClient> logger) : ITeamResourceGoogleClient
@@ -128,11 +121,7 @@ internal sealed class TeamResourceGoogleClient(
         return _serviceAccountEmail;
     }
 
-    /// <summary>
-    /// Walks the parent chain up to the Shared Drive root to build a display path
-    /// like "SharedDrive / Parent / Child". Falls back to the item's own name
-    /// when ancestor access is denied. Mirrors the pre-migration logic.
-    /// </summary>
+    /// <summary>Falls back to the item's own name when ancestor access is denied.</summary>
     private async Task<string> BuildFolderPathAsync(
         DriveService drive, Google.Apis.Drive.v3.Data.File file, CancellationToken ct)
     {
@@ -162,10 +151,8 @@ internal sealed class TeamResourceGoogleClient(
         {
             var parentId = currentParents[0];
 
-            // Stop if we've reached the Shared Drive root
             if (string.Equals(parentId, driveId, StringComparison.Ordinal))
             {
-                // Try to get the Shared Drive name
                 try
                 {
                     var driveInfo = await drive.Drives.Get(driveId).ExecuteAsync(ct);

@@ -12,9 +12,7 @@ internal static class ProfileSummaryViewModelBuilder
     {
         ArgumentNullException.ThrowIfNull(info);
 
-        // Email is intentionally NOT populated here — the popover surfaces this
-        // model to any authenticated user, so exposing email (verified or not)
-        // is a GDPR PII leak. Admins who need email use /Users/Admin/{id}.
+        // Email is deliberately absent: any authenticated user sees this popover, so it would leak PII.
         return new ProfileSummaryViewModel
         {
             UserId = info.Id,

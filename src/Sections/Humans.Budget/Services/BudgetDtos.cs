@@ -4,11 +4,6 @@ using NodaTime;
 
 namespace Humans.Budget.Services;
 
-/// <summary>
-/// Budget's section-internal projections. Everything here is consumed only by the
-/// section's own controllers, views and jobs; the shapes other sections read live on
-/// <c>Humans.Budget.Contracts</c> instead.
-/// </summary>
 internal sealed record BudgetYearSummarySnapshot(
     Guid Id,
     string Year,
@@ -63,9 +58,7 @@ internal sealed record CoordinatorCategoryDetailViewData(
 
 internal sealed record EnsureTicketingGroupResult(bool Created, string Message);
 
-/// <summary>
-/// A projected week of ticket sales — virtual line items not yet materialized.
-/// </summary>
+/// <summary>Virtual line items, not materialized.</summary>
 internal sealed class TicketingWeekProjection
 {
     public required string WeekLabel { get; init; }
@@ -77,10 +70,7 @@ internal sealed class TicketingWeekProjection
     public decimal ProjectedTtFees { get; init; }
 }
 
-/// <summary>
-/// Aggregated ticket sales for a completed ISO week, produced by the bridge service from
-/// <c>ITicketService</c> data and consumed by <c>BudgetService.SyncTicketingActualsAsync</c>.
-/// </summary>
+/// <summary>One completed ISO week of ticket sales.</summary>
 internal sealed record TicketingWeeklyActuals(
     LocalDate Monday,
     LocalDate Sunday,

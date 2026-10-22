@@ -23,10 +23,8 @@ using Humans.Users.Services;
 namespace Humans.Shifts.Tests.Controllers;
 
 /// <summary>
-/// Stub-name gate on <see cref="ShiftsController"/> — users with no legal name
-/// on file cannot browse shifts. The check sits in front of the browse entry so
-/// deep links to /Shifts (bypassing the OnboardingWidget dispatcher) still get
-/// bounced to the onboarding flow.
+/// The gate sits on the browse entry so deep links to /Shifts that bypass the
+/// onboarding widget still bounce to onboarding.
 /// </summary>
 public class ShiftsControllerNameGateTests
 {
@@ -38,8 +36,6 @@ public class ShiftsControllerNameGateTests
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
-    // The name-gate message came home with Onboarding's G5; the controller now resolves it
-    // through the section's own resource set.
     private readonly IStringLocalizer<OnboardingResource> _onboardingLocalizer = Substitute.For<IStringLocalizer<OnboardingResource>>();
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
@@ -123,9 +119,8 @@ public class ShiftsControllerNameGateTests
     [HumansFact]
     public async Task Index_NamedUser_PassesGate()
     {
-        // Confirms the gate doesn't break the happy path. With no active event,
-        // the controller short-circuits to a "NoActiveEvent" view — proving the
-        // gate let the request through.
+        // With no active event the controller short-circuits to "NoActiveEvent",
+        // which proves the gate let the request through.
         var userId = Guid.NewGuid();
         var ctrl = BuildSut(userId, MakeUserInfo(userId, burner: "B", first: "F", last: "L"));
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns((BurnSettingsInfo?)null);

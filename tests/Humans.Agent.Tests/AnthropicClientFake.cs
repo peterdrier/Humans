@@ -52,7 +52,7 @@ internal sealed class AnthropicClientFake : IAnthropicClient
     /// </summary>
     /// <remarks>
     /// Without this, a test can replay a truncated tool call (as a max_tokens cutoff
-    /// produces — nobodies-collective/Humans#963) and pass green while the same path
+    /// produces) and pass green while the same path
     /// would throw in production. Keep the fake's contract as strict as the client's.
     /// </remarks>
     private static void RejectUnmappableToolCalls(AnthropicRequest request)

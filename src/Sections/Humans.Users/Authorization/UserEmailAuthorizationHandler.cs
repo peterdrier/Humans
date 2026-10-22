@@ -4,10 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Users.Authorization;
 
-/// <summary>
-/// Self-or-admin gate: actor matches target, or actor is Admin / HumanAdmin /
-/// Board. Service signatures stay auth-free.
-/// </summary>
+/// <summary>Self, or Admin / HumanAdmin / Board. Service signatures stay auth-free.</summary>
 internal sealed class UserEmailAuthorizationHandler
     : AuthorizationHandler<UserEmailOperationRequirement, Guid>
 {

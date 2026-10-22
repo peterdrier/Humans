@@ -6,11 +6,7 @@ using Humans.Agent.Contracts;
 namespace Humans.Agent.Services.Preload;
 
 /// <summary>
-/// Reads a whitelisted section's invariants doc from the Humans repo on GitHub at runtime
-/// via the shared <see cref="IGuideContentSource"/>. Held in memory with no
-/// expiration (loaded once at startup or first call, refreshed only on restart) so
-/// per-tool-call round trips are avoided. Returns <c>null</c> on miss (unknown
-/// key, GitHub 404, or transient fetch failure) so the caller can degrade gracefully.
+/// Held in memory with no expiration: restart refreshes. Null on any miss, so the caller can degrade gracefully.
 /// </summary>
 internal sealed class AgentSectionDocReader(
     IGuideContentSource source,
@@ -20,15 +16,11 @@ internal sealed class AgentSectionDocReader(
     private const string CacheKeyPrefix = "agent:section:";
 
     /// <summary>
-    /// Where a section keeps its invariants doc: inside its own project
-    /// (nobodies-collective/Humans#866). Internal because <c>SectionAnnotations</c>
-    /// reports the same folder on /Debug/Sections and the docs health check probes it; a second
-    /// copy of the path would be a second thing to get wrong.
+    /// Internal because <c>SectionAnnotations</c> and the docs health check use the same folder: one copy of the path.
     /// </summary>
     internal static string SectionProjectFolder(string key) => $"src/Sections/Humans.{key}/Docs";
 
-    // No expiration + NeverRemove: GitHub-backed content that only changes at release.
-    // Loaded once (startup warm-up or first call) and held for the process lifetime.
+    // GitHub-backed content that only changes at release: held for the process lifetime.
     private static readonly MemoryCacheEntryOptions HoldForever =
         new() { Priority = CacheItemPriority.NeverRemove };
 
@@ -49,10 +41,8 @@ internal sealed class AgentSectionDocReader(
         }
         catch (NotFoundException)
         {
-            // Whitelisted key but no file in the repo — treat as miss so the tool degrades
-            // cleanly rather than crashing the dispatcher. Log per
-            // memory/code/always-log-problems.md so a missing section guide is visible in
-            // the prod log viewer (which only renders Warning+) instead of disappearing.
+            // Whitelisted but missing: a miss, so the tool degrades cleanly. Logged at Warning, which the prod log
+            // viewer shows.
             logger.LogWarning(
                 "Section guide {Section} not found on GitHub in {Folder}",
                 canonicalKey, SectionProjectFolder(canonicalKey));

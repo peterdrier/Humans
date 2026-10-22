@@ -16,7 +16,7 @@ internal sealed class TicketTransferRequestConfiguration : IEntityTypeConfigurat
             .IsRequired();
 
         builder.HasOne(x => x.OriginalTicketAttendee)
-            .WithMany() // no inverse collection on TicketAttendee — keep that aggregate clean
+            .WithMany()
             .HasForeignKey(x => x.OriginalTicketAttendeeId)
             .OnDelete(DeleteBehavior.Restrict);
 
@@ -40,10 +40,7 @@ internal sealed class TicketTransferRequestConfiguration : IEntityTypeConfigurat
             .HasConversion<string>()
             .HasMaxLength(32);
 
-        // Vendor-writeback columns written by the automated transfer path
-        // (ProcessTransferAsync / RetryReissueAsync) and read by the admin queue/detail.
-        // VendorStepsJson is the one genuinely dormant column — unread, dropped in a
-        // follow-up PR after prod soak (memory/architecture/no-drops-until-prod-verified.md).
+        // VendorStepsJson is dormant: unread, dropped after prod soak.
         builder.Property(x => x.VendorResult)
             .IsRequired()
             .HasConversion<string>()
@@ -62,7 +59,6 @@ internal sealed class TicketTransferRequestConfiguration : IEntityTypeConfigurat
 
         builder.Property(x => x.RequestedAt).IsRequired();
 
-        // Indexes for the homepage card lookup and the admin queue.
         builder.HasIndex(x => new { x.SenderUserId, x.Status });
         builder.HasIndex(x => x.Status);
     }

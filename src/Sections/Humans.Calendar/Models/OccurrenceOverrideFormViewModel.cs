@@ -10,10 +10,7 @@ internal sealed class OccurrenceOverrideFormViewModel
 {
     public Guid EventId { get; set; }
 
-    /// <summary>
-    /// The occurrence's identity as the URL segment: an ISO date for an all-day series, an ISO
-    /// instant for a timed one.
-    /// </summary>
+    /// <summary>The URL identity: an ISO date for an all-day series, an ISO instant for a timed one.</summary>
     public string OriginalOccurrenceStartUtc { get; set; } = string.Empty;
 
     public bool IsAllDay { get; set; }
@@ -35,10 +32,8 @@ internal sealed class OccurrenceOverrideFormViewModel
     public string RecurrenceTimezone { get; set; } = "Europe/Madrid";
 
     /// <summary>
-    /// Builds the override DTO from the posted form. Returns <c>false</c> when an all-day
-    /// field carries a time of day or its inclusive end cannot advance to an exclusive date.
-    /// The form offers dates there, so a non-zero time means
-    /// the post did not come from the form and the caller re-renders rather than saving.
+    /// False when an all-day field carries a time of day (the post didn't come from the form) or its inclusive end
+    /// can't advance to an exclusive date. The caller re-renders rather than saving.
     /// </summary>
     public bool TryBuildOverride(DateTimeZone zone, out OverrideOccurrenceDto dto)
     {

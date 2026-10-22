@@ -14,7 +14,7 @@ using NSubstitute;
 namespace Humans.Email.Tests.Controllers;
 
 /// <summary>
-/// The per-member outbox pages served by Email (Users decomposition commit 3): the member's own
+/// The per-member outbox pages: the member's own
 /// at <c>/Email/Outbox</c>, the admin's at <c>/Email/Admin/{id}/Outbox</c>.
 /// </summary>
 public sealed class MemberOutboxControllerTests

@@ -7,7 +7,7 @@ using NodaTime;
 
 namespace Humans.Grants.Models;
 
-/// <summary>The admin index: every program with its counts, or only the ones the person manages.</summary>
+/// <summary>Every program, or only the ones the person manages.</summary>
 internal sealed class AdminIndexViewModel
 {
     public required LocalDate Today { get; init; }
@@ -15,7 +15,6 @@ internal sealed class AdminIndexViewModel
     public required bool CanAdminister { get; init; }
 }
 
-/// <summary>One program's manage page: its grants and the issue form.</summary>
 internal sealed class AdminProgramViewModel
 {
     public required ProgramInfo Program { get; init; }
@@ -30,7 +29,7 @@ internal sealed class AdminProgramViewModel
         .OrderBy(g => g.State(Today)).ThenByDescending(g => g.IssuedAt);
 }
 
-/// <summary>The create/edit form. Managers arrive as a list of ids from the people picker.</summary>
+/// <summary>Managers arrive as a list of ids from the people picker.</summary>
 internal sealed class ProgramFormViewModel
 {
     public Guid? Id { get; set; }
@@ -60,7 +59,7 @@ internal sealed class ProgramFormViewModel
 
     public List<Guid> ManagerUserIds { get; set; } = [];
 
-    /// <summary>Set by the controller for rendering; never posted.</summary>
+    /// <summary>For rendering only; never posted.</summary>
     public IReadOnlyDictionary<Guid, UserInfo> People { get; set; } = new Dictionary<Guid, UserInfo>();
 
     public ProgramSave ToSave() => new(

@@ -4,11 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Preapprovals.Authorization;
 
-/// <summary>
-/// Resource-based authorization for one program, used as
-/// <c>AuthorizeAsync(User, program, ProgramOperationRequirement.Manage)</c> with a
-/// <see cref="ProgramInfo"/> as the resource.
-/// </summary>
+/// <summary>The resource is a <see cref="ProgramInfo"/>.</summary>
 internal sealed class ProgramOperationRequirement : IAuthorizationRequirement
 {
     /// <summary>Issue, approve, decline, revoke, change an amount: a manager of this program or above.</summary>
@@ -22,7 +18,6 @@ internal sealed class ProgramOperationRequirement : IAuthorizationRequirement
     public string Name { get; }
 }
 
-/// <summary>Program permissions used by the admin controller and its pages.</summary>
 internal sealed class ProgramAuthorizationHandler : AuthorizationHandler<ProgramOperationRequirement, ProgramInfo>
 {
     protected override Task HandleRequirementAsync(

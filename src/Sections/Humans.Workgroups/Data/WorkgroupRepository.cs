@@ -25,18 +25,13 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
         await ctx.SaveChangesAsync(ct);
     }
 
-    // ── Register graph ────────────────────────────────────────────────────
-
     public async Task<WorkgroupsGraph> GetGraphAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Identity resolution rather than plain AsNoTracking: the child → Workgroup
-        // back-references make the graph cyclic, which no-tracking queries refuse.
+        // Identity resolution rather than plain AsNoTracking: the child back-references make the graph cyclic.
         var workgroups = await Register(ctx).ToListAsync(ct);
         return new WorkgroupsGraph(workgroups);
     }
-
-    // ── Single rows for mutation ──────────────────────────────────────────
 
     public async Task<Workgroup?> GetWorkgroupAsync(Guid id, CancellationToken ct = default)
     {
@@ -78,8 +73,6 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
             .Include(c => c.Document)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
     }
-
-    // ── Writes ────────────────────────────────────────────────────────────
 
     public async Task AddWorkgroupAsync(Workgroup workgroup, CancellationToken ct = default)
     {
@@ -147,8 +140,7 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
     public async Task DeleteLogEntryAsync(Guid id, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Tracked remove rather than ExecuteDelete so the section's EF-InMemory tests
-        // exercise the same path.
+        // Tracked remove rather than ExecuteDelete, so the EF-InMemory tests exercise the same path.
         var entry = await ctx.LogEntries.FirstOrDefaultAsync(e => e.Id == id, ct);
         if (entry == null)
             return;
@@ -191,14 +183,11 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
         await ctx.SaveChangesAsync(ct);
     }
 
-    // ── GDPR ──────────────────────────────────────────────────────────────
-
     public async Task<WorkgroupUserRows> GetRowsForUserAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        // The applicant attribution lives on the group row itself, and EraseUserAsync nulls
-        // it — so it has to be exportable too, or we erase something we never disclosed.
+        // EraseUserAsync nulls the applicant attribution, so it must be exportable too.
         var appliedFor = await ctx.Workgroups.AsNoTracking()
             .Where(w => w.AppliedByUserId == userId).ToListAsync(ct);
         var memberships = await ctx.Members.AsNoTracking()
@@ -207,16 +196,13 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
             .Where(e => e.AuthorUserId == userId).ToListAsync(ct);
         var meetings = await ctx.Meetings.AsNoTracking()
             .Where(m => m.CreatedByUserId == userId).ToListAsync(ct);
-        // DispositionByUserId too: a Board member who records a disposition on someone else's
-        // document carries attribution on that row, and the erasure nulls that column as well.
+        // Every attribution column the erasure nulls is an export predicate too.
         var documents = await ctx.Documents.AsNoTracking()
             .Where(d => d.CreatedByUserId == userId
                 || d.UpdatedByUserId == userId
                 || d.DispositionByUserId == userId)
             .ToListAsync(ct);
-        // Hidden comments are included: the export is what we hold, not what we show. All three
-        // attribution columns are matched, so a responder or moderator sees the rows that carry
-        // their id even when someone else wrote the comment — the same three the erasure nulls.
+        // Hidden comments included: the export is what we hold, not what we show.
         var comments = await ctx.Comments.AsNoTracking()
             .Where(c => c.AuthorUserId == userId
                 || c.RespondedByUserId == userId
@@ -263,8 +249,7 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
             d.UpdatedAt = now;
         }
 
-        // Comment bodies, responses and hide reasons stay — the association's record
-        // (design §18). Only the attribution goes.
+        // Content stays as the association's record; only the attribution goes.
         foreach (var c in await ctx.Comments
             .Where(c => c.AuthorUserId == userId
                 || c.RespondedByUserId == userId
@@ -278,8 +263,6 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
 
         await ctx.SaveChangesAsync(ct);
     }
-
-    // ── Account merge ─────────────────────────────────────────────────────
 
     public async Task ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant now, CancellationToken ct = default)
@@ -334,9 +317,8 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
         foreach (var m in affected.Where(m => m.UserId == sourceUserId))
             m.UserId = targetUserId;
 
-        // The fold can leave two current memberships of the same group; the unique
-        // filtered index would refuse them. Keep the earliest join, an approved row over a
-        // pending one, and keep Coordinator if either row carried it.
+        // The fold can leave two current memberships of one group, which the unique filtered index refuses. Keep the
+        // earliest join, an approved row over a pending one, and Coordinator if either row had it.
         var duplicates = affected
             .Where(m => m.LeftAt == null)
             .GroupBy(m => m.WorkgroupId)
@@ -355,12 +337,6 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
         await ctx.SaveChangesAsync(ct);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// The register read shape, detached with identity resolution so the child →
-    /// <c>Workgroup</c> back-references are fixed up without tracking.
-    /// </summary>
     private static IQueryable<Workgroup> Register(WorkgroupsDbContext ctx) =>
         ctx.Workgroups.AsNoTrackingWithIdentityResolution()
             .Include(w => w.Members)

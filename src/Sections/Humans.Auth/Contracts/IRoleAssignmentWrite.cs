@@ -2,10 +2,6 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Auth.Contracts;
 
-/// <summary>
-/// The role-assignment writes other sections genuinely call. The section's
-/// own management surface is the internal <c>IRoleAssignmentManagement</c>, which inherits this.
-/// </summary>
 public interface IRoleAssignmentWrite : IApplicationService
 {
     Task<RoleAssignmentResult> AssignRoleAsync(
@@ -13,10 +9,6 @@ public interface IRoleAssignmentWrite : IApplicationService
         string? notes,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Ends all active governance role assignments for a user by setting
-    /// <c>ValidTo</c> to now. Returns the count of ended assignments.
-    /// Used during account deletion.
-    /// </summary>
+    /// <summary>Stamps <c>ValidTo</c> = now on every active assignment. Returns how many it ended.</summary>
     Task<int> RevokeAllActiveAsync(Guid userId, CancellationToken ct = default);
 }

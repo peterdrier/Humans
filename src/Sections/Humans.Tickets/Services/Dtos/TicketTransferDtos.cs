@@ -4,13 +4,11 @@ using NodaTime;
 
 namespace Humans.Tickets.Services.Dtos;
 
-/// <summary>Submitted by the Sender when confirming the Receiver.</summary>
 internal sealed record TicketTransferRequestDto(
     Guid OriginalAttendeeId,
     Guid ReceiverUserId,
     string Reason);
 
-/// <summary>Read-side DTO for the admin queue.</summary>
 internal sealed record TicketTransferRowDto(
     Guid Id,
     Guid OriginalAttendeeId,
@@ -31,11 +29,6 @@ internal sealed record TicketTransferRowDto(
     Instant RequestedAt,
     Instant? DecidedAt);
 
-/// <summary>
-/// Read-side DTO for the admin Detail review screen — the row plus the ticket /
-/// order context the team needs to process the transfer manually in the
-/// TicketTailor dashboard.
-/// </summary>
 internal sealed record TicketTransferDetailDto(
     TicketTransferRowDto Row,
     string? OrderDashboardUrl,
@@ -46,11 +39,7 @@ internal sealed record TicketTransferDetailDto(
     string OrderBuyerEmail,
     IReadOnlyList<string> SiblingVendorTicketIds);
 
-/// <summary>
-/// Confirmation summary shown to the Sender before submitting the request:
-/// which ticket, and the resolved Receiver legal name + email. Legal name is
-/// resolved server-side because the person-search API deliberately omits it.
-/// </summary>
+/// <summary>Legal name is resolved server-side: the person-search API omits it.</summary>
 internal sealed record TicketTransferConfirmDto(
     Guid AttendeeId,
     string AttendeeName,
@@ -59,10 +48,6 @@ internal sealed record TicketTransferConfirmDto(
     string ReceiverLegalName,
     string ReceiverEmail);
 
-/// <summary>
-/// One row in the "My tickets" wizard list: the holdings row plus the send
-/// eligibility the service computed over it.
-/// </summary>
 internal sealed record MyAttendeeRowDto(
     UserTicketHoldingRow Ticket,
     bool CanSendTransfer);

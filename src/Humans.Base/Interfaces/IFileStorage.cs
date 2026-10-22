@@ -22,9 +22,6 @@ public interface IFileStorage
     /// </summary>
     Task SaveAsync(string key, Stream content, CancellationToken ct = default);
 
-    /// <summary>
-    /// Convenience overload for callers that already have the bytes in memory.
-    /// </summary>
     Task SaveAsync(string key, byte[] content, CancellationToken ct = default);
 
     /// <summary>

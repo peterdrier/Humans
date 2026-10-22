@@ -15,11 +15,6 @@ using NodaTime;
 
 namespace Humans.Rideshare.Services;
 
-/// <summary>
-/// The Rideshare rules: geocode + route at save, seed the inverse leg, ownership on
-/// edits, seat arithmetic on interests, private declines, per-year settings with an
-/// audit entry. EF-free — the repository hands over detached entities and takes them back.
-/// </summary>
 internal sealed class RideshareService(
     IRideshareRepository repository,
     IRouteProvider routeProvider,
@@ -40,8 +35,6 @@ internal sealed class RideshareService(
 
     // camelCase + case-insensitive: WaypointsJson is {label, latitude, longitude}.
     private static readonly JsonSerializerOptions WaypointJsonOptions = new(JsonSerializerDefaults.Web);
-
-    // ── Year / snapshot ───────────────────────────────────────────────────
 
     public async Task<int> GetActiveYearAsync(CancellationToken ct = default)
     {
@@ -72,8 +65,6 @@ internal sealed class RideshareService(
             requests,
             interests);
     }
-
-    // ── Offers ────────────────────────────────────────────────────────────
 
     public async Task<RideshareMutationResult> CreateOfferAsync(Guid userId, int year, TripSave save, CancellationToken ct = default)
     {
@@ -169,8 +160,6 @@ internal sealed class RideshareService(
         return new();
     }
 
-    // ── Requests ──────────────────────────────────────────────────────────
-
     public async Task<RideshareMutationResult> CreateRequestAsync(Guid userId, int year, RequestSave save, CancellationToken ct = default)
     {
         if (ValidateRequest(save) is { } requestRefusal) return new(Refusal: requestRefusal);
@@ -228,8 +217,6 @@ internal sealed class RideshareService(
         await repository.UpdateRequestAsync(request, ct);
         return new();
     }
-
-    // ── Interests ─────────────────────────────────────────────────────────
 
     public async Task<RideshareMutationResult> ExpressInterestAsync(
         Guid fromUserId, Guid tripId, Guid? requestId, int seats, string? message, CancellationToken ct = default)
@@ -367,8 +354,6 @@ internal sealed class RideshareService(
         return new();
     }
 
-    // ── Admin ─────────────────────────────────────────────────────────────
-
     public async Task<RideshareMutationResult> SaveSettingsAsync(int year, SettingsSave save, Guid actorUserId, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(save.DestinationLabel))
@@ -397,8 +382,6 @@ internal sealed class RideshareService(
             AuditAction.RideshareSettingsUpdated, AuditEntityTypes.RideshareSettings, settings.Id, description, actorUserId);
         return new();
     }
-
-    // ── GDPR ──────────────────────────────────────────────────────────────
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
@@ -476,13 +459,9 @@ internal sealed class RideshareService(
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         repository.DeleteUserRowsAsync(userId, ct);
 
-    // ── Account merge fold ────────────────────────────────────────────────
-
-    /// <summary>Reached through the decorator's <c>IUserMerge</c>; stays idempotent.</summary>
+    /// <summary>Must stay idempotent.</summary>
     public Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>
         repository.ReassignToUserAsync(mergedFromUserId, mergedToUserId, now, ct);
-
-    // ── Geocoding / routing ───────────────────────────────────────────────
 
     private async Task<(GeoPoint Point, RideshareRefusal? Refusal)> ResolvePointAsync(
         string label, double? latitude, double? longitude, CancellationToken ct)
@@ -544,8 +523,6 @@ internal sealed class RideshareService(
         }
         return route;
     }
-
-    // ── Entity helpers ────────────────────────────────────────────────────
 
     /// <summary>Entity twin of <see cref="TripView.CoversDate"/>: departure through departure + duration - 1.</summary>
     private static bool TravelsOn(RideshareTrip trip, LocalDate date) =>
@@ -661,8 +638,6 @@ internal sealed class RideshareService(
             ? []
             : JsonSerializer.Deserialize<List<Waypoint>>(json, WaypointJsonOptions) ?? [];
 
-    // ── Projections ───────────────────────────────────────────────────────
-
     private static TripView ToView(RideshareTrip t) => new(
         t.Id, t.UserId, t.Year, t.Direction, t.MemberPlaceLabel, t.MemberLatitude, t.MemberLongitude,
         ParseWaypoints(t.WaypointsJson), t.RouteGeoJson, t.DepartureDate, t.ExpectedDurationDays, t.OvernightPlan,
@@ -686,8 +661,6 @@ internal sealed class RideshareService(
     private static SettingsView ToView(RideshareSettings s) => new(
         s.Year, s.DestinationLabel, s.DestinationLatitude, s.DestinationLongitude,
         s.InboundWindowStart, s.InboundWindowEnd, s.OutboundWindowStart, s.OutboundWindowEnd);
-
-    // ── Side effects ──────────────────────────────────────────────────────
 
     // Notifications are best-effort: a failed send never rolls back the interest write.
     private async Task NotifyAsync(

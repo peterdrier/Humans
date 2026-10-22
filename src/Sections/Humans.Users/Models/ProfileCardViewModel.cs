@@ -6,9 +6,6 @@ using Humans.Users.Contracts;
 using Humans.Governance.Contracts;
 namespace Humans.Users.Models;
 
-/// <summary>
-/// View model for the ProfileCard ViewComponent.
-/// </summary>
 internal sealed class ProfileCardViewModel
 {
     public Guid UserId { get; set; }
@@ -47,16 +44,11 @@ internal sealed class ProfileCardViewModel
 
     public bool IsOwnProfile => ViewMode == ProfileCardViewMode.Self;
 
-    /// <summary>
-    /// The effective profile picture URL.
-    /// </summary>
     public string? EffectiveProfilePictureUrl => HasCustomProfilePicture
         ? CustomProfilePictureUrl
         : ProfilePictureUrl;
 
-    /// <summary>
-    /// Formatted birthday for display (e.g., "March 15").
-    /// </summary>
+    /// <summary>E.g. "March 15".</summary>
     public string? FormattedBirthday
     {
         get
@@ -77,21 +69,12 @@ internal sealed class ProfileCardViewModel
         }
     }
 
-    /// <summary>
-    /// Non-BoardOnly emails for the public contact info section.
-    /// </summary>
-    /// <summary>
-    /// Whether the viewer should see the "Send a message" button.
-    /// True when viewing another user's profile and no email is visible.
-    /// </summary>
+    /// <summary>True when viewing another user's profile and no email is visible.</summary>
     public bool CanSendMessage { get; set; }
 
     public IReadOnlyList<UserEmailDisplayViewModel> PublicUserEmails =>
         UserEmails.Where(e => e.Visibility != ContactFieldVisibility.BoardOnly).ToList();
 
-    /// <summary>
-    /// BoardOnly emails for the board/private section.
-    /// </summary>
     public IReadOnlyList<UserEmailDisplayViewModel> BoardOnlyUserEmails =>
         UserEmails.Where(e => e.Visibility == ContactFieldVisibility.BoardOnly).ToList();
 }

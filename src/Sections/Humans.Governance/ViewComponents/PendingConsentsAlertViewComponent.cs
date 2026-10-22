@@ -4,10 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Governance.ViewComponents;
 
-/// <summary>
-/// The member dashboard's pending-consents nudge: a link to the agreement(s) still
-/// awaiting the member's signature. Renders nothing when none are pending.
-/// </summary>
+/// <summary>Renders nothing when no consents are pending.</summary>
 public sealed class PendingConsentsAlertViewComponent(
     IMembershipCalculator membershipCalculator) : ViewComponent
 {

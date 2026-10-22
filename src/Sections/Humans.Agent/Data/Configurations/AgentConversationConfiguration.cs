@@ -17,10 +17,6 @@ internal sealed class AgentConversationConfiguration : IEntityTypeConfiguration<
         builder.Property(c => c.LastMessageAt).IsRequired();
         builder.Property(c => c.MessageCount).IsRequired();
 
-        // No cross-section FK to User. Agent owns only agent_* tables — section
-        // boundaries are enforced at the EF model. UserId is a plain Guid column;
-        // user deletion does not cascade. Orphaned rows expire via
-        // AgentConversationRetentionJob (RetentionDays).
         builder.HasIndex(c => c.UserId);
         builder.HasIndex(c => c.LastMessageAt);
     }

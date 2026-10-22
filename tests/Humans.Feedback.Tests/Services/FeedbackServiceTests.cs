@@ -36,13 +36,8 @@ using Humans.Feedback.Contracts;
 namespace Humans.Feedback.Tests.Services;
 
 /// <summary>
-/// Owns its fixture rather than deriving from <c>Humans.Application.Tests</c>'
-/// <c>ServiceTestHarness</c>: that harness is built around an in-memory
-/// <c>UsersDbContext</c>, and inheriting it would grant a section test project
-/// <c>InternalsVisibleTo</c> on <c>UsersDbContext</c> — the boundary the G5 split exists
-/// to draw (nobodies-collective/Humans#866). The users and teams the service reads back
-/// live in an in-memory registry the <c>Seed*</c> helpers write to, so the test bodies
-/// below are unchanged from their pre-move versions.
+/// Owns its fixture: inheriting the <c>UsersDbContext</c>-based harness would grant this project
+/// <c>InternalsVisibleTo</c> on another section's context, so users come from an in-memory registry.
 /// </summary>
 public sealed class FeedbackServiceTests
 {
@@ -115,9 +110,8 @@ public sealed class FeedbackServiceTests
             NullLogger<FeedbackServiceImpl>.Instance);
     }
 
-    // Feedback stopped accepting new reports in nobodies-collective/Humans#977 —
-    // there is no service- or repository-level create any more, so every fixture
-    // below seeds historical rows straight into the DB.
+    // Feedback no longer accepts new reports, so every fixture below seeds historical rows
+    // straight into the DB.
     [HumansFact]
     public void FeedbackSurface_ExposesNoReportCreationMethod()
     {
@@ -1030,11 +1024,7 @@ public sealed class FeedbackServiceTests
         return report;
     }
 
-    /// <summary>
-    /// Seeds a historical report straight into the DB. Feedback has no creation
-    /// path any more (nobodies-collective/Humans#977), so tests must not go
-    /// through the service to get one.
-    /// </summary>
+    /// <summary>Seeds a historical report straight into the DB; Feedback has no creation path.</summary>
     private async Task<FeedbackReport> SeedReportAsync(
         Guid userId, string description, string pageUrl, FeedbackStatus status = FeedbackStatus.Open)
     {
@@ -1055,11 +1045,6 @@ public sealed class FeedbackServiceTests
         return report;
     }
 
-    // ----- People and teams -----------------------------------------------------
-    // The pre-G5 versions of these wrote User rows into the harness's UsersDbContext and
-    // read them back through DB-backed IUserService stubs. A section test project cannot
-    // see those tables, so the registry holds the projection the service consumes: UserInfo.
-
     private UserInfo SeedUser(Guid id, string displayName, string? email = null, string? burnerName = null, string language = "en")
     {
         var user = new User
@@ -1068,9 +1053,8 @@ public sealed class FeedbackServiceTests
             UserName = email ?? $"test-{id}@test.com",
             Email = email,
             DisplayName = displayName,
-            // Mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) — UserInfo.BurnerName
-            // reads User.BurnerName only (#1098). Callers that need to distinguish burner name from
-            // legal/display name pass burnerName explicitly; the rest get the realistic default.
+            // UserInfo.BurnerName reads User.BurnerName. Callers that need it distinct from the
+            // display name pass burnerName explicitly.
             BurnerName = burnerName ?? displayName,
             PreferredLanguage = language,
             CreatedAt = Clock.GetCurrentInstant()

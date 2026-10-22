@@ -52,7 +52,7 @@ public class AccessMatrixViewComponentTests
     }
 
     /// <summary>
-    /// The key is matched ordinally, as the dictionary this replaced was: the call site spells
+    /// The key is matched ordinally: the call site spells
     /// the key the contributing section declared.
     /// </summary>
     [HumansFact]

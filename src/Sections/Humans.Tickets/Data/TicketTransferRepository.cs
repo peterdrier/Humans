@@ -4,11 +4,6 @@ using Humans.Tickets.Domain;
 
 namespace Humans.Tickets.Data;
 
-/// <summary>
-/// EF-backed implementation of <see cref="ITicketTransferRepository"/>. Uses
-/// <see cref="IDbContextFactory{TContext}"/> to maintain singleton registration
-/// while keeping <c>TicketsDbContext</c> short-lived (design-rules §15b).
-/// </summary>
 internal sealed class TicketTransferRepository(IDbContextFactory<TicketsDbContext> factory) : ITicketTransferRepository
 {
     public async Task<TicketTransferRequest?> GetByIdAsync(Guid id, CancellationToken ct = default)
@@ -51,8 +46,7 @@ internal sealed class TicketTransferRepository(IDbContextFactory<TicketsDbContex
 
         foreach (var transfer in transfers)
         {
-            // ReceiverLegalName / ReceiverEmail / SenderReason are init-only —
-            // write through the tracked entry.
+            // These fields are init-only: write through the tracked entry.
             var entry = ctx.Entry(transfer);
             if (transfer.ReceiverUserId == userId)
             {
@@ -90,10 +84,7 @@ internal sealed class TicketTransferRepository(IDbContextFactory<TicketsDbContex
     public async Task UpdateAsync(TicketTransferRequest request, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Attach as Unchanged then mark only the root as Modified — `Update()` would
-        // mark the whole reachable graph (OriginalTicketAttendee + TicketOrder)
-        // as Modified, emitting spurious UPDATE statements against three tables
-        // and double-writing the attendee in the Approve+Succeeded path.
+        // Not Update(): it would mark the whole reachable graph Modified and write the attendee twice on approve.
         ctx.TicketTransferRequests.Attach(request).State = EntityState.Modified;
         await ctx.SaveChangesAsync(ct);
     }
@@ -107,9 +98,7 @@ internal sealed class TicketTransferRepository(IDbContextFactory<TicketsDbContex
             return;
         }
 
-        // ExecuteUpdateAsync auto-commits — without an explicit transaction, a failure
-        // between the Sender and Receiver updates would leave a half-merged state where
-        // one column is re-pointed and the other still references the deleted source user.
+        // ExecuteUpdateAsync auto-commits: without a transaction a failure between the two updates half-merges.
         await using var tx = await ctx.Database.BeginTransactionAsync(ct);
         await ReassignUserCoreAsync(ctx, sourceUserId, targetUserId, ct);
         await tx.CommitAsync(ct);

@@ -9,36 +9,14 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Onboarding;
 
-/// <summary>
-/// Onboarding's DI entry point, at the project root by convention. Discovered by Shell —
-/// nothing names it, so it needs no section prefix.
-/// </summary>
-/// <remarks>
-/// No <c>AddSectionDbContext</c> line: the section owns no tables. It is a pure
-/// orchestrator over Profiles, Consent, Teams and Governance and routes every read and
-/// write through the owning section's service interface, so there is no repository and no
-/// <c>PeeledConfigurationNamespaces</c> row either.
-/// <para>
-/// One instance serves three registrations — the section's own full interface, the leaf's
-/// two-member intake contract, and the concrete type, which exists only to be the thing the
-/// other two forward to — so the director's state and logging stay single-instance per
-/// request. No controller injects <c>OnboardingService</c> directly.
-/// </para>
-/// </remarks>
 public sealed class Section : ISection, IIssueQueueOwner
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
-        // No back-call from leaf services into this director: ProfileService and
-        // ConsentService do not inject IOnboardingIntake. The writing controller reports
-        // the save (ProfileSavedAsync / ConsentSignedAsync) and Onboarding applies the
-        // follow-ups.
         services.AddScoped<OnboardingService>();
         services.AddScoped<IOnboardingService>(sp => sp.GetRequiredService<OnboardingService>());
         services.AddScoped<IOnboardingIntake>(sp => sp.GetRequiredService<OnboardingService>());
 
-        // Onboarding owns its email copy and its gallery samples; Email keeps the mechanics
-        // (memory/architecture/email-templates-live-in-sender.md).
         services.AddScoped<OnboardingEmails>();
         services.AddScoped<IEmailPreviewContributor, OnboardingEmailPreviews>();
 
@@ -46,8 +24,6 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<IOnboardingWidgetSessionState, HttpOnboardingWidgetSessionState>();
     }
 
-    // This section owns the issue queue its members' reports land in; Issues discovers
-    // the seam rather than holding a list of sections (memory/architecture/section-contribution-seams.md).
     string IIssueQueueOwner.QueueKey => "Onboarding";
 
     string IIssueQueueOwner.AreaLabelResourceKey => "Issues_Area_Onboarding";

@@ -3,15 +3,7 @@ using Humans.Shifts.Contracts;
 
 namespace Humans.Onboarding.Models;
 
-/// <summary>
-/// Builds the <see cref="ShiftsStepViewModel"/> for the onboarding widget's step-2 view
-/// from the full set of <see cref="UrgentShiftInfo"/> entries for the active event. Computes
-/// event-wide stats (critical fill %, important open count) from the unfiltered list,
-/// then filters to the rotas matching the user's pill selection for display.
-///
-/// Lives outside the controller so the action stays under the
-/// no-business-logic-in-controllers ratchet thresholds.
-/// </summary>
+/// <summary>Stats come from the event's full list; only the display is filtered to the selected pill.</summary>
 internal static class OnboardingShiftsStepBuilder
 {
     internal const string PriorityCritical = "critical";

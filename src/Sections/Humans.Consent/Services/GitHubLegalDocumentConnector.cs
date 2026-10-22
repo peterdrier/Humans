@@ -6,21 +6,17 @@ using Octokit;
 
 namespace Humans.Consent.Services;
 
-/// <summary>
-/// Octokit-backed implementation of <see cref="IGitHubLegalDocumentConnector"/>;
-/// the one place in the section that names an Octokit type.
-/// </summary>
+/// <summary>The one place in the section that names an Octokit type.</summary>
 internal sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumentConnector
 {
-    // Matches files like "name.md" (canonical es), "name-en.md", "name-de.md"
+    // "name.md" (canonical es), "name-en.md", "name-de.md".
     [GeneratedRegex(
         @"^(?<name>[A-Za-z0-9_-]+?)(?:-(?<lang>[A-Za-z]{2}))?\.md$",
         RegexOptions.ExplicitCapture,
         1000)]
     private static partial Regex LanguageFilePattern();
 
-    // Looser prefix-based variant used by the statutes fetcher, which matches
-    // on a configurable file prefix rather than a fixed base-name.
+    // The statutes fetcher matches a configurable prefix rather than a fixed base name.
     [GeneratedRegex(@"^(?<name>.+?)(?:-(?<lang>[A-Za-z]{2}))?\.md$", RegexOptions.None, 1000)]
     private static partial Regex PrefixLanguageFilePattern();
 
@@ -42,9 +38,8 @@ internal sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumen
     }
 
     /// <summary>
-    /// Classifies an Octokit failure for <see cref="GitHubApiException.IsTransient"/>:
-    /// rate limits and 5xx self-heal on the next scheduled run; other 4xx
-    /// (revoked PAT, missing scope, malformed request) repeat until a human acts.
+    /// Rate limits and 5xx self-heal on the next run; other 4xx (revoked token, missing scope) repeat until a
+    /// human acts.
     /// </summary>
     private static GitHubApiException Translate(ApiException ex) =>
         new(ex.StatusCode,
@@ -210,7 +205,7 @@ internal sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumen
                 : "es";
 
             ct.ThrowIfCancellationRequested();
-            // Fetch full content (GetAllContents for a directory only returns metadata)
+            // GetAllContents on a directory returns only metadata.
             var fileContent = await _client.Repository.Content.GetAllContentsByRef(
                 _settings.Owner,
                 _settings.Repository,

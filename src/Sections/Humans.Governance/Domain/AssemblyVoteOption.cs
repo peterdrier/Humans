@@ -6,13 +6,10 @@ namespace Humans.Governance.Domain;
 /// </summary>
 internal sealed class AssemblyVoteOption
 {
-    /// <summary>Unique identifier for the option.</summary>
     public Guid Id { get; init; }
 
-    /// <summary>Owning vote.</summary>
     public Guid VoteId { get; init; }
 
-    /// <summary>Navigation to the owning vote.</summary>
     public AssemblyVote Vote { get; set; } = null!;
 
     /// <summary>
@@ -24,6 +21,5 @@ internal sealed class AssemblyVoteOption
     /// <summary>Stable key recorded in ballots; never renumbered once Open.</summary>
     public string Key { get; set; } = string.Empty;
 
-    /// <summary>Per-culture label.</summary>
     public GovernanceLocalizedText Label { get; set; } = GovernanceLocalizedText.Empty;
 }

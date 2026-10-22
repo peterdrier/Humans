@@ -5,19 +5,6 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Budget.Authorization;
 
-/// <summary>
-/// Resource-based authorization handler for budget operations.
-/// Evaluates whether a user can perform budget operations on a specific BudgetCategory.
-///
-/// Authorization logic:
-/// - Admin: allow any category
-/// - FinanceAdmin: allow any category
-/// - Department coordinator: allow only categories linked to their department
-/// - Everyone else: deny
-///
-/// Also denies edits on restricted groups, ticketing groups, and deleted budget
-/// years for non-admin users.
-/// </summary>
 internal sealed class BudgetAuthorizationHandler(IBudgetService budgetService)
     : AuthorizationHandler<BudgetOperationRequirement, BudgetCategorySnapshot>
 {

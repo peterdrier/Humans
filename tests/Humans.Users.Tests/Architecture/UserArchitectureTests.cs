@@ -9,13 +9,8 @@ using Humans.Users.Services;
 
 namespace Humans.Users.Tests.Architecture;
 
-/// <summary>
-/// Architecture tests enforcing the repository pattern for the User section.
-/// </summary>
 public class UserArchitectureTests
 {
-    // ── Public faces share one instance ──────────────────────────────────────
-
     [HumansFact]
     public void IUserManagement_IUserService_IUserWrite_And_IUserInfoSliceRefresher_ResolveToSameSingleton()
     {

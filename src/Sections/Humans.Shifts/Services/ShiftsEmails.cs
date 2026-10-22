@@ -7,13 +7,8 @@ using Microsoft.Extensions.Localization;
 namespace Humans.Shifts.Services;
 
 /// <summary>
-/// Shifts' own email templates: one method per template, each returning a ready
-/// <see cref="EmailMessage"/> (content plus the routing policy Shifts chooses — template
-/// name, opt-out category and the coordinator reply-to) for the single
-/// <see cref="IEmailService.SendAsync"/> path. Copy lives in Shifts' own resx set and is
-/// rendered in the recipient's culture inside a <see cref="CultureScope"/>
-/// (memory/architecture/email-templates-live-in-sender.md, peterdrier/Humans#1651).
-/// Pure — no I/O, no persistence.
+/// Pure: no I/O. Copy renders in the recipient's culture inside a <see cref="CultureScope"/>
+/// (memory/architecture/email-templates-live-in-sender.md).
 /// </summary>
 internal sealed class ShiftsEmails(
     IStringLocalizer<ShiftsResource> localizer,
@@ -55,8 +50,7 @@ internal sealed class ShiftsEmails(
         {
             var sanitizedMessage = SanitizedMarkdownRenderer.Render(request.MessageText);
 
-            // Per-rota groups: bold rota name then <ul><li> shift lines.
-            // Empty-groups fallback mirrors the per-rota template.
+            // Empty groups fall back as the per-rota template does.
             string shiftGroupsHtml;
             if (request.ShiftGroups.Count == 0 || request.ShiftGroups.All(g => g.ShiftLines.Count == 0))
             {
@@ -90,18 +84,14 @@ internal sealed class ShiftsEmails(
         });
     }
 
-    /// <summary>
-    /// The body's shift block: its lead-in plus the pre-rendered list, or nothing at
-    /// all when the coordinator opted the shift list out — a bare lead-in over no list
-    /// would read worse than no section.
-    /// </summary>
+    /// <summary>Nothing when the shift list is opted out: a bare lead-in over no list reads worse than no section.</summary>
     private string ShiftSection(bool include, string introKey, string listHtml) =>
         include ? $"<p>{Encode(L(introKey))}</p>{listHtml}" : string.Empty;
 
     private string NoShifts() =>
         $"<p><em>{Encode(L("Shifts_Email_CoordinatorRotaMessage_NoShifts"))}</em></p>";
 
-    /// <summary>The coordinator's sign-off, a mailto link when they shared an address.</summary>
+    /// <summary>A mailto link when the coordinator shared an address.</summary>
     private static string SenderLine(string senderName, string? senderEmail) =>
         !string.IsNullOrEmpty(senderEmail)
             ? $"<p><strong>{Encode(senderName)}</strong> &mdash; <a href=\"mailto:{Encode(senderEmail)}\">{Encode(senderEmail)}</a></p>"

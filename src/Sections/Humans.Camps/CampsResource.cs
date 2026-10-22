@@ -1,18 +1,11 @@
 namespace Humans.Camps;
 
 /// <summary>
-/// Marker for the Camps section's resource set. Must stay <c>public</c> — the boot
-/// diagnostic's <c>SectionResourceTypes()</c> reads <c>GetExportedTypes()</c> and skips an
-/// internal marker in silence. The <c>.cs</c> and the <c>.resx</c> files must sit in the same
-/// folder: this type's namespace determines the manifest prefix.
-///
-/// Section-owned keys use <c>Camps_</c>; enum display keys retain their reflection-resolved names.
+/// The .resx files sit beside this file, so it must stay in <c>namespace Humans.Camps</c>: the manifest name comes
+/// from this file's namespace, and any other makes every string fall back to its key. Public because the boot
+/// localization check finds markers through <c>GetExportedTypes()</c>.
 /// <para>
-/// <c>Camp_Plural</c> stays in <c>SharedResource</c> — Shell's nav and dashboard, the guest
-/// landing page, Containers' breadcrumb and Events' barrio form all render it, and a key
-/// rendered outside the section cannot see the section's set (carve by
-/// renderer). The section binds <c>SharedLocalizer</c> for it and for the <c>Common_*</c>,
-/// <c>CityPlanning_*</c> and Base-enum keys its views still read.
+/// <c>Camp_Plural</c> stays in <c>SharedResource</c>: it also renders outside the section, which cannot see this set.
 /// </para>
 /// </summary>
 public sealed class CampsResource;

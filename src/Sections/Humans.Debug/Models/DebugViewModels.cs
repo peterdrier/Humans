@@ -1,6 +1,6 @@
 namespace Humans.Debug.Models;
 
-/// <summary>One auto-discovered configuration entry, with its value already masked for display.</summary>
+/// <summary>The value is already masked for display.</summary>
 internal sealed class ConfigurationItemViewModel
 {
     public string Section { get; set; } = string.Empty;
@@ -11,20 +11,17 @@ internal sealed class ConfigurationItemViewModel
     public string Importance { get; set; } = "optional";
 }
 
-/// <summary>View model for <c>/Debug/Configuration</c>.</summary>
 internal sealed class AdminConfigurationViewModel
 {
     public List<ConfigurationItemViewModel> Items { get; set; } = [];
 }
 
-/// <summary>View model for <c>/Debug/DbStats</c>.</summary>
 internal sealed class DbStatsViewModel
 {
     public long TotalQueryCount { get; set; }
     public List<DbStatEntryViewModel> Entries { get; set; } = [];
 }
 
-/// <summary>One operation/table pair with its query count and timings.</summary>
 internal sealed class DbStatEntryViewModel
 {
     public string Operation { get; set; } = string.Empty;
@@ -35,7 +32,6 @@ internal sealed class DbStatEntryViewModel
     public double TotalMs { get; set; }
 }
 
-/// <summary>View model for <c>/Debug/CacheStats</c>.</summary>
 internal sealed class CacheStatsViewModel
 {
     public long TotalHits { get; set; }
@@ -48,14 +44,10 @@ internal sealed class CacheStatsViewModel
 
     public List<CacheStatEntryViewModel> Entries { get; set; } = [];
 
-    /// <summary>
-    /// Stats for the TrackedCache decorators, in a separate table below the IMemoryCache
-    /// stats: no TTL, so they track invalidation count instead.
-    /// </summary>
+    /// <summary>TrackedCache decorators have no TTL, so they track invalidation count instead.</summary>
     public List<DecoratorCacheStatEntryViewModel> DecoratorEntries { get; set; } = [];
 }
 
-/// <summary>One <c>IMemoryCache</c> key type with its hit/miss counters and TTL metadata.</summary>
 internal sealed class CacheStatEntryViewModel
 {
     public string KeyType { get; set; } = string.Empty;
@@ -67,7 +59,6 @@ internal sealed class CacheStatEntryViewModel
     public string Type { get; set; } = string.Empty;
 }
 
-/// <summary>One TrackedCache decorator with its counters and warm-up state.</summary>
 internal sealed class DecoratorCacheStatEntryViewModel
 {
     public string Name { get; set; } = string.Empty;
@@ -80,14 +71,12 @@ internal sealed class DecoratorCacheStatEntryViewModel
     public bool IsWarmedUp { get; set; }
 }
 
-/// <summary>View model for <c>/Debug/Timings</c>.</summary>
 internal sealed class TimingsViewModel
 {
     public List<TimingEntryViewModel> Entries { get; set; } = [];
     public List<SwallowedEntryViewModel> Swallowed { get; set; } = [];
 }
 
-/// <summary>One timed operation: call count, last/avg/min/max/total ms, last-called stamp.</summary>
 internal sealed class TimingEntryViewModel
 {
     public string Operation { get; set; } = string.Empty;
@@ -100,7 +89,6 @@ internal sealed class TimingEntryViewModel
     public DateTime LastAtUtc { get; set; }
 }
 
-/// <summary>One operation whose exceptions were swallowed, with how often.</summary>
 internal sealed class SwallowedEntryViewModel
 {
     public string Operation { get; set; } = string.Empty;

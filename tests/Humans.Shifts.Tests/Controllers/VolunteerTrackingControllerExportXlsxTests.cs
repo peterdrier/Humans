@@ -21,12 +21,6 @@ using Humans.Users.Services;
 
 namespace Humans.Shifts.Tests.Controllers;
 
-/// <summary>
-/// Verifies the <see cref="VolunteerTrackingController.ExportXlsx"/> action wires
-/// service + builder + active-event lookup correctly: returns an XLSX
-/// <see cref="FileContentResult"/> with the builder's suggested filename and
-/// the canonical spreadsheet content-type.
-/// </summary>
 public sealed class VolunteerTrackingControllerExportXlsxTests
 {
     [HumansFact]

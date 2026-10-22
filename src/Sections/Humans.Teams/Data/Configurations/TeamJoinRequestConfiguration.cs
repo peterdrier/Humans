@@ -26,9 +26,6 @@ internal sealed class TeamJoinRequestConfiguration : IEntityTypeConfiguration<Te
         builder.Property(r => r.ReviewNotes)
             .HasMaxLength(2000);
 
-        // UserId / ReviewedByUserId are bare cross-section Guid columns — no FK
-        // constraint, no nav.
-
         builder.HasMany(r => r.StateHistory)
             .WithOne(sh => sh.TeamJoinRequest)
             .HasForeignKey(sh => sh.TeamJoinRequestId)

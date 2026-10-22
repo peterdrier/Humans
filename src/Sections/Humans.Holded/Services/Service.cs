@@ -7,12 +7,7 @@ using NodaTime;
 
 namespace Humans.Holded.Services;
 
-/// <summary>
-/// The ledger mirror: sweeps Holded's daybook into <c>holded_ledger_lines</c> with replace
-/// semantics, refreshes the chart-of-accounts cache, reconciles per-account totals, and drains
-/// the connector's call log. All cross-section reads are served from the cache — zero Holded
-/// calls per page view.
-/// </summary>
+/// <summary>All cross-section reads come from the cache: zero Holded calls per page view.</summary>
 internal sealed class Service(
     IHoldedMirrorRepository repo,
     IHoldedClient client,
@@ -26,24 +21,18 @@ internal sealed class Service(
     /// <summary>Before the org existed; the full sweep's fixed floor.</summary>
     private static readonly LocalDate LedgerInception = new(2020, 1, 1);
 
-    // 45 days, not a year: the API's real free budget is the plan tier (~2,000 calls/month —
-    // GET /usage's 2M "limit" is a billable-overage ceiling). A year-wide window costs ~20
-    // pages/night; 45 days costs 1–2. Backdating or deletion OLDER than the window is caught by
-    // the balance reconciliation below at one call/night, so correctness no longer depends on
-    // window width. Anchored on *now*, never on the newest cached line — the date filter is on
-    // the accounting date, so an entry posted today but dated to a closed month would sit behind
-    // a cache-derived anchor forever (#1241).
+    // 45 days, not a year: the real budget is the plan tier (~2,000 calls/month), and 45 days costs 1-2 pages a night.
+    // Older backdating or deletion is caught by the balance reconciliation. Anchored on now, never the newest
+    // cached line: the filter is on the accounting date, so a cache-derived anchor would miss an entry backdated
+    // to a closed month forever.
     private static readonly Duration TrailingWindow = Duration.FromDays(45);
 
-    /// <summary>Reconciliation re-pulls are cheap but not free; a run that finds more drifted
-    /// accounts than this reports the rest as mismatches instead (no silent caps — logged).</summary>
+    /// <summary>More drifted accounts than this are reported as mismatches instead (and logged).</summary>
     private const int MaxTargetedRepullsPerRun = 10;
 
-    // One sweep at a time. Hangfire's DisableConcurrentExecution guards the nightly job, but the
-    // admin buttons call the service directly, so two sweeps can interleave and race the replace
-    // window. Non-blocking: a web request must not queue behind a running full sweep — the caller
-    // reports the skip instead. Single-server deployment, so an in-process gate is the whole
-    // requirement (#1241).
+    // One sweep at a time: the admin buttons bypass Hangfire's DisableConcurrentExecution, and two sweeps would
+    // race the replace window. Non-blocking so a request never queues behind a full sweep; single server, so an
+    // in-process gate is enough.
     private static readonly SemaphoreSlim LedgerSyncGate = new(1, 1);
 
     public async Task<IReadOnlyList<HoldedLedgerLineInfo>> GetLedgerLinesAsync(
@@ -95,9 +84,8 @@ internal sealed class Service(
                 state.LastSyncAt = now;
                 state.StatusChangedAt = now;
                 state.LastCount = fetched.Count;
-                // A standing mismatch is reportable state, not a failure: Holded excludes an
-                // unconfirmed entry from its own chart totals, so the account that entry posts to
-                // reads as drifted until Holded confirms it. Nothing here is wrong.
+                // A standing mismatch is state, not a failure: Holded excludes an unconfirmed entry from its own
+                // chart totals until it is confirmed.
                 state.LastError = mismatches.Count == 0
                     ? null
                     : TruncateForState("Unreconciled after re-pull: " + string.Join("; ",
@@ -138,8 +126,7 @@ internal sealed class Service(
 
     public async Task<HoldedAdminOverview> GetOverviewAsync(CancellationToken ct = default)
     {
-        // Drain first: the usage call below lands in the log and shows up on the next load,
-        // which is what makes the meter self-reporting rather than a call that hides itself.
+        // Drain first: the usage call below then shows up on the next load, so the meter reports itself.
         await DrainCallLogAsync(ct);
 
         HoldedUsageDto? usage = null;
@@ -149,8 +136,7 @@ internal sealed class Service(
         }
         catch (HoldedApiException ex)
         {
-            // No key, Holded down, key revoked — the mirror still renders in full. The page says
-            // "unreachable" rather than 500ing on the one live call it makes.
+            // No key, Holded down, key revoked: the page says "unreachable" and still renders the mirror.
             logger.LogWarning(ex, "Holded usage lookup failed; rendering /Holded from the mirror only");
         }
 
@@ -216,13 +202,11 @@ internal sealed class Service(
         if (account is null && lines.Count == 0)
             return null;
 
-        // Archived accounts are not filtered out here the way the overview filters them: a direct
-        // link to one is a deliberate lookup, and its history is still the answer.
+        // Archived accounts are kept here, unlike the overview: a direct link is a deliberate lookup.
         decimal? localBalanceRaw = lines.Count == 0 ? null : lines.Sum(l => l.Debit) - lines.Sum(l => l.Credit);
         var holdedBalanceRaw = account?.Balance ?? 0m;
 
-        // Counterparties are resolved from the entry's OTHER legs, which can post to any account —
-        // not just this one — so the lookup needs the whole mirror, not this account's slice of it.
+        // Counterparties are the entry's other legs, on any account, so this needs the whole mirror.
         var byEntry = (await repo.GetAllLedgerLinesAsync(ct))
             .GroupBy(l => l.EntryNumber)
             .ToDictionary(g => g.Key, g => g.ToList());
@@ -259,9 +243,8 @@ internal sealed class Service(
         }).ToList());
     }
 
-    /// <summary>Refreshes the chart cache, then compares every non-archived account's Holded
-    /// balance against the local ledger sum. A drifted account gets one targeted full-history
-    /// re-pull (replace semantics); accounts still off afterwards are returned.</summary>
+    /// <summary>A drifted account gets one targeted full-history re-pull; accounts still off afterwards are
+    /// returned.</summary>
     private async Task<List<(int AccountNum, decimal HoldedBalance, decimal LocalBalance)>>
         RefreshAccountsAndReconcileAsync(LocalDate today, Instant now, CancellationToken ct)
     {
@@ -292,9 +275,7 @@ internal sealed class Service(
             .Where(a => !a.Archived && a.Balance != localBalances.GetValueOrDefault(a.Number, 0m))
             .ToList();
 
-        // Rotate the starting point by day so a standing block of more-than-cap drifted accounts
-        // (e.g. entries Holded itself excludes from chart totals) cannot pin the cap to the same
-        // first ten forever and starve the rest of their targeted re-pull.
+        // Rotate the start by day so a standing block of drifted accounts can't pin the cap to the same ten forever.
         if (drifted.Count > MaxTargetedRepullsPerRun)
         {
             var offset = (int)(now.ToUnixTimeSeconds() / 86_400 % drifted.Count);
@@ -346,8 +327,8 @@ internal sealed class Service(
         }).ToList(), CancellationToken.None); // Drained records must reach the mirror despite request cancellation.
     }
 
-    /// <summary>LastError is varchar(2000); an unbounded mismatch list or exception message
-    /// would fail the save and report a completed refresh as an error.</summary>
+    /// <summary>LastError is varchar(2000): an unbounded message would fail the save and report a finished refresh
+    /// as an error.</summary>
     private static string TruncateForState(string message)
     {
         if (message.Length <= 2000) return message;
@@ -357,12 +338,8 @@ internal sealed class Service(
         return message[..length] + "…";
     }
 
-    /// <summary>
-    /// The Spanish PGC group an account belongs to, in English. Read from the account number's
-    /// leading digit rather than Holded's own <c>group</c> field, which returns Spanish
-    /// ("Financiación básica", "Acreedores y deudores operaciones de la actividad") and is
-    /// free text we would be translating by string match. The digit is the definition.
-    /// </summary>
+    /// <summary>From the leading digit, not Holded's <c>group</c> field, which is Spanish free text we would have to
+    /// translate by string match.</summary>
     private static string GroupName(int number) =>
         LeadingDigit(number) switch
         {
@@ -378,7 +355,6 @@ internal sealed class Service(
             _ => "Unclassified",
         };
 
-    /// <summary>The account number's leading digit — the Spanish PGC group.</summary>
     private static int LeadingDigit(int number)
     {
         var leading = Math.Abs(number);
@@ -387,20 +363,14 @@ internal sealed class Service(
     }
 
     /// <summary>
-    /// The association's own point of view: + means its money went up, − means it went down.
-    /// Groups 1–5 (equity, assets, banks, debtors, creditors) keep the raw Debit − Credit sign;
-    /// groups 6–9 (expenses, income, and their equity-charged counterparts) carry the opposite
-    /// bookkeeping sign, so the display flips it. Display-only: reconciliation always compares
-    /// the raw (Debit − Credit) convention, before this flip is applied.
+    /// + means the association's money went up. Groups 1–5 keep the raw Debit − Credit sign; groups 6–9 carry the
+    /// opposite bookkeeping sign, so the display flips it. Display only: reconciliation compares the raw sign.
     /// </summary>
     private static decimal ToAssociationPov(int accountNum, decimal debitMinusCredit) =>
         LeadingDigit(accountNum) is 1 or 2 or 3 or 4 or 5 ? debitMinusCredit : -debitMinusCredit;
 
-    /// <summary>Builds a chart row from the two <em>raw</em> (Debit − Credit) balances — the
-    /// overview's and the statement's only way to make one. The POV flip and the reconciliation
-    /// verdict are computed together here on purpose: the displayed balances flip, the ✓/✗ never
-    /// does, and keeping both in one expression is what stops a later edit from flipping one and
-    /// not the other.</summary>
+    /// <summary>Takes the two raw balances. The POV flip and the reconciliation verdict live in one expression so a
+    /// later edit can't flip one without the other: balances flip, the ✓/✗ never does.</summary>
     private static HoldedAccountRow MakeAccountRow(
         int number, string name, decimal holdedBalanceRaw, decimal? localBalanceRaw,
         int lineCount, bool hasHoldedTotals) =>
@@ -417,10 +387,8 @@ internal sealed class Service(
         ToAssociationPov(accountNum, line.Debit - line.Credit),
         ResolveCounterparty(line, byEntry, accountsByNumber));
 
-    /// <summary>The entry's opposing-side legs: a debit line's counterparties are the entry's
-    /// credit lines (and vice versa) — Holded's API does not return a contra account, so this is
-    /// derived by grouping on <see cref="HoldedLedgerLine.EntryNumber"/>. Null when the entry
-    /// carries no opposing leg (an unbalanced or partially-mirrored entry).</summary>
+    /// <summary>A debit line's counterparties are the entry's credit lines and vice versa: the API returns no contra
+    /// account. Null when the entry has no opposing leg (unbalanced or partly mirrored).</summary>
     private static HoldedCounterparty? ResolveCounterparty(
         HoldedLedgerLine line,
         IReadOnlyDictionary<int, List<HoldedLedgerLine>> byEntry,
@@ -440,8 +408,7 @@ internal sealed class Service(
         return new HoldedCounterparty(largest.AccountNum, account?.Name, opposing.Count);
     }
 
-    /// <summary>The replace window's lower bound as an Instant: local midnight of the sweep's
-    /// start date. Rows dated before this are outside the sweep and must survive it.</summary>
+    /// <summary>Local midnight of the start date. Rows dated before it are outside the sweep and must survive.</summary>
     private static Instant ToWindowStart(LocalDate from) =>
         from.AtStartOfDayInZone(MadridZone).ToInstant();
 

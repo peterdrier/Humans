@@ -1,7 +1,5 @@
 import { CONFIG } from './config.js';
 
-// API calls for container placement.
-
 function antiforgeryToken() {
     return document.querySelector('input[name="__RequestVerificationToken"]').value;
 }

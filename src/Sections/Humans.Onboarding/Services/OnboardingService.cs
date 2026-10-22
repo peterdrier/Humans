@@ -15,10 +15,6 @@ using Humans.Teams.Contracts;
 
 namespace Humans.Onboarding.Services;
 
-// Onboarding intake-funnel orchestrator. Owns no tables; all writes go through owning-section services.
-// Out of scope: suspend/unsuspend (IHumanLifecycleService), board voting (IGovernanceManagement),
-// admin dashboard tiles (section-contributed chrome, nobodies-collective/Humans#1091), account
-// deletion (IAccountDeletionService, in Humans.Users).
 internal sealed class OnboardingService(
     IUserService userService,
     IUserWrite userWrite,
@@ -37,15 +33,10 @@ internal sealed class OnboardingService(
 {
     private static readonly ResourceManager NoticeResources = new(typeof(OnboardingResource));
 
-    // --- Queries: review queue ---
-
     public async Task<ReviewQueueData> GetReviewQueueAsync(CancellationToken ct = default)
     {
-        // Invariant: anyone with an unresolved Flagged consent check must appear in the queue so a
-        // CC can resolve them — even if a prior admin override flipped IsApproved=true. Rejected
-        // members are excluded (see ConsentReviewPredicates.IsConsentCheckFlagged): Clear is blocked
-        // on them and the row would otherwise be unresolvable. Pending list keeps the
-        // NeedsConsentReview gate.
+        // An unresolved Flagged check stays in the queue even if an admin override set IsApproved, so a CC can
+        // resolve it. Rejected members are excluded: Clear is blocked on them, so the row couldn't be resolved.
         var all = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
         var reviews = await consentService.GetConsentReviewsAsync(ct);
         var (pending, flagged) = PartitionReviewQueue(all, reviews);
@@ -63,7 +54,6 @@ internal sealed class OnboardingService(
                 snapshot.RequiredConsentCount);
         }
 
-        // ReviewQueueData types PendingAppUserIds as HashSet<Guid>; Governance returns IReadOnlySet.
         var pendingAppHashSet = pendingAppUserIds.ToHashSet();
 
         var tiers = await applicationDecisionService.GetMembershipTiersAsync(ct);
@@ -71,9 +61,8 @@ internal sealed class OnboardingService(
         return new ReviewQueueData(pending, flagged, pendingAppHashSet, consentProgress, tiers, reviews);
     }
 
-    // Who is in the queue, in one place. Bulk clear's eligibility is *defined* as "a row in the
-    // queue", so it partitions here too rather than restating the predicate — the two cannot
-    // drift apart. Ordering is the queue's display order and both callers depend on it.
+    // Bulk clear's eligibility is defined as "a row in the queue", so it partitions here too and the two can't
+    // drift. Both callers depend on the order.
     private static (List<UserInfo> Pending, List<UserInfo> Flagged) PartitionReviewQueue(
         IEnumerable<UserInfo> all, IReadOnlyDictionary<Guid, ConsentReviewInfo> reviews)
     {
@@ -122,11 +111,6 @@ internal sealed class OnboardingService(
             pendingApp?.Motivation);
     }
 
-    // --- Consent-check mutations ---
-
-    // Annotation-only: Clear records the consent-check status (and sets the review's IsApproved,
-    // Consent's consent_reviews) for the CC audit track and provisions no team — Volunteers/tier
-    // membership is reconciled by SystemTeamSyncJob on name + consents, decoupled from CC review.
     public Task<OnboardingResult> ClearConsentCheckAsync(
         Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default) =>
         RecordConsentCheckAsync(userId, reviewerId, ConsentCheckStatus.Cleared, notes, ct);
@@ -137,10 +121,7 @@ internal sealed class OnboardingService(
         if (userIds.Count == 0)
             return new BulkOnboardingResult(0);
 
-        // Eligibility is queue membership and nothing else, so partition directly instead of
-        // calling GetReviewQueueAsync: that builds the page's render payload — a membership
-        // snapshot await per queued user plus a pending-application lookup — all of which this
-        // discards to reach the ids.
+        // Not GetReviewQueueAsync: that builds the page's render payload, all discarded here.
         var selected = userIds.ToHashSet();
         var all = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
         var (pending, flagged) = PartitionReviewQueue(all, await consentService.GetConsentReviewsAsync(ct));
@@ -170,15 +151,11 @@ internal sealed class OnboardingService(
         return new BulkOnboardingResult(approved);
     }
 
-    // Flag records the consent-check status for the CC audit track. Inert for a Volunteer, NOT for
-    // a Colaborador/Asociado: it clears the review's IsApproved, which gates their tier team on the next
-    // sync (Docs/health.md §4, and §5 for why the detail view withholds it). Reject is the CC's
-    // kick-out lever.
+    // Inert for a Volunteer, not for a Colaborador/Asociado: it clears the review's IsApproved, which gates
+    // their tier team on the next sync (Docs/health.md §4-5).
     public Task<OnboardingResult> FlagConsentCheckAsync(
         Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default) =>
         RecordConsentCheckAsync(userId, reviewerId, ConsentCheckStatus.Flagged, notes, ct);
-
-    // --- Signup reject ---
 
     public async Task<OnboardingResult> RejectSignupAsync(
         Guid userId, Guid reviewerId, string? reason, CancellationToken ct = default)
@@ -187,9 +164,8 @@ internal sealed class OnboardingService(
         var result = await consentWrite.RecordRejectionAsync(userId, reviewerId, reason, ct);
         if (!result.Success)
         {
-            // A rejection Consent recorded but Users never stored (the second write failed) is
-            // finished here rather than refused: state, audit, deprovision and notices run once,
-            // with the recorded reason and reviewer. Once the state is Rejected, it is refused.
+            // Consent recorded the rejection but the Users write failed: finish it here rather than refuse.
+            // Once the state is Rejected, it is refused.
             if (!string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal)
                 || (await userService.GetUserInfoAsync(userId, ct))?.State is null or UserState.Rejected)
                 return result;
@@ -258,14 +234,12 @@ internal sealed class OnboardingService(
         return result;
     }
 
-    // --- Follow-ups to the member's own Profile/Consent writes (reported by the writing controller) ---
-
     public async Task ProfileSavedAsync(Guid userId, CancellationToken ct = default)
     {
         await SetConsentCheckPendingIfEligibleAsync(userId, ct);
 
-        // Finishing setup is a change of mind: a not-yet-approved member who saves their
-        // profile withdraws a pending deletion request. An approved member's edit does not.
+        // Finishing setup is a change of mind: before approval, saving the profile withdraws a pending
+        // deletion request.
         var info = await userService.GetUserInfoAsync(userId, ct);
         if (info is not { IsDeletionPending: true })
             return;
@@ -280,12 +254,7 @@ internal sealed class OnboardingService(
     public Task ConsentSignedAsync(Guid userId, CancellationToken ct = default) =>
         SetConsentCheckPendingIfEligibleAsync(userId, ct);
 
-    /// <summary>
-    /// If the user has a profile, is not approved or rejected, has no existing consent-check
-    /// status, and has all required consents for the Volunteers team, sets the Consent
-    /// review's status to <c>Pending</c>. Returns true if the status was set. Raises no
-    /// notification — the coordinator finds the queue through the admin sidebar's Review pill.
-    /// </summary>
+    /// <summary>Returns true if the status was set. Raises no notification: the queue shows in the sidebar's Review pill.</summary>
     public async Task<bool> SetConsentCheckPendingIfEligibleAsync(
         Guid userId, CancellationToken ct = default)
     {
@@ -312,8 +281,6 @@ internal sealed class OnboardingService(
         return true;
     }
 
-    // --- Onboarding widget consent step ---
-
     public async Task<NextConsentStepData> GetNextUnsignedConsentAsync(
         Guid userId, CancellationToken ct = default)
     {
@@ -322,11 +289,8 @@ internal sealed class OnboardingService(
         var unsigned = rows.Where(r => !r.Signed).ToList();
         if (unsigned.Count == 0)
         {
-            // Self-heal a consent-suspended user who is already compliant (nothing left
-            // to sign — e.g. the required set shrank after they were suspended). Without
-            // this they loop Status → Consents → Index → Home → Status forever, since the
-            // un-suspend otherwise only fires on a fresh signature in SubmitConsentAsync.
-            // No-op for any non-Suspended user.
+            // Without this a compliant consent-suspended user loops Status → Consents → Home → Status forever:
+            // the un-suspend otherwise fires only on a fresh signature.
             await humanLifecycleService.RestoreConsentSuspensionAsync(userId, ct);
             return new NextConsentStepData(NextConsentStepOutcome.NothingLeftToSign, null, 0, rows.Count);
         }
@@ -346,8 +310,6 @@ internal sealed class OnboardingService(
         return new NextConsentStepData(
             NextConsentStepOutcome.Document, detail, rows.Count - unsigned.Count + 1, rows.Count);
     }
-
-    // --- Helpers ---
 
     private async Task<OnboardingResult> RecordConsentCheckAsync(
         Guid userId,

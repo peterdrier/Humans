@@ -7,7 +7,6 @@ using NodaTime;
 
 namespace Humans.Budget.Data;
 
-/// <summary>EF-backed <see cref="IBudgetRepository"/>.</summary>
 internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factory, ILogger<BudgetRepository> logger)
     : IBudgetRepository
 {
@@ -41,9 +40,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        // No cross-domain Includes — views read team data via TeamId lookups.
-        // Display sort (SortOrder on groups/categories/line items) is applied by
-        // the Budget/Finance controllers + views, not here.
+        // Display sort (SortOrder) is applied by the controllers and views, not here.
         return await ctx.BudgetYears
             .AsNoTracking()
             // arch:db-sort-ok budget tree persisted SortOrder
@@ -70,8 +67,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         if (activeId is null)
             return null;
 
-        // Display sort (SortOrder on groups/categories/line items) is applied by
-        // the Budget/Finance controllers + views, not here.
+        // Display sort (SortOrder) is applied by the controllers and views, not here.
         return await ctx.BudgetYears
             .AsNoTracking()
             // arch:db-sort-ok budget tree persisted SortOrder
@@ -512,9 +508,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        // No cross-domain Includes — callers resolve team names via
-        // ITeamService keyed off TeamId / ResponsibleTeamId. Line-item
-        // display sort (SortOrder) is applied by the CategoryDetail views.
+        // Line-item display sort (SortOrder) is applied by the views.
         return await ctx.BudgetCategories
             .AsNoTracking()
             .Include(c => c.BudgetGroup)
@@ -892,10 +886,9 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
                 $"Week of {week.WeekLabel}",
                 week.Revenue, week.Monday, projectionVatRate, $"{week.TicketCount} tickets", now);
 
-            // One Stripe row per fee-VAT class, so a whole-percent rate only approximates the taxed
-            // row: fees of unknown tax (enriched before capture) keep the assumed rate under the
-            // original description; captured-untaxed fees carry 0; captured-taxed fees carry their
-            // gross (fees + the VAT Stripe charged) at the rate derived from that VAT.
+            // One Stripe row per fee-VAT class: unknown-tax fees (enriched before capture) keep the assumed rate under
+            // the original description; captured-untaxed fees carry 0; captured-taxed fees carry their gross at the rate
+            // derived from that VAT.
             if (week.StripeFees >= 0)
             {
                 var taxedFees = week.StripeFees - week.StripeFeesTaxUnknown - week.StripeFeesUntaxed;
@@ -921,10 +914,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         lineItemsChanged += ZeroDroppedActualWeeks(
             weeklyActuals.Select(w => w.Monday).ToHashSet(), revenueCategory, feesCategory, now);
 
-        // Refresh the projection's learned parameters from the new actuals
-        // BEFORE materializing the projected-week schedule, so projected
-        // items reflect the updated average price / fee percentages in the
-        // same atomic op rather than lagging one sync behind.
+        // Refresh the learned parameters BEFORE materializing projected weeks, so projections never lag one sync behind.
         if (weeklyActuals.Count > 0 && ticketingGroup.TicketingProjection is not null)
         {
             var totalRevenue = weeklyActuals.Sum(w => w.Revenue);
@@ -991,8 +981,6 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        // No cross-domain Include — the audit log view renders the actor via
-        // <vc:human user-id=@ActorUserId>.
         var query = ctx.BudgetAuditLogs.AsNoTracking().AsQueryable();
 
         if (budgetYearId.HasValue)
@@ -1026,10 +1014,8 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
     private const int AssumedTicketingFeeVatRate = 21;
 
     /// <summary>
-    /// Whole-percent VAT rate closest to the fee VAT Stripe actually charged
-    /// (<paramref name="feeTax"/> on <paramref name="netFees"/>), clamped to the 0–21 line-item
-    /// range. Line items carry no exact VAT amount, so a non-integer effective rate leaves a
-    /// few cents of residual in the row's computed VAT.
+    /// Whole-percent rate closest to <paramref name="feeTax"/> on <paramref name="netFees"/>, clamped to 0–21. Line items
+    /// carry no exact VAT amount, so a non-integer effective rate leaves a few cents of residual.
     /// </summary>
     private static int DerivedFeeVatRate(decimal netFees, decimal feeTax) =>
         netFees <= 0m || feeTax <= 0m
@@ -1105,12 +1091,8 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
     }
 
     /// <summary>
-    /// Removes stale projected line items and upserts the projected-
-    /// week schedule from the <em>current</em> <see cref="TicketingProjection"/>
-    /// state inside this <c>DbContext</c>. Critically, this runs AFTER the
-    /// caller has updated projection parameters from actuals (so the
-    /// Projected: items reflect the new average price / fee percentages
-    /// rather than the pre-sync values).
+    /// Reads the <em>current</em> <see cref="TicketingProjection"/> in this context, so it must run AFTER the caller
+    /// updates the parameters from actuals.
     /// </summary>
     private static int MaterializeProjectedWeeks(
         BudgetDbContext ctx,
@@ -1160,10 +1142,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         return created;
     }
 
-    /// <summary>
-    /// Zeroes stored auto-generated weekly actuals whose week is absent from the new input
-    /// (e.g. a week whose orders were all refunded), keeping the rows.
-    /// </summary>
+    /// <summary>Weeks absent from the new input (e.g. all refunded) are zeroed, never deleted.</summary>
     private static int ZeroDroppedActualWeeks(
         HashSet<LocalDate> syncedMondays,
         BudgetCategory revenueCategory,
@@ -1215,10 +1194,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         }
     }
 
-    /// <summary>
-    /// Upserts an auto-generated line item by (category, description) match.
-    /// Returns 1 if the item was created or mutated, 0 if unchanged.
-    /// </summary>
+    /// <summary>Matches on (category, description). Returns 1 if created or changed, else 0.</summary>
     private static int UpsertTicketingLineItem(
         BudgetDbContext ctx,
         BudgetCategory category,

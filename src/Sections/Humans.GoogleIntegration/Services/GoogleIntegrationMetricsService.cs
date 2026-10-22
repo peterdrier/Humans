@@ -4,11 +4,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.GoogleIntegration.Services;
 
-/// <summary>
-/// Owns the GoogleIntegration-section observable gauges: total Google resources
-/// (<see cref="ITeamResourceManagement"/> — the resource-count read moved with the section that
-/// owns <c>google_resources</c>, not Teams) and the unprocessed sync outbox.
-/// </summary>
 internal sealed class GoogleIntegrationMetricsService : PolledGaugeService
 {
     private static readonly Meter HumansMeter = new("Humans.Metrics");

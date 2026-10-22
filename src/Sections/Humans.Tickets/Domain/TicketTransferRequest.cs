@@ -2,82 +2,52 @@ using NodaTime;
 
 namespace Humans.Tickets.Domain;
 
-/// <summary>
-/// A user-initiated request to transfer a TicketAttendee (issued ticket) from
-/// the Sender (the attendee's current owner per <c>TicketAttendeeOwnership</c>) to
-/// a target Humans user (the Receiver). Pending until a TicketAdmin decides;
-/// the Sender may also cancel while still Pending. The ticket team either runs
-/// the automated void(-to-hold)+reissue at the vendor (<c>ProcessTransferAsync</c>,
-/// outcome in the <c>Vendor*</c> columns) or does it by hand and marks the request
-/// Approved ("transfer successful"); "cancel with a reason" sets Rejected. The
-/// next ticket sync reconciles the local attendee rows.
-/// </summary>
+/// <summary>The next ticket sync reconciles the local attendee rows after a manual decision.</summary>
 internal sealed class TicketTransferRequest
 {
     public Guid Id { get; init; }
 
-    /// <summary>FK to the TicketAttendee being transferred (the original issued ticket).</summary>
     public Guid OriginalTicketAttendeeId { get; init; }
 
-    /// <summary>Navigation to the original attendee row. Nullable because not all
-    /// query paths Include() it; consumers fall back to a direct repo lookup.</summary>
+    /// <summary>Not every query path includes it; consumers fall back to a repository lookup.</summary>
     public TicketAttendee? OriginalTicketAttendee { get; set; }
 
-    /// <summary>Humans user sending the ticket (the buyer / current holder).</summary>
     public Guid SenderUserId { get; init; }
 
-    /// <summary>Target Humans user (Receiver).</summary>
     public Guid ReceiverUserId { get; init; }
 
     /// <summary>
-    /// Snapshot of the Receiver's legal name (Profile.FullName) at request
-    /// time, so a profile rename between request and processing doesn't change
-    /// what the ticket team reissues under. Shown to the team + in emails.
+    /// Snapshot at request time, so a profile rename before processing doesn't change what the team reissues under.
     /// </summary>
     public string ReceiverLegalName { get; init; } = string.Empty;
 
-    /// <summary>
-    /// Snapshot of the Receiver's primary email at request time — the address
-    /// the team reissues the ticket to, and where the decision email is sent.
-    /// </summary>
+    /// <summary>Snapshot at request time: where the ticket is reissued and the decision email goes.</summary>
     public string ReceiverEmail { get; init; } = string.Empty;
 
-    /// <summary>Free-text reason from the Sender (visible to admin).</summary>
     public string SenderReason { get; init; } = string.Empty;
 
-    /// <summary>Lifecycle state. See <see cref="TicketTransferStatus"/>.</summary>
     public TicketTransferStatus Status { get; set; } = TicketTransferStatus.Pending;
 
-    // ── Vendor-writeback outcome ─────────────────────────────────────────────────
-    // Written by TicketTransferService.ProcessTransferAsync (the automated void+reissue)
-    // and read by the admin queue/detail. NotAttempted for manual ("mark successful")
-    // transfers.
-
-    /// <summary>Outcome of the automated TT void+reissue. See <see cref="TicketTransferVendorResult"/>.</summary>
+    /// <summary>NotAttempted for manual ("mark successful") transfers.</summary>
     public TicketTransferVendorResult VendorResult { get; set; } = TicketTransferVendorResult.NotAttempted;
 
-    /// <summary>Human-readable vendor diagnostic (hold id on success; failure detail otherwise).</summary>
+    /// <summary>The hold id on success, the failure detail otherwise.</summary>
     public string? VendorMessage { get; set; }
 
-    /// <summary>The reissued TicketTailor ticket id on a successful automated transfer.</summary>
     public string? NewVendorTicketId { get; set; }
 
     /// <summary>
-    /// The TicketTailor hold id captured when a void-to-hold succeeded but the reissue failed
-    /// (<see cref="TicketTransferVendorResult.VoidSucceededIssueFailed"/>). Lets an admin retry the
-    /// reissue straight from the held seat — no manual dashboard step. Null otherwise.
+    /// Kept when a void-to-hold succeeded but the reissue failed, so an admin can retry from the held seat.
     /// </summary>
     public string? VendorHoldId { get; set; }
 
-    // Dormant: the removed vendor-step timeline's storage. The lean automated engine records
-    // its outcome in the columns above + the audit log instead; VendorStepsJson is unread and
-    // drops in a follow-up PR after prod soak (memory/architecture/no-drops-until-prod-verified.md).
+    // Dormant: unread, dropped after prod soak.
     public string VendorStepsJson { get; set; } = "[]";
 
-    /// <summary>TicketAdmin who decided (null while Pending or if Cancelled by the Sender).</summary>
+    /// <summary>Null while Pending or when the Sender cancelled.</summary>
     public Guid? DecidedByUserId { get; set; }
 
-    /// <summary>Free-text from the deciding admin (required cancellation reason or optional success note).</summary>
+    /// <summary>The required cancellation reason or an optional success note.</summary>
     public string? AdminNotes { get; set; }
 
     public Instant RequestedAt { get; init; }

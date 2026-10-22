@@ -36,10 +36,7 @@ internal sealed class ProfileViewModel
 
     public bool CanViewLegalName { get; set; }
 
-    /// <summary>
-    /// Whether the viewer is looking at their own profile.
-    /// Controls visibility of edit buttons, quick actions, and owner-only UI.
-    /// </summary>
+    /// <summary>Controls edit buttons, quick actions and other owner-only UI.</summary>
     public bool IsOwnProfile { get; set; }
 
     [StringLength(256, ErrorMessage = "Validation_MaxLength")]
@@ -78,23 +75,14 @@ internal sealed class ProfileViewModel
     [Display(Name = "Notes for the Board")]
     public string? BoardNotes { get; set; }
 
-    /// <summary>
-    /// Birthday month (1-12) for the edit form.
-    /// </summary>
     [Display(Name = "Birthday")]
     [Range(1, 12, ErrorMessage = "Validation_Range")]
     public int? BirthdayMonth { get; set; }
 
-    /// <summary>
-    /// Birthday day (1-31) for the edit form.
-    /// </summary>
     [Range(1, 31, ErrorMessage = "Validation_Range")]
     public int? BirthdayDay { get; set; }
 
-    /// <summary>
-    /// Parsed birthday as a LocalDate with year fixed to 4 (leap year, so Feb 29 is valid).
-    /// Returns null if month/day not set or invalid.
-    /// </summary>
+    /// <summary>Year fixed to 4 (a leap year) so Feb 29 parses; null when unset or invalid.</summary>
     public LocalDate? ParsedBirthday
     {
         get
@@ -142,22 +130,13 @@ internal sealed class ProfileViewModel
 
     public string? TierApplicationBadgeClass { get; set; }
 
-    /// <summary>
-    /// Whether this is the user's initial profile setup (no profile yet or not approved).
-    /// Controls visibility of the membership-tier card.
-    /// </summary>
+    /// <summary>No profile yet or not approved; shows the membership-tier card.</summary>
     public bool IsInitialSetup { get; set; }
 
-    /// <summary>
-    /// Whether the Private Information section should be shown first.
-    /// True when FirstName, LastName, and EmergencyContactName are all empty (new user).
-    /// </summary>
+    /// <summary>True when FirstName, LastName and EmergencyContactName are all empty (a new user).</summary>
     public bool ShowPrivateFirst { get; set; }
 
-    /// <summary>
-    /// Whether the member has declared no prior burn experience.
-    /// When true, Burner CV entries are not required.
-    /// </summary>
+    /// <summary>When true, Burner CV entries are not required.</summary>
     public bool NoPriorBurnExperience { get; set; }
 
     /// <summary>
@@ -205,20 +184,14 @@ internal sealed class ProfileViewModel
 
     public List<NoShowHistoryItem>? NoShowHistory { get; set; }
 
-    /// <summary>
-    /// Whether the viewer can see the shift signups section (coordinators, signup approvers, admins).
-    /// Uses the same gate as NoShowHistory. Only meaningful when IsOwnProfile is false.
-    /// </summary>
+    /// <summary>Same gate as NoShowHistory; only meaningful when IsOwnProfile is false.</summary>
     public bool CanViewShiftSignups { get; set; }
 
     public List<ProfileLanguageEditViewModel> EditableLanguages { get; set; } = [];
 
     public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
 
-    /// <summary>
-    /// Whether the viewer can see the "Sent messages" panel.
-    /// True when the viewer is a coordinator or has a privileged shift-management role.
-    /// </summary>
+    /// <summary>The viewer is a coordinator or holds a privileged shift-management role.</summary>
     public bool CanViewSentMessages { get; set; }
 }
 
@@ -239,9 +212,6 @@ internal sealed class ContactFieldViewModel
     public string Value { get; set; } = string.Empty;
     public ContactFieldVisibility Visibility { get; set; }
 
-    /// <summary>
-    /// Gets a Font Awesome icon class for this field type.
-    /// </summary>
     public string IconClass => FieldType switch
     {
 #pragma warning disable CS0618 // Obsolete ContactFieldType.Email kept for display of legacy data
@@ -255,9 +225,7 @@ internal sealed class ContactFieldViewModel
         _ => "fa-solid fa-address-card"
     };
 
-    /// <summary>
-    /// Gets a clickable URL for this contact field, or null if not linkable.
-    /// </summary>
+    /// <summary>Null when the field type is not linkable.</summary>
     public string? LinkUrl => FieldType switch
     {
 #pragma warning disable CS0618 // Obsolete ContactFieldType.Email kept for display of legacy data
@@ -269,9 +237,7 @@ internal sealed class ContactFieldViewModel
         _ => null
     };
 
-    /// <summary>
-    /// Resource key for a visibility badge pill. Null for public fields (no badge needed).
-    /// </summary>
+    /// <summary>Null for public fields, which get no badge.</summary>
     public string? VisibilityBadgeKey => Visibility switch
     {
         ContactFieldVisibility.BoardOnly => "Emails_Visibility_BoardOnly",
@@ -312,9 +278,7 @@ internal sealed class VolunteerHistoryEntryViewModel
     public string EventName { get; set; } = string.Empty;
     public string? Description { get; set; }
 
-    /// <summary>
-    /// Gets the date formatted as "Mon'YY" (e.g., "Mar'25").
-    /// </summary>
+    /// <summary>E.g. "Mar'25".</summary>
     public string FormattedDate
     {
         get
@@ -341,9 +305,6 @@ internal sealed class VolunteerHistoryEntryEditViewModel
     [DataType(DataType.MultilineText)]
     public string? Description { get; set; }
 
-    /// <summary>
-    /// Parses DateString to LocalDate. Returns null if invalid.
-    /// </summary>
     public LocalDate? ParsedDate
     {
         get
@@ -351,13 +312,13 @@ internal sealed class VolunteerHistoryEntryEditViewModel
             if (string.IsNullOrWhiteSpace(DateString))
                 return null;
 
-            // Try parsing as yyyy-MM-dd (HTML date input format)
+            // yyyy-MM-dd, from a date input.
             var pattern = NodaTime.Text.LocalDatePattern.Iso;
             var parseResult = pattern.Parse(DateString);
             if (parseResult.Success)
                 return parseResult.Value;
 
-            // Try parsing as yyyy-MM (month input format) - use first of month
+            // yyyy-MM, from a month input: first of the month.
             if (DateString.Length == 7)
             {
                 var monthPattern = NodaTime.Text.LocalDatePattern.Iso;
@@ -377,9 +338,7 @@ internal sealed class UserEmailDisplayViewModel
     public bool IsPrimary { get; set; }
     public ContactFieldVisibility? Visibility { get; set; }
 
-    /// <summary>
-    /// Resource key for a visibility badge pill. Null for public fields (no badge needed).
-    /// </summary>
+    /// <summary>Null for public fields, which get no badge.</summary>
     public string? VisibilityBadgeKey => Visibility switch
     {
         ContactFieldVisibility.BoardOnly => "Emails_Visibility_BoardOnly",
@@ -407,9 +366,6 @@ internal sealed class ProfileLanguageDisplayViewModel
     public string LanguageName { get; set; } = string.Empty;
     public LanguageProficiency Proficiency { get; set; }
 
-    /// <summary>
-    /// Bootstrap badge class for the proficiency level.
-    /// </summary>
     public string ProficiencyBadgeClass => Proficiency switch
     {
         LanguageProficiency.Native => "bg-success",
@@ -419,10 +375,7 @@ internal sealed class ProfileLanguageDisplayViewModel
     };
 }
 
-/// <summary>
-/// One no-show row. Built from <c>IShiftSignups.GetNoShowHistoryAsync</c>;
-/// this page is the only consumer.
-/// </summary>
+/// <summary>One no-show row, from <c>IShiftSignups.GetNoShowHistoryAsync</c>.</summary>
 internal sealed class NoShowHistoryItem
 {
     public string ShiftLabel { get; set; } = string.Empty;

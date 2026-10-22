@@ -2,16 +2,14 @@ using NodaTime;
 
 namespace Humans.Grants.Services;
 
-/// <summary>Which member-facing email <see cref="GrantsEmails"/> renders.</summary>
 internal enum GrantNoticeKind
 {
-    /// <summary>Issued, or resent: the program, what it entitles them to, its expiry.</summary>
+    /// <summary>Also used for a resend.</summary>
     Issued,
-    /// <summary>Revoked: the program, the reason if given.</summary>
     Revoked,
 }
 
-/// <summary>Everything one notice needs; pure data so the builder stays I/O-free.</summary>
+/// <summary>Pure data, so the builder stays I/O-free.</summary>
 internal sealed record GrantNoticeRequest(
     string RecipientEmail,
     string? RecipientName,

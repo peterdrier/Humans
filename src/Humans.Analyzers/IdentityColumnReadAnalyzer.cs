@@ -14,8 +14,6 @@ namespace Humans.Analyzers;
 /// <c>IUserEmailService.GetPrimaryEmailAsync</c> /
 /// <c>IUserEmailService</c> instead. Pairs with HUM0002 (writes) and
 /// HUM0003 (FindByEmailAsync/FindByNameAsync).
-///
-/// Issue nobodies-collective/Humans#506.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class IdentityColumnReadAnalyzer : DiagnosticAnalyzer
@@ -83,10 +81,8 @@ public sealed class IdentityColumnReadAnalyzer : DiagnosticAnalyzer
         if (!ForbiddenGetters.Contains(prop.Name))
             return;
 
-        // A section's Data/ folder is its Infrastructure layer — the repository and the EF
-        // configuration read these columns by definition. Expressed by folder because a
-        // section assembly holds all three layers at once; see HUM0002 for the same carve-out
-        // and AssemblyScope.IsInSectionDataLayer for why (nobodies-collective/Humans#866).
+        // A section's Data/ folder is its Infrastructure layer: the repository and the EF configuration read these
+        // columns by definition. See HUM0002 for the same carve-out.
         if (context.ContainingSymbol is { } owner && AssemblyScope.IsInSectionDataLayer(owner))
             return;
 

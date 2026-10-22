@@ -58,10 +58,8 @@
     </div>
 </div>
 
-@* The panel itself is the Development section's (nobodies-collective/Humans#866): it
-   enumerates DevLoginController.AllPersonas, which is internal to that assembly. Partial
-   lookup resolves by name across application parts, so the markup moved and this view kept
-   the guard. *@
+@* The panel is the Development section's, since DevLoginController.AllPersonas is internal there. Partial lookup
+   resolves by name across application parts, so this view keeps only the guard. *@
 @if (devAuthEnabled)
 {
     @await Html.PartialAsync("_DevLoginPanel")

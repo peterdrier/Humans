@@ -27,10 +27,6 @@ internal sealed class ConsentSubmitModel
     public bool ExplicitConsent { get; set; }
 }
 
-/// <summary>
-/// The member's own My Data page (<c>/Consent/MyData</c>): deletion status from the cached
-/// <c>UserInfo</c> plus the legal documents they have signed.
-/// </summary>
 internal sealed class MyDataViewModel
 {
     public bool IsDeletionPending { get; set; }

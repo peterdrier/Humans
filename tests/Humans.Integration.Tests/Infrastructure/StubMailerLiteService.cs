@@ -5,19 +5,10 @@ using NodaTime;
 namespace Humans.Integration.Tests.Infrastructure;
 
 /// <summary>
-/// In-memory <see cref="IMailerLiteService"/> so integration tests never reach
-/// connect.mailerlite.com — the same call as <c>StripeServiceStub</c>, made by hand rather
-/// than with NSubstitute because the interface exposes an
-/// <see cref="IAsyncEnumerable{T}"/> that a default substitute returns null for.
+/// Hand-written because a substitute returns null for the <see cref="IAsyncEnumerable{T}"/>. Seeds the <c>Website</c>
+/// group the import needs (<c>BuildPlanAsync</c> throws without it). The audience writes record calls and change
+/// nothing; <see cref="DeleteSubscriberAsync"/> really removes, so GDPR erasure tests can observe it.
 /// </summary>
-/// <remarks>
-/// Defaults model the smallest account the section's pages need to be worth rendering: the
-/// <c>Website</c> group the import reads (resolved by name, and
-/// <c>MailerLiteImportService.BuildPlanAsync</c> throws if it is absent) plus whatever
-/// subscribers a test adds. The four audience-management writes record their calls and
-/// mutate nothing; <see cref="DeleteSubscriberAsync"/> actually removes the subscriber so
-/// GDPR erasure tests can observe the effect.
-/// </remarks>
 internal sealed class StubMailerLiteService : IMailerLiteService
 {
     public const string WebsiteGroupId = "grp-website";

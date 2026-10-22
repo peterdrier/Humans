@@ -24,13 +24,8 @@ internal sealed class CampRoleDefinitionConfiguration : IEntityTypeConfiguration
 
         builder.HasIndex(d => d.SortOrder);
 
-        // SpecialRole stored as string per the Camps enum convention. No DB
-        // default: the one-time backfill it existed for (the AddColumn in
-        // 20260519173900_AddSpecialRoleToCampRoleDefinition) is long done, and
-        // every insert goes through EF, which always supplies the value. A
-        // DEFAULT whose value equals the CLR default (CampSpecialRole.None = 0)
-        // also gives EF no sentinel to distinguish "explicitly None" from
-        // "unset", which it warns about at every startup.
+        // No DB default: one equal to the CLR default (None = 0) gives EF no sentinel and it warns at every startup.
+        // Every insert goes through EF, which always supplies the value.
         builder.Property(d => d.SpecialRole)
             .HasConversion<string>()
             .HasMaxLength(50)

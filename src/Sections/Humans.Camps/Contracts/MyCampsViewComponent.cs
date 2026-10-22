@@ -3,10 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Camps.Contracts;
 
-/// <summary>
-/// Lists camps the current human belongs to (or has requested), grouped by year.
-/// Rendered on the human's own profile page. Private — never shown publicly.
-/// </summary>
+/// <summary>Private: shown only on the human's own profile page, never publicly.</summary>
 public class MyCampsViewComponent(ICampService campService, ILogger<MyCampsViewComponent> logger) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()

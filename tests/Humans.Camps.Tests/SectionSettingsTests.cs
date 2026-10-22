@@ -4,7 +4,7 @@ using Humans.Base.Authorization;
 namespace Humans.Camps.Tests;
 
 /// <summary>
-/// The /Settings#barrios tab contribution (peterdrier/Humans#1634). The Policy assertion is
+/// The /Settings#barrios tab contribution. The Policy assertion is
 /// the negative case: <c>SettingsTabComposition</c> (Humans.Settings.Tests) drops any tab
 /// whose policy the viewer fails, so a non-CampAdmin/Admin viewer never sees this tab.
 /// </summary>

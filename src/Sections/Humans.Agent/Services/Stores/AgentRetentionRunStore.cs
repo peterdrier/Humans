@@ -3,12 +3,7 @@ using Humans.Agent.Models;
 
 namespace Humans.Agent.Services.Stores;
 
-/// <summary>
-/// In-memory snapshot of the last <c>AgentConversationRetentionJob</c> run.
-/// Singleton; readers (admin status view) and writer (retention job) race on
-/// the snapshot reference, so we publish via <see cref="Interlocked.Exchange{T}(ref T, T)"/>
-/// to match the pattern used by <c>AgentSettingsStore</c>.
-/// </summary>
+/// <summary>The job writes and the status view reads, so the snapshot is published with Interlocked.Exchange.</summary>
 internal sealed class AgentRetentionRunStore : IAgentRetentionRunStore
 {
     private AgentRetentionRunSnapshot _snapshot = new(LastRunAt: null, LastDeletedCount: 0);

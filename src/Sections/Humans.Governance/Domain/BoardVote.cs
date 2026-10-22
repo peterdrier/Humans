@@ -15,11 +15,6 @@ internal sealed class BoardVote
 
     public Application Application { get; set; } = null!;
 
-    /// <summary>
-    /// Foreign key to the Board member who cast the vote. Use
-    /// <c>IUserService</c> to hydrate display info — cross-domain
-    /// navigation properties are forbidden on this entity (design-rules §6).
-    /// </summary>
     public Guid BoardMemberUserId { get; init; }
 
     public VoteChoice Vote { get; set; }

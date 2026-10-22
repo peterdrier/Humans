@@ -16,9 +16,7 @@ public sealed class ConcurrencyTokenAnalyzerTests
         """;
 
     // The analyzer downgrades to a warning when the containing type carries
-    // [Grandfathered("HUM0007", …)]. The attribute is stubbed here so the
-    // synthetic compilation can resolve it — the real build references it
-    // transitively from Humans.Application.
+    // [Grandfathered("HUM0007", …)]; the stub lets the synthetic compilation resolve it.
     private const string GrandfatheredStub = """
         namespace Humans.Base.Attributes
         {

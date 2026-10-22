@@ -3,9 +3,8 @@ using Microsoft.AspNetCore.Html;
 namespace Humans.Base.Models.Tables;
 
 /// <summary>
-/// Non-generic render contract consumed by <c>Views/Shared/_Table.cshtml</c>.
-/// Built via <see cref="TableModel.For{TRow}"/>; see
-/// docs/superpowers/specs/2026-06-10-table-component-design.md.
+/// Non-generic render contract consumed by <c>Views/Shared/_Table.cshtml</c>, built via
+/// <see cref="TableModel.For{TRow}"/>.
 /// </summary>
 public interface ITableModel
 {

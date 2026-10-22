@@ -11,13 +11,6 @@ using SdkGroupSettingsBaseServiceRequest = Google.Apis.Groupssettings.v1.Groupss
 
 namespace Humans.GoogleIntegration.Services.Workspace;
 
-/// <summary>
-/// Real Google-backed implementation of <see cref="IGoogleGroupProvisioningClient"/>.
-/// Talks to the Cloud Identity Groups API (group lifecycle) and the Google
-/// Workspace Groups Settings API (settings) using the configured service
-/// account. This is the only file that imports <c>Google.Apis.*</c> for
-/// group provisioning and settings reconciliation.
-/// </summary>
 internal sealed class GoogleGroupProvisioningClient(
     IOptions<GoogleWorkspaceSettings> settings,
     ILogger<GoogleGroupProvisioningClient> logger) : IGoogleGroupProvisioningClient
@@ -54,14 +47,8 @@ internal sealed class GoogleGroupProvisioningClient(
                 Google.Apis.CloudIdentity.v1.GroupsResource.CreateRequest.InitialGroupConfigEnum.WITHINITIALOWNER;
             var operation = await createRequest.ExecuteAsync(ct);
 
-            // groups.create returns a long-running Operation. In practice
-            // Cloud Identity finishes synchronously so Done is true and
-            // Response is populated, but the API contract permits an
-            // in-progress (Done=false, Response=null) or failed (Error set)
-            // result. Treat those as a bridge-level failure so the caller
-            // gets a structured GroupCreateResult with error context
-            // instead of an unhandled NullReference / KeyNotFound
-            // exception.
+            // groups.create returns a long-running Operation. Cloud Identity finishes synchronously in practice, but an
+            // in-progress or failed result becomes a structured failure rather than a NullReference.
             if (operation.Error is not null)
             {
                 logger.LogWarning(

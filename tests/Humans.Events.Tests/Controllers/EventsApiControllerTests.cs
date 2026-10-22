@@ -260,8 +260,7 @@ public class EventsApiControllerTests
         {
             Id = userId,
             DisplayName = "Test Submitter",
-            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (nobodies-collective/Humans#1097) —
-            // UserInfo.BurnerName reads User.BurnerName only (nobodies-collective/Humans#1098).
+            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
             BurnerName = burnerName,
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),

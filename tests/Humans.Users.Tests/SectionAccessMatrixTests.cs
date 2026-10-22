@@ -3,10 +3,6 @@ using Humans.Base.Models;
 
 namespace Humans.Users.Tests;
 
-/// <summary>
-/// The help widget and the agent's preload both read the Profile access matrix through the
-/// <c>ISectionAccessMatrix</c> seam, so the rows are pinned here rather than in Base.
-/// </summary>
 public class SectionAccessMatrixTests
 {
     private static AccessMatrixData Matrix() =>

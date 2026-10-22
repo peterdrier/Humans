@@ -1,6 +1,6 @@
 @* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
-   here ships broken markup with a green build and no runtime error.
-   Guarded by ShiftsPageRenderTests (step 12). *@
+   here ships broken markup with a green build and no runtime error. Guarded by
+   ShiftsPageRenderTests. *@
 @using Humans.Base.Extensions
 @using Humans.Base.Enums
 @using Humans.Shifts
@@ -22,9 +22,7 @@
 @using Microsoft.Extensions.Localization
 @using NodaTime
 @using NodaTime.Text
-@* Localizer is the section's own set; SharedLocalizer covers Common_*, Nav_MyProfile,
-   Teams_Title, Profile_BuildStrip_Title, Medical_Badge and the five Shifts_ keys pinned
-   in SharedResource (see ShiftsResource remarks). Binding the wrong one renders the raw key. *@
+@* SharedLocalizer covers Common_* and the Shifts_ keys pinned in SharedResource. Binding the wrong one renders the raw key. *@
 @inject IStringLocalizer<ShiftsResource> Localizer
 @inject IStringLocalizer<SharedResource> SharedLocalizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers

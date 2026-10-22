@@ -1,30 +1,15 @@
 namespace Humans.Base.Constants;
 
-/// <summary>
-/// Constants for role names used in the application.
-/// </summary>
 public static class RoleNames
 {
-    /// <summary>
-    /// Administrator role with full system access.
-    /// </summary>
     public const string Admin = "Admin";
 
-    /// <summary>
-    /// Board member role with elevated permissions.
-    /// </summary>
     public const string Board = "Board";
 
-    /// <summary>
-    /// Consent Coordinator — performs safety checks on new humans during onboarding.
-    /// Can clear or flag consent checks. Bypasses MembershipRequiredFilter.
-    /// </summary>
+    /// <summary>Consent Coordinator: performs safety checks on new humans during onboarding (clear or flag).</summary>
     public const string ConsentCoordinator = "ConsentCoordinator";
 
-    /// <summary>
-    /// Volunteer Coordinator — facilitation contact for onboarding humans.
-    /// Read-only access to onboarding review queue. Bypasses MembershipRequiredFilter.
-    /// </summary>
+    /// <summary>Volunteer Coordinator: facilitation contact for onboarding humans; read-only on the review queue.</summary>
     public const string VolunteerCoordinator = "VolunteerCoordinator";
 
     /// <summary>
@@ -57,12 +42,9 @@ public static class RoleNames
     public const string EventsAdmin = "EventsAdmin";
 
     /// <summary>
-    /// Feedback Administrator — historically granted feedback triage. Since
-    /// nobodies-collective/Humans#977 the Feedback section is retired and every screen is
-    /// gated by the <c>AdminOnly</c> policy, so this role grants
-    /// <b>no</b> feedback access. It stays assignable because the Staff page, the Guide
-    /// role resolver, the authorization pill-filter labels, and <c>AnyAdminRole</c> still
-    /// reference it.
+    /// Feedback Administrator: grants <b>no</b> feedback access, since the retired Feedback section is gated by
+    /// <c>AdminOnly</c>. Stays assignable because the Staff page, the Guide role resolver, the pill-filter labels and
+    /// <c>AnyAdminRole</c> still reference it.
     /// </summary>
     public const string FeedbackAdmin = "FeedbackAdmin";
 
@@ -134,10 +116,7 @@ public static class RoleNames
         RideshareAdmin
     ];
 
-    /// <summary>
-    /// Roles that Board and HumanAdmin are permitted to manage (assign/end).
-    /// Used by both service-layer authorization and Web-layer role checks.
-    /// </summary>
+    /// <summary>Roles Board and HumanAdmin may assign and end.</summary>
     public static readonly IReadOnlySet<string> BoardManageableRoles = new HashSet<string>(StringComparer.Ordinal)
     {
         Board,

@@ -108,7 +108,6 @@
 
         <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" display-name="@Model.DisplayName" />
 
-        @* Section-contributed parts (IUserPart) — UserCalendar (Calendar), Role Assignments (Auth), Email Outbox and Communication Preferences (Email), each auto-hides when empty *@
         <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.AdminDetail" user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Admin" />
 
         <vc:audit-log user-id="@Model.UserId" limit="50" title="@Localizer["AdminHuman_AuditHistory"].Value" />
@@ -116,7 +115,6 @@
     </div>
 
     <div class="col-md-4">
-        @* Section-contributed parts (IUserPart) — TicketHoldings (Tickets), each auto-hides when empty *@
         <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.AdminDetailSidebar" user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Admin" />
 
         <div class="card mb-4">
@@ -134,7 +132,7 @@
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="fa-solid fa-at me-1"></i> Emails</span>
-                @* AdminEmails is self-or-Admin only; AdminDetail reaches further — gate to avoid 403 *@
+                @* AdminEmails is self-or-Admin only; gate to avoid a 403. *@
                 @if (isAdmin)
                 {
                     <a asp-controller="ProfileEmails" asp-action="AdminEmails" asp-route-id="@Model.UserId"

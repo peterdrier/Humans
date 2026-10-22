@@ -15,15 +15,9 @@ namespace Humans.Analyzers;
 /// <item><b>HUM0027</b> — a type must implement <c>IOrchestrator</c> XOR
 /// <c>IApplicationService</c>, never both. The role axis is exclusive.</item>
 /// </list>
-/// Both are <see cref="DiagnosticSeverity.Error"/> by default and carry no
-/// grandfather machinery — a genuine orchestrator never violates either rule,
-/// and a violator means the role marker is wrong (relocate the access into
-/// the owning section's Section service, not grandfather here).
+/// No grandfather machinery: a genuine orchestrator never violates either rule, so a violator means the role marker
+/// is wrong.
 /// </summary>
-/// <remarks>
-/// Runs in <c>Humans.Application</c> only. The Application compilation is the
-/// one place where both markers and every candidate orchestrator are declared.
-/// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class OrchestratorRepositoryInjectionAnalyzer : DiagnosticAnalyzer
 {
@@ -93,11 +87,8 @@ public sealed class OrchestratorRepositoryInjectionAnalyzer : DiagnosticAnalyzer
 
         var applicationServiceMarker = context.Compilation.GetTypeByMetadataName(ApplicationServiceMarkerFullName);
         var repositoryMarker = context.Compilation.GetTypeByMetadataName(RepositoryMarkerFullName);
-        // Humans persistence contexts live in the Infrastructure layer — usually
-        // unreachable from this compilation. EF's DbContext resolves only when an
-        // orchestrator (illegally) takes a project reference that drags it in.
-        // Same for IDbContextFactory<>. Matching goes through SectionDbContexts
-        // so every per-section context is covered (nobodies-collective/Humans#858).
+        // EF's DbContext resolves only when an orchestrator (illegally) drags in a reference. Matching goes through
+        // SectionDbContexts so every section context is covered.
         var efDbContext = SectionDbContexts.ResolveEfDbContext(context.Compilation);
         var dbContextFactoryDef = context.Compilation.GetTypeByMetadataName(DbContextFactoryFullName);
 

@@ -8,9 +8,6 @@ using NSubstitute;
 
 namespace Humans.Email.Tests;
 
-/// <summary>
-/// The /Settings#email tab body (peterdrier/Humans#1634): it reports the email pause state.
-/// </summary>
 public sealed class EmailPauseSettingsTabViewComponentTests
 {
     private static async Task<EmailPauseSettingsTabViewModel> InvokeAsync(bool isPaused)

@@ -9,11 +9,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Users;
 
 /// <summary>
-/// Users' data migrations, run from <c>/Debug/DataMigrations</c>. Each one resolves Users' own
-/// services, so the copy stays inside the section; the Debug host only lists, applies and
-/// audits the run. The first four replace the Temp screens that used to live at
-/// <c>/Profile/Admin/Backfill</c>, <c>/Profile/Admin/NameBackfill</c>,
-/// <c>/Profile/Admin/PictureMigration</c> and <c>/Profile/Admin/EmailProblems/BackfillLegacyEmails</c>.
+/// Each migration resolves Users' own services, so the copy stays inside the section; the Debug
+/// host only lists, applies and audits the run.
 /// </summary>
 internal sealed class SectionDataMigrations : ISectionDataMigrations
 {
@@ -49,8 +46,6 @@ internal sealed class SectionDataMigrations : ISectionDataMigrations
             LegacyTombstonesStatusAsync, ApplyLegacyTombstonesAsync),
     ];
 
-    // --- users.stub-profiles ---
-
     private static async Task<IReadOnlyList<UserInfo>> UsersMissingProfileAsync(IServiceProvider sp, CancellationToken ct) =>
         // Tombstones are excluded: EnsureStubProfileAsync refuses them, so counting them would
         // keep the migration pending forever.
@@ -80,8 +75,6 @@ internal sealed class SectionDataMigrations : ISectionDataMigrations
         return created;
     }
 
-    // --- users.names-onto-user ---
-
     private static async Task<DataMigrationStatus> NamesOntoUserStatusAsync(IServiceProvider sp, CancellationToken ct) =>
         new(["User", "Email", "Status", "Burner name", "Legal name", "Missing"],
             [.. (await sp.GetRequiredService<IUserNameSyncService>().GetUnsyncedAsync(ct)).Select(r => (IReadOnlyList<string>)
@@ -96,10 +89,7 @@ internal sealed class SectionDataMigrations : ISectionDataMigrations
             ])]);
 
     private static Task<int> ApplyNamesOntoUserAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
-        // Audits UserNamesBackfilled per saved member.
         sp.GetRequiredService<IUserNameSyncService>().SyncAllAsync(actorUserId, ct);
-
-    // --- users.profile-pictures-to-filesystem ---
 
     private static async Task<DataMigrationStatus> PicturesStatusAsync(IServiceProvider sp, CancellationToken ct) =>
         new(["Profile", "User", "Display name", "Content type", "Updated"],
@@ -134,8 +124,6 @@ internal sealed class SectionDataMigrations : ISectionDataMigrations
         return migrated;
     }
 
-    // --- users.legacy-identity-emails ---
-
     private static async Task<DataMigrationStatus> LegacyEmailsStatusAsync(IServiceProvider sp, CancellationToken ct) =>
         new(["User", "Legacy User.Email"],
             [.. (await sp.GetRequiredService<IEmailProblemsService>().ScanAsync(ct)).Problems
@@ -146,13 +134,9 @@ internal sealed class SectionDataMigrations : ISectionDataMigrations
                 ])]);
 
     private static async Task<int> ApplyLegacyEmailsAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
-        // Audits LegacyIdentityEmailBackfilled per created row.
         (await sp.GetRequiredService<IEmailProblemsService>().BackfillLegacyIdentityEmailsAsync(actorUserId, ct)).Count;
 
-    // --- users.legacy-gdpr-tombstones ---
-
-    // Erased, but recognised only by the pre-#1098 name shape: the minted tombstone email that
-    // erasure writes today is missing.
+    // Erased, but recognised only by the legacy name shape: the minted tombstone email is missing.
     private static async Task<IReadOnlyList<UserInfo>> LegacyTombstonesAsync(IServiceProvider sp, CancellationToken ct) =>
         [.. (await sp.GetRequiredService<IUserManagement>().GetAllUserInfosAsync(ct))
             .Where(u => u.IsGdprAnonymized

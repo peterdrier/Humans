@@ -51,15 +51,9 @@ public static class EmailNormalization
     }
 
     /// <summary>
-    /// Comparison-only Gmail identity key: builds on <see cref="CanonicalizeGmail"/>
-    /// (lowercase, googlemail→gmail, strip "+tag") and additionally strips dots
-    /// from the local part, since Gmail ignores them too
-    /// (first.last@gmail.com and firstlast@gmail.com are the same account).
-    /// Unlike <see cref="CanonicalizeGmail"/>, never use this for a Drive API
-    /// target address — dotted addresses are accepted as-is by Drive, only
-    /// "+tag" is rejected (nobodies-collective/Humans#945). This is for
-    /// matching a Google-reported address against stored <c>user_emails</c>
-    /// rows that may carry either alias form (nobodies-collective/Humans#1101).
+    /// Comparison-only Gmail identity key: <see cref="CanonicalizeGmail"/> plus stripping dots from the local part,
+    /// which Gmail also ignores. For matching a Google-reported address against stored <c>user_emails</c> rows in
+    /// either alias form; never a Drive API target, since Drive accepts dotted addresses and rejects only "+tag".
     /// </summary>
     public static string CanonicalizeGmailAlias(string email)
     {
@@ -98,12 +92,9 @@ public sealed class NormalizingEmailComparer : IEqualityComparer<string>
 }
 
 /// <summary>
-/// IEqualityComparer over <see cref="EmailNormalization.CanonicalizeGmailAlias"/>: folds
-/// googlemail↔gmail, "+tag" and dots, so a stored alias row and the canonical address
-/// Google reports compare equal. Use wherever a Google-reported address is keyed against
-/// stored <c>user_emails</c> data (nobodies-collective/Humans#1101) —
-/// <see cref="NormalizingEmailComparer"/> folds only case and the domain, so an
-/// alias-only match hashes to a different bucket and is silently dropped.
+/// IEqualityComparer over <see cref="EmailNormalization.CanonicalizeGmailAlias"/>. Use it wherever a Google-reported
+/// address is keyed against stored <c>user_emails</c> data: <see cref="NormalizingEmailComparer"/> folds only case and
+/// domain, so an alias-only match hashes to another bucket and is silently dropped.
 /// </summary>
 public sealed class GmailAliasEmailComparer : IEqualityComparer<string>
 {

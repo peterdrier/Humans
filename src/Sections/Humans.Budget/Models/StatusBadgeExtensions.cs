@@ -3,16 +3,9 @@ using Humans.Budget.Contracts;
 namespace Humans.Budget.Models;
 
 /// <summary>
-/// Budget's own badge colours. Base cannot name <see cref="BudgetYearStatus"/> (the enum
-/// lives in the section's <c>Contracts/</c> folder), and moving it down into Base to get it
-/// back is the trap that ends with Base knowing every section's
-/// vocabulary (<c>memory/architecture/base-ui-registries-are-section-populated.md</c>).
+/// Base cannot name <see cref="BudgetYearStatus"/>, and moving the enum into Base would start Base knowing every
+/// section's vocabulary. An extension, not an <c>EnumBadgeMap</c> row: the views call <c>GetBadgeClass()</c> directly.
 /// </summary>
-/// <remarks>
-/// An extension rather than an <c>EnumBadgeMap.Register</c> row because the three admin
-/// views call <c>GetBadgeClass()</c> directly — the map serves
-/// <c>CellFormat.EnumBadge</c> table columns, which Budget has none of.
-/// </remarks>
 internal static class StatusBadgeExtensions
 {
     internal static string GetBadgeClass(this BudgetYearStatus status) => status switch

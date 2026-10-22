@@ -7,41 +7,16 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Integration.Tests.Controllers;
 
-/// <summary>
-/// Renders the global <c>/Search</c> page through the real app, as the standing form of the
-/// §15 step 12 check for the section's move into <c>src/Sections/Humans.Search</c>
-/// (nobodies-collective/Humans#866, G5).
-/// </summary>
+/// <summary>Renders the global <c>/Search</c> page through the real app.</summary>
 /// <remarks>
 /// <para>
-/// Search is one page, and every failure mode the move introduces renders it as a
-/// <b>200 with degraded content</b>, so "the page loads" is not the assertion:
+/// Failures render as a 200 with degraded content. The section is reachable only because <c>Humans.Web.csproj</c>
+/// references it; a missing reference builds green and 404s. Each Humans hit is Users'
+/// <c>&lt;vc:user-search-result&gt;</c>, bound only by this section's <c>@addTagHelper *, Humans.Users</c>.
+/// <c>Search_MinChars</c> stays in SharedResource because Shell's <c>/Profile/Search</c> reads it too.
 /// </para>
-/// <list type="number">
-/// <item><description>
-/// The section is only reachable at all because <c>Humans.Web.csproj</c> references it —
-/// <c>SectionDiscoveryExtensions</c> walks the dependency graph, so a missing reference builds
-/// green, passes the whole unit suite and 404s every page. These GETs are that check.
-/// </description></item>
-/// <item><description>
-/// A section RCL does not inherit the host's <c>Views/_ViewImports.cshtml</c>. The Humans
-/// bucket renders one <c>&lt;vc:user-search-result&gt;</c> per hit — Users' own component,
-/// keyed by user id (nobodies-collective/Humans#1062) — and that element binds only through
-/// this section's <c>@addTagHelper *, Humans.Users</c>. Drop that line and every row ships as
-/// inert literal markup on a green 200.
-/// </description></item>
-/// <item><description>
-/// The resx carve moved 12 of the 17 <c>Search_*</c> keys into <c>SearchResource</c> and left
-/// five behind — <c>Search_MinChars</c> is read by this page *and* by Shell's
-/// <c>/Profile/Search</c>, so the section binds a second localizer for it. A call site on the
-/// wrong localizer renders the raw key, in every language, with no error.
-/// </description></item>
-/// </list>
 /// <para>
-/// The fixture is the seeded dev personas and nothing else: every persona's burner name is
-/// "Dev &lt;role&gt;", so <c>q=Dev</c> fills the Humans bucket without touching a section this
-/// test does not own. The other four buckets stay empty, which is fine — they render through
-/// <c>_GlobalSearchSection</c>, whose markup carries no resource key at all.
+/// Every dev persona's burner name is "Dev &lt;role&gt;", so <c>q=Dev</c> fills the Humans bucket with no other fixture.
 /// </para>
 /// </remarks>
 public class SearchPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
@@ -59,12 +34,9 @@ public class SearchPageRenderTests(HumansTestDatabase database) : IntegrationTes
 
             var html = await response.Content.ReadAsStringAsync(ct);
 
-            // The fallback for a key the carve missed — or for a call site left on the wrong
-            // localizer — is the key itself.
             html.Should().NotContain("Search_", $"GET {url} rendered a raw resource key");
 
-            // ReSharper rewrites <vc:name> to <name-view-component> when it mistakes the
-            // element for a type reference; that also renders as inert markup.
+            // ReSharper can rewrite <vc:name> to <name-view-component>, which also renders inert.
             html.Should().NotContain("-view-component", $"GET {url} has a rewritten vc tag");
         }
     }
@@ -72,10 +44,7 @@ public class SearchPageRenderTests(HumansTestDatabase database) : IntegrationTes
     [HumansFact(Timeout = 120000)]
     public async Task The_empty_and_short_query_branches_render_from_both_localizers()
     {
-        // The hint is the section's own set; the min-chars message stayed in SharedResource
-        // because Shell's /Profile/Search renders it too, and carving it would have split that
-        // page's four-key message set. Both branches on one page is the only place the two
-        // bindings can be told apart.
+        // The hint is the section's set and the min-chars message SharedResource's; only this page shows both.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
@@ -89,9 +58,7 @@ public class SearchPageRenderTests(HumansTestDatabase database) : IntegrationTes
     [HumansFact(Timeout = 120000)]
     public async Task A_matching_query_renders_the_chips_and_the_humans_bucket()
     {
-        // The rows are Users' <vc:user-search-result>, bound through this section's
-        // @addTagHelper. An unbound one is a 200 with the element as literal markup, so the
-        // persona's name and the component's own match badge are what prove it ran.
+        // An unbound row is literal markup on a 200, so the persona's name and the match badge prove it ran.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
@@ -109,15 +76,9 @@ public class SearchPageRenderTests(HumansTestDatabase database) : IntegrationTes
     }
 
     /// <summary>
-    /// The Humans bucket renders one component instance per hit
-    /// (nobodies-collective/Humans#1062), so the shape to prove absent is a query per row.
+    /// One component per hit, so the shape to prove absent is a query per row. Every read goes through
+    /// <c>CachingUserService</c>, so the count is flat; a row that reaches past the cache turns this red.
     /// </summary>
-    /// <remarks>
-    /// Every read on the path — <c>SearchUsersAsync</c> and the two <c>&lt;vc:human&gt;</c>
-    /// lookups inside each row — goes through <c>CachingUserService</c>'s <c>UserInfo</c>
-    /// dictionary, so a warm cache costs nothing per row and the count is flat in the number
-    /// of results. A future row that reaches past the cache turns this red.
-    /// </remarks>
     [HumansFact(Timeout = 120000)]
     public async Task The_humans_bucket_costs_no_query_per_row()
     {
@@ -157,9 +118,8 @@ public class SearchPageRenderTests(HumansTestDatabase database) : IntegrationTes
     [HumansFact(Timeout = 120000)]
     public async Task A_query_with_no_hits_renders_the_no_results_message()
     {
-        // Search_GlobalNoResults is the one carved key rendered through HtmlContentBuilder
-        // .AppendFormat rather than a plain @Localizer[…], so it is the call site a carve
-        // mistake is most likely to survive on.
+        // The one key rendered through HtmlContentBuilder.AppendFormat rather than @Localizer, so a binding mistake is
+        // likeliest to survive here.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
@@ -172,9 +132,7 @@ public class SearchPageRenderTests(HumansTestDatabase database) : IntegrationTes
     [HumansFact(Timeout = 120000)]
     public async Task The_type_filter_keeps_the_page_rendering()
     {
-        // filter binds SearchResultType, which turned internal at the move. Model binding on an
-        // internal enum parameter of an internal controller is exactly the kind of thing that
-        // fails at request time and nowhere else.
+        // Binding an internal enum on an internal controller can fail at request time and nowhere else.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
@@ -189,9 +147,6 @@ public class SearchPageRenderTests(HumansTestDatabase database) : IntegrationTes
     [HumansFact(Timeout = 120000)]
     public async Task An_anonymous_visitor_cannot_reach_search()
     {
-        // The section's one negative access rule. Worth pinning at the move because the
-        // controller is now an internal type in another assembly routed through
-        // SectionControllerFeatureProvider, while [Authorize]'s cookie handler stays in Shell.
         var ct = Xunit.TestContext.Current.CancellationToken;
 
         var response = await Client.GetAsync("/Search?q=Dev", ct);
@@ -203,11 +158,8 @@ public class SearchPageRenderTests(HumansTestDatabase database) : IntegrationTes
     [HumansFact(Timeout = 120000)]
     public async Task Shells_nav_still_links_to_the_moved_controller()
     {
-        // _Layout's magnifying glass is <a asp-controller="Search" asp-action="Index">. The
-        // anchor tag helper resolves that against the route table, and a controller it cannot
-        // find makes it emit the anchor with **no href at all** — a 200 with a dead link that
-        // neither the suite nor an HTML diff notices (AdminNavTree's failure mode, on Shell's
-        // main nav). Any authenticated page renders the layout.
+        // _Layout's search link uses asp-controller/asp-action; a controller the tag helper can't find yields an anchor
+        // with no href, a dead link on a 200.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
@@ -220,12 +172,8 @@ public class SearchPageRenderTests(HumansTestDatabase database) : IntegrationTes
     [HumansFact(Timeout = 120000)]
     public async Task Search_renders_in_spanish_from_the_sections_satellite_assemblies()
     {
-        // An English-only check passes whether or not the RCL's satellites shipped — the neutral
-        // set is embedded in the main assembly and the fallback is silent. Accept-Language does
-        // not reach a signed-in page (Program.cs's initial culture provider returns the user's
-        // PreferredLanguage and short-circuits), and /Search is [Authorize], so switch the
-        // language the way the UI does. Assertions stay on ASCII-only runs because Razor's
-        // HtmlEncoder escapes non-ASCII to numeric entities.
+        // Only Spanish proves the satellites shipped. Accept-Language doesn't reach a signed-in user, so switch the way
+        // the UI does. HtmlEncoder escapes non-ASCII, so the checks stay on ASCII runs.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 

@@ -9,10 +9,6 @@ internal sealed class FeedbackMessage
     public Guid FeedbackReportId { get; init; }
     public FeedbackReport FeedbackReport { get; set; } = null!;
 
-    /// <summary>
-    /// FK column only — no navigation property. Resolve the sender's
-    /// display name via <c>IUserService.GetUserInfosAsync</c>.
-    /// </summary>
     public Guid? SenderUserId { get; init; }
 
     public string Content { get; set; } = string.Empty;

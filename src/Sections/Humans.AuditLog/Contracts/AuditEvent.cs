@@ -6,10 +6,7 @@ using NodaTime;
 
 namespace Humans.AuditLog.Contracts;
 
-/// <summary>
-/// Resolved view of an <see cref="AuditLogEntry"/> with pre-resolved actor/subject/team display names.
-/// Constructed exclusively by <see cref="IAuditViewerService"/>. Privacy guard: no raw GUIDs in rendered output.
-/// </summary>
+/// <summary>Built only by <see cref="IAuditViewerService"/>. Rendered output never contains a raw GUID.</summary>
 public sealed record AuditEvent(
     Guid Id,
     Instant OccurredAt,
@@ -28,9 +25,8 @@ public sealed record AuditEvent(
     string Description)
 {
     /// <summary>
-    /// Renders this event as a single-line sentence for the agent's tool output. Never emits raw GUIDs.
-    /// When <paramref name="viewerUserId"/> matches actor/subject, substitutes "You"/"you" and uses the self-verb.
-    /// Returns null when the action has no verb mapping (caller filters).
+    /// Uses "You" and the self-verb when <paramref name="viewerUserId"/> is the actor or subject. Null when the
+    /// action has no verb mapping.
     /// </summary>
     public string? RenderPlainText(Guid? viewerUserId = null)
     {
@@ -43,7 +39,6 @@ public sealed record AuditEvent(
         var actorIsSubject = ActorUserId.HasValue && SubjectUserId.HasValue
             && ActorUserId.Value == SubjectUserId.Value;
 
-        // "System" for jobs (no actor id).
         string actor = ActorUserId.HasValue
             ? actorIsViewer
                 ? "You"
@@ -92,9 +87,6 @@ public sealed record AuditEvent(
         return sb.ToString();
     }
 
-    /// <summary>
-    /// Structured render bundle for HTML composition. Shares verb tables with <see cref="RenderPlainText"/>.
-    /// </summary>
     public AuditEventRender RenderStructured()
     {
         var verb = AuditEventTextualizer.GetActionVerb(Action);
@@ -109,7 +101,6 @@ public sealed record AuditEvent(
         occurredAt.InUtc().Date.ToInvariantDate();
 }
 
-/// <summary>Structured render bundle from <see cref="AuditEvent.RenderStructured"/>.</summary>
 public sealed record AuditEventRender(
     string? Verb,
     bool ShouldRenderDescriptionTail);

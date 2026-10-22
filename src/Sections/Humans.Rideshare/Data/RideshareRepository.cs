@@ -6,8 +6,6 @@ namespace Humans.Rideshare.Data;
 
 internal sealed class RideshareRepository(IDbContextFactory<RideshareDbContext> factory) : IRideshareRepository
 {
-    // ── Year graph ────────────────────────────────────────────────────────
-
     public async Task<RideshareYearGraph> GetYearGraphAsync(int year, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -21,8 +19,6 @@ internal sealed class RideshareRepository(IDbContextFactory<RideshareDbContext> 
             .ToListAsync(ct);
         return new RideshareYearGraph(settings, trips, requests);
     }
-
-    // ── Settings ──────────────────────────────────────────────────────────
 
     public async Task<RideshareSettings?> GetSettingsAsync(int year, CancellationToken ct = default)
     {
@@ -52,8 +48,6 @@ internal sealed class RideshareRepository(IDbContextFactory<RideshareDbContext> 
         await ctx.SaveChangesAsync(ct);
     }
 
-    // ── Single rows ───────────────────────────────────────────────────────
-
     public async Task<RideshareTrip?> GetTripAsync(Guid id, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -79,8 +73,6 @@ internal sealed class RideshareRepository(IDbContextFactory<RideshareDbContext> 
             .Include(i => i.Request)
             .FirstOrDefaultAsync(i => i.Id == id, ct);
     }
-
-    // ── Writes ────────────────────────────────────────────────────────────
 
     public async Task AddTripsAsync(IReadOnlyList<RideshareTrip> trips, CancellationToken ct = default)
     {
@@ -127,8 +119,6 @@ internal sealed class RideshareRepository(IDbContextFactory<RideshareDbContext> 
         await ctx.SaveChangesAsync(ct);
     }
 
-    // ── GDPR contributor ──────────────────────────────────────────────────
-
     public async Task<IReadOnlyList<RideshareTrip>> GetTripsForUserAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -172,8 +162,6 @@ internal sealed class RideshareRepository(IDbContextFactory<RideshareDbContext> 
 
         await ctx.SaveChangesAsync(ct);
     }
-
-    // ── Account merge ─────────────────────────────────────────────────────
 
     public async Task ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default)

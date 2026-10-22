@@ -6,11 +6,8 @@ using static Humans.Base.Models.AccessMatrixFeature;
 namespace Humans.Governance;
 
 /// <summary>
-/// Help-widget access matrices for <c>/Governance</c>, the Board dashboard and the <c>/Admin</c>
-/// tool frame — all three were rows in Base's deleted table. <c>/Admin</c> is a Shell nav holder
-/// rather than a section of its own, and Shell may not declare a section's contribution, so the
-/// Board's own section carries it: the same ownership <c>AgentSectionKeys</c> already records
-/// ("Admin" and "Board" both resolve to Governance).
+/// Also carries <c>/Admin</c>: Shell may not declare a section's contribution, and
+/// <c>AgentSectionKeys</c> already resolves "Admin" and "Board" to Governance.
 /// </summary>
 internal sealed class SectionAccessMatrix : ISectionAccessMatrix
 {

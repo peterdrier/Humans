@@ -1,23 +1,13 @@
 namespace Humans.Users.Contracts;
 
-/// <summary>
-/// Status of an account merge request.
-/// Stored as string via HasConversion&lt;string&gt;().
-/// </summary>
+/// <summary>Stored by name: never rename.</summary>
 public enum AccountMergeRequestStatus
 {
-    /// <summary>
-    /// Pending admin review.
-    /// </summary>
     Pending = 0,
 
-    /// <summary>
-    /// Accepted — merge completed, source account archived.
-    /// </summary>
+    /// <summary>Merge completed; the source account is archived.</summary>
     Accepted = 1,
 
-    /// <summary>
-    /// Rejected — no changes made.
-    /// </summary>
+    /// <summary>No changes made. Dismiss reuses it.</summary>
     Rejected = 2
 }

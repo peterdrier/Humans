@@ -13,9 +13,8 @@ using Humans.Users.Contracts;
 
 namespace Humans.Users.ViewComponents;
 
-// Public, not internal: Razor's build-time tag-helper discovery only sees public view
-// components, so an internal one renders <vc:profile-card> as inert markup. HUM0034
-// exempts view components for exactly this reason.
+// Public: Razor's build-time tag-helper discovery only sees public view components, so an
+// internal one renders <vc:profile-card> as inert markup.
 public sealed class ProfileCardViewComponent(
     IUserService userService,
     IContactFieldService contactFieldService,
@@ -41,7 +40,6 @@ public sealed class ProfileCardViewComponent(
         var canViewLegalName = viewMode != ProfileCardViewMode.Public;
         var viewerUserId = userId; // default for self/admin
 
-        // For public view, resolve actual permissions based on viewer
         if (viewMode == ProfileCardViewMode.Public
             && Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var viewerId))
         {
@@ -53,7 +51,6 @@ public sealed class ProfileCardViewComponent(
             ? await contactFieldService.GetVisibleContactFieldsAsync(userId, viewerUserId, ct)
             : [];
 
-        // Get visible user emails based on access level
         ContactFieldVisibility accessLevel;
         if (isOwnProfile || viewMode == ProfileCardViewMode.Admin)
         {

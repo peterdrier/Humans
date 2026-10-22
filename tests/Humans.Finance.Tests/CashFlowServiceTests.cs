@@ -8,10 +8,6 @@ using Xunit;
 
 namespace Humans.Finance.Tests;
 
-/// <summary>
-/// <c>/Finance/CashFlow</c>'s math: period bucketing, running net, the expense-only runway,
-/// unscheduled totals, VAT settlements and the gross ticket revenue that seeds the runway.
-/// </summary>
 public class CashFlowServiceTests
 {
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
@@ -19,8 +15,6 @@ public class CashFlowServiceTests
     private readonly Guid _yearId = Guid.NewGuid();
 
     private CashFlowService CreateSut() => new(_budget, _tickets);
-
-    // ─── Period bucketing ─────────────────────────────────────────────────────────
 
     [HumansFact]
     public void Build_Monthly_BucketsByCalendarMonth()
@@ -90,8 +84,6 @@ public class CashFlowServiceTests
         model.Periods.Should().HaveCount(string.Equals(expected, "weekly", StringComparison.Ordinal) ? 2 : 1);
     }
 
-    // ─── Running net and runway ───────────────────────────────────────────────────
-
     [HumansFact]
     public void Build_RunningNet_AccumulatesInDateOrder()
     {
@@ -130,8 +122,6 @@ public class CashFlowServiceTests
         model.Periods.Select(p => p.FundsExhausted).Should().Equal(false, true);
     }
 
-    // ─── Unscheduled ──────────────────────────────────────────────────────────────
-
     [HumansFact]
     public void Build_UndatedItems_GoToUnscheduledTotals()
     {
@@ -148,8 +138,6 @@ public class CashFlowServiceTests
         model.Unscheduled.Net.Should().Be(180m);
         model.Unscheduled.Categories.Should().ContainSingle().Which.Amount.Should().Be(180m);
     }
-
-    // ─── VAT settlements ──────────────────────────────────────────────────────────
 
     [HumansFact]
     public void ComputeVatEntries_IncomeOwesVat_ExpenseReclaimsIt_SettledAfterQuarterEnd()
@@ -178,8 +166,6 @@ public class CashFlowServiceTests
         model.Periods[1].Categories.Should().ContainSingle().Which.Should().BeEquivalentTo(
             new { GroupName = "VAT", CategoryName = "VAT Liability", Amount = -21m });
     }
-
-    // ─── Gross ticket revenue ─────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task GetGrossTicketRevenueAsync_ConfiguredEvent_ExcludesOtherEventAndUnpaidOrders()
@@ -239,8 +225,6 @@ public class CashFlowServiceTests
         model.Should().BeNull();
         _ = _tickets.DidNotReceive().GetTicketOrdersAsync(Arg.Any<CancellationToken>());
     }
-
-    // ─── Helpers ──────────────────────────────────────────────────────────────────
 
     private BudgetYearDetail Year(params BudgetLineItemDetail[] items)
     {

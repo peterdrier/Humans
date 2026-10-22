@@ -10,10 +10,6 @@ using Humans.GoogleIntegration.Services.Workspace;
 
 namespace Humans.GoogleIntegration.Services;
 
-/// <summary>
-/// Manages pre-shared Google resources for teams; owns the google_resources table (design-rules §8).
-/// Google API access through <see cref="ITeamResourceGoogleClient"/>. Section: GoogleIntegration (see memory/architecture/team-resources-google-integration-section.md).
-/// </summary>
 internal sealed partial class TeamResourceService(
     IGoogleResourceRepository repository,
     ITeamResourceGoogleClient googleClient,
@@ -87,9 +83,6 @@ internal sealed partial class TeamResourceService(
         Guid userId,
         CancellationToken ct = default)
     {
-        // In-memory stitch across TeamMember + GoogleResource per design-rules
-        // §2c (sibling services own disjoint tables) and §6 (no cross-service
-        // EF joins). TeamService owns TeamMembers/Teams; we own GoogleResources.
         var memberships = await teamService.GetUserTeamMembershipsAsync(userId, ct);
         if (memberships.Count == 0)
         {
@@ -563,10 +556,6 @@ internal sealed partial class TeamResourceService(
             ServiceAccountEmail: serviceAccountEmail);
     }
 
-    /// <summary>
-    /// Parses a Google Drive folder ID from various URL formats. Shared with
-    /// tests and the <see cref="LinkDriveResourceAsync"/> dispatcher.
-    /// </summary>
     internal static string? ParseDriveFolderId(string input)
     {
         if (string.IsNullOrWhiteSpace(input))
@@ -601,10 +590,7 @@ internal sealed partial class TeamResourceService(
         return null;
     }
 
-    /// <summary>
-    /// Parses a Google Drive file ID from various URL formats. Supports Google
-    /// Docs, Sheets, Slides, and generic Drive file URLs.
-    /// </summary>
+    /// <summary>Docs, Sheets, Slides and generic Drive file URLs.</summary>
     internal static string? ParseDriveFileId(string input)
     {
         if (string.IsNullOrWhiteSpace(input))
@@ -670,19 +656,10 @@ internal sealed partial class TeamResourceService(
     private static partial Regex DriveOpenUrlPattern();
 }
 
-/// <summary>
-/// Options for <see cref="TeamResourceService"/> behavior, bound from configuration.
-/// </summary>
 internal sealed class TeamResourceManagementOptions
 {
-    /// <summary>
-    /// Configuration section name.
-    /// </summary>
     public const string SectionName = "TeamResourceManagement";
 
-    /// <summary>
-    /// When true, team coordinators (non-board, non-admin) can link and unlink
-    /// Google resources for their team.
-    /// </summary>
+    /// <summary>Lets team coordinators link and unlink their team's resources.</summary>
     public bool AllowCoordinatorsToManageResources { get; set; }
 }

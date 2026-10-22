@@ -13,7 +13,6 @@ internal sealed class SurveyAnswerConfiguration : IEntityTypeConfiguration<Surve
         b.ToTable("survey_answers");
         b.HasKey(a => a.Id);
 
-        // Selected option values as jsonb (List<string>) — mirrors ProfileConfiguration.Allergies.
         b.Property(a => a.SelectedOptionValues).HasColumnType("jsonb")
             .HasConversion(
                 v => JsonSerializer.Serialize(v, SurveyJson.Options),
@@ -53,7 +52,7 @@ internal sealed class SurveyAnswerConfiguration : IEntityTypeConfiguration<Surve
 
         b.Property(a => a.TextValue).HasMaxLength(4000);
 
-        // Intra-section FK to the question; Restrict so a question can't be deleted out from under answers.
+        // Restrict so a question can't be deleted out from under answers.
         b.HasOne<SurveyQuestion>().WithMany()
             .HasForeignKey(a => a.QuestionId).OnDelete(DeleteBehavior.Restrict);
 

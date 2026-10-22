@@ -22,12 +22,9 @@ using Xunit;
 namespace Humans.Users.Tests.Services.Users;
 
 /// <summary>
-/// <see cref="AccountDeletionServiceTests"/> substitutes every contributor, which is
-/// why a second identity collapse layered on top of the Account contributor's went
-/// unnoticed. These run the orchestrator with the
-/// real <see cref="UserService"/> as both <see cref="IUserManagement"/> and the Account
-/// <see cref="IUserDataContributor"/>, over the harness's in-memory store, so the
-/// row the purge leaves behind is asserted rather than assumed.
+/// Runs the orchestrator over the real <see cref="UserService"/> as both <see cref="IUserManagement"/>
+/// and the Account <see cref="IUserDataContributor"/>, so the row the purge leaves is asserted rather
+/// than assumed: the all-substitute suite let a second identity collapse go unnoticed.
 /// </summary>
 public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarness
 {
@@ -55,10 +52,9 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
         _ticketQueryService.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new UserTicketHoldings(0, []));
 
-        // Gdpr's real erasure loop is internal to Humans.Gdpr and this section-test may not
-        // see it. Stand in for it with a forwarding substitute that runs the real
-        // UserService Account contributor for the id — the point of these tests is what
-        // that contributor leaves on the row, not the (trivial) loop that drives it.
+        // Gdpr's real erasure loop is internal to Humans.Gdpr, so a forwarding substitute runs the
+        // real UserService Account contributor for the id: what that contributor leaves on the
+        // row is the point, not the trivial loop that drives it.
         var gdprService = Substitute.For<IGdprService>();
         gdprService.EraseForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(ci => (_userService)

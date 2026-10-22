@@ -4,70 +4,15 @@ using Humans.Base.Interfaces;
 namespace Humans.GoogleIntegration.Services;
 
 /// <summary>
-/// Sends email notifications to users when Google Workspace sync removes
-/// a Group membership or Drive permission belonging to one of their
-/// verified addresses (issue peterdrier/Humans#639).
+/// Variant 1 (loss of access) when the removed address is the member's Workspace identity or they have none; Variant 2
+/// (secondary cleanup) when their identity is another address. An address with no <c>UserEmail</c> row is a no-op.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Two copy variants exist, chosen by the recipient's current state:
-/// </para>
-/// <list type="bullet">
-///   <item>
-///     <description>
-///     <b>Variant 1 — Loss of access</b>: the address is the user's Google
-///     Workspace identity, or they have none. Sub-templates per resource type
-///     (Group / Drive).
-///     </description>
-///   </item>
-///   <item>
-///     <description>
-///     <b>Variant 2 — Secondary-email cleanup</b>: the user's Google Workspace
-///     identity is another address; the message reassures the user that their primary
-///     Nobodies access is unchanged.
-///     </description>
-///   </item>
-/// </list>
-/// <para>
-/// Lookup by removed address yielding no <c>UserEmail</c> row is a no-op
-/// (orphan / deleted human / OAuth-rename-in-place case). The
-/// <see cref="SyncRemovalReason"/> value is plumbed through for audit /
-/// telemetry purposes but does not currently drive suppression — Workspace
-/// identity rotation produces a Variant 2 ("secondary cleanup") email,
-/// which is the desired behavior.
-/// </para>
-/// </remarks>
 internal interface IGoogleRemovalNotificationService : IApplicationService
 {
     /// <summary>
-    /// Notifies the owner of <paramref name="removedEmail"/> that they
-    /// lost a Google Workspace permission. Safe to call after a successful
-    /// Google API delete; no-op when the address is unknown, when the
-    /// reason is suppressible, or when the recipient cannot be resolved.
+    /// Call only after a successful Google delete. <paramref name="resourceIdentifier"/> (group email or Drive URL) is the
+    /// name fallback and shows in Group emails. <paramref name="reason"/> is advisory and does not suppress.
     /// </summary>
-    /// <param name="removedEmail">
-    /// The address that just lost its Google permission. Variant logic
-    /// keys off this value; the email is sent here.
-    /// </param>
-    /// <param name="resourceType">
-    /// <see cref="GoogleResourceType.Group"/> or any Drive variant
-    /// (<c>DriveFolder</c>, <c>SharedDrive</c>, <c>DriveFile</c>) — the
-    /// latter map to the same Drive sub-template.
-    /// </param>
-    /// <param name="resourceName">
-    /// Human-readable resource name (group name or folder/file name).
-    /// Falls back to <paramref name="resourceIdentifier"/> when null/empty.
-    /// </param>
-    /// <param name="resourceIdentifier">
-    /// Stable identifier — group email for Groups, optional URL for Drive.
-    /// Used as the missing-name fallback and surfaced in the email body
-    /// for Group removals.
-    /// </param>
-    /// <param name="reason">
-    /// Why the removal happened. Currently advisory only — flows through to
-    /// logs / audit but does not drive suppression (issue peterdrier/Humans#639).
-    /// </param>
-    /// <param name="cancellationToken">Token used to cancel notification delivery.</param>
     Task NotifyRemovalAsync(
         string removedEmail,
         GoogleResourceType resourceType,
@@ -77,23 +22,10 @@ internal interface IGoogleRemovalNotificationService : IApplicationService
         CancellationToken cancellationToken = default);
 }
 
-/// <summary>
-/// Why a sync removal happened. Plumbed through for audit / telemetry —
-/// see <see cref="IGoogleRemovalNotificationService"/>.
-/// </summary>
 internal enum SyncRemovalReason
 {
-    /// <summary>
-    /// Reconciliation removed the address because the membership/permission
-    /// no longer matches expected team state.
-    /// </summary>
     Reconciliation = 0,
 
-    /// <summary>
-    /// The user's Google Workspace identity rotated from one address to
-    /// another, and the old address was cleaned up immediately after the
-    /// new one was granted. The recipient still gets a Variant 2 ("secondary
-    /// cleanup") email confirming which address was tidied up.
-    /// </summary>
+    /// <summary>The recipient still gets a Variant 2 email naming the old address.</summary>
     EmailRotation = 1
 }

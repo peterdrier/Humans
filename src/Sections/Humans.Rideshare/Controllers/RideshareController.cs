@@ -11,11 +11,6 @@ using NodaTime;
 
 namespace Humans.Rideshare.Controllers;
 
-/// <summary>
-/// Member-facing Rideshare: the board, own offers/requests, and the interest lifecycle.
-/// Ownership and state rules live in <see cref="IRideshareService"/>; this only maps its
-/// error contract (404 / 403 / message) onto the response.
-/// </summary>
 [Authorize(Policy = PolicyNames.AppAccess)]
 [Route("Rideshare")]
 internal sealed class RideshareController(
@@ -25,8 +20,6 @@ internal sealed class RideshareController(
     IClock clock,
     ILogger<RideshareController> logger) : HumansControllerBase(users)
 {
-    // ── Board ─────────────────────────────────────────────────────────────
-
     [HttpGet("")]
     public async Task<IActionResult> Index(string? date, RideshareDirection? direction, CancellationToken ct)
     {
@@ -39,8 +32,6 @@ internal sealed class RideshareController(
 
         return View(BoardViewModel.Build(snapshot, day, dir, user.Id));
     }
-
-    // ── Offers ────────────────────────────────────────────────────────────
 
     [HttpGet("Offer")]
     public async Task<IActionResult> Offer(Guid? id, RideshareDirection? direction, CancellationToken ct)
@@ -88,8 +79,6 @@ internal sealed class RideshareController(
         if (error is not null) return error;
         return await RunThenMineAsync(() => rideshare.CancelOfferAsync(id, user.Id, ct), "Rideshare_OfferCancelled");
     }
-
-    // ── Requests ──────────────────────────────────────────────────────────
 
     // Named RideRequest rather than Request: ControllerBase.Request is the HTTP request.
     [HttpGet("Request")]
@@ -139,8 +128,6 @@ internal sealed class RideshareController(
         return await RunThenMineAsync(() => rideshare.CancelRequestAsync(id, user.Id, ct), "Rideshare_RequestCancelled");
     }
 
-    // ── Mine ──────────────────────────────────────────────────────────────
-
     [HttpGet("Mine")]
     public async Task<IActionResult> Mine(CancellationToken ct)
     {
@@ -150,8 +137,6 @@ internal sealed class RideshareController(
         var snapshot = await rideshare.GetSnapshotAsync(await rideshare.GetActiveYearAsync(ct), ct);
         return View(MineViewModel.Build(snapshot, user.Id));
     }
-
-    // ── Interests ─────────────────────────────────────────────────────────
 
     /// <summary>"I'm interested" (rider → trip) or "I can take you" (driver's trip → request pin).</summary>
     [HttpPost("Interest")]
@@ -205,8 +190,6 @@ internal sealed class RideshareController(
         if (error is not null) return error;
         return await RunThenMineAsync(() => rideshare.WithdrawInterestAsync(id, user.Id, ct), "Rideshare_InterestWithdrawn");
     }
-
-    // ── Error-contract mapping ────────────────────────────────────────────
 
     /// <summary>Redirect-style actions: 404 / 403 pass through, a rule becomes a localized error toast on Mine.</summary>
     private async Task<IActionResult> RunThenMineAsync(Func<Task<RideshareMutationResult>> action, string successKey)

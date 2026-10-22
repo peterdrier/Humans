@@ -4,7 +4,7 @@ namespace Humans.Settings.Tests;
 
 /// <summary>
 /// The tab's <c>Policy</c> must stay null — that is the never-404 guarantee for
-/// /Settings (peterdrier/Humans#1628): every authenticated member gets the Event tab,
+/// /Settings: every authenticated member gets the Event tab,
 /// and the tab itself decides editable vs read-only.
 /// </summary>
 public sealed class SectionSettingsTests

@@ -6,10 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Store.Controllers;
 
 /// <summary>
-/// Stripe Checkout webhook for Store. Anonymous; auth via signature in IStripeService.ParseStoreCheckoutEvent.
-/// Returns 503 when the webhook secret is unset and 400 for an unparseable or badly signed body.
-/// Handles checkout.session.completed, async_payment_succeeded, async_payment_failed and expired;
-/// idempotency enforced downstream. Handler exceptions propagate, so Stripe retries.
+/// Anonymous: authenticated by the Stripe signature. 503 when the webhook secret is unset. Handler exceptions
+/// propagate so Stripe retries; idempotency is enforced downstream.
 /// </summary>
 [ApiController]
 [AllowAnonymous]

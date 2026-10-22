@@ -2,7 +2,6 @@
 @model Humans.Users.Models.ProfileCardViewModel
 @inject IAuthorizationService AuthService
 
-@* Card 1: Public Profile *@
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span>@Localizer["Profile_Information"]</span>
@@ -88,7 +87,6 @@
             }
         </dl>
 
-        @* Non-BoardOnly emails + contact fields. *@
         @if (Model.PublicUserEmails.Count > 0 || Model.ContactFields.Count > 0)
         {
             <hr />
@@ -195,7 +193,6 @@
     </div>
 </div>
 
-@* Card 2: Board & Private (self or board/admin). *@
 @if (Model.CanViewLegalName)
 {
     <div class="card mb-4">

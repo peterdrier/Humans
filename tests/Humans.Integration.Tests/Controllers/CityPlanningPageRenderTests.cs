@@ -4,34 +4,10 @@ using Humans.Integration.Tests.Infrastructure;
 
 namespace Humans.Integration.Tests.Controllers;
 
-/// <summary>
-/// Renders every City Planning page through the real app, as the standing form of the §15
-/// step 12 check for the section's move into <c>src/Sections/Humans.CityPlanning</c>
-/// (nobodies-collective/Humans#866, G5).
-/// </summary>
+/// <summary>Renders every City Planning page through the real app.</summary>
 /// <remarks>
-/// <para>
-/// The failure modes a G5 move introduces all render as a <b>200 with degraded content</b>, so
-/// "the page loads" is not the assertion:
-/// </para>
-/// <list type="number">
-/// <item><description>
-/// A section RCL does not inherit the host's <c>Views/_ViewImports.cshtml</c> — a missing
-/// <c>@@using</c> or <c>@@addTagHelper</c> ships literal markup with a green build, and an
-/// unrendered <c>&lt;vc:…&gt;</c> element is inert text the browser simply drops.
-/// </description></item>
-/// <item><description>
-/// The resx carve moved 103 <c>CityPlanning_*</c> keys out of <c>SharedResource</c>. A key the
-/// carve missed, or a call site bound to the wrong set, renders the raw key — in every
-/// language, with no error. The Spanish request is the only thing that proves the section
-/// RCL's satellite assemblies reach the host's probing path at all.
-/// </description></item>
-/// <item><description>
-/// A static asset that moved to the section's RCL is served from the static-web-assets manifest
-/// rather than from <c>wwwroot</c> on disk, so <c>asp-append-version</c> can silently emit no
-/// <c>?v=</c> hash while the page still returns 200 (§15 step 7).
-/// </description></item>
-/// </list>
+/// Failures render as a 200 with degraded content: unbound tags ship as markup, a mis-bound key renders as its name,
+/// only Spanish proves the satellites ship, and an RCL asset can lose its <c>?v=</c> hash silently.
 /// </remarks>
 public class CityPlanningPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
@@ -66,7 +42,6 @@ public class CityPlanningPageRenderTests(HumansTestDatabase database) : Integrat
             var html = await response.Content.ReadAsStringAsync(ct);
             html.Should().Contain(copy, $"GET {url} must render its own resolved copy");
 
-            // The fallback for a key the carve missed is the key itself.
             html.Should().NotContain("CityPlanning_", $"GET {url} rendered a raw resource key");
             html.Should().NotContain("Containers_Map", $"GET {url} rendered a raw resource key");
         }
@@ -75,10 +50,7 @@ public class CityPlanningPageRenderTests(HumansTestDatabase database) : Integrat
     [HumansFact(Timeout = 120000)]
     public async Task The_admin_page_renders_the_access_matrix_widget()
     {
-        // AccessMatrixViewComponent moved into Humans.UI (nobodies-collective/Humans#1056), so
-        // <vc:access-matrix section="CityPlanningBarrioMap" /> binds through the section's
-        // @addTagHelper *, Humans.Interfaces. An unbound <vc:> ships inert with a green build, so the
-        // emitted modal id is what proves it bound.
+        // An unbound <vc:> ships as inert markup, so the emitted modal id is the proof.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
@@ -92,16 +64,13 @@ public class CityPlanningPageRenderTests(HumansTestDatabase database) : Integrat
     [HumansFact(Timeout = 120000)]
     public async Task City_planning_pages_render_in_spanish_from_the_sections_satellite_assemblies()
     {
-        // An English-only check passes whether or not the RCL's satellites shipped — the neutral
-        // set is embedded in the main assembly and the fallback is silent.
-        // Razor's default HtmlEncoder escapes non-ASCII to numeric entities ("colocación"
-        // renders as "colocaci&#xF3;n"), so the assertions stay on ASCII-only runs.
+        // Only Spanish proves the satellites shipped. HtmlEncoder escapes non-ASCII ("colocación" becomes
+        // "colocaci&#xF3;n"), so the checks stay on ASCII runs.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
-        // Accept-Language does not reach a signed-in user: Program.cs's initial culture provider
-        // returns the user's PreferredLanguage and short-circuits the rest of the chain, and
-        // every City Planning page is [Authorize]. Switch the language the way the UI does.
+        // Accept-Language doesn't reach a signed-in user: the PreferredLanguage provider short-circuits the chain. Switch
+        // the way the UI does.
         var switcherPage = await (await Client.GetAsync("/CityPlanning", ct)).Content.ReadAsStringAsync(ct);
         var token = ExtractAntiForgeryToken(switcherPage);
         token.Should().NotBeNullOrEmpty();
@@ -124,10 +93,8 @@ public class CityPlanningPageRenderTests(HumansTestDatabase database) : Integrat
     [HumansFact(Timeout = 120000)]
     public async Task Map_pages_link_the_sections_static_assets_with_cache_busting_hashes()
     {
-        // §15 step 7: asp-append-version resolves the file through the host's IFileProvider.
-        // Once the file lives in an RCL it comes from the static-web-assets manifest instead of
-        // wwwroot on disk, and a provider that cannot see it emits the bare src with no ?v=
-        // rather than failing.
+        // An RCL asset comes from the static-web-assets manifest; a file provider that can't see it emits the bare src
+        // with no ?v= rather than failing.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
@@ -149,9 +116,7 @@ public class CityPlanningPageRenderTests(HumansTestDatabase database) : Integrat
     [HumansFact(Timeout = 120000)]
     public async Task The_sections_static_assets_are_served_from_its_own_RCL()
     {
-        // The other half of §15 step 7: the src resolving is not the same as the file being
-        // there. Before the test host composed the static-web-assets manifest an RCL asset
-        // 404'd here while the page still returned 200.
+        // A src resolving doesn't mean the file is served.
         var ct = Xunit.TestContext.Current.CancellationToken;
 
         foreach (var asset in new[] { MainJsPath, BarrioMapJsPath, ContainerMapJsPath, AdminImportJsPath, HelpImagePath })
@@ -164,11 +129,8 @@ public class CityPlanningPageRenderTests(HumansTestDatabase database) : Integrat
     [HumansFact(Timeout = 120000)]
     public async Task The_camps_page_renders_city_planning_copy_and_the_sections_help_partial()
     {
-        // Shell's Views/Camp/Details.cshtml is the one place outside the section that reads
-        // CityPlanning_* keys and renders the section's _PlacementHelpModal. Both cross the
-        // assembly boundary: the view injects IStringLocalizer<CityPlanningResource>, and the
-        // partial is found by NAME across application parts now that it lives in the RCL's
-        // Views/Shared. A path-based Html.PartialAsync would have thrown; a raw key would not.
+        // Shell's Camp Details is the one outside reader of CityPlanning_* keys and the section's _PlacementHelpModal,
+        // found by name across parts. A raw key wouldn't throw.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 

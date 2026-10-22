@@ -8,11 +8,8 @@ using Microsoft.Extensions.Options;
 namespace Humans.GoogleIntegration.Tests.Infrastructure;
 
 /// <summary>
-/// Resolution-level tests for the §15 Part 2a bridge DI wiring. The full
-/// <c>AddGoogleWorkspaceInfrastructure</c> extension pulls in a lot of
-/// collaborators; here we register the minimum needed to instantiate the
-/// four new bridge implementations. That's enough to prove each client
-/// binds to its interface and to the shared credential settings option.
+/// Registers the minimum needed to construct each bridge client: enough to prove it binds to its
+/// interface and to the shared credential settings.
 /// </summary>
 public class GoogleWorkspaceSyncBridgeDependencyInjectionTests
 {

@@ -9,39 +9,24 @@ using NodaTime;
 
 namespace Humans.Integration.Tests.Controllers;
 
-/// <summary>
-/// Renders both Email pages through the real app, as the standing form of the §15 step 12
-/// check for the section's move into <c>src/Sections/Humans.Email</c>
-/// (nobodies-collective/Humans#866, G5).
-/// </summary>
+/// <summary>Renders both Email pages through the real app.</summary>
 /// <remarks>
 /// <para>
-/// The failure mode a G5 move introduces renders as a <b>200 with degraded content</b>: a
-/// section RCL does not inherit the host's <c>Views/_ViewImports.cshtml</c>, so a missing
-/// <c>@@using</c> or <c>@@addTagHelper</c> ships literal markup with a green build, and an
-/// unrendered <c>&lt;vc:…&gt;</c> element is inert text the browser simply drops.
-/// <c>&lt;vc:human&gt;</c> on the outbox grid is the one Email uses — and it only appears on a
-/// row that carries a <c>UserId</c>, which is why the fixture seeds one.
+/// A missing <c>@@using</c> or <c>@@addTagHelper</c> ships literal markup with a 200. <c>&lt;vc:human&gt;</c> on the
+/// outbox grid appears only on a row with a <c>UserId</c>, which is why the fixture seeds one.
 /// </para>
 /// <para>
-/// The resx half is unusual for a section: the <c>Email_FacilitatedMessage_*</c> keys are not
-/// this section's admin-page copy — those two views carry no <c>Localizer[…]</c> call at all —
-/// they are the copy of the one template Email still renders. <c>/Email/EmailPreview</c> is
-/// therefore the ideal probe: every section contributes its own templates to it and it renders
-/// them in all six cultures on one page, so a single GET proves both that the neutral set
-/// resolves and that the RCL's satellite assemblies reach the host's probing path — no
-/// language-switcher round trip needed (contrast CityPlanning, whose Spanish check has to POST
-/// <c>/Language/SetLanguage</c> first).
+/// The <c>Email_FacilitatedMessage_*</c> keys are template copy, not page copy: the two views have no
+/// <c>Localizer[…]</c> call. <c>/Email/EmailPreview</c> renders every template in all six cultures, so one GET proves
+/// both the neutral set and the satellites, with no language switch.
 /// </para>
 /// </remarks>
 public class EmailPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     /// <summary>
-    /// One outbox row addressed to the signed-in admin. Without <c>UserId</c> the grid renders
-    /// the raw address instead of <c>&lt;vc:human&gt;</c> and the check asserts nothing. Each
-    /// integration test class owns its database (nobodies-collective/Humans#983), so this
-    /// disturbs nothing. Email has no §15 caching decorator, so seeding through the section's
-    /// own context is enough.
+    /// One outbox row addressed to the signed-in admin. Without <c>UserId</c> the grid renders the raw address instead of
+    /// <c>&lt;vc:human&gt;</c> and the check asserts nothing. Email has no caching decorator, so seeding through the
+    /// section's own context is enough.
     /// </summary>
     private async Task SeedOutboxMessageAsync(Guid adminUserId, CancellationToken ct)
     {
@@ -82,8 +67,7 @@ public class EmailPageRenderTests(HumansTestDatabase database) : IntegrationTest
 
             var html = await response.Content.ReadAsStringAsync(ct);
 
-            // ReSharper's rename refactoring rewrites <vc:name> to <name-view-component>,
-            // which is equally inert (the "<vc:*> rename hazard" in G5-SECTION-TEMPLATE.md).
+            // ReSharper can rewrite <vc:name> to <name-view-component>, which also renders inert.
             html.Should().NotContain("-view-component", $"GET {url} left a renamed view-component tag unrendered");
         }
     }
@@ -113,7 +97,6 @@ public class EmailPageRenderTests(HumansTestDatabase database) : IntegrationTest
         var html = await (await Client.GetAsync("/Email/EmailPreview", ct))
             .Content.ReadAsStringAsync(ct);
 
-        // The neutral set, embedded in Humans.Email itself.
         html.Should().Contain("Your Account Has Been Deleted");
 
         // A key that failed to resolve renders as its own name, in every language, silently.
@@ -130,9 +113,8 @@ public class EmailPageRenderTests(HumansTestDatabase database) : IntegrationTest
         var html = await (await Client.GetAsync("/Email/EmailPreview", ct))
             .Content.ReadAsStringAsync(ct);
 
-        // The gallery renders every template per culture, so the Spanish satellite is proved
-        // without switching the request culture. Razor escapes non-ASCII to numeric entities
-        // ("cuenta ha sido eliminada" is the accent-free run of "Su cuenta ha sido eliminada").
+        // The gallery renders every culture, so Spanish needs no culture switch. HtmlEncoder escapes non-ASCII, so the
+        // check stays on an accent-free run.
         html.Should().Contain("cuenta ha sido eliminada",
             because: "an RCL whose satellite assemblies do not reach the host's probing path "
                 + "falls back to the neutral set in silence");

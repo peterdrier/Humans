@@ -83,10 +83,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             Members: [],
             ParentTeamId: team.ParentTeamId);
 
-    // ============================================================
-    // CreateBuildStrikeShiftsAsync
-    // ============================================================
-
     [HumansTheory]
     [Xunit.InlineData(true, true)]
     [Xunit.InlineData(true, false)]
@@ -219,7 +215,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     [HumansFact]
     public async Task CreateBuildStrikeShifts_CreatesOneAllDayShiftPerDay()
     {
-        // Arrange: rota with Period=Build, staffing grid for days -3 to -1
         var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -230,7 +225,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             new(-1, 2, 5)
         };
 
-        // Act
         var result = await _service.CreateBuildStrikeShiftsAsync(new ConfigureBuildStrikeStaffingInput(
             rota.Id,
             rota.TeamId,
@@ -239,7 +233,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         result.Succeeded.Should().BeTrue();
         result.CreatedCount.Should().Be(3);
 
-        // Assert: 3 shifts created, all IsAllDay=true, correct DayOffsets.
         // StartTime/Duration are stored as the midnight/24h sentinel (don't-care for IsAllDay rows).
         var shifts = await ShiftsDb.Shifts.Where(s => s.RotaId == rota.Id).ToListAsync(Xunit.TestContext.Current.CancellationToken);
         shifts.Should().HaveCount(3);
@@ -376,7 +369,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     [HumansFact(Timeout = 10000)]
     public async Task CreateBuildStrikeShifts_SetsCorrectMinMaxPerDay()
     {
-        // Arrange: staffing grid with varying min/max per day
         var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -387,7 +379,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             new(-1, 2, 6)
         };
 
-        // Act
         var result = await _service.CreateBuildStrikeShiftsAsync(new ConfigureBuildStrikeStaffingInput(
             rota.Id,
             rota.TeamId,
@@ -395,7 +386,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
 
         result.Succeeded.Should().BeTrue();
 
-        // Assert: each shift has the min/max from its corresponding day in the grid
         var shifts = await ShiftsDb.Shifts
             .Where(s => s.RotaId == rota.Id)
             .OrderBy(s => s.DayOffset)
@@ -412,7 +402,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     [HumansFact]
     public async Task CreateBuildStrikeShifts_RejectsEventPeriodRota()
     {
-        // Arrange: rota with Period=Event
         var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -431,14 +420,9 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         ShiftsDb.Shifts.Should().BeEmpty();
     }
 
-    // ============================================================
-    // GenerateEventShiftsAsync
-    // ============================================================
-
     [HumansFact]
     public async Task GenerateEventShifts_CreatesCartesianProduct()
     {
-        // Arrange: event rota, days 0-2, slots [(08:00, 4h), (14:00, 4h)]
         var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -448,7 +432,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             new(new LocalTime(14, 0), 4)
         };
 
-        // Act
         var result = await _service.GenerateEventShiftsAsync(new GenerateEventShiftsInput(
             rota.Id,
             rota.TeamId,
@@ -461,15 +444,12 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         result.Succeeded.Should().BeTrue();
         result.CreatedCount.Should().Be(6);
 
-        // Assert: 6 shifts (3 days × 2 slots), none IsAllDay
         var shifts = await ShiftsDb.Shifts.Where(s => s.RotaId == rota.Id).ToListAsync(Xunit.TestContext.Current.CancellationToken);
         shifts.Should().HaveCount(6);
         shifts.Should().AllSatisfy(s => s.IsAllDay.Should().BeFalse());
 
-        // Verify correct day offsets
         shifts.Select(s => s.DayOffset).Distinct().Should().BeEquivalentTo([0, 1, 2]);
 
-        // Verify correct start times
         var startTimes = shifts.Select(s => s.StartTime).Distinct().ToList();
         startTimes.Should().HaveCount(2);
         startTimes.Should().Contain(new LocalTime(8, 0));
@@ -479,7 +459,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     [HumansFact]
     public async Task GenerateEventShifts_RejectsBuildPeriodRota()
     {
-        // Arrange: rota with Period=Build
         var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -501,10 +480,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         result.Message.Should().Be("Event shift generation is only for Event-period rotas.");
         ShiftsDb.Shifts.Should().BeEmpty();
     }
-
-    // ============================================================
-    // GetBrowseShiftsAsync — includeSignups
-    // ============================================================
 
     [HumansTheory]
     [Xunit.InlineData("coordinators")]
@@ -603,7 +578,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     [HumansFact]
     public async Task GetBrowseShifts_IncludeSignups_ReturnsConfirmedAndPendingOnly()
     {
-        // Arrange
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
         var confirmedUser = SeedUser("Alice");
@@ -615,12 +589,10 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         SeedSignup(shift, bailedUser, SignupStatus.Bailed);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        // Act
         var results = await _service.GetBrowseShiftsAsync(new ShiftBrowseQuery(
             es.Id,
             Flags: ShiftBrowseQueryFlags.IncludeSignups));
 
-        // Assert: only Confirmed and Pending signups returned
         results.Should().HaveCount(1);
         var signups = results[0].Signups;
         signups.Should().HaveCount(2);
@@ -630,7 +602,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     [HumansFact]
     public async Task GetBrowseShifts_IncludeSignups_ConfirmedBeforePending()
     {
-        // Arrange
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
         var confirmedUser = SeedUser("Zara");
@@ -640,12 +611,11 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         SeedSignup(shift, pendingUser, SignupStatus.Pending);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        // Act
         var results = await _service.GetBrowseShiftsAsync(new ShiftBrowseQuery(
             es.Id,
             Flags: ShiftBrowseQueryFlags.IncludeSignups));
 
-        // Assert: Confirmed (Zara) first, then Pending (Alice), regardless of name order
+        // Confirmed (Zara) first, then Pending (Alice), regardless of name order.
         var signups = results[0].Signups;
         signups.Should().HaveCount(2);
         signups[0].DisplayName.Should().Be("Zara");
@@ -657,17 +627,14 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     [HumansFact]
     public async Task GetBrowseShifts_WithoutIncludeSignups_ReturnsEmptySignups()
     {
-        // Arrange
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
         var user = SeedUser("Alice");
         SeedSignup(shift, user, SignupStatus.Confirmed);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        // Act
         var results = await _service.GetBrowseShiftsAsync(new ShiftBrowseQuery(es.Id));
 
-        // Assert: signups list is empty even though shift has signups
         results.Should().HaveCount(1);
         results[0].Signups.Should().BeEmpty();
     }
@@ -875,10 +842,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         ]);
     }
 
-    // ============================================================
-    // Helpers
-    // ============================================================
-
     private Shift SeedShift(Rota rota, int dayOffset)
     {
         var shift = new Shift
@@ -911,18 +874,12 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         ShiftsDb.ShiftSignups.Add(signup);
     }
 
-    // ============================================================
-    // SearchAsync — global /Search rota bucket
-    // ============================================================
-
     [HumansFact]
     public async Task SearchAsync_GuidQuery_ResolvesARotaHiddenFromVolunteers()
     {
-        // A GUID-query hit skips the visibility filter on purpose (nobodies-collective/Humans#985):
-        // the rota's destination — /Shifts?departmentId={teamId} — still builds its listing
-        // through the ExcludeHiddenRotas filter, so the hit is a link, not access. The
-        // text-query half of this pair needs Postgres ILike and lives in
-        // Humans.Integration.Tests/Repositories/Shifts/ShiftRepositoryRotaSearchTests.
+        // A GUID-query hit skips the visibility filter on purpose: the destination
+        // /Shifts?departmentId={teamId} still filters hidden rotas, so the hit is a link, not access.
+        // The text-query half needs Postgres ILike and lives in Humans.Integration.Tests.
         var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
         rota.IsVisibleToVolunteers = false;
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
@@ -973,10 +930,8 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     [HumansFact]
     public async Task GetBrowseShifts_HiddenRota_IsAbsentForAVolunteer_AndPresentForAPrivilegedViewer()
     {
-        // Destination-page enforcement for the rota half of nobodies-collective/Humans#985's
-        // no-visibility-filter GUID search: the listing /Shifts?departmentId={teamId} builds is
-        // a default ShiftBrowseQuery, which excludes rotas hidden from volunteers.
-        // ShiftBrowsePageBuilder only adds IncludeHidden for a privileged viewer.
+        // Destination-page half of the GUID search: /Shifts?departmentId={teamId} builds a default
+        // ShiftBrowseQuery, which excludes hidden rotas; only privileged viewers add IncludeHidden.
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
         rota.IsVisibleToVolunteers = false;
         SeedShift(rota, dayOffset: 1);
@@ -1039,10 +994,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
 
         return (es, rota);
     }
-
-    // ============================================================
-    // IsDeptCoordinatorAsync — sub-team manager support
-    // ============================================================
 
     [HumansTheory]
     [Xunit.InlineData("coordinated-teams")]
@@ -1179,14 +1130,10 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         result.Should().BeTrue();
     }
 
-    // ============================================================
-    // GetOverallCoverageAsync
-    // ============================================================
-
     [HumansFact]
     public async Task GetOverallCoverageAsync_ReturnsCorrectFilledTotalRatio()
     {
-        // Arrange: active event with 10 slots across 10 shifts, 7 confirmed signups
+        // Active event with 10 slots across 10 shifts, 7 confirmed signups.
         var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
 
         var shifts = Enumerable.Range(0, 10).Select(_ => new Shift
@@ -1221,10 +1168,8 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
 
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        // Act
         var (filled, total, ratio) = await _service.GetOverallCoverageAsync(Xunit.TestContext.Current.CancellationToken);
 
-        // Assert
         filled.Should().Be(7);
         total.Should().Be(10);
         ratio.Should().Be(0.7);
@@ -1233,22 +1178,13 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     [HumansFact]
     public async Task GetOverallCoverageAsync_ReturnsZero_WhenNoActiveEvent()
     {
-        // Arrange: no event settings seeded → no active event
-
-        // Act
+        // No event settings seeded → no active event.
         var (filled, total, ratio) = await _service.GetOverallCoverageAsync(Xunit.TestContext.Current.CancellationToken);
 
-        // Assert
         filled.Should().Be(0);
         total.Should().Be(0);
         ratio.Should().Be(0d);
     }
-
-    // ============================================================
-    // Shifts knobs row — created on demand (nobodies-collective/Humans#1631):
-    // "active event" is Settings' concept now, so Shifts no longer enforces a
-    // single-active row of its own.
-    // ============================================================
 
     [HumansFact]
     public async Task GetKnobsAsync_NoRowYet_ReturnsNull()
@@ -1288,25 +1224,15 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         (await ShiftsDb.EventSettings.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
-    // Medical-data gating: MedicalConditions is a Profile field on the cached UserInfo,
-    // gated per render/serialize surface by the MedicalDataViewer policy — see
-    // ShiftVolunteerSearchBuilderTests for coverage.
-
-    // ============================================================
-    // Rota delete — Shifts.md trigger line 262
-    // ============================================================
-
     [HumansFact]
     public async Task DeleteRotaAsync_WithConfirmedSignup_Refuses()
     {
-        // Arrange: rota with one Confirmed signup
         var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
         var user = SeedUser("Alice");
         SeedSignup(shift, user, SignupStatus.Confirmed);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        // Act + Assert
         var result = await _service.DeleteRotaAsync(rota.Id, Guid.NewGuid());
         result.ErrorKey.Should().Be("Shifts_Delete_ConfirmedSignups");
         result.ConfirmedSignups.Should().Be(1);
@@ -1316,7 +1242,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     [HumansFact]
     public async Task DeleteRotaAsync_WithOnlyPendingSignups_DeletesThemWithTheRota()
     {
-        // Arrange: rota with two Pending signups (no Confirmed)
         var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
         var user1 = SeedUser("Bob");
@@ -1342,13 +1267,10 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         await ShiftsDb.ShiftSignups.AddRangeAsync(pending1, pending2);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        // Act
         var actorUserId = Guid.NewGuid();
         await _service.DeleteRotaAsync(rota.Id, actorUserId);
 
-        // Assert: rota gone, pending signups removed by cascade-delete. We query
-        // through the service so we hit the same factory-managed context the
-        // delete used (the test's Db caches the tracked rota).
+        // AsNoTracking: the test's context still tracks the seeded rota and signups.
         (await ShiftsDb.Rotas.AsNoTracking()
             .AnyAsync(r => r.Id == rota.Id, Xunit.TestContext.Current.CancellationToken))
             .Should().BeFalse();
@@ -1366,14 +1288,9 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         }
     }
 
-    // ============================================================
-    // Rota move audit — Shifts.md trigger line 261
-    // ============================================================
-
     [HumansFact]
     public async Task MoveRotaToTeamAsync_WritesRotaMovedToTeamAuditEntry()
     {
-        // Arrange: rota currently on team A, target team B (no parent).
         var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
         SeedSignup(SeedShift(rota, -4), SeedUser("Builder"), SignupStatus.Confirmed);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
@@ -1391,7 +1308,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
                 IsPublicPage: true, IsHidden: false, IsPromotedToDirectory: false,
                 CreatedAt: TestNow, Members: []));
 
-        // Act
         var result = await _service.MoveRotaToTeamAsync(new MoveRotaInput(
             rota.Id,
             rota.TeamId,
@@ -1402,7 +1318,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         result.Message.Should().Be("Rota 'Test Rota' moved to Target Department.");
         result.RedirectSlug.Should().Be("target-dept");
 
-        // Assert: audit entry written with action=RotaMovedToTeam, related team=target.
         await AuditLog.Received(1).LogAsync(
             AuditAction.RotaMovedToTeam,
             nameof(Rota),
@@ -1412,10 +1327,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             targetTeamId,
             nameof(Team));
     }
-
-    // ============================================================
-    // GetActivePendingShiftSignupCountsByTeamAsync — no-active-event guard
-    // ============================================================
 
     [HumansFact]
     public async Task GetActivePendingShiftSignupCountsByTeam_returns_empty_dict_when_no_active_event()

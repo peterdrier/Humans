@@ -6,20 +6,14 @@ using Humans.Web.Extensions;
 namespace Humans.Web.Tests.Infrastructure;
 
 /// <summary>
-/// The activation mechanism (nobodies-collective/Humans#1081): a section declares whether
-/// this deployment runs it via <see cref="ISection.IsActive"/>, and deactivating one that
-/// Shell or another running section consumes fails startup.
+/// Deactivating a section that Shell or a running section consumes fails startup. No section is named here: that would
+/// be the pinned list the mechanism exists to avoid.
 /// </summary>
-/// <remarks>
-/// Every case drives off what discovery actually found and what the assemblies actually
-/// reference — no section is named here, because naming one would be the pinned list the
-/// mechanism exists to avoid.
-/// </remarks>
 public sealed class SectionActivationTests
 {
     private static IReadOnlyList<Assembly> Discovered => SectionDiscoveryExtensions.SectionAssemblies();
 
-    /// <summary>The Shell assembly, which always runs and consumes sections of its own.</summary>
+    /// <summary>Always runs, and consumes sections of its own.</summary>
     private static Assembly Shell => typeof(SectionActivation).Assembly;
 
     private static IReadOnlySet<string> Active(params string[] sections) =>
@@ -119,7 +113,6 @@ public sealed class SectionActivationTests
         graph.Should().OnlyContain(e => e.Value.All(d => names.Contains(d) && d != e.Key));
     }
 
-    /// <summary>Any real section-to-section edge, chosen deterministically.</summary>
     private static (string Dependent, string Dependency) FirstEdge()
     {
         var edge = SectionActivation.DependencyGraph(Discovered)

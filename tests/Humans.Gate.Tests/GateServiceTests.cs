@@ -64,12 +64,8 @@ public class GateServiceTests
             CancellationToken cancellationToken = default) => throw failure;
     }
 
-    // The three ServiceTestHarness members this suite used — an in-memory GateDbContext,
-    // a factory over the same store, and a fixed clock. Owned here rather than shared:
-    // the harness is built around UsersDbContext and sharing it would grant a section
-    // test project InternalsVisibleTo on it.
-    // Field initialisers run in declaration order, and each test gets a fresh instance,
-    // so every test case gets its own store.
+    // Owned rather than the shared UsersDbContext-based harness, which would grant this project
+    // InternalsVisibleTo on it. Field initialisers run in declaration order; each test gets its own store.
     private readonly DbContextOptions<GateDbContext> _dbOptions =
         new DbContextOptionsBuilder<GateDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -107,11 +103,8 @@ public class GateServiceTests
             .Returns((EarlyEntryRosterRow?)null);
         _svc = new GateService(new GateRepository(GateDbFactory), _tickets, _earlyEntry, _burn, _shifts, _roles, _users, _pinHasher, _auditLog, _jobs, _ledger, _config, NullLogger<GateService>.Instance, Clock);
 
-        // Baseline: an admin has set the cutoff in the past, so general entry is open.
-        // Seeded directly (sync) since the ctor can't await; GateDb shares the in-memory
-        // store with the repository's factory. Before-cutoff tests override this, and
-        // the unconfigured-cutoff case is tested explicitly. Without a configured
-        // cutoff every scan fails safe to AMBER.
+        // Baseline: a past cutoff, so general entry is open; without one every scan fails safe to
+        // AMBER. Seeded sync (the ctor can't await) into the store the repository's factory shares.
         GateDb.GateSettings.Add(new GateSettings
         {
             Id = 1,
@@ -263,7 +256,7 @@ public class GateServiceTests
     {
         StubTicket();
 
-        // The child-without-ID waiver is now a supervisor override — it admits only when an
+        // The child-without-ID waiver is a supervisor override — it admits only when an
         // authorizing supervisor was recorded (the controller sets this after AuthorizeOverrideAsync).
         (await RecordAsync(idConfirmed: false, child: true, overrideBy: Guid.NewGuid()))
             .Verdict.Should().Be(GateVerdict.AdmittedChildWithAdult);
@@ -278,8 +271,6 @@ public class GateServiceTests
         (await RecordAsync(idConfirmed: false, child: true))
             .Verdict.Should().Be(GateVerdict.RejectedNameMismatch);
     }
-
-    // ── Attendance projection (admit → participation Attended) ──────────────
 
     private void StubActiveEvent(int year = 2026) =>
         _burn.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(
@@ -582,7 +573,6 @@ public class GateServiceTests
         SliceCount(await _svc.ContributeForUserAsync(GuestId, default)).Should().Be(0);
     }
 
-    // ── Shift roster (claim-screen pre-fill) ─────────────────────────────────
     // Clock is fixed at 2026-03-01T12:00Z; in Europe/Madrid (CET, UTC+1 on that
     // date) that's 13:00 local, so a shift starting 13:00 local == now.
     private static UrgentShiftInfo ShiftAt(
@@ -631,7 +621,6 @@ public class GateServiceTests
         (await _svc.GetShiftRosterAsync(Guid.NewGuid())).Should().BeEmpty();
     }
 
-    // ── Personal device PINs ─────────────────────────────────────────────────
     [HumansFact]
     public async Task SetOwnPin_NonSupervisor_SetsAndVerifies()
     {

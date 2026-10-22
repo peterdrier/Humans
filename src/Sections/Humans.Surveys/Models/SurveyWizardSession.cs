@@ -9,11 +9,9 @@ namespace Humans.Surveys.Models;
 internal sealed record SurveyCompletion(Guid SurveyId, string Culture);
 
 /// <summary>
-/// Get/set the per-key <see cref="SurveyWizardState"/> on <see cref="ISession"/> as a JSON string.
-/// Keeps HTTP/session types in the Web layer. The invited path keys per token
-/// (<c>survey-wizard:{token}</c>); the public path keys per slug (<c>survey-wizard:slug:{slug}</c>) so
-/// the two namespaces never collide. A third namespace (<c>survey-thankyou:…</c>) outlives the wizard
-/// state and carries <see cref="SurveyCompletion"/> to the thank-you page.
+/// The invited path keys per token (<c>survey-wizard:{token}</c>), the public path per slug
+/// (<c>survey-wizard:slug:{slug}</c>), so the two never collide. <c>survey-thankyou:…</c> outlives the wizard state
+/// and carries <see cref="SurveyCompletion"/> to the thank-you page.
 /// </summary>
 internal static class SurveyWizardSession
 {

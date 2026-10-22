@@ -107,10 +107,7 @@
             }
             <div class="navbar-links">
                 <ul class="navbar-nav">
-                    @* Links sections contribute through ISectionNav; renders nothing while none do.
-                       Search and Tour are real sections (Humans.Search, Humans.Tour) and contribute
-                       their own nav links here rather than being named by this file — see
-                       nobodies-collective/Humans#1090. *@
+                    @* Links sections contribute through ISectionNav; renders nothing while none do. *@
                     <vc:section-nav />
                     @if (!isAuthenticated || !hasProfile)
                     {
@@ -141,8 +138,6 @@
             @RenderBody()
         </main>
     </div>
-
-    @* Footer removed — About and Privacy are in the avatar dropdown menu *@
 
     <!-- Cookie Consent Banner -->
     <div id="cookieConsent" class="position-fixed bottom-0 start-0 end-0 bg-dark text-white p-3" style="display: none; z-index: 1050;">

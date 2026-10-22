@@ -1,13 +1,10 @@
 @model Humans.Shifts.Models.ShiftToggleButtonModel
 @*
-    Instant per-day signup toggle. Single source of truth for the JS contract:
-    .js-day-toggle + data-shift-id + data-signed-up, driven by wwwroot/js/shifts.js.
-    States: available · signed up (Confirmed) · applied (Pending approval) · full · early-entry closed.
+    The one source of the JS contract (.js-day-toggle, data-shift-id, data-signed-up) that wwwroot/js/shifts.js drives.
 *@
 @{
     var pending = Model.IsSignedUp && Model.Status == SignupStatus.Pending;
-    // Early-entry close only blocks NEW signups; humans already on the shift keep
-    // their Remove affordance (the server still bars bailing — see ShiftSignupService).
+    // Early-entry close blocks new signups only; the signed-up keep Remove, though the server still bars the bail.
     var earlyEntryLocked = Model.EarlyEntryClosed && !Model.IsSignedUp;
     var disabled = (Model.IsFull && !Model.IsSignedUp) || earlyEntryLocked;
     var stateClass = Model.IsSignedUp

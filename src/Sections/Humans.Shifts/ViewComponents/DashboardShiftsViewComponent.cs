@@ -8,10 +8,8 @@ using NodaTime;
 namespace Humans.Shifts.ViewComponents;
 
 /// <summary>
-/// The member dashboard's shift block: confirmed signups, urgent open shifts, the
-/// "no shifts yet" guided-discovery callout, and the volunteer "Get involved" tri-card
-/// row. Off season (the admin switch on the active event settings) swaps the callout and
-/// the tri-card row for a quiet "season wrapped" note.
+/// Off season, an admin switch on the active event, swaps the callout and the tri-card row for a "season wrapped"
+/// note.
 /// </summary>
 public sealed class DashboardShiftsViewComponent(
     IShiftService shiftMgmt,

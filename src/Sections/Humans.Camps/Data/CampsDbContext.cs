@@ -3,26 +3,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Camps.Data;
 
-/// <summary>
-/// Per-section database context for the Camps section
-/// (nobodies-collective/Humans#858): maps only <c>camps</c>,
-/// <c>camp_seasons</c>, <c>camp_historical_names</c>, <c>camp_images</c>,
-/// <c>camp_settings</c>, <c>camp_members</c>, <c>camp_role_definitions</c> and
-/// <c>camp_role_assignments</c>, with its own
-/// <c>__EFMigrationsHistory_Camps</c> table and migrations under
-/// <c>Migrations/Camps/</c>. Same database, same connection — the split is a
-/// code-side partition of the EF model.
-/// </summary>
-/// <remarks>
-/// Internal-sealed like every section context (issue #750): repositories
-/// are the only consumers. Configurations are applied explicitly (not by
-/// assembly scanning) so this model can never accrete another section's tables.
-/// Camp leads and members are bare Guid references to users, so the Identity
-/// tables stay in <c>UsersDbContext</c> and are deliberately absent
-/// here; <c>camp_polygons</c> belongs to City Planning and is likewise absent.
-/// <c>CampSettings</c> carries a model-level <c>HasData</c> singleton that the
-/// baseline regenerates.
-/// </remarks>
 internal sealed class CampsDbContext(DbContextOptions<CampsDbContext> options)
     : DbContext(options)
 {

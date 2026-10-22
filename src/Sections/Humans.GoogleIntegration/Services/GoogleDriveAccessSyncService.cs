@@ -108,14 +108,9 @@ internal sealed class GoogleDriveAccessSyncService(
     }
 
     /// <summary>
-    /// Loads every source's claims, one <see cref="IGoogleDriveAccessSource"/>
-    /// at a time so a throwing source is skipped without aborting the others.
-    /// A folder claimed by several sources gets the union of their claims, highest
-    /// level per user. When a source throws, every claim is marked partial so the
-    /// run grants but never removes or demotes on an incomplete roster, and
-    /// <see cref="ClaimLoad.Partial"/> is set even if no claim survived. With
-    /// <paramref name="rethrowSourceFailures"/> the first failure propagates instead,
-    /// for callers (the join-time grant) that must retry rather than act on a partial roster.
+    /// One source at a time, so a throwing source is skipped; a folder several sources claim gets the union, highest
+    /// level per user. A failure marks every claim partial: grant, never remove or demote.
+    /// <paramref name="rethrowSourceFailures"/> propagates the failure instead, for callers that must retry.
     /// </summary>
     internal static async Task<ClaimLoad> LoadClaimsAsync(
         IEnumerable<IGoogleDriveAccessSource> sources, string? folderId, ILogger logger, CancellationToken ct,
@@ -256,7 +251,7 @@ internal sealed class GoogleDriveAccessSyncService(
         var owners = UserEmailMatchOwner.ByEmail(await userEmailService.MatchByEmailsAsync(extraEmails, ct))
             .ToDictionary(kv => kv.Key, kv => kv.Value.UserId, GmailAliasEmailComparer.Instance);
         // A plus-address fallback grant is held under a base address no user_emails row claims;
-        // its recorded Drive address still attributes it (peterdrier/Humans#2037).
+        // its recorded Drive address still attributes it.
         foreach (var (userId, drive) in await workspaceIdentities.GetDriveEmailsAsync(ct))
             owners.TryAdd(drive.DriveEmail, userId);
         var users = await userService.GetUserInfosAsync(owners.Values.Distinct().ToList(), ct);
@@ -409,12 +404,8 @@ internal sealed class GoogleDriveAccessSyncService(
             if (!allEmails.Contains(member.Email))
                 state = MemberSyncState.Missing;
             else if (!directEmails.Contains(member.Email))
-                // An inherited permission cannot be edited or deleted at this level (#945), but
-                // it can be *out-ranked* by a direct grant. Workgroup folders live under a root
-                // that hands every Colaborador/Asociado an inherited Viewer, so a member who is
-                // one would otherwise never be raised to Contributor. Below the expected level
-                // the folder still needs a direct permission created, so classify it Missing;
-                // at or above it, inheritance already satisfies the claim.
+                // An inherited permission cannot be edited here, but a direct grant can out-rank it: a Workgroup root
+                // gives every Colaborador/Asociado inherited Viewer. Below the expected level it is still Missing.
                 state = DrivePermissionRoleMapper.Parse(currentRole) is { } inherited && inherited < member.Level
                     ? MemberSyncState.Missing
                     : MemberSyncState.Inherited;
@@ -439,8 +430,7 @@ internal sealed class GoogleDriveAccessSyncService(
             var inheritedRole = inheritedLevelByEmail.TryGetValue(email, out var inheritedLevel)
                 ? inheritedLevel.ToApiRole()
                 : null;
-            // A mixed permission already reduced to its inherited floor grants
-            // nothing beyond the parent. It cannot be deleted here (#945).
+            // A mixed permission at its inherited floor grants nothing beyond the parent, and cannot be deleted here.
             if (inheritedRole is not null && DrivePermissionRoleMapper.Parse(extraRole) <= inheritedLevel)
                 continue;
             members.Add(new MemberSyncStatus(email, email, MemberSyncState.Extra, [], extraRole, inheritedRole));
@@ -522,10 +512,8 @@ internal sealed class GoogleDriveAccessSyncService(
     private static readonly TimeSpan[] TransientRetryBackoff = [TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3)];
 
     /// <summary>
-    /// Re-issues a Drive mutation while Google reports a transient error, so a one-off Google hiccup
-    /// does not leave a member without access until the next pass (peterdrier/Humans#2037).
-    /// Permanent failures, including target rejections, return on the first attempt.
-    /// <c>Retried</c> is true when the returned result came from a repeat attempt.
+    /// Retries while Google reports a transient error, so a one-off hiccup does not leave a member without access
+    /// until the next pass. Permanent failures return at once. <c>Retried</c>: the result came from a repeat.
     /// </summary>
     private async Task<(T Result, bool Retried)> WithTransientRetryAsync<T>(Func<Task<T>> call, Func<T, GoogleClientError?> errorOf, CancellationToken ct)
     {
@@ -653,8 +641,7 @@ internal sealed class GoogleDriveAccessSyncService(
         if (string.Equals(perm.Role, "owner", StringComparison.OrdinalIgnoreCase))
             return false;
 
-        // Mixed permissions cannot be deleted (#945), but their direct elevation
-        // can be updated down to the inherited floor.
+        // Mixed permissions cannot be deleted, but their direct elevation can drop to the inherited floor.
         return perm.HasDirectComponent;
     }
 

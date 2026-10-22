@@ -8,11 +8,7 @@ using NodaTime;
 
 namespace Humans.Workgroups;
 
-/// <summary>
-/// Workgroups' things-to-do entries, for coordinators only: the monthly update the group
-/// owes, and a status update somebody asked for and nobody answered. A member with nothing
-/// outstanding gets nothing — the list is what needs doing, not what exists.
-/// </summary>
+/// <summary>Coordinators only, and only what is outstanding: the list is what needs doing, not what exists.</summary>
 internal sealed class SectionThingsToDo : ISectionThingsToDo
 {
     public async ValueTask<IEnumerable<ThingsToDoEntry>> EntriesAsync(

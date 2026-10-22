@@ -10,13 +10,7 @@ using Humans.Users.Contracts;
 namespace Humans.Cantina.Controllers;
 
 /// <summary>
-/// Cantina coordinator surface — weekly roster, per-day drill-down, and their CSV
-/// exports (feature #36 — src/Sections/Humans.Cantina/Docs/features/daily-roster.md). View-only.
-/// Authorization gate: the <see cref="PolicyNames.CantinaAdminOrAdmin"/> policy
-/// (Admin or the grantable CantinaAdmin role). Anonymous callers follow the
-/// standard <see cref="AuthorizeAttribute"/> challenge; authenticated humans
-/// without the role are redirected to /Account/AccessDenied by cookie
-/// authentication's AccessDeniedPath — not a bare 403.
+/// View-only. Members without the role get the cookie AccessDeniedPath redirect, not a bare 403.
 /// </summary>
 [Authorize(Policy = PolicyNames.CantinaAdminOrAdmin)]
 [Route("Cantina")]
@@ -37,8 +31,7 @@ internal sealed class CantinaController : HumansControllerBase
     [HttpGet("Roster")]
     public async Task<IActionResult> Roster(int? weekStartOffset = null, CancellationToken ct = default)
     {
-        // No sort: the weekly page is overview-only and renders none of People.
-        // The CSV below is the one surface that reads it, and sorts for itself.
+        // No sort: the weekly page renders none of People; the CSV sorts for itself.
         return View(await _roster.GetWeeklyRosterAsync(weekStartOffset, ct: ct).ConfigureAwait(false));
     }
 
@@ -49,8 +42,6 @@ internal sealed class CantinaController : HumansControllerBase
         if (actorUserId is null) return Unauthorized();
 
         var roster = await _roster.GetWeeklyRosterAsync(weekStartOffset, exportActorUserId: actorUserId.Value, ct: ct).ConfigureAwait(false);
-        // Display sort is a presentation concern; the service returns People in
-        // unspecified order (memory/architecture/display-sort-in-controllers.md).
         roster = CantinaRosterAssembler.WithSortedPeople(roster);
 
         var bytes = CantinaRosterCsvWriter.Write(roster);
@@ -62,24 +53,13 @@ internal sealed class CantinaController : HumansControllerBase
         return File(bytes, "text/csv; charset=utf-8", filename);
     }
 
-    /// <summary>
-    /// Per-day drill-down matrix. Linked from each row of the weekly view's
-    /// per-day mini-table — coordinators planning a specific meal click a
-    /// day to see the row-per-person matrix (chips as columns + totals).
-    /// </summary>
     [HttpGet("Roster/Day")]
     public async Task<IActionResult> Day(int? dayOffset = null, CancellationToken ct = default)
     {
         var matrix = await _roster.GetDailyRosterAsync(dayOffset, ct: ct).ConfigureAwait(false);
-        // Display sort is a presentation concern; the service returns People
-        // in unspecified order. See memory/architecture/display-sort-in-controllers.md.
         return View(CantinaRosterAssembler.WithSortedPeople(matrix));
     }
 
-    /// <summary>
-    /// Per-day matrix CSV companion to <see cref="Day"/>. Same content layout
-    /// as the on-screen matrix, with chip-by-chip column totals at the bottom.
-    /// </summary>
     [HttpGet("Roster/Day/Csv")]
     public async Task<IActionResult> DayCsv(int? dayOffset = null, CancellationToken ct = default)
     {

@@ -6,25 +6,11 @@ using Humans.Settings.Contracts;
 namespace Humans.Shifts.Services;
 
 /// <summary>
-/// Flattens the section's cached <see cref="ShiftUserView"/> row bundle into
-/// the <see cref="ShiftUserSummary"/> that crosses the section boundary.
+/// Projects off the same cached rows as <c>IShiftRowView</c>, so the boundary shape and the section's reads can't
+/// drift. A signup missing its Shift, Rota or calendar is dropped, never given placeholder dates.
 /// </summary>
-/// <remarks>
-/// The section's singleton decorator answers <see cref="IShiftView"/>
-/// through this, off the same cached rows it serves
-/// <c>IShiftRowView</c> from, so the boundary shape and the section's own
-/// reads can never drift.
-///
-/// <para>
-/// A signup whose <c>Shift</c> or <c>Rota</c> navigation is missing, or whose
-/// view has no <see cref="ShiftUserView.Calendar"/> (no active event, or Settings
-/// has no calendar for it yet), is dropped rather than projected with placeholder
-/// dates.
-/// </para>
-/// </remarks>
 internal static class ShiftUserSummaryProjection
 {
-    /// <summary>Projects one user's row bundle.</summary>
     internal static ShiftUserSummary ToSummary(this ShiftUserView rows) => new(
         rows.UserId,
         [.. rows.TagPreferences.Select(p =>
@@ -35,12 +21,11 @@ internal static class ShiftUserSummaryProjection
                 .Where(s => s.Shift?.Rota is not null)
                 .Select(s => ToSummary(s, rows.Calendar))]);
 
-    /// <summary>Projects a keyed batch of row bundles.</summary>
     internal static IReadOnlyDictionary<Guid, ShiftUserSummary> ToSummaries(
         this IReadOnlyDictionary<Guid, ShiftUserView> rows) =>
         rows.ToDictionary(kv => kv.Key, kv => kv.Value.ToSummary());
 
-    /// <summary>Projects one signup (its <c>Shift.Rota</c> loaded) against its event's calendar.</summary>
+    /// <summary>Needs <c>Shift.Rota</c> loaded.</summary>
     internal static ShiftSignupSummary ToSummary(ShiftSignup signup, EventSettingsInfo settings)
     {
         var shift = signup.Shift;

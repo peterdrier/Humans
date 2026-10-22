@@ -10,8 +10,7 @@
         @if (Model.Status == GoogleEmailStatus.Rejected)
         {
             <span class="badge bg-danger me-1" title="@Localizer["GoogleIntegration_Identity_Problem"].Value">@Localizer["GoogleIntegration_Identity_Problem"]</span>
-            @* The rejected identity has no other retry surface — re-assert it (resets Rejected→Unknown, #687)
-               so the next reconcile retries. *@
+            @* The rejected identity has no other retry surface: re-asserting it resets Rejected to Unknown, so the next reconcile retries. *@
             <form asp-controller="WorkspaceIdentity" asp-action="@action" asp-route-id="@routeId"
                   method="post" class="d-inline me-1">
                 @Html.AntiForgeryToken()

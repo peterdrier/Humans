@@ -5,26 +5,9 @@ using Humans.Settings.Contracts;
 namespace Humans.Shifts.Contracts;
 
 /// <summary>
-/// Cross-section read DTO over the Shifts-owned <c>event_settings</c> row
-/// (colloquially "the burn" — Elsewhere 2026, etc.). Exposes only the fields
-/// other sections legitimately need (identity, calendar anchor, build
-/// calendar, early-entry capacity, and the global shift-browsing switch) —
-/// Shifts-internal tuning knobs (<c>GlobalVolunteerCap</c>,
-/// <c>ReminderLeadTimeHours</c>) stay on <c>IShiftManagement</c>.
+/// The calendar from Settings plus the Shifts browsing switch. "Burn" names an event cycle, to keep clear of the
+/// unrelated Events section. Shifts' tuning knobs stay internal.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Returned by <see cref="IBurnSettingsService"/>. The underlying entity
-/// (<c>EventSettings</c>) is Shifts-internal and never leaves the section
-/// (design-rules §2c, <c>memory/architecture/no-cross-section-ef-joins.md</c>).
-/// </para>
-/// <para>
-/// "Burn" is the in-house term for an event cycle. The DB table stays
-/// <c>event_settings</c> for backwards compatibility; the cross-section
-/// surface uses the colloquial name to disambiguate from the unrelated
-/// Events section (camp-event guide / submissions).
-/// </para>
-/// </remarks>
 public sealed record BurnSettingsInfo(
     Guid Id,
     string EventName,
@@ -44,11 +27,8 @@ public sealed record BurnSettingsInfo(
     bool IsShiftBrowsingOpen) : IBurnSettingsInfo, IEventSettingsInfo
 {
     /// <summary>
-    /// Step-function lookup: returns the cumulative EE capacity for the
-    /// largest key in <see cref="EarlyEntryCapacity"/> that is ≤
-    /// <paramref name="dayOffset"/>, or 0 if none qualifies. Mirrors
-    /// <see cref="EventSettingsInfo.GetEarlyEntryCapacityForDay"/> so cross-section
-    /// callers (camps, art) don't reimplement the lookup.
+    /// Capacity at the largest key at or below <paramref name="dayOffset"/>, else 0. Mirrors
+    /// <see cref="EventSettingsInfo.GetEarlyEntryCapacityForDay"/>.
     /// </summary>
     public int GetEarlyEntryCapacityForDay(int dayOffset)
     {
@@ -65,11 +45,8 @@ public sealed record BurnSettingsInfo(
         return applicableKey == int.MinValue ? 0 : EarlyEntryCapacity[applicableKey];
     }
 
-    // Forwarders to the sealed bodies on IBurnSettingsInfo — the clock rule's
-    // single home. C# only surfaces interface members through an interface-typed
-    // receiver, so without these every DTO-holding call site would need a cast.
-    // These carry no logic and cannot drift from the interface.
-
+    // C# surfaces the interface's sealed bodies only through an interface-typed receiver; these spare every call a
+    // cast.
     /// <inheritdoc cref="IBurnSettingsInfo.IsEarlyEntryClosed" />
     public bool IsEarlyEntryClosed(Instant now) =>
         ((IBurnSettingsInfo)this).IsEarlyEntryClosed(now);

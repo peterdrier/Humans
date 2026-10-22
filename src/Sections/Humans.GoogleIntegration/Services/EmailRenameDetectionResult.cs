@@ -1,9 +1,6 @@
 namespace Humans.GoogleIntegration.Services;
 
-/// <summary>
-/// A detected email rename: the user's stored GoogleEmail differs from
-/// the current primaryEmail returned by Google Directory API.
-/// </summary>
+/// <summary>The stored GoogleEmail differs from Google's current primaryEmail.</summary>
 internal sealed class EmailRenameInfo
 {
     public Guid UserId { get; init; }
@@ -13,9 +10,6 @@ internal sealed class EmailRenameInfo
     public int AffectedResourceCount { get; init; }
 }
 
-/// <summary>
-/// Result of scanning for renamed @nobodies.team emails.
-/// </summary>
 internal sealed class EmailRenameDetectionResult
 {
     public List<EmailRenameInfo> Renames { get; init; } = [];

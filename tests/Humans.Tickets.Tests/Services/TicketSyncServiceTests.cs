@@ -63,7 +63,6 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             _campaignService,
             _shiftManagementService);
 
-        // Seed the singleton TicketSyncState row
         TicketsDb.TicketSyncStates.Add(new TicketSyncState
         {
             Id = 1,
@@ -72,10 +71,6 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         });
         SaveAll();
     }
-
-    // ==========================================================================
-    // SyncOrdersAndAttendeesAsync_InsertsNewOrders
-    // ==========================================================================
 
     [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_InsertsNewOrders()
@@ -159,10 +154,6 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         state.LastError.Should().Be(oversizedError ? new string('e', 1999) : error);
     }
 
-    // ==========================================================================
-    // SyncOrdersAndAttendeesAsync_MatchesOrderToUserByEmail
-    // ==========================================================================
-
     [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_MatchesOrderToUserByEmail()
     {
@@ -189,10 +180,6 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         var dbOrder = await TicketsDb.TicketOrders.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         dbOrder.MatchedUserId.Should().Be(userId);
     }
-
-    // ==========================================================================
-    // SyncOrdersAndAttendeesAsync_UpsertDoesNotCreateDuplicates
-    // ==========================================================================
 
     [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_UpsertDoesNotCreateDuplicates()
@@ -227,10 +214,6 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         dbOrders[0].TotalAmount.Should().Be(75m);
     }
 
-    // ==========================================================================
-    // SyncOrdersAndAttendeesAsync_MatchesDiscountCodeToCampaignGrant
-    // ==========================================================================
-
     [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_ForwardsDiscountCodesToCampaignService()
     {
@@ -256,16 +239,11 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
 
         result.CodesRedeemed.Should().Be(1);
 
-        // Verify the redemption was forwarded to the campaign service
         await _campaignService.Received(1).MarkGrantsRedeemedAsync(
             Arg.Is<IReadOnlyCollection<DiscountCodeRedemption>>(r =>
                 r.Count == 1 && string.Equals(r.First().Code, "discount10", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
     }
-
-    // ==========================================================================
-    // SyncOrdersAndAttendeesAsync_SetsErrorStateOnFailure
-    // ==========================================================================
 
     [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_TransientError_ReturnsGracefully()
@@ -292,8 +270,8 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_VendorTimeout_TakesTransientPath()
     {
-        // nobodies-collective/Humans#946: HttpClient.Timeout surfaces as TaskCanceledException with an inner
-        // TimeoutException — must take the same transient path as a vendor 5xx.
+        // HttpClient.Timeout surfaces as TaskCanceledException with an inner TimeoutException —
+        // must take the same transient path as a vendor 5xx.
         _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Throws(new TaskCanceledException(
                 "The request was canceled due to the configured HttpClient.Timeout.",
@@ -316,8 +294,8 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_GenuineCancellation_SetsErrorState()
     {
-        // A cancellation with no inner TimeoutException is not an HttpClient timeout (nobodies-collective/Humans#946) —
-        // it must not be swallowed as "vendor was slow" and must still take the generic path.
+        // A cancellation with no inner TimeoutException is not an HttpClient timeout — it must
+        // not be swallowed as "vendor was slow" and must still take the generic path.
         _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Throws(new TaskCanceledException("The operation was canceled."));
 
@@ -354,14 +332,9 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         syncState.LastSyncAt.Should().Be(lastSuccess);
     }
 
-    // ==========================================================================
-    // SyncOrdersAndAttendeesAsync_SkipsWhenEventIdNotConfigured
-    // ==========================================================================
-
     [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_SkipsWhenEventIdNotConfigured()
     {
-        // Create a service with empty EventId
         var settings = Options.Create(new TicketVendorSettings
         {
             EventId = "",
@@ -388,14 +361,9 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         result.AttendeesSynced.Should().Be(0);
         result.CodesRedeemed.Should().Be(0);
 
-        // Vendor service should NOT have been called
         await _vendorService.DidNotReceive()
             .GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
-
-    // ==========================================================================
-    // SyncOrdersAndAttendeesAsync_AttendeeUpsertDoesNotCreateDuplicates
-    // ==========================================================================
 
     [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_AttendeeUpsertDoesNotCreateDuplicates()
@@ -549,10 +517,6 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         syncedOrders.Should().OnlyContain(o => o.VatAmount == 0m);
     }
 
-    // ==========================================================================
-    // SyncOrdersAndAttendeesAsync_HandlesRealisticScale
-    // ==========================================================================
-
     [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_HandlesRealisticScale()
     {
@@ -586,24 +550,18 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         var dbAttendees = await TicketsDb.TicketAttendees.CountAsync(Xunit.TestContext.Current.CancellationToken);
         dbAttendees.Should().Be(700);
 
-        // Sync state should be Idle after success
         var syncState = await TicketsDb.TicketSyncStates.AsNoTracking()
             .FirstAsync(s => s.Id == 1, Xunit.TestContext.Current.CancellationToken);
         syncState.SyncStatus.Should().Be(TicketSyncStatus.Idle);
         syncState.LastSyncAt.Should().NotBeNull();
     }
 
-    // ==========================================================================
-    // EventParticipation.CheckedInAt threading (#736)
-    // ==========================================================================
-
     [HumansFact]
     public async Task SyncEventParticipations_FlipsToAttended_WhenTicketValidAndCheckInRecorded()
     {
-        // Regression for nobodies-collective/Humans#736: the issued ticket stays
-        // status="valid" once scanned — check-in arrives as a separate /check_ins
-        // record. Sync must read that record (not the ticket status) to flip the
-        // user to Attended and persist the gate-scan timestamp.
+        // Regression: the issued ticket stays status="valid" once scanned; check-in arrives as a
+        // separate /check_ins record. Sync must read that record (not the ticket status) to flip
+        // the user to Attended and persist the gate-scan timestamp.
         var userId = Guid.NewGuid();
         SeedUser(userId);
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
@@ -808,10 +766,6 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             checkInInstant, Arg.Any<CancellationToken>());
     }
 
-    // ==========================================================================
-    // SyncOrdersAndAttendeesAsync_BarcodeMappedToAttendee
-    // ==========================================================================
-
     [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_BarcodeMappedToAttendee()
     {
@@ -834,10 +788,6 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         var dbAttendee = await TicketsDb.TicketAttendees.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         dbAttendee.Barcode.Should().Be("bc-123");
     }
-
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
 
     private void SeedUserEmail(
         Guid userId, string email,

@@ -9,13 +9,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Services;
 
-/// <summary>
-/// Builds the <see cref="VolunteerExportModel"/> consumed by the XLSX builder.
-/// Composes the repo read (confirmed shifts in range), the event time-zone lookup
-/// (via <see cref="IBurnSettingsService.GetByIdAsync"/>), and per-user
-/// <see cref="UserInfo"/> resolution. Trusts the repo's status filter — no
-/// re-check on <see cref="SignupStatus"/>.
-/// </summary>
+/// <summary>Trusts the repository's status filter; no re-check on <see cref="SignupStatus"/>.</summary>
 internal sealed class VolunteerTrackingExportService(
     IShiftManagementRepository shiftManagementRepository,
     IShiftManagement shiftManagementService,
@@ -32,7 +26,6 @@ internal sealed class VolunteerTrackingExportService(
 
     public async Task<VolunteerExportModel> BuildAsync(VolunteerExportRequest request, CancellationToken ct)
     {
-        // Look up the event time zone through the DTO-only settings read surface.
         var eventSettings = await _burnSettingsService.GetByIdAsync(request.EventSettingsId, ct)
             ?? throw new InvalidOperationException($"EventSettings {request.EventSettingsId} not found.");
         var zone = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
@@ -41,8 +34,7 @@ internal sealed class VolunteerTrackingExportService(
         var shifts = await _shiftManagementRepository.GetConfirmedShiftsInRangeAsync(
             request.EventSettingsId, eventSettings, request.StartDate, request.EndDate, request.DepartmentId, ct);
 
-        // Resolve team names via the Teams-aware service surface (the Shifts repo
-        // deliberately returns TeamId only — no cross-section db.Teams query).
+        // The repository returns TeamId only; names come through the Teams-aware service.
         var depts = await _shiftManagementService.GetDepartmentsWithRotasAsync(request.EventSettingsId);
         var teamNames = depts
             .GroupBy(d => d.TeamId)
@@ -55,16 +47,14 @@ internal sealed class VolunteerTrackingExportService(
         if (shifts.Count == 0)
             return await BuildModelAsync(request, days, Array.Empty<DepartmentGroup>(), new int[days.Count], filteredTeamName);
 
-        // (1) Build (userId, day) → list of (teamId, teamName, hours) for the range.
         var perUserPerDay = BucketByUserDayTeam(shifts, days, zone, teamNames);
 
-        // (2) Per user: primary team = team with most total hours; first-shift date.
+        // Primary team: the one with most hours.
         var userIds = perUserPerDay.Keys.Select(k => k.userId).Distinct().ToList();
         var playaNames = await LoadPlayaNamesAsync(userIds, ct);
         var firstShiftDay = ShiftEarlyEntryProjection.FirstShiftDayByUser(shifts, zone);
         var primaryTeam = ComputePrimaryTeam(perUserPerDay);
 
-        // (3) Build cells per user.
         var rows = new Dictionary<Guid, HumanRow>();
         foreach (var userId in userIds)
         {
@@ -95,7 +85,7 @@ internal sealed class VolunteerTrackingExportService(
             rows[userId] = new HumanRow(userId, playaNames[userId], cells);
         }
 
-        // (4) Group by primary team. Order by total team hours desc, tie-break alphabetical.
+        // By total team hours, ties alphabetical.
         var totalTeamHours = perUserPerDay
             .SelectMany(kvp => kvp.Value)
             .GroupBy(v => v.teamId)
@@ -206,9 +196,7 @@ internal sealed class VolunteerTrackingExportService(
 
     private static string SlugifyTeamName(string teamName)
     {
-        // Spec §File Output slugification rule:
-        //   1) lowercase, 2) strip diacritics (NFD + drop combining marks),
-        //   3) non-[a-z0-9] -> '-', 4) collapse repeats, 5) trim '-', 6) fall back to "team".
+        // The spec's slug rule: lowercase, strip diacritics, non-[a-z0-9] to '-', collapse, trim, else "team".
         var lower = teamName.ToLowerInvariant();
         var nfd = lower.Normalize(System.Text.NormalizationForm.FormD);
         var sb = new System.Text.StringBuilder(nfd.Length);

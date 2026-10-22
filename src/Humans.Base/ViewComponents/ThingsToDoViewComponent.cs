@@ -38,7 +38,6 @@ public class ThingsToDoViewComponent(
                 .Select(ToItem)],
         };
 
-        // Hide entirely when all items are done
         if (!model.HasAnyItems || model.AllDone)
         {
             return Content(string.Empty);

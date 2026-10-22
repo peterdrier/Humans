@@ -26,24 +26,12 @@ using Humans.AuditLog.Contracts;
 
 namespace Humans.Integration.Tests.AccountMerge;
 
-/// <summary>
-/// Phase 6.2 of the AccountMergeService fold-into-target redesign:
-/// per-rule integration tests that exercise <c>AcceptAsync</c> end-to-end.
-/// Each method seeds source/target users plus per-section data via
-/// <see cref="MergeFixtureBuilder"/>, calls <c>AcceptAsync</c>, then asserts
-/// the resulting fold against the rule documented in the fold-redesign plan.
-/// </summary>
 public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     private async Task<Guid> SeedAdminUserAsync()
     {
-        // AcceptAsync writes ResolvedByUserId = adminUserId on the merge request
-        // and ActorUserId = adminUserId on the audit row, both FK'd to AspNetUsers.
-        // It also calls TeamService.RemoveMemberAsync for non-system team folds,
-        // which requires the actor to be Admin / Board / TeamsAdmin (per
-        // CanUserApproveRequestsForTeamAsync). Seed an admin User + an active
-        // Admin RoleAssignment per test so those FKs resolve and authorization
-        // succeeds.
+        // An admin user with an active Admin role: AcceptAsync FKs the request and audit row to it, and team folds
+        // need an actor allowed to remove members.
         await using var scope = Factory.Services.CreateAsyncScope();
         var um = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
         var authDb = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
@@ -80,16 +68,9 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         return adminId;
     }
 
-    // ==================================================================
-    // UserEmail — rules 1 & 2 of the fold spec
-    // ==================================================================
-
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_UserEmails_OrCombinesFlags_KeepsTargetPrimaryAndGoogle()
     {
-        // Per-test unique address so the user_emails Email-uniqueness index
-        // doesn't trip when the class fixture's shared DB carries rows from
-        // an earlier test in the same run.
         var sharedEmail = $"shared-{Guid.NewGuid():N}@example.com";
         var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
@@ -118,10 +99,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_UserEmails_CollapsesSameEmail()
     {
-        // The unique index on UserEmail.Email is filtered to verified=true,
-        // so the duplicate-pre-merge scenario is only legal when at most one
-        // side is verified. Source verified, target unverified — fold should
-        // OR-combine into a single verified target row.
+        // The Email unique index covers verified rows only, so a pre-merge duplicate needs one side unverified.
         var collapseEmail = $"collapse-{Guid.NewGuid():N}@example.com";
         var sourceOnlyEmail = $"source-only-{Guid.NewGuid():N}@example.com";
         var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
@@ -140,29 +118,18 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
 
         var targetEmails = await emailRepo.GetUserEmailsByUserIdReadOnlyAsync(targetId, TestContext.Current.CancellationToken);
 
-        // Same address collapses to a single target row.
         targetEmails.Should().ContainSingle(e => string.Equals(e.Email, collapseEmail, StringComparison.OrdinalIgnoreCase));
-        // Source-only address re-FK'd onto target.
         targetEmails.Should().ContainSingle(e => string.Equals(e.Email, sourceOnlyEmail, StringComparison.OrdinalIgnoreCase));
 
         var sourceEmails = await emailRepo.GetUserEmailsByUserIdReadOnlyAsync(sourceId, TestContext.Current.CancellationToken);
         sourceEmails.Should().BeEmpty();
     }
 
-    // ==================================================================
-    // AspNetUserLogins — rule 3
-    // ==================================================================
-
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_AspNetUserLogins_ReFK()
     {
-        // user_logins PK is (LoginProvider, ProviderKey) — UserId is just an
-        // FK — so two users can never share the same (provider, key) in the
-        // DB and no dedup is possible. The realistic merge scenario is:
-        // source has logins with keys that are NOT on target, and they
-        // re-FK over. The code path also hits the EF identity-map conflict
-        // (Remove+Add same composite PK in one DbContext) on every re-FK,
-        // which the two-pass Remove-SaveChanges-Add structure fixes.
+        // The PK is (LoginProvider, ProviderKey), so two users never share a key and nothing dedups: source logins
+        // re-FK over. Each re-FK is a Remove+Add of one PK, which needs the two-pass save to dodge EF's identity map.
         var sourceKey1 = $"source-sub-1-{Guid.NewGuid():N}";
         var sourceKey2 = $"source-sub-2-{Guid.NewGuid():N}";
         var targetKey = $"target-sub-{Guid.NewGuid():N}";
@@ -186,7 +153,6 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
             .AsNoTracking()
             .ToListAsync(TestContext.Current.CancellationToken);
 
-        // All three logins now point at target.
         targetLogins.Should().HaveCount(3);
         targetLogins.Should().ContainSingle(l =>
             string.Equals(l.LoginProvider, "Google", StringComparison.Ordinal)
@@ -204,10 +170,6 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
             .ToListAsync(TestContext.Current.CancellationToken);
         sourceLogins.Should().BeEmpty();
     }
-
-    // ==================================================================
-    // Profile — rule 4
-    // ==================================================================
 
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_Profile_AnonymizesAndKeepsTombstoneRow()
@@ -231,17 +193,12 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         sourceProfile.BurnerName.Should().Be("Merged User");
         sourceProfile.Bio.Should().BeNull();
 
-        // Target profile is untouched.
         var targetProfile = await db.Profiles
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == targetId, TestContext.Current.CancellationToken);
         targetProfile.Should().NotBeNull();
         targetProfile.FirstName.Should().Be("Target");
     }
-
-    // ==================================================================
-    // VolunteerHistory + Languages — rules 6, 7
-    // ==================================================================
 
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_VolunteerHistory_Move_DedupIdenticalEntries()
@@ -295,15 +252,14 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
     {
         var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
-            // Both have "es" — source higher proficiency, target's row should
-            // be upgraded.
+            // Both have "es"; source's higher proficiency upgrades target's row.
             b.WithSourceLanguage("es", LanguageProficiency.Fluent);
             b.WithTargetLanguage("es", LanguageProficiency.Conversational);
 
-            // Source-only "fr" moves to target.
+            // Source-only: moves to target.
             b.WithSourceLanguage("fr", LanguageProficiency.Basic);
 
-            // Target-only "de" stays.
+            // Target-only: stays.
             b.WithTargetLanguage("de", LanguageProficiency.Native);
         });
         var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
@@ -334,10 +290,6 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
             .Should().Be(LanguageProficiency.Native);
     }
 
-    // ==================================================================
-    // CommunicationPreferences — rule 8
-    // ==================================================================
-
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_CommunicationPreferences_MostRecentWins()
     {
@@ -346,12 +298,11 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
 
         var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
-            // Same category — source is newer, so source's OptedOut value wins
-            // and gets copied onto target before the source row is deleted.
+            // Source newer: its value is copied onto target.
             b.WithSourceCommPref(LegacyMessageCategory.VolunteerUpdates, optedOut: true, updatedAt: newer);
             b.WithTargetCommPref(LegacyMessageCategory.VolunteerUpdates, optedOut: false, updatedAt: older);
 
-            // Same category — target newer, target value stands.
+            // Target newer: target stands.
             b.WithSourceCommPref(LegacyMessageCategory.Marketing, optedOut: false, updatedAt: older);
             b.WithTargetCommPref(LegacyMessageCategory.Marketing, optedOut: true, updatedAt: newer);
         });
@@ -360,8 +311,8 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        // The fold lands in Email's table; the source's legacy rows stay behind, shadowed by
-        // cleared rows so Email's fallback cannot resurrect them.
+        // The fold lands in Email's table; the source's legacy rows stay, shadowed by cleared rows so Email's fallback
+        // can't resurrect them.
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<Humans.Email.Data.EmailDbContext>();
 
@@ -383,24 +334,20 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         sourcePrefs.Should().OnlyContain(cp => cp.OptedOut == null);
     }
 
-    // ==================================================================
-    // EventParticipation — rule 9
-    // ==================================================================
-
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_EventParticipation_HighestStatusWins_ByEnumPrecedence()
     {
         var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
-            // Year 2024 — source Attended (highest precedence) beats target NotAttending.
+            // 2024: source Attended (highest precedence) beats target NotAttending.
             b.WithSourceEventParticipation(2024, LegacyParticipationStatus.Attended);
             b.WithTargetEventParticipation(2024, LegacyParticipationStatus.NotAttending);
 
-            // Year 2025 — source NotAttending loses to target Ticketed.
+            // 2025: source NotAttending loses to target Ticketed.
             b.WithSourceEventParticipation(2025, LegacyParticipationStatus.NotAttending);
             b.WithTargetEventParticipation(2025, LegacyParticipationStatus.Ticketed);
 
-            // Year 2023 — source-only, re-FKs to target.
+            // 2023: source-only, re-FKs to target.
             b.WithSourceEventParticipation(2023, LegacyParticipationStatus.Attended);
         });
         var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
@@ -409,8 +356,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        // Tickets owns the fold (Users decomposition commit 13): the legacy rows of both
-        // users are materialized into tickets_event_participations and folded there.
+        // Tickets owns the fold: both users' legacy rows are materialized into tickets_event_participations.
         var db = assertScope.ServiceProvider.GetRequiredService<TicketsDbContext>();
 
         var targetEvents = await db.EventParticipations
@@ -427,21 +373,16 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
             .AsNoTracking()
             .Where(ep => ep.UserId == sourceId)
             .ToListAsync(TestContext.Current.CancellationToken);
-        // The source's legacy rows stay frozen in Users; its Tickets rows are cleared so the
-        // legacy fallback cannot bring them back.
+        // The source's legacy rows stay frozen in Users; its cleared Tickets rows stop the fallback bringing them back.
         sourceEvents.Should().OnlyContain(ep => ep.Status == null);
     }
-
-    // ==================================================================
-    // Applications — rule 20
-    // ==================================================================
 
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_Applications_Move_AllHistorical()
     {
         var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
-            // Both source and target have applications — every row moves; no dedup.
+            // Every row moves; no dedup.
             b.WithSourceApplication();
             b.WithSourceApplication(MembershipTier.Asociado);
             b.WithTargetApplication();
@@ -466,10 +407,6 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
             .ToListAsync(TestContext.Current.CancellationToken);
         sourceApps.Should().BeEmpty();
     }
-
-    // ==================================================================
-    // FeedbackReports — rule 21 (FeedbackReport part; FeedbackMessage in Pass 2)
-    // ==================================================================
 
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_FeedbackReportsAndMessages_Move()
@@ -504,15 +441,9 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         sourceReports.Should().BeEmpty();
     }
 
-    // ==================================================================
-    // AuditLog — rule 22 (NOT mutated; chain-follow tested in 6.3)
-    // ==================================================================
-
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_AuditLog_NotMutated_StaysAtSourceId()
     {
-        // Per-test description so the post-merge query doesn't pick up rows
-        // seeded by other tests in the same shared-DB class fixture.
         var description = $"audit-source-action-{Guid.NewGuid():N}";
 
         var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
@@ -527,9 +458,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var auditLogDb = assertScope.ServiceProvider.GetRequiredService<AuditLogDbContext>();
 
-        // The seeded audit row MUST still be attached to the source user id —
-        // fold doesn't mutate audit rows; chain-follow at read time stitches
-        // them with the target.
+        // The fold never mutates audit rows; chain-follow stitches them to the target at read time.
         var seededRows = await auditLogDb.AuditLogEntries
             .AsNoTracking()
             .Where(a => a.Description == description)
@@ -537,10 +466,6 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         seededRows.Should().HaveCount(1);
         seededRows[0].ActorUserId.Should().Be(sourceId);
     }
-
-    // ==================================================================
-    // User tombstone + lockout — rules 25, 26
-    // ==================================================================
 
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_TombstonesSourceWithMergedToUserId()
@@ -580,13 +505,8 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         sourceUser.Should().NotBeNull();
         sourceUser.LockoutEnabled.Should().BeTrue();
         sourceUser.LockoutEnd.Should().NotBeNull("source must be locked out forever after merge");
-        // AnonymizeForMergeAsync sets LockoutEnd = DateTimeOffset.MaxValue.
         sourceUser.LockoutEnd!.Value.Should().BeCloseTo(DateTimeOffset.MaxValue, TimeSpan.FromDays(1));
     }
-
-    // ==================================================================
-    // ContactField — rule 5
-    // ==================================================================
 
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_ContactFields_Move_DedupOnTypeValue()
@@ -617,15 +537,12 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
             .Where(cf => cf.ProfileId == targetProfileId)
             .ToListAsync(TestContext.Current.CancellationToken);
 
-        // Net union with dedup: target has its two pre-existing rows + the
-        // source-only Telegram row re-FK'd. The source's duplicate Phone
-        // row was dropped (target's kept).
+        // Target's two rows plus the source-only Telegram; the source's duplicate Phone was dropped.
         targetFields.Should().HaveCount(3);
         targetFields.Should().ContainSingle(cf => cf.FieldType == ContactFieldType.Phone && cf.Value == "+34 600 100 200");
         targetFields.Should().ContainSingle(cf => cf.FieldType == ContactFieldType.Telegram && cf.Value == "@target-handle");
         targetFields.Should().ContainSingle(cf => cf.FieldType == ContactFieldType.Telegram && cf.Value == "@source-handle");
 
-        // Source profile must have no contact fields after the fold.
         var sourceProfileId = await db.Profiles
             .AsNoTracking()
             .Where(p => p.UserId == sourceId)
@@ -639,10 +556,6 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         sourceFields.Should().BeEmpty();
     }
 
-    // ==================================================================
-    // RoleAssignments — rule 11 (Pass 2)
-    // ==================================================================
-
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_RoleAssignments_ReFKs_DropsSameKey()
     {
@@ -651,11 +564,11 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
 
         var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
-            // Both have an active assignment for sharedRole — drop source's row.
+            // Both active on sharedRole: source's row drops.
             b.WithSourceRoleAssignment(sharedRole);
             b.WithTargetRoleAssignment(sharedRole);
 
-            // Source-only — re-FK to target.
+            // Source-only: re-FKs to target.
             b.WithSourceRoleAssignment(sourceOnlyRole);
         });
         var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
@@ -685,10 +598,6 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         sourceRows.Should().BeEmpty();
     }
 
-    // ==================================================================
-    // TeamMembers — rule 12 (Pass 2)
-    // ==================================================================
-
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_TeamMembers_AddTargetRemoveSource_NonSystemOnly()
     {
@@ -699,11 +608,11 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
             sharedTeamId = b.SeedTeamNow($"Shared-{Guid.NewGuid():N}");
             sourceOnlyTeamId = b.SeedTeamNow($"SourceOnly-{Guid.NewGuid():N}");
 
-            // Both members of sharedTeam — source's slot drops, target stays.
+            // Both on sharedTeam: source's slot drops.
             b.WithSourceTeamMember(sharedTeamId);
             b.WithTargetTeamMember(sharedTeamId);
 
-            // Only source belongs to sourceOnlyTeam — target gets added, source removed.
+            // Source-only team: target is added, source removed.
             b.WithSourceTeamMember(sourceOnlyTeamId);
         });
         var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
@@ -715,7 +624,6 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var teamsDb = assertScope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
-        // Target should have ACTIVE memberships (LeftAt == null) on both teams.
         var targetActiveTeams = await teamsDb.TeamMembers
             .AsNoTracking()
             .Where(tm => tm.UserId == targetId && tm.LeftAt == null
@@ -725,7 +633,6 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         targetActiveTeams.Should().Contain(sharedTeamId);
         targetActiveTeams.Should().Contain(sourceOnlyTeamId);
 
-        // Source should have NO active memberships on either team after the fold.
         var sourceActive = await teamsDb.TeamMembers
             .AsNoTracking()
             .Where(tm => tm.UserId == sourceId && tm.LeftAt == null
@@ -733,10 +640,6 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
             .ToListAsync(TestContext.Current.CancellationToken);
         sourceActive.Should().BeEmpty();
     }
-
-    // ==================================================================
-    // TeamJoinRequests — rule 13 (Pass 2)
-    // ==================================================================
 
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_TeamJoinRequests_Move_DropDuplicateActive()
@@ -748,11 +651,11 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
             contestedTeamId = b.SeedTeamNow($"Contested-{Guid.NewGuid():N}");
             sourceOnlyTeamId = b.SeedTeamNow($"SourceOnlyTJR-{Guid.NewGuid():N}");
 
-            // Both pending on contestedTeam — drop source.
+            // Both pending on contestedTeam: source's drops.
             b.WithSourceTeamJoinRequest(contestedTeamId);
             b.WithTargetTeamJoinRequest(contestedTeamId);
 
-            // Source pending on sourceOnly — re-FK to target.
+            // Source-only: re-FKs to target.
             b.WithSourceTeamJoinRequest(sourceOnlyTeamId);
         });
         var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
@@ -770,7 +673,6 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
                 && (r.TeamId == contestedTeamId || r.TeamId == sourceOnlyTeamId))
             .ToListAsync(TestContext.Current.CancellationToken);
 
-        // One pending on each team; source's contested-team duplicate dropped.
         targetRequests.Should().HaveCount(2);
         targetRequests.Should().ContainSingle(r => r.TeamId == contestedTeamId);
         targetRequests.Should().ContainSingle(r => r.TeamId == sourceOnlyTeamId);
@@ -782,10 +684,6 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
             .ToListAsync(TestContext.Current.CancellationToken);
         sourceRequests.Should().BeEmpty();
     }
-
-    // ==================================================================
-    // NotificationRecipients — rule 17 (Pass 2)
-    // ==================================================================
 
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_NotificationRecipients_Move_DropDuplicate()
@@ -828,10 +726,6 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         sourceRecipients.Should().BeEmpty();
     }
 
-    // ==================================================================
-    // CampaignGrants — rule 18 (Pass 2)
-    // ==================================================================
-
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_CampaignGrants_Move_DedupPerCampaign()
     {
@@ -839,8 +733,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
 
         var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync();
 
-        // Need a real user to satisfy Campaign.CreatedByUserId FK; use the
-        // source as creator (fold doesn't touch Campaigns).
+        // Campaign.CreatedByUserId needs a real user; the fold doesn't touch Campaigns.
         var creatorId = sourceId;
 
         await using (var scope = Factory.Services.CreateAsyncScope())
@@ -881,10 +774,6 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         sourceGrants.Should().BeEmpty();
     }
 
-    // ==================================================================
-    // FeedbackMessages — rule 21 part 2 (Pass 2)
-    // ==================================================================
-
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_FeedbackMessages_Move()
     {
@@ -897,10 +786,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var builder = new MergeFixtureBuilder(scope, sourceId, targetId);
-            // FeedbackMessages.SenderUserId references either user; the
-            // FeedbackReport itself can belong to either side too. Use the
-            // target's report so it's untouched by the merge (the message
-            // SenderUserId moves source -> target).
+            // The target's report, so only the message's SenderUserId moves.
             reportId = builder.SeedFeedbackReportNow(targetId, $"report-{Guid.NewGuid():N}");
 
             builder
@@ -917,7 +803,6 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var feedbackDb = assertScope.ServiceProvider.GetRequiredService<FeedbackDbContext>();
 
-        // Both messages should now be attributed to target.
         var targetMessages = await feedbackDb.FeedbackMessages
             .AsNoTracking()
             .Where(m => m.SenderUserId == targetId
@@ -931,11 +816,6 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
             .ToListAsync(TestContext.Current.CancellationToken);
         sourceMessages.Should().BeEmpty();
     }
-
-    // ==================================================================
-    // BudgetAuditLog — rule 24 (Pass 2)
-    // Append-only — fold MUST NOT mutate; chain-follow stitches at read time.
-    // ==================================================================
 
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_BudgetAuditLog_NotMutated_StaysAtSourceId()
@@ -960,9 +840,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var budgetDb = assertScope.ServiceProvider.GetRequiredService<BudgetDbContext>();
 
-        // Audit row must still point at the source user — fold doesn't
-        // mutate append-only logs; chain-follow at read time stitches them
-        // with the target.
+        // Append-only: the fold never mutates it; chain-follow stitches at read time.
         var rows = await budgetDb.BudgetAuditLogs
             .AsNoTracking()
             .Where(l => l.Description == description)
@@ -971,15 +849,10 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         rows[0].ActorUserId.Should().Be(sourceId);
     }
 
-    // ==================================================================
-    // Admin-chosen survivor flips request direction — obs-1
-    // ==================================================================
-
     [HumansFact(Timeout = 60_000)]
     public async Task AcceptAsync_HonoursAdminChosenSurvivor_OverRequestDirection()
     {
-        // The request is created Target=<new account>, Source=<primary>. The admin flips it,
-        // keeping the Source — the request's stored direction must be overridden.
+        // The request is Target=<new account>, Source=<primary>; keeping the Source must override the stored direction.
         var (requestId, requestTargetId, requestSourceId) =
             await Factory.SeedPendingMergeRequestAsync($"shared-{Guid.NewGuid():N}@example.com");
 
@@ -1000,15 +873,11 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
             .Should().Be(AccountMergeRequestStatus.Accepted);
     }
 
-    // ==================================================================
-    // Helpers
-    // ==================================================================
-
     private async Task AcceptAsync(Guid requestId, Guid adminUserId)
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var mergeService = scope.ServiceProvider.GetRequiredService<IAccountMergeService>();
-        // These fold tests assert source→target (target survives); pick the request target.
+        // These tests assert source to target, so the request target survives.
         var request = await mergeService.GetByIdAsync(requestId, TestContext.Current.CancellationToken)
             ?? throw new InvalidOperationException($"Merge request {requestId} not found.");
         await mergeService.AcceptAsync(requestId, adminUserId, survivorUserId: request.TargetUser.Id, ct: TestContext.Current.CancellationToken);

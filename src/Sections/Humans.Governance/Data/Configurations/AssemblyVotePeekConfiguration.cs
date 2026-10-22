@@ -19,8 +19,6 @@ internal sealed class AssemblyVotePeekConfiguration : IEntityTypeConfiguration<A
             .HasForeignKey(p => p.VoteId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // AdminUserId is a bare cross-section Guid column — no FK constraint, no nav.
-
         builder.HasIndex(p => p.VoteId);
     }
 }

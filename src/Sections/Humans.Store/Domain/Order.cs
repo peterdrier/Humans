@@ -7,28 +7,15 @@ internal sealed class Order
 {
     public Guid Id { get; set; }
 
-    /// <summary>
-    /// Cross-section linkage to <c>CampSeason</c> — bare Guid, no EF navigation, no FK
-    /// constraint (per <c>memory/architecture/no-cross-section-ef-joins.md</c>). Resolved
-    /// at the service layer via <c>ICampService.GetCampSeasonByIdAsync</c>. Exactly one of
-    /// <see cref="CampSeasonId"/> and <see cref="TeamId"/> is non-null; the invariant is
-    /// service-enforced, not DB-enforced.
-    /// </summary>
+    /// <summary>Exactly one of this and <see cref="TeamId"/> is non-null; the service enforces it, not the DB.</summary>
     public Guid? CampSeasonId { get; set; }
 
-    /// <summary>
-    /// Cross-section linkage to <c>Team</c> for non-billable department orders — bare
-    /// Guid, no EF navigation, no FK constraint. Resolved at the service layer via
-    /// <c>ITeamService.GetTeamAsync</c>. See <see cref="CampSeasonId"/> for the
-    /// exactly-one-counterparty invariant.
-    /// </summary>
+    /// <summary>Non-billable department orders.</summary>
     public Guid? TeamId { get; set; }
 
     /// <summary>
-    /// Event year the order's catalog draws from. Always set on write. For camp orders
-    /// this mirrors <c>CampSeason.Year</c>; for team orders it is the active event year
-    /// at create time. Legacy rows at <c>0</c> are resolved from the camp season through
-    /// the operator repair screen or the next add-line write; reads never repair.
+    /// Always set on write: the camp season's year, or the active year at create for team orders. Legacy rows at
+    /// <c>0</c> are repaired by the operator screen or the next add-line write; reads never repair.
     /// </summary>
     public int Year { get; set; }
 

@@ -389,8 +389,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         (await read.GetEventByIdAsync(ev.Id, TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
-    // Create is published only in its result-returning form. These tests want the event,
-    // so unwrap it once here rather than asserting Succeeded at every seeding call site.
+    // Create is published only in its result-returning form; unwrap once here instead of at every seeding call.
     private static async Task<CalendarEvent> CreateAsync(
         ICalendarService svc, CreateCalendarEventDto dto, Guid userId)
     {

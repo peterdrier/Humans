@@ -14,11 +14,6 @@ using MemberApplication = Humans.Governance.Domain.Application;
 
 namespace Humans.Governance.Tests.Services;
 
-/// <summary>
-/// governance_membership_tiers (Users decomposition commit 11): the read with its legacy
-/// fallback, the term-expiry downgrade, the governance.profile-tier copy, merge, export and
-/// erasure.
-/// </summary>
 public sealed class MembershipTierServiceTests : IDisposable
 {
     private static readonly Instant Now = Instant.FromUtc(2026, 10, 21, 12, 0);
@@ -86,8 +81,6 @@ public sealed class MembershipTierServiceTests : IDisposable
     private Task<MembershipTierRecord?> RowAsync(Guid userId) =>
         _db.MembershipTiers.AsNoTracking().SingleOrDefaultAsync(r => r.UserId == userId, Ct);
 
-    // ─── Read ────────────────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Read_FallsBackToTheLegacyProfileTier_UntilARowExists()
     {
@@ -122,8 +115,6 @@ public sealed class MembershipTierServiceTests : IDisposable
             [rowed] = MembershipTier.Asociado,
         });
     }
-
-    // ─── Grant and expiry ────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task Grant_WritesTheApplicationsTierTermAndId()
@@ -171,8 +162,6 @@ public sealed class MembershipTierServiceTests : IDisposable
         (await _sut.GetTierAsync(lapsed, Ct)).Should().Be(MembershipTier.Volunteer);
     }
 
-    // ─── governance.profile-tier ─────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Copy_ListsEveryUncopiedLegacyTier_WithItsTerm_ThenIsIdempotent()
     {
@@ -213,8 +202,6 @@ public sealed class MembershipTierServiceTests : IDisposable
         (await migration.Apply(services, Guid.NewGuid(), Ct)).Should().Be(1);
         (await migration.Status(services, Ct)).Pending.Should().Be(0);
     }
-
-    // ─── Merge, export, erasure ──────────────────────────────────────────────────
 
     [HumansFact]
     public async Task Merge_MovesTheSourceTier_WhenTheSurvivorHasNone()

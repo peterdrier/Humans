@@ -5,25 +5,11 @@ using Xunit;
 namespace Humans.Base.Tests.Enums;
 
 /// <summary>
-/// Guards against renaming enum members that are stored as strings in the database.
-/// If an enum member is renamed, the DB still has the OLD string — causing silent data mismatches.
-/// When a rename IS intentional, update the expected names here AND create a DB migration
-/// to UPDATE the old values.
+/// Enum members stored as strings: a rename leaves the OLD string in the column, so it needs a
+/// migration that UPDATEs the stored values. Other sections' rows live in their own test projects.
 /// </summary>
-/// <remarks>
-/// Only the two enums that <c>Humans.Interfaces</c> still owns are left here. Every other row
-/// moved to the test project of the section that owns the enum, one file per section
-/// (nobodies-collective/Humans#866): Teams, Shifts, Users, GoogleIntegration and AuditLog, beside
-/// the Budget/Campaigns/Feedback/Governance/Issues/Notifications/Tickets halves that had already
-/// split out. Neither of these two has a home yet — there is no <c>Humans.Base.Tests</c>,
-/// which is what still blocks retiring this project.
-/// </remarks>
 public class EnumStringStabilityTests
 {
-    /// <summary>
-    /// Verifies that enum member names exactly match what the database stores.
-    /// Renames without a corresponding DB migration will silently break queries.
-    /// </summary>
     [HumansTheory]
     [MemberData(nameof(StringStoredEnumData))]
     public void StringStoredEnum_MemberNames_MustMatchExpected(

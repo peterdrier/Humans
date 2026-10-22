@@ -14,12 +14,8 @@ using Humans.Users.Contracts;
 namespace Humans.Web.Tests.Controllers;
 
 /// <summary>
-/// Verifies <see cref="HomeController.Index"/> after the name-only access switch. The
-/// <see cref="Humans.Web.Authorization.MembershipRequiredFilter"/> now routes every non-Active user
-/// away before the action runs, so the controller no longer gates on onboarding completion: it
-/// renders the dashboard for any authenticated, resolvable user and the public landing view for
-/// anonymous visitors. The dashboard body itself is section-contributed chrome
-/// (nobodies-collective/Humans#1091) — this controller only resolves UserInfo facts.
+/// <see cref="Humans.Web.Authorization.MembershipRequiredFilter"/> routes non-Active users away first, so the
+/// controller doesn't gate on onboarding: dashboard for any resolvable user, landing view for anonymous.
 /// </summary>
 public class HomeControllerTests
 {

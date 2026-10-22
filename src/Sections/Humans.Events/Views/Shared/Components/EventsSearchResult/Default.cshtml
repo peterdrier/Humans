@@ -1,7 +1,4 @@
-@* One event-search result row (<vc:events-search-result>). Events owns how an event renders;
-   callers pass the event id their own search produced and no display fields
-   (nobodies-collective/Humans#1062). The link is the Browse page filtered to the title, as
-   before — there is no single-event detail page. *@
+@* Links to Browse filtered to the title: there is no single-event detail page. *@
 @model Humans.Events.ViewComponents.EventsSearchResultViewModel
 
 <a href="/Events/Browse?q=@Uri.EscapeDataString(Model.Title)" class="list-group-item list-group-item-action">

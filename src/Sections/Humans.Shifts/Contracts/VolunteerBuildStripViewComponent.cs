@@ -5,16 +5,9 @@ using Humans.Users.Contracts;
 namespace Humans.Shifts.Contracts;
 
 /// <summary>
-/// The single-user build strip rendered as <c>&lt;vc:volunteer-build-strip&gt;</c> on
-/// Shell's profile page.
+/// Public, under <c>Contracts/</c>, so the tag helper is generated; the model it builds and the partial it renders
+/// stay internal.
 /// </summary>
-/// <remarks>
-/// Public, under <c>Contracts/</c>, so the tag helper is generated and the one call site
-/// is unchanged — its constructor takes only the public contract and Base services,
-/// so nothing forces the feature-provider path. The
-/// <c>HeatmapPartialModel</c> it builds and the partial it renders stay internal; only
-/// <c>InvokeAsync(Guid)</c> is public.
-/// </remarks>
 public sealed class VolunteerBuildStripViewComponent(
     IVolunteerTrackingService tracking,
     IUserService userService,

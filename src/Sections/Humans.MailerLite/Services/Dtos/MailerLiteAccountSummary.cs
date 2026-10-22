@@ -1,10 +1,6 @@
 namespace Humans.MailerLite.Services.Dtos;
 
-/// <summary>
-/// Global per-status totals, counted in process while the client pages the full
-/// subscriber list once. No per-status request fan-out — the snapshot is already
-/// being pulled, so the buckets come free.
-/// </summary>
+/// <summary>Counted while paging the full subscriber list, so there are no per-status requests.</summary>
 internal sealed record MailerLiteAccountSummary(
     int ActiveCount,
     int UnsubscribedCount,

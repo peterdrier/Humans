@@ -169,7 +169,7 @@
 
 @if (Model.CanManageRoles)
 {
-    @* Inline picker — <vc:human-search> posts UserId into a hidden input for AddMember. *@
+    @* <vc:human-search> posts UserId into a hidden input for AddMember. *@
     <div class="card mb-4 position-relative" style="z-index: 2;">
         <div class="card-header">@Localizer["Teams_TeamAdmin_AddMember"]</div>
         <div class="card-body">
@@ -371,7 +371,6 @@ else
             bsModal.hide();
         });
 
-        // Intercept approve buttons (they have data-confirm attributes)
         document.addEventListener('submit', function(e) {
             var form = e.target;
             var action = form.getAttribute('action') || '';
@@ -379,13 +378,11 @@ else
             var isAdd = action.indexOf('/AddMember') !== -1;
             if (!isApprove && !isAdd) return;
 
-            // Don't intercept if already confirmed
             if (form.dataset.sensitiveConfirmed === 'true') return;
 
             e.preventDefault();
             pendingForm = form;
 
-            // Try to find the target name
             var targetName = 'this human';
             if (isApprove) {
                 var row = form.closest('tr');
@@ -402,17 +399,14 @@ else
             }
             targetNameSpan.textContent = targetName;
 
-            // Reset checkbox
             acknowledgeBox.checked = false;
             confirmBtn.disabled = true;
 
-            // Mark form so it won't be intercepted again
             form.dataset.sensitiveConfirmed = 'true';
 
             bsModal.show();
         });
 
-        // Reset confirmed flag when modal is hidden without confirming
         modal.addEventListener('hidden.bs.modal', function() {
             if (pendingForm) {
                 delete pendingForm.dataset.sensitiveConfirmed;

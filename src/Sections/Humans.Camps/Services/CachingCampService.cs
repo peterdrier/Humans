@@ -7,12 +7,8 @@ using Humans.Users.Contracts;
 namespace Humans.Camps.Services;
 
 /// <summary>
-/// Singleton caching decorator for <see cref="ICampManagement"/>. Per-camp
-/// <see cref="CampInfo"/> dict plus a single-slot <see cref="CampSettingsInfo"/>.
-/// Year-keyed reads are filtered snapshots, not separate cache entries.
-/// It also carries <see cref="ICampRoleService"/> and <see cref="IUserDataContributor"/>:
-/// role writes and GDPR erasure change rows the projection serves, so the cache
-/// owner drops it on those writes itself.
+/// Year-keyed reads are filtered snapshots, not separate cache entries. Also carries <see cref="ICampRoleService"/>
+/// and <see cref="IUserDataContributor"/>: role writes and GDPR erasure change rows the projection serves.
 /// </summary>
 internal sealed class CachingCampService(
     IServiceScopeFactory scopeFactory,
@@ -27,8 +23,6 @@ internal sealed class CachingCampService(
     private CampSettingsInfo? _settings;
     // Years populated by warmup; cold-year reads fall back to the inner service.
     private volatile IReadOnlySet<int>? _warmYears;
-
-    // Cached reads
 
     public async Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
@@ -101,8 +95,6 @@ internal sealed class CachingCampService(
         return CampUserInfo.Resolve(camps, settings.PublicYear, userId);
     }
 
-    // Pass-through reads
-
     public Task<CampEditData?> GetCampEditDataAsync(
         Guid campId, int? preferredYear = null, CancellationToken cancellationToken = default) =>
         WithInnerAsync(inner => inner.GetCampEditDataAsync(campId, preferredYear, cancellationToken));
@@ -122,7 +114,7 @@ internal sealed class CachingCampService(
         var settings = await GetSettingsAsync(cancellationToken);
         var year = settings.PublicYear;
 
-        // GUID paste → jump straight to that camp (any status), mirroring the old by-id path.
+        // A pasted GUID jumps straight to that camp (any status).
         if (Guid.TryParse(query, out var id))
         {
             await EnsureWarmedAsync(cancellationToken);
@@ -137,8 +129,7 @@ internal sealed class CachingCampService(
             ];
         }
 
-        // Name match against the public-year season name, public statuses only (what the DB
-        // ILike + status filter did). Case-insensitive contains.
+        // Case-insensitive name match against the public-year season name, public statuses only.
         var camps = await GetCampsForYearAsync(year, cancellationToken);
         var trimmed = query.Trim();
         var hits = new List<CampSearchHit>();
@@ -189,8 +180,6 @@ internal sealed class CachingCampService(
                     season.JoinedMemberCount)))
             .ToList();
     }
-
-    // Writes — delegate then invalidate
 
     public Task<CampWriteResult<Camp>> CreateCampAsync(
         Guid createdByUserId, string name, string contactEmail, string contactPhone,
@@ -468,8 +457,6 @@ internal sealed class CachingCampService(
             return result;
         });
 
-    // IUserMerge
-
     public Task ReassignAsync(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now,
         CancellationToken ct) =>
@@ -571,10 +558,8 @@ internal sealed class CachingCampService(
             RefreshAll();
         });
 
-    // Per-camp precision is aspirational: today every invalidation — per-camp
-    // included — drops the whole projection (RefreshAll). campId feeds the debug
-    // log and keeps call sites naming the camp that changed, so a narrower rebuild
-    // can land here without touching them (nobodies-collective/Humans#805).
+    // Per-camp precision is aspirational: every invalidation drops the whole projection. campId feeds the debug log
+    // and keeps call sites naming the changed camp, so a narrower rebuild can land here without touching them.
     private Task InvalidateCampAsync(Guid campId, CancellationToken ct)
     {
         logger.LogDebug("CampInfo invalidate campId={CampId}", campId);
@@ -594,8 +579,6 @@ internal sealed class CachingCampService(
             _settingsLock.Release();
         }
     }
-
-    // Warmup / refresh
 
     /// <summary>
     /// Discovers camps in PublicYear ∪ OpenSeasons ∪ currentYear, then caches their full history.
@@ -669,15 +652,11 @@ internal sealed class CachingCampService(
             await InvalidateCampAsync(season.CampId, ct);
     }
 
-    // Filter helpers
-
     private static CampInfo FilterToYear(CampInfo camp, int year) =>
         camp with
         {
             Seasons = camp.Seasons.Where(s => s.Year == year).ToList()
         };
-
-    // Scope / inner resolution
 
     // Writes and their invalidation can fail after committing. Clear both cache shapes
     // before propagating the original failure; cleanup must survive request cancellation.
@@ -738,11 +717,7 @@ internal sealed class CachingCampService(
             if (changed(result)) RefreshAll();
             return result;
         });
-    // ==========================================================================
-    // Leaf carves. The decorator is the registered Singleton for the section's service, so it
-    // carries these too; both are pass-throughs to the inner service (a §15 decorator may not
-    // reach the repository itself — peters-hard-rules.md).
-    // ==========================================================================
+    // Leaf carves: pass-throughs, since a decorator may not reach the repository itself.
 
     /// <inheritdoc />
     public Task<IReadOnlyList<Guid>> GetActiveLeadUserIdsAsync(CancellationToken cancellationToken = default) =>

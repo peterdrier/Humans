@@ -2,7 +2,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Humans.Teams.Models;
 
-/// <summary>The send-as-team composer at <c>/Teams/{teamId}/SendMessage/{id}</c>.</summary>
 internal sealed class TeamSendMessageViewModel
 {
     private string _message = string.Empty;
@@ -14,8 +13,8 @@ internal sealed class TeamSendMessageViewModel
     public Guid RecipientId { get; set; }
     public string RecipientDisplayName { get; set; } = string.Empty;
 
-    // Browsers submit textarea line breaks as \r\n; normalise on bind so the length check agrees
-    // with what the sender counted (same rule as Email's personal composer).
+    // Browsers submit textarea line breaks as \r\n: normalise on bind so the length check agrees with what the sender
+    // counted.
     [Required(ErrorMessage = "Validation_Required")]
     [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
     public string Message

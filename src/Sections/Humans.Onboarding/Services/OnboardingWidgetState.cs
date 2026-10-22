@@ -17,8 +17,7 @@ internal sealed class OnboardingWidgetState(
 {
     public async Task<OnboardingWidgetStep> GetCurrentStepAsync(Guid userId, CancellationToken ct = default)
     {
-        // Resolve merges and required names before testing consent completion.
-        // HasRequiredNameFields (not IsStub) catches Active profiles with blank names from data drift.
+        // HasRequiredNameFields, not IsStub: catches Active profiles with blank names.
         var info = await users.GetUserInfoAsync(userId, ct);
         if (info is null || !info.HasRequiredNameFields)
             return OnboardingWidgetStep.Names;

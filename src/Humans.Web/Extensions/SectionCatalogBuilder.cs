@@ -7,8 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Humans.Web.Extensions;
 
 /// <summary>
-/// Builds the <see cref="ISectionCatalog"/> Shell publishes at startup
-/// (nobodies-collective/Humans#1509), from the same discovery
+/// Builds the <see cref="ISectionCatalog"/> Shell publishes at startup, from the same discovery
 /// <see cref="SectionDiscoveryExtensions"/> already does.
 /// </summary>
 /// <remarks>

@@ -25,10 +25,8 @@ internal sealed class AssemblyVoteRosterConfiguration : IEntityTypeConfiguration
             .HasForeignKey(r => r.VoteId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // UserId is a bare cross-section Guid column — no FK constraint, no nav. Nullable
-        // because Art. 17 erasure nulls it and leaves the row as a counting tombstone.
-        // The uniqueness rule (one row per person per vote) therefore has to skip the
-        // tombstones, which is what the filter is for.
+        // UserId is nullable because Art. 17 erasure nulls it and keeps the row as a counting
+        // tombstone; the filter lets the one-row-per-person rule skip those tombstones.
         builder.HasIndex(r => new { r.VoteId, r.UserId })
             .IsUnique()
             .HasFilter("\"UserId\" IS NOT NULL");

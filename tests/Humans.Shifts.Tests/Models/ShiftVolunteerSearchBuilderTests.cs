@@ -15,12 +15,9 @@ using Xunit;
 namespace Humans.Shifts.Tests.Models;
 
 /// <summary>
-/// <see cref="ShiftVolunteerSearchBuilder"/> juggles two burns that are easy to
-/// conflate: the target shift's own burn (drives its absolute times, the pool
-/// lookup and the signup filter) and the currently active burn (decides whether
-/// the active-scoped cached <c>ShiftUserView.Signups</c> can be reused). Admins
-/// search shifts in past/future cycles, so a single-burn fixture would pass even
-/// if the two were collapsed (issue nobodies-collective/Humans#809).
+/// Two burns are easy to conflate here: the target shift's own (its times, the pool and the
+/// signup filter) and the active one (whether the active-scoped cached signups can be reused).
+/// Admins search past and future cycles, so a single-burn fixture would hide a mix-up.
 /// </summary>
 public class ShiftVolunteerSearchBuilderTests
 {

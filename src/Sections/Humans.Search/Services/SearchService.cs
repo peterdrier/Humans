@@ -8,10 +8,6 @@ using Microsoft.Extensions.Configuration;
 
 namespace Humans.Search.Services;
 
-/// <summary>
-/// Trim, gate, fan out; carry each section's own key and score through untouched.
-/// Display ordering lives in <c>SearchController</c>.
-/// </summary>
 internal sealed class SearchService(
     IUserService userService,
     ITeamService teamService,

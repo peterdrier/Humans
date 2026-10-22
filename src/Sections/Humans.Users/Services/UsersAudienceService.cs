@@ -3,7 +3,6 @@ using NodaTime;
 
 namespace Humans.Users.Services;
 
-/// <summary>Backs <see cref="IUsersAudienceService"/> — see that interface for the contract.</summary>
 internal sealed class UsersAudienceService(
     IUserManagement userService,
     ITicketService ticketQueryService) : IUsersAudienceService

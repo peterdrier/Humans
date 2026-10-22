@@ -10,7 +10,7 @@ using NSubstitute;
 namespace Humans.Agent.Tests;
 
 /// <summary>
-/// The /Settings#agent tab body (peterdrier/Humans#1634) maps current settings onto the form.
+/// The /Settings#agent tab body maps current settings onto the form.
 /// </summary>
 public sealed class AgentSettingsTabViewComponentTests
 {

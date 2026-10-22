@@ -7,9 +7,8 @@ using Microsoft.CodeAnalysis.Operations;
 namespace Humans.Analyzers;
 
 /// <summary>
-/// HUM0036 — a view component is invoked by Type, never by its string name
-/// (design-rules §8b). A name is an unchecked string that survives a rename or a
-/// section move and fails only at render time; a Type is checked by the compiler.
+/// HUM0036 — a view component is invoked by Type, never by its string name. A name is an unchecked string that
+/// survives a rename or a section move and fails only at render time; a Type is checked by the compiler.
 /// </summary>
 /// <remarks>
 /// Views are Razor-generated code, so this analyzer opts in to generated code. Every

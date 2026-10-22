@@ -9,19 +9,12 @@ using NodaTime;
 namespace Humans.GoogleIntegration.Services;
 
 /// <summary>
-/// The Google Workspace identity GoogleIntegration owns (<c>google_workspace_identities</c>, one
-/// row per member): the reads other sections make, the designation, sync verdicts, the
-/// Article 15/17 slice and the account-merge fold. Until <c>google.workspace-identities</c> has
-/// run, a member without a row reads the frozen legacy <c>user_emails.IsGoogle</c> /
-/// <c>GoogleEmailStatus</c> through <see cref="UserInfo"/> (Users decomposition plan §3.1 step 4).
+/// Until <c>google.workspace-identities</c> has run, a member without a row reads the frozen legacy <c>user_emails</c>
+/// flags through <see cref="UserInfo"/>.
 /// </summary>
 /// <remarks>
-/// The identity is resolved against the member's verified addresses on every read, which replaces
-/// Users' old <c>EnsureGoogleInvariantAsync</c> repair on every email write: a verified
-/// <c>@nobodies.team</c> address wins (keeping the designated one if it is such an address), else
-/// the designated address while it is still verified, else the verified primary, else the first
-/// verified address. For data that satisfied the old invariant (exactly one verified IsGoogle
-/// row, a @nobodies.team one whenever the member has one) this is that same row.
+/// Resolved on every read: a verified <c>@nobodies.team</c> address wins, else the designated address while verified,
+/// else the verified primary, else the first verified address.
 /// </remarks>
 internal sealed class WorkspaceIdentityService(
     IWorkspaceIdentityRepository repo,
@@ -133,8 +126,6 @@ internal sealed class WorkspaceIdentityService(
         await repo.UpsertAsync(id, null, GoogleEmailStatus.Unknown, clock.GetCurrentInstant(), ct);
     }
 
-    // ─── google.workspace-identities ─────────────────────────────────────────────
-
     public async Task<IReadOnlyList<LegacyWorkspaceIdentityRow>> GetUncopiedLegacyIdentitiesAsync(
         CancellationToken ct = default)
     {
@@ -159,8 +150,6 @@ internal sealed class WorkspaceIdentityService(
         }
         return written;
     }
-
-    // ─── Resolution ──────────────────────────────────────────────────────────────
 
     /// <summary>The effective identity for <paramref name="info"/> given its row (null = none yet,
     /// so the legacy flags stand in). Null when the member has no verified address.</summary>
@@ -202,8 +191,6 @@ internal sealed class WorkspaceIdentityService(
         info.UserEmails.Any(e => e.IsVerified && (e.IsGoogle || e.GoogleEmailStatus != LegacyGoogleEmailStatus.Unknown));
 #pragma warning restore HUM_USER_GOOGLE_IDENTITY
 
-    // ─── IUserMerge ──────────────────────────────────────────────────────────────
-
     /// <summary>The survivor keeps its own identity, as before (Users' merge clears the flag on the
     /// rows it moves); the archived account's row is deleted.</summary>
     public async Task ReassignAsync(
@@ -214,8 +201,6 @@ internal sealed class WorkspaceIdentityService(
         _ = now;
         await repo.DeleteAsync(mergedFromUserId, ct);
     }
-
-    // ─── IUserDataContributor ────────────────────────────────────────────────────
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {

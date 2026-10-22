@@ -2,36 +2,14 @@ using Humans.Base.Interfaces;
 namespace Humans.Shifts.Services;
 
 /// <summary>
-/// Orchestrator for the "Email a rota" coordinator action: enumerates current
-/// (Pending/Confirmed) signups on a rota, groups them by user, and requests one
-/// personalised email per recipient through <c>IEmailService</c>. Recipient counts
-/// describe successful send requests; Email may suppress them under saved preferences.
+/// Recipient counts are successful send requests; Email may still suppress them under saved preferences.
 /// </summary>
-/// <remarks>
-/// One method, one responsibility. Lives separate from
-/// <c>IShiftSignupService</c> / <c>IShiftManagement</c> because the
-/// shape — fan-out enqueue across the Email and Users sections — does not
-/// belong on either existing shift surface.
-/// </remarks>
 internal interface IRotaCoordinatorMessageService : IApplicationService
 {
     /// <summary>
-    /// Queues one personalised email per recipient on the given rota.
-    /// Recipients = distinct users with a Pending or Confirmed signup on any
-    /// shift in the rota. Each email body contains the sender's free-text
-    /// <paramref name="messageText"/> plus the recipient's own chronologically
-    /// ordered shift list on this rota.
+    /// One email per user with a Pending or Confirmed signup on the rota. <paramref name="senderUserId"/> is the
+    /// audit actor and the Reply-To; <paramref name="includeShifts"/> adds the recipient's own shift list.
     /// </summary>
-    /// <param name="rotaId">Rota whose signups receive the message.</param>
-    /// <param name="senderUserId">Coordinator sending the message. Used for
-    /// audit attribution and the Reply-To header.</param>
-    /// <param name="messageText">Free-text body composed by the coordinator.</param>
-    /// <param name="includeShifts">Whether each email carries the recipient's own
-    /// shift list. Cleared for messages where the schedule is noise (a thank-you).</param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <returns>Outcome with recipient count and rota name for the
-    /// coordinator-facing success message; failure shape on misconfiguration
-    /// (rota missing, no active event, etc.).</returns>
     Task<RotaMessageDispatchResult> SendRotaMessageAsync(
         Guid rotaId,
         Guid senderUserId,
@@ -40,23 +18,9 @@ internal interface IRotaCoordinatorMessageService : IApplicationService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Queues one personalised email per recipient across the team's rotas in the
-    /// active event that <paramref name="filter"/> admits. Recipients = distinct users with
-    /// a Pending or Confirmed signup on any shift in any included rota — deduped
-    /// across rotas so each human receives one email. Body lists the recipient's
-    /// own shifts grouped by rota, each rota in its own timezone.
+    /// Deduped across the team's rotas that <paramref name="filter"/> admits, so each human gets one email, listing
+    /// their shifts by rota, each in its own timezone. <paramref name="senderUserId"/> is the audit actor and Reply-To.
     /// </summary>
-    /// <param name="teamId">Team whose rotas' signups receive the message.</param>
-    /// <param name="senderUserId">Coordinator sending the message. Used for
-    /// audit attribution and the Reply-To header.</param>
-    /// <param name="messageText">Free-text body composed by the coordinator.</param>
-    /// <param name="includeShifts">Whether each email carries the recipient's own
-    /// shift list. Cleared for messages where the schedule is noise (a thank-you).</param>
-    /// <param name="filter">Which of the team's rotas count as the audience.</param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <returns>Outcome with recipient + rota counts and team name for the
-    /// coordinator-facing success message; failure shape on misconfiguration
-    /// (no active event, no rota matches the filter, etc.).</returns>
     Task<TeamRotasMessageDispatchResult> SendTeamRotasMessageAsync(
         Guid teamId,
         Guid senderUserId,
@@ -65,20 +29,13 @@ internal interface IRotaCoordinatorMessageService : IApplicationService
         TeamRotasAudienceFilter filter,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the recipient names + counts the team-level compose form needs to
-    /// preview audience size — same audience definition as
-    /// <see cref="SendTeamRotasMessageAsync"/>, but no email is enqueued.
-    /// </summary>
+    /// <summary>Same audience as <see cref="SendTeamRotasMessageAsync"/>; nothing is sent.</summary>
     Task<TeamRotasRecipientPreview> GetTeamRotasRecipientPreviewAsync(
         Guid teamId,
         TeamRotasAudienceFilter filter,
         CancellationToken ct = default);
 }
 
-/// <summary>
-/// Outcome of <see cref="IRotaCoordinatorMessageService.SendTeamRotasMessageAsync"/>.
-/// </summary>
 internal sealed record TeamRotasMessageDispatchResult(
     bool Succeeded,
     int RecipientCount,
@@ -93,17 +50,10 @@ internal sealed record TeamRotasMessageDispatchResult(
         new(false, 0, 0, null, error);
 }
 
-/// <summary>
-/// Preview payload for the team-level compose form: who would receive the message
-/// and across how many rotas, without enqueuing anything.
-/// </summary>
 internal sealed record TeamRotasRecipientPreview(
     int RotaCount,
     IReadOnlyList<string> RecipientNames);
 
-/// <summary>
-/// Outcome of <see cref="IRotaCoordinatorMessageService.SendRotaMessageAsync"/>.
-/// </summary>
 internal sealed record RotaMessageDispatchResult(
     bool Succeeded,
     int RecipientCount,

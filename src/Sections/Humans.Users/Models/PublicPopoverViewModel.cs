@@ -1,10 +1,8 @@
 namespace Humans.Users.Models;
 
 /// <summary>
-/// Minimal model for the anonymous-viewer popover served on public team pages
-/// (issue #771). Intentionally excludes city/country, full team list, languages,
-/// tier badge, and suspended badge — only data that is already publicly visible
-/// on the rendering team page is allowed.
+/// The anonymous-viewer popover on public team pages: only data the team page already shows
+/// publicly (no location, full team list, languages, tier or suspended badge).
 /// </summary>
 internal sealed class PublicPopoverViewModel
 {

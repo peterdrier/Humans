@@ -111,9 +111,7 @@ internal sealed class ShiftAdminPageBuilder(
         var result = new Dictionary<Guid, VolunteerBadgesViewModel>();
         if (userIds.Count == 0) return result;
 
-        // Skills/Quirks/Languages come from the shift profile (VEP); dietary from
-        // Cantina; medical from the person's Profile (cached UserInfo). Medical is
-        // gated here — populated only when the viewer holds MedicalDataViewer.
+        // Skills from the shift profile, dietary from Cantina, medical from Profile, gated here on MedicalDataViewer.
         var userInfos = await userService.GetUserInfosAsync(userIds, ct);
         var diets = await cantina.GetDietaryProfilesAsync(userIds, ct);
         foreach (var uid in userIds)

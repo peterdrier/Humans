@@ -198,8 +198,6 @@ public class NotificationRepositoryTests : IDisposable
         informational.Should().Be(1);
     }
 
-    // ── ReassignRecipientsToUserAsync (account-merge fold) ────────────────────
-
     [HumansFact]
     public async Task ReassignRecipientsToUserAsync_MovesRowsFromSourceToTarget_PreservingReadAt()
     {
@@ -309,8 +307,6 @@ public class NotificationRepositoryTests : IDisposable
         stored.Single(n => n.Id == otherSource.Id).ResolvedAt.Should().BeNull();
     }
 
-    // ── ResolveBySourceKeyAsync (entity-scoped auto-resolve) ──────────────────
-
     [HumansFact]
     public async Task ResolveBySourceKeyAsync_ResolvesOnlyMatchingSourceAndKey_AcrossRecipients()
     {
@@ -349,8 +345,6 @@ public class NotificationRepositoryTests : IDisposable
 
         affected.Should().BeEmpty();
     }
-
-    // ── DeleteUnresolvedBySourcesAsync (retired-source purge) ─────────────────
 
     [HumansFact]
     public async Task DeleteUnresolvedBySourcesAsync_DeletesOnlyUnresolvedRetiredSources()

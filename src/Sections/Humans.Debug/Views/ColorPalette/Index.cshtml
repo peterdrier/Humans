@@ -120,10 +120,6 @@
         </p>
     </div>
 
-    @* ============================== *@
-    @* SECTION 1: COLOR SWATCHES      *@
-    @* ============================== *@
-
     <div class="cp-section">
         <h2><i class="fa-solid fa-palette me-2"></i>Brand Palette</h2>
         <p class="text-muted mb-3">Renaissance parchment and ink tones.</p>
@@ -214,10 +210,6 @@
             @await Html.PartialAsync("_Swatch", ("--h-chart-muted", "Chart Muted"))
         </div>
     </div>
-
-    @* ============================== *@
-    @* SECTION 2: UI CONTROLS         *@
-    @* ============================== *@
 
     <div class="cp-section">
         <h2><i class="fa-solid fa-sliders me-2"></i>UI Controls</h2>
@@ -401,12 +393,7 @@
         </div>
     </div>
 
-    @* ============================== *@
-    @* SECTION 3: BUILDING BLOCKS      *@
-    @* ============================== *@
-
     @{
-        // Renders the name / class / blurb header shared by every "lego" card.
         void LegoHead(string name, string cssClass, string blurb)
         {
             <h5 class="mb-1">@name</h5>
@@ -683,10 +670,6 @@
         </div>
     </div>
 
-    @* ============================== *@
-    @* SECTION 4: TYPOGRAPHY           *@
-    @* ============================== *@
-
     <div class="cp-section">
         <h2><i class="fa-solid fa-font me-2"></i>Typography</h2>
 
@@ -735,10 +718,6 @@
             </div>
         </div>
     </div>
-
-    @* ============================== *@
-    @* SECTION 5: TABLES               *@
-    @* ============================== *@
 
     <div class="cp-section">
         <h2><i class="fa-solid fa-table me-2"></i>Tables</h2>

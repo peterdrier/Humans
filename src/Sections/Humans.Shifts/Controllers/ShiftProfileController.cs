@@ -10,13 +10,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Controllers;
 
-/// <summary>
-/// The volunteer's own shift-matching profile — skills, quirks and languages — at
-/// <c>/Shifts/ShiftInfo</c>.
-/// </summary>
-/// <remarks>
-/// Both actions read and write <c>volunteer_event_profiles</c>, a Shifts table.
-/// </remarks>
 [Authorize]
 [Route("Shifts")]
 internal sealed class ShiftProfileController(
@@ -24,8 +17,7 @@ internal sealed class ShiftProfileController(
     IShiftVolunteerProfiles shiftProfiles,
     IShiftView shiftView,
     IUserService userService,
-    // SharedResource: the only string this controller resolves is Profile_Updated,
-    // which belongs to Shell's profile vocabulary.
+    // Its one string, Profile_Updated, is Shell's profile vocabulary.
     IStringLocalizer<SharedResource> localizer,
     IStringLocalizer<ShiftsResource> shiftsLocalizer,
     ILogger<ShiftProfileController> logger) : HumansControllerBase(userService)

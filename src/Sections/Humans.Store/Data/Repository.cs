@@ -3,23 +3,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Store.Data;
 
-/// <summary>
-/// EF-backed implementation of <see cref="IStoreRepository"/>. The only
-/// non-test file that touches <c>DbContext.Products</c>,
-/// <c>DbContext.Orders</c>, <c>DbContext.OrderLines</c>,
-/// <c>DbContext.Payments</c>, or <c>DbContext.Invoices</c>.
-/// </summary>
-/// <remarks>
-/// Follows design-rules §15b: registered as Singleton, injects
-/// <see cref="IDbContextFactory{TContext}"/>, and opens a fresh short-lived
-/// <see cref="StoreDbContext"/> per method.
-/// </remarks>
 internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IStoreRepository
 {
-    // ==========================================================================
-    // Products
-    // ==========================================================================
-
     public async Task<IReadOnlyList<Product>> GetActiveProductsForYearAsync(int year, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -64,10 +49,6 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
         ctx.Products.Update(product);
         await ctx.SaveChangesAsync(ct);
     }
-
-    // ==========================================================================
-    // Orders
-    // ==========================================================================
 
     public async Task<IReadOnlyList<Order>> GetOrdersForCampSeasonAsync(Guid campSeasonId, CancellationToken ct = default)
     {
@@ -180,10 +161,6 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
         await ctx.SaveChangesAsync(ct);
     }
 
-    // ==========================================================================
-    // Lines
-    // ==========================================================================
-
     public async Task AddLineAsync(OrderLine line, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -215,10 +192,6 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
             .FirstOrDefaultAsync(ct);
         return row;
     }
-
-    // ==========================================================================
-    // Payments
-    // ==========================================================================
 
     public async Task AddPaymentAsync(Payment payment, CancellationToken ct = default)
     {
@@ -285,10 +258,6 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
             .ToListAsync(ct);
     }
 
-    // ==========================================================================
-    // Invoices
-    // ==========================================================================
-
     public async Task<IReadOnlyList<Invoice>> GetInvoicesForOrdersAsync(
         IReadOnlyCollection<Guid> orderIds,
         CancellationToken ct = default)
@@ -307,12 +276,9 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.Invoices.Add(invoice);
 
-        // The order arrives detached (AsNoTracking + Includes) from a read taken before several
-        // Holded round-trips, so its Payments are stale — a Stripe webhook may have settled one in
-        // the meantime. Update(order) would mark that whole graph modified and write the stale
-        // payment rows back, and there is no concurrency token to catch it
-        // (memory/architecture/no-concurrency-tokens.md). So attach the aggregate and mark only the
-        // columns issuance owns: the state flip, and the repriced line snapshots.
+        // The order is detached from a read taken before several Holded round trips, so its Payments may be stale
+        // (a webhook may have settled one). Update(order) would write them back with no concurrency token to catch
+        // it, so mark only the columns issuance owns.
         ctx.Orders.Attach(order);
         var orderEntry = ctx.Entry(order);
         orderEntry.Property(o => o.State).IsModified = true;

@@ -5,13 +5,6 @@ using Microsoft.Extensions.Localization;
 
 namespace Humans.Onboarding.Tests.Architecture;
 
-/// <summary>
-/// Architecture tests for the Onboarding section.
-///
-/// Five absence assertions from nobodies-collective/Humans#1465 (no repository, no DbContext,
-/// interface-only dependencies, exports exactly N types) were deleted again — they existed
-/// only because Onboarding.md claimed them. `memory/architecture/no-tests-for-absences.md`.
-/// </summary>
 public class OnboardingArchitectureTests
 {
     private static Assembly SectionAssembly => typeof(OnboardingResource).Assembly;

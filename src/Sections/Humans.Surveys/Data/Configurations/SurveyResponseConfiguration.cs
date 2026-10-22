@@ -18,8 +18,7 @@ internal sealed class SurveyResponseConfiguration : IEntityTypeConfiguration<Sur
         b.HasMany(r => r.Answers).WithOne(a => a.Response)
             .HasForeignKey(a => a.ResponseId).OnDelete(DeleteBehavior.Cascade);
 
-        // Intra-section FK to the invitation (set only for Identified); SetNull keeps responses if an
-        // invitation row is ever removed. UserId is a bare Guid? column — no nav, no cross-section FK.
+        // Set only for Identified; SetNull keeps responses if an invitation row is ever removed.
         b.HasOne<SurveyInvitation>().WithMany()
             .HasForeignKey(r => r.InvitationId).OnDelete(DeleteBehavior.SetNull);
 

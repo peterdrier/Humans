@@ -15,7 +15,6 @@ internal sealed class OrderLineConfiguration : IEntityTypeConfiguration<OrderLin
         b.Property(x => x.DepositAmountSnapshot).HasColumnType("numeric(12,2)");
         b.HasIndex(x => x.OrderId);
 
-        // Intra-section FK to Product — typed-FK form, no navigation property.
         b.HasOne<Product>()
             .WithMany()
             .HasForeignKey(x => x.ProductId)

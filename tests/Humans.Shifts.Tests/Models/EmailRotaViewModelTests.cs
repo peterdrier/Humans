@@ -4,13 +4,6 @@ using Humans.Shifts.Models;
 
 namespace Humans.Shifts.Tests.Models;
 
-/// <summary>
-/// Validation coverage for <see cref="EmailRotaViewModel"/> — the compose-form
-/// model behind the coordinator "Email a rota" action
-/// (nobodies-collective/Humans#732). The controller's redirect-on-success and
-/// orchestrator wiring are covered by the orchestrator service tests; what
-/// remains controller-shaped is purely model-binding/validation.
-/// </summary>
 public sealed class EmailRotaViewModelTests
 {
     [HumansFact]

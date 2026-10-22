@@ -93,9 +93,8 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var tracked = await ctx.ExpenseReports
             .FirstOrDefaultAsync(r => r.Id == report.Id, ct);
-        // Which statuses a header may still be edited in is the service's call
-        // (GetEditableReportAsync) and differs by actor — a finance admin correcting a report
-        // on a member's behalf reaches past Draft. Re-deciding it here would silently no-op that.
+        // Which statuses may be edited is the service's call and differs by actor (a finance admin reaches past
+        // Draft); re-deciding it here would silently no-op that.
         if (tracked is null) return;
         tracked.HoldedAccountNumber = report.HoldedAccountNumber;
         tracked.HoldedAccountId = report.HoldedAccountId;
@@ -155,9 +154,7 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
             .FirstOrDefaultAsync(l => l.Id == lineId && l.ExpenseReportId == reportId, ct);
         if (report is null || tracked is null) return null;
 
-        // An invoice line takes its proof rows with it. Line rows, proof rows, and their attachment
-        // rows all go in the same SaveChanges (EF orders deletes dependents-first), so the removal
-        // is all-or-nothing at the database.
+        // An invoice line takes its proof rows with it, all in one SaveChanges (EF deletes dependents first).
         var proofs = await ctx.ExpenseLines
             .Where(l => l.ParentLineId == lineId)
             .ToListAsync(ct);
@@ -282,8 +279,7 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         if (r is null || r.Status != ExpenseReportStatus.Draft) return false;
         if (grantStamp is { } stamp)
         {
-            // The program may have changed since the draft: what the grant says now is what the
-            // report carries from here (docs/features/global/preapprovals.md).
+            // What the grant says now is what the report carries from here.
             r.HoldedAccountNumber = stamp.HoldedAccountNumber;
             r.HoldedAccountId = stamp.HoldedAccountId;
             r.BudgetCategoryId = stamp.BudgetCategoryId;
@@ -309,9 +305,7 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         var r = await ctx.ExpenseReports
             .FirstOrDefaultAsync(x => x.Id == reportId, ct);
         if (r is null) return false;
-        // Withdraw is valid only from Submitted/CoordinatorEndorsed. Draft has no Withdraw path,
-        // Approved has already queued its Holded push, and Withdrawn is terminal, so a direct POST
-        // must not succeed for any of them.
+        // Withdraw is valid only from Submitted or CoordinatorEndorsed: Approved has already queued its Holded push.
         if (r.Status is not (ExpenseReportStatus.Submitted
                              or ExpenseReportStatus.CoordinatorEndorsed)) return false;
         r.Status = ExpenseReportStatus.Withdrawn;
@@ -328,7 +322,7 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         var r = await ctx.ExpenseReports
             .FirstOrDefaultAsync(x => x.Id == reportId, ct);
         if (r is null || r.Status != ExpenseReportStatus.Submitted) return false;
-        // Blank form field = null = no cap; the input is prefilled with the current cap.
+        // Blank field = null = no cap; the input is prefilled with the current cap.
         r.MaxAmount = maxAmount;
         r.Status = ExpenseReportStatus.CoordinatorEndorsed;
         r.CoordinatorEndorsedByUserId = actorUserId;
@@ -377,8 +371,7 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
             r.BudgetCategoryId = booking.BudgetCategoryId;
             r.BudgetYearId = booking.BudgetYearId;
         }
-        // Blank form field = null = no cap; the input is prefilled with the current cap,
-        // so blanking it must clear a coordinator-set cap, not silently keep it.
+        // Blank field = null = no cap. The input is prefilled, so blanking must clear a coordinator's cap.
         r.MaxAmount = maxAmount;
 
         ctx.HoldedExpenseOutboxEvents.Add(new HoldedExpenseOutboxEvent
@@ -433,9 +426,8 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.HoldedExpenseOutboxEvents.AsNoTracking()
-            // The create is the push — "did this report reach Holded?". UpdateIncomingDocTag events
-            // are legacy no-ops that mark themselves processed, so including them would let one
-            // mask a failed create.
+            // Create events only: UpdateIncomingDocTag events are legacy no-ops that mark themselves processed and
+            // would mask a failed create.
             .Where(e => e.ExpenseReportId == reportId
                 && e.EventType == HoldedExpenseOutboxEventType.CreateIncomingDoc)
             // arch:db-sort-ok latest-per-report selector (Take)
@@ -446,11 +438,9 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
     public async Task<IReadOnlyList<Guid>> GetFailedOutboxReportIdsAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Only what a finance admin can actually act on. Withdrawal after approval is no longer
-        // possible, but reports withdrawn after approval before that rule still carry their queued
-        // event; such a report is absent from the review queue and RequeueHoldedPush refuses it,
-        // so counting it would leave a banner nobody can clear. Create events only, for the
-        // reason on GetLatestOutboxForReportAsync.
+        // Only what a finance admin can act on. Reports withdrawn after approval (before that was refused) still carry
+        // a queued event, but RequeueHoldedPush refuses them, so counting them leaves an unclearable banner. Create
+        // events only, as in GetLatestOutboxForReportAsync.
         var actionable = ctx.ExpenseReports.AsNoTracking()
             .Where(r => r.Status == ExpenseReportStatus.Approved)
             .Select(r => r.Id);
@@ -467,8 +457,7 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         Guid reportId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Both stuck shapes: written off, and unprocessed-with-an-error (waiting out a backoff).
-        // A clean queued event has no error and needs no help.
+        // Written off, or unprocessed with an error (waiting out a backoff).
         var stuck = await ctx.HoldedExpenseOutboxEvents
             .Where(e => e.ExpenseReportId == reportId
                 && (e.FailedPermanently || (e.ProcessedAt == null && e.LastError != null)))
@@ -565,9 +554,8 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
             .FirstOrDefaultAsync(e => e.Id == outboxEventId, ct);
         if (ev is null) return;
         ev.FailedPermanently = true;
-        // A write-off always follows an attempt that just failed, and that attempt is never counted
-        // by IncrementOutboxRetryAsync — the retry path is the branch we did not take. Without this
-        // the timeline reads "given up after 9 attempts" while the error says 10.
+        // The attempt that just failed was never counted (IncrementOutboxRetryAsync is the other branch); without this
+        // the timeline says 9 attempts while the error says 10.
         ev.RetryCount += 1;
         ev.LastError = error;
         ev.ProcessedAt = processedAt;

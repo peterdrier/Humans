@@ -95,7 +95,7 @@ public sealed class UserNameSyncServiceTests : IDisposable
         (await _service.GetUnsyncedAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeEmpty();
     }
 
-    /// <summary>A pre-#1097 row: names on the Profile only.</summary>
+    /// <summary>A legacy row: names on the Profile only, not yet mirrored onto the User.</summary>
     private async Task<Guid> SeedLegacyPairAsync(string burnerName, string firstName, string lastName)
     {
         var user = NewUser();

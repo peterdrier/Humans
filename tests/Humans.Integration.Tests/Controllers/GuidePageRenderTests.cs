@@ -7,40 +7,16 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Integration.Tests.Controllers;
 
-/// <summary>
-/// Renders every Guide page through the real app, as the standing form of the §15 step 12
-/// check for the section's move into <c>src/Sections/Humans.Guide</c>
-/// (nobodies-collective/Humans#866, G5).
-/// </summary>
+/// <summary>Renders every Guide page through the real app.</summary>
 /// <remarks>
 /// <para>
-/// Guide has no resource set and no static assets, so the usual resx and <c>?v=</c> halves of
-/// this suite do not apply. What is left is the part that fails as a <b>200 with degraded
-/// content</b>:
+/// No resource set or static assets. Without the section's <c>@@addTagHelper</c>, <c>AuthorizeViewTagHelper</c> leaves
+/// <c>authorize-policy="AdminOnly"</c> as a literal attribute and the refresh form renders to everyone; asserting the
+/// attribute is absent is the only catch. A sidebar entry proves the section's own <c>_GuideLayout</c> resolved.
 /// </para>
-/// <list type="number">
-/// <item><description>
-/// A section RCL does not inherit the host's <c>Views/_ViewImports.cshtml</c>. Guide's one
-/// tag-helper dependency is <c>Humans.UI</c>'s <c>AuthorizeViewTagHelper</c> on the refresh
-/// form; without <c>@@addTagHelper *, Humans.Interfaces</c> the build stays green, the attribute
-/// survives into the response as literal <c>authorize-policy="AdminOnly"</c>, and the form is
-/// rendered <em>to everyone</em>. Asserting the attribute is absent is the only thing that
-/// catches it.
-/// </description></item>
-/// <item><description>
-/// <c>_GuideLayout</c> is a partial that moved out of <c>Humans.Web/Views/Shared</c> into the
-/// section's own <c>Views/Shared</c>. Partial lookup resolves by name across application
-/// parts, but a miss throws only for <c>PartialAsync</c> — asserting a sidebar entry is what
-/// proves it is the section's copy being found.
-/// </description></item>
-/// </list>
 /// <para>
-/// The fixture writes a segmented document straight into the shared <c>IMemoryCache</c> under
-/// the section's <c>guide:&lt;stem&gt;</c> key. <c>GuideContentService.GetPageAsync</c> returns
-/// a cache hit without touching GitHub, so the pages under test never make a network call —
-/// otherwise every run would fetch every stem in <c>GuideFiles.All</c> from
-/// <c>nobodies-collective/Humans@main</c> anonymously and 503 the moment the rate limit or the
-/// network said no.
+/// The fixture writes segmented documents straight into <c>IMemoryCache</c>, so pages never fetch from GitHub and
+/// can't fail on its rate limit.
 /// </para>
 /// </remarks>
 public class GuidePageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
@@ -69,10 +45,8 @@ public class GuidePageRenderTests(HumansTestDatabase database) : IntegrationTest
 
         foreach (var stem in stems)
         {
-            // Mirrors GuideContentService.CacheKey — a private const in the section, which the
-            // test project can see the type of but not the value. The cached unit is the
-            // segmented document, not rendered HTML: the role filter runs before Markdig, so
-            // rendering happens per request and the cache holds what is filtered.
+            // Mirrors GuideContentService's private cache key. The cache holds the segmented document: the role filter
+            // runs before Markdig, per request.
             cache.Set($"guide:{stem}", GuideSegmenter.Segment(Markdown));
         }
     }
@@ -98,8 +72,6 @@ public class GuidePageRenderTests(HumansTestDatabase database) : IntegrationTest
             html.Should().Contain("Common questions",
                 $"GET {url} must render the sidebar's Common questions group");
 
-            // An unbound AuthorizeViewTagHelper leaks its attribute into the response instead
-            // of gating the element.
             html.Should().NotContain("authorize-policy",
                 $"GET {url} left Humans.UI's authorize-policy tag helper unbound");
         }
@@ -110,8 +82,7 @@ public class GuidePageRenderTests(HumansTestDatabase database) : IntegrationTest
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
 
-        // Anonymous: /Guide is [AllowAnonymous] and sees Volunteer blocks only. This also
-        // proves the section's controller routes at all without a signed-in principal.
+        // Anonymous sees Volunteer blocks only, which also proves the controller routes without a principal.
         SeedRenderedPages("README");
         var anonymous = await Client.GetAsync("/Guide", ct);
         anonymous.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -121,7 +92,7 @@ public class GuidePageRenderTests(HumansTestDatabase database) : IntegrationTest
         anonymousHtml.Should().NotContain("Refresh from GitHub",
             "the refresh form is AdminOnly and the viewer is anonymous");
 
-        // Admin: sees every block, and the AdminOnly refresh form.
+        // Admin sees every block, and the AdminOnly refresh form.
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
         var admin = await Client.GetAsync("/Guide", ct);
         admin.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -134,8 +105,7 @@ public class GuidePageRenderTests(HumansTestDatabase database) : IntegrationTest
     [HumansFact(Timeout = 120000)]
     public async Task An_unknown_stem_renders_the_sections_not_found_view()
     {
-        // 404 with a body, not the generic error page: the status code alone would pass with
-        // the section's Views/Guide/NotFound.cshtml missing entirely.
+        // A 404 with a body: the status alone would pass with Views/Guide/NotFound.cshtml missing.
         var ct = Xunit.TestContext.Current.CancellationToken;
 
         var response = await Client.GetAsync("/Guide/NoSuchPage", ct);

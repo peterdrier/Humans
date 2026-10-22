@@ -2,10 +2,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Search.Services.Dtos;
 
-/// <summary>
-/// The five result kinds. Drives the per-type filter chips and the type-grouped
-/// headings on <c>/Search</c>.
-/// </summary>
 internal enum SearchResultType
 {
     Human = 0,
@@ -16,24 +12,16 @@ internal enum SearchResultType
 }
 
 /// <summary>
-/// One non-human hit: id and ordering only. Every display field is fetched by the
-/// owning section's own <c>&lt;vc:…-search-result&gt;</c>, which the view invokes
-/// with <see cref="Key"/>. Humans use <see cref="HumanSearchResult"/> on the same terms.
+/// Id and ordering only: the owning section's view component renders the row from <paramref name="Key"/>.
+/// <paramref name="SortKey"/> is a tiebreak, never rendered; a higher <paramref name="Score"/> is better.
 /// </summary>
-/// <param name="Type">Team, Camp, Shift or Event.</param>
-/// <param name="Key">The owning section's entity id.</param>
-/// <param name="SortKey">Tiebreak for the controller's secondary sort; never rendered.</param>
-/// <param name="Score">The owning section's score; higher is better.</param>
 internal sealed record GlobalSearchResult(
     SearchResultType Type,
     Guid Key,
     string SortKey,
     int Score);
 
-/// <summary>
-/// Output of one global-search call: the trimmed query and five scored, unsorted
-/// buckets. <see cref="Events"/> is empty when <c>Features:Events</c> is off.
-/// </summary>
+/// <summary>Buckets are unsorted. <see cref="Events"/> is empty when <c>Features:Events</c> is off.</summary>
 internal sealed record GlobalSearchResults(
     string Query,
     IReadOnlyList<HumanSearchResult> Humans,

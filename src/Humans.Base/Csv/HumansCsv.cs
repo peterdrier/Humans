@@ -6,10 +6,8 @@ using CsvHelper.Configuration;
 namespace Humans.Base.Csv;
 
 /// <summary>
-/// The one place CSV conventions are defined. Every CSV read or write in the
-/// app builds its <see cref="CsvReader"/>/<see cref="CsvWriter"/> from these
-/// factories — hand-rolled CSV splitting, quoting, or escaping is not allowed
-/// anywhere else (memory/code/csv-use-csvhelper.md).
+/// The one place CSV conventions are defined: every CSV read or write builds its reader or writer from these
+/// factories, and hand-rolled splitting, quoting or escaping is not allowed (<c>memory/code/csv-use-csvhelper.md</c>).
 /// </summary>
 public static class HumansCsv
 {

@@ -1,26 +1,18 @@
 namespace Humans.Guide.Services;
 
 /// <summary>
-/// One run of consecutive lines from a guide file, carrying the role scope that decides who
-/// sees it. <paramref name="Role"/> is null for text outside any "## As a …" block — the
-/// prologue, and everything from the next non-"As a" <c>##</c> heading onward — which is
-/// visible to everyone.
+/// <paramref name="Role"/> is null for text outside any "## As a …" block, which everyone sees.
+/// <paramref name="Privileges"/> are the heading parenthetical's tokens via <see cref="GuideRolePrivilegeMap"/>, empty
+/// for an unscoped heading.
 /// </summary>
-/// <param name="Privileges">
-/// The privilege tokens the heading's parenthetical resolved to, via
-/// <see cref="GuideRolePrivilegeMap"/>. Empty for an unscoped heading.
-/// </param>
-/// <param name="Role">The role scope for this segment, or null when the segment is public.</param>
-/// <param name="Markdown">The original markdown text for this consecutive run of lines.</param>
 internal sealed record GuideSegment(
     string? Role,
     IReadOnlyList<string> Privileges,
     string Markdown);
 
 /// <summary>
-/// A guide file split into role-scoped segments, in source order. Joining every segment's
-/// markdown with newlines reproduces the original file exactly — the filter works by dropping
-/// segments from that join, never by rewriting their contents.
+/// Segments in source order. Joining their markdown with newlines reproduces the file exactly: the filter only drops
+/// segments, never rewrites them.
 /// </summary>
 internal sealed record GuideDocument(IReadOnlyList<GuideSegment> Segments)
 {

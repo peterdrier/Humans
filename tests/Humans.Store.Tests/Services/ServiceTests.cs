@@ -60,10 +60,6 @@ public class ServiceTests
         _service = new Service(_repo, _audit, _campService, _teams, _clock, _shifts, _stripeService, _holded, Options.Create(_storeOptions), NullLogger<Service>.Instance);
     }
 
-    // ==========================================================================
-    // Read paths
-    // ==========================================================================
-
     [HumansFact]
     public async Task GetIndexDataAsync_cancels_settings_read_before_loading_catalog()
     {
@@ -477,10 +473,6 @@ public class ServiceTests
         second.Should().Be(0);
         await _repo.Received(1).UpdateOrderAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
     }
-
-    // ==========================================================================
-    // Write paths
-    // ==========================================================================
 
     [HumansFact]
     public async Task CreateOrderAsync_persists_open_order_with_now_timestamps_and_audits()
@@ -1045,10 +1037,6 @@ public class ServiceTests
         await _repo.Received(1).UpdateOrderAsync(order, Arg.Any<CancellationToken>());
     }
 
-    // ==========================================================================
-    // Catalog write paths
-    // ==========================================================================
-
     [HumansFact]
     public async Task CreateProductAsync_persists_product_with_now_timestamps_and_audits()
     {
@@ -1463,10 +1451,6 @@ public class ServiceTests
 
         result.Should().BeEmpty();
     }
-
-    // ==========================================================================
-    // RecordStripePaymentAsync (Stripe webhook ingestion)
-    // ==========================================================================
 
     [HumansFact]
     public async Task CreateStripeCheckoutSessionAsync_builds_checkout_session_from_order()
@@ -2022,8 +2006,6 @@ public class ServiceTests
         await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
     }
 
-    // ── async-payment state machine (nobodies-collective/Humans#638) ────────────
-
     [HumansFact]
     public async Task AsyncPaymentSucceeded_transitions_matching_pending_to_paid()
     {
@@ -2330,10 +2312,6 @@ public class ServiceTests
 
         await _repo.DidNotReceive().DeletePaymentAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
-
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
 
     private static Product MakeProduct(
         string name = "Test product",

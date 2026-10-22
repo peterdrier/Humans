@@ -109,9 +109,7 @@ public class AuditLogServiceTests : IDisposable
             AuditAction.RoleAssigned, nameof(User), entityId,
             "Assigned Board role", "TestJob");
 
-        // Issue #552: the new Application-layer service persists each entry
-        // immediately through the repository. The caller no longer needs to
-        // call SaveChanges on a shared DbContext.
+        // Each entry is persisted immediately through the repository; the caller never calls SaveChanges.
         (await _dbContext.AuditLogEntries.AsNoTracking().CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
@@ -137,8 +135,6 @@ public class AuditLogServiceTests : IDisposable
         entry.Description.Length.Should().BeLessThanOrEqualTo(
             mapping.FindProperty(nameof(AuditLogEntry.Description))!.GetMaxLength() ?? int.MaxValue);
     }
-
-    // ===== GetFilteredAsync =====
 
     [HumansFact]
     public async Task GetFilteredAsync_NoFilter_ReturnsAllWithCorrectTotalCount()
@@ -203,8 +199,6 @@ public class AuditLogServiceTests : IDisposable
         totalCount.Should().Be(5);
     }
 
-    // ===== GetByUserAsync =====
-
     [HumansFact]
     public async Task GetByUserAsync_MatchesEntityIdOrRelatedEntityId()
     {
@@ -261,12 +255,9 @@ public class AuditLogServiceTests : IDisposable
         result[2].Id.Should().Be(older.Id);
     }
 
-    // ===== Best-effort failure semantics =====
-
     [HumansFact]
     public async Task LogAsync_SwallowsRepoFailure_DoesNotThrow()
     {
-        // Arrange: replace the service with one backed by a repo mock that throws.
         var throwingRepo = Substitute.For<IAuditLogRepository>();
         throwingRepo.AddAsync(Arg.Any<AuditLogEntry>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("DB unavailable"));
@@ -277,7 +268,7 @@ public class AuditLogServiceTests : IDisposable
         var svc = new AuditLogService(
             throwingRepo, _userService, _clock, logger);
 
-        // Act + Assert: must not throw — audit is best-effort.
+        // Must not throw: audit is best-effort.
         var act = () => svc.LogAsync(
             AuditAction.VolunteerApproved, nameof(User), Guid.NewGuid(),
             "Auto-approved", "TestJob");
@@ -289,7 +280,6 @@ public class AuditLogServiceTests : IDisposable
     [HumansFact]
     public async Task LogAsync_SwallowsRepoFailure_LogsAtErrorLevel()
     {
-        // Arrange: a repo that throws + a capturing logger.
         var throwingRepo = Substitute.For<IAuditLogRepository>();
         throwingRepo.AddAsync(Arg.Any<AuditLogEntry>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("DB unavailable"));
@@ -298,23 +288,19 @@ public class AuditLogServiceTests : IDisposable
         var svc = new AuditLogService(
             throwingRepo, _userService, _clock, capturing);
 
-        // Act.
         await svc.LogAsync(
             AuditAction.MemberSuspended, nameof(User), Guid.NewGuid(),
             "Suspended", "TestJob");
 
-        // Assert: at least one Error-level message was emitted.
         capturing.Entries.Should().Contain(
             e => e.Level == LogLevel.Error,
             because: "a repo save failure must be logged at Error level per design-rules §7a");
     }
 
-    // ===== Cross-merge chain-follow =====
-
     [HumansFact]
     public async Task GetByUserAsync_SurfacesMergedSourceRows_ForFoldTarget()
     {
-        // Arrange: two source IDs were merged into targetId.
+        // Two source IDs were merged into targetId.
         var targetId = Guid.NewGuid();
         var source1 = Guid.NewGuid();
         var source2 = Guid.NewGuid();
@@ -334,10 +320,8 @@ public class AuditLogServiceTests : IDisposable
         SeedAuditLogEntry(AuditAction.RoleEnded, "User", unrelated, now);
         await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        // Act.
         var result = await _service.GetByUserAsync(targetId, 10, TestContext.Current.CancellationToken);
 
-        // Assert: all three rows (source1, source2, targetId) surface; unrelated does not.
         result.Should().HaveCount(3,
             because: "GetByUserAsync chain-follows merge tombstones so source rows are visible on the fold target");
         result.Should().NotContain(e => e.EntityId == unrelated,
@@ -347,7 +331,7 @@ public class AuditLogServiceTests : IDisposable
     [HumansFact]
     public async Task GetByUserAsync_ThroughAMergedAwayId_SurfacesTheSurvivorsRowsToo()
     {
-        // #1704: the read through the archived id answers with the survivor's record, and the
+        // The read through the archived id answers with the survivor's record, and the
         // ids unioned are that record's own (survivor first), so rows written against the
         // survivor after the merge show up beside the archived id's own history.
         var archived = Guid.NewGuid();
@@ -365,8 +349,6 @@ public class AuditLogServiceTests : IDisposable
 
         result.Select(e => e.EntityId).Should().BeEquivalentTo([archived, survivor]);
     }
-
-    // --- Helpers ---
 
     private AuditLogEntry SeedAuditLogEntry(
         AuditAction action, string entityType, Guid entityId, Instant occurredAt,

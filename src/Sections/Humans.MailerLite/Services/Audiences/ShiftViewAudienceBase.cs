@@ -4,18 +4,12 @@ using Humans.Users.Contracts;
 
 namespace Humans.MailerLite.Services.Audiences;
 
-/// <summary>
-/// Base for every audience defined by a person's shift signups. Membership is each human
-/// whose cached <see cref="ShiftUserSummary"/> satisfies <see cref="Matches"/>; subclasses
-/// supply that predicate plus the audience metadata. Reading through the cached
-/// <see cref="IShiftView"/> is what lets the debug screen render without DB queries.
-/// </summary>
+/// <summary>Reads the cached <see cref="IShiftView"/>, so the debug screen renders without DB queries.</summary>
 internal abstract class ShiftViewAudienceBase(
     IShiftView shiftView,
     IUserService users,
     ICommunicationPreferenceService prefs) : MailerLiteAudienceBase(users, prefs)
 {
-    /// <summary>Whether this person's shift signups put them in the audience.</summary>
     protected abstract bool Matches(ShiftUserSummary summary);
 
     protected override async Task<IReadOnlySet<Guid>> ComputeRawMemberUserIdsAsync(CancellationToken ct)

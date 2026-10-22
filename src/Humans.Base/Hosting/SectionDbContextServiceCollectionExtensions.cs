@@ -8,31 +8,16 @@ using Npgsql;
 namespace Humans.Base.Hosting;
 
 /// <summary>
-/// The per-section DbContext registration seam. Lives in Base (this assembly) because all 29
-/// table-owning sections call <see cref="AddSectionDbContext{TContext}"/> from their own
-/// <c>Section.cs</c>, and a section may not reference <c>Humans.Infrastructure</c>
-/// (nobodies-collective/Humans#866, G5 lane 3a-2).
+/// The per-section DbContext registration seam, in Base because every table-owning section calls
+/// <see cref="AddSectionDbContext{TContext}"/> from its own <c>Section.cs</c>.
 /// </summary>
-/// <remarks>
-/// A separate class from <c>InfrastructureServiceCollectionExtensions</c>, which stays in
-/// <c>Humans.Infrastructure</c> deliberately: two architecture rules anchor on
-/// <c>typeof(InfrastructureServiceCollectionExtensions).Assembly</c> to mean "the
-/// Humans.Infrastructure assembly", and moving the type would have retargeted both onto Base,
-/// where they would pass vacuously. The namespace is shared with that class rather than renamed,
-/// so extension-method lookup at all 29 call sites resolves exactly as before with no
-/// <c>using</c> edit anywhere.
-/// </remarks>
 public static class SectionDbContextServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers a per-section DbContext (nobodies-collective/Humans#858): scoped context +
-    /// singleton factory with shared Npgsql options and interceptors, the
-    /// section-specific history table from
-    /// <see cref="SectionMigrationsHistory"/> (the same helper the design-time
-    /// factories use, so the two can never disagree), and the
-    /// <see cref="SectionDbContextRegistration"/> consumed by
-    /// <see cref="DatabaseMigrationHostedService"/> to run
-    /// <see cref="SectionMigrationRunner"/> at startup.
+    /// Registers a per-section DbContext: scoped context plus singleton factory with shared Npgsql options and
+    /// interceptors, the history table from <see cref="SectionMigrationsHistory"/> (shared with the design-time
+    /// factories, so they never disagree), and the <see cref="SectionDbContextRegistration"/> the startup migration
+    /// runner consumes.
     /// </summary>
     /// <param name="services">The section’s service collection.</param>
     /// <param name="sentinelTable">See <see cref="SectionDbContextRegistration.SentinelTable"/>.</param>

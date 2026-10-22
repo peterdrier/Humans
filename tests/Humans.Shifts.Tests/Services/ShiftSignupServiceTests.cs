@@ -41,7 +41,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
     private readonly IUserService _users = Substitute.For<IUserService>();
 
-    // Fixed test time: 2026-06-15 12:00 UTC
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
     public ShiftSignupServiceTests()
@@ -322,10 +321,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         }
     }
 
-    // ============================================================
-    // SignUp
-    // ============================================================
-
     [HumansTheory]
     [InlineData(null, false)]
     [InlineData(UserState.Bare, false)]
@@ -576,10 +571,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         result.Success.Should().BeTrue();
     }
 
-    // ============================================================
-    // Approve
-    // ============================================================
-
     [HumansFact]
     public async Task Approve_FromPending_SetsConfirmed()
     {
@@ -664,10 +655,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         result.Success.Should().BeTrue();
         Saved(result).Status.Should().Be(SignupStatus.Confirmed);
     }
-
-    // ============================================================
-    // Bail
-    // ============================================================
 
     [HumansFact]
     public async Task Bail_FromConfirmed_SetsBailed()
@@ -812,15 +799,10 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         result.Error.Should().Be("Shifts_Bail_EarlyEntryClosed");
     }
 
-    // ============================================================
-    // ToggleDay
-    // ============================================================
-
     [HumansFact]
     public async Task ToggleDay_QualifyingShift_SignsUp_WithNoDietaryInfo()
     {
-        // nobodies-collective/Humans#2104: dietary info is opt-in; a cantina-qualifying shift
-        // signs up with nothing on file (the service never consults Cantina).
+        // Dietary info is opt-in: a cantina-qualifying shift signs up with nothing on file.
         var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
         var shift = SeedAllDayShift(rota, dayOffset: 1); // qualifies for cantina meal
         var userId = Guid.NewGuid();
@@ -888,10 +870,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         outcome.CanViewRestricted.Should().BeFalse();
     }
-
-    // ============================================================
-    // Voluntell
-    // ============================================================
 
     [HumansTheory]
     [InlineData(false, "missing")]
@@ -1137,22 +1115,11 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             .Should().Be(1);
     }
 
-    // ============================================================
-    // MarkNoShow
-    // ============================================================
-
     [HumansFact]
     public async Task MarkNoShow_BeforeShiftEnd_ReturnsError()
     {
         var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
-        // Shift at day 1, 10:00, 4h duration → ends at 14:00 on gate opening + 1 day
-        // Gate opening: 2026-07-01 → shift is 2026-07-02 10:00-14:00 Madrid
-        // TestNow is 2026-06-15 12:00 UTC → before the shift even starts
-        // But let's make a shift that ends in the future:
-        // Use day offset 0 (gate opening day), start 10:00, 4h → ends 14:00
-        // In Madrid timezone (UTC+2 in summer), that's 12:00 UTC
-        // TestNow is 12:00 UTC, so shift end is at 12:00 UTC — we need it to be after now
-        // Let's set gate opening to 2026-06-15, shift at day 0, start 14:00 → ends 18:00 local = 16:00 UTC
+        // Gate opening 2026-06-15, day 0, 14:00 +4h ends 18:00 Madrid = 16:00 UTC, after TestNow (12:00 UTC).
         es.GateOpeningDate = new LocalDate(2026, 6, 15);
         shift.DayOffset = 0;
         shift.StartTime = new LocalTime(14, 0);
@@ -1218,10 +1185,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         result.Success.Should().BeFalse();
         result.Error.Should().Contain(status.ToString());
     }
-
-    // ============================================================
-    // SignUpRange
-    // ============================================================
 
     [HumansTheory]
     [InlineData(false)]
@@ -1314,10 +1277,9 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [InlineData(true)]
     public async Task SignUpRange_CreatesOneSignupPerDay(bool mergedAlias)
     {
-        // Arrange: rota with 5 all-day shifts (days -5 to -1), user picks days -3 to -1
+        // Rota with 5 all-day shifts (days -5 to -1); the user picks days -3 to -1.
         var (_, rota, _) = SeedShiftScenario(SignupPolicy.Public);
         rota.Period = RotaPeriod.Build;
-        // Add 5 all-day shifts
         for (var day = -5; day <= -1; day++)
             SeedAllDayShift(rota, day);
         var userId = Guid.NewGuid();
@@ -1326,10 +1288,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             .Returns(UserInfoStubHelpers.MakeUserInfo(userId) with { State = UserState.Active });
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        // Act
         var result = await _service.SignUpRangeAsync(inputId, rota.Id, -3, -1);
 
-        // Assert: 3 signups created, all share same SignupBlockId
         result.Success.Should().BeTrue();
         var signups = await ShiftsDb.ShiftSignups
             .Where(s => s.UserId == userId)
@@ -1344,23 +1304,21 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [InlineData(SignupStatus.Pending)]
     public async Task SignUpRange_BlocksIfAnyDayOverlaps(SignupStatus status)
     {
-        // Arrange: user already has an active signup on day -2
+        // The user already has an active signup on day -2.
         var (_, rota, _) = SeedShiftScenario(SignupPolicy.Public);
         rota.Period = RotaPeriod.Build;
         for (var day = -5; day <= -1; day++)
             SeedAllDayShift(rota, day);
         var userId = Guid.NewGuid();
-        // Find the day -2 shift and create an existing signup
         await SaveAllAsync(TestContext.Current.CancellationToken);
         var dayMinus2Shift = await ShiftsDb.Shifts
             .FirstAsync(s => s.RotaId == rota.Id && s.DayOffset == -2, TestContext.Current.CancellationToken);
         SeedSignup(userId, dayMinus2Shift.Id, status);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        // Act: try to sign up for days -3 to -1
         var result = await _service.SignUpRangeAsync(userId, rota.Id, -3, -1);
 
-        // Assert: fails — duplicate signup check catches this before overlap check
+        // The duplicate-signup check catches this before the overlap check.
         result.Success.Should().BeFalse();
         result.Error.Should().Contain("Already signed up");
     }
@@ -1370,7 +1328,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [InlineData(SignupStatus.Pending)]
     public async Task SignUpRange_SkipConflicts_FiltersAlreadySignedUpDays(SignupStatus status)
     {
-        // Arrange: rota with 3 all-day shifts; user already signed up to day -2 in same rota.
+        // Rota with 3 all-day shifts; the user is already signed up to day -2 in the same rota.
         var (_, rota, _) = SeedShiftScenario(SignupPolicy.Public);
         rota.Period = RotaPeriod.Build;
         for (var day = -3; day <= -1; day++)
@@ -1383,7 +1341,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var existingSignup = SeedSignup(userId, dayMinus2Shift.Id, status);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        // Act
         var result = await _service.SignUpRangeAsync(
             userId,
             rota.Id,
@@ -1391,7 +1348,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             -1,
             flags: ShiftSignupRequestFlags.SkipConflicts);
 
-        // Assert
         result.Success.Should().BeTrue();
         result.Warning.Should().NotBeNull();
         result.Warning.Should().Contain("Already signed up");
@@ -1411,9 +1367,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [HumansFact]
     public async Task SignUpRange_SkipConflicts_PreservesBothSkipAndCapacityWarnings()
     {
-        // Arrange: rota with 4 all-day shifts (days -4 to -1).
-        // User is already signed up to day -3 (skipConflicts case).
-        // Day -2 is at capacity from other users (capacity-warning case).
+        // Rota with 4 all-day shifts (days -4 to -1). The user is already signed up to
+        // day -3 (skipConflicts case); day -2 is at capacity from others (capacity-warning case).
         var (_, rota, _) = SeedShiftScenario(SignupPolicy.Public);
         rota.Period = RotaPeriod.Build;
         for (var day = -4; day <= -1; day++)
@@ -1432,7 +1387,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             SeedSignup(Guid.NewGuid(), dayMinus2Shift.Id, SignupStatus.Confirmed);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        // Act
         var result = await _service.SignUpRangeAsync(
             userId,
             rota.Id,
@@ -1440,7 +1394,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             -1,
             flags: ShiftSignupRequestFlags.SkipConflicts);
 
-        // Assert: both warnings preserved, exactly 2 new signups (offsets -4 and -1).
         result.Success.Should().BeTrue();
         result.Warning.Should().NotBeNull();
         result.Warning.Should().Contain("Already signed up");
@@ -1457,8 +1410,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [HumansFact]
     public async Task SignUpRange_SkipConflicts_FiltersTimeOverlappingDays()
     {
-        // Arrange: Build rota + a separate Event rota with a 12:00-14:00 shift on day -2.
-        // All-day Build/Strike window is 08:00-18:00 (Shift.AllDayWindowStart/End).
+        // Build rota plus a separate Event rota with a 12:00-14:00 shift on day -2. The
+        // all-day Build/Strike window is 08:00-18:00 (Shift.AllDayWindowStart/End).
         var (es, buildRota, _) = SeedShiftScenario(SignupPolicy.Public);
         buildRota.Period = RotaPeriod.Build;
         for (var day = -3; day <= -1; day++)
@@ -1498,7 +1451,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         SeedSignup(userId, conflictingShift.Id, SignupStatus.Confirmed);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        // Act
         var result = await _service.SignUpRangeAsync(
             userId,
             buildRota.Id,
@@ -1506,7 +1458,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             -1,
             flags: ShiftSignupRequestFlags.SkipConflicts);
 
-        // Assert
         result.Success.Should().BeTrue();
         result.Warning.Should().NotBeNull();
         result.Warning.Should().Contain("Time conflict");
@@ -1522,7 +1473,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [HumansFact]
     public async Task SignUpRange_SkipConflicts_AllDaysConflict_ReturnsFailWithSummary()
     {
-        // Arrange: rota with 3 all-day shifts, user already signed up to ALL three.
+        // The user is already signed up to all three all-day shifts.
         var (_, rota, _) = SeedShiftScenario(SignupPolicy.Public);
         rota.Period = RotaPeriod.Build;
         var userId = Guid.NewGuid();
@@ -1535,7 +1486,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        // Act
         var result = await _service.SignUpRangeAsync(
             userId,
             rota.Id,
@@ -1543,7 +1493,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             -1,
             flags: ShiftSignupRequestFlags.SkipConflicts);
 
-        // Assert
         result.Success.Should().BeFalse();
         result.Error.Should().NotBeNull();
         result.Error.Should().Contain("Nothing to add");
@@ -1555,7 +1504,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [HumansFact]
     public async Task SignUpRange_SkipConflicts_MixedKinds_AddsFreeDaysWithBothWarnings()
     {
-        // Arrange: range -4..-1.
+        // Range -4..-1:
         //   day -4: free
         //   day -3: already signed up to this same Build rota
         //   day -2: cross-rota 12:00-14:00 conflict
@@ -1604,7 +1553,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         SeedSignup(userId, crossRotaShift.Id, SignupStatus.Confirmed);  // time-conflict case
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        // Act
         var result = await _service.SignUpRangeAsync(
             userId,
             buildRota.Id,
@@ -1612,7 +1560,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             -1,
             flags: ShiftSignupRequestFlags.SkipConflicts);
 
-        // Assert: -4 and -1 added; both warning kinds present
         result.Success.Should().BeTrue();
         result.Warning.Should().NotBeNull();
         result.Warning.Should().Contain("Already signed up");
@@ -1632,7 +1579,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [InlineData(SignupStatus.Pending, true)]
     public async Task SignUpRange_TimeOverlap_OnlyConfirmedSignupsConflict(SignupStatus status, bool skipConflicts)
     {
-        // Arrange: cross-rota time conflict on day -2 (same shape as the skipConflicts time-overlap test).
+        // Cross-rota time conflict on day -2 (same shape as the skipConflicts time-overlap test).
         var (es, buildRota, _) = SeedShiftScenario(SignupPolicy.Public);
         buildRota.Period = RotaPeriod.Build;
         for (var day = -3; day <= -1; day++)
@@ -1709,10 +1656,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         result.Error.Should().Be("Shifts_Signup_EarlyEntryClosed");
     }
 
-    // ============================================================
-    // BailRange
-    // ============================================================
-
     [HumansTheory]
     [InlineData(false, false, "Shifts_Bail_NotAuthorized")]
     [InlineData(true, false, "Shifts_BailRange_NotAuthorized")]
@@ -1777,7 +1720,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [HumansFact]
     public async Task BailRange_BailsAllSignupsInBlock()
     {
-        // Arrange: user signed up for days -3 to -1 (shared SignupBlockId)
+        // The user is signed up for days -3 to -1 under one SignupBlockId.
         var (_, rota, _) = SeedShiftScenario(SignupPolicy.Public);
         rota.Period = RotaPeriod.Build;
         var shifts = new List<Shift>();
@@ -1792,20 +1735,14 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         }
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        // Act
         await _service.BailRangeAsync(blockId, userId);
 
-        // Assert: all 3 signups now Bailed
         var signups = await ShiftsDb.ShiftSignups
             .Where(s => s.SignupBlockId == blockId)
             .ToListAsync(TestContext.Current.CancellationToken);
         signups.Should().HaveCount(3);
         signups.Should().AllSatisfy(s => s.Status.Should().Be(SignupStatus.Bailed));
     }
-
-    // ============================================================
-    // ApproveRange / RefuseRange
-    // ============================================================
 
     [HumansFact]
     public async Task ApproveRange_ConfirmsAllPendingSignupsInBlock()
@@ -1881,14 +1818,9 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         signups.Should().AllSatisfy(s => s.Status.Should().Be(SignupStatus.Refused));
     }
 
-    // ============================================================
-    // VoluntellRange
-    // ============================================================
-
     [HumansFact]
     public async Task VoluntellRange_CreatesConfirmedSignupsAcrossDateRange()
     {
-        // Arrange: rota with 3 all-day shifts (days -3 to -1)
         var (_, rota, _) = SeedShiftScenario(SignupPolicy.RequireApproval);
         rota.Period = RotaPeriod.Build;
         for (var day = -3; day <= -1; day++)
@@ -1899,10 +1831,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             .Returns(UserInfoStubHelpers.MakeUserInfo(volunteerId) with { State = UserState.AdminSuspended });
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        // Act
         var result = await _service.VoluntellRangeAsync(volunteerId, rota.Id, -3, -1, enrollerId);
 
-        // Assert
         result.Success.Should().BeTrue();
         var signups = await ShiftsDb.ShiftSignups
             .Where(s => s.UserId == volunteerId)
@@ -1921,7 +1851,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [HumansFact]
     public async Task VoluntellRange_SkipsShiftsWhereUserAlreadySignedUp()
     {
-        // Arrange: rota with 3 all-day shifts, user already signed up on day -2
+        // The user is already signed up on day -2 of the three all-day shifts.
         var (_, rota, _) = SeedShiftScenario(SignupPolicy.RequireApproval);
         rota.Period = RotaPeriod.Build;
         for (var day = -3; day <= -1; day++)
@@ -1936,10 +1866,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         SeedSignup(volunteerId, dayMinus2Shift.Id, SignupStatus.Confirmed);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        // Act
         var result = await _service.VoluntellRangeAsync(volunteerId, rota.Id, -3, -1, enrollerId);
 
-        // Assert: only 2 new signups (day -3 and day -1), skipping day -2
         result.Success.Should().BeTrue();
         var newSignups = await ShiftsDb.ShiftSignups
             .Where(s => s.UserId == volunteerId && s.Enrolled)
@@ -1952,10 +1880,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     {
         const string key = "Shifts_Signup_RotaNotFound";
         _localizer[key].Returns(new LocalizedString(key, "translated missing rota"));
-        // Act
         var result = await _service.VoluntellRangeAsync(Guid.NewGuid(), Guid.NewGuid(), -3, -1, Guid.NewGuid());
 
-        // Assert
         result.Success.Should().BeFalse();
         result.Error.Should().Be("translated missing rota");
     }
@@ -1999,10 +1925,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         result.Success.Should().BeTrue();
         await AssertShiftAssignedSentAsync(Notifier, 1);
     }
-
-    // ============================================================
-    // Audit completeness — ShiftSignupCreated
-    // ============================================================
 
     [HumansFact]
     public async Task SignUp_PublicPolicy_WritesShiftSignupCreatedAudit()
@@ -2077,10 +1999,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             userId,
             userId, nameof(User));
     }
-
-    // ============================================================
-    // ShiftSignupChange notification completeness
-    // ============================================================
 
     [HumansFact]
     public async Task SignUp_PublicPolicy_DispatchesShiftSignupChangeNotification()
@@ -2183,10 +2101,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
                     Instant.MinValue)
             ]);
 
-    // ============================================================
-    // Cache eviction on signup mutations
-    // ============================================================
-
     [HumansFact]
     public async Task SignUp_EvictsUserAndShiftViewCache()
     {
@@ -2264,10 +2178,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var after = await _shiftMgmt.GetDashboardOverviewAsync(es.Id);
         after.FilledShifts.Should().Be(0);
     }
-
-    // ============================================================
-    // Account-merge fold — ShiftSignupReassigned
-    // ============================================================
 
     [HumansTheory]
     [InlineData(false)]
@@ -2427,10 +2337,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         auckland.AbsoluteStart.Should().Be(Instant.FromUtc(2025, 1, 15, 21, 0));
     }
 
-    // ============================================================
-    // Helpers
-    // ============================================================
-
     private (EventSettings es, Rota rota, Shift shift) SeedShiftScenario(
         SignupPolicy policy,
         ShiftPriority priority = ShiftPriority.Normal)
@@ -2555,12 +2461,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
 
-    /// <summary>
-    /// The persisted signup row a <see cref="SignupResult"/> refers to.
-    /// The result carries the id rather than the entity — the row is the
-    /// section's own and does not cross the boundary
-    /// (nobodies-collective/Humans#866).
-    /// </summary>
+    /// <summary>The persisted row a <see cref="SignupResult"/> refers to; the result carries only its id.</summary>
     private ShiftSignup Saved(SignupResult result) =>
         ShiftsDb.ShiftSignups.Single(s => s.Id == result.SignupId!.Value);
 

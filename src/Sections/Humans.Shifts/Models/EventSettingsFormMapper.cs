@@ -2,13 +2,10 @@ using Humans.Shifts.Services.Dtos;
 
 namespace Humans.Shifts.Models;
 
-/// <summary>
-/// Form ↔ the Shifts-owned knobs for a <c>settings_event</c> row. The app-wide
-/// calendar lives in Settings and is not mapped here (nobodies-collective/Humans#1631).
-/// </summary>
+/// <summary>Shifts-owned knobs only; the app-wide calendar is Settings'.</summary>
 internal static class EventSettingsFormMapper
 {
-    /// <summary>Defaults for an event with no Shifts knobs row yet — none created until saved.</summary>
+    /// <summary>No knobs row is created until the form is saved.</summary>
     internal static EventSettingsViewModel ToViewModel(ShiftEventKnobs? knobs) => knobs is null
         ? new EventSettingsViewModel()
         : new EventSettingsViewModel

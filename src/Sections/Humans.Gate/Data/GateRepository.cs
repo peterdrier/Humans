@@ -5,11 +5,6 @@ using Npgsql;
 
 namespace Humans.Gate.Data;
 
-/// <summary>
-/// EF-backed <see cref="IGateRepository"/>. Singleton registration with a
-/// short-lived <c>GateDbContext</c> via <see cref="IDbContextFactory{TContext}"/>
-/// (design-rules §15b).
-/// </summary>
 internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) : IGateRepository
 {
     public async Task<GateScanEvent?> GetAdmitForBarcodeAsync(string admitDedupeKey, CancellationToken ct = default)
@@ -24,9 +19,8 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        // Explicit pre-check covers the common case and is the only dedupe the EF
-        // in-memory provider exercises in tests; the unique index is the atomic
-        // backstop for a genuine concurrent cross-lane race (caught below).
+        // The pre-check is the only dedupe the in-memory test provider exercises; the unique index is the atomic
+        // backstop for a concurrent cross-lane race (caught below).
         if (scan.AdmitDedupeKey is not null &&
             await ctx.Set<GateScanEvent>().AnyAsync(e => e.AdmitDedupeKey == scan.AdmitDedupeKey, ct))
         {
@@ -67,8 +61,7 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        // Load-modify-save (not ExecuteUpdate) so the path also runs under the EF
-        // in-memory test provider, and idempotent on a retried deletion run.
+        // Load-modify-save, not ExecuteUpdate, so it runs under the in-memory test provider.
         var rows = await ctx.Set<GateScanEvent>()
             .Where(e => e.GuestUserId == userId || e.OverrideByUserId == userId)
             .ToListAsync(ct);
@@ -88,9 +81,7 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
     public async Task ReassignUserAsync(Guid fromUserId, Guid toUserId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Load-modify-save (not ExecuteUpdate) so the path also runs under the
-        // EF in-memory test provider. At this scale the affected set is tiny.
-        // Idempotent: a re-run after a partial merge failure re-points nothing.
+        // Load-modify-save, not ExecuteUpdate, so it runs under the in-memory test provider. Idempotent on re-run.
         var rows = await ctx.Set<GateScanEvent>()
             .Where(e => e.GuestUserId == fromUserId || e.ScannedByUserId == fromUserId
                      || e.OverrideByUserId == fromUserId)
@@ -106,8 +97,7 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
                 row.OverrideByUserId = toUserId;
         }
 
-        // The survivor should keep a working device PIN: if only the merged-away
-        // account had one, carry it over; otherwise the survivor keeps their own.
+        // Carry the merged-away PIN over only when the survivor has none.
         var fromPin = await ctx.Set<GateStaffPin>().FirstOrDefaultAsync(p => p.UserId == fromUserId, ct);
         if (fromPin is not null)
         {
@@ -119,7 +109,7 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
                     PinHash = fromPin.PinHash,
                     CreatedAt = fromPin.CreatedAt,
                     UpdatedAt = fromPin.UpdatedAt,
-                    AdminEnrolled = fromPin.AdminEnrolled, // the enrolment provenance travels with the PIN
+                    AdminEnrolled = fromPin.AdminEnrolled,
                 });
             }
             ctx.Set<GateStaffPin>().Remove(fromPin);
@@ -203,7 +193,7 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
     public async Task DeleteStaffPinAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Load-then-RemoveRange (not ExecuteDelete) so it runs under the EF in-memory provider.
+        // Load-then-RemoveRange, not ExecuteDelete, so it runs under the in-memory provider.
         var rows = await ctx.Set<GateStaffPin>().Where(p => p.UserId == userId).ToListAsync(ct);
         if (rows.Count == 0)
             return;

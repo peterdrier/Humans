@@ -4,11 +4,8 @@ using Microsoft.CodeAnalysis;
 namespace Humans.Analyzers.Internal;
 
 /// <summary>
-/// What a symbol belongs to, for the rules that need to know. Which assemblies get
-/// analyzed at all is decided by <c>src/Directory.Build.props</c>, which attaches the
-/// analyzers to every <c>src/</c> project and to nothing else — not the analyzers
-/// themselves, not test projects, not generated compilations. No rule re-derives that
-/// at analysis time.
+/// What a symbol belongs to. Which assemblies get analyzed at all is decided by <c>src/Directory.Build.props</c>,
+/// which attaches the analyzers to every <c>src/</c> project and nothing else; no rule re-derives that.
 /// </summary>
 internal static class AssemblyScope
 {
@@ -39,15 +36,9 @@ internal static class AssemblyScope
     /// configurations, its repositories, its interceptors).
     /// </summary>
     /// <remarks>
-    /// A section assembly holds what used to be three assemblies, so a rule scoped to
-    /// "Application or Web" cannot be expressed by assembly name inside one. Before G5,
-    /// <c>UserRepository</c> writing <c>User.Email</c> was out of HUM0002's scope because the
-    /// file lived in <c>Humans.Infrastructure</c>; after the move the identical code is in a
-    /// section assembly, and the rule would fail the build on the one writer it exists to
-    /// protect (a move can put code into a sweep as easily as out of
-    /// one, reached from the other direction). Matched on the namespace segment first and the
-    /// file path second, the same dual check <c>PublicSurfaceRule.IsUnderContracts</c>
-    /// uses, so the carve-out holds for real code and for analyzer test sources alike.
+    /// A section assembly holds all three layers, so a rule scoped to "Application or Web" must be expressed by folder.
+    /// Namespace segment first, file path second, like <c>PublicSurfaceRule.IsUnderContracts</c>, so it holds for
+    /// analyzer test sources too.
     /// </remarks>
     public static bool IsInSectionDataLayer(ISymbol symbol)
     {

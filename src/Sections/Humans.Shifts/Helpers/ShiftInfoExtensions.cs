@@ -5,11 +5,7 @@ using NodaTime;
 
 namespace Humans.Shifts.Helpers;
 
-/// <summary>
-/// The entity's event-relative resolution (<see cref="Shift.GetAbsoluteStart"/>,
-/// <see cref="Shift.GetAbsoluteEnd"/>, <see cref="Shift.GetShiftPeriod"/>) over the
-/// flattened <see cref="ShiftInfo"/>, sharing the entity's rules rather than copying them.
-/// </summary>
+/// <summary>The entity's time and period rules over the flattened <see cref="ShiftInfo"/>, shared not copied.</summary>
 internal static class ShiftInfoExtensions
 {
     internal static Duration GetDuration(this ShiftInfo shift) => Duration.FromHours(shift.DurationHours);

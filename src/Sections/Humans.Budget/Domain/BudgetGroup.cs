@@ -2,9 +2,6 @@ using NodaTime;
 
 namespace Humans.Budget.Domain;
 
-/// <summary>
-/// Second-level budget container within a year (e.g., "Departments", "Site Infrastructure").
-/// </summary>
 internal sealed class BudgetGroup
 {
     public Guid Id { get; init; }

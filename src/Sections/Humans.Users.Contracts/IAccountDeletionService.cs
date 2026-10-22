@@ -4,92 +4,38 @@ using NodaTime;
 namespace Humans.Users.Contracts;
 
 /// <summary>
-/// Sole orchestrator for the user/profile account-deletion cascade. Owns the
-/// cross-section write order for every deletion path — user-requested
-/// (30-day-scheduled), admin-initiated (immediate purge), and expiry-triggered
-/// (scheduled anonymization job). Foundational services (<c>IUserManagement</c>,
-/// Profile-section services keep only own-data deletion; this
-/// service invokes them as part of the cascade so the call graph flows in one
-/// direction (higher-level → foundational).
+/// Owns the cross-section write order of every deletion path; foundational services only delete their own
+/// data, and this calls them, so the call graph flows one way.
 /// </summary>
-/// <remarks>
-/// Extracted in issue nobodies-collective/Humans#582 (child of umbrella nobodies-collective/Humans#563) to remove the outbound
-/// edges from <c>UserService</c> / <c>ProfileService</c> to higher-level
-/// sections (Teams, RoleAssignments, Shifts) and to give
-/// <c>ProcessAccountDeletionsJob</c> a single entry point instead of reaching
-/// into User/Profile cascade code. Synchronous orchestration (not event-bus):
-/// at our small scale, explicit call order is simpler than a pub/sub hop.
-///
-/// Lives on this leaf so a section other than Users (Gdpr's deletion screens) can inject it;
-/// no <c>IOrchestrator</c> marker for the reason <c>Humans.Users.Contracts.csproj</c> records —
-/// <c>AccountDeletionService</c> carries it instead.
-/// </remarks>
 public interface IAccountDeletionService
 {
     /// <summary>
-    /// User-initiated account-deletion request. Sets the 30-day scheduled
-    /// deletion fields on the user (including <c>DeletionEligibleAfter</c>
-    /// when the user holds a current event ticket — deletion is held until
-    /// after the event), immediately revokes active team memberships and
-    /// governance role assignments (so the user loses access without waiting
-    /// for the grace period to expire), writes an audit entry, sends the
-    /// deletion-scheduled confirmation email. No-op with <c>NotFound</c> if the user
-    /// does not exist; <c>AlreadyPending</c> if a deletion request is
-    /// already open.
+    /// Schedules deletion in 30 days (held past the event for a ticket holder) and revokes team memberships and
+    /// role assignments at once, so access goes without waiting out the grace period. Audits and emails.
+    /// <c>NotFound</c>, or <c>AlreadyPending</c> when a request is open.
     /// </summary>
     Task<DeletionRequestResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Cancels a pending user-initiated deletion request by clearing the
-    /// deletion fields on the user. Returns <c>NotFound</c> if the user
-    /// does not exist; <c>NoDeletionPending</c> if no request is open.
-    /// UserInfo cache is refreshed via <c>IUserManagement.ClearDeletionAsync</c>.
-    /// </summary>
+    /// <summary><c>NotFound</c>, or <c>NoDeletionPending</c> when no request is open.</summary>
     Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Admin-initiated purge: anonymizes the identity on the <c>User</c> row
-    /// (display name + email replaced with sentinels, <c>UserEmail</c> rows
-    /// removed) and invalidates the caches that key off the user's identity
-    /// (UserInfo, ActiveTeams, role-assignment claims)
-    /// so downstream consumers see the purged view before TTL expiry. Writes
-    /// an <c>AuditAction.AccountPurged</c> audit-log entry
-    /// keyed by <paramref name="actorId"/> (the admin running the purge) so
-    /// the trail survives a subsequent right-of-access request. Returns
-    /// <c>NotFound</c> if the user does not exist. Used by
-    /// <c>ProfileController.PurgeHuman</c> when an operator removes a human
-    /// outside the normal 30-day grace period.
+    /// Immediate anonymization outside the grace period, with caches invalidated and an
+    /// <c>AccountPurged</c> audit entry keyed by <paramref name="actorId"/>. <c>NotFound</c> if the user doesn't exist.
     /// </summary>
     Task<OnboardingResult> PurgeAsync(Guid userId, Guid? actorId = null, CancellationToken ct = default);
 
     /// <summary>
-    /// Scheduled-job entry point: completes the GDPR expiry cascade for a user
-    /// whose 30-day grace period has elapsed. Runs every cross-section cleanup
-    /// (team memberships, governance role assignments, profile anonymization
-    /// incl. contact fields + volunteer history, shift signup cancellation,
-    /// volunteer-event-profile deletion) BEFORE collapsing the User
-    /// aggregate's identity — so a mid-cascade failure leaves the deletion
-    /// fields intact and tomorrow's job run retries from the same state.
-    /// Invalidates the UserInfo, role-assignment claims
-    /// and Teams member caches. Returns a summary of the pre-anonymization
-    /// identity plus the ids of any cancelled shift signups so the caller
-    /// (<c>ProcessAccountDeletionsJob</c>) can emit audit entries and send the
-    /// confirmation email. Returns <c>null</c> when the user has vanished
-    /// between enumeration and cascade start.
+    /// Runs every cross-section cleanup before collapsing the identity, so a mid-cascade failure leaves the
+    /// deletion fields intact and the next day's run retries. Returns null when the user vanished meanwhile.
     /// </summary>
     Task<AnonymizedAccountSummary?> AnonymizeExpiredAccountAsync(
         Guid userId, CancellationToken ct = default);
 }
 
 /// <summary>
-/// Outcome of <see cref="IAccountDeletionService.RequestDeletionAsync"/>.
-/// On success, <see cref="EffectiveDeletionDate"/> is the earliest instant at
-/// which the user's account becomes eligible for anonymization
-/// (the later of <c>DeletionScheduledFor</c> and any ticket-holder
-/// <c>DeletionEligibleAfter</c> floor). <see cref="IsHeldForTicket"/>
-/// signals the ticket-hold path so callers can render the right copy without a
-/// re-fetch. Mirrors <see cref="OnboardingResult"/>'s <c>ErrorKey</c> contract
-/// (<c>NotFound</c>, <c>AlreadyPending</c>) on failure.
+/// On success, <see cref="EffectiveDeletionDate"/> is the later of the scheduled date and any ticket-holder floor,
+/// and <see cref="IsHeldForTicket"/> says which copy to render. <c>ErrorKey</c>: <c>NotFound</c>, <c>AlreadyPending</c>.
 /// </summary>
 public sealed record DeletionRequestResult(
     bool Success,

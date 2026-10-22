@@ -19,12 +19,6 @@ using NodaTime;
 
 namespace Humans.Campaigns.Services;
 
-/// <summary>
-/// The Campaigns section's service. Implements the internal
-/// <see cref="ICampaignManagement"/> surface (the cross-assembly <see cref="ICampaignService"/>
-/// and <see cref="ICampaignWrite"/> contracts); the section's own controller injects this
-/// concrete type for the members that stay inside.
-/// </summary>
 internal sealed class CampaignService(
     ICampaignRepository repository,
     ITeamService teamService,
@@ -326,8 +320,7 @@ internal sealed class CampaignService(
             !Enum.IsDefined(parsedKind))
             return new CampaignGenerateCodesResult(false, "InvalidDiscountType");
 
-        // Through Tickets' contract leaf, never the Base vendor port — Tickets is the
-        // only door to ticketing.
+        // Through Tickets' contract, never the Base vendor port: Tickets is the only door to ticketing.
         var request = new TicketDiscountCodeRequest(count, parsedKind, discountValue, ExpiresAt: null);
         var codes = await ticketDiscountCodes.GenerateAsync(request, ct);
         var imported = await ImportCodesAsync(actorUserId, campaignId, codes, ct);
@@ -437,9 +430,8 @@ internal sealed class CampaignService(
         var failedCount = 0;
         var grantedUserIds = new List<Guid>(eligibleUserIds.Count);
 
-        // Per-grant commit: on enqueue throw, flip just that grant to Failed
-        // so subsequent grants still process and RetryAllFailedAsync can pick
-        // it up next pass.
+        // Per-grant commit: an enqueue throw flips just that grant to Failed, so later grants still process and
+        // RetryAllFailedAsync picks it up.
         for (var i = 0; i < eligibleUserIds.Count; i++)
         {
             var userId = eligibleUserIds[i];
@@ -652,8 +644,8 @@ internal sealed class CampaignService(
         var now = clock.GetCurrentInstant();
         var stillFailedCount = 0;
 
-        // Per-grant flip-and-enqueue: a batch flip-to-Queued + loop would lose
-        // grants whose enqueue throws, leaving them un-retriable.
+        // Per-grant flip-and-enqueue: a batch flip to Queued would lose grants whose enqueue throws, leaving them
+        // un-retriable.
         foreach (var grant in failedGrants)
         {
             if (await repository.UpdateGrantStatusAsync(grant.GrantId, EmailOutboxStatus.Queued, now, ct))
@@ -765,7 +757,7 @@ internal sealed class CampaignService(
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
-    /// <summary>A grant is a user↔discount-code link and nothing else — hard-deleted.</summary>
+    /// <summary>A grant is a user-to-code link and nothing else, so it is hard-deleted.</summary>
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         repository.DeleteGrantsForUserAsync(userId, ct);
 

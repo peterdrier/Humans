@@ -37,7 +37,5 @@ internal sealed class TeamRoleAssignmentConfiguration : IEntityTypeConfiguration
             .WithMany(m => m.RoleAssignments)
             .HasForeignKey(a => a.TeamMemberId)
             .OnDelete(DeleteBehavior.Restrict);
-
-        // AssignedByUserId is a bare cross-section Guid column — no FK constraint, no nav.
     }
 }

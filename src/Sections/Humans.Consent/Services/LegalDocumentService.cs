@@ -4,7 +4,6 @@ using Humans.Consent.Contracts;
 
 namespace Humans.Consent.Services;
 
-// Thin GitHub-backed content provider for published legal documents. No DB; inline IMemoryCache.
 internal sealed class LegalDocumentService(
     IMemoryCache cache,
     IGitHubLegalDocumentConnector gitHub,
@@ -45,7 +44,6 @@ internal sealed class LegalDocumentService(
             var contentDict = await gitHub.GetFolderContentByPrefixAsync(
                 definition.RepoFolder, definition.FilePrefix, ct);
 
-            // Mutable copy per signature contract.
             var content = new Dictionary<string, string>(contentDict, StringComparer.Ordinal);
             cache.Set(cacheKey, content, CacheTtl);
             return content;

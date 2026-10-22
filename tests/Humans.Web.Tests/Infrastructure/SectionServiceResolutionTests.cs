@@ -14,11 +14,8 @@ using Xunit;
 namespace Humans.Web.Tests.Infrastructure;
 
 /// <summary>
-/// Resolves section services from the real <c>Program.cs</c> host (ValidateOnBuild and
-/// ValidateScopes on). Validation cannot see through <c>sp =&gt; sp.GetRequiredService&lt;T&gt;()</c>
-/// forwarding factories, so a constructor cycle across two sections recurses forever at the
-/// first request instead of failing at startup (Finance ⇄ Expenses after peterdrier/Humans#2034).
-/// No database: hosted services are removed and nothing here opens a connection.
+/// ValidateOnBuild can't see through <c>sp =&gt; sp.GetRequiredService&lt;T&gt;()</c> forwarding factories, so a
+/// constructor cycle across two sections would recurse forever at the first request instead of failing at startup.
 /// </summary>
 public sealed class SectionServiceResolutionTests
 {

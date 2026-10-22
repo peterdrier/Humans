@@ -30,14 +30,12 @@ public class StoreAdminControllerTests(HumansTestDatabase database) : Integratio
         await Factory.SignInAsFullyOnboardedAsync(Client, new DevPersona("store-admin"));
         var year = await GetActiveYearAsync();
 
-        // GET edit form to seed antiforgery token + cookie.
         var editResp = await Client.GetAsync("/Store/Admin/Catalog/Edit", Xunit.TestContext.Current.CancellationToken);
         editResp.StatusCode.Should().Be(HttpStatusCode.OK);
         var editBody = await editResp.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken);
         var token = ExtractAntiForgeryToken(editBody);
         token.Should().NotBeNullOrEmpty();
 
-        // POST Save (no Id) → product created
         var uniqueName = $"Integration test product {Guid.NewGuid():N}";
         var createResp = await Client.PostAsync("/Store/Admin/Catalog/Save", BuildForm(
             ("__RequestVerificationToken", token),
@@ -52,16 +50,13 @@ public class StoreAdminControllerTests(HumansTestDatabase database) : Integratio
         ((int)createResp.StatusCode).Should().BeOneOf(
             (int)HttpStatusCode.Found, (int)HttpStatusCode.Redirect);
 
-        // Resolve the new product's id.
         var createdId = await GetProductIdByNameAsync(uniqueName);
         createdId.Should().NotBe(Guid.Empty);
 
-        // GET Catalog → product visible
         var catalogResp = await Client.GetAsync("/Store/Admin/Catalog", Xunit.TestContext.Current.CancellationToken);
         catalogResp.StatusCode.Should().Be(HttpStatusCode.OK);
         (await catalogResp.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken)).Should().Contain(uniqueName);
 
-        // POST Save (with Id, modified fields) → product updated
         var editIdResp = await Client.GetAsync($"/Store/Admin/Catalog/Edit/{createdId}", Xunit.TestContext.Current.CancellationToken);
         editIdResp.StatusCode.Should().Be(HttpStatusCode.OK);
         var editIdBody = await editIdResp.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken);
@@ -85,7 +80,6 @@ public class StoreAdminControllerTests(HumansTestDatabase database) : Integratio
         var catalogAfterEdit = await Client.GetAsync("/Store/Admin/Catalog", Xunit.TestContext.Current.CancellationToken);
         (await catalogAfterEdit.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken)).Should().Contain(renamed);
 
-        // POST Deactivate/{id}
         var deactivateResp = await Client.PostAsync(
             $"/Store/Admin/Catalog/Deactivate/{createdId}",
             BuildForm(("__RequestVerificationToken", editToken!)), Xunit.TestContext.Current.CancellationToken);

@@ -5,7 +5,7 @@ using static Humans.Base.Models.AccessMatrixFeature;
 
 namespace Humans.Users;
 
-/// <summary>Help-widget access matrix for <c>/Profile</c> — was a row in Base's deleted table.</summary>
+/// <summary>Help-widget access matrix for <c>/Profile</c>.</summary>
 internal sealed class SectionAccessMatrix : ISectionAccessMatrix
 {
     public IReadOnlyList<AccessMatrixData> AccessMatrices =>

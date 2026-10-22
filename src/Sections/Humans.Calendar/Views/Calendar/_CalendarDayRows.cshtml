@@ -1,9 +1,5 @@
 @model Humans.Calendar.Models.CalendarMonthViewModel
-@*
-    One row per day of Model.Month, each listing that day's occurrences.
-    Shared by List (all teams) and Team (one team); ViewData["ShowTeamName"]
-    is the only difference between them.
-*@
+@* Shared by List and Team; ViewData["ShowTeamName"] is the only difference. *@
 @{
     var showTeamName = ViewData["ShowTeamName"] as bool? ?? false;
     var zone = DateTimeZoneProviders.Tzdb[Model.ViewerTimezoneLabel];
@@ -12,8 +8,7 @@
     var daysInMonth = firstOfMonth.Calendar.GetDaysInMonth(Model.Month.Year, Model.Month.Month);
     var lastOfMonth = firstOfMonth.PlusDays(daysInMonth - 1);
 
-    // Expand multi-day occurrences across every day they cover inside this month,
-    // so a three-day event is listed on all three days and not only its first.
+    // A multi-day event is listed on every day it covers inside this month.
     var byDate = new Dictionary<LocalDate, List<CalendarOccurrence>>();
     foreach (var o in Model.Occurrences)
     {

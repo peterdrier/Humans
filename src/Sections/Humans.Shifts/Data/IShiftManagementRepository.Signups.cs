@@ -8,80 +8,39 @@ using NodaTime;
 namespace Humans.Shifts.Data;
 
 /// <summary>
-/// Signup-focused members of the Shifts repository contract.
+/// <c>ForMutation</c> reads return tracked entities that the same scoped context persists on
+/// <c>SaveChangesAsync</c>; every other read is <c>AsNoTracking</c>.
 /// </summary>
-/// <remarks>
-/// <para>
-/// <c>ShiftRepository</c> is the single concrete persistence adapter for Shifts.
-/// These members stay beside the signup state-machine operations even though
-/// they are declared on the same repository interface as rota/event management.
-/// </para>
-/// <para>
-/// Read methods are <c>AsNoTracking</c> by default; methods named
-/// <c>ForMutation</c> return tracking-enabled entities whose changes are
-/// persisted by a matching <c>SaveChangesAsync</c> on the same repository
-/// (same Scoped <c>ShiftsDbContext</c> instance).
-/// </para>
-/// </remarks>
 internal partial interface IShiftManagementRepository
 {
-    /// <summary>
-    /// Returns <see cref="ShiftSignup"/> rows for the supplied users,
-    /// optionally filtered to a single event. Includes
-    /// <c>Shift.Rota.EventSettings</c>; team display names are resolved via
-    /// <c>ITeamService.GetTeamsAsync</c>. Read-only.
-    /// </summary>
+    /// <summary>Optionally filtered to one event. Team names come from <c>ITeamService</c>, not here.</summary>
     Task<IReadOnlyList<ShiftSignup>> GetForUsersAsync(
         IReadOnlyCollection<Guid> userIds,
         Guid? eventSettingsId = null,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Loads signup team ownership data by signup id or signup block id. Read-only.
-    /// </summary>
     Task<ShiftSignup?> GetTeamProbeAsync(
         Guid id, ShiftSignupTeamProbeScope scope, CancellationToken ct = default);
 
-    /// <summary>
-    /// Loads a signup by id with full shift / rota / event-settings context
-    /// and the shift's sibling signups (for capacity checks). Tracking-enabled.
-    /// </summary>
+    /// <summary>Includes the shift's sibling signups, for capacity checks.</summary>
     Task<ShiftSignup?> GetByIdForMutationAsync(Guid signupId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Loads every Pending signup in a block, or both Pending and Confirmed
-    /// when requested by <paramref name="scope"/>. Includes
-    /// <c>Shift.Rota.EventSettings</c> and the shift's sibling signups (for
-    /// capacity checks in range-approve). Tracking-enabled.
-    /// </summary>
+    /// <summary>Pending signups in the block, plus Confirmed when <paramref name="scope"/> asks. Includes siblings for capacity checks.</summary>
     Task<List<ShiftSignup>> GetBlockForMutationAsync(
         Guid signupBlockId,
         ShiftSignupBlockMutationScope scope,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the subset of <paramref name="shiftIds"/> for which the user
-    /// already has a Pending or Confirmed signup. Read-only.
-    /// </summary>
+    /// <summary>The subset of <paramref name="shiftIds"/> the user already holds a Pending or Confirmed signup on.</summary>
     Task<HashSet<Guid>> GetActiveShiftIdsForUserAsync(
         Guid userId, IReadOnlyCollection<Guid> shiftIds, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns distinct users with shift signups in the given event on the
-    /// given day offset, filtered by signup status. Read-only.
-    /// </summary>
     Task<IReadOnlyList<Guid>> GetUserIdsForDayAsync(
         Guid eventSettingsId,
         int dayOffset,
         ShiftDayUserStatusScope statusScope,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Loads <see cref="VolunteerTagPreference"/> rows for the supplied user
-    /// ids in one query, with <c>ShiftTag</c> included (read-only). Backs the
-    /// bulk path on
-    /// <see cref="Humans.Shifts.Services.ShiftViewService.GetUsersAsync"/>.
-    /// </summary>
     Task<IReadOnlyList<VolunteerTagPreference>> GetVolunteerTagPreferencesForUsersAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
@@ -89,56 +48,26 @@ internal partial interface IShiftManagementRepository
     Task<int> DeleteVolunteerTagPreferencesForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// GDPR Art. 17: clears <see cref="ShiftSignup.StatusReason"/> on every one of the
-    /// user's signups. The signup row itself is retained as the association's record of
-    /// who covered which shift, but the coordinator's free text about the person is not
-    /// part of that record.
+    /// GDPR Art. 17: clears <see cref="ShiftSignup.StatusReason"/>. The row stays as the record of who covered
+    /// which shift; the coordinator's free text about the person does not.
     /// </summary>
     Task<int> ClearSignupStatusReasonsForUserAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Adds many <see cref="ShiftSignup"/> rows to the context without
-    /// committing.
-    /// </summary>
     void AddRange(IEnumerable<ShiftSignup> signups);
 
-    /// <summary>
-    /// Persists all pending mutations on the repository's underlying context.
-    /// Entities loaded via <see cref="GetByIdForMutationAsync"/> or
-    /// <see cref="GetBlockForMutationAsync"/> and mutated by the caller are
-    /// persisted here, along with any <see cref="AddRange"/> calls made in the
-    /// same request.
-    /// </summary>
     Task SaveChangesAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Cancels every <c>Confirmed</c> or <c>Pending</c> signup belonging to
-    /// <paramref name="userId"/>, stamping the supplied <paramref name="reason"/>
-    /// and persisting in one <c>SaveChangesAsync</c> call. Returns the id and
-    /// shift id of each signup that was cancelled so the caller can emit
-    /// per-signup audit entries.
-    /// </summary>
+    /// <summary>Returns each cancelled signup so the caller can audit them one by one.</summary>
     Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
         Guid userId, string reason, CancellationToken ct = default);
 
-    /// <summary>
-    /// Deletes every signup row owned by the supplied users. Returns deleted row count.
-    /// </summary>
     Task<int> DeleteAllForUsersAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Account-merge fold: re-FKs <c>shift_signups</c> rows from
-    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
-    /// Plain re-FK with one defensive guard — when source and target both
-    /// have a row for the same <c>ShiftId</c>, the source row is dropped so
-    /// the slot is not duplicated under the merged user. (No DB-level
-    /// unique constraint on <c>(UserId, ShiftId)</c>; the no-double-signup
-    /// invariant is enforced at the service layer.) Stamps <c>UpdatedAt</c>
-    /// with <paramref name="updatedAt"/> on every re-FK'd row. Single
-    /// <c>SaveChanges</c>. Returns the number of source rows touched
-    /// (re-FK'd plus dropped-as-duplicate) so the caller can audit the merge.
+    /// Account-merge fold. A source row for a shift the target already holds is dropped, since no DB constraint
+    /// stops a double signup. Returns rows touched, re-FK'd plus dropped, for the merge audit.
     /// </summary>
     Task<int> ReassignToUserAsync(
         Guid sourceUserId,
@@ -146,29 +75,18 @@ internal partial interface IShiftManagementRepository
         Instant updatedAt,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Reads every <see cref="ShiftSignup"/> in the system with
-    /// <c>Shift.Rota.EventSettings</c> included, used by the orphan-signup
-    /// reconciliation screen. Read-only.
-    /// </summary>
     Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// All eligible Build-period signups for the event: rows where
-    /// Shift.DayOffset ∈ [<paramref name="buildStartOffset"/>, 0), the rota's period
-    /// is Build or All, and Status ∈ {Confirmed, Pending}. <paramref name="buildStartOffset"/>
-    /// is the caller's Settings-sourced calendar value (nobodies-collective/Humans#1630) —
-    /// a repository must not read app-wide calendar fields itself.
+    /// Confirmed or Pending signups from <paramref name="buildStartOffset"/> up to day 0 on Build or All rotas.
+    /// The offset comes from the caller: a repository must not read app-wide calendar fields itself.
     /// </summary>
     Task<IReadOnlyList<EligibleBuildSignup>> GetEligibleBuildSignupsAsync(
         Guid eventSettingsId, int buildStartOffset, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns confirmed shift signups whose [StartsAtUtc, EndsAtUtc) overlaps the date range
-    /// (in event-local time). When <paramref name="departmentId"/> is non-null, restricts to
-    /// shifts whose rota belongs to that team. <paramref name="calendar"/> is the caller's
-    /// Settings-sourced calendar for <paramref name="eventSettingsId"/>
-    /// (nobodies-collective/Humans#1630) — a repository must not read app-wide calendar fields itself.
+    /// Confirmed signups overlapping the range in event-local time. <paramref name="calendar"/> comes from the
+    /// caller: a repository must not read app-wide calendar fields itself.
     /// </summary>
     Task<IReadOnlyList<ConfirmedShiftRow>> GetConfirmedShiftsInRangeAsync(
         Guid eventSettingsId,
@@ -179,11 +97,7 @@ internal partial interface IShiftManagementRepository
         CancellationToken ct);
 }
 
-/// <summary>
-/// Projection: just what the gap-detector needs for a single eligible signup.
-/// RotaName is the parent rota's display name, used by the heatmap partial
-/// to populate cell-click popovers.
-/// </summary>
+/// <summary><c>RotaName</c> feeds the heatmap's cell-click popovers.</summary>
 internal sealed record EligibleBuildSignup(
     Guid UserId,
     int DayOffset,

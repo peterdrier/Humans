@@ -121,10 +121,8 @@
 </div>
 
 <script>
-    // Idempotency guard: provisioning calls the external Holded API to create accounts,
-    // so a double-submit could create duplicate accounts (and orphan a Holded account when
-    // the second local write hits the unique BudgetCategoryId constraint). Disable both
-    // provision buttons on first submit; show a spinner on the one that was clicked.
+    // Idempotency guard: provisioning creates accounts in Holded, so a double submit could create duplicates (and
+    // orphan one when the second local write hits the unique BudgetCategoryId).
     document.querySelectorAll('.js-provision-form').forEach(function (form) {
         form.addEventListener('submit', function () {
             var clicked = form.querySelector('button[type="submit"]');

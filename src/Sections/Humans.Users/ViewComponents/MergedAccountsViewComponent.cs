@@ -5,14 +5,12 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Users.ViewComponents;
 
 /// <summary>
-/// The merge picture for one account on an admin screen: the account it was folded into
-/// if it is a tombstone, and every account folded into it. Renders nothing when neither
-/// applies, so an admin detail page can invoke it unconditionally.
+/// The account this one was folded into and every account folded into it; renders nothing when
+/// neither applies, so it can be invoked unconditionally.
 /// </summary>
 /// <remarks>
-/// Reads raw rows (<see cref="IUserService.GetRawUserInfoAsync"/>), because the merge
-/// picture is the one thing the resolving reads take away: they answer a tombstone id
-/// with the survivor, which is exactly the row this widget must not be handed.
+/// Reads raw rows: resolving reads answer a tombstone id with the survivor, which is exactly the
+/// row this widget must not be handed.
 /// </remarks>
 public sealed class MergedAccountsViewComponent(IUserService userService) : ViewComponent
 {

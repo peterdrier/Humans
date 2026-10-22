@@ -11,71 +11,36 @@ using Humans.Base.Helpers;
 namespace Humans.Users.Data;
 
 /// <summary>
-/// Issue #703. Singleton caching decorator for <see cref="IUserManagement"/>.
-/// Inherits <see cref="TrackedCache{TKey, TValue}"/> for a hit/miss-tracked cache of
-/// <see cref="UserInfo"/> entries keyed by userId — the canonical
-/// "everything-about-a-person" cache.
+/// Singleton caching decorator for <see cref="IUserManagement"/>: the
+/// "everything-about-a-person" <see cref="UserInfo"/> cache, keyed by userId.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Dict hits served synchronously; a cache miss refills via the inner Scoped
-/// <see cref="IUserManagement"/>, and every write through this surface delegates
-/// and then refreshes the affected entry. Identity-machinery write paths
-/// (<c>UserManager.UpdateAsync</c>, sign-in <c>LastLoginAt</c> bumps) are
-/// caught by <c>UserInfoSaveChangesInterceptor</c>, which refreshes every
-/// touched userId through <see cref="IUserInfoSliceRefresher"/>.
-/// </para>
-/// <para>
-/// Registered as Singleton so the dict persists across requests. Scoped
-/// dependencies (the inner <see cref="IUserManagement"/>) are resolved per-call
-/// via <see cref="IServiceScopeFactory"/> to avoid the captured-scoped
-/// anti-pattern. Cache warm and miss paths also go through the keyed inner
-/// service so the decorator does not bypass the repository-owning
-/// application service.
-/// </para>
+/// Writes through this surface refresh the affected entry; Identity-machinery writes
+/// (<c>UserManager.UpdateAsync</c>, sign-in <c>LastLoginAt</c>) are caught by
+/// <c>UserInfoSaveChangesInterceptor</c>. Warm and miss paths go through the keyed inner
+/// service, so the decorator never bypasses the repository-owning service.
 /// </remarks>
 internal sealed class CachingUserService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingUserService> logger) : TrackedCache<Guid, UserInfo>("User.UserInfo", warmOnStartup: true, logger),
     IUserManagement, IUserInfoSliceRefresher, IEntityNameContributor
 {
-    /// <summary>
-    /// DI service key under which the undecorated (inner) <see cref="IUserManagement"/>
-    /// is registered. Used by the Singleton decorator to resolve the Scoped inner
-    /// service per-call without triggering self-resolution on the unkeyed
-    /// <see cref="IUserManagement"/> registration.
-    /// </summary>
+    /// <summary>DI key of the undecorated inner service, so the decorator can resolve it without resolving itself.</summary>
     public const string InnerServiceKey = "user-inner";
 
-    // ==========================================================================
-    // Merge index
-    // ==========================================================================
-
     /// <summary>
-    /// Derived index: for every id that has at least one row merged into it,
-    /// transitively, the sorted ids of those rows. Null means dirty — see
-    /// <see cref="OnMutated"/>. Rebuilt lazily on first read after a mutation.
+    /// For every id with rows merged into it (transitively), the sorted ids of those rows.
+    /// Null means dirty; rebuilt lazily on first read after a mutation.
     /// </summary>
     /// <remarks>
-    /// Rebuild, publication and invalidation all run under <see cref="_mergeIndexLock"/>.
-    /// A rebuild reads the live store, so an unlocked one that started before a mutation
-    /// could finish after it and publish a pre-mutation index over the null
-    /// <see cref="OnMutated"/> had just written, leaving a newly merged id invisible to
-    /// consent reads and the GDPR fan-outs until the next mutation, whenever that is. A
-    /// version check on publication still has that gap between the check and the write.
-    /// The lock makes the stale state unrepresentable: a mutation either lands before the
-    /// rebuild starts and is in it, or waits for the publish and then drops it. The cost is
-    /// readers serialising behind one O(rows) walk after a mutation, which at this scale is
-    /// milliseconds, a few times a day.
+    /// Rebuild, publish and invalidate all run under <see cref="_mergeIndexLock"/>. An unlocked
+    /// rebuild that began before a mutation could publish a pre-mutation index over the null,
+    /// hiding a newly merged id from consent reads and GDPR fan-outs until the next mutation.
     /// </remarks>
     private Dictionary<Guid, Guid[]>? _mergeIndex;
     private readonly Lock _mergeIndexLock = new();
 
-    /// <summary>
-    /// Any change to the raw store can change the merge graph — a merge lands as a
-    /// per-entry <c>Set</c> via <c>RefreshEntryAsync</c>, not only at warmup — so the
-    /// index is dropped on every mutation rather than built once after the snapshot loads.
-    /// </summary>
+    /// <summary>A merge lands as a per-entry <c>Set</c>, not only at warmup, so every mutation drops the index.</summary>
     protected override void OnMutated()
     {
         lock (_mergeIndexLock) _mergeIndex = null;
@@ -165,10 +130,6 @@ internal sealed class CachingUserService(
         return row;
     }
 
-    // ==========================================================================
-    // UserInfo reads
-    // ==========================================================================
-
     public async ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)
     {
         // Warm first: MergedUserIds is a property of the whole graph, so a cold cache
@@ -193,11 +154,6 @@ internal sealed class CachingUserService(
         return Values.Select(Stamp).ToArray();
     }
 
-    /// <summary>
-    /// Per-key loader plugged into <see cref="TrackedCache{TKey,TValue}.GetAsync"/>.
-    /// Resolves the Scoped inner <see cref="IUserManagement"/> per call; the base
-    /// caches the result via <see cref="TrackedCache{TKey,TValue}.Set"/>.
-    /// </summary>
     protected override async ValueTask<UserInfo?> LoadRowAsync(Guid userId, CancellationToken ct)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
@@ -219,9 +175,7 @@ internal sealed class CachingUserService(
     public async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
-        // Issue #743: warm before the miss-detection loop. Without this, a cold
-        // cache turns every requested id into a per-row LoadRowAsync (7 SELECTs
-        // each) instead of the single bulk WarmAllAsync.
+        // Warm first: a cold cache turns every requested id into a per-row load.
         await EnsureWarmedAsync(ct).ConfigureAwait(false);
 
         var result = new Dictionary<Guid, UserInfo>(userIds.Count);
@@ -251,11 +205,9 @@ internal sealed class CachingUserService(
     }
 
     /// <summary>
-    /// <see cref="IEntityNameContributor"/>: the human ids in a caller's Guid set,
-    /// named from the warmed snapshot. Deliberately cache-only — a fan-out hands
-    /// every contributor every id, so a foreign id must not cost a row load.
-    /// BurnerName is the display name (memory/architecture/burnername-is-the-display-name.md);
-    /// humans without one are absent.
+    /// <see cref="IEntityNameContributor"/>: names from the warmed snapshot only — a fan-out hands
+    /// every contributor every id, so a foreign id must not cost a row load. Humans without a
+    /// BurnerName are absent.
     /// </summary>
     public async Task<IReadOnlyDictionary<Guid, EntityName>> ResolveNamesAsync(
         IReadOnlyCollection<Guid> ids, CancellationToken ct = default)
@@ -287,11 +239,8 @@ internal sealed class CachingUserService(
 
         await EnsureWarmedAsync(ct).ConfigureAwait(false);
 
-        // Exact-UserId lookup. Lets anyone paste a UserId from logs / audit
-        // trails / URLs and jump straight to that human. Skipped for ExactName
-        // queries: those want literal burner-name equality, not id resolution —
-        // a GUID-shaped burner name must match by name, never collide with the
-        // row whose Id happens to equal the typed text.
+        // Exact-UserId lookup, so a pasted id jumps straight to that human. Skipped for
+        // ExactName: a GUID-shaped burner name must match by name, never by row id.
         if ((fields & PersonSearchFields.ExactName) == PersonSearchFields.None
             && Guid.TryParse(query, out var idGuid))
         {
@@ -352,29 +301,14 @@ internal sealed class CachingUserService(
         ReplaceAsync(userId, CancellationToken.None);
 
     /// <summary>
-    /// Populates the inherited cache with a <see cref="UserInfo"/> for every
-    /// existing user at startup. Bulk-loads each of the contributing tables
-    /// once and indexes by userId so per-user materialization is allocation-only.
-    /// Trivial at our small scale.
+    /// Bulk-loads each contributing table once. An empty system is a legitimate warm state.
     /// </summary>
-    /// <remarks>
-    /// Invoked by <see cref="TrackedCache{TKey,TValue}.EnsureWarmedAsync"/> via
-    /// the <see cref="Microsoft.Extensions.Hosting.IHostedService"/> contract
-    /// inherited from <see cref="TrackedCache{TKey,TValue}"/>. The base flips
-    /// the warmed flag on success. An empty system (fresh dev DB / new deploy)
-    /// is a legitimate warm state — this method simply returns early and the
-    /// flag still flips.
-    /// </remarks>
     protected override async Task WarmAllAsync(CancellationToken ct)
     {
         var users = await WithInnerAsync(inner => inner.GetAllUserInfosAsync(ct));
         foreach (var user in users)
             Set(user.Id, user);
     }
-
-    // ==========================================================================
-    // IUserInfoSliceRefresher (section-internal: interceptor + Users' own services)
-    // ==========================================================================
 
     /// <inheritdoc cref="IUserInfoSliceRefresher.RefreshAsync" />
     public async Task RefreshAsync(
@@ -387,8 +321,6 @@ internal sealed class CachingUserService(
             "UserInfo refresh userId={UserId} caller={CallerMember} file={CallerFile}",
             userId, memberName, Path.GetFileName(filePath));
 
-        // Warmed cache, row updated: replace in-place via the base primitive
-        // (LoadRowAsync → Set, or DeleteKey if the inner returns null).
         await ReplaceAsync(userId, ct).ConfigureAwait(false);
     }
 
@@ -487,11 +419,6 @@ internal sealed class CachingUserService(
             MergedUserIds = current.MergedUserIds,
         };
 
-    // ==========================================================================
-    // Inner delegation — every other IUserManagement method passes through and
-    // refreshes the affected entry on writes.
-    // ==========================================================================
-
     private async Task<T> WithInnerAsync<T>(Func<IUserManagement, Task<T>> work)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
@@ -508,11 +435,8 @@ internal sealed class CachingUserService(
 
     public async Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default)
     {
-        // Verified-email match is served from the warmed snapshot first; only addresses the
-        // snapshot misses (unwarmed entries, or a warm/write race) fall through to the inner
-        // service's canonical user_emails query. The inner method deliberately does NOT repeat
-        // this scan, so a miss costs one targeted query rather than re-deriving the whole
-        // snapshot. See UserService.GetByEmailOrAlternateAsync.
+        // Served from the warmed snapshot first; only misses fall through to the inner
+        // service's query, which deliberately does not repeat this scan.
         await EnsureWarmedAsync(ct).ConfigureAwait(false);
         foreach (var u in Values)
         {
@@ -534,8 +458,6 @@ internal sealed class CachingUserService(
         GetExternalLoginsByUserIdsAsync(
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetExternalLoginsByUserIdsAsync(userIds, ct));
-
-    // Writes — delegate to inner, then refresh the affected entry.
 
     public async Task SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default)
     {
@@ -733,10 +655,6 @@ internal sealed class CachingUserService(
         }
         return deleted;
     }
-
-    // ==========================================================================
-    // IUserMerge — delegate to inner, then refresh both ends.
-    // ==========================================================================
 
     public async Task ReassignAsync(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now,

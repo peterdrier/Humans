@@ -4,8 +4,7 @@ using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Domain;
 
 /// <summary>
-/// Links a user to a shift with a state machine tracking signup lifecycle.
-/// State transitions: Pending → Confirmed/Refused/Bailed, Confirmed → Bailed/NoShow/Cancelled.
+/// Pending → Confirmed/Refused/Bailed/Cancelled; Confirmed → Bailed/NoShow/Cancelled.
 /// </summary>
 internal sealed class ShiftSignup
 {
@@ -17,32 +16,21 @@ internal sealed class ShiftSignup
 
     public SignupStatus Status { get; set; }
 
-    /// <summary>
-    /// Whether this signup was created via "voluntell" (enrolled by a coordinator).
-    /// </summary>
+    /// <summary>Created by "voluntell": a coordinator enrolled the volunteer.</summary>
     public bool Enrolled { get; set; }
 
-    /// <summary>
-    /// FK to the user who enrolled the volunteer (voluntell). Null for self-signup.
-    /// </summary>
+    /// <summary>Null for self-signup.</summary>
     public Guid? EnrolledByUserId { get; set; }
 
-    /// <summary>
-    /// FK to the user who approved/refused/bailed the signup.
-    /// </summary>
+    /// <summary>Who approved, refused or bailed the signup.</summary>
     public Guid? ReviewedByUserId { get; set; }
 
     public Instant? ReviewedAt { get; set; }
 
-    /// <summary>
-    /// Reason for status change (refuse reason, bail reason, etc.).
-    /// </summary>
+    /// <summary>The coordinator's refuse or bail reason.</summary>
     public string? StatusReason { get; set; }
 
-    /// <summary>
-    /// Shared Guid linking all signups created by a single range signup action.
-    /// Null for individual event-time signups. Used by BailRangeAsync.
-    /// </summary>
+    /// <summary>Shared by every signup from one range action, so BailRangeAsync can bail them together.</summary>
     public Guid? SignupBlockId { get; set; }
 
     public Instant CreatedAt { get; init; }
@@ -86,9 +74,7 @@ internal sealed class ShiftSignup
         UpdatedAt = now;
     }
 
-    /// <summary>
-    /// Mark a confirmed signup as no-show (post-shift only).
-    /// </summary>
+    /// <summary>Post-shift only.</summary>
     public void MarkNoShow(Guid reviewerUserId, IClock clock)
     {
         if (Status is not SignupStatus.Confirmed)
@@ -100,9 +86,7 @@ internal sealed class ShiftSignup
         UpdatedAt = now;
     }
 
-    /// <summary>
-    /// Cancel a signup (system-only — shift/rota deleted, account deletion).
-    /// </summary>
+    /// <summary>System-only: shift or rota deleted, account deletion.</summary>
     public void Cancel(IClock clock, string? reason)
     {
         if (Status is not (SignupStatus.Confirmed or SignupStatus.Pending))

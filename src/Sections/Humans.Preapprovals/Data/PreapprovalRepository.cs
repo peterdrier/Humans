@@ -7,8 +7,6 @@ namespace Humans.Preapprovals.Data;
 
 internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbContext> factory) : IPreapprovalRepository
 {
-    // ── Reads ─────────────────────────────────────────────────────────────
-
     public async Task<IReadOnlyList<PreapprovalProgram>> GetProgramsAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -48,8 +46,6 @@ internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbCont
             .Where(g => g.Status == status)
             .ToListAsync(ct);
     }
-
-    // ── Writes ────────────────────────────────────────────────────────────
 
     public async Task AddProgramAsync(PreapprovalProgram program, CancellationToken ct = default)
     {
@@ -144,8 +140,6 @@ internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbCont
             .AnyAsync(p => p.Status == ProgramStatus.Open && p.AcceptsApplications && p.ClaimBy >= today, ct);
     }
 
-    // ── GDPR ──────────────────────────────────────────────────────────────
-
     public async Task<PreapprovalUserRows> GetRowsForUsersAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
@@ -182,7 +176,7 @@ internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbCont
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var dropped = new List<Guid>();
 
-        // Beneficiary: two Applied rows for one program collapse to the older one.
+        // Two Applied rows for one program collapse to the older one.
         var sourceGrants = await ctx.Grants.Where(g => g.BeneficiaryUserId == sourceUserId).ToListAsync(ct);
         var targetApplications = await ctx.Grants
             .Where(g => g.BeneficiaryUserId == targetUserId && g.Status == GrantStatus.Applied)
@@ -205,7 +199,7 @@ internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbCont
             dropped.Add(drop.Id);
         }
 
-        // Manager rows: a survivor already managing the same program keeps one row.
+        // A survivor already managing the same program keeps one row.
         var sourceManagers = await ctx.Managers.Where(m => m.UserId == sourceUserId).ToListAsync(ct);
         var targetPrograms = await ctx.Managers.Where(m => m.UserId == targetUserId)
             .Select(m => m.ProgramId).ToListAsync(ct);
@@ -222,7 +216,6 @@ internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbCont
                 });
         }
 
-        // Actor columns.
         foreach (var p in await ctx.Programs.Where(p => p.CreatedByUserId == sourceUserId).ToListAsync(ct))
             p.CreatedByUserId = targetUserId;
         foreach (var m in await ctx.Managers.Where(m => m.AddedByUserId == sourceUserId).ToListAsync(ct))
@@ -234,16 +227,13 @@ internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbCont
         return dropped;
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────
-
     private static IQueryable<PreapprovalProgram> ProgramsWithChildren(PreapprovalsDbContext ctx) =>
-        // Identity resolution rather than plain AsNoTracking: the child → Program back-references
-        // make the graph cyclic, which no-tracking queries refuse.
+        // The child → Program back-references make the graph cyclic, which plain no-tracking queries refuse.
         ctx.Programs.AsNoTrackingWithIdentityResolution()
             .Include(p => p.Managers)
             .Include(p => p.Grants);
 
-    /// <summary>A copy without navigations, so a save never drags a detached program graph along.</summary>
+    /// <summary>Without navigations, so a save never drags a detached program graph along.</summary>
     private static PreapprovalGrant Scalar(PreapprovalGrant g) => new()
     {
         Id = g.Id,

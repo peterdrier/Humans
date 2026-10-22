@@ -8,47 +8,22 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Humans.Analyzers;
 
 /// <summary>
-/// HUM0031 — controllers don't carry business logic. Every method declared in
-/// a <c>ControllerBase</c>-derived type (actions <i>and</i> private helpers,
-/// so extracting a helper inside the controller doesn't dodge the rule) is
-/// measured for statement count and cyclomatic complexity; breaching either
-/// hardcoded threshold is an Error.
-/// <list type="bullet">
-/// <item>Pre-existing offenders carry method-level
-/// <c>[Grandfathered("HUM0031", …)]</c> → diagnostic rides as
-/// <see cref="DiagnosticSeverity.Warning"/>.</item>
-/// <item>A new breach (no <c>[Grandfathered]</c>) →
-/// <see cref="DiagnosticSeverity.Error"/>, failing the PR that adds it. Move
-/// the decision logic into the section's application service — controllers
-/// parse the request, call services, and format/sort/filter the response.</item>
-/// </list>
-/// The thresholds are deliberately generous: they're calibrated to flag only
-/// the worst offenders (~15 methods at introduction). They are <b>fixed</b>
-/// at 40/15 as a backstop and never ratchet down; whether a smaller method
-/// still carries business logic is a judgment of intent, made by
-/// section-doctor's regular runs rather than by a number. Replaces the retired
-/// <c>NoBusinessLogicInControllersRule</c> ratchet test, whose regex
-/// heuristic was noisy and only saw public action signatures
-/// (nobodies-collective/Humans#793). Source rule:
-/// <c>memory/architecture/no-business-logic-in-controllers.md</c>.
+/// HUM0031 — controllers don't carry business logic. Every method in a <c>ControllerBase</c>-derived type, helpers
+/// too (so extracting one doesn't dodge the rule), is measured for statement count and cyclomatic complexity.
+/// <c>[Grandfathered("HUM0031", …)]</c> on the method downgrades to a Warning. The 40/15 thresholds are a fixed
+/// backstop and never ratchet down: whether a smaller method carries business logic is judged by section-doctor.
 /// </summary>
 /// <remarks>
-/// Runs in <c>Humans.Web</c> only. Cyclomatic complexity counts real branch
-/// nodes in the syntax tree (<c>if</c>/loops/<c>case</c> labels/switch-expression
-/// arms/<c>catch</c>/ternary/<c>&amp;&amp;</c>/<c>||</c>/<c>??</c>/<c>??=</c>/
-/// <c>and</c>/<c>or</c> patterns), so strings, comments, and nullable
-/// annotations can't pollute the count the way the old regex scan did. Local
-/// functions count toward their containing method.
+/// Complexity counts real branch nodes in the syntax tree, so strings, comments and nullable annotations can't
+/// pollute it. Local functions count toward their containing method.
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class ControllerBusinessLogicAnalyzer : DiagnosticAnalyzer
 {
     public const string DiagnosticId = "HUM0031";
 
-    /// <summary>Flag when a method body has more statements than this.</summary>
     public const int MaxStatements = 40;
 
-    /// <summary>Flag when a method's cyclomatic complexity exceeds this.</summary>
     public const int MaxCyclomaticComplexity = 15;
 
     private const string ControllerBaseFullName = "Microsoft.AspNetCore.Mvc.ControllerBase";

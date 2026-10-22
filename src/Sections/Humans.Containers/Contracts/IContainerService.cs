@@ -16,10 +16,7 @@ public interface IContainerService : IApplicationService
     Task<ContainerMutationResult<ContainerPlacementDto>> SavePlacementAsync(Guid containerId, int year, string geoJson, Guid actorUserId, CancellationToken ct = default);
     Task ClearPlacementAsync(Guid containerId, int year, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Update a placement's notes and/or sketch image. Returns a refusal key if the
-    /// container has no placement row for the year.
-    /// </summary>
+    /// <summary>Returns a refusal key when the container has no placement row for the year.</summary>
     Task<ContainerMutationResult<ContainerPlacementDto>> UpdatePlacementNotesAsync(
         Guid containerId,
         int year,
@@ -29,11 +26,7 @@ public interface IContainerService : IApplicationService
         Guid actorUserId,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Org-wide admin overview of containers for a year, grouped by camp.
-    /// Includes every camp with a season in the year, even if the camp
-    /// currently has no containers.
-    /// </summary>
+    /// <summary>Includes every camp with a season in the year, even one with no containers.</summary>
     Task<ContainerAdminOverview> GetAdminOverviewAsync(int year, CancellationToken ct = default);
 
 }
@@ -52,9 +45,7 @@ public record ContainerWithPlacement(ContainerDto Container, ContainerPlacementD
 public record ContainerImageUpload(Stream Content, string ContentType, string FileName, long Length);
 
 /// <summary>
-/// One image in a container's gallery, in display order. <see cref="Id"/> is
-/// <see cref="Guid.Empty"/> for the legacy single image still held in the
-/// <c>containers</c> image columns; every other id is a <c>container_images</c> row.
+/// <see cref="Id"/> is <see cref="Guid.Empty"/> for the legacy single image held in the <c>containers</c> columns.
 /// </summary>
 public record ContainerImageDto(Guid Id, string Url, string? FileName);
 

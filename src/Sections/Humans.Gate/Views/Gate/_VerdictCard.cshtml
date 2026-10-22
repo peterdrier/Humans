@@ -37,8 +37,7 @@
         <div class="gate-reason">@Model.Reason</div>
     }
 
-    @* Imperative next step for a refusal — a 2-minute-trained volunteer needs to be told what to DO,
-       and where to escalate if the guest disputes it, not just the diagnosis. *@
+    @* A barely-trained volunteer needs to be told what to do and where to escalate, not just the diagnosis. *@
     @if (Model.Kind == GateCardKind.Stop)
     {
         <div class="gate-action">Do not admit · if the guest disputes it, get the gate lead</div>
@@ -61,15 +60,12 @@
                     Child — with adult
                 </button>
             }
-            @* Scanned the wrong code (caught a neighbouring ticket)? Bail back to Ready and rescan. *@
             <button type="button" class="gate-btn gate-cancel-scan" data-cancel-scan>
                 <i class="fa-solid fa-rotate-left" aria-hidden="true"></i> Wrong ticket — scan again
             </button>
         </div>
     }
 
-    @* Too-early scans carry an override affordance; tapping it opens the override panel, where
-       the shared supervisor PIN authorizes the admit. *@
     @if (Model.AllowSupervisorOverride)
     {
         <button type="button" class="gate-btn gate-override-btn" data-override="early" data-barcode="@Model.Barcode">

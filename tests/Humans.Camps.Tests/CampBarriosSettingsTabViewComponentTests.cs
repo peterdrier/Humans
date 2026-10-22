@@ -7,7 +7,6 @@ using NSubstitute;
 
 namespace Humans.Camps.Tests;
 
-/// <summary>The /Settings#barrios tab (peterdrier/Humans#1634).</summary>
 public sealed class CampBarriosSettingsTabViewComponentTests
 {
     [HumansFact]

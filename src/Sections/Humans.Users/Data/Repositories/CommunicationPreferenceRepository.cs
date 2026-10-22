@@ -2,12 +2,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Users.Data.Repositories;
 
-/// <summary>
-/// EF-backed implementation of <see cref="ICommunicationPreferenceRepository"/> over the frozen
-/// legacy table. The only non-test file that touches <c>DbContext.CommunicationPreferences</c>.
-/// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>UsersDbContext</c> remains Scoped.
-/// </summary>
 internal sealed class CommunicationPreferenceRepository(IDbContextFactory<UsersDbContext> factory)
     : ICommunicationPreferenceRepository
 {

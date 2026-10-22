@@ -7,11 +7,6 @@ using NodaTime;
 
 namespace Humans.MailerLite.Services;
 
-/// <summary>
-/// Orchestrates audience computation, ML state diffing, and the apply step.
-/// The section's sync state goes through
-/// <see cref="IMailerLiteRepository"/>.
-/// </summary>
 internal sealed class MailerLiteAudienceSyncService(
     IMailerLiteService ml,
     IUserEmailService emails,

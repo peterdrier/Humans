@@ -1,12 +1,8 @@
 namespace Humans.Grants;
 
 /// <summary>
-/// Marker type for Grants' resource set. The <c>.resx</c> files sit beside this file
-/// on purpose: the SDK derives the manifest name from the adjacent same-named <c>.cs</c>
-/// file's namespace, so this must stay <c>namespace Humans.Grants</c>.
+/// The .resx files sit beside this file, so it must stay in <c>namespace Humans.Grants</c>: the manifest name comes
+/// from this file's namespace. Public because the boot localization check finds markers through
+/// <c>GetExportedTypes()</c>.
 /// </summary>
-/// <remarks>
-/// Public because the boot localization diagnostic discovers section resource markers via
-/// <c>GetExportedTypes()</c>; an internal marker is skipped in silence.
-/// </remarks>
 public class GrantsResource;

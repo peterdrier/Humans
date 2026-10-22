@@ -6,32 +6,12 @@ namespace Humans.Base.Attributes;
 /// error as the date passes, so a deadline cannot silently slip past.
 /// </summary>
 /// <remarks>
-/// <para>Two diagnostics derive from this attribute:</para>
-/// <list type="bullet">
-///   <item>
-///     <b>HUM0010 — Usage site.</b> Every reference to the decorated symbol
-///     (call, property/field/event/method-group access, or constructor)
-///     fires a <b>warning</b> before the date and an <b>error</b> on/after
-///     the date. Callers must migrate before the deadline.
-///   </item>
-///   <item>
-///     <b>HUM0011 — Declaration site.</b> The decorated symbol itself is
-///     clean until the date, then a <b>warning</b> during the <see cref="GraceDays"/>
-///     window (default 7 days), then an <b>error</b>. The grace period
-///     gives the author time to actually delete the symbol after the callers
-///     have all migrated.
-///   </item>
-/// </list>
-///
+/// <para>HUM0010 (usage site): every reference warns before the date and errors on or after it.</para>
 /// <para>
-/// Use this to set a real deadline on deprecated API surface — typically two
-/// weeks out — rather than letting <c>[Obsolete]</c> warnings accumulate
-/// indefinitely.
+/// HUM0011 (declaration site): clean until the date, a warning during <see cref="GraceDays"/>, then an error, so the
+/// author has time to delete the symbol once callers have migrated.
 /// </para>
-///
-/// <para>"Today" is the build machine's UTC date. A clean CI build on the
-/// deadline day will flip red without any code change — which is exactly the
-/// point of a deadline.</para>
+/// <para>"Today" is the build machine's UTC date: a clean CI build flips red on the deadline with no code change.</para>
 /// </remarks>
 /// <example>
 /// <code>

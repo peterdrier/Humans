@@ -430,10 +430,6 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         await inner.DidNotReceive().GetUserTeamMembershipsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
-    // ==========================================================================
-    // GetMyTeamMembershipsAsync â€” cache-served (issue nobodies-collective/Humans#748)
-    // ==========================================================================
-
     [HumansTheory]
     [InlineData(null)]
     [InlineData(RoleNames.Admin)]
@@ -612,10 +608,6 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         await inner.Received(1).GetTeamsAsync(Arg.Any<CancellationToken>());
     }
 
-    // ==========================================================================
-    // Join-lifecycle invalidation â€” issue nobodies-collective/Humans#748
-    // ==========================================================================
-
     [HumansTheory]
     [InlineData(nameof(CachingTeamService.JoinTeamAsync))]
     [InlineData(nameof(CachingTeamService.WithdrawJoinRequestAsync))]
@@ -771,10 +763,9 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
     [HumansFact]
     public async Task SearchAsync_GuidQuery_ResolvesAHiddenTeam_BecauseTheDestinationPageEnforces()
     {
-        // Ruling on nobodies-collective/Humans#985 (2026-08-07): a by-GUID hit is a routing
-        // convenience for someone who already holds the id, not an authorization statement.
-        // The pairing test below — GetTeamDetailAsync_HiddenTeam_NonPrivilegedViewer — is what
-        // makes that safe: /Teams/{slug} is where the hidden team is actually refused.
+        // A by-GUID hit is a routing convenience for someone who already holds the id, not an
+        // authorization statement: /Teams/{slug} is where a hidden team is refused (pinned by
+        // GetTeamDetailAsync_HiddenTeam_NonPrivilegedViewer).
         var hidden = SeedTeam("Kitchenette");
         hidden.IsHidden = true;
         await SaveAllAsync(TestContext.Current.CancellationToken);
@@ -792,8 +783,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
     [HumansFact]
     public async Task SearchAsync_ScoresItsOwnHits_ExactThenPrefixThenContains()
     {
-        // Scoring belongs to the section, not the global-search orchestrator
-        // (nobodies-collective/Humans#1062).
+        // Scoring belongs to the section, not the global-search orchestrator.
         SeedTeam("Kitchen");
         SeedTeam("Kitchen Crew");
         SeedTeam("Main Kitchen");

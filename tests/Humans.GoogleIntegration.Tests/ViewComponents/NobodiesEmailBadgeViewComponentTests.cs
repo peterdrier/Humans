@@ -10,7 +10,6 @@ namespace Humans.GoogleIntegration.Tests.ViewComponents;
 
 public sealed class NobodiesEmailBadgeViewComponentTests
 {
-    // Moved from Users with the component (Users decomposition commit 15).
     [HumansFact]
     public async Task RequestAborted_PropagatesCancellation()
     {

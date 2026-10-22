@@ -17,7 +17,7 @@ using NSubstitute;
 namespace Humans.Email.Tests.Controllers;
 
 /// <summary>
-/// The shared composer's "Send to me" (peterdrier/Humans#1793): one branded System email to the
+/// The shared composer's "Send to me": one branded System email to the
 /// signed-in human's own address, audited, never to anyone else; refused when signed out.
 /// </summary>
 public sealed class ComposerSelfSendTests

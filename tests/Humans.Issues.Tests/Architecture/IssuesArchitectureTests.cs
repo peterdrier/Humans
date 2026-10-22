@@ -13,8 +13,6 @@ namespace Humans.Issues.Tests.Architecture;
 /// </summary>
 public class IssuesArchitectureTests
 {
-    // ── IssuesService ────────────────────────────────────────────────────────
-
     [HumansFact]
     public void IssuesService_TakesCrossSectionServiceInterfaces()
     {
@@ -37,9 +35,4 @@ public class IssuesArchitectureTests
         // (memory/code/type-name-as-persisted-string.md).
         AuditEntityTypes.Issue.Should().Be("Issue");
     }
-
-    // ── IIssuesRepository ────────────────────────────────────────────────────
-
-    // Sealed-repository check covered by HUM0034 (section types are internal) plus
-    // MA0053 (an unsealed internal class is a build error).
 }

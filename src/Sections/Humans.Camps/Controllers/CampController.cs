@@ -36,11 +36,8 @@ internal sealed class CampController(
     [HttpGet("")]
     public async Task<IActionResult> Index(CampFilterViewModel? filters, CancellationToken ct = default)
     {
-        // Scanners stuff garbage into the bool filter params; rendering with the failed
-        // attempted values still in ModelState makes the checkbox tag helper throw
-        // (nobodies-collective/Humans#926). Drop them and render with whatever bound
-        // successfully, so stale shared links (e.g. an outdated ?Vibe= value) degrade
-        // gracefully instead of erroring.
+        // Scanners stuff garbage into the bool filter params; rendering with the failed values still in ModelState
+        // makes the checkbox tag helper throw. Drop them so stale shared links degrade gracefully.
         if (!ModelState.IsValid)
         {
             ModelState.Clear();
@@ -186,8 +183,7 @@ internal sealed class CampController(
         var currentUser = await GetCurrentUserInfoAsync(ct);
         var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp, currentUser);
 
-        // nobodies-collective/Humans#993: a season outside Active/Full is non-public everywhere
-        // else (directory, search), so the destination page refuses it too — 404, not 403, so
+        // A season outside Active/Full is non-public everywhere else, so the page refuses it too: 404, not 403, so
         // the slug leaks nothing. Leads and CampAdmin keep access to their own non-public camp.
         if (season.Status is not (CampSeasonStatus.Active or CampSeasonStatus.Full) && !isLead && !isCampAdmin)
             return NotFound();
@@ -224,7 +220,7 @@ internal sealed class CampController(
         var fullCamp = await GetCampBySlugAsync(slug, ct) ?? camp;
         var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(fullCamp, currentUser);
 
-        // Same nobodies-collective/Humans#993 gate as Details, for arbitrary-year seasons.
+        // Same non-public-season gate as Details, for arbitrary-year seasons.
         if (season.Status is not (CampSeasonStatus.Active or CampSeasonStatus.Full) && !isLead && !isCampAdmin)
             return NotFound();
         var membership = ResolveCurrentUserMembershipState(camp, currentUser);
@@ -485,8 +481,7 @@ internal sealed class CampController(
                 .OrderBy(MemberName, StringComparer.OrdinalIgnoreCase).ToList();
         }
 
-        // Full is informational only (Peter, 2026-08-20) — it must not disable camp
-        // management, so role management stays available on a Full season too.
+        // Full is informational only: it must not disable camp management, so role management stays available.
         var openSeason = camp.Seasons.FirstOrDefault(s => s.IsPublic);
         viewModel.RolesPanel = openSeason is null
             ? null
@@ -688,9 +683,6 @@ internal sealed class CampController(
 
         return RedirectToAction(nameof(Details), new { slug });
     }
-
-    // Season reactivation (Withdrawn → Pending, Full → Active) is CampAdmin-only:
-    // CampAdminController.Reactivate. Leads withdraw; only CampAdmin brings a season back.
 
     [Authorize]
     [HttpPost("{slug}/HistoricalNames/Add")]
@@ -1301,10 +1293,8 @@ internal sealed class CampController(
         };
 
     /// <summary>
-    /// Fills the read-only Roles panel and (for full-camp viewers) the Roster on the
-    /// detail VM. Sourced from CampRoleAssignment — the same data as /Edit/Members —
-    /// so the detail page never disagrees with the roles panel. No-op for anonymous
-    /// viewers or seasonless camps.
+    /// Sourced from CampRoleAssignment, the same data as /Edit/Members, so the detail page never disagrees with the
+    /// roles panel.
     /// </summary>
     private async Task PopulateDetailCardsAsync(
         CampDetailViewModel vm, CampInfo camp, CampSeasonInfo season, UserInfo? currentUser, bool isCampAdmin,

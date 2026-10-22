@@ -1,38 +1,30 @@
 namespace Humans.Gate.Domain;
 
-/// <summary>
-/// The recorded outcome of a single gate scan, stored on
-/// <see cref="GateScanEvent"/>. This is the durable
-/// audit/leaderboard value — distinct from the pre-ID-check computation
-/// (<see cref="GatePreCheckOutcome"/>) which only decides what the gate agent
-/// is asked to do next.
-/// </summary>
+/// <summary>The durable audit and leaderboard value, unlike <see cref="GatePreCheckOutcome"/>.</summary>
 internal enum GateVerdict
 {
-    /// <summary>Valid ticket, ID confirmed by the agent, general entry open — admitted.</summary>
     Admitted,
 
-    /// <summary>Valid ticket, ID confirmed, admitted under an Early Entry grant before the general-entry cutoff.</summary>
+    /// <summary>Under an Early Entry grant, before the general-entry cutoff.</summary>
     AdmittedEarly,
 
-    /// <summary>Minor admitted accompanied by a named adult; the photo-ID step is waived below the configured age threshold.</summary>
+    /// <summary>The photo-ID step is waived below the configured age threshold.</summary>
     AdmittedChildWithAdult,
 
-    /// <summary>Admitted by supervisor override despite a too-early pre-check (e.g. the holder has an Early Entry grant for a later day). The override is recorded on <see cref="GateScanEvent.OverrideByUserId"/>.</summary>
+    /// <summary>Supervisor override despite a too-early pre-check; recorded on <see cref="GateScanEvent.OverrideByUserId"/>.</summary>
     AdmittedEarlyOverride,
 
-    /// <summary>Ticket not found for the current event, or void/refunded/cancelled.</summary>
+    /// <summary>Not found for the current event, or void/refunded/cancelled.</summary>
     RejectedInvalid,
 
-    /// <summary>Ticket already used — a prior admit exists locally or the vendor already marked it checked in.</summary>
+    /// <summary>Admitted locally before, or already checked in at the vendor.</summary>
     RejectedDuplicate,
 
-    /// <summary>Scanned before the general-entry cutoff and the holder has no Early Entry grant covering today.</summary>
     RejectedTooEarly,
 
-    /// <summary>The agent tapped "No" on the ID check — the photo ID does not match the ticket name.</summary>
+    /// <summary>The agent tapped No: the photo ID doesn't match the ticket name.</summary>
     RejectedNameMismatch,
 
-    /// <summary>The verdict could not be decided automatically (e.g. Early Entry unknown for an unmatched ticket) and was escalated to a supervisor without a recorded resolution.</summary>
+    /// <summary>Escalated to a supervisor with no recorded resolution.</summary>
     Unresolved,
 }

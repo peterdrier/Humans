@@ -8,7 +8,7 @@ using NodaTime;
 
 namespace Humans.Users.Services;
 
-// Idempotent account provisioning for import jobs (ticket import, MailerLite). UserManager allowed per §2a exception.
+// Idempotent account provisioning for import jobs. UserManager allowed per the §2a exception.
 internal sealed class AccountProvisioningService(
     IUserRepository userRepository,
     IUserEmailService userEmailService,
@@ -48,8 +48,8 @@ internal sealed class AccountProvisioningService(
         }
         finally
         {
-            // SaveChanges/decorators refresh during writes. Rebuild after transaction disposal,
-            // including on rollback, so no cached entry retains uncommitted row state.
+            // Rebuild after the transaction is disposed, including on rollback, so no cached
+            // entry keeps uncommitted row state.
             foreach (var affectedUser in affectedUsers)
                 await userInfoRefresher.RefreshAsync(affectedUser, CancellationToken.None);
         }
@@ -61,7 +61,6 @@ internal sealed class AccountProvisioningService(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
 
-        // 1. Look up across OAuth / verified / unverified — via service so orchestrator owns invariants (see #687).
         var matchingUserId = (await userEmailService.FindByAddressAsync(email, aliased: true, verifiedOnly: false, ct))
             .FirstOrDefault()?.UserId;
 
@@ -82,7 +81,6 @@ internal sealed class AccountProvisioningService(
 
                 affectedUsers?.Add(existingUser.Id);
 
-                // Layer ContactSource onto self-registered users.
                 if (existingUser.ContactSource is null)
                     await userRepository.SetContactSourceIfNullAsync(existingUser.Id, source, ct);
 
@@ -125,11 +123,9 @@ internal sealed class AccountProvisioningService(
                     throw new InvalidOperationException($"Failed to create account for {email}: {errors}");
                 }
 
-                // see nobodies-collective/Humans#687
                 await userEmailService.AddProvisionedEmailAsync(newUser.Id, email, ct);
 
-                // Stub Profile invariant; UserService owns UserInfo storage/cache.
-                // Import path seeds no names; the empty stub is filled in during onboarding.
+                // The import seeds no names; onboarding fills the stub.
                 await userService.EnsureStubProfileAsync(newUser.Id, ct: ct);
                 transaction.Complete();
             }

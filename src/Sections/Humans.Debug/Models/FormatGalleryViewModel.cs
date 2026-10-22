@@ -7,11 +7,8 @@ using NodaTime.Text;
 namespace Humans.Debug.Models;
 
 /// <summary>
-/// Reflection-built catalog of every formatter on <see cref="DateFormattingExtensions"/>
-/// (the single HUM0030 home), rendered against one fixed sample so a developer can see
-/// what exists, what each one produces, and spot formatters that earn no keep. Powers
-/// <c>/Debug/FormatGallery</c>. Reflection — not a hand list — so a new formatter can
-/// never hide from the audit.
+/// Built by reflection over <see cref="DateFormattingExtensions"/>, not a hand list, so a new formatter can never hide
+/// from the audit.
 /// </summary>
 internal sealed record FormatGalleryViewModel(
     string SampleUtc,
@@ -21,7 +18,6 @@ internal sealed record FormatGalleryViewModel(
     IReadOnlyList<FormatterCard> CultureStable,
     IReadOnlyList<PatternCard> Patterns);
 
-/// <summary>One string-returning formatter method (overloads collapsed to a single card).</summary>
 internal sealed record FormatterCard(
     string Name,
     string InputType,
@@ -29,7 +25,6 @@ internal sealed record FormatterCard(
     string EnOutput,
     IReadOnlyList<string> SameOutputAs);
 
-/// <summary>One NodaTime <c>*Pattern</c> field — its pattern text and a sample render.</summary>
 internal sealed record PatternCard(
     string Name,
     string ValueType,
@@ -60,7 +55,6 @@ internal static class FormatGalleryModelBuilder
         var zoned = SampleInstant.InZone(SampleZone);
         var local = zoned.LocalDateTime; // 2026-08-25T16:23:07
 
-        // One sample value per first-parameter type the formatters accept.
         var samples = new Dictionary<Type, object>
         {
             [typeof(DateTime)] = local.ToDateTimeUnspecified(),

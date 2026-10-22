@@ -109,10 +109,8 @@ internal sealed class AgentToolDispatcher(
                 }
             case AgentToolNames.RouteToIssue:
                 {
-                    // No DB write — AgentService inspects the call args and emits an
-                    // AgentIssueProposal frame so the client can pre-fill the issue
-                    // submission form. The tool result here is just an LLM-facing
-                    // confirmation telling it the turn is over.
+                    // No DB write: AgentService emits the proposal frame. This result just tells the model the turn
+                    // is over.
                     return new AnthropicToolResult(call.Id,
                         "Proposal queued. The system will pre-fill an issue submission form for the user. Stop and await the next user turn.",
                         IsError: false);
@@ -132,11 +130,8 @@ internal sealed class AgentToolDispatcher(
     }
 
     /// <summary>
-    /// Builds the error a doc-fetch tool returns when the requested key misses. Naming the valid
-    /// keys is the whole point: a bare "Unknown section: X" gives the model nothing to correct
-    /// with, so it guesses again and often ends the turn with nothing to say
-    /// (nobodies-collective/Humans#949). Falls back to the bare message when the key set could not
-    /// be listed, so a GitHub outage never advertises an empty set as the accepted one.
+    /// Naming the valid keys lets the model correct its call. Falls back to the bare message when the keys could not
+    /// be listed, so a GitHub outage never advertises an empty set.
     /// </summary>
     private static AnthropicToolResult UnknownKey(string callId, string message, IEnumerable<string> validKeys)
     {
@@ -153,9 +148,7 @@ internal sealed class AgentToolDispatcher(
     {
         var events = await auditViewer.GetForUserAsync(userId, limit, ct);
 
-        // Render each event as a single line, substituting the viewer's GUID
-        // with "You" and skipping events whose action has no verb mapping —
-        // avoids dumping unstructured Description blobs into agent context.
+        // Substitute "You" for the viewer and skip actions with no verb mapping, rather than dumping Description blobs.
         var lines = events
             .Select(e => e.RenderPlainText(viewerUserId: userId))
             .Where(line => !string.IsNullOrWhiteSpace(line))
@@ -168,7 +161,7 @@ internal sealed class AgentToolDispatcher(
         return new AnthropicToolResult(callId, content, IsError: false);
     }
 
-    /// <summary>Resolves a SignupBlockId or Signup.Id (must belong to caller) and returns a textual summary.</summary>
+    /// <summary>The signup must belong to the caller.</summary>
     private async Task<AnthropicToolResult> DispatchGetShiftDetailsAsync(
         string callId, Guid userId, Guid shiftKey, CancellationToken ct)
     {
@@ -176,17 +169,12 @@ internal sealed class AgentToolDispatcher(
         if (activeEvent is null)
             return new AnthropicToolResult(callId, "No active event configured.", IsError: true);
 
-        // T-09 (issue nobodies-collective/Humans#720): read signups from the cached ShiftUserView
-        // rather than IShiftSignupService.GetByUserAsync. The view already
-        // filters Signups to the active event (see ShiftViewService).
+        // The cached ShiftUserView already filters signups to the active event.
         var userView = await shiftView.GetUserAsync(userId, ct);
         var signups = userView.Signups;
 
-        // Try block first. Filter to active states so RenderShiftDetails
-        // reports a status consistent with the snapshot tail (which also
-        // filters to Pending/Confirmed). Without this, a block where day 1
-        // was individually bailed but days 2–7 stayed Confirmed would render
-        // "Status: Bailed" here while the snapshot showed "Confirmed".
+        // Active states only, so the status agrees with the snapshot tail: a block whose day 1 was bailed would
+        // otherwise render "Bailed" here and "Confirmed" there.
         var blockMatches = signups
             .Where(s => s.SignupBlockId == shiftKey && s.IsActive)
             .ToList();
@@ -202,7 +190,7 @@ internal sealed class AgentToolDispatcher(
         return new AnthropicToolResult(callId, "Shift not found.", IsError: true);
     }
 
-    /// <summary>Renders the get_shift_details blob. All signups passed in must belong to the caller.</summary>
+    /// <summary>All signups passed in must belong to the caller.</summary>
     private static string RenderShiftDetails(IReadOnlyList<ShiftSignupSummary> signups)
     {
         var ordered = signups.OrderBy(s => s.Date).ToList();

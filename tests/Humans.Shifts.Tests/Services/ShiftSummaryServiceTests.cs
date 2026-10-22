@@ -15,12 +15,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Tests.Services;
 
-/// <summary>
-/// Tests for <see cref="ShiftManagementService.BuildSummaryAsync"/> — the Shift
-/// Summary by Camp read. Covers the flat human table, the by-camp pivot with the
-/// active-camp roster left-join (absent camps → zero rows), the campless bucket,
-/// the global / team-set / single-rota scopes, and rota/slug validation.
-/// </summary>
 public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
 {
     private const int PublicYear = 2026;
@@ -32,8 +26,8 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
-    // Scenario ids. The entity is what the repository reads; _burn is the
-    // cross-section DTO BuildSummaryAsync now takes (same Id, same calendar).
+    // The entity is what the repository reads; _burn is the cross-section DTO
+    // BuildSummaryAsync takes (same Id, same calendar).
     private readonly EventSettings _event;
     private readonly BurnSettingsInfo _burn;
     private readonly Guid _powerId = Guid.NewGuid();
@@ -96,7 +90,6 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
                 return Task.FromResult(team is null ? null : ToTeamInfo(team));
             });
 
-        // Display names.
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
@@ -107,7 +100,6 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
                 return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
             });
 
-        // Camp reads.
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new CampSettingsInfo(PublicYear, [])));
         _campService.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
@@ -284,8 +276,6 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
 
         summary.Should().BeNull();
     }
-
-    // ── seed + factories ──────────────────────────────────────────────────────
 
     private void SeedScenario()
     {

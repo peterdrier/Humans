@@ -15,8 +15,7 @@ namespace Humans.Backdoor.Tests.Controllers;
 
 /// <summary>
 /// The section's one page, at <c>/Backdoor</c>. Covers what it decides on its own: which
-/// humans the allocate dropdown offers, and whether a listed key actually works
-/// (nobodies-collective/Humans#1128).
+/// humans the allocate dropdown offers, and whether a listed key actually works.
 /// </summary>
 public class BackdoorControllerTests
 {

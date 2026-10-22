@@ -14,7 +14,6 @@ using NodaTime;
 namespace Humans.TicketTailor.Services;
 
 /// <summary>
-/// Ticket Tailor v1 client: one method per <see cref="ITicketVendorService"/> port method.
 /// Void and issue throw <see cref="TicketVendorWriteException"/>; every other method throws
 /// <see cref="HttpRequestException"/>.
 /// </summary>
@@ -135,7 +134,7 @@ internal sealed class TicketTailorService : ITicketVendorService
             if (cursor is not null)
                 url += $"&starting_after={cursor}";
 
-            // Time each request under its public operation name, not the whole sync.
+            // Time each request under its operation name, not the whole sync.
             TtPaginatedResponse<T>? body;
             using (_logger.TimeOperation(operation: operation))
             {
@@ -182,8 +181,7 @@ internal sealed class TicketTailorService : ITicketVendorService
         var evt = await response.Content.ReadFromJsonAsync<TtEvent>(JsonOptions, ct)
             ?? throw new HttpRequestException("TicketTailor event response is missing data.");
 
-        // Capacity comes from ticket_groups (waves share the same pool).
-        // Summing ticket_types.quantity_total is wrong — waves are subdivisions, not additive.
+        // Capacity is per ticket group: waves subdivide one pool, so summing ticket types overcounts.
         var totalCapacity = evt.TicketGroups?.Sum(g => g.MaxQuantity ?? 0) ?? 0;
         if (totalCapacity == 0)
             totalCapacity = evt.TicketTypes?.Sum(tt => tt.QuantityTotal ?? 0) ?? 0;
@@ -351,11 +349,8 @@ internal sealed class TicketTailorService : ITicketVendorService
         }
     }
 
-    // TicketTailor /check_ins includes checkout/undo records (quantity = -1) alongside
-    // check-ins (quantity = +1, or more for a group ticket). Net the quantity per issued
-    // ticket and report a check-in only when the net is positive — otherwise a checkout
-    // record would wrongly mark the attendee onsite. The recorded arrival is the earliest
-    // positive scan (check_in_at, falling back to created_at).
+    // /check_ins includes checkout/undo records (quantity -1). Report a check-in only when the net quantity per
+    // ticket is positive, or a checkout would mark the attendee onsite. Arrival is the earliest positive scan.
     private static IReadOnlyList<VendorCheckInDto> NetCheckIns(IEnumerable<TtCheckIn> records)
     {
         var result = new List<VendorCheckInDto>();
@@ -382,10 +377,7 @@ internal sealed class TicketTailorService : ITicketVendorService
         return result;
     }
 
-    /// <summary>
-    /// TT puts the code in a "gift_card" line item's description, in parentheses:
-    /// "NCA Contributor Discount (DISC25-OPGYT8-004)".
-    /// </summary>
+    /// <summary>The code is in a gift_card line item's description, in parentheses: "NCA Contributor Discount (DISC25-OPGYT8-004)".</summary>
     private static string? ExtractDiscountCode(List<TtLineItem>? lineItems)
     {
         var discountItem = lineItems?.FirstOrDefault(li =>
@@ -413,7 +405,7 @@ internal sealed class TicketTailorService : ITicketVendorService
         return discountCents > 0 ? discountCents / 100m : null;
     }
 
-    /// <summary>Standalone "donation" line items (VAT-exempt add-ons); 0 when none.</summary>
+    /// <summary>Standalone "donation" line items (VAT-exempt add-ons).</summary>
     private static decimal ExtractDonationAmount(List<TtLineItem>? lineItems)
     {
         if (lineItems is null) return 0m;
@@ -435,11 +427,8 @@ internal sealed class TicketTailorService : ITicketVendorService
         Status: ticket.Status ?? "valid",
         Barcode: ticket.Barcode);
 
-    // TT's issued_ticket.email is the buyer/account email replicated onto every
-    // ticket in the order — useless for matching the actual attendee. The real
-    // attendee email is collected via a custom checkout question whose text is
-    // exactly "Email". Match the question string verbatim; fall back to the
-    // top-level field when absent.
+    // issued_ticket.email is the buyer's, copied onto every ticket. The attendee's comes from a custom
+    // checkout question whose text is exactly "Email"; fall back to the top-level field.
     private static string? ResolveAttendeeEmail(TtIssuedTicket ticket)
     {
         var customEmail = ticket.CustomQuestions?
@@ -468,8 +457,7 @@ internal sealed class TicketTailorService : ITicketVendorService
             $"TicketTailor {op} {subject} returned {(int)response.StatusCode}: {body}", kind);
     }
 
-    // Wire records: internal (not private) for System.Text.Json; names follow JsonOptions'
-    // snake_case policy.
+    // Internal, not private, for System.Text.Json.
 
     internal sealed record TtPaginatedResponse<T>(
         List<T> Data,

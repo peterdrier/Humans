@@ -1,17 +1,8 @@
 @inject IWebHostEnvironment HostEnv
 @inject IConfiguration Config
 @*
-    The dev sign-in panel on Shell's /Account/Login. It lives here rather than in that view
-    because it enumerates DevLoginController.PersonasFor, which is internal to this section
-    (step 3b's "move the markup instead of the key" applied to a type instead of a resource
-    key). Shell renders it with @await Html.PartialAsync("_DevLoginPanel") — partial lookup
-    resolves by name across application parts, the same mechanism as _GateLayout and
-    _IssueWidgetModal.
-
-    Shell keeps the `devAuthEnabled` guard around the call, so this partial is never rendered
-    in Production. ViewData flows from the calling view, which is where ReturnUrl comes from.
-
-    No Localizer: the whole panel is English developer copy, like the rest of the section.
+    Lives here, not in Shell's /Account/Login, because PersonasFor is internal to this section; Shell renders it by
+    name. Shell's devAuthEnabled guard keeps it out of Production. ReturnUrl comes from the calling view's ViewData.
 *@
 <div class="row justify-content-center mt-3">
     <div class="col-md-6">

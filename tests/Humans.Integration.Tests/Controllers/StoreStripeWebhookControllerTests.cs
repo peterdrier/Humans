@@ -93,10 +93,6 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
         matches.Should().Be(1);
     }
 
-    // ==========================================================================
-    // async-payment state machine (nobodies-collective/Humans#638)
-    // ==========================================================================
-
     [HumansFact(Timeout = 30000)]
     public async Task Webhook_completed_unpaid_records_pending_and_excludes_from_balance()
     {
@@ -239,10 +235,6 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
         exists.Should().BeFalse();
     }
 
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
-
     private async Task<HttpResponseMessage> PostWithSignatureAsync(string payload, string signatureHeader)
     {
         var content = new StringContent(payload, Encoding.UTF8, "application/json");
@@ -256,9 +248,8 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
 
     private async Task<Guid> SeedOpenOrderAsync()
     {
-        // Sign in once as a barrio lead persona to trigger the dev camp/season seeding,
-        // then seed the order via DbContext. The webhook itself is anonymous, so this
-        // login flow is just a convenient way to get the foreign-key prerequisites in place.
+        // The webhook is anonymous; signing in as a barrio lead just seeds the dev camp and season the order's foreign
+        // keys need.
         using (var seedClient = Factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false
@@ -291,9 +282,6 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
         return orderId;
     }
 
-    /// <summary>
-    /// Builds a minimal Stripe Event JSON with the supplied data.object payload.
-    /// </summary>
     private static string BuildEventJson(string eventType, string dataObjectJson)
     {
         return $$"""
@@ -315,9 +303,7 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
             "checkout.session.completed", sessionId, paymentIntentId, amountTotalMinorUnits, metadataOrderId, paymentStatus);
 
     /// <summary>
-    /// Builds a <c>checkout.session.*</c> event for the given type. Shared by completed, the two
-    /// async-payment events, and expired so the state-machine integration tests exercise the real
-    /// signature + parse + persist path.
+    /// A <c>checkout.session.*</c> event, so the state-machine tests run the real signature, parse and persist path.
     /// </summary>
     private static string BuildCheckoutSessionEventJson(
         string eventType, string sessionId, string paymentIntentId, long amountTotalMinorUnits,
@@ -337,10 +323,7 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
         return BuildEventJson(eventType, sessionJson);
     }
 
-    /// <summary>
-    /// Computes a valid Stripe-Signature header (scheme v1) per
-    /// https://docs.stripe.com/webhooks#verify-manually.
-    /// </summary>
+    /// <summary>A valid v1 Stripe-Signature header, per https://docs.stripe.com/webhooks#verify-manually.</summary>
     private static string SignPayload(string payload, string secret)
     {
         var ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds();

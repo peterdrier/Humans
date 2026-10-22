@@ -15,7 +15,6 @@ internal sealed record AnswerState(
     IReadOnlyDictionary<string, IReadOnlyList<string>>? Grid = null,
     RankedAnswer? Ranked = null)
 {
-    /// <summary>An empty/unanswered state.</summary>
     public static AnswerState None { get; } = new([], null, null);
 
     /// <summary>True when any option, text, rating, Grid cell or ranked entry (including a rejection) is present.</summary>
@@ -144,7 +143,6 @@ internal static class SurveyWizardFlow
         return true;
     }
 
-    /// <summary>Projects the session answers into the flow's <see cref="AnswerState"/> map (keyed by question id).</summary>
     public static Dictionary<Guid, AnswerState> ToAnswerStates(IReadOnlyDictionary<string, SurveyWizardAnswer> answers)
     {
         var result = new Dictionary<Guid, AnswerState>();
@@ -167,7 +165,6 @@ internal static class SurveyWizardFlow
         return result;
     }
 
-    /// <summary>Maps the session answers to the submission/autosave shape.</summary>
     public static IReadOnlyList<SurveyAnswerInput> ToAnswerInputs(IReadOnlyDictionary<string, SurveyWizardAnswer> answers)
         => answers
             .Where(kv => Guid.TryParse(kv.Key, out _))

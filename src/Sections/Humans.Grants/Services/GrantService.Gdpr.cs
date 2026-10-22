@@ -6,12 +6,7 @@ using NodaTime;
 
 namespace Humans.Grants.Services;
 
-/// <summary>
-/// The GDPR surface. Export: the person's own grants, and what they did as a creator, manager
-/// or issuer (programs created, managers named, grants issued or revoked). Erasure deletes the person's grants and manager rows; the bare actor ids on rows
-/// they decided stay as the record of who decided. Merge re-keys every user-id column onto the
-/// surviving account, revoking a duplicate live grant.
-/// </summary>
+/// <summary>Erasure keeps the bare actor ids on rows the person decided, as the record of who decided.</summary>
 internal sealed partial class GrantService : IUserDataContributor, IUserMerge
 {
     internal const string Grants = "Grants";

@@ -4,12 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Auth.Authorization;
 
-/// <summary>
-/// Resource-based authorization handler for role assignment operations.
-/// - Admin: manage any role
-/// - Board or HumanAdmin: manage roles in RoleNames.BoardManageableRoles
-/// - Everyone else: deny
-/// </summary>
+/// <summary>Admin manages any role; Board and HumanAdmin only <c>RoleNames.BoardManageableRoles</c>.</summary>
 internal sealed class RoleAssignmentAuthorizationHandler : AuthorizationHandler<RoleAssignmentOperationRequirement, string>
 {
     private static IReadOnlySet<string> BoardManageableRoles => RoleNames.BoardManageableRoles;

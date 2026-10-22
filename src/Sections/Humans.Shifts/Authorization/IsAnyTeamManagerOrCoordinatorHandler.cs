@@ -7,13 +7,8 @@ using Microsoft.AspNetCore.Authorization;
 namespace Humans.Shifts.Authorization;
 
 /// <summary>
-/// Succeeds when the user EITHER holds one of the privileged dashboard roles
-/// (Admin, NoInfoAdmin, VolunteerCoordinator) OR is a coordinator / management
-/// role-holder on any team or sub-team. Encodes the OR inside the handler so
-/// <see cref="PolicyNames.ShiftDepartmentManager"/> can express role-or-team-coord
-/// as a single requirement (multiple requirements on a policy AND together).
-/// Reads the coordinator-team-ids list through <see cref="IShiftService.GetCoordinatorTeamIdsAsync"/>
-/// which Teams answers from its in-RAM team read model, so no request hits the DB.
+/// A privileged dashboard role OR coordinator of any team, in one handler because a policy's requirements AND.
+/// Coordinator team ids come from Teams' in-RAM model, so no request hits the DB.
 /// </summary>
 internal sealed class IsAnyTeamManagerOrCoordinatorHandler(IShiftService shiftManagement)
     : AuthorizationHandler<IsAnyTeamManagerOrCoordinatorRequirement>
@@ -24,9 +19,7 @@ internal sealed class IsAnyTeamManagerOrCoordinatorHandler(IShiftService shiftMa
     {
         var user = context.User;
 
-        // Privileged-role short-circuit — same role list as ShiftDashboardAccess.
-        // Avoids a service call (and its DB hit on cache miss) for the common
-        // admin path.
+        // Same role list as ShiftDashboardAccess; spares the common admin path a service call.
         if (user.IsInRole(RoleNames.Admin)
             || user.IsInRole(RoleNames.NoInfoAdmin)
             || user.IsInRole(RoleNames.VolunteerCoordinator))

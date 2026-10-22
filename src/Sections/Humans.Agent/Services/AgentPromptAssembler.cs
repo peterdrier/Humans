@@ -9,10 +9,7 @@ namespace Humans.Agent.Services;
 internal sealed class AgentPromptAssembler : IAgentPromptAssembler
 {
     /// <summary>
-    /// Maximum number of <see cref="UpcomingShiftEntry"/> rows rendered into
-    /// the per-turn user-context tail. Anything beyond this is summarised as
-    /// "+N more" — keeps the prompt bounded for volunteers signed up to many
-    /// ranges. The full set is available to the agent via
+    /// Rows beyond this render as "+N more", keeping the prompt bounded; the agent gets the rest through
     /// <c>get_shift_details</c>.
     /// </summary>
     internal const int MaxRenderedUpcomingShifts = 10;

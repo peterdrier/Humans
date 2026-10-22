@@ -2,19 +2,10 @@ using Humans.Issues.Domain;
 
 namespace Humans.Issues.Models;
 
-/// <summary>
-/// Maps a request path (e.g. captured by the floating-widget submission as
-/// <c>PageUrl</c>) to the technical Section name used by
-/// <see cref="IssueSectionRouting"/>. Used by the <c>IssuesController</c> to
-/// auto-route an issue when the submitter doesn't pick a section themselves.
-/// </summary>
+/// <summary>Auto-routes an issue whose submitter didn't pick a section.</summary>
 internal static class IssueSectionInference
 {
-    /// <summary>
-    /// Returns the technical Section name (matching <see cref="IssueSectionRouting"/>)
-    /// inferred from a path's first segment, or null if no match.
-    /// Examples: "/Camps/123" returns "Camps"; "/Tickets" returns "Tickets"; "/" returns null.
-    /// </summary>
+    /// <summary>From the path's first segment: "/Camps/123" gives "Camps"; "/" gives null.</summary>
     public static string? FromPath(string? path, IssueSectionRouting routing)
     {
         if (string.IsNullOrWhiteSpace(path)) return null;

@@ -4,12 +4,6 @@ using NodaTime;
 
 namespace Humans.GoogleIntegration.Data;
 
-/// <summary>
-/// EF-backed implementation of <see cref="IGoogleSyncOutboxRepository"/>.
-/// Registered as Singleton via <see cref="IDbContextFactory{TContext}"/>
-/// per design-rules §15b — every method creates and disposes a fresh
-/// short-lived <see cref="GoogleIntegrationDbContext"/>.
-/// </summary>
 internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<GoogleIntegrationDbContext> factory)
     : IGoogleSyncOutboxRepository
 {
@@ -37,8 +31,7 @@ internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<GoogleIntegra
     public async Task<int> CountFailedAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Dead-lettered events must stay in the count or the badge silently reads zero
-        // (nobodies-collective/Humans#847).
+        // Dead-lettered events stay in the count, or the badge silently reads zero.
         return await ctx.GoogleSyncOutboxEvents
             .AsNoTracking()
             .CountAsync(e => e.FailedPermanently || (e.ProcessedAt == null && e.LastError != null), ct);

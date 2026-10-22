@@ -18,11 +18,6 @@ using Xunit;
 
 namespace Humans.Email.Tests.Services;
 
-/// <summary>
-/// <see cref="CommunicationPreferenceService"/> over <c>email_communication_preferences</c> (Users
-/// decomposition commit 14): the rules carried over from Users, the frozen-legacy fallback and write
-/// seed, cleared rows, the <c>email.communication-preferences</c> copy, the merge fold and the GDPR slice.
-/// </summary>
 public sealed class CommunicationPreferenceServiceTests : IDisposable
 {
     private readonly EmailDbContext _db;
@@ -100,8 +95,6 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
 
     private Task<List<CommunicationPreference>> RowsAsync(Guid userId) =>
         _db.CommunicationPreferences.AsNoTracking().Where(r => r.UserId == userId).ToListAsync(Ct);
-
-    // ─── Rules carried over from Users ───────────────────────────────────────────
 
     [HumansTheory]
     [InlineData(true)]
@@ -270,8 +263,6 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
         (await _service.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: true, Ct)).Should().Be(2);
     }
 
-    // ─── Unsubscribe tokens ──────────────────────────────────────────────────────
-
     [HumansFact]
     public void UnsubscribeToken_RoundTrips()
     {
@@ -309,8 +300,6 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
         _service.GenerateBrowserUnsubscribeUrl(Guid.NewGuid(), MessageCategory.Marketing)
             .Should().StartWith("https://test.example.com/Email/Unsubscribe/");
     }
-
-    // ─── Legacy fallback, write seed, cleared rows ───────────────────────────────
 
     [HumansFact]
     public async Task Reads_FallBackToTheLegacyRow_UntilARowShadowsIt()
@@ -398,8 +387,6 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
         _audit.ReceivedCalls().Should().ContainSingle();
     }
 
-    // ─── email.communication-preferences ─────────────────────────────────────────
-
     [HumansFact]
     public async Task Copy_WritesEveryUnshadowedLegacyRow_Once_AndNeverOverwritesALaterRow()
     {
@@ -427,8 +414,6 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     public void DataMigration_IsRegisteredUnderItsKey() =>
         new SectionDataMigrations().Migrations().Select(m => m.Key)
             .Should().ContainSingle().Which.Should().Be("email.communication-preferences");
-
-    // ─── Merge fold ──────────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task Merge_LaterPreferenceWins_SourceOnlyMoves_AndSourceLegacyIsShadowed()
@@ -493,8 +478,6 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
         row.SubscribedAt.Should().Be(targetSubscribedAt ?? sourceSubscribedAt);
         row.OptedOut.Should().Be(sourceIsNewer);
     }
-
-    // ─── GDPR ────────────────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task Export_CoversRowsAndLegacy_AndEraseDeletesTheRows()

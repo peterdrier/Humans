@@ -9,10 +9,6 @@ namespace Humans.Base.Tests.Threading;
 
 public class TrackedLockTests
 {
-    // =========================================================================
-    // Uncontended acquire / release
-    // =========================================================================
-
     [HumansFact]
     public async Task AcquireAsync_uncontended_acquires_and_releases()
     {
@@ -32,10 +28,6 @@ public class TrackedLockTests
         await act.Should().NotThrowAsync("lock should be available again after the first release");
     }
 
-    // =========================================================================
-    // Releaser is single-release (double-dispose safe)
-    // =========================================================================
-
     [HumansFact]
     public async Task Releaser_double_dispose_is_safe()
     {
@@ -50,10 +42,6 @@ public class TrackedLockTests
         // Lock should be acquirable exactly once after a single release.
         using var r2 = await sut.AcquireAsync(NullLogger.Instance, TestContext.Current.CancellationToken);
     }
-
-    // =========================================================================
-    // Mutual exclusion: two concurrent acquirers serialize
-    // =========================================================================
 
     [HumansFact]
     public async Task AcquireAsync_serializes_concurrent_acquirers()
@@ -80,10 +68,6 @@ public class TrackedLockTests
         violation.Should().BeFalse("two acquirers must never be inside the lock simultaneously");
     }
 
-    // =========================================================================
-    // WaitToLogLevel pure-function thresholds
-    // =========================================================================
-
     [HumansTheory]
     [InlineData(0, null)]          // below debug → no log
     [InlineData(500, null)]        // 500ms < 1s debug threshold → no log
@@ -105,10 +89,6 @@ public class TrackedLockTests
         result.Should().Be(expected);
     }
 
-    // =========================================================================
-    // Contended wait logs via the injected logger
-    // =========================================================================
-
     [HumansFact]
     public async Task AcquireAsync_contended_logs_when_wait_exceeds_debug_threshold()
     {
@@ -124,17 +104,9 @@ public class TrackedLockTests
         // Acquire first to force contention.
         var first = await sut.AcquireAsync(NullLogger.Instance, TestContext.Current.CancellationToken);
 
-        // Call (don't await) the second acquire on this same thread, not on a
-        // spawned Task. An async method always runs synchronously up to its
-        // first real suspension point, and SemaphoreSlim.WaitAsync registers
-        // a waiter synchronously — under its internal lock — before it ever
-        // returns an incomplete task when the semaphore is unavailable. So by
-        // the time this call returns, the waiter is deterministically already
-        // blocked on the lock; no thread-pool scheduling or wall-clock
-        // guesswork is involved. A prior version of this test raced a blind
-        // delay against Task.Run's scheduling latency and could flake under
-        // CI load when the pool was slow to start the waiter before the
-        // delay elapsed (observed: peterdrier/Humans run 29370106498).
+        // Call (don't await) the second acquire on this thread: SemaphoreSlim.WaitAsync registers
+        // its waiter synchronously before returning an incomplete task, so when this call returns
+        // the waiter is deterministically blocked. Task.Run plus a blind delay flaked under CI load.
         var pendingSecond = sut.AcquireAsync(logger, TestContext.Current.CancellationToken);
 
         // The only remaining timing dependency: wait long enough ourselves
@@ -152,10 +124,6 @@ public class TrackedLockTests
             Arg.Is<Exception?>(e => e == null),
             Arg.Any<Func<object, Exception?, string>>());
     }
-
-    // =========================================================================
-    // Timeout: throws TimeoutException with lock name in message
-    // =========================================================================
 
     [HumansFact]
     public async Task AcquireAsync_throws_TimeoutException_when_lock_held_past_timeout()
@@ -176,10 +144,6 @@ public class TrackedLockTests
 
         holder.Dispose();
     }
-
-    // =========================================================================
-    // Cancellation: waiting acquire honours a cancelled token
-    // =========================================================================
 
     [HumansFact]
     public async Task AcquireAsync_cancelled_token_throws_OperationCanceledException()

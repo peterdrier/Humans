@@ -1,10 +1,6 @@
 @model Humans.Users.Models.PublicPopoverViewModel
-@*
-    Reduced popover for anonymous viewers on public team pages.
-    Surfaces avatar + BurnerName + public coordinator role labels only.
-    NEVER include city/country, full team list, languages, tier badge,
-    or suspended badge — see issue #771 acceptance criteria.
-*@
+@* Anonymous viewers on public team pages: NEVER include location, full team list, languages,
+   tier badge or suspended badge. *@
 <div class="d-flex align-items-center" style="min-width: 200px;">
     <vc:human user-id="@Model.UserId" layout="Avatar" size="72" css-class="me-2" link="None" />
     <div>

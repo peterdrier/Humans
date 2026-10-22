@@ -22,8 +22,6 @@ internal sealed class ApplicationStateHistoryConfiguration : IEntityTypeConfigur
         builder.Property(sh => sh.Notes)
             .HasMaxLength(4000);
 
-        // ChangedByUserId is a bare cross-section Guid column — no FK constraint, no nav.
-
         builder.HasIndex(sh => sh.ApplicationId);
         builder.HasIndex(sh => sh.ChangedAt);
     }

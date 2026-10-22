@@ -5,25 +5,20 @@ using Humans.Users.Contracts;
 namespace Humans.Users.Services;
 
 /// <summary>
-/// Result of a single person-search match: which field hit, plus optional snippet/email for display
-/// and a relevance <paramref name="Score"/> (higher = better) so controllers can rank results by
-/// match quality instead of alphabetically. See <see cref="PersonSearchMatcher"/> for the tiers.
+/// Which field hit, an optional snippet/email, and a relevance <paramref name="Score"/> (higher is
+/// better). See <see cref="PersonSearchMatcher"/> for the tiers.
 /// </summary>
 internal sealed record PersonSearchMatch(string Field, string? Snippet, string? MatchedEmail, int Score);
 
 /// <summary>
-/// Pure, scope-confined matcher for person search. Operates on the cached <see cref="UserInfo"/>
-/// read-model so callers (CachingUserService) stay a thin iteration + Guid fast-path over it.
-/// Matching is accent- and case-insensitive; name matching is whitespace-token-split.
-/// <c>fields</c> IS the authorization model — the matcher never reads a field its
-/// scope flag is unset. Board/private fields (notes, IBAN, emergency contact, GDPR health) are
-/// never searchable under any flag.
+/// Accent- and case-insensitive; names match per token. <c>fields</c> IS the authorization model:
+/// the matcher never reads a field whose flag is unset, and Board/private fields (notes, IBAN,
+/// emergency contact, health) are never searchable.
 /// </summary>
 internal static class PersonSearchMatcher
 {
-    // Relevance tiers (higher = better). Name matches always outrank non-name (bio/city/email)
-    // matches, and within a name the order is exact > whole-string-prefix > token-prefix > contains.
-    // This is what floats the literal "Ian" above "Adrian"/"Brian" instead of alphabetizing them.
+    // Name matches outrank everything else, and within a name exact > prefix > token-prefix >
+    // contains, so "Ian" floats above "Adrian" instead of alphabetizing.
     private const int ScoreExactName = 100;
     private const int ScorePrefixName = 85;
     private const int ScoreTokenPrefixName = 80;
@@ -152,7 +147,7 @@ internal static class PersonSearchMatcher
         return snippet;
     }
 
-    /// <summary>Folds a string for accent-/case-insensitive comparison: lowercase + NFD + strip combining marks.</summary>
+    /// <summary>Lowercase + NFD + strip combining marks.</summary>
     internal static string Fold(string? value)
     {
         if (string.IsNullOrEmpty(value))
@@ -169,14 +164,12 @@ internal static class PersonSearchMatcher
         return sb.ToString();
     }
 
-    /// <summary>Folds the query and splits on whitespace into non-empty tokens.</summary>
     private static string[] FoldTokens(string query) =>
         Fold(query).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     /// <summary>
-    /// Ranks an already-matched name: exact &gt; whole-string-prefix &gt; token-prefix &gt; contains.
-    /// Both arguments are pre-folded. The caller has already confirmed a match, so the floor is
-    /// <see cref="ScoreContainsName"/> (covers token-substring/multi-token hits that aren't a prefix).
+    /// Ranks an already-matched, pre-folded name. The floor is <see cref="ScoreContainsName"/>,
+    /// which covers token-substring and multi-token hits that aren't a prefix.
     /// </summary>
     private static int ScoreNameTier(string foldedName, string foldedQuery)
     {
@@ -193,7 +186,7 @@ internal static class PersonSearchMatcher
         return ScoreContainsName;
     }
 
-    /// <summary>True when every token is a substring of the folded haystack (order-independent).</summary>
+    /// <summary>Order-independent.</summary>
     private static bool AllTokensIn(string? haystack, string[] foldedTokens)
     {
         if (string.IsNullOrEmpty(haystack))

@@ -4,16 +4,9 @@ using Microsoft.AspNetCore.Http.Extensions;
 namespace Humans.Web.Middleware;
 
 /// <summary>
-/// Dev/QA-only response scanner: an unresolved <c>&lt;vc:...&gt;</c> element ships to the
-/// browser as literal markup with a green build, no exception, and no log line
-/// (nobodies-collective/Humans#1055) — Razor only generates a view-component tag helper call
-/// when the component type is public AND the view's folder imports the assembly via
-/// <c>@addTagHelper</c>. <see cref="Hosting.SectionViewComponentFeatureProvider"/> relaxes
-/// MVC's runtime lookup for section assemblies, but nothing relaxes Razor's compile-time tag
-/// helper generation, so a non-public component (or a missing directive) silently never gets a
-/// call site. This middleware buffers HTML responses and logs a warning naming the page and the
-/// offending element when one survives into the rendered output, turning that silent failure
-/// into a log line on every preview deploy.
+/// Dev/QA-only response scanner: an unresolved <c>&lt;vc:...&gt;</c> element ships as literal markup with a green
+/// build and no log. Razor only generates the tag-helper call when the component is public and the view's folder
+/// imports its assembly, so this logs a warning naming the page and element when one survives into the output.
 /// </summary>
 /// <remarks>
 /// Registered only for Development/Staging(QA) in <c>Program.cs</c> — never Production or

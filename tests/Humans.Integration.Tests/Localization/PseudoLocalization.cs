@@ -9,11 +9,8 @@ using Microsoft.Extensions.Localization;
 namespace Humans.Integration.Tests.Localization;
 
 /// <summary>
-/// Test-only <see cref="IStringLocalizerFactory"/> that wraps every localized lookup in
-/// sentinel brackets (<see cref="PseudoStringLocalizer.Open"/> / <see cref="PseudoStringLocalizer.Close"/>).
-/// When the app renders through this factory, any user-visible text that came from the
-/// localizer is bracketed; therefore any <em>unbracketed</em> prose in the rendered HTML is a
-/// hard-coded (non-localized) literal. This is the engine of the localization-coverage sweep.
+/// Wraps every localized lookup in <see cref="PseudoStringLocalizer.Open"/>/<see cref="PseudoStringLocalizer.Close"/>,
+/// so any unbracketed prose in rendered HTML is a hard-coded literal.
 /// </summary>
 internal sealed class PseudoStringLocalizerFactory : IStringLocalizerFactory
 {
@@ -23,16 +20,14 @@ internal sealed class PseudoStringLocalizerFactory : IStringLocalizerFactory
 }
 
 /// <summary>
-/// Returns every requested key wrapped in marker brackets. The sweep only cares whether a
-/// rendered run is marked, so the real resource values are irrelevant — keying off the name
-/// keeps this independent of which .resx entries happen to exist.
+/// Returns the key itself, bracketed: the sweep only checks for markers, so this stays independent of which .resx
+/// entries exist.
 /// </summary>
 internal sealed class PseudoStringLocalizer : IStringLocalizer
 {
-    /// <summary>U+27E6 MATHEMATICAL LEFT WHITE SQUARE BRACKET — does not occur in app content.</summary>
+    /// <summary>U+27E6, which never occurs in app content.</summary>
     public const char Open = '⟦';
 
-    /// <summary>U+27E7 MATHEMATICAL RIGHT WHITE SQUARE BRACKET.</summary>
     public const char Close = '⟧';
 
     public static readonly PseudoStringLocalizer Instance = new();
@@ -55,7 +50,6 @@ internal sealed class PseudoStringLocalizer : IStringLocalizer
         }
         catch (FormatException)
         {
-            // Key is a plain resource name (not a composite format string) — leave it as-is.
             return name;
         }
     }
@@ -65,17 +59,12 @@ internal sealed class PseudoStringLocalizer : IStringLocalizer
 }
 
 /// <summary>
-/// <see cref="HumansWebApplicationFactory"/> with the real <see cref="IStringLocalizerFactory"/>
-/// swapped for <see cref="PseudoStringLocalizerFactory"/>, so every localized string renders
-/// bracketed. The swap also reaches <c>IViewLocalizer</c> and <c>IHtmlLocalizer&lt;T&gt;</c>,
-/// which the framework builds on top of <see cref="IStringLocalizerFactory"/>. Isolated to the
-/// sweep fixture — all other integration tests keep the real localizer.
+/// <see cref="HumansWebApplicationFactory"/> with <see cref="PseudoStringLocalizerFactory"/> in place of the real
+/// factory, which also reaches <c>IViewLocalizer</c> and <c>IHtmlLocalizer&lt;T&gt;</c>.
 /// </summary>
 /// <remarks>
-/// The sweep needs its own app boot (a different DI graph) but not its own Postgres
-/// container: it takes a database from the assembly's. The sweep constructs this
-/// itself rather than declaring it as a fixture, so the boot costs nothing on the
-/// runs where the sweep is skipped.
+/// A separate app boot, but a database from the assembly's container. The sweep constructs it itself, so skipped runs
+/// pay nothing.
 /// </remarks>
 public sealed class PseudoLocalizationWebApplicationFactory(string connectionString)
     : HumansWebApplicationFactory(connectionString)

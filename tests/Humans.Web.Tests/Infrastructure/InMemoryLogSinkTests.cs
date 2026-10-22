@@ -6,8 +6,6 @@ namespace Humans.Web.Tests.Infrastructure;
 
 public class InMemoryLogSinkTests
 {
-    // ── helpers ──────────────────────────────────────────────────────────────
-
     private static LogEvent MakeEvent(LogEventLevel level, DateTimeOffset? timestamp = null) => new(
         timestamp: timestamp ?? DateTimeOffset.UtcNow,
         level: level,
@@ -15,13 +13,9 @@ public class InMemoryLogSinkTests
         messageTemplate: new MessageTemplate([]),
         properties: []);
 
-    // ── warning buffer cycles; earlier errors are still present ──────────────
-
     [HumansFact]
     public void WarningsCannotEvictErrors()
     {
-        // Warning cap = 3, error cap = 10.  Flood warnings past their cap while
-        // keeping one error emitted before the flood.  The error must survive.
         var sink = new InMemoryLogSink(warningCapacity: 3, errorCapacity: 10);
 
         var error = MakeEvent(LogEventLevel.Error);
@@ -33,8 +27,6 @@ public class InMemoryLogSinkTests
         var all = sink.GetEvents(count: 1000);
         all.Should().Contain(error, "error must not be evicted by warning overflow");
     }
-
-    // ── error buffer respects its own cap ────────────────────────────────────
 
     [HumansFact]
     public void ErrorBufferCapsAtErrorCapacity()
@@ -60,8 +52,6 @@ public class InMemoryLogSinkTests
         events.Should().HaveCount(2);
     }
 
-    // ── merged GetEvents ordering (newest first) ─────────────────────────────
-
     [HumansFact]
     public void GetEvents_ReturnsNewestFirst()
     {
@@ -79,8 +69,6 @@ public class InMemoryLogSinkTests
         events[1].Timestamp.Should().Be(t0.AddSeconds(2));
         events[2].Timestamp.Should().Be(t0.AddSeconds(1));
     }
-
-    // ── minimum-level filter ─────────────────────────────────────────────────
 
     [HumansFact]
     public void GetEvents_MinLevelError_ExcludesWarnings()
@@ -120,8 +108,6 @@ public class InMemoryLogSinkTests
 
         sink.GetEvents(count: 3).Should().HaveCount(3);
     }
-
-    // ── lifetime counts unaffected by eviction ───────────────────────────────
 
     [HumansFact]
     public void LifetimeCounts_SurviveWarningEviction()

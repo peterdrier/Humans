@@ -6,10 +6,6 @@ using Humans.AuditLog.Contracts;
 
 namespace Humans.GoogleIntegration.Services;
 
-/// <summary>
-/// Stub implementation of IGoogleSyncManagement that logs actions without calling Google APIs.
-/// Replace with real implementation when Google Workspace API integration is ready.
-/// </summary>
 internal sealed class StubGoogleSyncService(
     ILogger<StubGoogleSyncService> logger,
     IGoogleSyncOutboxRepository outboxRepository,
@@ -122,25 +118,19 @@ internal sealed class StubGoogleSyncService(
 
     public Task<int> GetFailedSyncEventCountAsync(CancellationToken cancellationToken = default)
     {
-        // Stub: no outbox in non-production environments.
         return Task.FromResult(0);
     }
 
     public Task<int> GetPendingSyncEventCountAsync(CancellationToken cancellationToken = default)
     {
-        // NOT stubbed. The outbox is real in this configuration — GoogleSyncOutboxService is
-        // registered unconditionally and team changes enqueue events — only the Google writes
-        // are stubbed. Reading the pending count needs no credentials, and before the metrics
-        // gauge moved onto IGoogleSyncService it read this repository directly, so
-        // returning 0 here would silently make humans.google_sync_outbox_pending wrong in
-        // every environment without Google credentials.
+        // Not stubbed: the outbox is real here, only the Google writes are stubbed. Returning 0 would make
+        // humans.google_sync_outbox_pending wrong wherever credentials are missing.
         return outboxRepository.CountPendingAsync(cancellationToken);
     }
 
     public Task<IReadOnlyList<GoogleSyncOutboxEventSnapshot>> GetRecentOutboxEventsAsync(
         int take, CancellationToken cancellationToken = default)
     {
-        // Stub: no outbox in non-production environments.
         return Task.FromResult<IReadOnlyList<GoogleSyncOutboxEventSnapshot>>([]);
     }
 

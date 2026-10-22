@@ -3,7 +3,7 @@ using NodaTime;
 
 namespace Humans.Grants.Services;
 
-/// <summary>Where a grant stands today: revoked wins, then expiry.</summary>
+/// <summary>Revoked wins over expired.</summary>
 internal enum GrantState
 {
     Active,
@@ -11,7 +11,6 @@ internal enum GrantState
     Revoked,
 }
 
-/// <summary>A program as the section's own pages see it, with its managers and every grant.</summary>
 internal sealed record ProgramInfo(
     Guid Id,
     string Name,
@@ -33,7 +32,6 @@ internal sealed record ProgramInfo(
     public int Count(GrantState state, LocalDate today) => Grants.Count(g => g.State(today) == state);
 }
 
-/// <summary>One grant with the program facts its pages need beside it.</summary>
 internal sealed record GrantInfo(
     Guid Id,
     Guid ProgramId,
@@ -57,7 +55,7 @@ internal sealed record GrantInfo(
         : GrantState.Active;
 }
 
-/// <summary>What the program form posts. Managers are the full desired set.</summary>
+/// <summary>Managers are the full desired set.</summary>
 internal sealed record ProgramSave(
     string Name,
     string Entitles,
@@ -69,15 +67,11 @@ internal sealed record ProgramSave(
     GrantProgramStatus Status,
     IReadOnlyList<Guid> ManagerUserIds);
 
-/// <summary>
-/// Mutation result: a refusal the admin page shows as is, or success. Admin pages are
-/// English-only (memory/code/localization-admin-exempt.md), so the refusal is the message.
-/// </summary>
+/// <summary>The refusal is shown as is: admin pages are English-only.</summary>
 internal record GrantMutationResult(string? Refusal = null)
 {
     public static readonly GrantMutationResult Ok = new();
 }
 
-/// <summary>Mutation result carrying a value on success.</summary>
 internal sealed record GrantMutationResult<T>(T? Value = default, string? Refusal = null)
     : GrantMutationResult(Refusal);

@@ -101,8 +101,7 @@ internal sealed class CampAdminController(
             logger.LogError(ex, "Failed to open season {Year}", year);
             SetError($"Failed to open season: {ex.Message}");
         }
-        // Posted from the /Settings#barrios tab (peterdrier/Humans#1634), not from
-        // /Camps/Admin, so post-redirect-get lands back on the tab.
+        // Posted from the /Settings#barrios tab, so post-redirect-get lands back there.
         return Redirect("/Settings#barrios");
     }
 
@@ -123,8 +122,7 @@ internal sealed class CampAdminController(
             logger.LogError(ex, "Failed to close season {Year}", year);
             SetError($"Failed to close season: {ex.Message}");
         }
-        // Posted from the /Settings#barrios tab (peterdrier/Humans#1634), not from
-        // /Camps/Admin, so post-redirect-get lands back on the tab.
+        // Posted from the /Settings#barrios tab, so post-redirect-get lands back there.
         return Redirect("/Settings#barrios");
     }
 
@@ -280,9 +278,7 @@ internal sealed class CampAdminController(
     {
         if (string.IsNullOrWhiteSpace(slug)) return NotFound();
 
-        // Slug → GUID fallback per memory/architecture/slug-routes-fallback-to-guid.md.
-        // Slugs are user-controlled and may be empty ("" = no group yet); the GUID
-        // form is always reachable.
+        // Slugs are user-controlled and may be empty ("" = no group yet), so the GUID form stays reachable.
         var info = await campRoleService.GetDefinitionBySlugAsync(slug, ct);
         if (info is null && Guid.TryParse(slug, out var roleId))
             info = await campRoleService.GetDefinitionByIdAsync(roleId, ct);

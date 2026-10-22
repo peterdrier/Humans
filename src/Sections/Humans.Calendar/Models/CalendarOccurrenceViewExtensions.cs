@@ -28,10 +28,8 @@ internal static class CalendarOccurrenceViewExtensions
     }
 
     /// <summary>
-    /// Which badge a day-per-row view shows for this occurrence on <paramref name="day"/>.
-    /// <see cref="ShouldHideTimeLabel"/> answers a different question — whether a time label
-    /// would be misleading — and reading it as "is all day" labels a 22:00–02:00 event "all
-    /// day" on its first day and drops the only time it has.
+    /// Not <see cref="ShouldHideTimeLabel"/>, which answers whether a time label would mislead: reading that as
+    /// "all day" labels a 22:00–02:00 event all-day on its first day and drops its only time.
     /// </summary>
     public static OccurrenceTimeLabel TimeLabelFor(
         this CalendarOccurrence occ, LocalDate day, DateTimeZone zone) =>
@@ -39,15 +37,13 @@ internal static class CalendarOccurrenceViewExtensions
         : occ.IsAllDay ? OccurrenceTimeLabel.AllDay
         : OccurrenceTimeLabel.StartTime;
 
-    /// <summary>True for an item merged in from an <c>ICalendarFeedContributor</c> rather
-    /// than Calendar's own <c>calendar_events</c>.</summary>
+    /// <summary>True for an item from an <c>ICalendarFeedContributor</c>, not Calendar's own events.</summary>
     public static bool IsCommunityContribution(this CalendarOccurrence occ) =>
         !string.Equals(occ.Source, CalendarOccurrence.CalendarSource, StringComparison.Ordinal);
 }
 
 internal enum OccurrenceTimeLabel
 {
-    /// <summary>The occurrence's local start time.</summary>
     StartTime,
 
     /// <summary>It covers whole days, and this is the first of them.</summary>

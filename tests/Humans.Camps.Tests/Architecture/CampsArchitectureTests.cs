@@ -12,15 +12,8 @@ using CampService = Humans.Camps.Services.CampService;
 
 namespace Humans.Camps.Tests.Architecture;
 
-/// <summary>
-/// Architecture tests for the Camps section — §15 caching decorator. Pins
-/// that <c>CachingCampService</c> wraps <c>CampService</c> with a Singleton, hit-tracked
-/// per-camp projection plus a separate CampSettingsInfo slot.
-/// </summary>
 public class CampsArchitectureTests
 {
-    // ── CachingCampService decorator ──────────────────────────────────
-
     [HumansFact]
     public void CachingCampService_ImplementsICampManagement()
     {
@@ -56,13 +49,9 @@ public class CampsArchitectureTests
                 because: "§15d decorators live in Humans.Infrastructure.Services.<Section>");
     }
 
-    // ── Google Group membership source — Camps claim ─────────────────────────
-
     /// <summary>
-    /// Issue nobodies-collective/Humans#740: CampRoleService is the only
-    /// Camps-side <see cref="IGoogleGroupMembershipSource"/> claimant. Pins
-    /// the rule that any new Camps source goes through this service so the
-    /// orchestrator's collision detection sees a single Camps voice per group key.
+    /// CampRoleService is the only Camps-side <see cref="IGoogleGroupMembershipSource"/> claimant, so
+    /// the orchestrator's collision detection sees a single Camps voice per group key.
     /// </summary>
     [HumansFact]
     public void CampRoleService_IsTheOnlyCampsSideGoogleGroupMembershipSource()
@@ -124,9 +113,8 @@ public class CampsArchitectureTests
     }
 
     /// <summary>
-    /// Asserts that <see cref="ICampManagement"/> and <see cref="ICampService"/> resolve to the same
-    /// singleton from the production DI registration — <c>Section.Register</c>
-    /// itself, not a test-built mirror of it.
+    /// <see cref="ICampManagement"/> and <see cref="ICampService"/> resolve to one singleton from the
+    /// production <c>Section.Register</c>, not a test-built mirror of it.
     /// </summary>
     [HumansFact]
     public void ICampManagement_And_ICampService_ResolveToSameInstance()

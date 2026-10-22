@@ -12,10 +12,8 @@ using NodaTime;
 namespace Humans.Preapprovals.Controllers;
 
 /// <summary>
-/// The managers' and the Board's screens. Routed under <c>/Preapprovals/Admin</c> rather
-/// than <c>/Admin</c>: admin pages belong to their section's URL space
-/// (memory/architecture/no-admin-url-section.md). Localization-exempt. The policy admits any
-/// program manager; per-program operations are checked against the program resource.
+/// Localization-exempt. The policy admits any program manager; per-program operations are checked against the program
+/// resource.
 /// </summary>
 [Authorize(Policy = PreapprovalsPolicies.Manage)]
 [Route("Preapprovals/Admin")]
@@ -30,8 +28,6 @@ internal sealed class PreapprovalsAdminController(
 {
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
     private LocalDate Today => clock.GetCurrentInstant().InZone(MadridZone).Date;
-
-    // ── Programs ──────────────────────────────────────────────────────────
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
@@ -127,8 +123,6 @@ internal sealed class PreapprovalsAdminController(
         return RedirectToAction(nameof(Program), new { programId });
     }
 
-    // ── Grants ────────────────────────────────────────────────────────────
-
     [HttpPost("{programId:guid}/Issue")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Issue(Guid programId, Guid? userId, decimal? amount, string? label, CancellationToken ct) =>
@@ -163,8 +157,6 @@ internal sealed class PreapprovalsAdminController(
     public Task<IActionResult> Amount(Guid programId, Guid grantId, decimal amount, CancellationToken ct) =>
         ManageAsync(programId, actor => preapprovals.ChangeAmountAsync(grantId, amount, actor, ct), "Amount changed", ct, grantId);
 
-    // ── Helpers ───────────────────────────────────────────────────────────
-
     /// <summary>Loads the program and checks the operation against it; 404 and 403 as results.</summary>
     private async Task<(ProgramInfo? Program, IActionResult? Error)> AuthorizedAsync(
         Guid programId, ProgramOperationRequirement requirement, CancellationToken ct)
@@ -175,10 +167,7 @@ internal sealed class PreapprovalsAdminController(
         return allowed.Succeeded ? (program, null) : (null, Forbid());
     }
 
-    /// <summary>
-    /// An action on a program the actor manages. A grant route names the program it is under;
-    /// a grant of another program is 404 so a manager of A never acts on B's grants.
-    /// </summary>
+    /// <summary>A grant of another program is 404, so a manager of A never acts on B's grants.</summary>
     private async Task<IActionResult> ManageAsync(
         Guid programId, Func<Guid, Task<PreapprovalMutationResult>> act, string success, CancellationToken ct,
         Guid? grantId = null)

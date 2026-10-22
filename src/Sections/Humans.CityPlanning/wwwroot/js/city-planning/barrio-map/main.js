@@ -93,8 +93,6 @@ document.addEventListener('keydown', e => {
     }
 });
 
-// --- Button handlers ---
-
 document.getElementById('add-my-barrio-btn')?.addEventListener('click', () => {
     appState.activeCampSeasonId = CONFIG.USER_CAMP_SEASON_ID;
     appState.draw.deleteAll();

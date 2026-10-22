@@ -14,10 +14,7 @@ using NSubstitute;
 
 namespace Humans.Integration.Tests.Controllers;
 
-/// <summary>
-/// Integration tests for POST /Store/Order/{id}/Pay. Stripe's HTTP layer is replaced
-/// by the factory's <c>StripeServiceStub</c> — no real network calls.
-/// </summary>
+/// <summary>POST /Store/Order/{id}/Pay, against the factory's <c>StripeServiceStub</c>: no network.</summary>
 public class StorePayActionTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     [HumansFact]
@@ -84,10 +81,6 @@ public class StorePayActionTests(HumansTestDatabase database) : IntegrationTestB
             Arg.Any<string?>(), Arg.Any<string>(),
             Arg.Any<CancellationToken>());
     }
-
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
 
     private async Task<(Guid OrderId, decimal BalanceEur)> SeedOrderWithLineAsync()
     {

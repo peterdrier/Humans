@@ -23,13 +23,6 @@ namespace Humans.Email.Tests.Services;
 /// <c>OutboxEmailService</c> → back to <c>IUserEmailService</c> — resolves without a
 /// constructor cycle.
 /// </summary>
-/// <remarks>
-/// Lived in <c>Humans.Application.Tests</c>' <c>DependencyCycleResolutionTests</c> until
-/// the section's G5 move made <c>OutboxEmailService</c> internal to another assembly
-/// (CityPlanning finding 18's shape). It belongs here now: the section owns the concrete
-/// type, and the Base half of the same guard — <c>IUserService</c> resolving with a
-/// substituted <c>IEmailService</c> — stayed where it was.
-/// </remarks>
 public sealed class EmailDependencyCycleTests
 {
     [HumansFact]
@@ -53,20 +46,12 @@ public sealed class EmailDependencyCycleTests
         services.AddScoped<UserManager<User>>(_ =>
             Substitute.For<UserManager<User>>(userStore, null, null, null, null, null, null, null, null));
 
-        // Users is another section; its concrete UserService and its two repository
-        // interfaces are internal to Humans.Users and its own graph is pinned by the
-        // section's own tests. Same call as ITeamService / IRoleAssignmentService /
-        // IShiftService below — the subject here is the email chain.
+        // Other sections are substituted: their concrete services are internal and their own
+        // graphs are pinned by their own tests. The subject here is the email chain.
         services.AddScoped<IUserService>(_ => Substitute.For<IUserService>());
 
-        // Auth is another section; RoleAssignmentService is internal to Humans.Auth and its
-        // own constructor shape is pinned by AuthArchitectureTests. Same call as ITeamService
-        // below — the subject here is the email chain.
         services.AddScoped<IRoleAssignmentService>(_ => Substitute.For<IRoleAssignmentService>());
 
-        // Shifts is another section; its concrete service is internal to Humans.Shifts and
-        // its own graph is pinned by the section's own tests. Same call as ITeamService and
-        // IRoleAssignmentService below — the subject here is the email chain.
         services.AddScoped<IShiftService>(_ => Substitute.For<IShiftService>());
 
         services.AddScoped<IUserEmailService>(_ => Substitute.For<IUserEmailService>());
@@ -78,8 +63,6 @@ public sealed class EmailDependencyCycleTests
         services.AddScoped<OutboxEmailService>();
         services.AddScoped<IEmailService>(sp => sp.GetRequiredService<OutboxEmailService>());
 
-        // Teams is another section; its concrete service is internal to Humans.Teams and its
-        // own cycle is pinned by TeamsDependencyCycleTests. The subject here is the email chain.
         services.AddScoped<ITeamService>(_ => Substitute.For<ITeamService>());
 
         services.AddScoped<Microsoft.Extensions.Logging.ILogger<OutboxEmailService>>(_ => NullLogger<OutboxEmailService>.Instance);
@@ -96,13 +79,10 @@ public sealed class EmailDependencyCycleTests
     }
 
     /// <summary>
-    /// A crosscut may not grow new edges into sections. Both sets are what the
-    /// teardown of peterdrier/Humans#1651 left — Email.Contracts down to Base and
-    /// Users.Contracts, Email down to the set listed below — so these assertions
-    /// exist to stop a new reference arriving, not to bless what is here.
-    /// Asserted from the csproj's own &lt;ProjectReference&gt; items, not
-    /// <c>Assembly.GetReferencedAssemblies()</c>: a const-only or unused reference emits
-    /// no metadata reference and would pass that check silently.
+    /// A crosscut may not grow new edges into sections: these assertions stop a new reference
+    /// arriving, not bless what is here. Asserted from the csproj's own &lt;ProjectReference&gt;
+    /// items, not <c>Assembly.GetReferencedAssemblies()</c>: a const-only or unused reference
+    /// emits no metadata reference and would pass that check silently.
     /// </summary>
     [HumansFact]
     public void EmailContracts_ReferencesOnlyBaseAndUsersContracts() =>

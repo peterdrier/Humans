@@ -1,16 +1,7 @@
 namespace Humans.Camps.Contracts;
 
-/// <summary>
-/// Orchestrates the facilitated-contact workflow for camps:
-/// rate limiting, message sanitization, email send, and audit logging.
-/// </summary>
 internal interface ICampContactService : IApplicationService
 {
-    /// <summary>
-    /// Send a facilitated contact message from a user to a camp.
-    /// Handles rate limiting, HTML sanitization, email delivery, and audit logging.
-    /// Returns a result indicating success or the reason for failure.
-    /// </summary>
     Task<CampContactResult> SendFacilitatedMessageAsync(
         Guid campId,
         string campContactEmail,
@@ -24,5 +15,4 @@ internal interface ICampContactService : IApplicationService
         string campDetailsUrl);
 }
 
-/// <summary>Result of a facilitated contact attempt.</summary>
 internal sealed record CampContactResult(bool Success, bool RateLimited);

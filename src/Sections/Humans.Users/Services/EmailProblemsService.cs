@@ -17,12 +17,9 @@ internal sealed class EmailProblemsService(
 
         var allInfos = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
 
-        // Merge-source / GDPR-deleted tombstones are not live accounts: their scrubbed sentinel
-        // emails (…@merged.local / …@deleted.local) yield only false per-user hygiene positives,
-        // so exclude them from the profile scan (and the legacy scan below). The orphan-email and
-        // ghost-login scans are deliberately NOT filtered — a row still pointing at a tombstone is
-        // genuine leftover data from an incomplete merge/deletion, and this page is the only place
-        // an admin can clean it up from (see GetOrphanUserEmailsAsync).
+        // Tombstones' sentinel emails yield only false positives, so the profile and legacy scans
+        // skip them. The orphan-email and ghost-login scans deliberately don't: a row still pointing
+        // at a tombstone is leftover data an admin can only clean up here.
         var profiled = allInfos.Where(i => i.Profile is not null && !i.IsTombstone).ToList();
 
         foreach (var p in profiled)
@@ -45,9 +42,6 @@ internal sealed class EmailProblemsService(
             }
         }
 
-        // Cross-user duplicate detection lives on the Account merges page now
-        // (DuplicateAccountService.DetectDuplicatesAsync) — not in this scan.
-
         var orphans = await userEmailService.GetOrphanUserEmailsAsync(ct);
         foreach (var o in orphans)
         {
@@ -62,7 +56,7 @@ internal sealed class EmailProblemsService(
                 EmailProblemKind.GhostExternalLogins, ghostId, null, null, null, null));
         }
 
-        // Case 9: legacy AspNetIdentity.Email populated but no matching verified UserEmail row.
+        // Legacy AspNetIdentity.Email populated but no matching verified UserEmail row.
         foreach (var info in allInfos)
         {
             if (info.IsTombstone) continue; // scrubbed sentinel email — not a real hygiene problem
@@ -90,8 +84,7 @@ internal sealed class EmailProblemsService(
 
         foreach (var info in allInfos)
         {
-            // Never resurrect a tombstone: its scrubbed sentinel email must not become a
-            // verified UserEmail row.
+            // Never resurrect a tombstone's sentinel email as a verified row.
             if (info.IsTombstone) continue;
 
             var legacy = info.IdentityEmailColumn;
@@ -101,7 +94,7 @@ internal sealed class EmailProblemsService(
                 && string.Equals(e.Email, legacy, StringComparison.OrdinalIgnoreCase)))
                 continue;
 
-            // see nobodies-collective/Humans#697 — plain verified row; reconcile attaches tag on next OAuth sign-in.
+            // Plain verified row; the next OAuth sign-in attaches the provider tag.
             await userEmailService.AddVerifiedEmailAsync(info.Id, legacy, ct);
             await audit.LogAsync(
                 AuditAction.LegacyIdentityEmailBackfilled, nameof(User), info.Id,

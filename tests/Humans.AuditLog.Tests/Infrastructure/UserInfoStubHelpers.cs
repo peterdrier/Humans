@@ -3,10 +3,8 @@ using Humans.Users.Contracts;
 namespace Humans.AuditLog.Tests.Infrastructure;
 
 /// <summary>
-/// Builds a minimal <see cref="UserInfo"/> for stubbing <c>IUserService</c> in this
-/// project's tests. Every section's test project carries its own copy of this factory
-/// (Teams, Shifts, Users, MailerLite, Camps …); this one is trimmed to the single member
-/// <c>AuditViewerServiceTests</c> uses, so it needs no <c>Humans.Users</c> reference.
+/// Trimmed to the single member <c>AuditViewerServiceTests</c> uses, so this project needs no
+/// <c>Humans.Users</c> reference.
 /// </summary>
 internal static class UserInfoStubHelpers
 {

@@ -6,8 +6,6 @@ namespace Humans.Testing.Tests;
 
 public class SkipAttributeSmokeTest
 {
-    // ── BrokenFact construction ───────────────────────────────────────────────
-
     [HumansFact]
     public void BrokenFact_rejects_null_reason()
     {
@@ -35,18 +33,12 @@ public class SkipAttributeSmokeTest
         Assert.Equal(reason, attr.Skip);
     }
 
-    /// <summary>
-    /// This test body would fail if ever executed — the BrokenFact skip
-    /// ensures it is never run. Its presence in the suite proves the
-    /// skip-in-CI contract.
-    /// </summary>
+    // The body would fail if run; the skip proves BrokenFact never runs it.
     [BrokenFact("Demo — body must never execute. Tracked at nobodies-collective/Humans#586.")]
     public void BrokenFact_demo_never_executes()
     {
         Assert.Fail("BrokenFact did not skip this test — the skip mechanism is broken.");
     }
-
-    // ── IntegrationTestGate path matching ─────────────────────────────────────
 
     [HumansFact]
     public void IntegrationTestGate_applies_to_integration_tests_sources()
@@ -60,8 +52,6 @@ public class SkipAttributeSmokeTest
         Assert.False(IntegrationTestGate.AppliesTo("/repo/tests/Humans.Testing.Tests/Foo.cs"));
         Assert.False(IntegrationTestGate.AppliesTo(null));
     }
-
-    // ── DebuggerOnlyFact construction ─────────────────────────────────────────
 
     [HumansFact]
     public void DebuggerOnlyFact_constructs_without_error()
@@ -77,11 +67,6 @@ public class SkipAttributeSmokeTest
         Assert.False(string.IsNullOrWhiteSpace(attr.Skip));
     }
 
-    /// <summary>
-    /// Runs only under a debugger. Asserts <c>Debugger.IsAttached</c> so the
-    /// test is self-evidently true when executed intentionally and is skipped
-    /// in automated runs.
-    /// </summary>
     [DebuggerOnlyFact]
     public void DebuggerOnlyFact_demo_runs_only_under_debugger()
     {

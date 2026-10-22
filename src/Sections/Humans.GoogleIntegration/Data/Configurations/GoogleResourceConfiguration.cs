@@ -47,8 +47,7 @@ internal sealed class GoogleResourceConfiguration : IEntityTypeConfiguration<Goo
             .HasFilter("\"IsActive\" = true")
             .IsUnique();
 
-        // TeamId is a bare cross-section Guid column — no FK constraint, no nav.
-        // Teams must not be hard-deleted while resources exist; the guard is the
-        // pre-check in TeamService.PermanentlyDeleteTeamAsync.
+        // TeamId has no FK: the pre-check in TeamService.PermanentlyDeleteTeamAsync keeps a team with
+        // resources from being hard-deleted.
     }
 }

@@ -4,14 +4,6 @@ using NodaTime;
 
 namespace Humans.AuditLog.Tests;
 
-/// <summary>
-/// Tests for <see cref="AuditEvent"/> — the resolved, display-ready view of
-/// an audit log entry. Covers <see cref="AuditEvent.RenderPlainText"/> and
-/// <see cref="AuditEvent.RenderStructured"/>.
-///
-/// Tests for the underlying verb tables live in
-/// <see cref="AuditEventTextualizerTests"/>.
-/// </summary>
 public class AuditEventTests
 {
     private static readonly Instant FixedAt = Instant.FromUtc(2026, 4, 30, 17, 0);

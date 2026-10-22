@@ -7,7 +7,6 @@ using NodaTime;
 
 namespace Humans.Rideshare.Models;
 
-/// <summary>Admin settings form for the active year, with the season's derived stats beside it.</summary>
 internal sealed class RideshareSettingsViewModel
 {
     public int Year { get; set; }
@@ -73,7 +72,7 @@ internal sealed class RideshareSettingsViewModel
 /// <summary>One accepted seat on a trip's roster. The rider is the request's owner when the driver answered a pin, else whoever expressed interest.</summary>
 internal sealed record RosterRider(Guid UserId, int Seats);
 
-/// <summary>A trip happening on the day, any status, with its accepted riders.</summary>
+/// <summary>Any status.</summary>
 internal sealed record DayRosterRow(TripView Trip, IReadOnlyList<RosterRider> Riders);
 
 internal sealed record DayViewModel(int Year, LocalDate Date, IReadOnlyList<DayRosterRow> Trips)

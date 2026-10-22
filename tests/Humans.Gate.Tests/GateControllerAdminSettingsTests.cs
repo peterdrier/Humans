@@ -18,8 +18,8 @@ using NSubstitute;
 namespace Humans.Gate.Tests;
 
 /// <summary>
-/// Gate settings (general-entry instant, minor age threshold) moved to /Settings#gate
-/// (peterdrier/Humans#1634) — Staff PINs stay on <c>/Gate/Admin</c>, so the save action
+/// Gate settings (general-entry instant, minor age threshold) live on /Settings#gate; Staff
+/// PINs stay on <c>/Gate/Admin</c>, so the save action
 /// redirects to the tab rather than back to that page.
 /// </summary>
 public sealed class GateControllerAdminSettingsTests

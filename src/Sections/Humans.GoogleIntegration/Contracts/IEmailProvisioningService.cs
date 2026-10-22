@@ -3,22 +3,11 @@ using Humans.Base.Attributes;
 namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
-/// Service for provisioning @nobodies.team email accounts.
-/// Encapsulates the 4-step provisioning flow:
-///   1. Capture recovery email (before notification target changes)
-///   2. Provision Google Workspace account
-///   3. Link @nobodies.team email (changes notification target)
-///   4. Send credentials email to recovery address
+/// The recovery email is captured before linking the @nobodies.team address changes the notification target;
+/// the credentials go to that recovery address.
 /// </summary>
 public interface IEmailProvisioningService : IApplicationService
 {
-    /// <summary>
-    /// Provisions a new @nobodies.team email account for a user.
-    /// </summary>
-    /// <param name="userId">The user to provision the account for.</param>
-    /// <param name="emailPrefix">The prefix part of the email (before @nobodies.team).</param>
-    /// <param name="provisionedByUserId">The user performing the provisioning (for audit).</param>
-    /// <returns>Result indicating success or failure with details.</returns>
     [ExternalWrite]
     Task<EmailProvisioningResult> ProvisionNobodiesEmailAsync(
         Guid userId,
@@ -27,8 +16,7 @@ public interface IEmailProvisioningService : IApplicationService
 }
 
 /// <summary>
-/// Result of an email provisioning attempt. A committed account remains successful
-/// when credential handoff fails; WarningMessage describes the required recovery.
+/// A committed account stays successful when the credential handoff fails; <c>WarningMessage</c> says how to recover.
 /// </summary>
 public record EmailProvisioningResult(
     bool Success,

@@ -3,10 +3,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Search.Models;
 
-/// <summary>
-/// View-model for <c>/Search</c>: the query, the active filter chip, and five buckets in
-/// display order. The view hands each row to its owning section's view component.
-/// </summary>
 internal sealed class GlobalSearchViewModel
 {
     public string? Query { get; init; }

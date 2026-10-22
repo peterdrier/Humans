@@ -4,22 +4,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Events.Data;
 
-/// <summary>
-/// Per-section database context for the Events section: maps only <c>events</c>,
-/// <c>event_categories</c>, <c>event_venues</c>, <c>event_guide_settings</c>,
-/// <c>event_moderation_actions</c>, <c>event_favourites</c> and
-/// <c>event_preferences</c>, with its own
-/// <c>__EFMigrationsHistory_EventGuide</c> table and migrations under
-/// <c>Data/Migrations/</c>. Same database, same connection — the split is
-/// a code-side partition of the EF model.
-/// </summary>
-/// <remarks>
-/// Internal-sealed like every section context: repositories
-/// are the only consumers. Configurations are applied explicitly (not by
-/// assembly scanning) so this model can never accrete another section's tables.
-/// The Settings-owned <c>settings_event</c> table (read through <c>ISettingsService</c>)
-/// and the Users-owned <c>event_participations</c> table are deliberately absent here.
-/// </remarks>
 internal sealed class EventGuideDbContext(DbContextOptions<EventGuideDbContext> options)
     : DbContext(options)
 {

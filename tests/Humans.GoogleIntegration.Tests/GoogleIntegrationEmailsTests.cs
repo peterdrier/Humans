@@ -7,13 +7,8 @@ using Humans.GoogleIntegration.Tests.Infrastructure;
 namespace Humans.GoogleIntegration.Tests;
 
 /// <summary>
-/// The per-template routing policy GoogleIntegration stamps on its own messages —
-/// template name, the System category that suppresses the unsubscribe footer, and the
-/// time-sensitive credentials name the outbox drains immediately — plus the
-/// gallery-coverage gate: every template <see cref="GoogleIntegrationEmails"/> can build
-/// has a sample in <see cref="GoogleIntegrationEmailPreviews"/>, so a new template cannot
-/// ship invisible (peterdrier/Humans#1651). Transport (opt-out, unsubscribe, wrapping,
-/// enqueue) stays Email's, covered there.
+/// Includes the gallery-coverage gate: every template <see cref="GoogleIntegrationEmails"/> can build
+/// has a sample in <see cref="GoogleIntegrationEmailPreviews"/>, so a new template cannot ship invisible.
 /// </summary>
 public sealed class GoogleIntegrationEmailsTests
 {

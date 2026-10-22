@@ -12,12 +12,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Onboarding.Controllers;
 
-/// <summary>
-/// The consent-check review desk. <c>ReviewQueueAccess</c> opens the list to Consent
-/// Coordinators, Volunteer Coordinators, Board and Admin; every action that changes a
-/// record carries <c>ConsentCoordinatorBoardOrAdmin</c>, so a Volunteer Coordinator reads
-/// the queue but cannot act on it.
-/// </summary>
 [Authorize(Policy = PolicyNames.ReviewQueueAccess)]
 [Route("[controller]")]
 internal sealed class OnboardingReviewController(
@@ -50,8 +44,8 @@ internal sealed class OnboardingReviewController(
         if (detailUser is null)
             return NotFound();
 
-        // A merged-away id resolves to the survivor. Land on the survivor's own route so the
-        // Clear/Flag/Reject forms post the id the page is showing, not the archived one.
+        // A merged-away id resolves to the survivor. Land on the survivor's route so the forms post the id
+        // the page shows.
         if (detailUser.Id != userId)
             return RedirectToAction(nameof(Detail), new { userId = detailUser.Id });
 

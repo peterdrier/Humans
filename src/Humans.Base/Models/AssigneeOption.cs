@@ -1,11 +1,8 @@
 namespace Humans.Base.Models;
 
 /// <summary>
-/// One row of a "who is this assigned to" person dropdown: an id and the label to
-/// render for it. Shared rather than per-section because it names no section's
-/// vocabulary — the same shape as <see cref="HumanLookupSearchResult"/>. Feedback and
-/// Issues both bind it, and Feedback's move to its own project is what took it out of
-/// <c>Humans.Web.Models</c> (G5, nobodies-collective/Humans#866).
+/// One row of a "who is this assigned to" person dropdown. Shared because it names no section's vocabulary:
+/// Feedback and Issues both bind it.
 /// </summary>
 public class AssigneeOption
 {

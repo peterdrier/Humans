@@ -8,34 +8,13 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Web.Tests.Architecture;
 
 /// <summary>
-/// Every view component <see cref="Type"/> a section contributes through a seam — the
-/// <c>Component</c> in <see cref="ChromeComponent"/>, <c>SettingsTab</c>, <c>UserPart</c>, and
-/// any future <see cref="ViewComponentSlotAttribute"/>-tagged seam — actually resolves to a
-/// view component whose parameters the seam's declared args record can supply
-/// (nobodies-collective/Humans#1815). A slot with no <c>[ViewComponentSlot]</c> anywhere it
-/// could resolve one is exactly the drift #1810 caught by hand: a component that quietly
-/// drops an argument the host never checked.
+/// Every view component a section contributes through a seam resolves to a component whose parameters the seam's
+/// args record can supply, so a component can't silently drop an argument the host passes.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Discovery walks every <see cref="ISectionContribution"/> the app would register
-/// (<see cref="SectionDiscoveryExtensions.DiscoverImplementations{T}"/>, the same walk
-/// production DI uses) and every seam interface it implements — never a hand-maintained
-/// list, so a new contributor or a new <c>[ViewComponentSlot]</c> seam is covered
-/// automatically. For each seam it reads every <c>Type</c>-valued property, and every
-/// <c>Type</c>-valued property of the elements of every parameterless
-/// <c>IEnumerable&lt;T&gt;</c> method — the two shapes a seam declares a component through
-/// today.
-/// </para>
-/// <para>
-/// The args contract check (<see cref="CheckComponentContract"/>) is a pure function of a
-/// component <see cref="Type"/>, a resolved <see cref="ViewComponentSlotAttribute"/>, and
-/// whether the site is a single-contributor property or a fanout element, so it is exercised
-/// against fake components directly — a missing non-optional argument, a type mismatch on an
-/// <em>optional</em> parameter (the #1810 shape), and a single-contributor args property that
-/// binds to no parameter (a dropped argument, tolerated only on a fanout) — as well as over
-/// the real app roster.
-/// </para>
+/// Discovery uses the same walk as production DI, so new contributors and seams are covered automatically. A seam
+/// declares a component as a <c>Type</c> property, or a <c>Type</c> property on the elements of a parameterless
+/// <c>IEnumerable&lt;T&gt;</c> method.
 /// </remarks>
 public class ViewComponentSlotContractTests
 {
@@ -107,8 +86,7 @@ public class ViewComponentSlotContractTests
     [HumansFact]
     public void ACheckedComponent_OptionalParameterWithATypeMismatchedProperty_Fails()
     {
-        // (b): the parameter is optional, so presence alone would pass — but a same-named
-        // property of the wrong type is exactly the #1810 drift (renamed/retyped argument).
+        // The parameter is optional, so presence alone would pass; a same-named property of the wrong type is drift.
         var failures = CheckComponentContract(
             typeof(FakeOptionalTypeMismatchViewComponent),
             new ViewComponentSlotAttribute(typeof(FakeStringUserIdArgs)),
@@ -121,8 +99,6 @@ public class ViewComponentSlotContractTests
     [HumansFact]
     public void ASingleContributorSlot_WithAnArgsPropertyThatBindsToNoParameter_Fails()
     {
-        // (c): on a single-contributor (property) seam, every args-record property must bind
-        // to some Invoke parameter — a property the component never reads is a dropped argument.
         var failures = CheckComponentContract(
             typeof(FakeSingleParameterViewComponent),
             new ViewComponentSlotAttribute(typeof(FakeArgsWithExtraProperty)),
@@ -135,8 +111,7 @@ public class ViewComponentSlotContractTests
     [HumansFact]
     public void AFanoutSlot_WithAnArgsPropertyThatBindsToNoParameter_Passes()
     {
-        // Same shape as the previous test, but on a multi-contributor fanout: MVC ignores
-        // args properties a given contributor's Invoke doesn't declare, so this must not fail.
+        // MVC ignores args properties a fanout contributor's Invoke doesn't declare.
         var failures = CheckComponentContract(
             typeof(FakeSingleParameterViewComponent),
             new ViewComponentSlotAttribute(typeof(FakeArgsWithExtraProperty)),
@@ -172,29 +147,17 @@ public class ViewComponentSlotContractTests
         public IViewComponentResult Invoke(Guid userId) => Content(string.Empty);
     }
 
-    /// <summary>A view-component slot and its declared contribution.</summary>
-    /// <param name="Seam">The interface declaring the slot.</param>
-    /// <param name="OwnProperty">The slot property, or null for a fanout.</param>
-    /// <param name="Component">The contributed view-component type.</param>
-    /// <param name="Location">The slot’s diagnostic location.</param>
-    /// <param name="IsSingleContributor">True for a <c>Type</c> property declared directly on the
-    /// seam interface (one contributor per slot, e.g. <c>IOnboardingShiftsStep.ShiftsList</c>) —
-    /// where a dropped args property is drift. False for an element of a fanout's
-    /// <c>IEnumerable&lt;T&gt;</c> (many contributors share the args shape; MVC ignores properties
-    /// a given contributor's <c>Invoke</c> doesn't declare).</param>
+    /// <summary>
+    /// <paramref name="IsSingleContributor"/>: a <c>Type</c> property declared on the seam itself, where an unbound args
+    /// property is drift; false for a fanout element, where contributors share one args shape.
+    /// </summary>
     private sealed record SlotSite(Type Seam, PropertyInfo? OwnProperty, Type Component, string Location, bool IsSingleContributor);
 
-    /// <summary>The seam interfaces a contribution type implements — mirrors the private
-    /// method of the same shape in <see cref="SectionDiscoveryExtensions"/>.</summary>
+    /// <summary>Mirrors the private method of the same shape in <see cref="SectionDiscoveryExtensions"/>.</summary>
     private static IEnumerable<Type> SeamInterfaces(Type contributionType) =>
         contributionType.GetInterfaces()
             .Where(i => i != typeof(ISectionContribution) && typeof(ISectionContribution).IsAssignableFrom(i));
 
-    /// <summary>
-    /// Every <c>Type</c>-valued slot site a seam interface declares: a direct <c>Type</c>
-    /// property, or a <c>Type</c> property of the elements a parameterless
-    /// <c>IEnumerable&lt;T&gt;</c> method returns.
-    /// </summary>
     private static IEnumerable<SlotSite> Sites(object contribution, Type seam)
     {
         foreach (var property in seam.GetProperties(BindingFlags.Public | BindingFlags.Instance))
@@ -237,16 +200,11 @@ public class ViewComponentSlotContractTests
         }
     }
 
-    /// <summary>Property first, then the seam interface — a future per-slot override always wins.</summary>
+    /// <summary>Property first, then the seam interface, so a per-slot override wins.</summary>
     private static ViewComponentSlotAttribute? ResolveSlotAttribute(SlotSite site) =>
         site.OwnProperty?.GetCustomAttribute<ViewComponentSlotAttribute>()
             ?? site.Seam.GetCustomAttribute<ViewComponentSlotAttribute>();
 
-    /// <summary>
-    /// Whether <paramref name="component"/>'s declared parameters are all satisfiable by the
-    /// slot's args record: a pure function of a component type and its resolved attribute, so
-    /// it can be exercised directly against a fake component as well as the real app roster.
-    /// </summary>
     private static IEnumerable<string> CheckComponentContract(
         Type component, ViewComponentSlotAttribute attribute, string location, bool isSingleContributor)
     {
@@ -288,9 +246,7 @@ public class ViewComponentSlotContractTests
                 continue;
             }
 
-            // Checked whether or not the parameter is optional: a same-named property of the
-            // wrong type is the #1810 drift (renamed/retyped argument), and MVC's name-based
-            // binding does not care that the parameter has a default.
+            // Checked even for optional parameters: MVC binds by name whatever the default.
             if (!IsAssignable(parameter.ParameterType, match.PropertyType))
             {
                 yield return $"{location}: {component.FullName}.{invokeMethods[0].Name} parameter "
@@ -299,9 +255,7 @@ public class ViewComponentSlotContractTests
             }
         }
 
-        // On a single-contributor (property) seam, an args property that binds to no parameter
-        // is a dropped argument — the component silently stopped reading it. Fanouts share one
-        // args shape across contributors, so an unbound property there is normal, not drift.
+        // Fanouts share one args shape across contributors, so an unbound property is only drift on a single slot.
         if (isSingleContributor)
         {
             foreach (var argsProperty in argsProperties)
@@ -318,9 +272,7 @@ public class ViewComponentSlotContractTests
         }
     }
 
-    /// <summary><paramref name="propertyType"/> can supply <paramref name="parameterType"/> — including a
-    /// non-nullable value type (<c>Guid</c>) supplying a nullable parameter (<c>Guid?</c>), which
-    /// <see cref="Type.IsAssignableFrom"/> alone does not recognize.</summary>
+    /// <summary>Also accepts <c>Guid</c> supplying <c>Guid?</c>, which <see cref="Type.IsAssignableFrom"/> rejects.</summary>
     private static bool IsAssignable(Type parameterType, Type propertyType)
     {
         if (parameterType.IsAssignableFrom(propertyType)) return true;
@@ -329,8 +281,7 @@ public class ViewComponentSlotContractTests
         return underlying is not null && underlying.IsAssignableFrom(propertyType);
     }
 
-    /// <summary>Mirrors <see cref="Humans.Web.Hosting.SectionViewComponentFeatureProvider"/>'s own
-    /// component test (also duplicated by <c>ViewComponentTagHelperBindingTests</c>).</summary>
+    /// <summary>Mirrors <see cref="Humans.Web.Hosting.SectionViewComponentFeatureProvider"/>'s own component test.</summary>
     private static bool IsViewComponentType(Type type)
     {
         if (!type.IsClass || type.IsAbstract || type.ContainsGenericParameters)

@@ -359,7 +359,6 @@ internal sealed class GoogleGroupSyncService(
         return new GroupMembershipPlan(members, currentByEmail, expectedMembers);
     }
 
-    /// <summary>Extra-member email → human, for addresses a user row still claims.</summary>
     private async Task<Dictionary<string, Guid>> ResolveExtraMemberUserIdsAsync(
         IReadOnlyCollection<string> emails, CancellationToken ct)
     {
@@ -623,10 +622,8 @@ internal sealed class GoogleGroupSyncService(
         var statusCode = error?.StatusCode ?? 0;
         var rawMessage = error?.RawMessage ?? string.Empty;
 
-        // Cloud Identity returns HTTP 403 when the target email has no Google
-        // account and HTTP 400 "precondition check failed" / Error(4002) for
-        // the same root cause (issue nobodies-collective/Humans#677). Both
-        // map to a permanent target rejection.
+        // Cloud Identity answers 403, or 400 "precondition check failed", when the target has no Google account.
+        // Both are a permanent target rejection.
         if (statusCode != 403 && statusCode != 400)
         {
             return (FormatGoogleError($"Google group add failed for {email}", error), false);
@@ -657,7 +654,7 @@ internal sealed class GoogleGroupSyncService(
         return (FormatGoogleError($"Google group add failed for {email}", error), false);
     }
 
-    /// <summary>Cloud Identity group-membership "no Google account" detector. Group-specific — Drive path has its own predicate (#677).</summary>
+    /// <summary>Group path only: Drive has its own predicate.</summary>
     internal static bool IsTargetMemberRejection(string rawMessage)
         => rawMessage.Contains("invalid member", StringComparison.OrdinalIgnoreCase)
             || rawMessage.Contains("invalid email", StringComparison.OrdinalIgnoreCase)
@@ -736,14 +733,8 @@ internal sealed class GoogleGroupSyncService(
         $"{prefix} (HTTP {error?.StatusCode ?? 0}): {error?.RawMessage}";
 
     /// <summary>
-    /// Cloud Identity returns HTTP 404 when a Group lookup misses — and, in
-    /// practice, sometimes HTTP 403 with a "Permission denied" / "caller does
-    /// not have permission" message, because Google declines to confirm or
-    /// deny the existence of a group the caller can't see. Both are treated as
-    /// "group not found" so we attempt auto-provision. If the 403 actually
-    /// reflects a real caller-permission problem, the subsequent CreateGroup
-    /// call will fail the same way and we fall through to the normal error
-    /// path. 5xx and other status codes remain real failures.
+    /// A missed Group lookup returns 404, or sometimes 403 because Google won't confirm a group the caller can't see.
+    /// Both trigger auto-provision; a real permission problem fails CreateGroup the same way.
     /// </summary>
     private static bool IsGroupNotFound(GoogleClientError? error)
         => error is { StatusCode: 404 } || error is { StatusCode: 403 };

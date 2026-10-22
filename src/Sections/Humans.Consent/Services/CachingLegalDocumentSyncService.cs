@@ -8,34 +8,9 @@ using Humans.Consent.Domain;
 namespace Humans.Consent.Services;
 
 /// <summary>
-/// Singleton caching decorator for <see cref="ILegalDocumentSyncManagement"/>
-/// (T-04). Caches the global active-document set that backs the every-page
-/// consent-banner read (<see cref="GetActiveRequiredDocumentsForTeamsAsync"/>)
-/// and the per-version snapshot lookup
-/// (<see cref="GetVersionByIdAsync"/>). The cache is warmed on boot
-/// (<c>warmOnStartup: true</c>), re-warmed on demand after invalidation,
-/// and invalidated wholesale after any persisted write to
-/// <c>legal_documents</c> or <c>document_versions</c> — the inner
-/// <c>LegalDocumentSyncService</c> is the sole writer for those tables and calls
-/// <see cref="InvalidateAll"/> directly after each successful write
-/// (nobodies-collective/Humans#751).
+/// Caches the active, required documents behind the every-page consent banner, warmed on boot. The inner
+/// <c>LegalDocumentSyncService</c>, the sole writer, calls <see cref="InvalidateAll"/> after each write.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Single underlying cache keyed by document id; we also build a
-/// version-id → document-id index on warm so <see cref="GetVersionByIdAsync"/>
-/// can serve from memory without scanning. Inherits
-/// <see cref="TrackedCache{TKey, TValue}"/> so /Debug/CacheStats surfaces
-/// hit/miss/invalidation counters.
-/// </para>
-/// <para>
-/// Writes (admin create/update/archive/sync, version add via
-/// <see cref="SyncDocumentAsync"/> / <see cref="SyncAllDocumentsAsync"/>)
-/// pass through to the inner service via a freshly resolved scope. The inner
-/// service invalidates directly after each successful write; the decorator
-/// does not call <see cref="InvalidateAll"/> itself.
-/// </para>
-/// </remarks>
 internal sealed class CachingLegalDocumentSyncService(
     IServiceScopeFactory scopeFactory,
     IClock clock,
@@ -43,22 +18,10 @@ internal sealed class CachingLegalDocumentSyncService(
     : TrackedCache<Guid, LegalDocumentInfo>("Legal.LegalDocumentInfo", warmOnStartup: true, logger),
         ILegalDocumentSyncManagement
 {
-    /// <summary>
-    /// DI service key under which the undecorated (inner)
-    /// <see cref="ILegalDocumentSyncManagement"/> is registered. The Singleton
-    /// decorator resolves the Scoped inner per-call via
-    /// <see cref="IServiceScopeFactory"/>.
-    /// </summary>
     public const string InnerServiceKey = "legal-document-sync-inner";
 
-    // Version-id → document-id index. Rebuilt with the main dict on warm so
-    // GetVersionByIdAsync can answer without scanning every document.
     private volatile IReadOnlyDictionary<Guid, Guid> _versionToDocument =
         new Dictionary<Guid, Guid>();
-
-    // ==========================================================================
-    // Reads served from cache
-    // ==========================================================================
 
     public async Task<IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>> GetActiveRequiredDocumentsForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default)
@@ -125,7 +88,6 @@ internal sealed class CachingLegalDocumentSyncService(
         Guid versionId, CancellationToken cancellationToken = default)
     {
         var docs = await GetActiveRequiredDocumentsAsync(cancellationToken);
-        // _versionToDocument was rebuilt alongside docs in WarmAllAsync.
         if (_versionToDocument.TryGetValue(versionId, out var docId) &&
             docs.TryGetValue(docId, out var doc))
         {
@@ -134,27 +96,13 @@ internal sealed class CachingLegalDocumentSyncService(
                 return version;
         }
 
-        // Cache miss for the version id. This can happen when the requested
-        // version belongs to an inactive or non-required document (the cache
-        // holds only active+required). Fall through to the inner service so
-        // those callers — admin version-summary edits, sync-job lookups — are
-        // still served correctly.
+        // Not cached: the version belongs to an inactive or optional document.
         return await WithInnerAsync(inner => inner.GetVersionByIdAsync(versionId, cancellationToken));
     }
 
-    // ==========================================================================
-    // Reads passed through to inner (not part of the every-page hot path)
-    // ==========================================================================
-
     public Task<IReadOnlyList<LegalDocumentSnapshot>> GetActiveDocumentsAsync(
         CancellationToken cancellationToken = default) =>
-        // Admin list surface. Includes non-required docs and does not benefit
-        // from caching at the same shape as the consent-banner read.
         WithInnerAsync(inner => inner.GetActiveDocumentsAsync(cancellationToken));
-
-    // ==========================================================================
-    // Writes — passed through; the inner service invalidates directly
-    // ==========================================================================
 
     public Task<IReadOnlyList<LegalDocument>> SyncAllDocumentsAsync(
         CancellationToken cancellationToken = default) =>
@@ -164,30 +112,13 @@ internal sealed class CachingLegalDocumentSyncService(
         Guid documentId, CancellationToken cancellationToken = default) =>
         WithInnerAsync(inner => inner.SyncDocumentAsync(documentId, cancellationToken));
 
-    // ==========================================================================
-    // Eviction, called by the section's sole writer
-    // ==========================================================================
-
-    /// <summary>
-    /// Evict the entire Legal-document cache; the next read re-warms. The cache is
-    /// bag-shaped (whole-set replacement on rebuild), so there is no per-document evict.
-    /// Called only by <c>LegalDocumentSyncService</c>, the sole writer, right after
-    /// each successful repository write.
-    /// </summary>
+    /// <summary>Wholesale: the cache is one bag, so there is no per-document evict.</summary>
     public void InvalidateAll()
     {
-        // Clear() flips the warmed flag back to false and increments the
-        // bulk-invalidation counter; the next read drives a fresh
-        // WarmAllAsync via EnsureWarmedAsync. Reset the version index here
-        // so we don't briefly serve stale version-id→document-id lookups
-        // against an empty primary dict.
+        // Reset the index too, so it never serves stale version lookups against an empty primary dict.
         _versionToDocument = new Dictionary<Guid, Guid>();
         Clear();
     }
-
-    // ==========================================================================
-    // Warm / load
-    // ==========================================================================
 
     private async Task<IReadOnlyDictionary<Guid, LegalDocumentInfo>> GetActiveRequiredDocumentsAsync(
         CancellationToken ct)
@@ -196,19 +127,8 @@ internal sealed class CachingLegalDocumentSyncService(
         return AsReadOnlyDictionary;
     }
 
-    /// <summary>
-    /// Bulk-loads every active+required <see cref="LegalDocumentInfo"/>. Called by
-    /// <see cref="TrackedCache{TKey,TValue}.EnsureWarmedAsync"/> at startup
-    /// (because the base ctor passes <c>warmOnStartup: true</c>) and again on
-    /// demand after <see cref="InvalidateAll"/> drops the dict. The base owns
-    /// concurrency coalescing via its warm semaphore, so this body is invoked
-    /// at most once at a time.
-    /// </summary>
     protected override async Task WarmAllAsync(CancellationToken ct)
     {
-        // Pull every active+required document with versions. LegalDocument
-        // carries a bare TeamId (memory/architecture/no-cross-section-ef-joins.md);
-        // team display names are stitched here via ITeamService.
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ILegalDocumentSyncManagement>(InnerServiceKey);
         var allDocs = await inner.GetActiveDocumentsAsync(ct);
@@ -222,8 +142,6 @@ internal sealed class CachingLegalDocumentSyncService(
             ? new Dictionary<Guid, TeamInfo>()
             : await teamService.GetTeamsWithParentsAsync(teamIds, ct);
 
-        // Resolve team display names via ITeamService — scoped, so
-        // pulled through a fresh DI scope per-warm.
         var versionIndex = new Dictionary<Guid, Guid>();
 
         foreach (var info in docs)
@@ -265,10 +183,6 @@ internal sealed class CachingLegalDocumentSyncService(
             version.EffectiveFrom,
             version.RequiresReConsent,
             version.ChangesSummary);
-
-    // ==========================================================================
-    // Inner-service resolution
-    // ==========================================================================
 
     private async Task<TResult> WithInnerAsync<TResult>(Func<ILegalDocumentSyncManagement, Task<TResult>> action)
     {

@@ -11,12 +11,8 @@ using Humans.Events.Domain;
 namespace Humans.Integration.Tests.Services;
 
 /// <summary>
-/// Integration tests that exercise <see cref="CachingEventService"/> end-to-end
-/// through the DI-resolved <see cref="IEventManagement"/> surface. Closes the
-/// §15g-bis "decorator forgot to invalidate after a write" silent-bug gap that
-/// the architecture-only ratchets can't detect: writes go through the
-/// Singleton decorator, reads come back through the same decorator, and the
-/// assertion is that the cached projection reflects the write.
+/// Writes and reads through the DI-resolved Singleton <see cref="CachingEventService"/>: a decorator that forgets to
+/// invalidate after a write is a silent bug the architecture ratchets can't see.
 /// </summary>
 public class CachingEventServiceTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
@@ -27,7 +23,7 @@ public class CachingEventServiceTests(HumansTestDatabase database) : Integration
         svc.Should().BeOfType<CachingEventService>(
             "the unkeyed IEventManagement registration must resolve to the Singleton decorator");
 
-        // Warm first so the read path is hitting the cache, not lazy-load.
+        // Warm first so the read hits the cache, not a lazy load.
         await ((CachingEventService)svc).WarmAllAsync(TestContext.Current.CancellationToken);
 
         var slug = $"itest-cat-{Guid.NewGuid():N}";
@@ -43,9 +39,7 @@ public class CachingEventServiceTests(HumansTestDatabase database) : Integration
 
         await svc.CreateCategoryAsync(category, TestContext.Current.CancellationToken);
 
-        // Read back through the same decorator. If the write path forgot to
-        // invalidate (or the invalidator wasn't wired to the same Singleton),
-        // the cached snapshot would not contain the new row.
+        // A write that didn't invalidate (or an invalidator wired to another instance) leaves the new row out.
         var active = await svc.GetActiveCategoriesAsync(TestContext.Current.CancellationToken);
         active.Should().ContainSingle(c => c.Slug == slug)
             .Which.Name.Should().Be("Integration test category");
@@ -69,13 +63,10 @@ public class CachingEventServiceTests(HumansTestDatabase database) : Integration
         };
         await svc.CreateCategoryAsync(category, TestContext.Current.CancellationToken);
 
-        // Mutate and update through the decorator.
         category.Name = "Renamed via decorator";
         await svc.UpdateCategoryAsync(category, TestContext.Current.CancellationToken);
 
-        // The decorator must have refreshed both the category list AND the
-        // approved-events projection (flattened CategoryName). At minimum the
-        // category list should reflect the rename on the next read.
+        // The rename must refresh the category list and the approved-events projection's flattened CategoryName.
         var active = await svc.GetActiveCategoriesAsync(TestContext.Current.CancellationToken);
         active.Should().ContainSingle(c => c.Slug == slug)
             .Which.Name.Should().Be("Renamed via decorator");
@@ -84,9 +75,8 @@ public class CachingEventServiceTests(HumansTestDatabase database) : Integration
     [HumansFact]
     public async Task GetCategoryAsync_returns_inactive_category_for_admin_edit()
     {
-        // Codex P1 (PR #582): GetCategoryAsync served from an active-only
-        // snapshot, breaking EditCategory for inactive rows. Snapshot must
-        // hold all rows; IsActive filter belongs in GetActive*Async.
+        // GetCategoryAsync must see inactive rows, or EditCategory breaks for them: the IsActive filter belongs in
+        // GetActive*Async, not the snapshot.
         var svc = Factory.Services.GetRequiredService<IEventManagement>();
         await ((CachingEventService)svc).WarmAllAsync(TestContext.Current.CancellationToken);
 
@@ -115,7 +105,7 @@ public class CachingEventServiceTests(HumansTestDatabase database) : Integration
     [HumansFact]
     public async Task GetVenueAsync_returns_inactive_venue_for_admin_edit()
     {
-        // Codex P1 (PR #582): same regression on venues — EditVenue 404s.
+        // Same for venues, or EditVenue 404s.
         var svc = Factory.Services.GetRequiredService<IEventManagement>();
         await ((CachingEventService)svc).WarmAllAsync(TestContext.Current.CancellationToken);
 
@@ -141,9 +131,7 @@ public class CachingEventServiceTests(HumansTestDatabase database) : Integration
     [HumansFact]
     public async Task AdminUpdateAsync_through_decorator_updates_cached_approved_event()
     {
-        // §15g-bis for the admin in-place edit path: an Approved event edited
-        // via AdminUpdateAsync stays approved (status preserved) and the cached
-        // approved-events projection must reflect the new field values.
+        // An Approved event edited via AdminUpdateAsync stays approved, and the cached projection shows the new values.
         var svc = Factory.Services.GetRequiredService<IEventManagement>();
         await ((CachingEventService)svc).WarmAllAsync(TestContext.Current.CancellationToken);
 
@@ -203,9 +191,8 @@ public class CachingEventServiceTests(HumansTestDatabase database) : Integration
     [HumansFact]
     public async Task CategorySlugExistsAsync_detects_collision_with_inactive_row()
     {
-        // Codex P1 (PR #582): DB unique index covers active+inactive rows;
-        // the cache check must match or INSERT will throw DbUpdateException
-        // instead of producing a friendly ModelState message.
+        // The unique index covers inactive rows too, so the cache check must, or INSERT throws DbUpdateException instead
+        // of a friendly ModelState message.
         var svc = Factory.Services.GetRequiredService<IEventManagement>();
         await ((CachingEventService)svc).WarmAllAsync(TestContext.Current.CancellationToken);
 

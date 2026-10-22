@@ -1,48 +1,33 @@
 namespace Humans.Users.Contracts;
 
 /// <summary>
-/// Lifecycle state of a <c>User</c> — the single source of truth for access,
-/// suspension included. Stored as a required string column on <c>users</c>
-/// (<c>User.State</c>) via <c>HasConversion&lt;string&gt;()</c> and written at
-/// each transition point; nothing derives it on read.
-///
-/// <para><b>Access rule:</b> the full app is reachable only when state is
-/// <see cref="Active"/>. <see cref="DeletePending"/> reaches only the cancel-deletion screen.
-/// <see cref="Bare"/> is routed to name entry. <see cref="Suspended"/>/<see cref="AdminSuspended"/>/
-/// <see cref="Rejected"/>/<see cref="Deleted"/>/<see cref="Merged"/> are shown the account-status wall only.</para>
-///
-/// <para><b>Precedence</b> (most-final wins, used by the classify helper when
-/// more than one underlying signal is present):
-/// <c>Merged &gt; Deleted &gt; Rejected &gt; AdminSuspended/Suspended &gt; DeletePending &gt; Bare &gt; Active</c>.</para>
+/// Stored by name and written at each transition; nothing derives it on read. Only <see cref="Active"/> reaches the
+/// full app. Precedence (most final wins): <c>Merged &gt; Deleted &gt; Rejected &gt; AdminSuspended/Suspended &gt;
+/// DeletePending &gt; Bare &gt; Active</c>.
 /// </summary>
 public enum UserState
 {
-    /// <summary>Account exists but required name fields (BurnerName + FirstName + LastName)
-    /// are not all filled. Routed to name entry; no app access yet.</summary>
+    /// <summary>Required names not all filled. Routed to name entry.</summary>
     Bare = 0,
 
-    /// <summary>Required name fields filled and none of the excluding states apply.
-    /// The only state with full app access.</summary>
+    /// <summary>The only state with full app access.</summary>
     Active = 1,
 
-    /// <summary>User requested account deletion and is within the cancellation grace window.
-    /// Reaches only the cancel-deletion screen.</summary>
+    /// <summary>Within the deletion grace window. Reaches only the cancel-deletion screen.</summary>
     DeletePending = 2,
 
-    /// <summary>Suspended for missing required consents. Shown the account-status wall with a consent-completion path.</summary>
+    /// <summary>Missing required consents. The account-status wall, with a way to complete them.</summary>
     Suspended = 3,
 
-    /// <summary>Signup rejected (<c>IUserWrite.SetRejectedAsync</c>; legacy: <c>profiles.RejectedAt</c> set). Shown the
-    /// account-status wall, including the rejection reason when present.</summary>
+    /// <summary>The account-status wall, with the rejection reason when present.</summary>
     Rejected = 4,
 
-    /// <summary>Account deletion completed (purged/anonymized). Shown the account-status wall.</summary>
+    /// <summary>Purged or anonymized. The account-status wall.</summary>
     Deleted = 5,
 
-    /// <summary>Account folded into another via merge (tombstone). Cannot sign in; the wall is a
-    /// defensive catch-all.</summary>
+    /// <summary>A merge tombstone. Can't sign in; the wall is a defensive catch-all.</summary>
     Merged = 6,
 
-    /// <summary>Administratively suspended. Shown the account-status wall until an admin unsuspends.</summary>
+    /// <summary>The account-status wall until an admin unsuspends.</summary>
     AdminSuspended = 7,
 }

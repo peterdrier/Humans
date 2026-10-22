@@ -17,11 +17,8 @@ namespace Humans.Web.Tests.ViewComponents;
 public class AdminSidebarViewComponentTests
 {
     /// <summary>
-    /// A minimal stand-in for the real, section-contributed nav (nobodies-collective/Humans#1077):
-    /// just enough groups/items for this file's assertions — a group with two items (for
-    /// active-item and empty-group filtering), a group whose items share a controller with
-    /// different actions (for the controller+action match regression), and a prod-gated group
-    /// (for the Development-hides-in-production case).
+    /// Stand-in for the section-contributed nav: two items in one group, items sharing a controller with different
+    /// actions, and a prod-gated group.
     /// </summary>
     private sealed class FakeNav : ISectionAdminNav
     {
@@ -90,9 +87,7 @@ public class AdminSidebarViewComponentTests
     [HumansFact]
     public async Task Active_Item_Match_Requires_Both_Controller_And_Action()
     {
-        // Regression: when on /Debug/Logs, only the Logs sidebar item should be active.
-        // Previously a controller-only match made all diagnostics items under
-        // controller="Debug" light up.
+        // Regression: a controller-only match lit up every item under controller="Debug".
         var auth = AlwaysAllow();
         var sut = MakeSut(auth, "Debug", "Logs");
         var result = await sut.InvokeAsync() as ViewViewComponentResult;

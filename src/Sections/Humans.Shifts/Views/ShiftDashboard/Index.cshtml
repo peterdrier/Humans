@@ -69,7 +69,6 @@
         </div>
     </div>
 
-    @* Volunteer Tracking entry — gated on ShiftDashboardAccess. *@
     <div class="card mb-4 border-info" authorize-policy="ShiftDashboardAccess">
         <div class="card-body d-flex align-items-center gap-3 py-3">
             <i class="fa-solid fa-people-group text-info fs-3"></i>
@@ -84,7 +83,7 @@
         </div>
     </div>
 
-    @* Filter card: period buttons (+ sub-period when Build), date-range + department form. Period/dates are mutex (JS). *@
+    @* Period and dates are mutually exclusive (JS). *@
     <div class="card mb-4" id="filters">
         <div class="card-body">
             <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
@@ -176,7 +175,6 @@
         </div>
     </div>
     <script>
-        // Keep the browser scrolled to the filters card after submit.
         (function () {
             var form = document.getElementById('dashboard-filter-form');
             if (!form) return;
@@ -206,7 +204,7 @@
         }
     }
     <div class="row">
-        @* Privileged: ShiftDashboardAccess only (subteam managers don't see this column). *@
+        @* Subteam managers don't see this column. *@
         <div class="col-lg-6 d-flex flex-column" authorize-policy="ShiftDashboardAccess">
             @await Html.PartialAsync("_CoordinatorActivity", Model.CoordinatorActivity)
         </div>
@@ -219,7 +217,6 @@
 
     @await Html.PartialAsync("_StaffingHoursChart", (Model.StaffingHours, "dashboardStaffingHoursChart"))
 
-    @* Grouped urgency accordion: one card per (Rota, Department); expand for per-day shifts + voluntell forms. *@
     @if (Model.Shifts.Count == 0)
     {
         <div class="alert alert-info">@Localizer["ShiftDash_NoShiftsMatch"]</div>
@@ -288,7 +285,6 @@
                                         <span class="@(rowUnderstaffed ? "text-danger fw-bold" : "")">@item.ConfirmedCount</span>
                                         <small class="text-muted">/ @shift.MinVolunteers–@shift.MaxVolunteers</small>
                                     </td>
-                                    @* Voluntell gated by ShiftDashboardAccess. *@
                                     <td class="text-end pe-3" authorize-policy="ShiftDashboardAccess">
                                         <button class="btn btn-sm btn-outline-primary"
                                                 type="button"
@@ -331,11 +327,8 @@
         integrity="sha384-5JqMv4L/Xa0hfvtF06qboNdhvuYXUku9ZrhZh3bSk8VXF0A/RuSLHpLsSV9Zqhl6"
         crossorigin="anonymous"></script>
 <script>
-// Re-scroll to URL hash after window.load: the dashboard renders multiple
-// Chart.js canvases above the urgency accordion, and their final layout
-// settles after DOMContentLoaded. The browser's initial hash-jump lands
-// on the right element but subsequent layout shifts push it offscreen.
-// Two rAF ticks let chart resize observers settle before we scroll.
+// Re-scroll to the hash after load: the charts above the accordion settle after DOMContentLoaded and push the
+// target offscreen. Two rAF ticks let their resize observers settle first.
 (function () {
     if (!window.location.hash) return;
     var hash = window.location.hash;
@@ -363,11 +356,8 @@
     ["ShowPoolBadge"] = false
 })
 
-// Filter UI plumbing. Picking a period or sub-period populates the date pickers
-// with that range as a visual cue (so coordinators can see which dates the filter
-// covers). The server still uses period+subPeriod as the canonical filter when
-// they're set; dates are display-only in that case. Editing a date manually clears
-// the period/subPeriod hidden inputs — the date range becomes the filter.
+// Picking a period fills the date pickers as a visual cue only; the server filters on period when set. Editing a
+// date clears the period inputs, making the dates the filter.
 (function () {
     var form = document.getElementById('dashboard-filter-form');
     var periodInput = document.getElementById('dashboard-period-input');
@@ -376,15 +366,11 @@
     var endDate = document.getElementById('dashboard-end-date');
     if (!form) return;
 
-    // Flatpickr overlays the native browser date picker so the displayed format
-    // is forced to dd/mm/yyyy regardless of browser locale (en-US would otherwise
-    // show mm/dd/yyyy on type="date"). The underlying input value stays ISO
-    // (yyyy-mm-dd) so the server sees the same string format either way.
+    // Flatpickr forces dd/mm/yyyy whatever the browser locale; the input value stays ISO for the server.
     var fpStart = null, fpEnd = null;
     if (typeof flatpickr === 'function') {
         fpStart = flatpickr(startDate, { dateFormat: 'Y-m-d', altInput: true, altFormat: 'd/m/Y', allowInput: true });
         fpEnd = flatpickr(endDate, { dateFormat: 'Y-m-d', altInput: true, altFormat: 'd/m/Y', allowInput: true });
-        // Keep the end-date picker's minimum in sync with the start-date selection.
         if (startDate.value) fpEnd.set('minDate', startDate.value);
     }
 
@@ -398,7 +384,6 @@
     var finishingWeekendOffset = parseInt(form.getAttribute('data-finishingweekend-offset') || '0', 10);
 
     function isoAddDays(iso, n) {
-        // Parse as UTC midnight, add days, format back to YYYY-MM-DD.
         var d = new Date(iso + 'T00:00:00Z');
         if (isNaN(d.getTime())) return '';
         d.setUTCDate(d.getUTCDate() + n);

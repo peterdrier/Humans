@@ -10,12 +10,7 @@ using Microsoft.Extensions.Options;
 namespace Humans.Events.Tests.Services;
 
 /// <summary>
-/// The per-template routing policy Events stamps on its own messages — one template name
-/// per lifecycle status — plus the gallery-coverage gate: every template
-/// <see cref="EventsEmails"/> can build has a sample in
-/// <see cref="EventsEmailPreviews"/>, so a new template cannot ship invisible
-/// (peterdrier/Humans#1651). Transport (opt-out, unsubscribe, wrapping, enqueue) stays
-/// Email's, covered there.
+/// Includes the gallery-coverage gate: every template <see cref="EventsEmails"/> can build has a sample in <see cref="EventsEmailPreviews"/>, so a new template cannot ship invisible.
 /// </summary>
 public sealed class EventsEmailsTests
 {

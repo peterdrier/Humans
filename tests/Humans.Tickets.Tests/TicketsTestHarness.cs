@@ -36,13 +36,10 @@ public abstract class TicketsTestHarness : IDisposable
     private protected TestDbContextFactory<TicketsDbContext> TicketsDbFactory { get; }
     private protected FakeClock Clock { get; }
 
-    /// <summary>
-    /// The people the section's email matching resolves against. Named <c>Db</c> because
-    /// that is what the moved test bodies call it; it is a pair of lists, not a context.
-    /// </summary>
+    /// <summary>The people the section's email matching resolves against: a pair of lists, not a context.</summary>
     private protected PeopleRegistry Db { get; } = new();
 
-    /// <summary>Stages a user. Mirrors the Base harness: no save until <see cref="SaveAllAsync"/>.</summary>
+    /// <summary>Stages a user; nothing is saved until <see cref="SaveAllAsync"/>.</summary>
     protected User SeedUser(Guid? id = null, string displayName = "Test User")
     {
         var userId = id ?? Guid.NewGuid();
@@ -62,10 +59,7 @@ public abstract class TicketsTestHarness : IDisposable
 
     private protected void SaveAll() => TicketsDb.SaveChanges();
 
-    /// <summary>
-    /// An <see cref="IUserService"/> whose three <c>GetUserInfo*</c> readers project out of
-    /// <see cref="Db"/>. Same three stubs the Base harness wires from <c>HumansDbContext</c>.
-    /// </summary>
+    /// <summary>An <see cref="IUserService"/> whose three <c>GetUserInfo*</c> readers project out of <see cref="Db"/>.</summary>
     private protected IUserService NewDbBackedUserService()
     {
         var svc = Substitute.For<IUserService>();

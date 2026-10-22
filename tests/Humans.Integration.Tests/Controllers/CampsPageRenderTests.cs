@@ -4,58 +4,22 @@ using Humans.Integration.Tests.Infrastructure;
 
 namespace Humans.Integration.Tests.Controllers;
 
-/// <summary>
-/// Renders every Camps page through the real app, as the standing form of the §15 step 12
-/// check for the section's move into <c>src/Sections/Humans.Camps</c>
-/// (nobodies-collective/Humans#866, G5).
-/// </summary>
+/// <summary>Renders every Camps page through the real app.</summary>
 /// <remarks>
 /// <para>
-/// The failure modes a G5 move introduces all render as a <b>200 with degraded content</b>, so
-/// "the page loads" is not the assertion:
+/// Failures render as a 200 with degraded content: a missing <c>@@addTagHelper *, Humans.Camps</c> drops
+/// <c>&lt;vc:my-camps&gt;</c>, a mis-bound key renders as its name, and only Spanish proves the satellites ship.
 /// </para>
-/// <list type="number">
-/// <item><description>
-/// A section RCL does not inherit the host's <c>Views/_ViewImports.cshtml</c> — a missing
-/// <c>@@using</c> or <c>@@addTagHelper</c> ships literal markup with a green build. Camps'
-/// <c>&lt;vc:my-camps&gt;</c> is public under the section's <c>Contracts/</c> folder, so the
-/// tag helper is generated and Shell resolves it off one <c>@@addTagHelper *, Humans.Camps</c>
-/// line; the check here is what proves that line is present rather than the element being
-/// silently dropped by the browser.
-/// </description></item>
-/// <item><description>
-/// The section resource set owns <c>Camps_*</c> and <c>Enum_CampVibe_*</c> keys
-/// originally carved out of <c>SharedResource</c>. A key the carve missed, or a call site bound to the wrong set,
-/// renders the raw key — in every language, with no error.
-/// </description></item>
-/// <item><description>
-/// Four prefixes deliberately stayed shared and are read through <c>SharedLocalizer</c>:
-/// <c>Common_*</c>, <c>CityPlanning_*</c>, the Base facility enums (<c>Enum_YesNoMaybe_*</c>,
-/// <c>Enum_SoundZone_*</c>, <c>Enum_SpaceSize_*</c> and friends, which stayed with their enums
-/// in <c>Humans.Domain</c>) and <c>Camp_Plural</c> — the last because Shell's nav and
-/// dashboard, the guest landing page, Containers' breadcrumb and Events' barrio form all
-/// render it, and a key rendered outside the section cannot see the section's set. A
-/// half-switched call site renders the raw key with a green build, which is what the
-/// <c>NotContain</c> assertions on those prefixes catch.
-/// </description></item>
-/// <item><description>
-/// The Spanish request is the only thing that proves the section RCL's satellite assemblies
-/// reach the host's probing path at all — an English-only check passes either way, because the
-/// neutral set is embedded in the main assembly and the fallback is silent.
-/// </description></item>
-/// </list>
 /// <para>
-/// Camps ships no <c>wwwroot/</c>, so there is no static-asset half here. The role and
-/// compliance admin pages are covered too: they are the section's other two controllers, and
-/// their copy sits on the failure paths a page-loads suite does not reach.
+/// <c>Common_*</c>, <c>CityPlanning_*</c>, the Base facility enums and <c>Camp_Plural</c> stay shared, read through
+/// <c>SharedLocalizer</c>: <c>Camp_Plural</c> because Shell and other sections render it too. The <c>NotContain</c>
+/// checks catch a half-switched call site.
 /// </para>
 /// </remarks>
 public class CampsPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     /// <summary>
-    /// Every page the section routes that renders without a seeded camp. The detail, edit and
-    /// season pages need a camp row and are exercised through <c>/Camps</c>'s card grid
-    /// instead — seeding a camp here would fixture the whole registration flow, which is
+    /// Pages that render without a seeded camp. The detail, edit and season pages need a camp row, and seeding one is
     /// <c>Humans.Camps.Tests</c>' business.
     /// </summary>
     private static readonly string[] Pages =
@@ -81,12 +45,11 @@ public class CampsPageRenderTests(HumansTestDatabase database) : IntegrationTest
 
             var html = await response.Content.ReadAsStringAsync(ct);
 
-            // The fallback for a key the carve missed is the key itself.
             html.Should().NotContain("Camp_", $"GET {url} rendered a raw Camps resource key");
             html.Should().NotContain("Camps_", $"GET {url} rendered a raw Camps resource key");
             html.Should().NotContain("CampCard_", $"GET {url} rendered a raw CampCard key");
 
-            // …and the mirror: a shared key the section still reads, left on the wrong localizer.
+            // The mirror: a shared key read off the section set.
             html.Should().NotContain("Common_", $"GET {url} read a shared key off the section set");
             html.Should().NotContain("CityPlanning_", $"GET {url} read CityPlanning copy off the section set");
             html.Should().NotContain("Enum_", $"GET {url} rendered a raw enum key");
@@ -105,19 +68,14 @@ public class CampsPageRenderTests(HumansTestDatabase database) : IntegrationTest
             because: "Camps_Index_BarrioGuide resolves through IStringLocalizer<CampsResource>");
         html.Should().Contain("Filter",
             because: "Camps_Index_FilterButton is on the section's own filter bar");
-        // <vc:access-matrix> binds through @addTagHelper *, Humans.Interfaces since the component
-        // moved out of Shell (nobodies-collective/Humans#1056). An unbound <vc:> ships as
-        // inert literal markup with a green build, so assert the emitted modal id, not just
-        // the absence of "<vc:" above.
+        // An unbound <vc:> ships as inert markup, so assert the emitted modal id, not only the absence of "<vc:".
         html.Should().Contain("sectionHelp-Camps",
             because: "<vc:access-matrix section=\"Camps\" /> must bind and emit its modal");
     }
 
     /// <summary>
-    /// <c>Camp_Plural</c> is the one key of the section's own prefix that stayed in
-    /// <c>SharedResource</c>, because Shell's nav renders it. The section's breadcrumbs read it
-    /// through <c>SharedLocalizer</c>; a mis-bind is a raw key on every camp page and neither
-    /// the carve grep nor the build sees it.
+    /// <c>Camp_Plural</c> stayed in <c>SharedResource</c> because Shell's nav renders it; a mis-bind is a raw key on
+    /// every camp page.
     /// </summary>
     [HumansFact(Timeout = 120000)]
     public async Task The_shared_camp_plural_key_still_resolves_on_both_sides()
@@ -129,7 +87,6 @@ public class CampsPageRenderTests(HumansTestDatabase database) : IntegrationTest
             .Content.ReadAsStringAsync(ct);
         sectionPage.Should().NotContain("Camp_Plural");
 
-        // Shell's own renderer of the same key, which is why it stayed behind.
         var shellPage = await (await Client.GetAsync("/", ct)).Content.ReadAsStringAsync(ct);
         shellPage.Should().NotContain("Camp_Plural");
     }
@@ -137,15 +94,12 @@ public class CampsPageRenderTests(HumansTestDatabase database) : IntegrationTest
     [HumansFact(Timeout = 120000)]
     public async Task Camps_pages_render_in_spanish_from_the_sections_satellite_assemblies()
     {
-        // Razor's default HtmlEncoder escapes non-ASCII to numeric entities, so the assertions
-        // stay on ASCII-only runs of the Spanish copy ("Guía del Barrio" reaches the body
-        // as "Gu&#xED;a del Barrio").
+        // HtmlEncoder escapes non-ASCII ("Guía" reaches the body as "Gu&#xED;a"), so the checks stay on ASCII runs.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
-        // Accept-Language does not reach a signed-in user: Program.cs's initial culture provider
-        // returns the user's PreferredLanguage and short-circuits the rest of the chain, and
-        // every Camps admin page is [Authorize]. Switch the language the way the UI does.
+        // Accept-Language doesn't reach a signed-in user: the PreferredLanguage provider short-circuits the chain. Switch
+        // the way the UI does.
         var switcherPage = await (await Client.GetAsync("/Camps", ct)).Content.ReadAsStringAsync(ct);
         var token = ExtractAntiForgeryToken(switcherPage);
         token.Should().NotBeNullOrEmpty();

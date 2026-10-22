@@ -27,13 +27,9 @@ using Humans.Users.Contracts;
 namespace Humans.Consent.Tests.Services;
 
 /// <summary>
-/// Covers the merged <see cref="LegalDocumentSyncService"/> (nobodies-collective/Humans#751):
-/// the sole writer for <c>legal_documents</c>/<c>document_versions</c>, owning both the admin
-/// write surface (<see cref="IAdminLegalDocumentService"/>) and the GitHub-sync write surface
-/// (<see cref="ILegalDocumentSyncManagement"/>). Eviction assertions (the real decorator's
-/// <c>BulkInvalidations</c>) here replace the deleted
-/// <c>LegalDocumentSaveChangesInterceptorTests</c> — invalidation now fires from the service
-/// after each successful repository write instead of from a cross-cutting EF interceptor.
+/// <see cref="LegalDocumentSyncService"/> is the sole writer for <c>legal_documents</c>/<c>document_versions</c>,
+/// owning both the admin (<see cref="IAdminLegalDocumentService"/>) and GitHub-sync
+/// (<see cref="ILegalDocumentSyncManagement"/>) write surfaces, and evicts after each successful write.
 /// </summary>
 public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
 {
@@ -163,8 +159,6 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         detail!.CurrentVersion.Should().Be("v2");
         detail.Versions.Should().HaveCount(3);
     }
-
-    // ── NormalizeGitHubFolderPath ────────────────────────────────────────────
 
     [HumansFact]
     public void NormalizeGitHubFolderPath_PlainPath_ReturnsNormalizedFolder()
@@ -312,8 +306,6 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         controller.TempData.Should().BeEmpty();
     }
 
-    // ── CreateLegalDocumentWithInitialSyncAsync ──────────────────────────────
-
     [HumansFact(Timeout = 10000)]
     public async Task CreateLegalDocumentWithInitialSyncAsync_PersistsAndReturnsDocument()
     {
@@ -385,8 +377,6 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         _audit.ReceivedCalls().Should().ContainSingle();
     }
 
-    // ── UpdateLegalDocumentAsync ─────────────────────────────────────────────
-
     [HumansFact]
     public async Task UpdateLegalDocumentAsync_UpdatesAndEvictsCache()
     {
@@ -418,8 +408,6 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         _audit.ReceivedCalls().Should().BeEmpty();
     }
 
-    // ── ArchiveLegalDocumentAsync ─────────────────────────────────────────────
-
     [HumansFact]
     public async Task ArchiveLegalDocumentAsync_ArchivesAndEvictsCache()
     {
@@ -445,8 +433,6 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         _cache.BulkInvalidations.Should().Be(0);
         _audit.ReceivedCalls().Should().BeEmpty();
     }
-
-    // ── UpdateVersionSummaryAsync ─────────────────────────────────────────────
 
     [HumansTheory]
     [Xunit.InlineData(0)]
@@ -522,8 +508,6 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         _audit.ReceivedCalls().Should().BeEmpty();
     }
 
-    // ── SyncLegalDocumentAsync (IAdminLegalDocumentService) ──────────────────
-
     [HumansFact]
     public async Task SyncLegalDocumentAsync_DelegatesToSameSyncPath()
     {
@@ -540,8 +524,6 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         _cache.BulkInvalidations.Should().Be(1);
     }
 
-    // ── GitHub sync — touch-only path (no content change) ────────────────────
-
     [HumansFact]
     public async Task SyncDocumentAsync_AlreadyCurrent_TouchesAndEvictsCache()
     {
@@ -555,8 +537,6 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         _cache.BulkInvalidations.Should().Be(1);
         _audit.ReceivedCalls().Should().BeEmpty();
     }
-
-    // ── GitHub sync — version creation & re-consent pins ─────────────────────
 
     [HumansTheory]
     [Xunit.InlineData(false)]

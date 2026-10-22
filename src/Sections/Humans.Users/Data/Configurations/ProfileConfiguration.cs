@@ -72,8 +72,7 @@ internal sealed class ProfileConfiguration : IEntityTypeConfiguration<Profile>
         builder.Property(p => p.EmergencyContactRelationship)
             .HasMaxLength(100);
 
-        // Dietary + medical (moved from VolunteerEventProfile). Lists persisted as
-        // JSONB with a sequence-equality value comparer, mirroring the prior VEP map.
+        // Sequence-equality comparer so EF detects element changes in the JSONB lists.
         var listComparer = new ValueComparer<List<string>>(
             (a, b) => a != null && b != null && a.SequenceEqual(b),
             v => v.Aggregate(0, HashCode.Combine),

@@ -1,18 +1,11 @@
 namespace Humans.Budget.Contracts;
 
-/// <summary>
-/// Whether a budget category represents capital or operational expenditure.
-/// Stored as string in DB; new values can be appended without migration.
-/// </summary>
+/// <summary>Stored by name: never rename a value.</summary>
 public enum ExpenditureType
 {
-    /// <summary>
-    /// Capital expenditure — investments, equipment purchases.
-    /// </summary>
+    /// <summary>Investments, equipment purchases.</summary>
     CapEx = 0,
 
-    /// <summary>
-    /// Operational expenditure — recurring costs.
-    /// </summary>
+    /// <summary>Recurring costs.</summary>
     OpEx = 1
 }

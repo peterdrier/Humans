@@ -6,16 +6,9 @@ using NodaTime;
 namespace Humans.Workgroups.ViewComponents;
 
 /// <summary>
-/// The member dashboard's "My workgroups" (design §16): the signed-in person's own
-/// groups with update-due and open-for-comment badges. Renders nothing for an
-/// unauthenticated principal; an empty state links to the register.
+/// Internal: invoked by Type through the Shell's slot renderer, never as a tag helper. Public wouldn't compile:
+/// the constructor takes the internal <c>IWorkgroupService</c>.
 /// </summary>
-/// <remarks>
-/// Internal — invoked by Type through the Shell's slot renderer
-/// (<c>Component.InvokeAsync</c>), never as a <c>&lt;vc:&gt;</c> tag helper, so Razor's
-/// public-only tag-helper discovery does not apply. Public would not compile: the
-/// constructor takes the section-internal <c>IWorkgroupService</c> (CS0051).
-/// </remarks>
 internal sealed class MyWorkgroupsViewComponent(IWorkgroupService workgroups, IClock clock) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()

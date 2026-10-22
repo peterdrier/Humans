@@ -6,31 +6,11 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Humans.Analyzers;
 
 /// <summary>
-/// HUM0028 — every interface that extends
-/// <c>Humans.Base.Interfaces.IInvalidator</c> is a new
-/// cache-invalidator concept. A separate invalidator existing is itself a
-/// smell — usually a cross-section write or a flush the owning section's
-/// service + caching decorator should have absorbed. The marker makes the
-/// family countable so it can be ratcheted toward zero.
-/// <list type="bullet">
-/// <item>Existing invalidator interfaces carry
-/// <c>[Grandfathered("HUM0028", …)]</c> → diagnostic rides as
-/// <see cref="DiagnosticSeverity.Warning"/>.</item>
-/// <item>A new <c>*Invalidator</c> interface (no <c>[Grandfathered]</c>)
-/// → <see cref="DiagnosticSeverity.Error"/>, failing the PR that adds it.
-/// To add an invalidator, either delete an existing one or get Peter to
-/// sign off on a new grandfather.</item>
-/// </list>
-/// <c>Directory.Build.props</c> includes <c>HUM0028</c> in
-/// <c>WarningsNotAsErrors</c> so the grandfathered warnings don't break the
-/// build; that entry's exit condition is "delete when the last
-/// <c>[Grandfathered(\"HUM0028\")]</c> is gone."
+/// HUM0028 — every interface that extends <c>Humans.Base.Interfaces.IInvalidator</c> is a new cache-invalidator
+/// concept, usually a cross-section write or flush the owning service and its decorator should absorb. Grandfathered
+/// ones are Warnings; a new one is an Error. To add one, delete another or get Peter to sign off on a grandfather.
+/// Fires at the declaration, not at consumers.
 /// </summary>
-/// <remarks>
-/// Runs in <c>Humans.Application</c> only. The Application compilation owns
-/// every invalidator interface declaration. Diagnostic fires at the
-/// interface declaration itself (not at consumers).
-/// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class InvalidatorInterfaceRatchetAnalyzer : DiagnosticAnalyzer
 {

@@ -231,10 +231,6 @@ internal sealed partial class CampRepository
             .ToListAsync(ct);
     }
 
-    // ==========================================================================
-    // Account-merge fold
-    // ==========================================================================
-
     public async Task ReassignMembershipsToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)

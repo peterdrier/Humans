@@ -44,8 +44,6 @@ public sealed class HoldedRepositoryTests
             Instant.FromUtc(2000, 1, 1, 0, 0), Instant.FromUtc(2100, 1, 1, 0, 0),
             null, lines, Now, Xunit.TestContext.Current.CancellationToken);
 
-    // ── Sync state ────────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task GetOrCreateSyncState_creates_then_returns_same_row()
     {
@@ -70,8 +68,6 @@ public sealed class HoldedRepositoryTests
         var states = await _repo.GetSyncStatesAsync(ct);
         states.Select(s => s.Kind).Should().BeEquivalentTo([HoldedSyncKind.Ledger, HoldedSyncKind.Accounts]);
     }
-
-    // ── Window replace ────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task ReplaceLedgerWindow_upserts_and_deletes_missing()
@@ -155,8 +151,6 @@ public sealed class HoldedRepositoryTests
         (await _repo.GetLedgerLinesByAccountNumAsync(57200001, ct)).Should().BeEmpty();
     }
 
-    // ── Accounts ──────────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task UpsertAccounts_replaces_totals()
     {
@@ -181,8 +175,6 @@ public sealed class HoldedRepositoryTests
         updated.Archived.Should().BeTrue();
         accounts.Single(a => a.Number == 62900000).Balance.Should().Be(133416.45m);
     }
-
-    // ── API calls ─────────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task AddApiCalls_round_trips()

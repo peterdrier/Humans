@@ -153,8 +153,6 @@ public abstract class WorkgroupsTestHarness : IDisposable
     /// <summary>A fresh context over the same store — what a test reads back through.</summary>
     private protected WorkgroupsDbContext OpenContext() => DbFactory.CreateDbContext();
 
-    // ── Seeders ───────────────────────────────────────────────────────────
-
     /// <summary>Registers a survey the <see cref="ISurveyAnalysisRead"/> substitute knows, authored by <paramref name="authorUserId"/>.</summary>
     private protected Guid SeedSurvey(Guid authorUserId, Guid? id = null, string title = "Test Survey")
     {
@@ -337,8 +335,6 @@ public abstract class WorkgroupsTestHarness : IDisposable
         await Db.SaveChangesAsync(Ct);
         return comment;
     }
-
-    // ── UserInfo construction ────────────────────────────────────────────
 
     private static UserInfo UserInfoFor(
         Guid id, string burnerName, ProfileInfo? profile, string language) => new(

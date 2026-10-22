@@ -1,12 +1,6 @@
 namespace Humans.Teams.Contracts;
 
-/// <summary>
-/// Render model for <c>_ShiftsSummaryCard</c>. Teams' — not Shifts': the only producer is
-/// <c>TeamController.MapShiftsSummary</c> and the only renderer is <c>Team/Details</c>
-/// (plus Shell's widget gallery). No Shifts type appears on it
-/// (nobodies-collective/Humans#866, G5 lane 4b-i). Under <c>Contracts/</c> rather than
-/// <c>Models/</c> because Shell's widget gallery binds it (HUM0034).
-/// </summary>
+/// <summary>Under <c>Contracts/</c>, not <c>Models/</c>, because Shell's widget gallery binds it.</summary>
 public class ShiftsSummaryCardViewModel
 {
     public int TotalSlots { get; set; }
@@ -16,8 +10,6 @@ public class ShiftsSummaryCardViewModel
     public string ShiftsUrl { get; set; } = "";
     public bool CanManageShifts { get; set; }
 
-    /// <summary>
-    /// When > 0, indicates this summary includes data from child teams.
-    /// </summary>
+    /// <summary>Greater than zero when the summary includes child teams.</summary>
     public int IncludesSubTeamCount { get; set; }
 }

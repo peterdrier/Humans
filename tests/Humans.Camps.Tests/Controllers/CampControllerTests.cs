@@ -716,7 +716,7 @@ public class CampControllerTests
     [HumansFact]
     public async Task Index_InvalidFilterQueryValue_ClearsModelStateAndRendersWithDefaults()
     {
-        // Regression for nobodies-collective/Humans#926: a scanner payload in a bool
+        // Regression: a scanner payload in a bool
         // filter param leaves an invalid attempted value in ModelState, which the
         // checkbox tag helper would throw a FormatException re-converting at render.
         StubCampReadModel([]);
@@ -1026,10 +1026,8 @@ public class CampControllerTests
     [HumansFact]
     public async Task Details_NonPublicSeason_AnonymousViewer_IsRefused()
     {
-        // Destination-page half of the nobodies-collective/Humans#985 ruling: global search
-        // stops offering a camp once its public-year season leaves Active/Full, and the id
-        // path deliberately does not — so /Camps/{slug} has to be the enforcement point
-        // (nobodies-collective/Humans#993).
+        // Global search stops offering a camp once its public-year season leaves Active/Full, and
+        // the id path deliberately does not, so /Camps/{slug} has to be the enforcement point.
         var pending = MakeCamp("pending-camp", "Pending Camp", CampSeasonStatus.Pending);
         StubCampReadModel([pending]);
         _camps.GetCampBySlugAsync(pending.Slug, Arg.Any<CancellationToken>())
@@ -1048,7 +1046,7 @@ public class CampControllerTests
     [HumansFact]
     public async Task SeasonDetails_NonPublicSeason_AnonymousViewer_IsRefused()
     {
-        // Equivalent nobodies-collective/Humans#993 coverage for the arbitrary-year route.
+        // The same coverage for the arbitrary-year route.
         var withdrawn = MakeCamp("withdrawn-camp", "Withdrawn Camp", CampSeasonStatus.Withdrawn);
         StubCampReadModel([withdrawn]);
         _authorization.AuthorizeAsync(
@@ -1065,7 +1063,7 @@ public class CampControllerTests
     [HumansFact]
     public async Task Details_NonPublicSeason_Lead_StillRenders()
     {
-        // The #993 gate must not lock a lead out of their own Pending camp.
+        // The slug gate must not lock a lead out of their own Pending camp.
         var leadUserId = Guid.NewGuid();
         var pending = MakeCamp("pending-camp", "Pending Camp", CampSeasonStatus.Pending, leadUserId: leadUserId);
         StubCampReadModel([pending]);
@@ -1095,7 +1093,7 @@ public class CampControllerTests
     public async Task Details_FutureSeasonOnlyCamp_Lead_StillRenders()
     {
         // A camp registered for an open future year has no PublicYear season, so the
-        // public-year projection cannot answer "is this user its lead" — the #993 gate
+        // public-year projection cannot answer "is this user its lead" — the slug gate
         // must authorize against the loaded camp, or it 404s the lead's own camp right
         // after registration.
         var leadUserId = Guid.NewGuid();

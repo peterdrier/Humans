@@ -8,25 +8,13 @@ using Humans.Users.Contracts;
 namespace Humans.Web.Authorization;
 
 /// <summary>
-/// Onboarding name-gate. Any authenticated user whose Profile has no real
-/// <c>BurnerName</c> (Stub profile, or an Active profile with blank required
-/// names) is redirected to the burner + legal-name form before they can reach
-/// the rest of the app.
-/// <para>
-/// This is the single gate that covers OAuth/Google first sign-in, imported
-/// contacts hitting the magic-link <c>ExistingUser</c> branch, and legacy
-/// accounts still sitting with a blank BurnerName — see
-/// nobodies-collective/Humans#812 and
-/// <c>memory/architecture/burnername-is-the-display-name.md</c>.
-/// </para>
-/// <para>
-/// Runs strictly after authentication and only ever <em>redirects</em> an
-/// already-authenticated user — it never blocks sign-in (see the never-block-sign-in
-/// hard rule). The required-name check reads the cache-backed <see cref="UserInfo"/>
-/// (refreshed on every profile save), so a user who submits the form sees the gate
-/// open on the very next request — no stale-cache redirect loop.
-/// </para>
+/// Onboarding name-gate: any authenticated user whose Profile has no real <c>BurnerName</c> is redirected to the
+/// burner + legal-name form first (<c>memory/architecture/burnername-is-the-display-name.md</c>).
 /// </summary>
+/// <remarks>
+/// Only ever <em>redirects</em> an already-authenticated user; it never blocks sign-in. The check reads the
+/// cache-backed <see cref="UserInfo"/>, refreshed on every profile save, so the gate opens on the very next request.
+/// </remarks>
 public sealed class NameRequiredFilter(IUserService userService) : IAsyncActionFilter
 {
     // Allow-list (whole controllers) — reaching these must never be gated, or the
@@ -37,18 +25,8 @@ public sealed class NameRequiredFilter(IUserService userService) : IAsyncActionF
         "Language", // Language switching while on the gate.
     };
 
-    // Allow-list (specific controller actions) — pages the gate form links to or
-    // that must render even mid-gate (error pages, privacy notice).
-    //
-    // OnboardingWidget is deliberately NOT exempt wholesale — only its Names form
-    // is. The widget's later steps (Shifts/SignUp/SignUpRange/Skip and the
-    // Consents pair) do not all re-check names, and ShiftSignupService.SignUpAsync
-    // never validates HasRequiredNameFields, so a whole-controller exemption would
-    // let a nameless user POST a rota signup via OnboardingWidget/SignUp without
-    // ever naming themselves. Gating every route except Names sends a nameless
-    // user to the form first (the dispatcher, Index, gates the same way and so
-    // needs no exemption); once named, the gate passes and the wizard flow —
-    // Names → Shifts → Consents — is untouched.
+    // OnboardingWidget is deliberately not exempt wholesale, only its Names form: its later steps don't all re-check
+    // names and ShiftSignupService.SignUpAsync never validates them, so a nameless user could POST a rota signup.
     private static readonly HashSet<(string Controller, string Action)> ExemptActions =
         new()
         {
@@ -67,8 +45,7 @@ public sealed class NameRequiredFilter(IUserService userService) : IAsyncActionF
             return;
         }
 
-        // Machine requests carry a Backdoor API key, not a browsing session — a JSON client
-        // cannot fill in the name form (nobodies-collective/Humans#1128).
+        // Machine requests carry a Backdoor API key, not a browsing session: a JSON client cannot fill in the name form.
         if (MembershipRequiredFilter.IsMachineRequest(user))
         {
             await next();

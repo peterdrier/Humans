@@ -213,7 +213,7 @@ public class HoldedClientReadTests
     [HumansFact]
     public async Task ListPurchaseDocuments_treats_a_non_array_lines_as_no_lines()
     {
-        // Holded sends an absent sub-record as an empty array (#994) and is equally free to send an
+        // Holded sends an absent sub-record as an empty array and is equally free to send an
         // absent collection as something other than an array; AsArray() throws on both.
         var json = """{"items":[{"id":"doc-1","document_number":"F001","date":"2026-05-14","total":"121.00","payments_pending":"0.00","lines":{},"tags":""}],"cursor":null,"has_more":false}""";
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));

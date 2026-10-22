@@ -21,15 +21,9 @@ using Humans.Users.Contracts;
 namespace Humans.Debug.Controllers;
 
 /// <summary>
-/// Developer / diagnostics pages. The whole section is admin-gated, so pages
-/// live at <c>/Debug/*</c> directly.
+/// Internal and still routed: Shell's <c>SectionControllerFeatureProvider</c> relaxes MVC's <c>IsPublic</c> check. Do
+/// not "fix" a 404 by making this public.
 /// </summary>
-/// <remarks>
-/// Internal, and routed anyway: Shell registers <c>SectionControllerFeatureProvider</c>, which
-/// relaxes MVC's <c>IsPublic</c> check for discovered section assemblies
-/// (memory/architecture/section-controllers-need-feature-provider.md — do not "fix" a 404 by
-/// making this public).
-/// </remarks>
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Debug")]
 internal sealed class DebugController(
@@ -45,10 +39,6 @@ internal sealed class DebugController(
     ISectionCatalog sectionCatalog,
     InMemoryLogSink logSink) : HumansControllerBase(userService)
 {
-    /// <summary>
-    /// What the composition root knows about every section: what it owns, depends on, and
-    /// implements. Where a hand-maintained section list that drifted off a rename becomes visible.
-    /// </summary>
     [HttpGet("Sections")]
     public IActionResult Sections() => View(sectionCatalog);
 

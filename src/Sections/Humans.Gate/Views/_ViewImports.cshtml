@@ -1,9 +1,5 @@
-@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
-   here ships broken markup with a green build and no runtime error.
-   Guarded by GatePageRenderTests (step 12).
-
-   No @inject IStringLocalizer: the kiosk views carry no resource keys, so Gate ships no
-   <Section>Resource set (§15 step 3b — carve by owner; there was nothing to carve). *@
+@* A section RCL does NOT inherit the host's _ViewImports. Omitting a line here ships broken markup with a green
+   build; GatePageRenderTests guards it. *@
 @using Humans.Gate
 @using Humans.Gate.Controllers
 @using Humans.Gate.Domain

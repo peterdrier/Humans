@@ -4,37 +4,10 @@ using Humans.Integration.Tests.Infrastructure;
 
 namespace Humans.Integration.Tests.Controllers;
 
-/// <summary>
-/// Renders every Scanner page through the real app, as the standing form of the §15 step 12
-/// check for the section's move into <c>src/Sections/Humans.Scanner</c>
-/// (nobodies-collective/Humans#866, G5).
-/// </summary>
+/// <summary>Renders every Scanner page through the real app.</summary>
 /// <remarks>
-/// <para>
-/// The failure modes a G5 move introduces all render as a <b>200 with degraded content</b>, so
-/// "the page loads" is not the assertion:
-/// </para>
-/// <list type="number">
-/// <item><description>
-/// A section RCL does not inherit the host's <c>Views/_ViewImports.cshtml</c> — a missing
-/// <c>@@using</c> or <c>@@addTagHelper</c> ships literal markup with a green build, and an
-/// unrendered <c>&lt;vc:…&gt;</c> element is inert text the browser simply drops. Scanner's
-/// ticket card is the case that forced <c>TicketStubViewComponent</c> down from
-/// <c>Humans.Web</c> into <c>Humans.Tickets</c>, which a section _can_ reference.
-/// </description></item>
-/// <item><description>
-/// The resx carve moved 38 <c>Scanner_*</c> keys out of <c>SharedResource</c>. A key the carve
-/// missed, or a call site bound to the wrong set, renders the raw key — in every language, with
-/// no error. The Spanish request is the only thing that proves the section RCL's satellite
-/// assemblies reach the host's probing path at all.
-/// </description></item>
-/// <item><description>
-/// The two scanner JS modules moved to the section's RCL and are served from the
-/// static-web-assets manifest rather than from <c>wwwroot</c> on disk, so
-/// <c>IFileVersionProvider</c> can silently emit no <c>?v=</c> hash while the page still
-/// returns 200 (§15 step 7).
-/// </description></item>
-/// </list>
+/// Failures render as a 200 with degraded content: unbound tags ship as markup, a mis-bound key renders as its name,
+/// only Spanish proves the satellites ship, and the RCL's JS modules can lose their <c>?v=</c> hash silently.
 /// </remarks>
 public class ScannerPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
@@ -62,7 +35,6 @@ public class ScannerPageRenderTests(HumansTestDatabase database) : IntegrationTe
             var html = await response.Content.ReadAsStringAsync(ct);
             html.Should().Contain(copy, $"GET {url} must render its own resolved copy");
 
-            // The fallback for a key the carve missed is the key itself.
             html.Should().NotContain("Scanner_", $"GET {url} rendered a raw resource key");
         }
     }
@@ -70,11 +42,8 @@ public class ScannerPageRenderTests(HumansTestDatabase database) : IntegrationTe
     [HumansFact(Timeout = 120000)]
     public async Task The_ticket_card_renders_the_stub_component_the_section_can_actually_bind()
     {
-        // /Scanner/Tickets/Card is the section's only partial endpoint, and the one place a section view
-        // uses <vc:ticket-stub>. The component lives in Humans.Tickets for exactly this
-        // reason — a Shell-resident component is inert markup from a section view. The
-        // not-found branch proves the partial renders at all; the found branch needs a seeded
-        // ticket, which the section's unit tests cover against substituted reads.
+        // The only section view using <vc:ticket-stub>; a Shell-resident component would be inert here. The not-found
+        // branch proves the partial renders; the found branch needs a seeded ticket.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
@@ -89,16 +58,13 @@ public class ScannerPageRenderTests(HumansTestDatabase database) : IntegrationTe
     [HumansFact(Timeout = 120000)]
     public async Task Scanner_pages_render_in_spanish_from_the_sections_satellite_assemblies()
     {
-        // An English-only check passes whether or not the RCL's satellites shipped — the neutral
-        // set is embedded in the main assembly and the fallback is silent.
-        // Razor's default HtmlEncoder escapes non-ASCII to numeric entities ("Escaner" carries an
-        // accent and reaches the body as "Esc&#xE1;ner"), so the assertions stay on ASCII-only runs.
+        // Only Spanish proves the satellites shipped. HtmlEncoder escapes non-ASCII ("Escáner" becomes "Esc&#xE1;ner"),
+        // so the checks stay on ASCII runs.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
-        // Accept-Language does not reach a signed-in user: Program.cs's initial culture provider
-        // returns the user's PreferredLanguage and short-circuits the rest of the chain, and
-        // every Scanner page is [Authorize]. Switch the language the way the UI does.
+        // Accept-Language doesn't reach a signed-in user: the PreferredLanguage provider short-circuits the chain. Switch
+        // the way the UI does.
         var switcherPage = await (await Client.GetAsync("/Scanner", ct)).Content.ReadAsStringAsync(ct);
         var token = ExtractAntiForgeryToken(switcherPage);
         token.Should().NotBeNullOrEmpty();
@@ -121,8 +87,7 @@ public class ScannerPageRenderTests(HumansTestDatabase database) : IntegrationTe
     [HumansFact(Timeout = 120000)]
     public async Task Scanner_pages_link_the_sections_static_assets_with_cache_busting_hashes()
     {
-        // §15 step 7. Both modules are imported through IFileVersionProvider rather than a tag
-        // helper, because asp-append-version cannot reach an ES module import statement.
+        // The modules go through IFileVersionProvider because asp-append-version can't reach an ES module import.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
@@ -140,10 +105,8 @@ public class ScannerPageRenderTests(HumansTestDatabase database) : IntegrationTe
     [HumansFact(Timeout = 120000)]
     public async Task The_sections_static_assets_are_served_from_its_own_RCL()
     {
-        // The other half of §15 step 7: the URL resolving is not the same as the file being
-        // there. Before the test host composed the static-web-assets manifest an RCL asset
-        // 404'd here while the page still returned 200. tickets.js also relative-imports
-        // barcode.js, so both must sit under the same served prefix.
+        // A URL resolving doesn't mean the file is served. tickets.js relative-imports barcode.js, so both must share
+        // the served prefix.
         var ct = Xunit.TestContext.Current.CancellationToken;
 
         foreach (var asset in new[] { BarcodeJsPath, TicketsJsPath })

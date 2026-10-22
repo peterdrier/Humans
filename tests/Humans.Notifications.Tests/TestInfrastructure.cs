@@ -24,8 +24,7 @@ internal static class NotificationTestFixtures
 
     /// <summary>
     /// The columns of an <c>email_communication_preferences</c> row these tests seed. Owned
-    /// here rather than the section's entity, which is internal to <c>Humans.Email</c>
-    /// (nobodies-collective/Humans#1051).
+    /// here rather than the section's entity, which is internal to <c>Humans.Email</c>.
     /// </summary>
     internal sealed class PreferenceRow
     {
@@ -38,7 +37,7 @@ internal static class NotificationTestFixtures
 
     /// <summary>
     /// Stubs <see cref="ICommunicationPreferenceService.GetUsersWithInboxDisabledAsync"/> to
-    /// read from <paramref name="registry"/>, matching the old DB-backed stub's behaviour.
+    /// read from <paramref name="registry"/>.
     /// </summary>
     internal static ICommunicationPreferenceService StubInboxDisabledFrom(
         this ICommunicationPreferenceService service, PreferenceRegistry registry)

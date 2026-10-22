@@ -7,11 +7,8 @@ using Humans.Users.Contracts;
 namespace Humans.CityPlanning.Services;
 
 /// <summary>
-/// Live cursor presence for the barrio map. <c>internal</c> like the rest
-/// of the section (HUM0034): its only consumers are this section's
-/// <c>SectionEndpoints</c>, which maps it, and <c>CityPlanningApiController</c>'s
-/// <c>IHubContext&lt;CityPlanningHub&gt;</c> — both in this assembly. Keep it that way;
-/// a <c>MapHub</c> call by concrete type from Shell would force it public again.
+/// Live cursor presence for the barrio map. Keep it <c>internal</c>: a <c>MapHub</c> call by concrete type from Shell
+/// would force it public.
 /// </summary>
 [Authorize]
 internal sealed class CityPlanningHub(IUserService userService, UserManager<User> userManager) : Hub

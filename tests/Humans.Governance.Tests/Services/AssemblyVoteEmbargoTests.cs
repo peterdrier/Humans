@@ -129,10 +129,6 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         detail.Participation.OfficialCast.Should().Be(1);
     }
 
-    // ==========================================================================
-    // Official / indicative separation
-    // ==========================================================================
-
     [HumansFact]
     public async Task Results_OfficialAndIndicative_AreTalliedAndReportedSeparately()
     {

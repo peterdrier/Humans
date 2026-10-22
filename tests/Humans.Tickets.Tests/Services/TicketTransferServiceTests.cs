@@ -26,10 +26,7 @@ using Humans.Tickets.Services.Dtos;
 namespace Humans.Tickets.Tests.Services;
 
 /// <summary>
-/// Pure unit tests for the manual-transfer <see cref="TicketTransferService"/>:
-/// no vendor calls; approve = "mark successful", reject = "cancel with reason";
-/// request emails sender + team, decisions email sender + receiver. All deps are
-/// NSubstitute substitutes.
+/// Manual transfers make no vendor calls: approve = "mark successful", reject = "cancel with reason".
 /// </summary>
 public sealed class TicketTransferServiceTests
 {
@@ -81,8 +78,6 @@ public sealed class TicketTransferServiceTests
 
     }
 
-    // ── GetConfirmationAsync ────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task GetConfirmation_ReturnsSummary_ForValidPair()
     {
@@ -124,7 +119,7 @@ public sealed class TicketTransferServiceTests
     public async Task GetConfirmation_Null_WhenCheckedIn()
     {
         // A gate scan keeps Status = Valid but records CheckedInAt — a used ticket
-        // must not be transferable. nobodies-collective/Humans#736.
+        // must not be transferable.
         StubAttendee(TicketAttendeeStatus.Valid, _senderId, checkedInAt: _now);
         var confirm = await _service.GetConfirmationAsync(_attendeeId, _receiverId, _senderId, Xunit.TestContext.Current.CancellationToken);
         confirm.Should().BeNull();
@@ -160,8 +155,6 @@ public sealed class TicketTransferServiceTests
         await _transferRepo.DidNotReceive().AddAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
         _auditLog.ReceivedCalls().Should().BeEmpty();
     }
-
-    // ── CreateRequestAsync ──────────────────────────────────────────────────────
 
     [HumansTheory]
     [Xunit.InlineData("es", "Solicitud de transferencia de entrada")]
@@ -358,8 +351,8 @@ public sealed class TicketTransferServiceTests
     [HumansFact]
     public async Task CreateRequest_Refuses_WhenCheckedIn()
     {
-        // Status stays Valid after a gate scan (nobodies-collective/Humans#736);
-        // the CheckedInAt guard must still block the transfer of a used ticket.
+        // Status stays Valid after a gate scan; the CheckedInAt guard must still block the
+        // transfer of a used ticket.
         StubAttendee(TicketAttendeeStatus.Valid, _senderId, checkedInAt: _now);
         var act = () => _service.CreateRequestAsync(
             new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, Xunit.TestContext.Current.CancellationToken);
@@ -439,8 +432,6 @@ public sealed class TicketTransferServiceTests
         }
     }
 
-    // ── CancelAsync ─────────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Cancel_SetsCancelled_ForSender()
     {
@@ -480,8 +471,6 @@ public sealed class TicketTransferServiceTests
         await _transferRepo.DidNotReceive().UpdateAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
         req.Status.Should().Be(TicketTransferStatus.Pending);
     }
-
-    // ── ApproveAsync (mark successful) ──────────────────────────────────────────
 
     [HumansFact]
     public async Task Approve_MarksApproved_NoVendor_EmailsBothParties()
@@ -559,8 +548,6 @@ public sealed class TicketTransferServiceTests
                 && m.Subject == "Ticket transfer complete"),
             Arg.Any<CancellationToken>());
     }
-
-    // ── ProcessTransferAsync (automated void+reissue) ───────────────────────────
 
     [HumansTheory]
     [Xunit.InlineData(TicketAttendeeStatus.Valid, true, false)]
@@ -727,8 +714,6 @@ public sealed class TicketTransferServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    // ── RetryReissueAsync (one-click recovery from a partial void) ──────────────
-
     [HumansFact]
     public async Task RetryReissue_FromHold_IssuesNewTicket_MarksApproved()
     {
@@ -768,10 +753,8 @@ public sealed class TicketTransferServiceTests
     }
 
     /// <summary>
-    /// nobodies-collective/Humans#950 — RetryReissueAsync only runs once the void
-    /// has already committed at TicketTailor, so it is entirely post-commit. An
-    /// aborted admin request must not cancel the reissue and strand the held seat.
-    /// Mirrors the <c>commitCt</c> detach in <c>WriteToVendorAsync</c>.
+    /// RetryReissueAsync runs only after the void committed at TicketTailor, so an aborted admin
+    /// request must not cancel the reissue and strand the held seat.
     /// </summary>
     [HumansFact]
     public async Task RetryReissue_AbortedRequest_StillIssuesAgainstTheHold()
@@ -903,8 +886,6 @@ public sealed class TicketTransferServiceTests
         req.VendorMessage!.Length.Should().BeLessThanOrEqualTo(2000);
         req.VendorMessage.Should().Contain(expectedDetail);
     }
-
-    // ── RejectAsync (cancel with reason) ────────────────────────────────────────
 
     [HumansFact]
     public async Task Reject_RequiresReason()
@@ -1047,8 +1028,6 @@ public sealed class TicketTransferServiceTests
         await _vendor.Received(1).IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>());
     }
 
-    // ── helpers ─────────────────────────────────────────────────────────────────
-
     [HumansTheory]
     [Xunit.InlineData("process", "guard")]
     [Xunit.InlineData("retry", "guard")]
@@ -1155,8 +1134,7 @@ public sealed class TicketTransferServiceTests
         Guid id, Guid orderId, Guid attendeeMatchedUserId, TicketAttendeeStatus status,
         Instant? checkedInAt = null)
     {
-        // The buyer never owns the attendee (nobodies-collective/Humans#856).
-        // Ownership is determined by TicketAttendee.MatchedUserId only.
+        // Ownership is TicketAttendee.MatchedUserId only; the buyer never owns the attendee.
         var order = new TicketOrder
         {
             Id = orderId,

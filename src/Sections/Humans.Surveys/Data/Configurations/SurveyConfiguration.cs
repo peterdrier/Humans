@@ -28,9 +28,5 @@ internal sealed class SurveyConfiguration : IEntityTypeConfiguration<Survey>
 
         b.HasMany(s => s.Questions).WithOne(q => q.Survey)
             .HasForeignKey(q => q.SurveyId).OnDelete(DeleteBehavior.Cascade);
-
-        // CreatedByUserId / AudienceTeamId are bare Guid columns: NO navigation property and NO
-        // cross-section EF FK constraint. The service
-        // resolves the creator's display name / team via IUserService / ITeamService when needed.
     }
 }

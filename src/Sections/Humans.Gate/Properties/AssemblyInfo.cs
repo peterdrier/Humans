@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
 
-// Castle DynamicProxy, behind NSubstitute in Humans.Gate.Tests, needs to see the internal
-// section interfaces to proxy them.
+// NSubstitute's proxy generator needs the internal interfaces to mock them.
 [assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]

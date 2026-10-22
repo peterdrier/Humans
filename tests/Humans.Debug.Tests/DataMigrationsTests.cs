@@ -50,8 +50,6 @@ public class DataMigrationsTests
 
     private DataMigrationService Service => _services.GetRequiredService<DataMigrationService>();
 
-    // --- service ---
-
     [HumansFact]
     public async Task Reports_carry_the_pending_count_and_every_pending_row()
     {
@@ -93,8 +91,6 @@ public class DataMigrationsTests
         _migrations.ApplyCalls.Should().Be(0);
         _audit.ReceivedCalls().Should().BeEmpty();
     }
-
-    // --- screen ---
 
     [HumansFact]
     public void Screen_is_admin_only_and_apply_is_an_antiforgery_post()
@@ -143,8 +139,6 @@ public class DataMigrationsTests
             .Which.ActionName.Should().Be(nameof(DataMigrationsController.Index));
         _migrations.ApplyCalls.Should().Be(1);
     }
-
-    // --- endpoint ---
 
     [HumansFact]
     public void Endpoint_is_an_anonymous_get()

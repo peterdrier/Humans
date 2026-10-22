@@ -13,19 +13,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.CityPlanning;
 
 /// <summary>
-/// City Planning's DI entry point, at the project root by convention. Discovered by Shell —
-/// nothing names it, so it needs no section prefix.
+/// <c>Lazy&lt;ICityPlanningWrite&gt;</c> is registered by Camps' <c>Section</c>, not here: it breaks the
+/// CampService ↔ CityPlanningService construction cycle, so it belongs with the consumer.
 /// </summary>
-/// <remarks>
-/// No caching decorator: a small admin-facing section whose reads are already a single row
-/// or a per-year polygon list. Cross-section reads (camps, teams, users) route through the
-/// owning service interfaces.
-/// <para>
-/// <c>Lazy&lt;ICityPlanningWrite&gt;</c> is registered by <c>Humans.Camps</c>'s own
-/// <c>Section.cs</c>, not here: it exists to break the CampService ↔ CityPlanningService
-/// construction cycle, so it belongs with the consumer, not the producer.
-/// </para>
-/// </remarks>
 public sealed class Section : ISection, IIssueQueueOwner
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
@@ -39,12 +29,9 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<ICityPlanningWrite>(sp => sp.GetRequiredService<CityPlanningService>());
         services.AddScoped<ICityPlanningService>(sp => sp.GetRequiredService<CityPlanningService>());
 
-        // Backs CityPlanningMapAdmin, registered by this section's SectionPolicies.
         services.AddScoped<IAuthorizationHandler, CityPlanningMapAdminHandler>();
     }
 
-    // This section owns the issue queue its members' reports land in; Issues discovers
-    // the seam rather than holding a list of sections (memory/architecture/section-contribution-seams.md).
     string IIssueQueueOwner.QueueKey => "CityPlanning";
 
     string IIssueQueueOwner.AreaLabelResourceKey => "Issues_Area_CityPlanning";

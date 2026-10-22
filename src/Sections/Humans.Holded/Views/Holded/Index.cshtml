@@ -253,14 +253,9 @@
 </div>
 
 <script>
-    // Most of the chart has never carried a line; hiding those is the default view.
-    // A group whose every account is hidden goes with them, header and all.
-    //
-    // "No lines" alone is not the test — twice over. An account Holded gives a balance for but the
-    // mirror has no line for reconciles ✗ with zero lines. And an account whose debits and credits
-    // cancel nets to zero, so it reconciles ✓ against an empty mirror while Holded shows a year of
-    // postings. Both are missing-ledger-data alarms, which is the one thing this table exists to
-    // raise. Unused means all three: nothing locally, nothing at Holded, and no disagreement.
+    // Unused rows are hidden by default, and a group whose every row is hidden goes too. Unused means all three:
+    // no local line, nothing at Holded, and no disagreement. "No lines" alone would hide both missing-data alarms:
+    // a Holded balance the mirror has no line for, and an account whose postings net to zero.
     (function () {
         var toggle = document.getElementById('hide-empty-accounts');
         var count = document.getElementById('account-count');

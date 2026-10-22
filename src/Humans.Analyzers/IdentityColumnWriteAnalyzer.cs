@@ -74,11 +74,8 @@ public sealed class IdentityColumnWriteAnalyzer : DiagnosticAnalyzer
         if (!ForbiddenSetters.Contains(prop.Name))
             return;
 
-        // A section's Data/ folder is its Infrastructure layer, and the repository is the one
-        // place these columns are legitimately written. Before G5 that was expressed by
-        // assembly name — UserRepository lived in Humans.Infrastructure, which this rule never
-        // covered; a section assembly holds all three layers at once, so it has to be
-        // expressed by folder (nobodies-collective/Humans#866, G5 lane 2).
+        // A section's Data/ folder is its Infrastructure layer, where the repository legitimately writes these
+        // columns. A section assembly holds all three layers, so this has to be expressed by folder.
         if (context.ContainingSymbol is { } owner && AssemblyScope.IsInSectionDataLayer(owner))
             return;
 

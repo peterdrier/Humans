@@ -2,10 +2,7 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Users.Contracts;
 
-/// <summary>
-/// Reads profile-picture files through the DB content-type gate that
-/// prevents stale anonymized files from being served.
-/// </summary>
+/// <summary>The database content type is the GDPR gate: a stale file of an anonymized profile is never served.</summary>
 public interface IProfilePictureService : IApplicationService
 {
     Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(

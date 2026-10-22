@@ -1,11 +1,5 @@
 namespace Humans.GoogleIntegration.Services.Workspace;
 
-/// <summary>
-/// Dev/test <see cref="IGoogleDirectoryClient"/> that returns a small,
-/// deterministic fake domain so the email-mismatch and all-groups admin
-/// flows can be exercised without Google credentials. The real service runs against this
-/// stub — there is no separate stub service.
-/// </summary>
 internal sealed class StubGoogleDirectoryClient(ILogger<StubGoogleDirectoryClient> logger) : IGoogleDirectoryClient
 {
     public Task<DirectoryUserListResult> ListDomainUsersAsync(CancellationToken ct = default)

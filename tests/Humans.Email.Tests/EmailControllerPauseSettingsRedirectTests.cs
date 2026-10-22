@@ -14,7 +14,7 @@ using NSubstitute;
 namespace Humans.Email.Tests;
 
 /// <summary>
-/// Pause/resume post from the /Settings#email tab (peterdrier/Humans#1634), so both
+/// Pause/resume post from the /Settings#email tab, so both
 /// actions send the admin back there rather than to the /Email/EmailOutbox dashboard.
 /// </summary>
 public sealed class EmailControllerPauseSettingsRedirectTests

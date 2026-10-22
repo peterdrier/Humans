@@ -7,12 +7,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Controllers;
 
-/// <summary>
-/// Gate-terminal credential management: ticket admins set/rotate the shared
-/// gate account's password here (the account is provisioned on first set).
-/// The terminal signs in at /Account/GateLogin and is confined to /Gate (the
-/// kiosk route restriction in Humans.Web Program.cs).
-/// </summary>
+/// <summary>The shared gate account is provisioned on the first password set.</summary>
 [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
 [Route("Tickets/Admin/Gate")]
 internal sealed class TicketsGateAdminController(

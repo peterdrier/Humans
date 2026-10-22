@@ -6,16 +6,9 @@ using NodaTime;
 namespace Humans.Shifts.Contracts;
 
 /// <summary>
-/// The "Shift Signups" card — a user's upcoming, pending and past signups in the active
-/// event. Rendered as <c>&lt;vc:shift-signups&gt;</c> from Shell's dashboard, profile,
-/// user-admin detail and widget-gallery pages.
+/// Public, under <c>Contracts/</c>, so MVC discovers the tag helper; so it reads the leaf <see cref="IShiftView"/>,
+/// since a public constructor cannot take the internal row view (CS0051).
 /// </summary>
-/// <remarks>
-/// Public, under <c>Contracts/</c>, so MVC discovers the tag helper (HUM0034's carve-out
-/// is the folder). Its constructor is therefore all-public, which is why it reads the leaf
-/// <see cref="IShiftView"/> rather than the section-internal <c>IShiftRowView</c>: a public
-/// constructor cannot take an internal parameter (CS0051).
-/// </remarks>
 public sealed class ShiftSignupsViewComponent(
     IShiftView shiftView,
     IBurnSettingsService burnSettings,
@@ -37,9 +30,7 @@ public sealed class ShiftSignupsViewComponent(
             var ct = HttpContext.RequestAborted;
             var es = await burnSettings.GetActiveAsync(ct);
 
-            // Signups come from the cached shift view; the Signups list is pre-filtered
-            // to the active event by the inner ShiftViewService — no active event
-            // yields an empty list.
+            // Already scoped to the active event; none yields an empty list.
             var userView = await shiftView.GetUserAsync(userId, ct);
             var signups = userView.Signups;
 
@@ -81,14 +72,7 @@ public sealed class ShiftSignupsViewComponent(
     }
 }
 
-/// <summary>
-/// Which side of the card is being rendered: the volunteer's own view, or an
-/// administrator looking at someone else's.
-/// </summary>
-/// <remarks>
-/// Public because it is a parameter of <see cref="ShiftSignupsViewComponent.InvokeAsync"/>,
-/// which the four Shell call sites bind through <c>view-mode="…"</c>.
-/// </remarks>
+/// <summary>Public because it is a parameter of <see cref="ShiftSignupsViewComponent.InvokeAsync"/>.</summary>
 public enum ShiftSignupsViewMode
 {
     Self,

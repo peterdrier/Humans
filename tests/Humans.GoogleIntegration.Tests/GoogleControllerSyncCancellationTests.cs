@@ -13,17 +13,9 @@ using Humans.Teams.Contracts;
 namespace Humans.GoogleIntegration.Tests;
 
 /// <summary>
-/// nobodies-collective/Humans#950 — an admin closing the tab must not tear a
-/// Google Workspace reconcile in half. The execute paths must hand the sync
-/// service a token that is not the request's, so an already-aborted request
-/// still reaches the service with a live token.
+/// An admin closing the tab must not tear a Workspace reconcile in half: the execute paths hand
+/// the sync service a token that is not the request's.
 /// </summary>
-/// <remarks>
-/// Sibling enforcement is the HUM0033 analyzer, which fails the build on any
-/// new state-changing action that passes a request-scoped token to an
-/// <c>[ExternalWrite]</c> method. This test pins the observable behaviour of the
-/// two actions the issue named.
-/// </remarks>
 public class GoogleControllerSyncCancellationTests
 {
     private readonly ILogger<GoogleController> _logger = Substitute.For<ILogger<GoogleController>>();

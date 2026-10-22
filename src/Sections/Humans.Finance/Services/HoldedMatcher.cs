@@ -24,8 +24,8 @@ internal static class HoldedMatcher
         return sb.ToString();
     }
 
-    /// <summary>Trim, collapse whitespace runs to one space, lowercase, fold accents. Two account
-    /// names that normalize equal are the same account as far as dedup is concerned.</summary>
+    /// <summary>Trim, collapse whitespace, lowercase, fold accents. Names that normalize equal are the same account
+    /// for dedup.</summary>
     public static string NormalizeAccountName(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return "";
@@ -42,10 +42,8 @@ internal static class HoldedMatcher
         return sb.ToString();
     }
 
-    /// <summary>Account (A) wins over tag (B); else None. A booked account in
-    /// <paramref name="managedAccountIds"/> (Finance's registry of accounts outside the budget map) is
-    /// an Account match with no category — attributed, so it stays off the Unmatched queue, but outside
-    /// every budget year's actuals.</summary>
+    /// <summary>Account wins over tag. A booked account in <paramref name="managedAccountIds"/> is an Account match
+    /// with no category: off the Unmatched queue, but outside every year's actuals.</summary>
     public static HoldedMatchResult Match(
         string? bookedAccountId, IReadOnlyList<string> tags, IReadOnlyList<HoldedMatchEntry> map,
         IReadOnlySet<string> managedAccountIds)

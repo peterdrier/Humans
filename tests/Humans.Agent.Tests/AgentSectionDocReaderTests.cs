@@ -11,8 +11,8 @@ using Humans.Agent.Contracts;
 namespace Humans.Agent.Tests;
 
 /// <summary>
-/// Guards the case-insensitive whitelist + canonical-cased path resolution
-/// (nobodies-collective/Humans#789). LLMs routinely lowercase the section key
+/// Guards the case-insensitive whitelist and canonical-cased path resolution. LLMs routinely
+/// lowercase the section key
 /// (e.g. "shifts"); the reader must canonicalize it to the on-GitHub filename
 /// ("Shifts.md") because GitHub paths are case-sensitive.
 /// </summary>
@@ -71,8 +71,7 @@ public class AgentSectionDocReaderTests
     /// <summary>
     /// The keys the model reads out of its own preload corpus (help-widget glossary keys,
     /// access-matrix display names) and out of user jargon are a different namespace from the
-    /// whitelist. Every one of these was a real production lookup that dead-ended
-    /// (nobodies-collective/Humans#949).
+    /// whitelist. Every one of these was a real production lookup that dead-ended.
     /// </summary>
     [HumansTheory]
     [InlineData("Profile", "Users")]
@@ -192,11 +191,7 @@ public class AgentSectionDocReaderTests
             Task.FromResult<(IReadOnlyList<string>, bool)>(([], true));
     }
 
-    /// <summary>
-    /// Walks up from the test binaries to the repo root. Three lines, inlined rather than
-    /// shared from Humans.Application.Tests: this project needs one member of that class,
-    /// not the harness around it.
-    /// </summary>
+    /// <summary>Walks up from the test binaries to the repo root.</summary>
     private static string LocateRepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);

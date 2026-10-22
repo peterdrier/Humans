@@ -56,10 +56,6 @@ public sealed class CampRepositoryTests : IDisposable
         _dbContext.Dispose();
     }
 
-    // ==========================================================================
-    // SlugExistsAsync / CreateCampAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task SlugExistsAsync_ReturnsTrue_WhenCampPresent()
     {
@@ -124,10 +120,6 @@ public sealed class CampRepositoryTests : IDisposable
         (await _dbContext.CampHistoricalNames.AsNoTracking().CountAsync(h => h.CampId == camp.Id, Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
-    // ==========================================================================
-    // GetActiveLeadUserIdsAsync (role-backed)
-    // ==========================================================================
-
     [HumansFact]
     public async Task GetActiveLeadUserIdsAsync_ReturnsDistinctActiveLeadUsers()
     {
@@ -151,10 +143,6 @@ public sealed class CampRepositoryTests : IDisposable
 
         result.Should().BeEquivalentTo([userA, userB]);
     }
-
-    // ==========================================================================
-    // SeasonExistsAsync / HasApprovedSeasonAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task SeasonExistsAsync_ReturnsTrue_WhenPresent()
@@ -194,10 +182,6 @@ public sealed class CampRepositoryTests : IDisposable
         (await _repo.HasApprovedSeasonAsync(camp.Id, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
     }
 
-    // ==========================================================================
-    // Image tests
-    // ==========================================================================
-
     [HumansFact]
     public async Task CountImagesAsync_ReturnsCount()
     {
@@ -226,10 +210,6 @@ public sealed class CampRepositoryTests : IDisposable
 
         (await _repo.CountImagesAsync(camp.Id, Xunit.TestContext.Current.CancellationToken)).Should().Be(2);
     }
-
-    // ==========================================================================
-    // Settings tests
-    // ==========================================================================
 
     [HumansFact]
     public async Task GetSettingsReadOnlyAsync_ReturnsRow()
@@ -270,10 +250,6 @@ public sealed class CampRepositoryTests : IDisposable
 
         changed.Should().BeFalse();
     }
-
-    // ==========================================================================
-    // ReassignMembershipsToUserAsync (account-merge fold)
-    // ==========================================================================
 
     [HumansFact]
     public async Task ReassignMembershipsToUserAsync_MovesMembership_WhenTargetNotMemberOfSeason()
@@ -423,10 +399,6 @@ public sealed class CampRepositoryTests : IDisposable
         survivor.HasEarlyEntry.Should().BeTrue();
     }
 
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
-
     private async Task<CampSeason> SeedCampWithSeasonAsync(string slug)
     {
         var camp = await SeedCampAsync(slug);
@@ -564,9 +536,7 @@ public sealed class CampRepositoryTests : IDisposable
 
     private async Task SeedLeadAssignmentAsync(Guid campId, Guid roleDefinitionId, Guid userId)
     {
-        // Helper that lands a CampRoleAssignment for the given (camp, role, user)
-        // via the camp's current season + a CampMember(Active). Used by tests
-        // that exercise the role-assignment-based lead authority.
+        // Lands the assignment via the camp's current season and an Active CampMember.
         var season = await _dbContext.CampSeasons.FirstOrDefaultAsync(s => s.CampId == campId, Xunit.TestContext.Current.CancellationToken);
         if (season is null)
         {

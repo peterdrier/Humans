@@ -23,8 +23,6 @@ internal sealed class TeamJoinRequestStateHistoryConfiguration : IEntityTypeConf
         builder.Property(sh => sh.Notes)
             .HasMaxLength(2000);
 
-        // ChangedByUserId is a bare cross-section Guid column — no FK constraint, no nav.
-
         builder.HasIndex(sh => sh.TeamJoinRequestId);
         builder.HasIndex(sh => sh.ChangedAt);
     }

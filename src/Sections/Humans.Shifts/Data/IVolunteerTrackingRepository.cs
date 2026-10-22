@@ -4,36 +4,19 @@ using Humans.Base.Interfaces.Repositories;
 
 namespace Humans.Shifts.Data;
 
-/// <summary>
-/// Shifts-owned I/O for user-oriented volunteer state:
-/// <c>volunteer_build_statuses</c> and <c>general_availability</c>. All methods
-/// return materialized lists / nullable rows - no IQueryable leaks.
-/// </summary>
 internal interface IVolunteerTrackingRepository : IRepository
 {
-    /// <summary>
-    /// Returns <see cref="VolunteerBuildStatus"/> rows for an event, optionally
-    /// restricted to the supplied users. Empty list if no rows match.
-    /// </summary>
     Task<IReadOnlyList<VolunteerBuildStatus>> GetBuildStatusesForEventAsync(
         Guid eventSettingsId,
         IReadOnlyCollection<Guid>? userIds = null,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns general availability rows for an event, optionally restricted to
-    /// the supplied users. Empty list if no rows match.
-    /// </summary>
     Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityForEventAsync(
         Guid eventSettingsId,
         IReadOnlyCollection<Guid>? userIds = null,
         CancellationToken ct = default);
 
-    /// <summary>Returns general availability rows for a user, optionally restricted to one event.</summary>
-    /// <summary>
-    /// GDPR Art. 17: removes the user's general-availability rows and their
-    /// build-status rows. Returns the number of rows removed.
-    /// </summary>
+    /// <summary>GDPR Art. 17: removes the user's availability and build-status rows.</summary>
     Task<int> DeleteVolunteerTrackingForUserAsync(Guid userId, CancellationToken ct = default);
 
     Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityForUserAsync(
@@ -41,9 +24,6 @@ internal interface IVolunteerTrackingRepository : IRepository
         Guid? eventSettingsId = null,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Upserts the general availability row for the given user + event pair.
-    /// </summary>
     Task UpsertAvailabilityAsync(
         Guid userId,
         Guid eventSettingsId,
@@ -51,9 +31,7 @@ internal interface IVolunteerTrackingRepository : IRepository
         Instant now,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Account-merge fold for general availability rows.
-    /// </summary>
+    /// <summary>Account-merge fold.</summary>
     Task ReassignAvailabilityToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,
@@ -61,17 +39,8 @@ internal interface IVolunteerTrackingRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Upsert (UserId, EventSettingsId): mutate or insert the row's camp set-up
-    /// fields and, in the same save, optionally trim day-off entries that the
-    /// new camp-setup span newly covers.
-    /// <para>
-    /// The caller has already validated <paramref name="barrioSetupStartDate"/>
-    /// (or null to clear). When <paramref name="setupOffsetThreshold"/> is set,
-    /// any <c>DayOffs</c> entries whose <c>DayOffset &gt;= threshold</c> are
-    /// removed; pass null to skip the trim.
-    /// </para>
-    /// <para>Returns the offsets that were trimmed, sorted ascending. Empty
-    /// list if no trim happened or no entries matched.</para>
+    /// Upserts the camp set-up fields and, in the same save, removes <c>DayOffs</c> at or past
+    /// <paramref name="setupOffsetThreshold"/> (null skips the trim). Returns the trimmed offsets, ascending.
     /// </summary>
     Task<IReadOnlyList<int>> UpsertCampSetupAsync(
         Guid userId,
@@ -83,23 +52,14 @@ internal interface IVolunteerTrackingRepository : IRepository
         int? setupOffsetThreshold,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Insert or replace a single day-off entry on the row's <c>DayOffs</c>
-    /// collection. Creates the row if absent. Replaces any existing entry for
-    /// the same <c>DayOffset</c> so there is at most one entry per day.
-    /// Persists with the list sorted by <c>DayOffset</c> ascending.
-    /// </summary>
+    /// <summary>At most one entry per day; creates the row if absent and keeps the list sorted.</summary>
     Task UpsertDayOffAsync(
         Guid userId,
         Guid eventSettingsId,
         DayOffEntry entry,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Remove the entry for (userId, eventSettingsId, dayOffset) from the
-    /// row's <c>DayOffs</c> collection. Returns whether an entry was actually
-    /// removed (false when no row exists or the offset wasn't present).
-    /// </summary>
+    /// <summary>False when there is no row or no entry for the offset.</summary>
     Task<bool> RemoveDayOffAsync(
         Guid userId,
         Guid eventSettingsId,

@@ -4,15 +4,9 @@ using AwesomeAssertions;
 namespace Humans.GoogleIntegration.Tests.Infrastructure;
 
 /// <summary>
-/// The section's Google-SDK containment boundary.
-/// </summary>
-/// <remarks>
-/// The boundary is a namespace, not an assembly: both connector halves live in
+/// The SDK boundary is a namespace, not an assembly: both connector halves live in
 /// <c>Humans.GoogleIntegration</c>, so an assembly-level assertion would pass vacuously.
-/// Everything that names a <c>Google.Apis.*</c> type lives under <see cref="ConnectorNamespace"/>, and the section's
-/// business logic under <see cref="ServiceNamespace"/> sees only the shape-neutral
-/// interfaces.
-/// </remarks>
+/// </summary>
 internal static class GoogleSdkContainment
 {
     /// <summary>The section's business-logic layer — must never name an SDK type.</summary>
@@ -25,10 +19,8 @@ internal static class GoogleSdkContainment
         BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
 
     /// <summary>
-    /// Asserts that no constructor parameter, method signature, property or field of
-    /// <paramref name="type"/> names a <c>Google.Apis.*</c> type. Scoped to the type rather
-    /// than its module, which is what makes it survive living in the same assembly as the
-    /// connectors.
+    /// Scoped to the type rather than its module, which is what lets it work in the same assembly
+    /// as the connectors.
     /// </summary>
     internal static void AssertNamesNoGoogleSdkType(Type type)
     {

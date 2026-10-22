@@ -108,8 +108,8 @@ public sealed class ApplicationRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetByUserIdAsync_ReturnsAllApplicationsForUser()
     {
-        // Display ordering (SubmittedAt desc) now lives in the controller per the
-        // DisplaySortInControllers rule; the repository only scopes by user.
+        // Display ordering (SubmittedAt desc) lives in the controller; the repository only
+        // scopes by user.
         var userId = Guid.NewGuid();
         var older = SeedApp(userId, submittedAt: Instant.FromUtc(2026, 1, 1, 0, 0));
         var newer = SeedApp(userId, submittedAt: Instant.FromUtc(2026, 3, 1, 0, 0));

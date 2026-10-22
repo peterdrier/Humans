@@ -71,7 +71,7 @@ public class HoldedClientTreasuryTests
     [HumansFact]
     public async Task ListBankMovementsAsync_ReadsBookingDate_TheFeedHasNoDateKey()
     {
-        // The real record behind every "undated" Sabadell line (peterdrier/Humans#1861, #1946): the
+        // The real record behind every "undated" Sabadell line: the
         // v2 feed has no `date` key at all, only booking_date and value_date, ISO 8601 with an offset.
         var json = $$"""
         {"items":[
@@ -151,7 +151,7 @@ public class HoldedClientTreasuryTests
     public async Task ListBankMovementsAsync_LineWithNoAccount_StillReads()
     {
         // The feed is already scoped to one account by its URL, and nothing reads a line's
-        // `account`. One Sabadell line without it failed every SEPA sweep (peterdrier/Humans#1853).
+        // `account`. One Sabadell line without it failed every SEPA sweep.
         var json = $$"""
         {"items":[
           {{Line("m1", "-10.00", "pending", booking: "2026-08-18T00:00:00+00:00")}},
@@ -215,7 +215,7 @@ public class HoldedClientTreasuryTests
     [HumansFact]
     public async Task ListBankMovementsAsync_PendingOutgoingLineWithUnreadableDate_IsSkipped_WhenTheCallerNamesIt()
     {
-        // Once Finance has given up on a genuinely undated line (peterdrier/Humans#1946), it asks for
+        // Once Finance has given up on a genuinely undated line, it asks for
         // that one id to be skipped. Another undated pending line still fails.
         var json = $$"""
         {"items":[

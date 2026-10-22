@@ -1,10 +1,6 @@
 
 namespace Humans.Camps.Services;
 
-/// <summary>
-/// Service-layer DTO returned by <see cref="ICampRoleService.BuildPanelAsync"/>.
-/// Web-layer view-models are mapped from this in the controller.
-/// </summary>
 internal sealed record CampRolesPanelData(
     Guid CampSeasonId,
     IReadOnlyList<CampRolesPanelRow> Rows);

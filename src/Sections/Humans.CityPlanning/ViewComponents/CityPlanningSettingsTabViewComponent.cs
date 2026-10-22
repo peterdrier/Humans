@@ -5,11 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.CityPlanning.ViewComponents;
 
 /// <summary>
-/// The /Settings#city-planning tab (peterdrier/Humans#1634): placement windows,
-/// scheduled times, and registration info. <see cref="SectionSettings"/> gates it on
-/// <c>PolicyNames.CityPlanningMapAdmin</c> (Admin/CampAdmin or a city-planning team
-/// member), so every viewer who reaches this component may edit — no read-only branch,
-/// unlike <c>EventSettingsTabViewComponent</c>.
+/// Every viewer who reaches this tab may edit (its gate is <c>CityPlanningMapAdmin</c>), so there is no read-only
+/// branch.
 /// </summary>
 internal sealed class CityPlanningSettingsTabViewComponent(
     ICityPlanningService cityPlanningService,
@@ -19,8 +16,7 @@ internal sealed class CityPlanningSettingsTabViewComponent(
     {
         var ct = HttpContext.RequestAborted;
         var settings = await cityPlanningService.GetSettingsAsync(ct);
-        // Registration info is keyed to the highest open season, not settings.Year — see
-        // ICityPlanningService.GetRegistrationInfoAsync.
+        // Keyed to the highest open season, not settings.Year.
         var registrationInfo = await cityPlanningService.GetRegistrationInfoAsync(ct);
         // Editable whenever it has a year to write to: an open season, else the active event.
         var registrationInfoEditable = settings is not null
@@ -31,9 +27,8 @@ internal sealed class CityPlanningSettingsTabViewComponent(
 }
 
 /// <summary>
-/// The tab's model. <c>Settings</c> is null when no event is active — the tab then says so in place
-/// of the placement cards. The registration-info card shows whenever <c>RegistrationInfoEditable</c>,
-/// so an open season stays editable without an active event.
+/// <c>Settings</c> is null when no event is active. The registration-info card shows whenever
+/// <c>RegistrationInfoEditable</c>, so an open season stays editable without an active event.
 /// </summary>
 internal sealed record CityPlanningSettingsTabViewModel(
     CityPlanningSettingsDto? Settings, string? RegistrationInfo, bool RegistrationInfoEditable);

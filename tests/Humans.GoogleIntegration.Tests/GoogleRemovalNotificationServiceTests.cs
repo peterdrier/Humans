@@ -9,12 +9,6 @@ using NSubstitute;
 
 namespace Humans.GoogleIntegration.Tests;
 
-/// <summary>
-/// Unit tests for <see cref="GoogleRemovalNotificationService"/> — the
-/// email-on-Google-removal flow introduced for issue peterdrier/Humans#639.
-/// Covers Variant 1 vs Variant 2 selection, suppression cases, and the
-/// orphan-address branch.
-/// </summary>
 public sealed class GoogleRemovalNotificationServiceTests
 {
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
@@ -55,11 +49,8 @@ public sealed class GoogleRemovalNotificationServiceTests
     [HumansFact]
     public async Task NotifyRemovalAsync_EmailRotation_StillSendsVariant2()
     {
-        // Workspace identity rotated from old@ → new@. Caller passes
-        // EmailRotation as advisory telemetry but the recipient still gets
-        // a Variant 2 ("secondary cleanup") email confirming the rotation
-        // (issue peterdrier/Humans#639 — the user wants visibility into which
-        // address was tidied).
+        // Workspace identity rotated from old@ to new@. EmailRotation is advisory telemetry: the
+        // recipient still gets a Variant 2 email confirming which address was tidied.
         var userId = Guid.NewGuid();
         var user = BuildUserWithEmails(
             userId,
@@ -278,10 +269,6 @@ public sealed class GoogleRemovalNotificationServiceTests
             .FindByAddressAsync(null!, false, false, Arg.Any<CancellationToken>());
     }
 
-    /// <summary>
-    /// Constructs a User with the given UserEmail rows. Used by the tests
-    /// above to drive the variant selector.
-    /// </summary>
     private static User BuildUserWithEmails(
         Guid userId,
         string displayName,

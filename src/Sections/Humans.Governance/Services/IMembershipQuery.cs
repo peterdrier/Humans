@@ -6,21 +6,10 @@ using Humans.Base.Enums;
 namespace Humans.Governance.Services;
 
 /// <summary>
-/// Thin read-only query surface exposing ONLY the subset of
-/// <see cref="ITeamService"/> and <see cref="IRoleAssignmentService"/>
-/// methods consumed by <see cref="MembershipCalculator"/>.
+/// The slice of <see cref="ITeamService"/> and <see cref="IRoleAssignmentService"/> that
+/// <see cref="MembershipCalculator"/> needs. Exists to break a DI cycle: both reach
+/// <c>ISystemTeamSync</c>, whose implementation injects the calculator back.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Exists to break a circular DI graph. Both services reach <c>ISystemTeamSync</c> —
-/// <see cref="IRoleAssignmentService"/> injects it, and <see cref="ITeamService"/>'s
-/// implementation resolves it lazily through <c>IServiceProvider</c> for this same reason —
-/// and its implementation (<c>SystemTeamSyncJob</c>) injects
-/// <see cref="Humans.Governance.Contracts.IMembershipCalculator"/> back. Injecting the full team / role
-/// services into the calculator closes that cycle and trips
-/// <c>ValidateOnBuild</c>.
-/// </para>
-/// </remarks>
 internal interface IMembershipQuery : IApplicationService
 {
     /// <summary>
@@ -31,9 +20,6 @@ internal interface IMembershipQuery : IApplicationService
         Guid userId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Checks if a user is a member of a team.
-    /// </summary>
     Task<bool> IsUserMemberOfTeamAsync(
         Guid teamId,
         Guid userId,

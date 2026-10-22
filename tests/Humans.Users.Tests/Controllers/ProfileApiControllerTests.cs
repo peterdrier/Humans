@@ -18,26 +18,8 @@ using Xunit;
 namespace Humans.Users.Tests.Controllers;
 
 /// <summary>
-/// Privacy-gate coverage for <see cref="ProfileApiController"/>.
-///
-/// <para>
-/// The two endpoints under test (<c>GET /api/profiles/search</c> and
-/// <c>GET /api/profiles/by-userid/{userId}</c>) both feed each result row
-/// through <c>GetSharedDetailAsync</c>, whose job is to pick a viewer-visible
-/// disambiguation line: viewer-visible primary email → highest-priority
-/// visible contact field (Phone → Signal → Telegram → WhatsApp → Discord →
-/// Other) → null. Legal name is never surfaced.
-/// </para>
-///
-/// <para>
-/// These tests target the load-bearing privacy concern: a row only ever
-/// surfaces data the current viewer is allowed to see, as decided by
-/// <c>IContactFieldService.GetViewerAccessLevelAsync</c> +
-/// <c>IUserEmailService.GetVisibleEmailsAsync</c> +
-/// <c>IContactFieldService.GetVisibleContactFieldsAsync</c>. The controller
-/// is verified to delegate visibility decisions to those services, not to
-/// re-implement them.
-/// </para>
+/// A row's detail line only ever surfaces data the viewer may see. The controller must delegate
+/// those visibility decisions to the contact-field and email services, not re-implement them.
 /// </summary>
 public class ProfileApiControllerTests
 {
@@ -194,10 +176,6 @@ public class ProfileApiControllerTests
         Func<Task> abandonedRead = async () => await ReadAsync();
         await abandonedRead.Should().ThrowAsync<OperationCanceledException>();
     }
-
-    // ==========================================================================
-    // Search — privacy gate behavior on the per-row detail line.
-    // ==========================================================================
 
     [HumansFact]
     public async Task Search_returns_401_when_current_user_resolves_to_null()
@@ -386,10 +364,6 @@ public class ProfileApiControllerTests
         rows.Select(r => r.DisplayName).Should().Equal("Ian", "Adrian", "Brian");
     }
 
-    // ==========================================================================
-    // AllowEmail — exact (case-insensitive) verified-email resolution.
-    // ==========================================================================
-
     [HumansFact]
     public async Task Search_allowEmail_resolves_exact_email_to_single_row()
     {
@@ -450,10 +424,6 @@ public class ProfileApiControllerTests
         await _userEmailService.DidNotReceive().FindByAddressAsync(
             Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
-
-    // ==========================================================================
-    // GetByUserId — single-person lookup. Same privacy gate, plus 404 paths.
-    // ==========================================================================
 
     [HumansFact]
     public async Task GetByUserId_returns_404_when_full_profile_not_in_cache()

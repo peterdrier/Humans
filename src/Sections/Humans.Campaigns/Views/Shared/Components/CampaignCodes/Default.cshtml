@@ -1,5 +1,4 @@
 @model IReadOnlyList<Humans.Campaigns.Contracts.CampaignGrantSummary>
-@* Admin-only card on /Users/Admin/{id}: no localization keys (memory/code/localization-admin-exempt.md). *@
 @{
     Func<CampaignGrantSummary, IHtmlContent> codeCell =
         @<text><code>@item.Code</code></text>;

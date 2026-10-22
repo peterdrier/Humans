@@ -11,10 +11,7 @@ using NodaTime;
 
 namespace Humans.MailerLite.Services.MailerLite;
 
-/// <summary>
-/// Caching MailerLite client (Singleton). Writes are restricted to groups whose
-/// name starts with "Humans - "; pinned by MailerLiteClientWriteGuardTests.
-/// </summary>
+/// <summary>Singleton. Writes only to groups whose name starts with "Humans - ".</summary>
 internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock clock, ILogger<MailerLiteClient> logger)
     : IMailerLiteService
 {
@@ -81,8 +78,8 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
         return group;
     }
 
-    // Assign/Unassign/BulkImport deliberately don't invalidate — the sync service holds its
-    // own snapshot and tight-loop invalidation would burn the rate limit.
+    // Assign/Unassign/BulkImport don't invalidate: the sync service holds its own snapshot, and invalidating in a
+    // tight loop would burn the rate limit.
 
     public async Task AssignSubscriberToGroupAsync(
         string subscriberId, string groupId, CancellationToken ct = default)
@@ -330,7 +327,6 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
         }
     }
 
-    // Post-response bookkeeping: proactive rate-limit backoff + non-2xx warning.
     private async Task<HttpResponseMessage> FinishSendAsync(
         HttpResponseMessage resp, HttpMethod method, string url, CancellationToken ct)
     {

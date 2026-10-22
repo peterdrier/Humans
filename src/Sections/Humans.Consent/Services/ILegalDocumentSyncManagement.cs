@@ -4,31 +4,16 @@ using NodaTime;
 
 namespace Humans.Consent.Services;
 
-/// <summary>
-/// The document side of the section: GitHub sync plus every read the section's own
-/// consent path needs. Sole writer for <c>legal_documents</c> and <c>document_versions</c>
-/// (nobodies-collective/Humans#751); the admin write surface is
-/// <see cref="IAdminLegalDocumentService"/> on the same instance.
-/// </summary>
-/// <remarks>
-/// Internal: two members return <see cref="LegalDocument"/> itself, and the rest serve the
-/// consent dashboard and review pages. The one read that crosses the boundary is on
-/// <see cref="ILegalDocumentSyncService"/>, which this inherits.
-/// </remarks>
+/// <summary>Sole writer for <c>legal_documents</c> and <c>document_versions</c>; the admin writes are on the same instance.</summary>
 internal interface ILegalDocumentSyncManagement : ILegalDocumentSyncService
 {
-    /// <summary>
-    /// Current versions of every active+required document, across all teams.
-    /// </summary>
+    /// <summary>Across all teams.</summary>
     Task<IReadOnlyList<RequiredDocumentVersionSnapshot>> GetRequiredVersionsAsync(
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Count of currently active+required legal documents, for the section's metrics gauge.
-    /// </summary>
     Task<int> GetActiveRequiredCountAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>Returns the documents that were updated.</summary>
+    /// <summary>Returns the documents that changed.</summary>
     Task<IReadOnlyList<LegalDocument>> SyncAllDocumentsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Returns a summary message if updated, or null if already up to date.</summary>
@@ -38,12 +23,7 @@ internal interface ILegalDocumentSyncManagement : ILegalDocumentSyncService
 
     Task<LegalDocumentVersionSnapshot?> GetVersionByIdAsync(Guid versionId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Gets every active+required legal document whose <c>TeamId</c> is in
-    /// <paramref name="teamIds"/>, with team names stitched by TeamId and version
-    /// snapshots populated. Used by the consent dashboard to build the
-    /// "documents per team" grouping.
-    /// </summary>
+    /// <summary>With team names stitched and version snapshots populated.</summary>
     Task<IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>> GetActiveRequiredDocumentsForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default);
 }

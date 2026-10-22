@@ -4,10 +4,8 @@ using Humans.Users.Contracts;
 namespace Humans.Tickets.Services;
 
 /// <summary>
-/// The one definition of "which user owns this verified email" for matching attendee and
-/// buyer emails: verified rows only, gmail/googlemail-normalized, and an email verified by
-/// more than one user maps to nobody. The sync builds the mirror from it and the per-user
-/// ticket-count fallback reads it, so the two cannot disagree on a collision.
+/// The one definition of which user owns a verified email: gmail/googlemail-normalized, and an email verified by more
+/// than one user maps to nobody. Sync and the ticket-count fallback both read it, so they agree on collisions.
 /// </summary>
 internal static class VerifiedEmailLookup
 {

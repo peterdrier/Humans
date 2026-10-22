@@ -4,12 +4,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.MailerLite.Services.Audiences;
 
-/// <summary>
-/// "Humans - Marketing no Ticket" — humans who have explicitly opted in to the
-/// Marketing communication category (a Marketing preference with <c>OptedOut</c> false)
-/// AND do not currently hold a ticket in the active vendor event.
-/// Users with no Marketing preference row (default-off) or who hold a ticket are excluded.
-/// </summary>
+/// <summary>Explicit opt-ins only (no Marketing row is excluded), minus current ticket holders.</summary>
 internal sealed class MarketingNoTicketAudience(
     IUserService users,
     ITicketService tickets,

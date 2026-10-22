@@ -22,9 +22,8 @@ internal enum PreapprovalNoticeKind
 }
 
 /// <summary>
-/// Everything one notice needs; pure data so the builder stays I/O-free. <c>Detail</c> is the
-/// free text of the kind: the manager's note or the revocation reason. Amount changes
-/// carry the old amount as a number so the builder formats it in the recipient's culture.
+/// Pure data, so the builder stays I/O-free. Amount changes carry the old amount as a number so the builder formats it
+/// in the recipient's culture.
 /// </summary>
 internal sealed record PreapprovalNoticeRequest(
     string RecipientEmail,

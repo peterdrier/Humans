@@ -87,12 +87,8 @@
         <div class="card mb-4">
             <div class="card-header">@Localizer["Onboarding_ReviewActions"]</div>
             <div class="card-body">
-                @* Clearing a cleared human is the no-op; Reject stays available afterwards,
-                   because cause can surface after the fact and the coordinator needs somewhere
-                   to act on it. Reject carries ConsentCoordinatorBoardOrAdmin on the action
-                   itself; that policy is the gate, not the markup, so do not add a
-                   service-side refusal. Flag is the one action still withheld here, for the
-                   reason given above its own block. *@
+                @* Reject stays available after a clear: cause can surface later. Its policy on the action is
+                   the gate, so add no service-side refusal. *@
                 @if (Model.ConsentCheckStatus == ConsentCheckStatus.Cleared)
                 {
                     <div class="text-success text-center mb-3">
@@ -119,16 +115,9 @@
                     <hr />
                 }
 
-                @* Flag stays hidden for a cleared human, and that is not the old "the view is the
-                   rule" guard — it is a real consequence. RecordConsentCheck sets
-                   the review's IsApproved = (status == Cleared) (Consent's consent_reviews), and
-                   SystemTeamSyncJob gates Colaborador/Asociado team membership on
-                   that IsApproved. So flagging a cleared tier member silently drops them from
-                   their tier team on the next hourly sync — a kick-out dressed as an annotation.
-                   Volunteers admission already ignores IsApproved for exactly this reason; the
-                   tier path never got the same treatment. Reject below is the intended kick-out
-                   and is available. Remove this condition once Cleared → Flagged stops clearing
-                   approval — see Docs/health.md §5. *@
+                @* Hidden for a cleared human because flagging clears the review's IsApproved, which drops a
+                   Colaborador/Asociado from their tier team on the next sync. Reject is the kick-out. Remove this
+                   once Cleared → Flagged stops clearing approval (Docs/health.md §5). *@
                 @if (Model.ConsentCheckStatus is not ConsentCheckStatus.Flagged
                      and not ConsentCheckStatus.Cleared)
                 {

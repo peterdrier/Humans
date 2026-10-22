@@ -10,10 +10,8 @@ using NSubstitute;
 namespace Humans.Shifts.Tests.Models;
 
 /// <summary>
-/// Day-filter dropdown on the Volunteering page (issue nobodies-collective/Humans#889): a single-day
-/// selection wins over the phase/date-range filters, forces the flat
-/// openings-ranked view (most remaining slots first, full rotas last), and
-/// round-trips through the URL via <see cref="ShiftBrowseViewModel.FilterDay"/>.
+/// A single-day selection wins over the phase/date-range filters and forces the flat
+/// openings-ranked view.
 /// </summary>
 public class ShiftBrowsePageBuilderDayFilterTests
 {

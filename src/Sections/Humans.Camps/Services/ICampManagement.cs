@@ -5,12 +5,8 @@ using Humans.Gdpr.Contracts;
 
 namespace Humans.Camps.Services;
 
-/// <summary>
-/// Service for managing camps and camp-season state.
-/// </summary>
 internal interface ICampManagement : ICampService, IApplicationService, IEarlyEntryProvider
 {
-    // Registration
     Task<CampWriteResult<Camp>> CreateCampAsync(
         Guid createdByUserId,
         string name,
@@ -25,7 +21,6 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
         int year,
         CancellationToken cancellationToken = default);
 
-    // Queries
     /// <summary>The live active-event year, falling back to the clock year before an event exists.</summary>
     Task<int> GetActiveYearAsync(CancellationToken cancellationToken = default);
 
@@ -37,7 +32,6 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
         int? preferredYear = null,
         CancellationToken cancellationToken = default);
 
-    // Season management
     Task<CampWriteResult<CampSeason>> OptInToSeasonAsync(Guid campId, int year, Guid? actorUserId, CancellationToken cancellationToken = default);
     /// <summary>Returns a refusal if the season does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
     Task<CampUpdateResult> UpdateSeasonAsync(Guid scopedCampId, Guid seasonId, CampSeasonData data, Guid actorUserId, CancellationToken cancellationToken = default);
@@ -54,33 +48,24 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
     /// </summary>
     Task<CampUpdateResult> MarkSeasonFullAsync(
         Guid scopedCampId, Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default);
-    // Camp updates
     Task<CampUpdateResult> UpdateCampAsync(CampUpdateInput input, Guid actorUserId, CancellationToken cancellationToken = default);
     Task DeleteCampAsync(Guid campId, Guid actorUserId, CancellationToken cancellationToken = default);
 
-    // Historical names
     Task<CampUpdateResult> AddHistoricalNameAsync(Guid campId, string name, CancellationToken cancellationToken = default);
     /// <summary>Returns a refusal if the name does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
     Task<CampUpdateResult> RemoveHistoricalNameAsync(Guid scopedCampId, Guid historicalNameId, CancellationToken cancellationToken = default);
 
-    // Images
     Task<CampImageUploadResult> UploadImageAsync(Guid campId, Stream fileStream, string fileName, string contentType, long length, Guid actorUserId, CancellationToken cancellationToken = default);
     /// <summary>Returns a refusal if the image does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
     Task<CampUpdateResult> DeleteImageAsync(Guid scopedCampId, Guid imageId, Guid actorUserId, CancellationToken cancellationToken = default);
     Task ReorderImagesAsync(Guid campId, List<Guid> imageIdsInOrder, CancellationToken cancellationToken = default);
 
-    // Settings (CampAdmin)
     Task OpenSeasonAsync(int year, Guid actorUserId, CancellationToken cancellationToken = default);
     Task CloseSeasonAsync(int year, Guid actorUserId, CancellationToken cancellationToken = default);
     Task SetNameLockDateAsync(int year, LocalDate lockDate, Guid actorUserId, CancellationToken cancellationToken = default);
 
-    // Name change (handles historical name logging)
     /// <summary>Returns a refusal if the season does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
     Task<CampUpdateResult> ChangeSeasonNameAsync(Guid scopedCampId, Guid seasonId, string newName, Guid actorUserId, CancellationToken cancellationToken = default);
-
-    // ==========================================================================
-    // Camp membership per season (issue nobodies-collective#488)
-    // ==========================================================================
 
     /// <summary>Idempotent — returns existing row's id with an <c>Already*</c> outcome if one exists.</summary>
     Task<CampMemberRequestResult> RequestCampMembershipAsync(
@@ -106,12 +91,7 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
         Guid campId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken = default, int? year = null);
 
-    /// <summary>
-    /// Adds the human as an active member of the season (idempotent — no-op if
-    /// already active) and then assigns them the given camp role in a single
-    /// operation. Used by the camp-edit role picker so callers don't have to
-    /// orchestrate the two sub-mutations themselves. Caller authorizes.
-    /// </summary>
+    /// <summary>Idempotent add as an active member, then the role assignment, in one operation. Caller authorizes.</summary>
     Task<AssignCampRoleOutcome> AddMemberAndAssignRoleInActiveSeasonAsync(
         Guid campId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken = default, int? year = null);
@@ -123,10 +103,6 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
     /// <summary>Returns a CampsResource error key if the row is missing, belongs to another user, or is not Active.</summary>
     Task<CampMembershipMutationResult> LeaveCampAsync(
         Guid campMemberId, Guid userId, CancellationToken cancellationToken = default);
-
-    // ==========================================================================
-    // Early Entry (issue nobodies-collective#490)
-    // ==========================================================================
 
     /// <summary>
     /// Sets the EE slot cap for a given camp season. CampAdmin/Admin only.
@@ -158,9 +134,6 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
 
 internal sealed record CampMemberLookup(Guid CampSeasonId, Guid UserId, CampMemberStatus Status);
 
-/// <summary>
-/// Result of a camp membership request action.
-/// </summary>
 internal sealed record CampMemberRequestResult(
     Guid CampMemberId,
     CampMemberRequestOutcome Outcome,

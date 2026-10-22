@@ -32,7 +32,6 @@
     </div>
 }
 
-@* ── Personal events block ── *@
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="fa-solid fa-user me-1"></i> @Localizer["Events_MyPersonalEvents"]</span>
@@ -108,7 +107,6 @@
     </div>
 </div>
 
-@* ── Barrio blocks (one per led barrio) ── *@
 @{
     Func<CampEventRowViewModel, IHtmlContent> barrioStatusCell =
         @<text><span class="badge @item.StatusBadgeClass">@Localizer.EnumDisplay(item.Status)</span></text>;

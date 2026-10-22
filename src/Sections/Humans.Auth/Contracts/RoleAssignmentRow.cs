@@ -2,12 +2,7 @@ using NodaTime;
 
 namespace Humans.Auth.Contracts;
 
-/// <summary>
-/// Compact projection of a single <c>role_assignments</c> row, used as the
-/// cached unit in <c>CachingRoleAssignmentService</c>. Carries the fields
-/// needed to derive both active-by-role counts and active-for-user lookups
-/// in memory.
-/// </summary>
+/// <summary>The cached unit of <c>CachingRoleAssignmentService</c>.</summary>
 public sealed record RoleAssignmentRow(
     Guid Id,
     Guid UserId,
@@ -15,10 +10,7 @@ public sealed record RoleAssignmentRow(
     Instant ValidFrom,
     Instant? ValidTo)
 {
-    /// <summary>
-    /// Canonical "is this assignment active at <paramref name="now"/>?" predicate.
-    /// Lives on the row record so the caching decorator doesn't reimplement the rule.
-    /// </summary>
+    /// <summary>The one active-at rule; the caching decorator uses it rather than restating it.</summary>
     public bool IsActiveAt(Instant now) =>
         ValidFrom <= now && (ValidTo is null || ValidTo > now);
 }

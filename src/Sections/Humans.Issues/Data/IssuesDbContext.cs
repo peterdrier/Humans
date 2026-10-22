@@ -4,20 +4,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Issues.Data;
 
-/// <summary>
-/// Per-section database context for the Issues section: maps only <c>issues</c> and
-/// <c>issue_comments</c>, with its own <c>__EFMigrationsHistory_Issues</c>
-/// table and migrations under <c>Data/Migrations/</c>. Same database, same
-/// connection — the split is a code-side partition of the EF model.
-/// </summary>
-/// <remarks>
-/// Internal-sealed like every section context: repositories
-/// are the only consumers. Configurations are applied explicitly (not by
-/// assembly scanning) so this model can never accrete another section's tables.
-/// Reporters, assignees and commenters are bare Guid user references, so the
-/// Identity tables stay in <c>Humans.Users</c>' own context and are deliberately
-/// absent here.
-/// </remarks>
 internal sealed class IssuesDbContext(DbContextOptions<IssuesDbContext> options)
     : DbContext(options)
 {

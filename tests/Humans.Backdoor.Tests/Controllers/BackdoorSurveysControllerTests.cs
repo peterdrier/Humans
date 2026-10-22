@@ -51,8 +51,6 @@ public class BackdoorSurveysControllerTests
         return [.. (IEnumerable<object>)value.GetType().GetProperty("items")!.GetValue(value)!];
     }
 
-    // ── Definition ──────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Definition_returns_NotFound_for_missing_survey()
     {
@@ -114,8 +112,6 @@ public class BackdoorSurveysControllerTests
         json.Should().Contain(@"""url"":""/uploads/surveys/fire.png""");
         json.Should().Contain(@"""altText"":""Fire risk table""");
     }
-
-    // ── Responses ───────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task Responses_returns_NotFound_for_missing_survey()
@@ -277,8 +273,6 @@ public class BackdoorSurveysControllerTests
         json.Should().Contain(@"""rowValue"":""monday""");
         json.Should().Contain(@"""columnLabels"":[""Morning""]");
     }
-
-    // ── Aggregates ──────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task Aggregates_returns_NotFound_for_missing_survey()

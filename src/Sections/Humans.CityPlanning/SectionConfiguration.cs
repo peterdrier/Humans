@@ -4,10 +4,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace Humans.CityPlanning;
 
-/// <summary>
-/// City Planning's own setting — the team slug behind <c>CityPlanningOptions</c>. Without it,
-/// only admins can edit polygons.
-/// </summary>
+/// <summary>Without the team slug, only admins can edit polygons.</summary>
 internal sealed class SectionConfiguration : ISectionConfiguration
 {
     public void DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)

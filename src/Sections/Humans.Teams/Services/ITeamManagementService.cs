@@ -40,12 +40,6 @@ internal sealed record AdminTeamListResult(
     IReadOnlyList<AdminTeamSummary> Teams,
     int TotalCount);
 
-/// <summary>
-/// Flat projection of an active coordinator row — the user who holds the
-/// Coordinator membership role on a specific team. Used by cross-section
-/// callers (shift dashboard) that need per-team coordinator lists without
-/// joining across the Teams-owned tables themselves.
-/// </summary>
 internal sealed record TeamJoinRequestSnapshot(
     Guid Id,
     Guid TeamId,
@@ -61,12 +55,7 @@ internal sealed record TeamJoinRequestSnapshot(
     string? ReviewNotes,
     string? TeamSlug = null);
 
-/// <summary>
-/// Persistence-free read model for a team early-entry grant, returned by the
-/// Teams-internal management read so the service boundary does not expose the
-/// <see cref="TeamEarlyEntryGrant"/> entity. The human display name is resolved
-/// by the caller via <c>IUserService</c> from <see cref="UserId"/>.
-/// </summary>
+/// <summary>The caller resolves the display name from <see cref="UserId"/>.</summary>
 internal sealed record TeamEarlyEntryGrantInfo(
     Guid Id,
     Guid UserId,
@@ -74,33 +63,17 @@ internal sealed record TeamEarlyEntryGrantInfo(
     string ProjectName);
 
 /// <summary>
-/// Service for managing teams and team membership.
+/// Internal: the cross-section half is <see cref="ITeamService"/> and <see cref="ITeamWrite"/>, inherited through
+/// <see cref="ITeamManagement"/> so controllers and the caching decorator keep one injection.
 /// </summary>
-
-/// <summary>
-/// The Teams section's own service surface: the directory, detail, join-request, roster,
-/// role-definition, role-assignment, team-page and early-entry members, plus the reads that
-/// return the section's entities. Internal because nothing outside the assembly calls any of
-/// it — the cross-section half is <see cref="ITeamService"/> and <see cref="ITeamWrite"/>, which this
-/// inherits via <see cref="ITeamManagement"/> so the section's controllers and its caching
-/// decorator keep one injection.
-/// </summary>
-/// <remarks>
-/// The interface survives internalisation because the caching decorator
-/// needs the seam, and MA0053 seals the concrete <c>TeamService</c> so NSubstitute cannot
-/// stand in for it.
-/// </remarks>
 internal interface ITeamManagementService : ITeamManagement
 {
-    /// <summary>GDPR export slices; <c>CachingTeamService</c> is the registered contributor.</summary>
+    /// <summary><c>CachingTeamService</c> is the registered contributor.</summary>
     Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct);
 
-    /// <summary>GDPR erasure; reached through <c>CachingTeamService</c>, which evicts after it.</summary>
+    /// <summary>Reached through <c>CachingTeamService</c>, which evicts after it.</summary>
     Task EraseForUserAsync(Guid userId, CancellationToken ct);
 
-    /// <summary>
-    /// Creates a new team.
-    /// </summary>
     Task<Team> CreateTeamAsync(
         string name,
         string? description,
@@ -110,9 +83,7 @@ internal interface ITeamManagementService : ITeamManagement
         bool isHidden = false,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Updates a team's details, returning expected validation or unique-constraint refusals.
-    /// </summary>
+    /// <summary>Returns expected validation and unique-constraint refusals.</summary>
     Task<TeamUpdateResult> UpdateTeamAsync(
         Guid teamId,
         string name,
@@ -130,10 +101,8 @@ internal interface ITeamManagementService : ITeamManagement
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Creates a team and — when a Google group prefix is set — provisions its
-    /// Google Group, owning the compensation: if provisioning fails the prefix
-    /// is cleared so the team never points at a group that does not exist.
-    /// <c>GroupWarning</c> carries the operator-facing message in that case.
+    /// When provisioning the Google Group fails, the prefix is cleared so the team never points at a missing group;
+    /// <c>GroupWarning</c> then carries the operator message.
     /// </summary>
     [ExternalWrite]
     Task<TeamWithGroupResult> CreateTeamWithGoogleGroupAsync(
@@ -146,10 +115,8 @@ internal interface ITeamManagementService : ITeamManagement
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Updates a team's details, then reconciles its Google Group link only on success.
-    /// <c>GroupWarning</c> carries the operator-facing message when the group
-    /// sync failed or needs reactivation confirmation; the team update itself
-    /// has already succeeded in that case.
+    /// Reconciles the Google Group link only after a successful update. <c>GroupWarning</c> carries the operator message
+    /// when the sync failed or needs reactivation confirmation; the update itself has succeeded.
     /// </summary>
     [ExternalWrite]
     Task<TeamUpdateResult> UpdateTeamWithGoogleGroupAsync(
@@ -168,79 +135,53 @@ internal interface ITeamManagementService : ITeamManagement
         bool? earlyEntryEnabled = null,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Deletes (deactivates) a team.
-    /// </summary>
+    /// <summary>Deactivates; nothing is deleted.</summary>
     Task DeleteTeamAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Joins a team, dispatching on the team's join policy: approval-required
-    /// teams get a pending <c>TeamJoinRequest</c>, open teams an immediate
-    /// membership. The outcome tells the caller which happened.
-    /// </summary>
+    /// <summary>Approval-required teams get a pending request, open teams an immediate membership.</summary>
     Task<TeamJoinResult> JoinTeamAsync(
         Guid teamId,
         Guid userId,
         string? message,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Leaves a team.
-    /// </summary>
     Task<TeamMembershipMutationResult> LeaveTeamAsync(
         Guid teamId,
         Guid userId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Withdraws a pending join request.
-    /// </summary>
     Task<TeamMembershipMutationResult> WithdrawJoinRequestAsync(
         Guid requestId,
         Guid userId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Approves a join request.
-    /// </summary>
     Task<TeamMember> ApproveJoinRequestAsync(
         Guid requestId,
         Guid approverUserId,
         string? notes,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Rejects a join request.
-    /// </summary>
     Task RejectJoinRequestAsync(
         Guid requestId,
         Guid approverUserId,
         string reason,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Gets pending join requests for a specific team.
-    /// </summary>
     Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForTeamAsync(
         Guid teamId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Gets only the member's own pending join requests.</summary>
     Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Gets a user's pending request for a team, if any.
-    /// </summary>
     Task<TeamJoinRequestSnapshot?> GetUserPendingRequestAsync(
         Guid teamId,
         Guid userId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Removes a member from a team (admin action). When the removed member was a
-    /// coordinator, reconciles their Coordinators system-team membership as part of
-    /// the mutation. Known refusals return resource keys; dependency failures propagate.
+    /// Reconciles a removed coordinator's Coordinators system-team membership in the same mutation. Known refusals
+    /// return resource keys; dependency failures propagate.
     /// </summary>
     Task<TeamMemberRemovalResult> RemoveMemberAsync(
         Guid teamId,
@@ -248,40 +189,24 @@ internal interface ITeamManagementService : ITeamManagement
         Guid actorUserId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Gets the management role definition name for each team that has one.
-    /// </summary>
-    /// <param name="teamIds">The team IDs to check.</param>
-    /// <param name="cancellationToken">Cancellation token for the lookup.</param>
-    /// <returns>Dictionary mapping team ID to the management role name.</returns>
+    /// <summary>Teams without a management role are absent.</summary>
     Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
         IEnumerable<Guid> teamIds,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Gets ordered admin-team summaries ready for controller/view projection.
-    /// </summary>
+    /// <summary>Ordered, ready for projection.</summary>
     Task<AdminTeamListResult> GetAdminTeamListAsync(
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Directly adds a user to a team (admin/lead action, bypasses join request workflow).
-    /// </summary>
+    /// <summary>Bypasses the join-request workflow.</summary>
     Task<TeamMember> AddMemberToTeamAsync(
         Guid teamId,
         Guid targetUserId,
         Guid actorUserId,
         CancellationToken cancellationToken = default);
 
-    // ==========================================================================
-    // Team Page Content
-    // ==========================================================================
-
-    /// <summary>
-    /// Updates a team's public page content, CTAs, and visibility.
-    /// </summary>
     Task<TeamPageUpdateResult> UpdateTeamPageContentAsync(
         Guid teamId,
         string? pageContent,
@@ -291,13 +216,6 @@ internal interface ITeamManagementService : ITeamManagement
         Guid updatedByUserId,
         CancellationToken cancellationToken = default);
 
-    // ==========================================================================
-    // Team Role Definitions
-    // ==========================================================================
-
-    /// <summary>
-    /// Creates a new role definition for a team.
-    /// </summary>
     Task<TeamRoleDefinition> CreateRoleDefinitionAsync(
         Guid teamId, string name, string? description, int slotCount,
         List<SlotPriority> priorities, int sortOrder, RolePeriod period, Guid actorUserId,
@@ -305,9 +223,6 @@ internal interface ITeamManagementService : ITeamManagement
         int? estimatedHours = null,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Updates an existing role definition.
-    /// </summary>
     Task<TeamRoleDefinition> UpdateRoleDefinitionAsync(
         Guid roleDefinitionId, string name, string? description, int slotCount,
         List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, Guid actorUserId,
@@ -316,54 +231,33 @@ internal interface ITeamManagementService : ITeamManagement
         int? estimatedHours = null,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Deletes a role definition and its assignments.
-    /// </summary>
+    /// <summary>Also deletes its assignments.</summary>
     Task DeleteRoleDefinitionAsync(
         Guid roleDefinitionId, Guid actorUserId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Toggles the IsManagement flag on a role definition.
-    /// Cannot be enabled while members are assigned to the role.
-    /// </summary>
+    /// <summary>Can't be enabled while members are assigned to the role.</summary>
     Task<TeamRoleManagementToggleResult> ToggleRoleIsManagementAsync(
         Guid roleDefinitionId, Guid actorUserId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Gets all role definitions for a team, with assignments and member details.
-    /// </summary>
     Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetRoleDefinitionsAsync(
         Guid teamId, CancellationToken cancellationToken = default);
 
-    // ==========================================================================
-    // Team Role Assignments
-    // ==========================================================================
-
-    /// <summary>
-    /// Assigns a team member to the next available slot in a role definition,
-    /// then reconciles the target's Coordinators system-team membership
-    /// (management roles promote).
-    /// </summary>
+    /// <summary>Next free slot; then reconciles the target's Coordinators system-team membership.</summary>
     Task<TeamRoleAssignment> AssignToRoleAsync(
         Guid roleDefinitionId, Guid targetUserId, Guid actorUserId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Removes a team member's assignment from a role definition, then
-    /// reconciles the target's Coordinators system-team membership.
-    /// </summary>
+    /// <summary>Then reconciles the target's Coordinators system-team membership.</summary>
     Task UnassignFromRoleAsync(
         Guid roleDefinitionId, Guid teamMemberId, Guid actorUserId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Adds a team member with an explicit <paramref name="role"/> and <paramref name="joinedAt"/>
-    /// timestamp, without emitting audit entries, outbox events, or user-facing emails. This is
-    /// a restricted seed/migration-only path; production membership changes must go through
-    /// <see cref="AddMemberToTeamAsync"/>, <see cref="ApproveJoinRequestAsync"/>, or the role
-    /// assignment APIs. Throws if the user is already an active member of the team.
+    /// Seed and migration only: no audit, outbox events or emails. Production changes go through
+    /// <see cref="AddMemberToTeamAsync"/>, <see cref="ApproveJoinRequestAsync"/> or role assignment. Throws if already a
+    /// member.
     /// </summary>
     Task<TeamMember> AddSeededMemberAsync(
         Guid teamId,
@@ -372,58 +266,24 @@ internal interface ITeamManagementService : ITeamManagement
         Instant joinedAt,
         CancellationToken cancellationToken = default);
 
-    // ==========================================================================
-    // Coordinator-role reconciliation — used only by SystemTeamSyncJob.
-    // ==========================================================================
-
-    /// <summary>
-    /// Loads every active membership with enough role-assignment / role-definition / team
-    /// context to decide coordinator promotion and demotion in memory.
-    /// </summary>
     Task<IReadOnlyList<TeamRoleReconciliationMembership>> GetActiveMembershipsForRoleReconciliationAsync(
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Applies a bulk list of <c>TeamMember.Role</c> changes (promote to Coordinator / demote to
-    /// Member) in a single save. Returns the number of memberships updated.
-    /// </summary>
+    /// <summary>One save. Returns the number of memberships updated.</summary>
     Task<int> ApplyMemberRoleChangesAsync(
         IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes,
         CancellationToken cancellationToken = default);
 
-    // ==========================================================================
-    // Early-Entry Grants (Teams-internal; called by TeamAdminController for the
-    // per-team management page, plus AccountDeletionService for erasure and
-    // IUserMerge for merge). Not exposed on ITeamService — cross-section reads
-    // go through IEarlyEntryProvider.
-    // ==========================================================================
-
-    /// <summary>
-    /// Gets the early-entry grants for a single team (management view) as a
-    /// persistence-free read model. Display ordering is the caller's
-    /// responsibility (rendering layer).
-    /// </summary>
+    /// <summary>Unordered: display order is the caller's.</summary>
     Task<IReadOnlyList<TeamEarlyEntryGrantInfo>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Grants early entry to a user for a team. Throws if the team does not have
-    /// <see cref="Team.EarlyEntryEnabled"/> set. Records an audit entry and evicts
-    /// the user's EE cache.
-    /// </summary>
+    /// <summary>Throws unless the team has <see cref="Team.EarlyEntryEnabled"/>.</summary>
     Task AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Updates the entry date and project label of an existing grant. The grant
-    /// must belong to <paramref name="teamId"/>; a grant on another team is
-    /// treated the same as not found.
-    /// </summary>
+    /// <summary>A grant on another team counts as not found.</summary>
     Task EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Revokes an early-entry grant. Idempotent (no-op if already gone). The
-    /// grant must belong to <paramref name="teamId"/>; a grant on another team
-    /// is treated the same as not found (no-op).
-    /// </summary>
+    /// <summary>Idempotent. A grant on another team counts as not found.</summary>
     Task RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default);
 }
 
@@ -440,20 +300,13 @@ internal sealed record TeamRoleManagementToggleResult(
     string RoleName,
     bool IsManagement);
 
-/// <summary>
-/// A team create/update plus the outcome of its Google Group reconciliation.
-/// <see cref="GroupWarning"/> is null when the group is in order; otherwise the
-/// operator-facing message to surface alongside the success flash.
-/// </summary>
+/// <summary><see cref="GroupWarning"/> is null when the group is in order, else the operator message to show.</summary>
 internal sealed record TeamWithGroupResult(Team Team, string? GroupWarning);
 
-/// <summary>What <see cref="ITeamManagementService.JoinTeamAsync"/> did, per the team's join policy.</summary>
 internal enum TeamJoinOutcome
 {
-    /// <summary>Open team — the user is now an active member.</summary>
     Joined,
 
-    /// <summary>Approval-required team — a pending join request was created.</summary>
     RequestSubmitted,
 }
 

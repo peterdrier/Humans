@@ -4,13 +4,6 @@ using Humans.Events.Contracts;
 
 namespace Humans.Events.Services.Dtos;
 
-/// <summary>
-/// Cached projection of an <see cref="EventCategory"/> row.
-/// </summary>
-/// <remarks>
-/// Held as a flat <see cref="IReadOnlyList{T}"/> inside
-/// <c>CachingEventService</c>.
-/// </remarks>
 internal sealed record EventCategoryView(
     Guid Id,
     string Name,
@@ -19,13 +12,6 @@ internal sealed record EventCategoryView(
     int DisplayOrder,
     bool IsActive);
 
-/// <summary>
-/// Cached projection of an <see cref="EventVenue"/> row.
-/// </summary>
-/// <remarks>
-/// Held as a flat <see cref="IReadOnlyList{T}"/> inside
-/// <c>CachingEventService</c>.
-/// </remarks>
 internal sealed record EventVenueView(
     Guid Id,
     string Name,
@@ -34,10 +20,7 @@ internal sealed record EventVenueView(
     int DisplayOrder,
     bool IsActive);
 
-/// <summary>
-/// Category projection for the admin management list, carrying the linked-event
-/// count so the management UI can render usage without exposing the EF nav.
-/// </summary>
+/// <summary>Carries the linked-event count so the management UI needs no EF nav.</summary>
 internal sealed record EventCategoryManageInfo(
     Guid Id,
     string Name,
@@ -47,10 +30,7 @@ internal sealed record EventCategoryManageInfo(
     bool IsActive,
     int EventCount);
 
-/// <summary>
-/// Venue projection for the admin management list, carrying the linked-event
-/// count so the management UI can render usage without exposing the EF nav.
-/// </summary>
+/// <summary>Carries the linked-event count so the management UI needs no EF nav.</summary>
 internal sealed record EventVenueManageInfo(
     Guid Id,
     string Name,
@@ -60,10 +40,6 @@ internal sealed record EventVenueManageInfo(
     bool IsActive,
     int EventCount);
 
-/// <summary>
-/// A single moderation-history entry projected for the moderation queue,
-/// flattened so the presentation layer never touches the EF nav collection.
-/// </summary>
 internal sealed record EventModerationHistoryInfo(
     Guid ActorUserId,
     EventModerationActionType Action,
@@ -71,10 +47,8 @@ internal sealed record EventModerationHistoryInfo(
     Instant CreatedAt);
 
 /// <summary>
-/// Full event projection for moderation / dashboard / submissions / export
-/// reads. Carries the flattened category and (optional) venue name, status,
-/// and — where the source query loaded it — the moderation history. Replaces
-/// the <see cref="Event"/> entity on those read surfaces.
+/// The read shape for moderation, dashboard, submissions and export. Moderation history is present only where the
+/// query loaded it.
 /// </summary>
 internal sealed record EventInfo(
     Guid Id,
@@ -100,31 +74,19 @@ internal sealed record EventInfo(
     Instant LastUpdatedAt,
     IReadOnlyList<EventModerationHistoryInfo> ModerationHistory)
 {
-    /// <summary>
-    /// Whether the submitter may edit/resubmit this event — single source:
-    /// <see cref="Event.IsEditableBySubmitter"/> (camp events have no Draft stage).
-    /// </summary>
     public bool CanEdit => Event.IsEditableBySubmitter(Status, CampId is not null);
 
-    /// <summary>
-    /// Whether the submitter may withdraw this event — single source:
-    /// <see cref="Event.IsWithdrawableBySubmitter"/>.
-    /// </summary>
     public bool CanWithdraw => Event.IsWithdrawableBySubmitter(Status, CampId is not null);
 
     /// <inheritdoc cref="Event.IsAllDay"/>
     public bool IsAllDay => DurationMinutes == Event.AllDayDurationMinutes;
 
-    /// <summary>
-    /// Whether a submitter edit is a resubmission after moderation sent the event back
-    /// (rejected, or edits requested).
-    /// </summary>
+    /// <summary>A submitter edit after moderation sent the event back (rejected, or edits requested).</summary>
     public bool IsResubmission => Status is EventStatus.Rejected or EventStatus.ResubmitRequested;
 
     /// <summary>
-    /// Expands this event into concrete occurrence instants. A non-null
-    /// <paramref name="dayOffset"/> narrows a recurring event to the single
-    /// occurrence on that day offset (non-recurring events ignore it).
+    /// A non-null <paramref name="dayOffset"/> narrows a recurring event to that day's single occurrence;
+    /// non-recurring events ignore it.
     /// </summary>
     public IReadOnlyList<Instant> GetOccurrenceInstants(LocalDate? gateOpeningDate, DateTimeZone? timeZone, int? dayOffset = null) =>
         EventRecurrenceDays.GetOccurrenceInstants(
@@ -132,10 +94,8 @@ internal sealed record EventInfo(
 }
 
 /// <summary>
-/// The editable fields of an event, as posted by a submitter or moderator edit
-/// form. <see cref="VenueId"/> applies to individual events only and
-/// <see cref="PriorityRank"/> to camp events only; the event's own
-/// <c>CampId</c> decides which set the service applies.
+/// <see cref="VenueId"/> applies to individual events only and <see cref="PriorityRank"/> to camp events only; the
+/// event's own <c>CampId</c> decides which set the service applies.
 /// </summary>
 internal sealed record EventEdit(
     Guid CategoryId,
@@ -151,10 +111,8 @@ internal sealed record EventEdit(
     int? PriorityRank);
 
 /// <summary>
-/// A favourited event projected for the personal schedule / favourites API —
-/// the favourite metadata plus the flattened event projection. A null
-/// <see cref="DayOffset"/> means the whole event (every occurrence). Multiple
-/// retained day bookmarks on a now non-recurring event project as one whole-event target.
+/// A null <see cref="DayOffset"/> means every occurrence. Several day bookmarks retained on a now non-recurring event
+/// project as one whole-event target.
 /// </summary>
 internal sealed record EventFavouriteInfo(
     Guid Id,
@@ -164,10 +122,7 @@ internal sealed record EventFavouriteInfo(
     Instant CreatedAt,
     EventInfo Event);
 
-/// <summary>
-/// A camp's submissions bucketed by moderation status. Presentation consumers
-/// choose the display order for the events.
-/// </summary>
+/// <summary>Unordered: consumers choose the display order.</summary>
 internal sealed record CampSubmissionsSummary(
     int SubmittedCount,
     int ApprovedCount,

@@ -1,11 +1,8 @@
 namespace Humans.Preapprovals.Contracts;
 
 /// <summary>
-/// Where one grant is in its life. <c>Applied</c> is the application; <c>Open</c> is the only
-/// state an expense report can be filed against; <c>Claimed</c> holds it while that report is in
-/// flight; <c>Consumed</c>, <c>Declined</c> and <c>Revoked</c> are terminal. There is no expired
-/// state: a grant past its program's claim deadline stays <c>Open</c> and is simply not claimable
-/// (docs/features/global/preapprovals.md).
+/// Only <c>Open</c> can be filed against; <c>Claimed</c> holds it while that report is in flight. There is no expired
+/// state: a grant past its program's claim deadline stays <c>Open</c> and is simply not claimable.
 /// </summary>
 public enum GrantStatus
 {

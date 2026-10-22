@@ -10,7 +10,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Search.Controllers;
 
-/// <summary>The global <c>/Search</c> page: one action, which sorts the buckets and assembles the view-model.</summary>
 [Authorize]
 [Route("Search")]
 internal sealed class SearchController(
@@ -59,7 +58,6 @@ internal sealed class SearchController(
         {
             Query = results.Query,
             Filter = filter,
-            // Display sort lives here (display-sort-in-controllers), never in the service.
             HumanResults = results.Humans
                 .OrderByRelevance()
                 .ToList(),

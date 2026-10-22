@@ -1,9 +1,6 @@
 namespace Humans.Shifts.Domain;
 
-/// <summary>
-/// A descriptive label that can be applied to rotas. Shared across all teams.
-/// Examples: "Heavy lifting", "Working in the sun", "Feeding and hydrating folks".
-/// </summary>
+/// <summary>Shared across all teams, e.g. "Heavy lifting", "Working in the sun".</summary>
 internal sealed class ShiftTag
 {
     public Guid Id { get; init; }

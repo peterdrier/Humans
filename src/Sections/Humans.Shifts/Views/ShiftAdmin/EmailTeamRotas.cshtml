@@ -120,8 +120,8 @@
     </div>
 </div>
 
-@* Audience controls drive the recipient preview, so each change re-posts the form
-   (message intact) through the refresh button — which is also the no-JS fallback. *@
+@* Each audience change re-posts the form, message intact, through the refresh button, which is also the no-JS
+   fallback. *@
 <script nonce="@Context.Items["CspNonce"]">
     (function () {
         var refresh = document.getElementById('refresh-recipients');

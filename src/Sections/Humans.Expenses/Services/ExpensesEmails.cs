@@ -8,15 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.Expenses.Services;
 
-/// <summary>
-/// Expenses' own email templates: one method per template, each returning a ready
-/// <see cref="EmailMessage"/> (content plus the routing policy Expenses chooses —
-/// template name and opt-out category) for the single
-/// <see cref="IEmailService.SendAsync"/> path. Copy lives in Expenses' own resx set
-/// and is rendered in the recipient's culture inside a <see cref="CultureScope"/>
-/// (memory/architecture/email-templates-live-in-sender.md).
-/// Pure — no I/O, no persistence.
-/// </summary>
+/// <summary>Pure: no I/O, no persistence.</summary>
 internal sealed class ExpensesEmails(
     IOptions<EmailSettings> settings,
     IStringLocalizer<ExpensesResource> localizer,
@@ -24,12 +16,7 @@ internal sealed class ExpensesEmails(
 {
     private readonly EmailSettings _settings = settings.Value;
 
-    /// <summary>
-    /// Finance approved the member's report. <paramref name="payable"/>
-    /// is what will actually be reimbursed — the receipts total, capped — and
-    /// <paramref name="ibanMasked"/> is the payee IBAN snapshotted on the report, already masked:
-    /// the raw IBAN never leaves the section.
-    /// </summary>
+    /// <summary><paramref name="ibanMasked"/> is already masked: the raw IBAN never leaves the section.</summary>
     public EmailMessage ReportApproved(
         string userEmail, string userName, Guid reportId, decimal payable, string ibanMasked,
         string? culture = null)
@@ -40,10 +27,7 @@ internal sealed class ExpensesEmails(
                 Encode(userName), payable.ToEuro(), Encode(ibanMasked), AbsoluteUrl($"/Expenses/{reportId}")),
             "expense_approved", MessageCategory.System));
 
-    /// <summary>
-    /// Webmail has no Humans origin, so a root-relative path in an email resolves against
-    /// the reader's own host; callers pass the in-app path and the absolute link is built here.
-    /// </summary>
+    /// <summary>Webmail has no Humans origin, so a root-relative link would resolve against the reader's host.</summary>
     private string AbsoluteUrl(string path) =>
         $"{_settings.BaseUrl.TrimEnd('/')}/{path.TrimStart('/')}";
 

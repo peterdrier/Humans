@@ -3,16 +3,9 @@ using NodaTime;
 namespace Humans.Backdoor.Domain;
 
 /// <summary>
-/// One personal machine-API credential. The plaintext key is never stored: issuance
-/// returns it once and persists only <see cref="KeyHash"/> (SHA-256, lowercase hex) plus
-/// <see cref="DisplayPrefix"/>, the leading characters kept so a human can tell their rows
-/// apart in the admin list.
+/// The plaintext key is never stored. Revocation stamps <see cref="RevokedAt"/> and rotation inserts a new row, so who
+/// held a key when stays answerable; a row is deleted only when its owner is erased.
 /// </summary>
-/// <remarks>
-/// Revocation stamps <see cref="RevokedAt"/> rather than deleting and rotation inserts a
-/// new row, so who held a key when stays answerable; a row is deleted only when its owner is
-/// erased.
-/// </remarks>
 internal sealed class BackdoorApiKey
 {
     public Guid Id { get; set; }
@@ -32,9 +25,8 @@ internal sealed class BackdoorApiKey
     public Instant CreatedAt { get; set; }
 
     /// <summary>
-    /// The admin who allocated the key. Nullable so GDPR erasure can detach a deleted admin
-    /// from a key that still belongs to someone else — the same detach-don't-retain shape as
-    /// <see cref="RevokedByUserId"/>. Who issued what is separately in the audit log.
+    /// Nullable so GDPR erasure can detach a deleted admin from a key that belongs to someone else. The audit log keeps
+    /// who issued what.
     /// </summary>
     public Guid? CreatedByUserId { get; set; }
 

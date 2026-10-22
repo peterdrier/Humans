@@ -6,9 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Backdoor.Controllers;
 
-/// <summary>
-/// Read-only chat-history review for QA/prod. Mutations stay on the admin web UI.
-/// </summary>
+/// <summary>Read-only: mutations stay on the admin web UI.</summary>
 [ApiController]
 [Route("api/backdoor/agent")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]

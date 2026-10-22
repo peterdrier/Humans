@@ -4,10 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Governance.ViewComponents;
 
-/// <summary>
-/// The member dashboard's "Your stuff" navigation tile for tier applications
-/// (Colaborador/Asociado). Volunteer-only — renders nothing for a guest/non-member.
-/// </summary>
+/// <summary>Renders nothing for a guest or non-member.</summary>
 public sealed class GovernanceApplicationsTileViewComponent(
     IMembershipCalculator membershipCalculator) : ViewComponent
 {

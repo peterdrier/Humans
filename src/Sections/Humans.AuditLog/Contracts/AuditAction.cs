@@ -1,9 +1,6 @@
 namespace Humans.AuditLog.Contracts;
 
-/// <summary>
-/// Actions that can be recorded in the audit log.
-/// Stored as string in DB; new values can be appended without migration.
-/// </summary>
+/// <summary>Stored by name: never rename a value. A value with no writer stays so stored rows still read.</summary>
 public enum AuditAction
 {
     TeamMemberAdded,
@@ -30,7 +27,7 @@ public enum AuditAction
     TierApplicationApproved,
     TierApplicationRejected,
     TierDowngraded,
-    // An admin rewrote a stored term expiry from the temporary /Governance/Applications/Admin/TermExpiry screen.
+    // From the temporary /Governance/Applications/Admin/TermExpiry screen.
     TierTermExpiryCorrected,
     GoogleResourceDeactivated,
     FacilitatedMessageSent,
@@ -68,8 +65,7 @@ public enum AuditAction
     WorkspaceAccountPasswordReset,
     WorkspaceAccountLinked,
     WorkspaceAccountBackupCodesGenerated,
-    // Reserved — was wired briefly during PR #254 development. No code path
-    // currently writes this value; do not remove (audit enum is positional).
+    // No writer; stored rows may hold it.
     WorkspaceAccountBackupCodesInvalidated,
     WorkspaceAccountResetBlockedFor2Sv,
     AccountMergeRequested,
@@ -144,8 +140,7 @@ public enum AuditAction
     CampEarlyEntryGranted,
     CampEarlyEntryRevoked,
     CampSeasonEeSlotCountChanged,
-    // Retired: no writer since the EE start date moved to Settings
-    // (peterdrier/Humans#1633). Kept so persisted rows still read.
+    // No writer since the EE start date moved to Settings.
     CampSettingsEeStartDateChanged,
     ExpenseSubmit,
     ExpenseEndorse,
@@ -164,15 +159,12 @@ public enum AuditAction
     ExpenseAttachmentRemoved,
     VolunteerCampSetupSet,
     VolunteerCampSetupCleared,
-    // Reserved — was wired during the first volunteer-tracking day-off
-    // iteration (renamed in the redesign; historical audit rows may still
-    // exist on dev DBs). Do not remove (audit enum is positional).
+    // No writer since the day-off redesign; stored rows may hold it.
     VolunteerDayBlocked,
     VolunteerDayUnblocked,
     VolunteerOwnBlockedDaysSaved,
     VolunteerDayOffMarked,
     VolunteerDayOffCleared,
-    // Issue nobodies-collective/Humans#697: OAuth-callback reconcile audits.
     OAuthRenameCollision,
     OAuthRenameCollisionBlocked,
     UserEmailDisplacedByOAuthRename,
@@ -180,7 +172,7 @@ public enum AuditAction
     MailerLiteAudienceSyncCompleted,
     GoogleSyncRetryScheduled,
     TicketContactsImported,
-    // Admin downloaded the donor list CSV (buyer names + amounts) for the accountant.
+    // Buyer names and amounts, for the accountant.
     TicketDonationsExported,
     ContainerCreated,
     ContainerUpdated,
@@ -190,8 +182,7 @@ public enum AuditAction
     ContainerPlacementNotesUpdated,
     CoordinatorRotaMessageSent,
     CoordinatorTeamRotasMessageSent,
-    // Coordinator edits a volunteer's declared build availability on their behalf
-    // (Profile build strip).
+    // On a volunteer's behalf, from the Profile build strip.
     VolunteerAvailabilitySet,
     VolunteerAvailabilityCleared,
     EarlyEntryGranted,
@@ -199,7 +190,6 @@ public enum AuditAction
     EarlyEntryRevoked,
     StorePaymentsReconciled,
     GateTerminalPasswordSet,
-    // Gate personal-PIN lifecycle: who set (self-enrol or admin) or reset a staffer's claim PIN.
     GateStaffPinSet,
     GateStaffPinReset,
     SurveyCreated,
@@ -208,60 +198,41 @@ public enum AuditAction
     SurveyClosed,
     SurveyInvitesSent,
     SurveyReminderSent,
-    // Self-service approval gate (nobodies-collective/Humans Workgroups §11): an author submits a
-    // Draft for Board/Admin review; Board/Admin approve (opens + sends in one step) or reject it
-    // back to Draft with a note.
+    // An author submits a Draft for Board/Admin review. Approval opens and sends in one step; rejection returns
+    // it to Draft with a note.
     SurveySubmittedForApproval,
     SurveyApproved,
     SurveyRejected,
-    // Holded expense push outcomes (nobodies-collective/Humans#1045). Written by the outbox
-    // drain so the per-report history survives outbox-row cleanup, which the outbox columns
-    // themselves do not.
+    // Written by the Holded outbox drain, so a report's push history survives outbox-row cleanup.
     ExpenseHoldedPushed,
     ExpenseHoldedFailed,
     ExpenseHoldedRequeued,
-    // Finance created or linked a Holded expense account outside the budget map on a caller's behalf.
+    // Outside the budget map, on a caller's behalf.
     HoldedExpenseAccountCreated,
     HoldedExpenseAccountLinked,
-    // Finance retired or restored a managed Holded expense account (a workgroup lifecycle hook).
+    // A managed account retired or restored (a workgroup lifecycle hook).
     HoldedExpenseAccountActiveChanged,
-    // Backdoor personal machine-API key lifecycle (nobodies-collective/Humans#1128).
-    // Rotation is recorded as a revoke of the old key followed by an issue of the new one.
+    // Rotation is a revoke of the old key followed by an issue of the new one.
     BackdoorApiKeyIssued,
     BackdoorApiKeyRevoked,
-    // Linking a feedback report to a GitHub issue — the last Feedback mutation that
-    // recorded no actor (nobodies-collective/Humans#1128).
     FeedbackGitHubLinked,
-    // Filing an issue through the machine API, where the filer and the reporter can differ
-    // (nobodies-collective/Humans#1128). The in-app reporter is their own filer, so that path
-    // still records creation on the issue row alone.
+    // Machine API only, where the filer and the reporter can differ. In-app creation is recorded on the issue row.
     IssueCreated,
-    // One per credit transfer in a generated SEPA payout file (nobodies-collective/Humans#1134).
-    // Written by Finance; the IBAN in the description is always masked.
+    // One per credit transfer in a payout file. The IBAN in the description is always masked.
     SepaPayoutTransfer,
-    // One per transfer booked into Holded from /Finance/Sepa (nobodies-collective/Humans#1141).
-    // Same entity type as the generation entry; the IBAN in the description is always masked.
+    // The IBAN in the description is always masked.
     SepaPayoutTransferBooked,
-    // The SEPA sweep stopped failing closed on one Sabadell line that stayed pending outgoing with no
-    // readable date for several runs in a row, and now books the rest of the feed without it
-    // (peterdrier/Humans#1946). Written once, by Finance, when the line crosses the threshold.
+    // Written once, when the sweep starts booking past a Sabadell line left pending with no readable date for
+    // several runs.
     SepaBankLineSkipped,
-    // A transfer withdrawn from a generated payout file because the bank cancelled it by hand
-    // before execution. Written by Finance from /Finance/Sepa; the row stays, flagged withdrawn,
-    // and no matcher pairs it again. Same entity type as the generation entry.
+    // The bank cancelled the transfer before execution. The row stays, flagged withdrawn, and no matcher pairs it again.
     SepaPayoutTransferWithdrawn,
-    // One per Holded purchase document or contact deleted by /Finance/HoldedDuplicates because the
-    // expense push created it twice, or by the push itself when it retracts a creditor contact it
-    // minted after a concurrent push bound the member first. Written by Finance; names the member,
-    // the amount and the document or contact that was kept.
+    // A Holded purchase document or contact created twice by the expense push. Names the member, the amount and
+    // the one kept.
     HoldedDuplicateRemoved,
 
-    // City Planning settings writes. These decide who may move barrios and containers on the
-    // site map and what the published ground truth is, and every one of them is an organiser
-    // acting on the members' behalf. The settings row records when a phase changed but not
-    // who changed it, so the actor lives here.
-    // Opened/Closed are the admins' manual override of the barrio placement schedule (forced open
-    // or forced closed); OverrideCleared hands placement back to the schedule (peterdrier/Humans#2102).
+    // Every City Planning settings write is audited: the settings row records when a phase changed, not who.
+    // Opened/Closed force the barrio placement schedule; OverrideCleared hands placement back to it.
     CityPlanningPlacementOpened,
     CityPlanningPlacementClosed,
     CityPlanningPlacementOverrideCleared,
@@ -271,26 +242,20 @@ public enum AuditAction
     CityPlanningLimitZoneDeleted,
     CityPlanningOfficialZonesUpdated,
     CityPlanningOfficialZonesDeleted,
-    // The barrio placement schedule (day offsets from gate opening) and the barrio registration page copy.
+    // The barrio placement schedule and the barrio registration page copy.
     CityPlanningPlacementDatesUpdated,
     CityPlanningRegistrationInfoUpdated,
 
-    // A finance admin filed an expense report for another member. Self-created drafts are not
-    // audited — only the on-behalf case, which names the actor and the member.
+    // Only the on-behalf case is audited, never self-created drafts.
     ExpenseCreatedOnBehalf,
-    // A finance admin changed somebody else's report — header, or a line added/edited/removed.
-    // One action for all of them; the description says what changed. Self-edits are not audited.
+    // Any change to another member's report; the description says what. Self-edits are not audited.
     ExpenseEditedOnBehalf,
-    // The payee IBAN snapshot on a submitted (not yet approved) report was refreshed from the
-    // report's own IBAN page. Entity is the report so it shows in that report's history; the
-    // IBAN is unmasked when somebody set it for another member (memory/code/audit-pii-subject-allowed.md).
+    // Entity is the report, so it shows in that report's history. The IBAN is unmasked when somebody set it
+    // for another member.
     ExpensePayeeIbanUpdated,
-    // An admin set or changed a burn year's rideshare destination point and travel windows.
     RideshareSettingsUpdated,
 
-    // Workgroups. Registration is administrative recognition (Board Resolution clause 4), so
-    // every lifecycle step is a human action the Board must be able to see; the daily job's
-    // flags and notices are audited too, because automation acting invisibly is a bug.
+    // Workgroups: the daily job's flags and notices are audited too.
     WorkgroupRegistered,
     WorkgroupReferred,
     WorkgroupRefused,
@@ -299,9 +264,9 @@ public enum AuditAction
     WorkgroupReactivated,
     WorkgroupCoordinatorsChanged,
     WorkgroupDispositionRecorded,
-    // Bootstrapping: the Secretary registered a group that already existed, backdated.
+    // Bootstrapping: a group that already existed, registered backdated.
     WorkgroupRegisteredExisting,
-    // Board/Admin set, changed or cleared a group's budget allocation and Holded account.
+    // Budget allocation and Holded account set, changed or cleared.
     WorkgroupBudgetSet,
     // The daily job set DormantSince after sixty days' silence.
     WorkgroupDormancyFlagged,
@@ -311,29 +276,20 @@ public enum AuditAction
     WorkgroupApplicationOverdue,
     // The daily job nudged the coordinators that the monthly update is due.
     WorkgroupUpdateDueNotified,
-    // A member deleted a log entry — the log is a working record, so the audit trail is
-    // where the deletion stays visible.
+    // The log is a working record: the audit trail is where a deletion stays visible.
     WorkgroupLogEntryDeleted,
-    // A member edited a log entry. The row is overwritten in place, so the audit trail is
-    // the only record that the earlier text existed.
+    // Overwritten in place: the audit trail is the only record of the earlier text.
     WorkgroupLogEntryUpdated,
-    // A member changed a meeting's details after it was announced.
     WorkgroupMeetingUpdated,
-    // A member soft-deleted a meeting; the row stays, the roster stops showing it.
+    // Soft delete: the row stays.
     WorkgroupMeetingDeleted,
-    // A member hid a comment on a published document, with a reason.
     WorkgroupCommentHidden,
-    // An admin set the root Drive folder every group's subfolder is created under.
     WorkgroupsRootFolderUpdated,
-    // A coordinator (or Board/Admin) approved a join request.
     WorkgroupMembershipApproved,
-    // A coordinator (or Board/Admin) declined a join request.
     WorkgroupMembershipDeclined,
-    // A coordinator (or Board/Admin) added a person to the group directly.
+    // Added directly, without a join request.
     WorkgroupMemberAdded,
 
-    // Assembly votes (nobodies-collective/Humans#86): lifecycle and ballot events for
-    // Governance's binding Asociado votes. See Docs/features/assembly-votes.md.
     AssemblyVoteOpened,
     AssemblyVoteStopped,
     AssemblyVoteExtended,
@@ -346,9 +302,7 @@ public enum AuditAction
     AssemblyVoteRosterMerged,
     AssemblyVoteRemindersSent,
 
-    // The duplicate-account scan surfaced a pair of live accounts sharing an address. Written
-    // once per pair, the first time the scan sees it; the entity is the pair's lower id and the
-    // related entity the higher one.
+    // Once per pair, the first time the scan sees it. Entity is the lower id, related entity the higher.
     DuplicateAccountFlagged,
 
     // An Update or a meeting that has started cleared a workgroup's dormancy inquiry.
@@ -356,28 +310,21 @@ public enum AuditAction
     // A Store correction path resolved a legacy order's persisted year from its camp season.
     StoreOrderYearBackfilled,
 
-    // An event cycle's app-wide values (name, gate-opening date, build/event/strike
-    // windows) were saved — from /Settings/Admin or the /Settings#event tab's edit form
-    // (peterdrier/Humans#1628). Written on every successful SaveEventSettingsAsync call,
-    // including the reconcile writes made by the Settings carry screen.
+    // Every successful SaveEventSettingsAsync, including the Settings carry screen's reconcile writes.
     EventSettingsUpdated,
 
     EmailDailySendCountsBackfilled,
 
-    // A human used the shared email composer's "Send to me" button (peterdrier/Humans#1793):
-    // one composer_self_test outbox row queued to their own address. Entity is the human.
+    // One composer_self_test outbox row to the member's own address. Entity is the member.
     EmailComposerSelfTestSent,
 
     // A Store admin's repair run copied a legacy payment's int Method into its string MethodName column.
     StorePaymentMethodBackfilled,
 
-    // A Finance admin bound or unbound a member's Holded creditor account, deciding who gets paid.
     HoldedCreditorBound,
     HoldedCreditorUnbound,
-    // The expense push recorded a different 400000xx on a member's creditor binding than it held
-    // (Holded assigned one, or reassigned it). Written by Finance under the pushing job's name.
+    // Holded assigned or reassigned the 400000xx on a creditor binding. Written under the pushing job's name.
     HoldedCreditorAccountNumChanged,
-    // A Finance admin provisioned a Holded expense account for a budget category from /Finance/HoldedAccounts.
     HoldedCategoryAccountProvisioned,
 
     CampaignCreated,

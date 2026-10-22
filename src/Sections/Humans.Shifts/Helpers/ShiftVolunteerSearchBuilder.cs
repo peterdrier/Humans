@@ -9,9 +9,7 @@ using Humans.Shifts.Services.Dtos;
 
 namespace Humans.Shifts.Helpers;
 
-// Reads the cached IShiftRowView via a single bulk GetUsersAsync; cache hits
-// complete synchronously. MedicalConditions are redacted at the projection
-// layer here so the shared cached view is never mutated.
+// MedicalConditions are redacted in the projection so the shared cached view is never mutated.
 
 internal enum VolunteerSearchBuildStatus
 {
@@ -54,10 +52,8 @@ internal sealed class ShiftVolunteerSearchBuilder(
         if (shift is null)
             return VolunteerSearchBuildResult.NotFound;
 
-        // Two distinct burns, deliberately not collapsed: the target shift's own
-        // burn (drives its calendar) and the currently active one (decides whether
-        // the cached, active-scoped ShiftUserView.Signups can be reused). Admins
-        // search shifts in past/future cycles, so these differ.
+        // Two burns, deliberately not collapsed: the shift's own drives its calendar; the active one decides whether
+        // the active-scoped cached signups can be reused. Admins search past and future cycles, so they differ.
         var activeEvent = await burnSettings.GetActiveAsync(ct);
         var eventSettings = activeEvent?.Id == shift.Rota.EventSettingsId
             ? activeEvent
@@ -88,10 +84,8 @@ internal sealed class ShiftVolunteerSearchBuilder(
         var shiftStart = shift.Shift.GetAbsoluteStart(eventSettings);
         var shiftEnd = shift.Shift.GetAbsoluteEnd(eventSettings);
 
-        // Request the full match set (the service short-circuits at `limit`, so a small limit
-        // returns an arbitrary subset in non-deterministic cache order) and rank by relevance so
-        // the closest name match leads. Uncapped — people must be findable;
-        // cache is small so the full sort is cheap.
+        // Uncapped: the service stops at `limit` in arbitrary cache order, and people must be findable. The cache is
+        // small, so ranking the full set is cheap.
         var users = (await userService.SearchUsersAsync(query, PersonSearchFields.Name, limit: int.MaxValue, ct: ct))
             .OrderByRelevance()
             .ToList();
@@ -99,22 +93,15 @@ internal sealed class ShiftVolunteerSearchBuilder(
         var poolVolunteers = await volunteerTrackingService.GetAvailableForDayAsync(eventSettings.Id, shift.Shift.DayOffset, ct);
         var poolUserIds = poolVolunteers.Select(p => p.UserId).ToHashSet();
 
-        // Bulk-fetch the cached view for every candidate user — replaces the
-        // per-user GetShiftProfileAsync + GetByUserAsync round trips with one
-        // cache-friendly call.
         var userIds = users.Select(u => u.UserId).ToList();
         var views = await shiftView.GetUsersAsync(userIds, ct);
 
-        // Medical from the cached UserInfo's Profile, dietary from Cantina.
-        // (Skills/Quirks/Languages still come from the ShiftUserView's VEP.)
+        // Medical from the user's Profile, dietary from Cantina; skills, quirks and languages from the shift view.
         var userInfos = await userService.GetUserInfosAsync(userIds, ct);
         var diets = await cantina.GetDietaryProfilesAsync(userIds, ct);
 
-        // The cached ShiftUserView.Signups is scoped to the currently active
-        // event (ShiftViewService.GetUserAsync). When the target shift belongs
-        // to a different event (e.g. admin searching a past/future event's
-        // shift), fall back to a per-user signup query for that event so
-        // BookedShiftCount/HasOverlap stay accurate.
+        // The cached signups cover only the active event; for another event's shift, query that event's signups so
+        // BookedShiftCount and HasOverlap stay accurate.
         var targetIsActive = activeEvent is not null && eventSettings.Id == activeEvent.Id;
         Dictionary<Guid, IReadOnlyList<ShiftSignupSummary>>? targetEventSignups = null;
         if (!targetIsActive)
@@ -154,8 +141,7 @@ internal sealed class ShiftVolunteerSearchBuilder(
                 BookedShiftCount = confirmedSignups.Count,
                 HasOverlap = hasOverlap,
                 IsInPool = poolUserIds.Contains(user.UserId),
-                // canViewMedical gates MedicalConditions — without the MedicalDataViewer
-                // policy the field is never surfaced (UserInfo carries it, the view withholds it).
+                // Without the MedicalDataViewer policy the field is never surfaced.
                 MedicalConditions = canViewMedical ? personProfile?.MedicalConditions : null
             });
         }

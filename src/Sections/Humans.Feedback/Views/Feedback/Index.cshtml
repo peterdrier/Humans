@@ -180,11 +180,9 @@
     </div>
 </div>
 
-@* The detail panel's _EmailComposer is fetched over AJAX and injected via innerHTML, so its own
-   markdown-editor/composer <script> tags never run (loadDetail wires it manually below). This
-   hidden editor loads the EasyMDE assets + window.HumansMarkdownEditor once via the normal page
-   load, and the modal below is the one window.HumansEmailComposer.preview targets — see
-   EmailComposerViewModel.IncludePreviewModal on _Detail.cshtml's composer. *@
+@* The detail panel is injected via innerHTML, so its _EmailComposer scripts never run (loadDetail wires it below).
+   This hidden editor loads the editor assets once, and the modal below is the one HumansEmailComposer.preview
+   targets. *@
 <div style="display:none" aria-hidden="true">
     <markdown-editor name="__feedbackDetailAssetPreload" rows="1" />
 </div>

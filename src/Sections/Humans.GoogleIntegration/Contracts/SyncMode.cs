@@ -1,8 +1,5 @@
 namespace Humans.GoogleIntegration.Contracts;
 
-/// <summary>
-/// Controls what automated sync jobs do for a given service.
-/// </summary>
 public enum SyncMode
 {
     /// <summary>No automatic sync — jobs skip this service entirely.</summary>

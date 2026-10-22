@@ -5,7 +5,6 @@ using NodaTime;
 
 namespace Humans.GoogleIntegration.Data;
 
-/// <summary>Sole reader and writer of <c>google_workspace_identities</c>.</summary>
 internal interface IWorkspaceIdentityRepository : IRepository
 {
     Task<WorkspaceIdentityRecord?> GetAsync(Guid userId, CancellationToken ct = default);

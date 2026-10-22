@@ -16,8 +16,7 @@ internal sealed class BudgetAuditLogConfiguration : IEntityTypeConfiguration<Bud
         builder.Property(a => a.Description).IsRequired();
         builder.Property(a => a.OccurredAt).IsRequired();
 
-        // Explicit index: replaces the convention index that died with the ActorUserId
-        // FK. BudgetRepository.GetAuditLogEntriesForUser{,Ids}Async filter the column alone.
+        // GetAuditLogEntriesForUserIdsAsync filters this column alone.
         builder.HasIndex(a => a.ActorUserId);
 
         builder.HasIndex(a => a.BudgetYearId);

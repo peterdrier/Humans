@@ -9,12 +9,8 @@ using NodaTime;
 namespace Humans.Auth.ViewComponents;
 
 /// <summary>
-/// The "Role Assignments" card, contributed to <c>UserPartSlots.AdminDetail</c>. Admin audience
-/// only: renders for <see cref="ProfileCardViewMode.Admin"/> when the viewer passes the same
-/// <see cref="PolicyNames.HumanAdminBoardOrAdmin"/> policy as the host page, and nothing for
-/// anyone else. Lists the member's role assignments, active and ended, and links to
-/// <c>RoleAssignmentsController</c> to add or end one. Always rendered for an admin, even when
-/// the member holds no role.
+/// Renders only in Admin view mode for a viewer passing the host page's
+/// <see cref="PolicyNames.HumanAdminBoardOrAdmin"/> policy; then always, even when the member holds no role.
 /// </summary>
 public sealed class RoleAssignmentsCardViewComponent(
     IRoleAssignmentService roleAssignments,
@@ -46,5 +42,4 @@ public sealed class RoleAssignmentsCardViewComponent(
     }
 }
 
-/// <summary>What the Role Assignments card renders.</summary>
 internal sealed record RoleAssignmentsCardViewModel(Guid UserId, IReadOnlyList<AdminRoleAssignmentViewModel> Roles);

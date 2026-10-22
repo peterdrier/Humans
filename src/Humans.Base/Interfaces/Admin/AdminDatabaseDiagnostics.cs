@@ -15,8 +15,7 @@ public sealed record DatabaseMigrationStatus(
     IReadOnlyList<SectionMigrationStatus> Sections);
 
 /// <summary>
-/// Migration state of one per-section DbContext (nobodies-collective/Humans#858),
-/// so QA/prod rollouts can confirm each section's baseline was recorded.
+/// Migration state of one per-section DbContext, so QA/prod rollouts can confirm each baseline was recorded.
 /// </summary>
 public sealed record SectionMigrationStatus(
     string Context,

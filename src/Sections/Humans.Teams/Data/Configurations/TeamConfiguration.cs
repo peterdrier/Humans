@@ -12,7 +12,7 @@ namespace Humans.Teams.Data.Configurations;
 
 internal sealed class TeamConfiguration : IEntityTypeConfiguration<Team>
 {
-    // Fixed seed timestamp so migrations are deterministic
+    // Fixed so migrations are deterministic.
     private static readonly Instant SeedTimestamp = Instant.FromUtc(2026, 2, 4, 23, 52, 37);
 
     private static readonly JsonSerializerOptions JsonEnumOptions = new()
@@ -129,13 +129,11 @@ internal sealed class TeamConfiguration : IEntityTypeConfiguration<Team>
             .IsUnique()
             .HasFilter("\"GoogleGroupPrefix\" IS NOT NULL");
 
-        // Ignore computed properties
         builder.Ignore(t => t.IsSystemTeam);
         builder.Ignore(t => t.IsInDirectory);
         builder.Ignore(t => t.GoogleGroupEmail);
         builder.Ignore(t => t.DisplayName);
 
-        // Seed system teams
         builder.HasData(
             new
             {

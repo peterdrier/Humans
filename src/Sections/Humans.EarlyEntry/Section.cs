@@ -6,13 +6,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.EarlyEntry;
 
-/// <summary>Discovered by the Shell; nothing names it.</summary>
 public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
-        // Uncached: every read fans out over the providers live, so no other section
-        // has to tell this one when a grant moves.
+        // Scoped and uncached: fresh every request, so no contributing section has to evict anything.
         services.AddScoped<IEarlyEntryService, EarlyEntryService>();
     }
 }

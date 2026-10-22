@@ -88,8 +88,6 @@ public sealed class GrantTests : PreapprovalsTestHarness
         Notifications.ReceivedCalls().Should().BeEmpty();
     }
 
-    // ── Issue ─────────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Issue_Fixed_CopiesPerPersonAmount_NotifiesAndEmails_Audits()
     {
@@ -183,8 +181,6 @@ public sealed class GrantTests : PreapprovalsTestHarness
         (await service.IssueManyAsync(perGrant.Id, [a], SeedUser(), Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.IssueManyFixedOnly);
         (await service.IssueManyAsync(program.Id, [], SeedUser(), Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.NoBeneficiaries);
     }
-
-    // ── Apply ─────────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task Apply_CreatesAppliedRow_NotifiesManagers_AndSecondSubmitEdits()
@@ -293,8 +289,6 @@ public sealed class GrantTests : PreapprovalsTestHarness
         (await OpenContext().Grants.CountAsync(Ct)).Should().Be(0);
     }
 
-    // ── Approve / decline ─────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Approve_PerGrant_LowersToAmount_ChecksCeiling_ResolvesRequest_NotifiesBeneficiary()
     {
@@ -367,8 +361,6 @@ public sealed class GrantTests : PreapprovalsTestHarness
         await AuditLog.Received(1).LogAsync(AuditAction.PreapprovalGrantDeclined, AuditEntityTypes.Grant, grant.Id, Arg.Is<string>(s => s.Contains("Not this year")), actor, program.Id, AuditEntityTypes.Program);
     }
 
-    // ── Revoke ────────────────────────────────────────────────────────────
-
     [HumansTheory]
     [InlineData((int)GrantStatus.Open)]
     [InlineData((int)GrantStatus.Claimed)]
@@ -412,8 +404,6 @@ public sealed class GrantTests : PreapprovalsTestHarness
         (await service.RevokeAsync(grant.Id, null, SeedUser(), Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.WrongStatus);
         (await service.ChangeAmountAsync(grant.Id, 50m, SeedUser(), Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.WrongStatus);
     }
-
-    // ── Change amount ─────────────────────────────────────────────────────
 
     [HumansTheory]
     [InlineData("en")]

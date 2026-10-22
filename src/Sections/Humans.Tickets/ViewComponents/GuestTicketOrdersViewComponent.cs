@@ -4,10 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Tickets.ViewComponents;
 
-/// <summary>
-/// The profileless-account page's ticket card: the orders the account bought. Renders
-/// nothing for an account with no ticket and no order.
-/// </summary>
+/// <summary>Renders nothing for an account with no ticket and no order.</summary>
 public sealed class GuestTicketOrdersViewComponent(
     ITicketService ticketService, ILogger<GuestTicketOrdersViewComponent> logger) : ViewComponent
 {
@@ -27,7 +24,7 @@ public sealed class GuestTicketOrdersViewComponent(
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            throw; // request aborted — let it abort, don't log as an error
+            throw;
         }
         catch (Exception ex)
         {

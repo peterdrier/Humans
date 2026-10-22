@@ -4,13 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Tickets.ViewComponents;
 
-/// <summary>
-/// Renders the current holder's ticket stubs as a bare flex-wrap strip (no card
-/// chrome), stamping each with the holder's Early Entry date. The single home for
-/// "my tickets as stubs" on the homepage dashboard; the transfer wizard shares the
-/// same <see cref="TicketStubInfo.From"/> mapper for its selectable list. Renders
-/// nothing when the holder owns no tickets.
-/// </summary>
+/// <summary>Stamps each stub with the holder's own Early Entry; renders nothing when they hold no tickets.</summary>
 public sealed class MyTicketStubsViewComponent(
     ITicketService ticketService,
     IEarlyEntryService earlyEntryService) : ViewComponent

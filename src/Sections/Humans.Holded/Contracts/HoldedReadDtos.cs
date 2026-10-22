@@ -2,7 +2,6 @@ using NodaTime;
 
 namespace Humans.Holded.Contracts;
 
-/// <summary>A P&amp;L expense account from Holded (`expensesaccounts` / chart).</summary>
 public sealed record HoldedExpenseAccountDto
 {
     public required string Id { get; init; }
@@ -10,7 +9,6 @@ public sealed record HoldedExpenseAccountDto
     public required string Name { get; init; }
 }
 
-/// <summary>One purchase-document line: carries its booked account id and tags.</summary>
 public sealed record HoldedPurchaseLineDto
 {
     public required decimal Amount { get; init; }      // line `price`
@@ -18,10 +16,8 @@ public sealed record HoldedPurchaseLineDto
     public IReadOnlyList<string> Tags { get; init; } = [];
 }
 
-/// <summary>One journal line from GET v2/ledger-entries. Field names verified against the live
-/// Holded API (2026-08-10): entry_number/line/date/account/debit/credit/type/description.
-/// <c>account</c> is the literal 400000xx number (not an internal id); amounts are in euros.
-/// <c>date</c> arrives as DD/MM/YYYY and is parsed to Madrid midnight.</summary>
+/// <summary>From GET v2/ledger-entries. <c>account</c> is the literal 400000xx number, not an internal id;
+/// amounts are euros. <c>date</c> arrives as DD/MM/YYYY and is parsed to Madrid midnight.</summary>
 public sealed record HoldedLedgerLineDto
 {
     public required int EntryNumber { get; init; }
@@ -34,8 +30,6 @@ public sealed record HoldedLedgerLineDto
     public string? Description { get; init; }
 }
 
-/// <summary>One accounting/chart-of-accounts account from GET v2/accounting-accounts, with its
-/// current totals.</summary>
 public sealed record HoldedAccountDto
 {
     public required string Id { get; init; }
@@ -48,7 +42,6 @@ public sealed record HoldedAccountDto
     public bool Archived { get; init; }
 }
 
-/// <summary>API usage/quota counters from GET v2/usage.</summary>
 public sealed record HoldedUsageDto
 {
     public required string Period { get; init; }         // "2026-08"
@@ -58,19 +51,16 @@ public sealed record HoldedUsageDto
         = new Dictionary<string, long>(StringComparer.Ordinal);
 }
 
-/// <summary>A purchase document as returned by the list endpoint.</summary>
 public sealed record HoldedPurchaseDocListItemDto
 {
     public required string Id { get; init; }
     public required string DocNumber { get; init; }
     public string? ContactId { get; init; }            // `contact_id` — who the doc is payable to
     public required string ContactName { get; init; }
-    /// <summary>`description` — the doc's internal description ("Add an internal description" in
-    /// Holded's UI). Null when blank.</summary>
+    /// <summary>The doc's internal description; null when blank.</summary>
     public string? Description { get; init; }
-    /// <summary>`notes` — the doc's notes field. Always null in practice: the v2 purchase list
-    /// carries no `notes` field at all (verified live 2026-10-21); only the single GET
-    /// (<see cref="HoldedPurchaseDocumentDto.Notes"/>) returns it. Kept in case Holded adds it.</summary>
+    /// <summary>Always null in practice: the v2 list carries no <c>notes</c>; only the single GET
+    /// (<see cref="HoldedPurchaseDocumentDto.Notes"/>) does. Kept in case Holded adds it.</summary>
     public string? Notes { get; init; }
     public required Instant Date { get; init; }        // doc `date` (ISO yyyy-MM-dd, Madrid midnight)
     public required decimal Subtotal { get; init; }
@@ -79,10 +69,8 @@ public sealed record HoldedPurchaseDocListItemDto
     /// <summary>`payments_pending` — what is still unpaid on this doc. An absent field reads as 0,
     /// i.e. nothing owed, which is the safe direction: it refuses a booking rather than over-paying.</summary>
     public decimal PaymentsPending { get; init; }
-    // v2 list items carry no approval timestamp (only the single-GET does — see
-    // HoldedPurchaseDocumentDto.ApprovedAt), but they do carry `draft`: true while the doc is
-    // still a draft. Null when Holded does not report the field, which Finance treats as
-    // not-yet-approved.
+    // v2 list items carry no approval timestamp (only the single GET does) but do carry `draft`. Null when
+    // Holded doesn't report it, which Finance treats as not yet approved.
     public bool? IsDraft { get; init; }
     public string Currency { get; init; } = "eur";
     public IReadOnlyList<string> Tags { get; init; } = []; // doc-level tags

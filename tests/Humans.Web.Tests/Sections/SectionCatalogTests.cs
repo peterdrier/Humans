@@ -7,9 +7,8 @@ using Humans.Web.Extensions;
 namespace Humans.Web.Tests.Sections;
 
 /// <summary>
-/// The section list published from DI at startup (nobodies-collective/Humans#1509): that it
-/// describes what the app actually composes, and that a contributed fact naming no section
-/// surfaces instead of vanishing — which is the whole reason the catalog exists.
+/// The startup section list describes what the app composes, and a contributed fact naming no section surfaces
+/// instead of vanishing.
 /// </summary>
 public class SectionCatalogTests
 {
@@ -50,8 +49,7 @@ public class SectionCatalogTests
         issues.Repositories.Should().Contain("IIssuesRepository");
         issues.DependsOn.Should().Contain("Users");
 
-        // The issue-queue seam sits on the sections that own a queue, not on Issues
-        // (PR peterdrier/Humans#1762) — and it is read off the assembly like everything else.
+        // The issue-queue seam sits on the sections that own a queue, not on Issues.
         Build().Sections.Single(s => string.Equals(s.Name, "Tickets", StringComparison.Ordinal))
             .Seams.Should().Contain(["IIssueQueueOwner", "ISectionAnnotations"]);
     }
@@ -95,9 +93,8 @@ public class SectionCatalogTests
     [HumansFact]
     public void Every_Section_The_Agent_Can_Fetch_A_Doc_For_Is_A_Real_Section()
     {
-        // The agent's canonical keys are a deliberate subset of the sections — operator-only
-        // ones are off it — but every key on it must still name a section that exists, or the
-        // tool dead-ends and the model answers from the community FAQ instead.
+        // The agent's keys are a subset (operator-only sections are off it), but a key naming no section dead-ends
+        // the tool and the model answers from the FAQ instead.
         var catalog = Build();
 
         AgentSectionKeys.All.Where(key => !catalog.TryResolve(key, out _))

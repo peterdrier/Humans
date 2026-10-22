@@ -1,35 +1,19 @@
 namespace Humans.Expenses.Services;
 
 /// <summary>
-/// The <c>EntityType</c> discriminators Expenses writes to the audit log.
+/// Persisted strings matched by exact equality when the audit log is read back. Never derive them from
+/// <c>nameof</c>: a rename would silently empty every audit panel.
 /// </summary>
-/// <remarks>
-/// <para>
-/// These are <b>persisted strings</b>, matched by exact equality when the audit log is read back
-/// (<c>IAuditLogService</c> filters on <c>e.EntityType == entityType</c>), so they are a data
-/// contract with every row already in the database — not a view of the current CLR type names.
-/// </para>
-/// <para>
-/// Naming them here keeps a rename-at-scale over the section from sweeping the loose
-/// <c>"ExpenseReport"</c> strings along with the type. That failure is silent — no build error,
-/// no test failure, just an audit panel that reads back empty. Never regenerate these from
-/// <c>nameof</c>.
-/// </para>
-/// </remarks>
 internal static class AuditEntityTypes
 {
     public const string Report = "ExpenseReport";
 
-    /// <summary>
-    /// The IBAN set/remove entries name Users' <c>Profile</c>, which is internal to
-    /// <c>Humans.Users</c> and so cannot be spelled here.
-    /// </summary>
+    /// <summary>Users' <c>Profile</c>, which is internal to Users, so it is spelled here.</summary>
     public const string Profile = "Profile";
 
     /// <summary>
-    /// The <c>relatedEntityType</c> on entries about a member, so the audit filters that key on
-    /// "User" pick them up for that member's GDPR export — an entry whose subject is only reachable
-    /// through its actor never reaches the person it is about.
+    /// The <c>relatedEntityType</c> on entries about a member, so the member's GDPR export picks them up even when
+    /// someone else was the actor.
     /// </summary>
     public const string User = "User";
 }

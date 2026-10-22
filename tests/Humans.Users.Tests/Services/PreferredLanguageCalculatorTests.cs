@@ -6,9 +6,6 @@ using NodaTime;
 
 namespace Humans.Users.Tests.Services;
 
-/// <summary>
-/// Unit tests for the admin dashboard's "Preferred language" filter.
-/// </summary>
 public class PreferredLanguageCalculatorTests
 {
     [HumansFact]

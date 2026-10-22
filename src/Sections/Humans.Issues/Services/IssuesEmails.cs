@@ -8,15 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.Issues.Services;
 
-/// <summary>
-/// Issues' own email templates: one method per template, each returning a ready
-/// <see cref="EmailMessage"/> (content plus the routing policy Issues chooses —
-/// template name and opt-out category) for the single
-/// <see cref="IEmailService.SendAsync"/> path. Copy lives in Issues' own resx set
-/// and is rendered in the recipient's culture inside a <see cref="CultureScope"/>
-/// (memory/architecture/email-templates-live-in-sender.md, peterdrier/Humans#1651).
-/// Pure — no I/O, no persistence.
-/// </summary>
+/// <summary>Rendered in the recipient's culture. Pure: no I/O.</summary>
 internal sealed class IssuesEmails(
     IOptions<EmailSettings> settings,
     IStringLocalizer<IssuesResource> localizer,
@@ -33,8 +25,8 @@ internal sealed class IssuesEmails(
             "issue_comment", MessageCategory.System));
 
     /// <summary>
-    /// Webmail has no Humans origin, so a root-relative path in an email resolves against
-    /// the reader's own host; an already-absolute link is passed through unchanged.
+    /// Webmail has no Humans origin, so a root-relative link would resolve against the reader's host. Absolute links
+    /// pass through.
     /// </summary>
     private string AbsoluteUrl(string issueLink) =>
         issueLink.StartsWith("http", StringComparison.OrdinalIgnoreCase)

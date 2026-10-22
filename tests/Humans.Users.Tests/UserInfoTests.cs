@@ -67,10 +67,8 @@ public class UserInfoTests
 #pragma warning restore HUM_USER_COMMPREFS
     }
 
-    // nobodies-collective/Humans#1098: User.BurnerName is the sole source. The Profile.BurnerName
-    // and legacy-DisplayName fallback chain is gone — the one exception is narrow recognition of
-    // the GDPR-erasure sentinel on rows anonymized before this change (see the tombstone tests
-    // below).
+    // User.BurnerName is the sole source; the one exception is recognising the GDPR-erasure
+    // sentinel on legacy rows (see the tombstone tests below).
 
     [HumansFact]
     public void BurnerName_reads_only_the_User_column()
@@ -104,8 +102,8 @@ public class UserInfoTests
     [HumansFact]
     public void BurnerName_does_not_fall_back_to_a_non_sentinel_DisplayName()
     {
-        // The fallback is gone: a blank BurnerName with an ordinary (non-sentinel) legacy
-        // DisplayName must render blank, not the stale legacy name.
+        // A blank BurnerName with an ordinary (non-sentinel) legacy DisplayName must render
+        // blank, not the stale legacy name.
         var userId = Guid.NewGuid();
         var user = MinimalUser(userId); // DisplayName = "Test", not the GDPR sentinel.
         user.BurnerName = null;
@@ -119,8 +117,8 @@ public class UserInfoTests
     [HumansFact]
     public void BurnerName_resolves_the_sentinel_for_a_freshly_erased_user()
     {
-        // Mirrors UserRepository.ApplyExpiredDeletionAnonymizationAsync, which now dual-writes
-        // the sentinel into BurnerName directly (nobodies-collective/Humans#1098).
+        // Mirrors UserRepository.ApplyExpiredDeletionAnonymizationAsync, which writes the
+        // sentinel into BurnerName directly.
         var userId = Guid.NewGuid();
         var user = MinimalUser(userId);
         user.BurnerName = UserInfo.GdprAnonymizedBurnerName;
@@ -135,7 +133,7 @@ public class UserInfoTests
     [HumansFact]
     public void BurnerName_resolves_the_sentinel_for_a_legacy_erased_row()
     {
-        // Legacy shape from before #1098: erasure only nulled BurnerName and left the sentinel
+        // Legacy shape: erasure only nulled BurnerName and left the sentinel
         // in DisplayName. Narrow tombstone recognition must still surface it, not blank.
         var userId = Guid.NewGuid();
         var user = MinimalUser(userId);
@@ -148,8 +146,8 @@ public class UserInfoTests
         info.BurnerName.Should().Be(UserInfo.GdprAnonymizedBurnerName);
     }
 
-    // IsActive excludes tombstones (nobodies-collective/Humans#1707) — merged, GDPR-anonymized,
-    // and legacy @merged.local/@deleted.local rows all keep a Profile row but must not read active.
+    // IsActive excludes tombstones: merged, GDPR-anonymized and legacy @merged.local/@deleted.local
+    // rows all keep a Profile row but must not read active.
 
     [HumansFact]
     public void IsActive_false_for_merged_tombstone()
@@ -183,7 +181,7 @@ public class UserInfoTests
     [HumansFact]
     public void IsActive_false_for_legacy_shaped_gdpr_anonymized_tombstone()
     {
-        // Legacy shape from before #1098: BurnerName null, sentinel only in DisplayName.
+        // Legacy shape: BurnerName null, sentinel only in DisplayName.
         // Must still classify as a tombstone (and resolve BurnerName to the sentinel).
         var userId = Guid.NewGuid();
         var user = MinimalUser(userId);
@@ -210,9 +208,8 @@ public class UserInfoTests
         info.IsActive.Should().BeFalse();
     }
 
-    // IsGdprAnonymized recognition (nobodies-collective/Humans#1742) — keyed on the minted
-    // deleted-<id>@deleted.local email or, legacy-only, the complete DisplayName+FirstName+LastName
-    // tombstone, never a user-editable name field alone.
+    // IsGdprAnonymized keys on the minted deleted-<id>@deleted.local email or, legacy-only, the
+    // complete DisplayName+FirstName+LastName tombstone, never a user-editable name field alone.
 
     [HumansFact]
     public void IsGdprAnonymized_false_for_a_live_member_named_Deleted_User()
@@ -258,9 +255,8 @@ public class UserInfoTests
         user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
         user.FirstName = "Deleted";
         user.LastName = "User";
-        // Erasure clears BurnerName (AnonymizeForDeletionByUserIdAsync) and only wrote the sentinel
-        // there from #1098 on, so blank is the pre-scrub shape — and the part a member cannot
-        // reproduce. Set explicitly: it is load-bearing, not incidental.
+        // Legacy erasure cleared BurnerName without writing the sentinel there, so blank is the
+        // pre-scrub shape and the part a member cannot reproduce. Set explicitly: it is load-bearing.
         user.BurnerName = string.Empty;
         user.Email = "legacy-erased@example.com"; // ordinary email — pre-scrub shape
 
@@ -273,7 +269,7 @@ public class UserInfoTests
     [HumansFact]
     public void IsGdprAnonymized_false_for_a_live_member_who_types_the_whole_tombstone_shape()
     {
-        // nobodies-collective/Humans#1742: DisplayName, FirstName and LastName are all copied
+        // DisplayName, FirstName and LastName are all copied
         // from what a member types, so the legacy arm must not fire on names alone. Their
         // burner name is populated; a genuinely erased row's is blank.
         var userId = Guid.NewGuid();

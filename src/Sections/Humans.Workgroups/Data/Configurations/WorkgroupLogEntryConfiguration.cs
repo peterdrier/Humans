@@ -16,7 +16,6 @@ internal sealed class WorkgroupLogEntryConfiguration : IEntityTypeConfiguration<
         b.Property(e => e.OccurredOn).IsRequired();
         b.Property(e => e.Title).HasMaxLength(200);
         b.Property(e => e.Body).HasMaxLength(16000);
-        // AuthorUserId and SurveyId are bare cross-section references: no FK, no navigation.
         b.Property(e => e.CreatedAt).IsRequired();
         b.Property(e => e.UpdatedAt).IsRequired();
 
@@ -25,8 +24,7 @@ internal sealed class WorkgroupLogEntryConfiguration : IEntityTypeConfiguration<
             .HasForeignKey(e => e.WorkgroupId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Deleting a document leaves its log entries standing, unlinked: the history
-        // of what the group did is not the document's to take with it.
+        // Deleting a document leaves its log entries standing, unlinked: the history isn't the document's to take.
         b.HasOne(e => e.Document)
             .WithMany()
             .HasForeignKey(e => e.DocumentId)

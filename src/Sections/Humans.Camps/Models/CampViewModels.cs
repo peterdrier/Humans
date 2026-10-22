@@ -5,7 +5,6 @@ using Humans.Base.Enums;
 
 namespace Humans.Camps.Models;
 
-// Public listing
 internal sealed class CampIndexViewModel
 {
     public int Year { get; set; }
@@ -58,7 +57,6 @@ internal sealed class CampFilterViewModel
     public string? Search { get; set; }
 }
 
-// Detail page
 internal sealed class CampDetailViewModel
 {
     public Guid Id { get; set; }
@@ -134,7 +132,6 @@ internal sealed class CampLeadViewModel
     public Guid UserId { get; set; }
 }
 
-// Registration form
 internal class CampRegisterViewModel
 {
     [Required(ErrorMessage = "Validation_Required")]
@@ -184,7 +181,6 @@ internal class CampRegisterViewModel
     public ElectricalGrid? ElectricalGrid { get; set; }
 }
 
-// Edit form
 internal sealed class CampEditViewModel : CampRegisterViewModel
 {
     public Guid CampId { get; set; }
@@ -201,10 +197,7 @@ internal sealed class CampEditViewModel : CampRegisterViewModel
     /// <summary>Count of active members with HasEarlyEntry=true for the current season.</summary>
     public int EeGrantedCount { get; set; }
 
-    /// <summary>
-    /// Per-camp roles panel data (issue nobodies-collective#489). Null when the
-    /// camp has no open season — the view hides the panel in that case.
-    /// </summary>
+    /// <summary>Null when the camp has no open season; the view hides the panel.</summary>
     public CampRolesPanelViewModel? RolesPanel { get; set; }
 }
 
@@ -248,7 +241,6 @@ internal sealed class CampHistoricalNameViewModel
     public string Source { get; set; } = string.Empty;
 }
 
-// Contact form
 internal sealed class CampContactViewModel
 {
     public string CampSlug { get; set; } = string.Empty;
@@ -261,7 +253,6 @@ internal sealed class CampContactViewModel
     public bool IncludeContactInfo { get; set; } = true;
 }
 
-// Admin dashboard
 internal sealed class CampAdminViewModel
 {
     public List<CampCardViewModel> PendingCamps { get; set; } = [];
@@ -272,15 +263,10 @@ internal sealed class CampAdminViewModel
     public int ActiveCamps { get; set; }
     public Dictionary<int, NodaTime.LocalDate?> NameLockDates { get; set; } = new();
     public List<CampSummaryRowViewModel> AllCampSummaries { get; set; } = [];
-    /// <summary>
-    /// True when at least one <c>CampSpecialRole</c> value (other than
-    /// <c>None</c>) does not yet have a <c>CampRoleDefinition</c> row. The
-    /// "Seed system roles" admin card is rendered only when this is true.
-    /// </summary>
+    /// <summary>The "Seed system roles" admin card renders only when this is true.</summary>
     public bool HasMissingSpecialRoles { get; set; }
 }
 
-/// <summary>The /Settings#barrios tab (peterdrier/Humans#1634): open seasons.</summary>
 internal sealed record CampBarriosSettingsViewModel(IReadOnlyList<int> OpenSeasons);
 
 internal sealed class CampSummaryRowViewModel

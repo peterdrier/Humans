@@ -14,8 +14,7 @@ internal sealed class ContainerImageConfiguration : IEntityTypeConfiguration<Con
         builder.Property(i => i.ContentType).HasMaxLength(64).IsRequired();
         builder.Property(i => i.FileName).HasMaxLength(256).IsRequired();
 
-        // Same-section owner, so a real FK with cascade — no nav on either side,
-        // images are loaded and written through their own repository methods.
+        // Same-section owner, so a real FK with cascade.
         builder.HasOne<Container>()
             .WithMany()
             .HasForeignKey(i => i.ContainerId)

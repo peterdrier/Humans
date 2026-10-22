@@ -4,11 +4,8 @@ using Humans.Base.Constants;
 namespace Humans.Base.Authorization;
 
 /// <summary>
-/// Role predicates for the volunteer-shift surface. In <c>Humans.Base</c> beside
-/// <see cref="RoleChecks"/> rather than in Shell because <c>Humans.Teams</c>' team page asks
-/// <see cref="CanManageDepartment"/> before rendering the shifts card and a section cannot
-/// reference <c>Humans.Web</c>; they read role names off a <see cref="ClaimsPrincipal"/> and
-/// name no section vocabulary, which is the test.
+/// Role predicates for the volunteer-shift surface. In Base because <c>Humans.Teams</c>' team page asks
+/// <see cref="CanManageDepartment"/> and a section cannot reference <c>Humans.Web</c>.
 /// </summary>
 public static class ShiftRoleChecks
 {

@@ -2,18 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Tickets.Contracts;
 
-/// <summary>
-/// Renders one held ticket as a physical admission stub. A pending outgoing
-/// transfer shows a "transfer pending" stamp; voided tickets render muted.
-/// Shared by the transfer wizard, the /Profile/Me ticket card, and the homepage.
-/// </summary>
-/// <remarks>
-/// Public, in this section's <c>Contracts/</c> folder, because <c>Humans.Scanner</c>'s ticket
-/// card renders <c>&lt;vc:ticket-stub&gt;</c>, and a section's <c>_ViewImports</c> can only
-/// reach assemblies it references — a Shell-resident component renders as inert literal
-/// markup from a section view. It names no section vocabulary, only
-/// <see cref="TicketStubInfo"/> from the contracts leaf.
-/// </remarks>
+/// <summary>Public because Scanner's ticket card renders it, and a section's views reach only assemblies it references.</summary>
 public sealed class TicketStubViewComponent : ViewComponent
 {
     public IViewComponentResult Invoke(TicketStubInfo stub) => View("Default", stub);

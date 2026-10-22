@@ -4,15 +4,9 @@ using Humans.Governance.Contracts;
 
 namespace Humans.Users.Extensions;
 
-/// <summary>
-/// Extension methods for getting Bootstrap badge CSS classes for various status types.
-/// </summary>
 internal static class StatusBadgeExtensions
 {
-    /// <summary>
-    /// Gets the Bootstrap badge CSS class for a membership status string.
-    /// Also accepts display labels projected from <see cref="UserState"/> for the admin human list.
-    /// </summary>
+    /// <summary>Also accepts the <see cref="UserState"/> display labels of the admin human list.</summary>
     public static string GetMembershipStatusBadgeClass(string? status)
     {
         return status switch

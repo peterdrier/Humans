@@ -121,7 +121,6 @@ async function init() {
 
     initPlacementNotes(applyPlacementNotesUpdate);
 
-    // Wire interaction
     initInteraction(
         map,
         // onSave: called on drag/rotate mouseup

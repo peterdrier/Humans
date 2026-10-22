@@ -9,11 +9,6 @@ using Microsoft.Extensions.Configuration;
 
 namespace Humans.Consent.Controllers;
 
-/// <summary>
-/// The member's My Data page at <c>/Consent/MyData</c>. It composes the pending-deletion
-/// status from <c>UserInfo</c> and the legal documents the member signed; the export and deletion
-/// actions it links to are Gdpr's <c>MemberDataController</c> and <c>UserController</c>.
-/// </summary>
 [Authorize]
 internal sealed class MyDataController(
     IUserService userService,

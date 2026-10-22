@@ -2,11 +2,7 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Tour;
 
-/// <summary>
-/// The top-nav Tour link, offered only while signed out: the signed-in nav is too busy for a
-/// Tour slot, so members get the dashboard card instead (SectionMemberDashboard). The weight
-/// sorts it last among contributed links, beside Legal.
-/// </summary>
+/// <summary>Signed out only: the signed-in nav has no room, so members get the dashboard card instead.</summary>
 internal sealed class SectionNav : ISectionNav
 {
     public IEnumerable<MemberNavItem> Items() =>

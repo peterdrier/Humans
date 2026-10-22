@@ -3,7 +3,6 @@ using Humans.GoogleIntegration.Services.Workspace;
 
 namespace Humans.GoogleIntegration.Services;
 
-/// <summary>Maps Google Drive API permission-role strings to the section's permission level.</summary>
 internal static class DrivePermissionRoleMapper
 {
     internal static DrivePermissionLevel? Parse(string? role) => role switch

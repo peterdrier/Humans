@@ -13,12 +13,8 @@ using Microsoft.Extensions.Localization;
 namespace Humans.Teams.Controllers;
 
 /// <summary>
-/// Send as team: a coordinator relays a one-off message to another member on behalf of a team
-/// they coordinate, at <c>/Teams/{teamId}/SendMessage/{id}</c>, with replies going to the
-/// team's Google Group. The team is authorized through <see cref="ITeamMessageOptionsProvider"/>
-/// (coordinator of an active team whose group is linked and synced); Email relays the message
-/// with the group as reply-to and keeps no team logic. The entry point is Teams'
-/// <c>TeamMessageButtonsViewComponent</c> on the profile page.
+/// The team is authorized through <see cref="ITeamMessageOptionsProvider"/>; Email relays the message with the group as
+/// reply-to and keeps no team logic.
 /// </summary>
 [Authorize]
 [Route("Teams")]

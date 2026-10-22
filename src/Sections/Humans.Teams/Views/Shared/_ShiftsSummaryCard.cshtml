@@ -1,7 +1,5 @@
 @model Humans.Teams.Contracts.ShiftsSummaryCardViewModel
-@* The seven ShiftsSummary_ keys stayed in SharedResource — Teams' Localizer is
-   TeamsResource, so every call site here must be SharedLocalizer or the key renders
-   raw in all six languages (nobodies-collective/Humans#866, G5 lane 4b-i). *@
+@* These keys live in SharedResource, so every call site here must use SharedLocalizer or the key renders raw. *@
 
 <div class="card mb-4">
     <div class="card-header">

@@ -10,16 +10,12 @@ internal sealed class CalendarFeedTokenConfiguration : IEntityTypeConfiguration<
     {
         builder.ToTable("calendar_feed_tokens");
 
-        // One token per member, so the member is the key — a bare cross-section id, not
-        // an FK. ValueGeneratedNever so a caller-supplied Guid is always what lands:
-        // without it EF's convention would invent an id for a Guid.Empty write instead
-        // of failing loudly.
+        // ValueGeneratedNever: otherwise EF would invent an id for a Guid.Empty write instead of failing loudly.
         builder.HasKey(x => x.UserId);
         builder.Property(x => x.UserId).ValueGeneratedNever();
 
         builder.Property(x => x.Token).IsRequired();
 
-        // No index on Token: validation is a lookup by UserId plus a compare
-        // (the uid is in the URL), never a lookup by token.
+        // No index on Token: validation loads by UserId (in the URL) and compares.
     }
 }

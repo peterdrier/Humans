@@ -2,39 +2,20 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Users.Contracts;
 
-/// <summary>
-/// Service for detecting duplicate user accounts where the same email address
-/// appears on multiple User records. Resolution is performed by
-/// <see cref="IAccountMergeService.MergeAsync"/> — this service is detection-only.
-/// </summary>
+/// <summary>Detection only: resolution is <see cref="IAccountMergeService.MergeAsync"/>.</summary>
 public interface IDuplicateAccountService : IApplicationService
 {
-    /// <summary>
-    /// Scans for email conflicts: multiple Users whose emails overlap
-    /// across User.Email and UserEmail.Email (case-insensitive, gmail/googlemail equivalence).
-    /// </summary>
+    /// <summary>Overlaps across <c>User.Email</c> and every <c>UserEmail</c> row, case-insensitive, gmail/googlemail equivalent.</summary>
     Task<IReadOnlyList<DuplicateAccountGroup>> DetectDuplicatesAsync(CancellationToken ct = default);
 }
 
-/// <summary>
-/// A group of users that share an email address across User.Email and UserEmail.Email.
-/// </summary>
 public sealed class DuplicateAccountGroup
 {
-    /// <summary>
-    /// The email address that appears on multiple accounts.
-    /// </summary>
     public string SharedEmail { get; init; } = string.Empty;
 
-    /// <summary>
-    /// The users involved in the conflict.
-    /// </summary>
     public List<DuplicateAccountInfo> Accounts { get; init; } = [];
 }
 
-/// <summary>
-/// Summary of a user involved in an email conflict.
-/// </summary>
 public sealed class DuplicateAccountInfo
 {
     public Guid UserId { get; init; }

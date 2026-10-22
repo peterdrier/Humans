@@ -1,23 +1,13 @@
 namespace Humans.Budget.Contracts;
 
-/// <summary>
-/// Status of a budget year.
-/// Stored as string in DB; new values can be appended without migration.
-/// </summary>
+/// <summary>Stored by name: never rename a value.</summary>
 public enum BudgetYearStatus
 {
-    /// <summary>
-    /// Budget is being built, not visible outside admin.
-    /// </summary>
+    /// <summary>Being built; not visible outside admin.</summary>
     Draft = 0,
 
-    /// <summary>
-    /// Current operational budget.
-    /// </summary>
     Active = 1,
 
-    /// <summary>
-    /// Year complete, read-only.
-    /// </summary>
+    /// <summary>Read-only.</summary>
     Closed = 2
 }

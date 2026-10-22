@@ -3,14 +3,7 @@ using NodaTime;
 namespace Humans.Users.Contracts;
 
 /// <summary>
-/// Slim projection of a volunteer-history entry passed to
-/// <c>IUserManagement.SaveProfileAsync</c>.
-/// Date is rendered as "MMM'yy" in the UI.
+/// <paramref name="Id"/> matches <c>VolunteerHistoryEntry.Id</c>: existing rows round-trip with it, new rows post
+/// <see cref="Guid.Empty"/> and get a fresh id on insert.
 /// </summary>
-/// <remarks>
-/// <paramref name="Id"/> is the stable per-row identity matching
-/// <c>VolunteerHistoryEntry.Id</c>. Existing rows round-trip through the
-/// editor with their original Id; new rows post <see cref="Guid.Empty"/> and
-/// are assigned a fresh Id on insert.
-/// </remarks>
 public record CVEntry(Guid Id, LocalDate Date, string EventName, string? Description);

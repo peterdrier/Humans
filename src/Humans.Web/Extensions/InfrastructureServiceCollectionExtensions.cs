@@ -38,58 +38,24 @@ public static class InfrastructureServiceCollectionExtensions
             messages.SetNonPropertyValueMustBeANumberAccessor(() => localizer["Validation_Number"]);
         });
 
-        // Cross-cutting infrastructure — options bindings, integrations, config metadata.
         services.AddConfigurationMetadata(configuration, configRegistry);
         services.AddTelemetryInfrastructure(configuration);
         services.AddEmailInfrastructure(configuration, environment);
         services.AddGoogleWorkspaceInfrastructure(configuration);
         services.AddTicketVendorPort(configuration);
-        // Stripe's own registrations moved with it to Humans.Stripe's Section.Register
-        // (nobodies-collective/Humans#866, G5 lane 4b-2a).
 
         // Single key-addressed file storage rooted at wwwroot. Camps,
         // profile pictures, and any future file-bearing section share this
         // mount (production: Coolify volume at /app/wwwroot/uploads/).
         services.AddSingleton<IFileStorage, FileSystemFileStorage>();
 
-        // Section-owned registrations. Each section file registers its own
-        // repositories, services, jobs, options, and GDPR contributor forwarding.
         services.AddAuthSection();
-        // AuditLog's read+render owner (IAuditViewerService) is registered by
-        // Humans.AuditLog's own Section.Register since G5 lane 4b-2h
-        // (nobodies-collective/Humans#866).
         services.AddAdminSection();
 
-        // SystemTeamSyncJob left this list at G5 lane 4b-2e — system-team
-        // membership is a Teams invariant. Its interface followed at lane 5c and now lives on
-        // Humans.Teams.Contracts.
-
-        // HumanLifecycleService left this list at G5 lane 4b-2d: it is Users' suspend/unsuspend
-        // state machine and now registers from Humans.Users' Section.cs (Peter, 2026-08-14 —
-        // Governance is governance only, never Users machinery).
-
-        // Same call for Guide's section file: IGuideContentSource is a plain GitHub-markdown
-        // fetcher (its signatures name only string) and three of its four consumers are not
-        // Guide's — Humans.Agent's three preload readers, AgentDocsHealthCheck, and
-        // GitHubCommunityKbContentSource — so the abstraction, the implementation and the
-        // GuideSettings it binds all stay in Base.
+        // GuideSettings and its GitHub fetcher stay in Base: three of IGuideContentSource's four consumers are not Guide's.
         services.Configure<GuideSettings>(configuration.GetSection(GuideSettings.SectionName));
         services.AddSingleton<IGuideContentSource, GitHubGuideContentSource>();
 
-        // AccountDeletionService, ExternalLoginService and UserParticipationBackfillService
-        // left this list at G5 lane 5c (nobodies-collective/Humans#866): all three orchestrate
-        // Users' own section and every outbound edge is another section's leaf, so they now
-        // register from Humans.Users' Section.cs — the same call lane 4b-2d made for
-        // HumanLifecycleService. UserParticipationBackfillService has since moved to Tickets
-        // (Users decomposition commit 13).
-
-        // The admin dashboard's aggregator moved back to Users' own Section.Register at
-        // nobodies-collective/Humans#1091 — Shell only hosts /Admin/*'s page bodies now, not
-        // the services behind them. The member dashboard's IDashboardService is gone
-        // entirely — its content is section-contributed chrome (also #1091).
-
-        // Sections that have moved into their own project (nobodies-collective/Humans#866)
-        // register themselves via ISection and are discovered, not named.
         services.AddDiscoveredSections(configuration);
 
         return services;

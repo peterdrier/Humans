@@ -3,12 +3,9 @@ using Microsoft.EntityFrameworkCore;
 namespace Humans.Base.Data;
 
 /// <summary>
-/// Single source of truth for the per-section migrations-history table names
-/// (nobodies-collective/Humans#858). The runtime registration
-/// (<c>AddSectionDbContext</c>) and each design-time
-/// <see cref="Microsoft.EntityFrameworkCore.Design.IDesignTimeDbContextFactory{TContext}"/>
-/// must agree exactly, or CI's from-scratch apply records a baseline in a table
-/// the app never reads. Deriving both from this helper makes drift impossible.
+/// The per-section migrations-history table names. The runtime registration (<c>AddSectionDbContext</c>) and each
+/// design-time factory must agree exactly, or CI's from-scratch apply records a baseline in a table the app never
+/// reads; deriving both from here makes drift impossible.
 /// </summary>
 public static class SectionMigrationsHistory
 {

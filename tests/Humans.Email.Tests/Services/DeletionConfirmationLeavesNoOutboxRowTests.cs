@@ -21,17 +21,11 @@ using NSubstitute;
 namespace Humans.Email.Tests.Services;
 
 /// <summary>
-/// End-to-end guard for the Article 17 hole codex found on PR 1446: the deletion
-/// job mails a confirmation to the address it has just erased, and the outbox row
-/// that used to back that send re-created the address, name and rendered body the
-/// cascade had removed — with a null <c>UserId</c> (the lookup no longer resolves
-/// post-erasure), so neither <c>EmailOutboxService.EraseForUserAsync</c> nor the
-/// retention sweep could ever reach it.
-///
-/// Runs the real <see cref="ProcessAccountDeletionsJob"/> over the real
-/// <c>UsersEmails</c> builder, <see cref="OutboxEmailService"/> and
-/// <see cref="EmailOutboxRepository"/> (EF InMemory) so the whole chain — job →
-/// template → send path → table — is exercised, not just the flag.
+/// The deletion job mails a confirmation to the address it has just erased. An outbox row backing
+/// that send would re-create the erased address, name and body with a null <c>UserId</c>, out of
+/// reach of both <c>EraseForUserAsync</c> and the retention sweep. Runs the real
+/// <see cref="ProcessAccountDeletionsJob"/>, <see cref="OutboxEmailService"/> and
+/// <see cref="EmailOutboxRepository"/> so the whole chain is exercised.
 /// </summary>
 public sealed class DeletionConfirmationLeavesNoOutboxRowTests : IDisposable
 {
@@ -53,8 +47,7 @@ public sealed class DeletionConfirmationLeavesNoOutboxRowTests : IDisposable
             .Options;
         _emailDb = new EmailDbContext(options);
 
-        // Users owns the template now; the builder is sealed, so it is built for real over a
-        // stub localizer rather than mocked.
+        // The builder is sealed, so it is built for real over a stub localizer rather than mocked.
         var localizer = Substitute.For<IStringLocalizer<UsersResource>>();
         localizer[Arg.Any<string>()].Returns(ci =>
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>() + " {0}"));

@@ -9,16 +9,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Controllers;
 
-/// <summary>
-/// "Who's onsite" view (nobodies-collective/Humans#736). Read-only flat list of every human with an
-/// Attended + non-null CheckedInAt EventParticipation for the active event
-/// year. Camp / team / governance-role filtering + name stitching are
-/// delegated to <see cref="IOnsiteRosterService"/>; this controller stays a
-/// thin HTTP adapter per
-/// <c>memory/architecture/no-business-logic-in-controllers.md</c>.
-/// ScannerAccess (not TicketAdminBoardOrAdmin) so the shared gate-terminal
-/// account can check the roster from the door alongside the ticket scanner.
-/// </summary>
+/// <summary>ScannerAccess, not TicketAdminBoardOrAdmin, so the gate-terminal account can check the roster from the door.</summary>
 [Authorize(Policy = PolicyNames.ScannerAccess)]
 [Route("Tickets/Admin/Onsite")]
 internal sealed class TicketsOnsiteAdminController(
@@ -38,9 +29,6 @@ internal sealed class TicketsOnsiteAdminController(
 
         var result = await roster.GetRosterAsync(year, camp, team, role, ct);
 
-        // Display sort lives at the presentation layer per
-        // memory/architecture/display-sort-in-controllers.md — most-recent
-        // check-in first.
         var rows = result.Rows
             .OrderByDescending(r => r.CheckedInAt)
             .ToList();

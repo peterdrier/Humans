@@ -49,7 +49,6 @@ internal sealed class LegalDocumentEditViewModel
 
     public List<TeamSelectItem> Teams { get; set; } = [];
 
-    // Read-only display fields for edit
     public string? CurrentVersion { get; set; }
     public DateTime? LastSyncedAt { get; set; }
     public int VersionCount { get; set; }

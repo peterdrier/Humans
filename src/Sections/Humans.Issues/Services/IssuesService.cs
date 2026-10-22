@@ -17,10 +17,6 @@ using Humans.Issues.Domain;
 
 namespace Humans.Issues.Services;
 
-/// <summary>
-/// <see cref="IIssuesService"/> impl. Data via <see cref="IIssuesRepository"/>; cross-section reads via user/email/role services;
-/// audit after save; notifications and emails dispatched at the end.
-/// </summary>
 internal sealed class IssuesService(
     IIssuesRepository repo,
     IUserService users,
@@ -49,38 +45,22 @@ internal sealed class IssuesService(
         "image/jpeg", "image/png", "image/webp"
     };
 
-    private const long MaxScreenshotBytes = 10 * 1024 * 1024; // 10MB
+    private const long MaxScreenshotBytes = 10 * 1024 * 1024;
     private const int MaxScreenshotFileNameLength = 256;
 
-    /// <summary>The <c>issues.section</c> column width. Nothing legitimate reaches it.</summary>
+    /// <summary>The <c>issues.section</c> column width.</summary>
     private const int MaxSectionLength = 64;
 
-    /// <summary>
-    /// Issues are kept for 6 months after they enter a terminal state. After
-    /// that the row + comments + screenshot are removed by
-    /// <c>CleanupIssuesJob</c>. Days, not months, so the cutoff is a simple
-    /// <see cref="Duration"/>.
-    /// </summary>
+    /// <summary>Six months after a terminal state, in days so the cutoff is a simple <see cref="Duration"/>.</summary>
     private static readonly Duration RetentionPeriod = Duration.FromDays(180);
 
-    // ─── Section ───
-
     /// <summary>
-    /// The value that may be stored in <c>Issue.Section</c> (nobodies-collective/Humans#1509).
-    /// Both write paths go through this: the reporter's Area dropdown and a handler re-routing.
+    /// Both write paths go through this. Checked against the declared queues, not the section catalog: two queue keys
+    /// (<c>Profiles</c>, <c>Legal</c>) outlived their section names.
     /// </summary>
     /// <remarks>
-    /// Checked against the queues sections declared through <c>IIssueQueueOwner</c>, not against
-    /// <see cref="ISectionCatalog"/> directly, because the routing table is the set of queues
-    /// that exist — the catalog is the set of sections that exist, and two queue keys
-    /// (<c>Profiles</c>, <c>Legal</c>) outlived the section names they were stored under, so
-    /// Users and Consent declare them under the old spelling. Each owning section publishes its
-    /// own queue annotation, so /Debug/Sections still shows where issues land.
-    ///
-    /// An unknown value degrades to null (the Admin queue) rather than failing, which is the
-    /// behaviour the routing table was built for — it may change without a migration. Over-length
-    /// is the one hard failure: no dropdown and no handler produces it, so it means a tampered
-    /// post or a bug, and silently truncating either would hide it.
+    /// An unknown value degrades to null (the Admin queue). Over-length is the one hard failure: nothing legitimate
+    /// produces it, and silently truncating would hide a tampered post or a bug.
     /// </remarks>
     /// <exception cref="InvalidOperationException">The value exceeds the column width.</exception>
     private string? NormalizeSection(string? section)
@@ -107,8 +87,6 @@ internal sealed class IssuesService(
 
         return known;
     }
-
-    // ─── Submission ───
 
     public async Task<IssueSubmissionResult> SubmitIssueAsync(
         Guid reporterUserId,
@@ -227,8 +205,6 @@ internal sealed class IssuesService(
         return result[..length];
     }
 
-    // ─── Reads ───
-
     public async Task<IssueDetail?> GetIssueByIdAsync(Guid id, IssueViewer viewer, CancellationToken ct = default)
     {
         var issue = await repo.GetByIdAsync(id, ct);
@@ -245,24 +221,15 @@ internal sealed class IssuesService(
         return content is null ? null : new IssueScreenshot(content, issue.ScreenshotContentType ?? "application/octet-stream");
     }
 
-    /// <summary>
-    /// Whether <paramref name="viewer"/> may handle the issue: mutate it, or comment on it as
-    /// someone other than its reporter.
-    /// </summary>
     private bool CanHandle(Issue issue, IssueViewer viewer) =>
         routing.CanHandle(issue.Section, viewer.Roles);
 
-    /// <summary>
-    /// Whether <paramref name="viewer"/> may see the issue at all — the same test the queue
-    /// applies row by row: a handler, or the person who reported it.
-    /// </summary>
+    /// <summary>The same test the queue applies row by row: a handler, or the reporter.</summary>
     private bool CanSee(Issue issue, IssueViewer viewer) =>
         CanHandle(issue, viewer) || issue.ReporterUserId == viewer.UserId;
 
     /// <summary>
-    /// The issue, tracked for mutation, once <paramref name="viewer"/> is established as a
-    /// handler. Out of reach and gone are the same answer, so an id cannot be used to probe
-    /// for issues the caller's queue would never list.
+    /// Out of reach and gone are the same answer, so an id cannot probe for issues the caller's queue would never list.
     /// </summary>
     private async Task<Issue?> FindHandleableAsync(Guid issueId, IssueViewer viewer, CancellationToken ct)
     {
@@ -359,9 +326,8 @@ internal sealed class IssuesService(
         if (issue is null || !CanSee(issue, viewer))
             throw new InvalidOperationException($"Issue {issueId} not found");
 
-        // Audit entries for the Issue-related actions. IssueCreated is written only by the
-        // machine path, where the filer and the reporter can differ, so it is the one place
-        // the thread can say who actually filed it.
+        // IssueCreated is written only by the machine path, where filer and reporter can differ, so it is the one
+        // place the thread can say who actually filed it.
         var auditEntries = await audit.GetFilteredEntriesAsync(
             entityType: AuditEntityTypes.Issue,
             entityId: issueId,
@@ -377,7 +343,6 @@ internal sealed class IssuesService(
             limit: int.MaxValue,
             ct: ct);
 
-        // Resolve actor display names (audit log DTO doesn't include them).
         var actorIds = auditEntries
             .Where(a => a.ActorUserId.HasValue)
             .Select(a => a.ActorUserId!.Value)
@@ -412,8 +377,6 @@ internal sealed class IssuesService(
             .OrderBy(e => e.At)
             .ToList();
     }
-
-    // ─── Mutations ───
 
     public async Task<IssueCommentResult> PostCommentAsync(
         Guid issueId,
@@ -509,12 +472,10 @@ internal sealed class IssuesService(
             reporterUserId, category, title, description, section,
             pageUrl: null, userAgent: null, additionalContext: null, screenshot: null,
             dueDate: dueDate, ct: ct);
-        // This machine path supplies no screenshot, so upload refusals cannot occur.
         var issue = submission.Issue!;
 
-        // The in-app reporter is their own actor, so the issue row's ReporterUserId is the
-        // whole story there and creation goes unaudited. Here the two can differ, and the
-        // audit entry is the only place the filer is written down.
+        // In-app the reporter is their own actor, so creation goes unaudited. Here the two can differ, and the audit
+        // entry is the only place the filer is written down.
         await LogAuditAsync(
             AuditAction.IssueCreated, issue.Id, actorUserId,
             actorUserId == reporterUserId
@@ -564,8 +525,7 @@ internal sealed class IssuesService(
                 $"status: {oldStatus} → {newStatus}");
             await DispatchStatusChangedNotificationAsync(issue, oldStatus, newStatus, actorUserId, ct);
 
-            // Once the issue is terminal there is nothing left to act on, so clear the
-            // "New issue filed" alerts that fanned out to admins + section role-holders.
+            // Nothing left to act on: clear the "New issue filed" alerts.
             if (newStatus.IsTerminal())
                 await ResolveSubmittedNotificationsAsync(issue, actorUserId, ct);
 
@@ -699,10 +659,7 @@ internal sealed class IssuesService(
         }, ct);
     }
 
-    /// <summary>
-    /// The one mutation pipeline: find the issue as a handler, apply the change, and turn a
-    /// failure into a result. Out of reach and gone both answer Missing.
-    /// </summary>
+    /// <summary>Out of reach and gone both answer Missing.</summary>
     private async Task<IssueMutationResult> MutateAsync(
         Guid issueId, IssueViewer viewer, string operation, string failure,
         Func<Issue, Task<IssueMutationResult>> apply, CancellationToken ct)
@@ -725,8 +682,6 @@ internal sealed class IssuesService(
         }
     }
 
-    // ─── Counts & badge/dashboard queries ───
-
     public async Task<int> GetActionableCountForViewerAsync(IssueViewer viewer, CancellationToken ct = default)
     {
         var cacheKey = BadgeCacheKey(viewer.UserId);
@@ -741,7 +696,7 @@ internal sealed class IssuesService(
         });
     }
 
-    /// <summary>Cache key for one viewer's actionable count; this service is its only reader and evicter.</summary>
+    /// <summary>This service is the key's only reader and evicter.</summary>
     internal static string BadgeCacheKey(Guid userId) => $"NavBadge:Issues:{userId:N}";
 
     private void EvictBadgeCounts(IEnumerable<Guid> userIds)
@@ -749,7 +704,7 @@ internal sealed class IssuesService(
         foreach (var id in userIds) cache.Remove(BadgeCacheKey(id));
     }
 
-    /// <summary>Users whose badge count may shift on an issue mutation: reporter + admins + role-holders for current &amp; previous sections.</summary>
+    /// <summary>Reporter, admins, and role-holders for the current and previous sections.</summary>
     private async Task<IReadOnlySet<Guid>> ResolveBadgeUserIdsAsync(
         Guid reporterUserId, string? section, string? previousSection,
         CancellationToken ct)
@@ -787,8 +742,6 @@ internal sealed class IssuesService(
             .ToList();
     }
 
-    // ─── Retention (daily via CleanupIssuesJob) ───
-
     public async Task<int> PurgeExpiredAsync(CancellationToken ct = default)
     {
         var cutoff = clock.GetCurrentInstant() - RetentionPeriod;
@@ -806,8 +759,6 @@ internal sealed class IssuesService(
 
         return deleted;
     }
-
-    // ─── GDPR contributor ───
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
@@ -852,8 +803,6 @@ internal sealed class IssuesService(
         return [new UserDataSlice(Issues, shaped), new UserDataSlice(IssueComments, comments)];
     }
 
-    // ─── IUserDataContributor (GDPR erasure) ───
-
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
@@ -879,13 +828,12 @@ internal sealed class IssuesService(
         var screenshotKeys = await repo.EraseForUserAsync(userId, ct);
         EvictBadgeCounts(badgeUserIds);
 
-        // The screenshots are the reporter's own uploads — they go with the rows.
         await DeleteScreenshotsAsync(screenshotKeys);
     }
 
     /// <summary>
-    /// Best-effort removal of screenshots whose rows have already committed; failures are logged,
-    /// never thrown. Cancellation must not strand them, and a stranded blob must not abort the cascade.
+    /// For rows already committed. Failures are logged, never thrown: cancellation must not strand files, and a
+    /// stranded file must not abort the cascade.
     /// </summary>
     private async Task DeleteScreenshotsAsync(IReadOnlyList<string> keys)
     {
@@ -901,8 +849,6 @@ internal sealed class IssuesService(
             }
         }
     }
-
-    // ─── Helpers — audit, notifications, in-memory stitching ───
 
     private async Task LogAuditAsync(
         AuditAction action, Guid issueId, Guid? actorUserId, string description)
@@ -925,7 +871,6 @@ internal sealed class IssuesService(
 
         if (senderIsReporter)
         {
-            // Reporter commented → notify the queue's handlers + assignee.
             recipients.UnionWith(await QueueHandlerIdsAsync(issue.Section, ct));
             if (comment.SenderUserId is { } senderId) recipients.Remove(senderId);
             if (issue.AssigneeUserId is { } aid && aid != comment.SenderUserId)
@@ -933,7 +878,6 @@ internal sealed class IssuesService(
         }
         else
         {
-            // Admin/role-holder commented → notify reporter (in-app + email) and assignee.
             if (issue.ReporterUserId != comment.SenderUserId)
                 recipients.Add(issue.ReporterUserId);
             if (issue.AssigneeUserId is { } aid && aid != comment.SenderUserId)
@@ -1003,8 +947,7 @@ internal sealed class IssuesService(
         Issue issue, IssueStatus oldStatus, IssueStatus newStatus,
         Guid? actorUserId, CancellationToken ct)
     {
-        // Notify reporter + assignee (both must differ from the actor). An
-        // actor flipping their own issue's status doesn't notify themself.
+        // Both must differ from the actor.
         var recipients = new HashSet<Guid>();
         if (issue.ReporterUserId != actorUserId) recipients.Add(issue.ReporterUserId);
         if (issue.AssigneeUserId is { } aid && aid != actorUserId) recipients.Add(aid);
@@ -1033,9 +976,7 @@ internal sealed class IssuesService(
         }
     }
 
-    /// <summary>
-    /// Whoever handles the queue: its owning roles' holders, or Admins when no role owns it.
-    /// </summary>
+    /// <summary>Admins when no role owns the queue.</summary>
     private async Task<HashSet<Guid>> QueueHandlerIdsAsync(string? section, CancellationToken ct)
     {
         var queueRoles = routing.RolesFor(section);
@@ -1048,7 +989,6 @@ internal sealed class IssuesService(
 
     private async Task DispatchSubmittedNotificationAsync(Issue issue, CancellationToken ct)
     {
-        // Fan out to the queue's handlers; exclude self-filer.
         var recipients = await QueueHandlerIdsAsync(issue.Section, ct);
         recipients.Remove(issue.ReporterUserId);
 
@@ -1089,9 +1029,8 @@ internal sealed class IssuesService(
     }
 
     /// <summary>
-    /// In-app notifications are keyed by user id, so a stored reporter or assignee id that has
-    /// since been merged away is delivered to its survivor, and self-exclusion is judged on the
-    /// resolved id. Role-holder ids are live already; resolving them is a no-op.
+    /// A stored reporter or assignee id since merged away is delivered to its survivor, and self-exclusion is judged on
+    /// the resolved id.
     /// </summary>
     private async Task<List<Guid>> ResolveRecipientsAsync(
         IEnumerable<Guid> userIds, Guid? exclude, CancellationToken ct)

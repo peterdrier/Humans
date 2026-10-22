@@ -11,7 +11,7 @@ internal sealed class ProfileService(IUserRepository userRepository,
     public async Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(
         Guid profileId, CancellationToken ct = default)
     {
-        // GDPR gate: content-type column is the source of truth — don't serve from disk if cleared.
+        // GDPR gate: the content-type column is the source of truth; never serve from disk once cleared.
         var location = await userRepository.GetProfilePictureLocationAsync(profileId, ct);
         if (location is not { } picture || string.IsNullOrEmpty(picture.ContentType))
         {

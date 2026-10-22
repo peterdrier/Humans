@@ -5,10 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Governance;
 
-/// <summary>
-/// Governance's data migrations, run from <c>/Debug/DataMigrations</c>. The copy resolves
-/// Governance's own service; the Debug host lists, applies and audits the run.
-/// </summary>
 internal sealed class SectionDataMigrations : ISectionDataMigrations
 {
     internal const string ProfileTierKey = "governance.profile-tier";

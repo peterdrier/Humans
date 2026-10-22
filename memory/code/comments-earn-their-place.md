@@ -21,6 +21,6 @@ A comment exists for the next person changing this code. Keep it only if it tell
 
 **Why:** Peter (2026-10-21): `EmailDbContext`'s 16-line header added nothing: every claim was in the code, in git, repo-wide, or wrong, and the same pattern runs app-wide. The old rule capped length but never asked whether a comment adds value, so short useless comments kept coming.
 
-**How to apply:** when writing a comment, apply the test before typing it. When editing near an existing comment that fails it, shorten or delete it rather than adding to it. Same for `because:` strings in test assertions. Generated files (migrations) are never edited. A record or method that documents some `<param>`s must document all of them (CS1573 fails the build): when only a few need a note, drop the `<param>` tags and put the notes in `<remarks>` with `<paramref>`.
+**How to apply:** when writing a comment, apply the test before typing it. When editing near an existing comment that fails it, shorten or delete it rather than adding to it. Same for `because:` strings in test assertions. Generated files (migrations) are never edited. A record or method that documents some `<param>`s must document all of them (CS1573 fails the build): when only a few need a note, drop the `<param>` tags and put the notes in `<remarks>` with `<paramref>`. A doc with only `<remarks>` fails RCS1139: use `<summary>`. Some browser tests locate script code by a comment line (`indexOf('// Chip toggle')`): grep `tests/` for a JS comment's text before cutting it.
 
 Related: [[name-analyzers-not-numbers]].

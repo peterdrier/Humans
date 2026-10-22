@@ -64,7 +64,6 @@ public sealed class UserRepositoryProfileTests : IDisposable
     [HumansFact(Timeout = 10000)]
     public async Task UpdateAsync_Cv_AddsUpdatesAndRemovesEntries()
     {
-        // Arrange: profile with two existing CV entries
         var user = await SeedUserAsync(UserState.Active);
         var profile = NewProfile(user.Id, "Burner", "First", "Last");
         _dbContext.Profiles.Add(profile);
@@ -100,7 +99,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
         _clock.AdvanceSeconds(60);
         var afterAdvance = _clock.GetCurrentInstant();
 
-        // Act: reconcile — keep one (new description), add one, remove "Remove me"
+        // Keep one (new description), add one, remove "Remove me".
         var newEntries = new List<CVEntry>
         {
             new(keepId, new LocalDate(2024, 3, 1), "Keep me", "New desc"),
@@ -108,8 +107,8 @@ public sealed class UserRepositoryProfileTests : IDisposable
         };
         await _repo.UpdateAsync(profile, Xunit.TestContext.Current.CancellationToken, newEntries);
 
-        // Assert: exactly two rows remain. Use AsNoTracking so the query hits the in-memory
-        // store directly rather than returning stale entities from _dbContext's identity map.
+        // AsNoTracking, so the query hits the in-memory store rather than returning stale
+        // entities from _dbContext's identity map.
         var persisted = await _dbContext.VolunteerHistoryEntries
             .AsNoTracking()
             .Where(v => v.ProfileId == profileId)

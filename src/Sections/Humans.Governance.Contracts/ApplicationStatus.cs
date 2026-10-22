@@ -1,9 +1,6 @@
 namespace Humans.Governance.Contracts;
 
-/// <summary>
-/// Represents the status of a membership application.
-/// Used with Stateless state machine for workflow management.
-/// </summary>
+/// <summary>Stored by name: never rename a value.</summary>
 public enum ApplicationStatus
 {
     Submitted = 0,

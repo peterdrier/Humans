@@ -5,10 +5,8 @@ using Humans.Users.Contracts;
 namespace Humans.Base.ViewComponents;
 
 /// <summary>
-/// Inline person picker — visible search box + hidden value input + type-ahead
-/// dropdown backed by <c>/api/profiles/search</c>. The canonical inline-picker
-/// pattern (see <c>memory/architecture/person-search.md</c>); the typed
-/// replacement for the old human-search partial. Prefill reads honor browser cancellation.
+/// Inline person picker: visible search box, hidden value input and a type-ahead dropdown backed by
+/// <c>/api/profiles/search</c> (<c>memory/architecture/person-search.md</c>).
 /// </summary>
 public sealed class HumanSearchViewComponent(IUserService userService) : ViewComponent
 {

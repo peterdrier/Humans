@@ -12,10 +12,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Debug.Controllers;
 
-// Diagnostic surface for UserInfo cache — flat sortable table from GetAllRawUserInfosAsync
-// (tombstones included: this is the cache diagnostic, it shows what is in the cache), plus Consent's
-// review map for the consent-check column, Tickets' participations for the ticket column and Email's
-// Marketing preferences for the marketing column.
+// UserInfo cache diagnostic: tombstones included, since it shows what is in the cache.
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Debug/Users")]
 internal sealed class UsersDebugController(
@@ -58,11 +55,6 @@ internal sealed class UsersDebugController(
     // Null-first ascending semantics for tri-state booleans — null < false < true.
     private static int NullableBoolRank(bool? b) => b is null ? 0 : b.Value ? 2 : 1;
 
-    // Sort-key → column comparison. A dictionary of comparisons (rather than a
-    // switch dispatching to OrderBy) keeps ApplySort itself a straight-line
-    // lookup + sort — see memory/architecture/display-sort-in-controllers.md
-    // (sorting is legitimately controller turf; this only reshapes it).
-    // Ordinal (case-sensitive) keys — matches the original switch's exact-string-literal semantics.
     private static readonly IReadOnlyDictionary<string, Comparison<UserDebugRow>> SortComparisons =
         new Dictionary<string, Comparison<UserDebugRow>>(StringComparer.Ordinal)
         {
@@ -84,7 +76,7 @@ internal sealed class UsersDebugController(
         var comparison = SortComparisons.GetValueOrDefault(sort,
             (a, b) => string.Compare(a.DisplayName, b.DisplayName, StringComparison.OrdinalIgnoreCase));
 
-        // OrderBy (not List.Sort) — stable sort, matching the prior switch/OrderBy behavior for ties.
+        // OrderBy, not List.Sort: stable for ties.
         var sorted = rows.OrderBy(r => r, Comparer<UserDebugRow>.Create(comparison)).ToList();
         if (!asc) sorted.Reverse();
         return sorted;

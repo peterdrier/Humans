@@ -226,7 +226,6 @@ public class MembershipPartitionTests
             result.IncompleteSignup, result.PendingDeletion, result.MissingConsents
         };
 
-        // Verify no two buckets share any user ID
         for (var i = 0; i < buckets.Length; i++)
         {
             for (var j = i + 1; j < buckets.Length; j++)
@@ -249,8 +248,6 @@ public class MembershipPartitionTests
         result.PendingDeletion.Should().Contain(userId);
         result.Suspended.Should().NotContain(userId);
     }
-
-    // --- Helpers ---
 
     private Guid SeedUser(Instant? deletionRequestedAt = null)
     {
