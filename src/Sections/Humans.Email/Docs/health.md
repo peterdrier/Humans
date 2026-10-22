@@ -60,6 +60,7 @@ surviving account on a merge.
 | **Which templates cannot wait?** | `TimeSensitiveTemplates` | One list, read by the immediate drain and the batch order. |
 | **What have we sent this person?** | `/Email/Outbox`, `/Email/Admin/{id}/Outbox`, the admin-detail outbox card | All inside Email. |
 | **Drain and prune the queue** | `ProcessEmailOutboxJob`, `CleanupEmailOutboxJob`, `IImmediateOutboxProcessor` | Shell registers the immediate trigger. |
+| **Which categories may this person not change?** | `ICommunicationPreferenceLock` | The fan-out Tickets implements to lock Ticketing for a ticket holder. |
 | **What kinds of mail does this person accept?** | `ICommunicationPreferenceService`; `ICommunicationPreferenceWrite` (MailerLite's import) | Read by Notifications, MailerLite, Debug, Users and Teams. |
 | **Change my mind** | `/Email/CommunicationPreferences`, `/Email/Guest/CommunicationPreferences`, the admin-detail preferences card | Own page, no-login page, read-only admin card. |
 | **Say no without logging in** | `/Email/Unsubscribe/{token}`, `/Email/Unsubscribe/OneClick` | Token purposes and payload are frozen. |
@@ -69,7 +70,7 @@ surviving account on a merge.
 Inside, a send runs **send service** (opt-out, headers, wrap, log row) → **processor**
 (transport, retry, tally, grant mirror). The **body composer** (wrapper plus inline-style
 pass), the **transport** (SMTP or a logging stub) and the **relay factory** hang off it.
-The preference lane is **preference service** (rows here, legacy fallback, ticket lock)
+The preference lane is **preference service** (rows here, legacy fallback, the locks other sections report)
 → **token provider**, with the **unsubscribe service** reading tokens on its behalf.
 
 ## 3. Structure
@@ -144,27 +145,27 @@ no-login page adds the inbox column and the highlighted row.
 - The wrapper and inline-style pass are applied in one place, so a preview and a send
   cannot differ (`src/Sections/Humans.Email/Services/BrandedEmailTemplate.cs:14`).
 - Always-on categories cannot be changed by any write
-  (`src/Sections/Humans.Email/Services/CommunicationPreferenceService.cs:137`), and the
-  member and guest toggles refuse to change Ticketing for a matched ticket holder
-  (`src/Sections/Humans.Email/Services/CommunicationPreferenceService.cs:117`).
+  (`src/Sections/Humans.Email/Services/CommunicationPreferenceService.cs:141`), and the
+  member and guest toggles refuse to change a category a section locks (Tickets: Ticketing for a matched ticket holder)
+  (`src/Sections/Humans.Email/Services/CommunicationPreferenceService.cs:116`).
 - An unchanged preference write writes nothing and audits nothing
-  (`src/Sections/Humans.Email/Services/CommunicationPreferenceService.cs:163`); every
-  change is audited (`src/Sections/Humans.Email/Services/CommunicationPreferenceService.cs:183`).
+  (`src/Sections/Humans.Email/Services/CommunicationPreferenceService.cs:167`); every
+  change is audited (`src/Sections/Humans.Email/Services/CommunicationPreferenceService.cs:187`).
 - A cleared row shadows the legacy row and reads as nothing recorded
-  (`src/Sections/Humans.Email/Services/CommunicationPreferenceService.cs:99`).
+  (`src/Sections/Humans.Email/Services/CommunicationPreferenceService.cs:98`).
 - Unsubscribe tokens keep their purpose, payload and lifetime
   (`src/Sections/Humans.Email/Services/UnsubscribeTokenProvider.cs:15`,
   `src/Sections/Humans.Email/Services/UnsubscribeTokenProvider.cs:23`), and a token for an
   erased account is refused even inside its lifetime
   (`src/Sections/Humans.Email/Services/UnsubscribeService.cs:21`,
-  `src/Sections/Humans.Email/Controllers/GuestAccountController.cs:105`).
+  `src/Sections/Humans.Email/Controllers/GuestAccountController.cs:104`).
 - A send-log row is personal data: exported
   (`src/Sections/Humans.Email/Services/EmailOutboxService.cs:179`) and destroyed whatever
   its status (`src/Sections/Humans.Email/Services/EmailOutboxService.cs:230`); erasure
   deletes every preference row too
   (`src/Sections/Humans.Email/Services/CommunicationPreferenceService.cs:416`).
 - A merge leaves the source with only cleared rows where a legacy row backs it
-  (`src/Sections/Humans.Email/Services/CommunicationPreferenceService.cs:371`).
+  (`src/Sections/Humans.Email/Services/CommunicationPreferenceService.cs:375`).
 - One row per person and category
   (`src/Sections/Humans.Email/Data/CommunicationPreferenceConfiguration.cs:30`).
 - Every string in this section's resource set is present in all six cultures, enforced by

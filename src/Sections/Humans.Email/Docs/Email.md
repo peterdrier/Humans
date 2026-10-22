@@ -109,7 +109,7 @@ spikes seen in Google Postmaster, since `email_outbox_messages` is pruned after
 | Governance | 4 | Board voting, tier applications, role assignments, onboarding reviews. Default: on. |
 | CampaignCodes | 5 | Discount codes, grants, campaign redemption codes. Always on. |
 | FacilitatedMessages | 6 | User-to-user emails relayed via Humans. Default: on. |
-| Ticketing | 7 | Purchase confirmations, event info. Default: on. Locked on when user has a matched ticket order: `CommunicationPreferenceService`'s member/guest toggle write refuses the change (`UpdatePreferenceAsync` returns `false`, controllers answer 400), and both preference pages render the row read-only from the same `IsTicketingLocked` rule. Unsubscribe links and MailerLite writes are not gated. |
+| Ticketing | 7 | Purchase confirmations, event info. Default: on. Locked on when user has a matched ticket order — Tickets says so through the `ICommunicationPreferenceLock` fan-out (nobodies-collective/Humans#1244): `CommunicationPreferenceService`'s member/guest toggle write refuses any locked category (`UpdatePreferenceAsync` returns `false`, controllers answer 400), and both preference pages render the row read-only from the same `GetLockedCategoriesAsync` union. Unsubscribe links and MailerLite writes are not gated. |
 | VolunteerUpdates | 8 | Shift changes, schedule updates, volunteer notifications. Default: on. |
 | TeamUpdates | 9 | Drive permissions, team member adds/removes. Default: on. |
 
@@ -239,7 +239,7 @@ The communication-preference routes moved from Users in decomposition commit 14 
 ## Cross-Section Dependencies
 
 - **Users:** `IUserEmailService.FindByAddressAsync` (exact form, verified only) — resolves `UserId` from a recipient address so `OutboxEmailService` can link outbox rows to users. `IUserService.GetUserInfoAsync` / `GetRawUserInfoAsync` / `GetAllRawUserInfosAsync` for the frozen legacy preference rows. Users' merge orchestrator fans out to Email's two `IUserMerge` implementations; Email only mutates its own rows.
-- **Tickets:** `ITicketService` — the preference pages and `CommunicationPreferenceService`'s toggle write lock Ticketing on for a matched ticket holder. `Humans.Email` references `Humans.Tickets.Contracts` (a Base-only leaf) for it.
+- **Tickets:** implements `ICommunicationPreferenceLock` (`TicketingPreferenceLock`), locking Ticketing for a matched ticket holder; the preference pages and `CommunicationPreferenceService`'s toggle write read every registered lock. Email names no Tickets type.
 - **Consumers of `ICommunicationPreferenceService`:** Notifications (inbox switch), MailerLite (audience opt-outs and the import's `ICommunicationPreferenceWrite`), Debug (marketing set), Users (profile card's facilitated-message button), Teams (send as team: its profile buttons and composer refuse an opted-out recipient), and the views that name `MessageCategory`.
 - **Campaigns:** `ICampaignWrite` receives the delivery status; Campaigns queues campaign wave messages via this section; per-grant latest-status is mirrored to `CampaignGrant.LatestEmailStatus` / `LatestEmailAt`.
 - **Shifts:** `IShiftSignupService` sends approve/refuse/voluntell emails through this section.
@@ -277,7 +277,10 @@ The communication-preference routes moved from Users in decomposition commit 14 
     authorized cross-section preview pages. It applies the same internal branded composer as the
     outbox, creates no outbox row, and deliberately rejects every category but System (or none),
     since another category's footer can depend on recipient-specific send policy.
-  - `ICommunicationPreferenceService` + `CommunicationPreferenceSnapshot` (reads, including the bulk `GetPreferencesForCategoryAsync`), `ICommunicationPreferenceWrite` (MailerLite's update and reset), `MessageCategory` + `MessageCategoryExtensions`. The contracts leaf references only Base.
+  - `ICommunicationPreferenceService` + `CommunicationPreferenceSnapshot` (reads, including the bulk `GetPreferencesForCategoryAsync`), `ICommunicationPreferenceWrite` (MailerLite's update and reset), `MessageCategory` + `MessageCategoryExtensions`.
+  - `ICommunicationPreferenceLock` — the fan-out a section implements to lock a category for a human
+    (Tickets locks Ticketing for a matched ticket holder). The member and guest toggles refuse a
+    locked category and render it read-only; unsubscribe links and MailerLite are not gated. The contracts leaf references only Base.
   - `IImmediateOutboxProcessor` — implemented by `HangfireImmediateOutboxProcessor` under `Humans.Email/Contracts/` rather than `Jobs/`: that folder is for `IRecurringJob` implementors and `*Job`-named Hangfire jobs, and this type is neither. Both sides sit inside the section.
 - **Section-internal abstractions** (`Humans.Email.Services`): `IEmailOutboxService` + `EmailOutboxMessageDto` (per-human outbox history and count, read by `MemberOutboxController` and `OutboxCardViewComponent`), `IEmailOutboxProcessor` / `IEmailOutboxRetention` (what `ProcessEmailOutboxJob` / `CleanupEmailOutboxJob` drive), `IEmailOutboxManagement` (admin surface and dashboard stats, consumed by `EmailController` and the admin tile), `EmailMessageFactory` (`IEmailMessageFactory`), `FacilitatedMessagePreviews` (`IEmailPreviewContributor`), `IEmailBodyComposer` / `BrandedEmailBodyComposer`, `IEmailTransport` / `SmtpEmailTransport` / `StubEmailTransport`, `EmailInlineStyler` (static, AngleSharp-based inline-style pass called from `BrandedEmailTemplate.Wrap`), `EmailPreviewService` (`IEmailPreviewService`), `EmailPreviewController` (`[Authorize]`, not `AdminOnly` — hosts `POST /Email/PreviewMarkdown`).
 - **`EmailSettings` stays in `Humans.Base.Configuration` and is bound in Shell**, not in `Section.Register`: Auth's `MagicLinkUrlBuilder`, Email's own `UnsubscribeTokenProvider`, `SendReConsentReminderJob` and Email's own `SmtpHealthCheck` all read it. It is Base configuration the section is merely named after.

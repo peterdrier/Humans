@@ -60,7 +60,7 @@
                                 <td>
                                     <div class="fw-semibold">@categoryName</div>
                                     <div class="form-text mb-0">@Localizer[$"Email_CommPrefs_Description_{item.Category}"]</div>
-                                    @if (item.IsTicketingLocked)
+                                    @if (item.IsLocked)
                                     {
                                         <div class="form-text text-warning-emphasis mb-0">
                                             <i class="fa-solid fa-lock fa-xs me-1"></i>@Localizer["Email_CommPrefs_TicketingLocked"]

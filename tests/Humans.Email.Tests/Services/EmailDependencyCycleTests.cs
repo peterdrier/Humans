@@ -95,12 +95,9 @@ public sealed class EmailDependencyCycleTests
         ProjectReferencesOf("Humans.Email").Should().BeSubsetOf(
             [
                 "Humans.AuditLog", "Humans.Base", "Humans.Campaigns", "Humans.Email.Contracts",
-                "Humans.Gdpr", "Humans.Settings", "Humans.Tickets.Contracts", "Humans.Users.Contracts"
+                "Humans.Gdpr", "Humans.Settings", "Humans.Users.Contracts"
             ],
-            because: "Email is a crosscut: it may lose section references, never gain one. "
-                + "Tickets.Contracts (a Base-only leaf) arrived with "
-                + "communication preferences (Users decomposition commit 14): the preferences panel "
-                + "locks the Ticketing row through ITicketService.GetUserTicketHoldingsAsync");
+            because: "Email is a crosscut: it may lose section references, never gain one");
 
     private static IEnumerable<string> ProjectReferencesOf(string projectName)
     {

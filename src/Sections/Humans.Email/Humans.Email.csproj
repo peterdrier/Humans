@@ -29,12 +29,6 @@
     <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
-      Communication preferences (Users decomposition commit 14) lock the Ticketing row for a member
-      holding a matched ticket order, read through ITicketService. Acyclic: Humans.Tickets.Contracts
-      references only Base.
-    -->
-    <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
-    <!--
       The outbox drain mirrors a campaign grant's delivery status, and the pause flag is a
       system_settings row. Both reference the other section's project, and the graph stays
       acyclic: Humans.Campaigns references only Humans.Email.Contracts back, and

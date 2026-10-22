@@ -16,7 +16,7 @@ this service-to-service diagram; the Backdoor node below represents only
 - Dashed orange arrow labelled `(lazy)` = resolved on-demand via `IServiceProvider.GetRequiredService<T>()` / `Lazy<T>`. This pattern breaks DI cycles where two services legitimately call each other. A healthy graph minimizes them.
 - Public contracts: edges into a section that go through its `I<Section>Service` (or `I<Section>Write`) contract are collapsed onto the owning service node. The node names the implementing service; the contract is the cross-section consumption surface.
 - Services with zero cross-section service edges don't appear in the diagram; they are listed under "Services with no cross-section edges" below so the verifier can account for every service.
-- Fan-out contributor interfaces (`IEnumerable<ICalendarFeedContributor>`, `IEarlyEntryProvider`, `IEventSettingsChangeListener`, `IMailerLiteAudience`, `IUserMerge`, `IUserDataContributor`) are not drawn as edges — each implementation's own deps are.
+- Fan-out contributor interfaces (`IEnumerable<ICalendarFeedContributor>`, `IEarlyEntryProvider`, `IEventSettingsChangeListener`, `IMailerLiteAudience`, `ICommunicationPreferenceLock`, `IUserMerge`, `IUserDataContributor`) are not drawn as edges — each implementation's own deps are.
 
 ## Mermaid diagram
 
@@ -139,6 +139,7 @@ graph LR
     TicketQ[TicketQueryService]:::tickets
     TicketSync[TicketSyncService]:::tickets
     TicketTransfer[TicketTransferService]:::tickets
+    TicketPrefLock[TicketingPreferenceLock]:::tickets
     AttendeeImport[AttendeeContactImportService]:::tickets
     OnsiteRoster[OnsiteRosterService]:::tickets
     EventPart[EventParticipationService]:::tickets
@@ -276,7 +277,6 @@ graph LR
     UEmail --> Audit
     CommPref --> Audit
     CommPref --> User
-    CommPref --> TicketQ
     EmailProblems --> Audit
     Unsub --> User
     CF --> Team
@@ -432,6 +432,7 @@ graph LR
     TicketTransfer --> UEmail
     TicketTransfer --> Email
     TicketTransfer --> Audit
+    TicketPrefLock --> TicketQ
     AttendeeImport --> UEmail
     AttendeeImport --> AcctProv
     AttendeeImport --> User
