@@ -2641,7 +2641,7 @@ public class SurveyServiceTests
     [InlineData("duplicate")]
     [InlineData("equal-ranks")]
     [InlineData("rejection")]
-    public async Task SubmitResponseAsync_rejects_invalid_ranked_ballots_before_persisting(string violation)
+    public async Task AdvanceWizardAsync_final_submission_rejects_invalid_ranked_ballots_before_persisting(string violation)
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         var questionId = Guid.NewGuid();
@@ -2664,16 +2664,17 @@ public class SurveyServiceTests
             ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, "en",
             [new SurveyAnswerInput(questionId, [], null, null, null, ranked)]);
 
-        var act = async () => await CreateService().SubmitResponseAsync(
-            submission, TestContext.Current.CancellationToken);
+        var result = await CreateService().AdvanceWizardAsync(
+            WizardState(survey, submission), 1, back: false, submission.Answers, ct: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*invalid*");
+        result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
+        result.InvalidAnswers.Should().BeEquivalentTo([questionId]);
         await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task SubmitResponseAsync_persists_normalized_valid_ranked_ballots()
+    public async Task AdvanceWizardAsync_final_submission_persists_normalized_valid_ranked_ballots()
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         var questionId = Guid.NewGuid();
@@ -2689,7 +2690,10 @@ public class SurveyServiceTests
             [new SurveyAnswerInput(questionId, [], null, null, null,
                 new RankedAnswer([["b", "unknown", "a"]], ["c"]))]);
 
-        await CreateService().SubmitResponseAsync(submission, TestContext.Current.CancellationToken);
+        var result = await CreateService().AdvanceWizardAsync(
+            WizardState(survey, submission), 1, back: false, submission.Answers, ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.Submitted);
 
         saved.Should().NotBeNull();
         saved!.Answers.Should().ContainSingle().Which.RankedValue
@@ -2697,7 +2701,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitResponseAsync_identified_finalises_existing_draft_and_completes_invitation()
+    public async Task AdvanceWizardAsync_final_submission_identified_finalises_existing_draft_and_completes_invitation()
     {
         var survey = SurveyForSubmit(out var q1Id, out var q2Id);
         var draftId = Guid.NewGuid();
@@ -2707,7 +2711,10 @@ public class SurveyServiceTests
             ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink, "en",
             new List<SurveyAnswerInput> { Ans(q1Id, "yes"), TextAns(q2Id, "note") });
 
-        await CreateService().SubmitResponseAsync(submission, TestContext.Current.CancellationToken);
+        var result = await CreateService().AdvanceWizardAsync(
+            WizardState(survey, submission), 1, back: false, submission.Answers, ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.Submitted);
 
         await _repo.Received(1).FinalizeIdentifiedResponseAsync(
             invitationId,
@@ -2721,7 +2728,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitResponseAsync_rechecks_asociado_eligibility_before_finalising()
+    public async Task AdvanceWizardAsync_final_submission_rechecks_asociado_eligibility_before_finalising()
     {
         var survey = SurveyForSubmit(out var questionId, out _);
         survey.IsAsociadoVote = true;
@@ -2733,11 +2740,10 @@ public class SurveyServiceTests
             ResponseAnonymity.CompletionTracked, SurveyInputMethod.UserSpecificLink, "en",
             [Ans(questionId, "yes")]);
 
-        var act = async () => await CreateService().SubmitResponseAsync(
-            submission, TestContext.Current.CancellationToken);
+        var result = await CreateService().AdvanceWizardAsync(
+            WizardState(survey, submission), 1, back: false, submission.Answers, ct: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*active, approved Asociado*");
+        result.Outcome.Should().Be(SurveyWizardOutcome.Ineligible);
         await _repo.DidNotReceive().FinalizeCompletionTrackedResponseAsync(
             Arg.Any<Guid>(),
             Arg.Any<Guid>(),
@@ -2746,7 +2752,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitResponseAsync_rejects_an_identified_asociado_ballot()
+    public async Task AdvanceWizardAsync_final_submission_rejects_an_identified_asociado_ballot()
     {
         var survey = SurveyForSubmit(out var questionId, out _);
         survey.IsAsociadoVote = true;
@@ -2758,8 +2764,8 @@ public class SurveyServiceTests
             ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink, "en",
             [Ans(questionId, "yes")]);
 
-        var act = async () => await CreateService().SubmitResponseAsync(
-            submission, TestContext.Current.CancellationToken);
+        var act = async () => await CreateService().AdvanceWizardAsync(
+            WizardState(survey, submission), 1, back: false, submission.Answers, ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*completion tracking*");
@@ -2774,7 +2780,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitResponseAsync_completion_tracked_stores_unlinked_response_and_completes_invitation()
+    public async Task AdvanceWizardAsync_final_submission_completion_tracked_stores_unlinked_response_and_completes_invitation()
     {
         var survey = SurveyForSubmit(out var q1Id, out _);
         var invitationId = Guid.NewGuid();
@@ -2788,7 +2794,10 @@ public class SurveyServiceTests
             ResponseAnonymity.CompletionTracked, SurveyInputMethod.UserSpecificLink, "en",
             new List<SurveyAnswerInput> { Ans(q1Id, "yes") });
 
-        await CreateService().SubmitResponseAsync(submission, TestContext.Current.CancellationToken);
+        var result = await CreateService().AdvanceWizardAsync(
+            WizardState(survey, submission), 1, back: false, submission.Answers, ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.Submitted);
 
         captured.Should().NotBeNull();
         captured!.UserId.Should().BeNull();
@@ -2802,7 +2811,7 @@ public class SurveyServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SubmitResponseAsync_concurrent_writes_preserve_one_final_response(bool identified)
+    public async Task AdvanceWizardAsync_final_submission_concurrent_writes_preserve_one_final_response(bool identified)
     {
         var ct = TestContext.Current.CancellationToken;
         var pause = new PauseFirstResponseSave();
@@ -2834,7 +2843,7 @@ public class SurveyServiceTests
             anonymity, SurveyInputMethod.UserSpecificLink, "en",
             [TextAns(questionId, "My answer")]);
 
-        var first = CreateService(repository: repository).SubmitResponseAsync(submission, ct);
+        var first = CreateService(repository: repository).AdvanceWizardAsync(WizardState(survey, submission), 1, back: false, submission.Answers, ct: ct);
         Task second;
         try
         {
@@ -2845,7 +2854,7 @@ public class SurveyServiceTests
             second = identified
                 ? otherService.SaveDraftAnswersAsync(draftId!.Value,
                     [TextAns(questionId, "Later draft")], SurveyInputMethod.Slug, "es", ct)
-                : otherService.SubmitResponseAsync(submission, ct);
+                : otherService.AdvanceWizardAsync(WizardState(survey, submission), 1, back: false, submission.Answers, ct: ct);
         }
         finally
         {
@@ -2887,7 +2896,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitResponseAsync_anonymous_stores_unlinked_response_and_leaves_invitation_untouched()
+    public async Task AdvanceWizardAsync_final_submission_anonymous_stores_unlinked_response_and_leaves_invitation_untouched()
     {
         var survey = SurveyForSubmit(out var q1Id, out _);
         SurveyResponse? captured = null;
@@ -2898,7 +2907,10 @@ public class SurveyServiceTests
             ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, "en",
             new List<SurveyAnswerInput> { Ans(q1Id, "yes") });
 
-        await CreateService().SubmitResponseAsync(submission, TestContext.Current.CancellationToken);
+        var result = await CreateService().AdvanceWizardAsync(
+            WizardState(survey, submission), 1, back: false, submission.Answers, ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.Submitted);
 
         captured.Should().NotBeNull();
         captured!.UserId.Should().BeNull();
@@ -2920,7 +2932,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitResponseAsync_stores_null_for_an_unanswered_optional_grid()
+    public async Task AdvanceWizardAsync_final_submission_stores_null_for_an_unanswered_optional_grid()
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         var grid = GridQuestion(Guid.NewGuid(), survey.Id);
@@ -2936,13 +2948,16 @@ public class SurveyServiceTests
                 grid.Id, [], null, null,
                 new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal))]);
 
-        await CreateService().SubmitResponseAsync(submission, TestContext.Current.CancellationToken);
+        var result = await CreateService().AdvanceWizardAsync(
+            WizardState(survey, submission), 1, back: false, submission.Answers, ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.Submitted);
 
         captured!.Answers.Should().ContainSingle().Which.GridSelections.Should().BeNull();
     }
 
     [HumansFact]
-    public async Task SubmitResponseAsync_rejects_an_incomplete_required_grid()
+    public async Task AdvanceWizardAsync_final_submission_rejects_an_incomplete_required_grid()
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         var grid = GridQuestion(Guid.NewGuid(), survey.Id, GridSelectionMode.Single);
@@ -2959,17 +2974,17 @@ public class SurveyServiceTests
                     ["monday"] = ["morning"],
                 })]);
 
-        var act = async () => await CreateService()
-            .SubmitResponseAsync(submission, TestContext.Current.CancellationToken);
+        var result = await CreateService().AdvanceWizardAsync(
+            WizardState(survey, submission), 1, back: false, submission.Answers, ct: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Required survey questions*");
+        result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
+        result.MissingRequired.Should().BeEquivalentTo([grid.Id]);
         await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task SubmitResponseAsync_drops_answers_to_questions_hidden_by_branching()
+    public async Task AdvanceWizardAsync_final_submission_drops_answers_to_questions_hidden_by_branching()
     {
         var gate = Guid.NewGuid();
         var hidden = Guid.NewGuid();
@@ -2999,7 +3014,10 @@ public class SurveyServiceTests
             ResponseAnonymity.Anonymous, SurveyInputMethod.UserSpecificLink, "en",
             new List<SurveyAnswerInput> { Ans(gate, "no"), TextAns(hidden, "leaked") });
 
-        await CreateService().SubmitResponseAsync(submission, TestContext.Current.CancellationToken);
+        var result = await CreateService().AdvanceWizardAsync(
+            WizardState(survey, submission), 1, back: false, submission.Answers, ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.Submitted);
 
         captured.Should().NotBeNull();
         captured!.Answers.Select(a => a.QuestionId).Should().Contain(gate);
@@ -3007,7 +3025,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitResponseAsync_drops_answers_unlocked_only_by_a_stale_hidden_answer()
+    public async Task AdvanceWizardAsync_final_submission_drops_answers_unlocked_only_by_a_stale_hidden_answer()
     {
         // Q1 gates Q2, Q2 gates Q3 — flipping Q1 to "no" must hide Q3 even though Q2's stale
         // answer would still satisfy Q3's condition on its own.
@@ -3047,14 +3065,17 @@ public class SurveyServiceTests
             ResponseAnonymity.Anonymous, SurveyInputMethod.UserSpecificLink, "en",
             new List<SurveyAnswerInput> { Ans(q1, "no"), Ans(q2, "vegetarian"), TextAns(q3, "leaked") });
 
-        await CreateService().SubmitResponseAsync(submission, TestContext.Current.CancellationToken);
+        var result = await CreateService().AdvanceWizardAsync(
+            WizardState(survey, submission), 1, back: false, submission.Answers, ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.Submitted);
 
         captured.Should().NotBeNull();
         captured!.Answers.Select(a => a.QuestionId).Should().BeEquivalentTo([q1]);
     }
 
     [HumansFact]
-    public async Task SubmitResponseAsync_throws_when_invitation_already_completed()
+    public async Task AdvanceWizardAsync_final_submission_returns_submitted_when_invitation_already_completed()
     {
         var survey = SurveyForSubmit(out var q1Id, out _);
         var invitation = InvitationFor(survey.Id, Guid.NewGuid());
@@ -3065,10 +3086,10 @@ public class SurveyServiceTests
             ResponseAnonymity.CompletionTracked, SurveyInputMethod.UserSpecificLink, "en",
             new List<SurveyAnswerInput> { Ans(q1Id, "yes") });
 
-        var act = async () => await CreateService().SubmitResponseAsync(submission, TestContext.Current.CancellationToken);
+        var result = await CreateService().AdvanceWizardAsync(
+            WizardState(survey, submission), 1, back: false, submission.Answers, ct: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("This invitation has already submitted a response.");
+        result.Outcome.Should().Be(SurveyWizardOutcome.Submitted);
         await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().FinalizeCompletionTrackedResponseAsync(
             Arg.Any<Guid>(),
@@ -3078,7 +3099,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitResponseAsync_throws_when_survey_not_open()
+    public async Task AdvanceWizardAsync_final_submission_returns_closed_when_survey_not_open()
     {
         var survey = SurveyForSubmit(out var q1Id, out _);
         survey.Status = SurveyStatus.Closed;
@@ -3087,14 +3108,15 @@ public class SurveyServiceTests
             ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, "en",
             new List<SurveyAnswerInput> { Ans(q1Id, "yes") });
 
-        var act = async () => await CreateService().SubmitResponseAsync(submission, TestContext.Current.CancellationToken);
+        var result = await CreateService().AdvanceWizardAsync(
+            WizardState(survey, submission), 1, back: false, submission.Answers, ct: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Outcome.Should().Be(SurveyWizardOutcome.Closed);
         await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task SubmitResponseAsync_throws_when_window_closed()
+    public async Task AdvanceWizardAsync_final_submission_returns_closed_when_window_closed()
     {
         var survey = SurveyForSubmit(out var q1Id, out _);
         survey.ClosesAt = _clock.GetCurrentInstant() - Duration.FromMinutes(1);
@@ -3103,9 +3125,10 @@ public class SurveyServiceTests
             ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, "en",
             new List<SurveyAnswerInput> { Ans(q1Id, "yes") });
 
-        var act = async () => await CreateService().SubmitResponseAsync(submission, TestContext.Current.CancellationToken);
+        var result = await CreateService().AdvanceWizardAsync(
+            WizardState(survey, submission), 1, back: false, submission.Answers, ct: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Outcome.Should().Be(SurveyWizardOutcome.Closed);
         await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
@@ -3136,6 +3159,32 @@ public class SurveyServiceTests
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         return survey;
     }
+
+    // Keep other pages in session; current-page answers arrive in the post.
+    private static SurveyWizardState WizardState(Survey survey, SurveySubmission submission) => new()
+    {
+        SurveyId = submission.SurveyId,
+        InvitationId = submission.InvitationId,
+        UserId = submission.UserId,
+        DraftResponseId = submission.DraftResponseId,
+        Anonymity = submission.Anonymity,
+        InputMethod = submission.InputMethod,
+        Culture = submission.Culture,
+        CurrentPage = 1,
+        Started = true,
+        Answers = submission.Answers
+            .Where(answer => survey.Questions.Any(question => question.Id == answer.QuestionId && question.PageNumber != 1))
+            .ToDictionary(answer => answer.QuestionId.ToString(), answer => new SurveyWizardAnswer
+            {
+                SelectedOptionValues = answer.SelectedOptionValues.ToList(),
+                TextValue = answer.TextValue,
+                RatingValue = answer.RatingValue,
+                RankedValue = answer.RankedValue,
+                GridSelections = answer.GridSelections?.ToDictionary(
+                    pair => pair.Key, pair => pair.Value.ToList(), StringComparer.Ordinal)
+                    ?? new Dictionary<string, List<string>>(StringComparer.Ordinal),
+            }, StringComparer.Ordinal),
+    };
 
     private static SurveyWizardState WizardState(Guid surveyId, Guid? invitationId = null) => new()
     {
@@ -3230,7 +3279,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitResponseAsync_uses_normalized_choices_for_branching_and_ignores_hidden_invalid_answers()
+    public async Task AdvanceWizardAsync_final_submission_uses_normalized_choices_for_branching_and_ignores_hidden_invalid_answers()
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         var gateId = Guid.NewGuid();
@@ -3256,7 +3305,10 @@ public class SurveyServiceTests
             ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, "en",
             [Ans(gateId, "removed"), new SurveyAnswerInput(ratingId, [], null, 99)]);
 
-        await CreateService().SubmitResponseAsync(submission, TestContext.Current.CancellationToken);
+        var result = await CreateService().AdvanceWizardAsync(
+            WizardState(survey, submission), 1, back: false, submission.Answers, ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.Submitted);
 
         saved!.Answers.Should().ContainSingle().Which.QuestionId.Should().Be(gateId);
         saved.Answers.Single().SelectedOptionValues.Should().BeEmpty();
@@ -3344,7 +3396,7 @@ public class SurveyServiceTests
     [HumansTheory]
     [InlineData(SurveyQuestionType.ShortText)]
     [InlineData(SurveyQuestionType.LongText)]
-    public async Task SubmitResponseAsync_rejects_overlong_text_before_persistence(SurveyQuestionType type)
+    public async Task AdvanceWizardAsync_final_submission_rejects_overlong_text_before_persistence(SurveyQuestionType type)
     {
         var survey = SurveyForWizard(out var questionId, out _);
         survey.Questions.Single(q => q.Id == questionId).Type = type;
@@ -3353,9 +3405,11 @@ public class SurveyServiceTests
             ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, "en",
             [TextAns(questionId, new string('x', 4001))]);
 
-        var act = async () => await CreateService().SubmitResponseAsync(submission, TestContext.Current.CancellationToken);
+        var result = await CreateService().AdvanceWizardAsync(
+            WizardState(survey, submission), 1, back: false, submission.Answers, ct: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Survey answers are invalid.");
+        result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
+        result.InvalidAnswers.Should().BeEquivalentTo([questionId]);
         await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }

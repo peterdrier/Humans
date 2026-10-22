@@ -1063,25 +1063,6 @@ internal sealed class SurveyService(
             ct);
     }
 
-    public async Task SubmitResponseAsync(SurveySubmission submission, CancellationToken ct = default)
-    {
-        var prepared = await PrepareSubmissionAsync(submission, ct);
-        if (prepared.AlreadyCompleted)
-        {
-            throw new InvalidOperationException("This invitation has already submitted a response.");
-        }
-        if (prepared.MissingRequired.Count > 0)
-        {
-            throw new InvalidOperationException("Required survey questions are unanswered.");
-        }
-        if (prepared.InvalidAnswers.Count > 0)
-        {
-            throw new InvalidOperationException("Survey answers are invalid.");
-        }
-
-        await PersistResponseAsync(submission, prepared.VisibleAnswers, ct);
-    }
-
     private async Task<SubmissionPreparation> PrepareSubmissionAsync(
         SurveySubmission submission, CancellationToken ct)
     {

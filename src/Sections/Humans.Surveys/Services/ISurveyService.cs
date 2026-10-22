@@ -155,13 +155,6 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
         CancellationToken ct = default);
 
     /// <summary>
-    /// Finalises a wizard submission per its anonymity tier (see <see cref="SurveySubmission"/>),
-    /// dropping answers to questions hidden under branching. Validates the survey is Open and within
-    /// its answer window. Individual submissions are never audit-logged (privacy).
-    /// </summary>
-    Task SubmitResponseAsync(SurveySubmission submission, CancellationToken ct = default);
-
-    /// <summary>
     /// Advances the answering wizard one step from a posted page: captures the page's visible answers
     /// into <paramref name="state"/>, fires the path-specific first-advance funnel side effect,
     /// autosaves Identified drafts, validates required-visible questions, then navigates
