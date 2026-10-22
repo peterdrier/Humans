@@ -133,7 +133,6 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         return Task.CompletedTask;
     }
 
-    /// <summary>True when the principal came from a Backdoor API key rather than a sign-in cookie.</summary>
     /// <summary>
     /// An <c>[AllowAnonymous]</c> endpoint is reachable in any account state, with one exception: <c>Home/Index</c>
     /// is the public landing page and the member dashboard on one route, so a signed-in user is still routed by
@@ -144,6 +143,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
          || cad.ControllerTypeInfo.IsDefined(typeof(AllowAnonymousAttribute), true))
         && cad is not { ControllerName: "Home", ActionName: "Index" };
 
+    /// <summary>True when the principal came from a Backdoor API key rather than a sign-in cookie.</summary>
     internal static bool IsMachineRequest(ClaimsPrincipal user) =>
         string.Equals(user.Identity?.AuthenticationType, BackdoorAuthentication.SchemeName, StringComparison.Ordinal);
 }
