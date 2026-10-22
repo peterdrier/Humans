@@ -50,8 +50,7 @@ public sealed class EventRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetActiveCategoriesAsync_ReturnsOnlyActiveCategories()
     {
-        // Display ordering moved to the controller (display-sort-in-controllers);
-        // the repo returns the active set, order-agnostic.
+        // Ordering is the controller's job; the repo returns the active set, order-agnostic.
         var inactive = SeedCategory("Inactive", "inactive", 0, isActive: false);
         var second = SeedCategory("Second", "second", 2);
         var first = SeedCategory("First", "first", 1);
@@ -76,8 +75,7 @@ public sealed class EventRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetUserSubmissionsAsync_ReturnsOnlyIndividualEventsForSubmitter()
     {
-        // Newest-first ordering moved to the controller (display-sort-in-controllers);
-        // the repo returns the submitter's individual events, order-agnostic.
+        // Ordering is the controller's job; the repo returns the submitter's individual events.
         var category = SeedCategory("Workshop", "workshop", 1);
         var userId = Guid.NewGuid();
         var otherUserId = Guid.NewGuid();
@@ -145,9 +143,7 @@ public sealed class EventRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetEventsByStatusAsync_ReturnsEventsForStatus()
     {
-        // Submitted-at ordering moved to the moderation controller
-        // (display-sort-in-controllers); the repo returns the status set,
-        // order-agnostic.
+        // Ordering is the moderation controller's job; the repo returns the status set.
         var category = SeedCategory("Workshop", "workshop", 1);
         var older = SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, Instant.FromUtc(2026, 5, 1, 12, 0));
         var newer = SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, Instant.FromUtc(2026, 5, 2, 12, 0));
@@ -161,9 +157,7 @@ public sealed class EventRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetFavouritesWithEventsAsync_ReturnsOnlyApprovedEvents()
     {
-        // Start-at ordering moved to the schedule/API controllers
-        // (display-sort-in-controllers); the repo returns the approved-only set,
-        // order-agnostic.
+        // Ordering is the schedule/API controllers' job; the repo returns the approved-only set.
         var category = SeedCategory("Workshop", "workshop", 1);
         var userId = Guid.NewGuid();
         var later = SeedEvent(category.Id, userId, EventStatus.Approved, _clock.GetCurrentInstant(), startAt: Instant.FromUtc(2026, 7, 2, 10, 0));

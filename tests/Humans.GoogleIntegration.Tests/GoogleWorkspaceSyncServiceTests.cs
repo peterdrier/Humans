@@ -15,27 +15,10 @@ using NSubstitute.ExceptionExtensions;
 using Humans.GoogleIntegration.Services.Workspace;
 using Humans.GoogleIntegration.Data;
 
-// UserEmailMatch lives in the Profiles interface namespace, not DTOs.
-
 namespace Humans.GoogleIntegration.Tests;
 
-/// <summary>
-/// Pins the three high-value invariants of <see cref="GoogleWorkspaceSyncService"/>
-/// called out in the section-alignment Phase 2 audit:
-/// <list type="number">
-///   <item>All four gateway operations respect sync-mode — None means no Google call.</item>
-///   <item>HTTP 403 from Google during an Add sets <c>GoogleEmailStatus = Rejected</c>;
-///         transient errors (5xx) do not.</item>
-/// </list>
-/// Email-change status reset (Invariant 3) lives in <see cref="GoogleAdminService"/>
-/// (GoogleIntegration-owned, not Users/Profiles) and is covered in
-/// <see cref="GoogleAdminServiceTests"/> — see the test
-/// <c>LinkAccountAsync_WhenLinkingNewEmail_ResetsGoogleEmailStatusToUnknown</c>.
-/// </summary>
 public sealed class GoogleWorkspaceSyncServiceTests
 {
-    // ── Shared collaborator fakes ──────────────────────────────────────────────
-
     private readonly IGoogleGroupProvisioningClient _groupProvisioning =
         Substitute.For<IGoogleGroupProvisioningClient>();
 
@@ -83,8 +66,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
     private readonly GoogleWorkspaceSyncService _syncService;
     private readonly ILogger<GoogleWorkspaceSyncService> _logger = Substitute.For<ILogger<GoogleWorkspaceSyncService>>();
-
-    // ── Fixed test data ────────────────────────────────────────────────────────
 
     private static readonly Guid TestDriveFolderResourceId = Guid.Parse("aaaaaaaa-0002-0000-0000-000000000000");
     private static readonly Guid TestTeamId = Guid.Parse("bbbbbbbb-0001-0000-0000-000000000000");
@@ -141,10 +122,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
             clock,
             _logger);
     }
-
-    // ==========================================================================
-    // CreateSubfolderAsync
-    // ==========================================================================
 
     [HumansTheory]
     [Xunit.InlineData(null, "legacy@nobodies.team", "legacy@nobodies.team")]
@@ -286,10 +263,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .WithMessage("*backend error*");
     }
 
-    // ==========================================================================
-    // IsFolderReachableAsync
-    // ==========================================================================
-
     [HumansTheory]
     [Xunit.InlineData(true)]
     [Xunit.InlineData(false)]
@@ -303,10 +276,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
         (await _syncService.IsFolderReachableAsync("root-1", Xunit.TestContext.Current.CancellationToken))
             .Should().Be(found);
     }
-
-    // ==========================================================================
-    // RequestSyncAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task RequestSyncAsync_ValidFolderId_Enqueues()
@@ -324,10 +293,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
         await act.Should().ThrowAsync<ArgumentException>();
         _driveAccessSyncScheduler.DidNotReceiveWithAnyArgs().Enqueue(Arg.Any<string>());
     }
-
-    // ==========================================================================
-    // Invariant 1 — Gateway-mode gating
-    // ==========================================================================
 
     [HumansFact]
     public async Task AddUserToDriveAsync_WhenSyncModeIsNone_DoesNotCallGoogle()
@@ -446,10 +411,8 @@ public sealed class GoogleWorkspaceSyncServiceTests
     [HumansFact]
     public async Task AddUserToDriveAsync_When400NoGoogleAccount_MarksGoogleEmailRejected()
     {
-        // Issue nobodies-collective/Humans#677 — Drive's permissions.create
-        // returns HTTP 400 referencing SendNotificationEmail when the
-        // recipient is not on a Google domain. Must mark the owning user's
-        // GoogleEmailStatus as Rejected so the orchestrator stops retrying.
+        // Drive's permissions.create returns 400 referencing SendNotificationEmail when the recipient
+        // is not on a Google domain: mark the owner Rejected so the orchestrator stops retrying.
         _syncSettingsService
             .GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
             .Returns(SyncMode.AddAndRemove);
@@ -510,7 +473,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
     [HumansFact]
     public async Task AddUserToDriveAsync_RefusedPlusAddress_GrantsBaseAddressAndRecordsIt()
     {
-        // peterdrier/Humans#2037 — Drive can refuse local+tag@domain while the base address works.
+        // Drive can refuse local+tag@domain while the base address works.
         const string plusEmail = "alice+burn@example.org";
         var ct = Xunit.TestContext.Current.CancellationToken;
         _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
@@ -641,7 +604,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
     [HumansFact]
     public async Task AddUserToTeamResourcesAsync_ForAMergedAwayId_GrantsAndLogsAgainstTheSurvivor()
     {
-        // #1704: the outbox event names the archived id; the emails, the permission level and
+        // The outbox event names the archived id; the emails, the permission level and
         // the sync-log attribution all belong to the survivor the read resolved to.
         var archivedId = Guid.NewGuid();
         _syncSettingsService
@@ -702,10 +665,8 @@ public sealed class GoogleWorkspaceSyncServiceTests
     [HumansFact]
     public async Task AddUserToDriveAsync_WhenCreateFails_RecordsFailedSyncLogEntry()
     {
-        // Issue nobodies-collective/Humans#1099 — a failed Drive grant must
-        // still append a google_sync_log row (success: false) carrying the
-        // API error, matching GoogleGroupSyncService's failure rows, so the
-        // failure surfaces on the monitor pages and in the GDPR export.
+        // A failed Drive grant must still append a google_sync_log row (success: false) with the
+        // API error, so the failure surfaces on the monitor pages and in the GDPR export.
         _syncSettingsService
             .GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
             .Returns(SyncMode.AddAndRemove);
@@ -774,9 +735,8 @@ public sealed class GoogleWorkspaceSyncServiceTests
     [HumansFact]
     public async Task AddUserToDriveAsync_WhenGeneric400_DoesNotMarkGoogleEmailRejected()
     {
-        // Issue nobodies-collective/Humans#677 — generic 400 (malformed role,
-        // etc.) is NOT a target-rejection. The orchestrator must continue
-        // retrying these, so GoogleEmailStatus must not flip.
+        // A generic 400 (malformed role, etc.) is not a target rejection: the orchestrator keeps
+        // retrying, so GoogleEmailStatus must not flip.
         _syncSettingsService
             .GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
             .Returns(SyncMode.AddAndRemove);
@@ -829,13 +789,9 @@ public sealed class GoogleWorkspaceSyncServiceTests
     [HumansFact]
     public async Task AddUserToDriveAsync_WhenPreconditionCheckFailed_DoesNotMarkGoogleEmailRejected()
     {
-        // Issue nobodies-collective/Humans#677 — Drive returns HTTP 400
-        // "precondition check failed" for admin-configured policies like
-        // sharing-outside-domain restrictions on a shared drive, NOT just for
-        // missing Google accounts. The Cloud Identity Group path treats that
-        // phrase as a target-rejection, but the Drive path must not — flipping
-        // GoogleEmailStatus to Rejected would permanently silence retries for
-        // what is actually an admin-configuration issue affecting every user.
+        // Drive returns 400 "precondition check failed" for admin-configured policies (e.g.
+        // sharing outside the domain), not just missing accounts. Unlike the Cloud Identity path,
+        // Drive must not mark Rejected: that would permanently silence retries for a config issue.
         _syncSettingsService
             .GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
             .Returns(SyncMode.AddAndRemove);
@@ -886,11 +842,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
         await _identities.DidNotReceiveWithAnyArgs()
             .SetStatusFromSyncAsync(Guid.Empty, Arg.Any<string>(), default, Arg.Any<CancellationToken>());
     }
-
-    // ==========================================================================
-    // Issue nobodies-collective/Humans#945 — plus-address normalization (grant)
-    // and upfront inherited-permission exclusion (delete)
-    // ==========================================================================
 
     [HumansFact]
     public async Task AddUserToDriveAsync_WhenTargetIsPlusAddressedGmail_GrantsToCanonicalAddress()
@@ -955,11 +906,8 @@ public sealed class GoogleWorkspaceSyncServiceTests
     [HumansFact]
     public async Task RemoveExtraDriveAccessAsync_WhenPermissionHasInheritedComponent_ExcludesFromRemovalUpfront()
     {
-        // A permission that
-        // still 403s on delete because it carries an inherited component must
-        // never be selected for deletion in the first place — detect it
-        // upfront (IsDirectManagedPermission / HasInheritedComponent) instead
-        // of attempting the delete and persisting the failure afterward.
+        // A permission with an inherited component still 403s on delete, so it must never be
+        // selected for deletion: detect it upfront rather than persist the failure afterward.
         const string extraEmail = "extra@example.com";
         const string extraPermissionId = "perm-001";
 
@@ -1000,9 +948,8 @@ public sealed class GoogleWorkspaceSyncServiceTests
     [HumansFact]
     public async Task RemoveUserFromDriveAsync_WhenDeleteFails_RecordsFailedSyncLogEntry()
     {
-        // Issue nobodies-collective/Humans#1099 — a failed Drive revocation
-        // must still append a google_sync_log row (success: false) carrying
-        // the API error, matching GoogleGroupSyncService's failure rows.
+        // A failed Drive revocation must still append a google_sync_log row (success: false)
+        // carrying the API error, matching GoogleGroupSyncService's failure rows.
         const string extraEmail = "extra@example.com";
         const string extraPermissionId = "perm-001";
 
@@ -1034,12 +981,9 @@ public sealed class GoogleWorkspaceSyncServiceTests
     [HumansFact]
     public async Task DriveReconciliation_WhenMemberIsPlusAddressedGmail_RoundTripsToCorrectState()
     {
-        // AddUserToDriveAsync grants to the
-        // canonicalized Gmail address, but Drive's permissions.list always
-        // returns that same canonical form. Expected-member keys built from
-        // the member's raw plus-tagged stored email must be canonicalized the
-        // same way, or the member never resolves to Correct and thrashes
-        // grant/revoke every night.
+        // Drive lists the canonical Gmail address AddUserToDriveAsync granted to, so expected-member
+        // keys built from the raw plus-tagged email must be canonicalized the same way, or the
+        // member never resolves to Correct and thrashes grant/revoke every night.
         const string plusAddressedEmail = "alice+travel@gmail.com";
         const string canonicalEmail = "alice@gmail.com";
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -1157,7 +1101,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
     [HumansFact]
     public async Task SyncSingleResourceAsync_ExtraDriveMember_ResolvesIdentityFromAGmailAliasRow()
     {
-        // nobodies-collective/Humans#1101: Drive reports the canonical Gmail address while the
+        // Drive reports the canonical Gmail address while the
         // only user_emails row is a dotted "+tag" alias. Without an alias-keyed lookup the id
         // is dropped and the revocation is invisible to /Google/Human/{id} and the GDPR export.
         var departed = Guid.NewGuid();
@@ -1219,10 +1163,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
         extra.Email.Should().Be("olduser@gmail.com");
         extra.UserId.Should().Be(departed);
     }
-
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
 
     [HumansFact]
     public async Task SyncSingleResourceAsync_GroupDispatchCarriesManualTrigger()
@@ -1324,9 +1264,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
                 IsVerified = true, IsGoogle = true, GoogleEmailStatus = (LegacyGoogleEmailStatus)status }],
             [], [], null, []);
 
-    // ==========================================================================
-    // Admin retries: the service writes the audit entry
-    // ==========================================================================
+    // Admin retries: the service writes the audit entry.
 
     [HumansTheory]
     [Xunit.InlineData(true)]

@@ -72,12 +72,8 @@ public class BuildSubPeriodClassifierTests
     [HumansFact]
     public void BoundsFor_with_inverted_offsets_returns_empty_range_silently()
     {
-        // Documents the silent failure mode: when sub-period offsets are mis-ordered
-        // (e.g. FirstCrewStartOffset > SetupWeekStartOffset), BoundsFor returns a
-        // degenerate range where StartInclusive >= EndExclusive. Callers that filter
-        // with d >= start && d < end will produce zero results. No exception is thrown.
-        // The ascending-order guard on EventSettingsViewModel prevents this at the UI
-        // layer, but the classifier itself has no guard — this test makes that visible.
+        // Mis-ordered offsets give an empty range and no exception. Only the ordering guard on
+        // EventSettingsViewModel prevents it; this pins that the classifier itself has none.
         var inverted = DefaultSettings() with
         {
             FirstCrewStartOffset = -10, // inverted: later than SetupWeekStartOffset

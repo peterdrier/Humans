@@ -11,7 +11,7 @@ namespace Humans.Surveys.Tests.Authorization;
 
 /// <summary>
 /// Unit tests for <see cref="SurveyAuthorizationHandler"/> — the self-service approval gate's
-/// per-survey ownership check (Workgroups design §11). Direct GET/POST-by-id denial for a
+/// per-survey ownership check. Direct GET/POST-by-id denial for a
 /// non-owner, non-Board/Admin Human is the load-bearing case here.
 /// </summary>
 public sealed class SurveyAuthorizationHandlerTests
@@ -20,8 +20,6 @@ public sealed class SurveyAuthorizationHandlerTests
 
     private static readonly Guid AuthorId = Guid.NewGuid();
     private static readonly Guid OtherUserId = Guid.NewGuid();
-
-    // ── Edit ──────────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task Author_can_edit_their_own_draft()
@@ -52,8 +50,6 @@ public sealed class SurveyAuthorizationHandlerTests
         result.Should().BeTrue();
     }
 
-    // ── Submit ────────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Author_can_submit_their_own_draft()
     {
@@ -71,7 +67,7 @@ public sealed class SurveyAuthorizationHandlerTests
     [HumansFact]
     public async Task BoardOrAdmin_cannot_submit_someone_elses_draft()
     {
-        // Submit is author-only, regardless of any Board/Admin role also held (design §11).
+        // Submit is author-only, regardless of any Board/Admin role also held.
         var result = await EvaluateAsync(
             CreateUserWithRole(RoleNames.Admin), Detail(SurveyStatus.Draft, AuthorId), SurveyOperation.Submit);
         result.Should().BeFalse();
@@ -83,8 +79,6 @@ public sealed class SurveyAuthorizationHandlerTests
         var result = await EvaluateAsync(CreateUser(AuthorId), Detail(SurveyStatus.PendingApproval, AuthorId), SurveyOperation.Submit);
         result.Should().BeFalse();
     }
-
-    // ── ViewResults ───────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task Author_can_view_their_own_results_once_closed()
@@ -115,8 +109,6 @@ public sealed class SurveyAuthorizationHandlerTests
         result.Should().BeTrue();
     }
 
-    // ── Preview ───────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Author_can_preview_their_own_survey_at_any_status()
     {
@@ -146,8 +138,6 @@ public sealed class SurveyAuthorizationHandlerTests
         var result = await EvaluateAsync(unauthenticated, Detail(SurveyStatus.Draft, AuthorId), SurveyOperation.Edit);
         result.Should().BeFalse();
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────
 
     private async Task<bool> EvaluateAsync(ClaimsPrincipal user, SurveyDetail resource, SurveyOperation op)
     {

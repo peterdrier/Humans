@@ -23,10 +23,6 @@ using NSubstitute;
 
 namespace Humans.Finance.Tests;
 
-/// <summary>
-/// finance_payment_details (Users decomposition commit 1): the IBAN read with its legacy fallback,
-/// the write, the admin reveal and its gates, the legacy copy, merge, export and erasure.
-/// </summary>
 public class PaymentDetailsTests
 {
     private const string Iban = "ES9121000418450200051332";
@@ -64,8 +60,6 @@ public class PaymentDetailsTests
         _users.GetRawUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(info);
         return info;
     }
-
-    // ─── Read and write ─────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task GetIban_FallsBackToTheLegacyProfileValue_UntilARowExists()
@@ -114,8 +108,6 @@ public class PaymentDetailsTests
         (await _sut.GetIbanAsync(archived, Ct)).Should().Be(Iban);
     }
 
-    // ─── Reveal ─────────────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task RevealIban_ReturnsTheIban_AndAuditsTheAdmin()
     {
@@ -142,8 +134,6 @@ public class PaymentDetailsTests
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(
             default, default!, default, default!, default(Guid));
     }
-
-    // ─── finance.iban-to-payment-details ────────────────────────────────────────
 
     [HumansFact]
     public async Task Migration_ListsEveryUncopiedLegacyIbanMasked_CopiesThem_AndIsIdempotent()
@@ -177,8 +167,6 @@ public class PaymentDetailsTests
         (await _repo.GetAsync(pending, Ct))!.Iban.Should().Be(Iban);
         (await _sut.GetIbanAsync(alreadyRow, Ct)).Should().BeNull(); // the removal is kept
     }
-
-    // ─── Merge, export, erasure ─────────────────────────────────────────────────
 
     [HumansFact]
     public async Task Merge_MovesTheSourceRow_WhenTheSurvivorHasNone()
@@ -229,8 +217,6 @@ public class PaymentDetailsTests
         (await _repo.GetAsync(id, Ct)).Should().BeNull();
         (await _sut.ContributeForUserAsync(id, Ct)).Single().Data.Should().BeNull();
     }
-
-    // ─── Controller and card ────────────────────────────────────────────────────
 
     [HumansFact]
     public void RevealIban_IsAdminOnly_PostAndAntiforgery()

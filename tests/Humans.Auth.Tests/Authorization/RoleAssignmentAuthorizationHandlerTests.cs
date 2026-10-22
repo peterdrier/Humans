@@ -8,12 +8,6 @@ using Xunit;
 
 namespace Humans.Auth.Tests.Authorization;
 
-/// <summary>
-/// Unit tests for RoleAssignmentAuthorizationHandler — service-layer enforcement
-/// for role assignment and removal operations.
-/// Tests cover: Admin override, Board/HumanAdmin per-role checks, system principal,
-/// and denial for unauthorized users.
-/// </summary>
 public sealed class RoleAssignmentAuthorizationHandlerTests
 {
     private readonly RoleAssignmentAuthorizationHandler _handler = new();

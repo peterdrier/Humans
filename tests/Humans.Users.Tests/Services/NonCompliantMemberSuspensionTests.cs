@@ -16,9 +16,8 @@ using Humans.Users.Tests.Infrastructure;
 namespace Humans.Users.Tests.Services;
 
 /// <summary>
-/// The body of the nightly non-compliance sweep. The job class
-/// itself stays in <c>Humans.Infrastructure</c> because Hangfire pins its serialized type
-/// name; what is left of it is a start log, a try/catch and a failure metric.
+/// The nightly sweep's body: the job class stays in <c>Humans.Infrastructure</c> because
+/// Hangfire pins its serialized type name.
 /// </summary>
 public class NonCompliantMemberSuspensionTests : IDisposable
 {
@@ -268,10 +267,6 @@ public class NonCompliantMemberSuspensionTests : IDisposable
             Arg.Any<Guid?>(),
             Arg.Any<string?>());
     }
-
-    // ------------------------------------------------------------------
-    // Helpers
-    // ------------------------------------------------------------------
 
     private User SetupUser()
     {

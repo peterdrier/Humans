@@ -5,20 +5,10 @@ using Humans.Tickets.Domain;
 namespace Humans.Tickets.Tests.Enums;
 
 /// <summary>
-/// The Tickets half of <c>Humans.Domain.Tests</c>' <c>EnumStringStabilityTests</c>, moved
-/// here at the section's G5 move: <see cref="TicketSyncStatus"/> and
-/// <see cref="TicketTransferStatus"/> / <see cref="TicketTransferVendorResult"/> are internal
-/// to <c>Humans.Tickets</c>, and <see cref="TicketAttendeeStatus"/> /
-/// <see cref="TicketPaymentStatus"/> live on the contracts leaf — none of them is nameable
-/// from <c>Humans.Domain.Tests</c> any more (G5-SECTION-TEMPLATE.md step 5, Budget's rule).
+/// All five are persisted with <c>HasConversion&lt;string&gt;()</c>: renaming a member leaves the OLD
+/// string in the column. A rename needs a migration that UPDATEs the stored values. A <c>[Fact]</c>
+/// rather than a theory: a public test method cannot take an internal enum (CS0051).
 /// </summary>
-/// <remarks>
-/// All five are persisted with <c>HasConversion&lt;string&gt;()</c>, so a rename leaves the
-/// old string in the column. This row is the only thing between that and a silent data
-/// mismatch — it moves with the enum, it is never deleted. A <c>[Fact]</c> rather than a
-/// theory: a public test method cannot take an internal enum type as a parameter (CS0051,
-/// Issues' fold).
-/// </remarks>
 public class TicketEnumStringStabilityTests
 {
     [HumansFact]

@@ -23,11 +23,6 @@ using Xunit;
 
 namespace Humans.Email.Tests.Services;
 
-/// <summary>
-/// The outbox drain. It moved out of <c>ProcessEmailOutboxJob</c> and behind
-/// <see cref="IEmailOutboxProcessor"/> at the section's G5 move —
-/// what is left of the job is one call plus a metric.
-/// </summary>
 public class EmailOutboxProcessorTests : IDisposable
 {
     private readonly DbContextOptions<EmailDbContext> _options;
@@ -35,9 +30,8 @@ public class EmailOutboxProcessorTests : IDisposable
     private readonly IEmailTransport _transport;
     private readonly ICampaignWrite _campaignService;
     private readonly FakeClock _clock;
-    // Substituted rather than built: the concrete HumansMetricsService moved to Humans.Web at
-    // G5 lane 5b-6 and this section may not reference it. Nothing here asserts on metrics —
-    // OutboxEmailServiceTests already used the substitute.
+    // Substituted: the concrete HumansMetricsService lives in Humans.Web, which this section
+    // may not reference. Nothing here asserts on metrics.
     private readonly IHumansMetrics _metrics;
     private readonly MetersService _meters;
     private readonly IOptions<EmailSettings> _settings;
@@ -60,8 +54,8 @@ public class EmailOutboxProcessorTests : IDisposable
         _meters = new MetersService(Substitute.For<ILogger<MetersService>>());
         _settings = Options.Create(new EmailSettings { OutboxBatchSize = 10, OutboxMaxRetries = 10 });
         _repo = new EmailOutboxRepository(new TestDbContextFactory<EmailDbContext>(_options));
-        // Settings is its own section (#866 G5): its repository, service and
-        // DbContext are internal to it, so this job test substitutes the contract.
+        // Settings' repository, service and DbContext are internal to it, so this test
+        // substitutes the contract.
         _settingsStore = Substitute.For<ISettingsService>();
         _outboxService = new EmailOutboxService(_repo, _settingsStore, _settings, _clock, Substitute.For<IAuditLogService>());
 
@@ -361,7 +355,7 @@ public class EmailOutboxProcessorTests : IDisposable
     {
         // A daily-count write failure is analytics-layer noise, not a delivery
         // failure — it must never flip an already-sent message back to Failed
-        // and queue it for a duplicate resend (Codex #1758 finding).
+        // and queue it for a duplicate resend.
         var message = new EmailOutboxMessage
         {
             Id = Guid.NewGuid(),
@@ -399,7 +393,7 @@ public class EmailOutboxProcessorTests : IDisposable
         // Batch starts just before midnight UTC; the throttle delay between sends
         // pushes later messages in the same batch past midnight. Each outcome must
         // be tallied under the day it actually landed on, not the batch's start
-        // day (Codex #1758 finding).
+        // day.
         var clock = new FakeClock(Instant.FromUtc(2026, 3, 14, 23, 59, 0))
         {
             AutoAdvance = Duration.FromSeconds(40)

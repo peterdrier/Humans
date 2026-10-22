@@ -12,7 +12,7 @@ using Xunit;
 namespace Humans.Holded.Tests.Services;
 
 /// <summary>
-/// Wire shape of the v2 sales-document pipeline (nobodies-collective/Humans#1029). Field names
+/// Wire shape of the v2 sales-document pipeline. Field names
 /// are locked against <c>https://api.holded.com/openapi/api2.json</c> and a live read of the
 /// account's documents (2026-08-19): <c>items[].account</c> carries the chart account's
 /// <b>id</b>, and <c>items[].taxes</c> carries sales tax keys such as <c>s_iva_21</c>.

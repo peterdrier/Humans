@@ -37,8 +37,6 @@ public sealed class TicketRepositoryTests : IDisposable
         _dbContext.Dispose();
     }
 
-    // ── GetSyncStateAsync / PersistSyncStateAsync ────────────────────────────
-
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
@@ -123,8 +121,6 @@ public sealed class TicketRepositoryTests : IDisposable
         reloaded.LastSyncAt.Should().BeNull();
     }
 
-    // ── UpsertOrdersAsync ────────────────────────────────────────────────────
-
     [HumansFact(Timeout = 10000)]
     public async Task UpsertOrdersAsync_InsertsNewRowsAndUpdatesExisting()
     {
@@ -181,8 +177,6 @@ public sealed class TicketRepositoryTests : IDisposable
         rows[0].TotalAmount.Should().Be(99m);
         rows[1].VendorOrderId.Should().Be("ord_new");
     }
-
-    // ── GetMatchedAttendeesForEventAsync ─────────────────────────────────────
 
     [HumansFact]
     public async Task GetMatchedAttendeesForEventAsync_FiltersToEventAndMatchedOnly()
@@ -245,8 +239,6 @@ public sealed class TicketRepositoryTests : IDisposable
         rows[0].MatchedUserId.Should().Be(matchedUserId);
         rows[0].Status.Should().Be(TicketAttendeeStatus.Valid);
     }
-
-    // ── GetUnmatchedActiveAttendeesAsync ─────────────────────────────────────
 
     [HumansFact]
     public async Task GetUnmatchedActiveAttendeesAsync_ReturnsOnlyValidAndCheckedIn_WithEmail_AndNullMatch()
@@ -371,8 +363,6 @@ public sealed class TicketRepositoryTests : IDisposable
         result.Should().ContainSingle(a => a.Id == includedId);
     }
 
-    // ── ApplyCheckInsAsync ───────────────────────────────────────────────────
-
     [HumansFact]
     public async Task ApplyCheckInsAsync_SetsEarliestScan_IsWriteOnce_AndSkipsUnknownTickets()
     {
@@ -436,11 +426,8 @@ public sealed class TicketRepositoryTests : IDisposable
         b.CheckedInAt.Should().BeNull();
     }
 
-    // ── GetAttendeeByIdAsync + GetVendorTicketIdsForOrderAsync ───────────────
-
-    // Regression: peterdrier/Humans#537 included TicketOrder->Attendees under
-    // AsNoTracking, which forms a cycle and EF rejects at query translation.
-    // The fix splits sibling lookup into its own query.
+    // Regression: including TicketOrder->Attendees under AsNoTracking forms a cycle EF rejects
+    // at query translation, so the sibling lookup is its own query.
     [HumansFact]
     public async Task GetAttendeeByIdAsync_WithSiblingAttendees_DoesNotThrow()
     {
@@ -556,8 +543,6 @@ public sealed class TicketRepositoryTests : IDisposable
         result.Should().BeEquivalentTo("tkt_a", "tkt_b");
     }
 
-    // ── GetAttendeesPageAsync — barcode search ───────────────────────────────
-
     [HumansFact]
     public async Task GetAttendeesPageAsync_SearchByBarcode_ReturnsOnlyMatchingAttendee()
     {
@@ -617,8 +602,6 @@ public sealed class TicketRepositoryTests : IDisposable
         rows.Should().ContainSingle(r => r.Id == barcodeId);
     }
 
-    // ── HasEventTicketAsync ──────────────────────────────────────────────────
-
     [HumansFact]
     public async Task HasEventTicketAsync_IsAttendeeOnly_PaidOrderWithoutAttendeeRowIsNotAHolding()
     {
@@ -667,8 +650,6 @@ public sealed class TicketRepositoryTests : IDisposable
         (await _repo.HasEventTicketAsync(holderId, "ev_a", ct)).Should().BeTrue();
         (await _repo.HasEventTicketAsync(holderId, "ev_b", ct)).Should().BeFalse();
     }
-
-    // ── EraseUserPiiAsync + sync upsert guard — nobodies-collective/Humans#1178 ──
 
     [HumansFact]
     public async Task EraseUserPiiAsync_ThenUpsertOrdersAsync_DoesNotRestorePii_ButOtherFieldsStillSync()
@@ -808,9 +789,9 @@ public sealed class TicketRepositoryTests : IDisposable
     [HumansFact]
     public async Task UpsertOrdersAsync_LegacyTombstonedRow_KeepsTombstoneAndStampsPiiErasedAt()
     {
-        // Regression for nobodies-collective/Humans#1178: a row erased before PiiErasedAt
-        // existed lands with the column NULL on migration. The guard must still recognise
-        // the tombstone via name/email and self-heal the column, not read it as never-erased.
+        // Regression: a row erased before PiiErasedAt existed lands with the column NULL on
+        // migration. The guard must still recognise the tombstone via name/email and self-heal
+        // the column, not read it as never-erased.
         var userId = Guid.NewGuid();
         _dbContext.TicketOrders.Add(new TicketOrder
         {

@@ -126,7 +126,7 @@ public class OnboardingWidgetStateTests
     [HumansFact]
     public async Task StubProfile_ReturnsNames()
     {
-        // The bug fix: a Stub profile (created by EnsureStubProfileAsync at
+        // A Stub profile (created by EnsureStubProfileAsync at
         // signup) means the user hasn't filled in legal name yet — they must
         // hit the Names step before the consent flow can write a record.
         var userId = Guid.NewGuid();

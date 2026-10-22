@@ -17,11 +17,8 @@ using Stripe;
 namespace Humans.Stripe.Tests.Services;
 
 /// <summary>
-/// The connector's read/write contract: a read returns <c>null</c> for the cases the section
-/// checks and propagates everything else (an authentication error, a rate limit, a transport
-/// failure); the write throws. Unconfigured guards run before client construction; configured
-/// reads use the real SDK over an isolated HTTP transport without network calls.
-/// A read that throws where its siblings return null is the defect these tests exist to catch.
+/// A read returns <c>null</c> for the cases the section checks and propagates everything else; the
+/// write throws. A read that throws where its siblings return null is the defect these tests catch.
 /// </summary>
 public class StripeServiceContractTests
 {
@@ -35,8 +32,6 @@ public class StripeServiceContractTests
         var log = new CapturingLogger<StripeService>();
         return (new StripeService(Options.Create(settings), log), log);
     }
-
-    // ── Reads return null for the cases the section checks ───────────────────
 
     [HumansFact]
     public async Task GetPaymentDetails_returns_null_when_tickets_key_unset()
@@ -248,8 +243,6 @@ public class StripeServiceContractTests
         svc.ParseStoreCheckoutEvent(payload, "not-a-signature").Should().BeNull();
     }
 
-    // ── The write throws ────────────────────────────────────────────────────
-
     [HumansTheory]
     [InlineData(0)]
     [InlineData(-0.01)]
@@ -274,8 +267,6 @@ public class StripeServiceContractTests
 
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
-
-    // ── Categorisation and session projection ───────────────────────────────
 
     [HumansTheory]
     [InlineData("checkout.session.completed", StoreCheckoutEventKind.CheckoutSessionCompleted)]
@@ -354,8 +345,6 @@ public class StripeServiceContractTests
                 .Session!.OrderId.Should().BeNull();
         }
     }
-
-    // ── Helpers ─────────────────────────────────────────────────────────────
 
     private static string SessionPayload(
         string eventType, Guid? orderId = null, string? metadataJson = null)

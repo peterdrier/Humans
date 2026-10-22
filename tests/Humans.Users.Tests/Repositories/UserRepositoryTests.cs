@@ -52,10 +52,6 @@ public sealed class UserRepositoryTests : IDisposable
         return user;
     }
 
-    // ==========================================================================
-    // SetLastLoginAsync (A1 — single owner of the login stamp)
-    // ==========================================================================
-
     [HumansFact]
     public async Task SetLastLoginAsync_StampsLastLoginAt_AndReturnsTrue()
     {
@@ -78,10 +74,6 @@ public sealed class UserRepositoryTests : IDisposable
 
         result.Should().BeFalse();
     }
-
-    // ==========================================================================
-    // SetDeletionPendingAsync / ClearDeletionAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task SetDeletionPendingAsync_SetsBothFieldsAndReturnsTrue()
@@ -115,10 +107,6 @@ public sealed class UserRepositoryTests : IDisposable
         reloaded.DeletionScheduledFor.Should().BeNull();
         reloaded.DeletionEligibleAfter.Should().BeNull();
     }
-
-    // ==========================================================================
-    // ApplyExpiredDeletionAnonymizationAsync — deletes AspNetUserLogins
-    // ==========================================================================
 
     [HumansFact]
     public async Task ApplyExpiredDeletionAnonymizationAsync_RemovesAspNetUserLoginsForUser()

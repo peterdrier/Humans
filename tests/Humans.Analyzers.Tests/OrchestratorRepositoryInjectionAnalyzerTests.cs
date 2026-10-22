@@ -5,10 +5,8 @@ namespace Humans.Analyzers.Tests;
 
 public class OrchestratorRepositoryInjectionAnalyzerTests
 {
-    // IOrchestrator and IApplicationService live in Humans.Base.Interfaces;
-    // IRepository in Humans.Base.Interfaces.Repositories; UsersDbContext
-    // in Humans.Infrastructure.Data. All four are stubbed so the analyzer can
-    // resolve them — production builds reference them transitively.
+    // IOrchestrator, IApplicationService, IRepository and UsersDbContext are stubbed so the
+    // analyzer can resolve them by name.
     private const string Stubs = """
         namespace Humans.Base.Interfaces
         {

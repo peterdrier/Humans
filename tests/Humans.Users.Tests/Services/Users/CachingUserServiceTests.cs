@@ -15,11 +15,6 @@ using Humans.Users.Tests.Infrastructure;
 
 namespace Humans.Users.Tests.Services.Users;
 
-/// <summary>
-/// Tests pinning the CachingUserService decorator contract: dict
-/// hit on cold/warm, write-then-read consistency, concurrent reads, and that
-/// each of the 8 contributing tables flows through to UserInfo.
-/// </summary>
 public class CachingUserServiceTests
 {
     private readonly IUserManagement _inner = Substitute.For<IUserManagement>();
@@ -173,8 +168,8 @@ public class CachingUserServiceTests
     [HumansFact]
     public async Task CommittedLegacyPreferenceErasure_FinishesCacheRefreshDespiteRequestCancellation()
     {
-        // Email owns the live preferences since Users decomposition commit 14; the frozen legacy rows
-        // are deleted only by erasure, and the cached legacy slice must follow that delete.
+        // Email owns the live preferences; the frozen legacy rows are deleted only by erasure,
+        // and the cached legacy slice must follow that delete.
         var testCt = Xunit.TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
         var preference = new CommunicationPreference
@@ -729,12 +724,6 @@ public class CachingUserServiceTests
         (await sut.GetUserInfoAsync(u2, Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
-    // ==========================================================================
-    // SearchUsersAsync — per-record matcher buckets, pre-filter rules,
-    // admin GUID short-circuit. The matcher reads from the cached UserInfo dict;
-    // tests prime the cache via GetUserInfoAsync then invoke SearchUsersAsync.
-    // ==========================================================================
-
     private static UserInfo BuildSearchableUserInfo(
         Guid userId,
         string? burnerName = null,
@@ -987,11 +976,8 @@ public class CachingUserServiceTests
     [HumansFact]
     public async Task SearchUsersAsync_PublicAll_GuidQuery_ExcludesRejected()
     {
-        // The by-id fast path skips the PersonSearchFields mask, which only governs which
-        // text fields are matched — it does NOT skip the eligibility gate. A rejected
-        // profile is as unresolvable by GUID as it is by name
-        // (SearchUsersAsync_PublicAll_ExcludesRejected): global search never hands
-        // out a rejected human's id.
+        // The by-id fast path skips the PersonSearchFields mask (which text fields match), not
+        // the eligibility gate: global search never hands out a rejected human's id.
         var userId = Guid.NewGuid();
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(userId, burnerName: "Alice", isRejected: true));
@@ -1071,9 +1057,7 @@ public class CachingUserServiceTests
         results[0].MatchedEmail.Should().Be("alice@example.com");
     }
 
-    // --- Profile-storage consolidation: decorator delegates to inner and
-    // refreshes the cached UserInfo slice. RefreshEntryAsync reloads via
-    // _inner.GetUserInfoAsync, so StubRefreshEntry overrides that return.
+    // RefreshEntryAsync reloads via _inner.GetUserInfoAsync, so StubRefreshEntry overrides that return.
 
     private static UserInfo UserInfoFor(Guid userId, Profile? profile) =>
         UserInfoFactory.Create(
@@ -1403,10 +1387,6 @@ public class CachingUserServiceTests
         target.Profile!.BurnerName.Should().Be("Target Burner");
     }
 
-    // ==================================================================
-    // Merge chain: MergedUserIds and the raw reads (#1704)
-    // ==================================================================
-
     /// <summary>Row builder for chain tests: a plain row, a merge tombstone, or a GDPR-erased row.</summary>
     private static UserInfo ChainRow(Guid id, Guid? mergedTo = null, bool gdprErased = false) =>
         UserInfoFactory.Create(
@@ -1498,8 +1478,7 @@ public class CachingUserServiceTests
     public async Task GetUserInfosAsync_KeysByTheRequestedIdAndValuesByTheSurvivor()
     {
         // Asked for all three ids of an A→B→C chain: three entries, every one of them C.
-        // Keying by the survivor instead would turn infos[a] into a miss, which is the
-        // failure this change exists to remove.
+        // Keying by the survivor instead would turn infos[a] into a miss.
         var (a, b, c, _) = SeedChain();
         var sut = CreateSut();
 
@@ -1528,7 +1507,7 @@ public class CachingUserServiceTests
     [HumansFact]
     public async Task GetUserInfoAsync_DoesNotTreatALiveMemberNamedDeletedUserAsErased()
     {
-        // nobodies-collective/Humans#1742: a burner/display name a member typed themselves
+        // A burner/display name a member typed themselves
         // ("Deleted User") must never read as GDPR-erased — only the minted tombstone email
         // or the complete legacy name tombstone does.
         var userId = Guid.NewGuid();
@@ -1645,10 +1624,6 @@ public class CachingUserServiceTests
 
         rowA!.MergedUserIds.Should().Equal([b], "the cycle guard stops the walk, it does not hang");
     }
-
-    // ==================================================================
-    // AllUserIds and tombstones in search (#1704)
-    // ==================================================================
 
     [HumansFact]
     public async Task AllUserIds_OnAResolvedRecord_ListsTheSurvivorFirstThenTheWholeChain()

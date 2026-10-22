@@ -21,7 +21,7 @@ using TestContext = Xunit.TestContext;
 namespace Humans.Settings.Tests;
 
 /// <summary>
-/// A blank id on save mints a brand-new cycle (nobodies-collective/Humans#1631),
+/// A blank id on save mints a brand-new cycle,
 /// and a save that deactivates a row leaves it reachable by id. There is no GET to
 /// re-render, so every failure branch is post-redirect-get with the rule in the flash.
 /// </summary>
@@ -226,8 +226,7 @@ public sealed class SettingsAdminControllerTests
     [HumansFact]
     public async Task Index_Post_SavesWithTheAuthenticatedActor()
     {
-        // The controller resolves the actor from the claims principal — no separate
-        // Users lookup needed just to attribute the audit entry (peterdrier/Humans#1628).
+        // The controller resolves the actor from the claims principal, with no Users lookup.
         var sut = BuildSut();
         var actorId = Guid.Parse(((ClaimsIdentity)sut.HttpContext.User.Identity!)
             .FindFirst(ClaimTypes.NameIdentifier)!.Value);

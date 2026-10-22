@@ -3,9 +3,8 @@ using Humans.Auth.Services;
 using Microsoft.Extensions.Caching.Memory;
 using Xunit;
 
-// The subject is internal to Humans.Auth; this project reaches it through that
-// assembly's InternalsVisibleTo. Run against a real MemoryCache rather than a
-// substitute — what is worth pinning is that consume and release agree on the key.
+// Runs against a real MemoryCache rather than a substitute: what is worth pinning is that
+// consume and release agree on the key.
 namespace Humans.Auth.Tests.Services;
 
 public sealed class MagicLinkRateLimiterTests : IDisposable
@@ -48,13 +47,9 @@ public sealed class MagicLinkRateLimiterTests : IDisposable
     [HumansFact]
     public async Task TryConsumeTokenAsync_ConcurrentRedemptions_ExactlyOneWins()
     {
-        // Single-use has to hold against two POSTs arriving together, not just against
-        // a replay minutes later. IMemoryCache has no atomic add, so the reservation is
-        // only exclusive because TryReserveAsync takes read and write under one lock —
-        // remove that and several racers can each believe they created the entry.
-        //
-        // A partial guard: against a non-atomic implementation it goes red only on some
-        // runs. With the lock there is exactly one winner every round, so it is never flaky.
+        // Single-use must hold against two simultaneous POSTs. IMemoryCache has no atomic add, so
+        // only TryReserveAsync's lock makes the reservation exclusive. A partial guard: without the
+        // lock it goes red only on some runs; with it there is one winner every round, never flaky.
         const int Rounds = 25;
         const int Racers = 64;
 

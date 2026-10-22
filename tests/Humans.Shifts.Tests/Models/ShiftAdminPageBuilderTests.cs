@@ -16,15 +16,8 @@ using Humans.Users.Contracts;
 namespace Humans.Shifts.Tests.Models;
 
 /// <summary>
-/// Tests for <see cref="ShiftAdminPageBuilder"/>'s private "Incomplete onboarding"
-/// Pending-list filter, reached only through <see cref="ShiftAdminPageBuilder.BuildAsync"/>
-/// when <see cref="ShiftAdminPageRequest.IncompleteOnboarding"/> is true. The filter keeps
-/// only pending signups whose user is NOT in the "has all required consents" set returned by
-/// <see cref="IMembershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync"/>.
-///
-/// Ported from the deleted
-/// tests/Humans.Application.Tests/Services/Shifts/ShiftSignupServiceFilterIncompleteOnboardingTests.cs
-/// (PR nobodies-collective/Humans#820 moved the logic from the service into this Web-layer builder).
+/// The private "Incomplete onboarding" pending filter, reached only through
+/// <see cref="ShiftAdminPageBuilder.BuildAsync"/>: it keeps pending signups whose user lacks a required consent.
 /// </summary>
 public sealed class ShiftAdminPageBuilderTests
 {
@@ -198,10 +191,6 @@ public sealed class ShiftAdminPageBuilderTests
             SystemTeamIds.Volunteers,
             Arg.Any<CancellationToken>());
     }
-
-    // ============================================================
-    // Helpers
-    // ============================================================
 
     private void StubRotas(params ShiftAdminRota[] rotas) =>
         _shiftManagement.GetRotasByDepartmentAsync(Department.Id, Event.Id)

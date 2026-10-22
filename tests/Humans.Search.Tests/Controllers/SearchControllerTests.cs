@@ -159,10 +159,6 @@ public sealed class SearchControllerTests
         log[3].Should().BeNull();
     }
 
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
-
     private async Task<GlobalSearchViewModel> IndexAsync(string? query, SearchResultType? filter)
     {
         var result = await BuildController().Index(query, filter, TestContext.Current.CancellationToken);

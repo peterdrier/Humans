@@ -8,11 +8,9 @@ using Humans.Workgroups.Tests.Infrastructure;
 namespace Humans.Workgroups.Tests.Services;
 
 /// <summary>
-/// The copy and the per-kind routing policy Workgroups stamps on its own notices, plus the
-/// gallery-coverage gate: every template <see cref="WorkgroupsEmails"/> can build has a
-/// sample in <see cref="WorkgroupsEmailPreviews"/>, so a new notice kind cannot ship
-/// invisible (peterdrier/Humans#1651). Transport (opt-out, unsubscribe, wrapping, enqueue)
-/// stays Email's, covered there.
+/// The copy and per-kind routing policy Workgroups stamps on its notices, plus the gallery-coverage
+/// gate: every template <see cref="WorkgroupsEmails"/> can build has a sample in
+/// <see cref="WorkgroupsEmailPreviews"/>, so a new notice kind cannot ship invisible.
 /// </summary>
 public sealed class WorkgroupsEmailsTests
 {

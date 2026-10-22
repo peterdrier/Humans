@@ -160,7 +160,7 @@ public class GuideSegmenterTests
     [HumansFact]
     public void Segment_HeadingWithGlossaryLinkAndRoleParenthetical_PreservesLink()
     {
-        // Regression: the heading has a markdown link whose URL is parenthesised,
+        // The heading has a markdown link whose URL is parenthesised,
         // and a trailing role parenthetical. The segmenter must not mangle either — the
         // link's URL must survive so Markdig can render it, and the captured
         // parenthetical must be the trailing role, never the link target.
@@ -180,8 +180,7 @@ public class GuideSegmenterTests
     [HumansFact]
     public void Segment_ShippedCampsLeadHeading_CarriesTheCampLeadToken()
     {
-        // End-to-end on the real file: nobodies-collective/Humans#1035 was invisible
-        // precisely because this heading resolved to no privilege at all.
+        // End-to-end on the real file: this heading once resolved to no privilege at all.
         var markdown = File.ReadAllText(
             Path.Combine(LocateRepoRoot(), "docs", "guide", "Camps.md"));
 
@@ -219,10 +218,8 @@ public class GuideSegmenterTests
     [HumansFact]
     public void Segment_FencedH2InsideRoleBlock_DoesNotEndTheBlock()
     {
-        // Raised by Codex on peterdrier/Humans#1655 and reproduced before the fix: an untracked
-        // "## …" inside a fence closed the Board/Admin block, and everything after it went out
-        // as unscoped — to anonymous readers included. The old HTML preprocessor had the same
-        // hole; N7 carried it over verbatim until this.
+        // An untracked "## …" inside a fence must not close the Board/Admin block, or everything
+        // after it goes out unscoped — to anonymous readers included.
         const string input = """
             ## As a Board member / Admin (Teams Admin)
 
@@ -320,7 +317,7 @@ public class GuideSegmenterTests
     [HumansFact]
     public void Segment_BacktickOpenerWithABacktickInItsInfoString_IsNotAFence()
     {
-        // The leak inverted, raised by Codex on peterdrier/Humans#1655. CommonMark forbids a
+        // The leak inverted. CommonMark forbids a
         // backtick inside a backtick fence's info string, so this line opens no block and the
         // heading below it is a real heading. A segmenter that entered fence state here would
         // swallow that heading and serve the Board/Admin block to everyone.

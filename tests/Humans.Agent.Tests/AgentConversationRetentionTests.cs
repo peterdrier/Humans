@@ -12,13 +12,6 @@ using NSubstitute;
 
 namespace Humans.Agent.Tests;
 
-/// <summary>
-/// The retention rule itself, which moved from <c>AgentConversationRetentionJob</c> into the
-/// section at the G5 move (nobodies-collective/Humans#866): the job is now a call plus a log
-/// line, and the cutoff, the purge and the last-run record all live behind
-/// <c>IAgentConversationRetention</c>. The job followed it into
-/// <c>Humans.Agent/Contracts/</c> at G5 lane 5b-5.
-/// </summary>
 public class AgentConversationRetentionTests
 {
     [HumansFact]

@@ -5,10 +5,8 @@ using Humans.Shifts.Models;
 namespace Humans.Shifts.Tests.Models;
 
 /// <summary>
-/// Display ordering for the coverage-pie row lives in the view-model
-/// assembly (memory/architecture/display-sort-in-controllers). The service
-/// returns natural <c>TeamName</c> order; the page builder applies the
-/// "promoted sub-team next to parent" rule before stuffing the view model.
+/// The service returns <c>TeamName</c> order; the page builder places each promoted
+/// sub-team next to its parent.
 /// </summary>
 public class ShiftBrowsePageBuilderPieSortTests
 {

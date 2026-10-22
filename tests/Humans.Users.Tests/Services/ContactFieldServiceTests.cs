@@ -251,7 +251,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task GetVisibleContactFields_FiltersFieldsByVisibility()
     {
-        // Arrange
         var ownerId = Guid.NewGuid();
         var viewerId = Guid.NewGuid();
         var profile = await CreateProfileWithFieldsAsync(ownerId);
@@ -262,10 +261,8 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             .Returns(false);
         SetupEmptyTeams();
 
-        // Act
         var result = await _service.GetVisibleContactFieldsAsync(ownerId, viewerId, TestContext.Current.CancellationToken);
 
-        // Assert - should only see AllActiveProfiles field
         result.Should().HaveCount(1);
         result[0].Label.Should().Be("Phone");
     }
@@ -324,15 +321,12 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task GetVisibleContactFields_SelfSeesAllFields()
     {
-        // Arrange
         var ownerId = Guid.NewGuid();
         var profile = await CreateProfileWithFieldsAsync(ownerId);
         StubUserInfo(ownerId, profile);
 
-        // Act
         var result = await _service.GetVisibleContactFieldsAsync(ownerId, ownerId, TestContext.Current.CancellationToken);
 
-        // Assert - should see all 4 fields
         result.Should().HaveCount(4);
     }
 
@@ -343,7 +337,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task SaveContactFields_CreatesNewFields()
     {
-        // Arrange
         var profile = await CreateProfileAsync(Guid.NewGuid());
         var fields = new List<ContactFieldEditDto>
         {
@@ -351,10 +344,8 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             new(null, ContactFieldType.Signal, null, "+1234567890", ContactFieldVisibility.MyTeams, 1)
         };
 
-        // Act
         await _service.SaveContactFieldsAsync(profile.Id, fields, TestContext.Current.CancellationToken);
 
-        // Assert
         var savedFields = await Db.ContactFields
             .Where(cf => cf.ProfileId == profile.Id)
             .ToListAsync(TestContext.Current.CancellationToken);
@@ -380,7 +371,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task SaveContactFields_UpdatesExistingFields()
     {
-        // Arrange
         var profile = await CreateProfileAsync(Guid.NewGuid());
         var existingField = new ContactField
         {
@@ -401,10 +391,8 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             new(existingField.Id, ContactFieldType.Phone, null, "+34 698765432", ContactFieldVisibility.BoardOnly, 0)
         };
 
-        // Act
         await _service.SaveContactFieldsAsync(profile.Id, fields, TestContext.Current.CancellationToken);
 
-        // Assert
         var savedField = await Db.ContactFields.AsNoTracking()
             .FirstOrDefaultAsync(cf => cf.Id == existingField.Id, TestContext.Current.CancellationToken);
         savedField!.Value.Should().Be("+34 698765432");
@@ -414,7 +402,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     [HumansFact(Timeout = 10000)]
     public async Task SaveContactFields_DeletesRemovedFields()
     {
-        // Arrange
         var profile = await CreateProfileAsync(Guid.NewGuid());
         var existingField = new ContactField
         {
@@ -433,7 +420,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         // Save empty list (delete all)
         await _service.SaveContactFieldsAsync(profile.Id, new List<ContactFieldEditDto>(), TestContext.Current.CancellationToken);
 
-        // Assert
         var remainingFields = await Db.ContactFields
             .Where(cf => cf.ProfileId == profile.Id)
             .ToListAsync(TestContext.Current.CancellationToken);
@@ -677,8 +663,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         };
         Db.Profiles.Add(profile);
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        // No store to populate; contact reads now resolve through UserInfo or IUserRepository.
 
         return profile;
     }

@@ -6,7 +6,7 @@ namespace Humans.Base.Tests.Hosting;
 
 /// <summary>
 /// Covers the part of <see cref="PreMigrationSnapshot"/> that decides whether a boot dumps at
-/// all (nobodies-collective/Humans#845). Taking the dump needs a live database and a
+/// all. Taking the dump needs a live database and a
 /// <c>pg_dump</c> binary, but the rule that actually protects the rollback point is pure
 /// filesystem bookkeeping: a failed migration crash-loops the container, so the snapshot has to
 /// belong to the deploy rather than the boot or the second restart archives the damage over it.
@@ -116,7 +116,7 @@ public sealed class PreMigrationSnapshotTests : IDisposable
     }
 
     /// <summary>
-    /// The gap nobodies-collective/Humans#989 closes: a genuine crash-loop retry, where the
+    /// A genuine crash-loop retry, where the
     /// deploy that took the marker still has not finished, keeps carrying its snapshot forward.
     /// </summary>
     [HumansFact]
@@ -146,7 +146,7 @@ public sealed class PreMigrationSnapshotTests : IDisposable
     }
 
     /// <summary>
-    /// The actual fix: when every migration recorded on the marker has since been applied, the
+    /// When every migration recorded on the marker has since been applied, the
     /// deploy that took it finished, so it is stale rather than a rollback point worth reusing.
     /// </summary>
     [HumansFact]
@@ -162,7 +162,7 @@ public sealed class PreMigrationSnapshotTests : IDisposable
     }
 
     /// <summary>
-    /// A marker taken before nobodies-collective/Humans#989 shipped has no frontier sidecar.
+    /// A marker taken before frontier sidecars existed has none.
     /// Unable to tell whether it is stale, it fails safe as the old unconditional carry-forward
     /// rather than risk losing a real rollback point.
     /// </summary>

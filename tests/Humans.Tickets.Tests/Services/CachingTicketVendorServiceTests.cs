@@ -127,10 +127,8 @@ public sealed class CachingTicketVendorServiceTests
         (await _decorator.GetEventSummaryAsync("ev_test", ct)).Should().BeSameAs(current);
     }
 
-    // Every other ITicketVendorService member forwards straight through, uncached — the
-    // decorator must not silently swallow one. One test per member, matching the port's
-    // exact signature, catches a member missing from WithInner as surely as a generic
-    // reflection sweep would, without needing to synthesize arbitrary argument values.
+    // Every other member forwards straight through, uncached. One test per member catches a
+    // member the decorator silently swallowed, without synthesizing reflection arguments.
 
     [HumansFact]
     public async Task GetOrdersAsync_ForwardsToInner()

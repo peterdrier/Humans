@@ -11,9 +11,8 @@ using NSubstitute;
 namespace Humans.Shifts.Tests.ViewComponents;
 
 /// <summary>
-/// Covers <see cref="ShiftsSearchResultViewComponent"/>: the global-search row for a rota.
-/// Callers pass a rota id and nothing else (nobodies-collective/Humans#1062), so fetching
-/// the rota and stitching the owning team's name is the behaviour.
+/// Callers pass a rota id and nothing else, so fetching the rota and stitching the owning
+/// team's name is the behaviour under test.
 /// </summary>
 public class ShiftsSearchResultViewComponentTests
 {

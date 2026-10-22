@@ -22,11 +22,6 @@ using Xunit;
 
 namespace Humans.Email.Tests.Controllers;
 
-/// <summary>
-/// <see cref="CommunicationPreferencesController"/>: the member's own
-/// <c>/Email/CommunicationPreferences</c> page and its update endpoint, moved from Users'
-/// <c>ProfileController</c> in Users decomposition commit 14.
-/// </summary>
 public class CommunicationPreferencesControllerTests
 {
     private readonly Guid _userId = Guid.NewGuid();

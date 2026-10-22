@@ -9,11 +9,6 @@ using NSubstitute;
 
 namespace Humans.Shifts.Tests.Models;
 
-/// <summary>
-/// <see cref="ShiftBrowsePageBuilder.BuildRowAsync"/> rebuilds a single shift's
-/// display item (plus the caller's signup status) for re-rendering one table row
-/// after a signup/cancel toggle, without rebuilding the whole browse page.
-/// </summary>
 public class ShiftBrowsePageBuilderRowTests
 {
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);

@@ -5,16 +5,9 @@ using Xunit;
 namespace Humans.GoogleIntegration.Tests.Enums;
 
 /// <summary>
-/// GoogleIntegration's share of the string-stored-enum guard:
-/// <see cref="GoogleResourceType"/>, <see cref="SyncMode"/>, <see cref="SyncServiceType"/>,
-/// <see cref="SyncAction"/> and <see cref="DrivePermissionLevel"/> live on
-/// <c>Humans.GoogleIntegration.Contracts</c>, so the guard belongs to the section that owns them
-/// (nobodies-collective/Humans#866).
-/// </summary>
-/// <remarks>
 /// All five are persisted with <c>HasConversion&lt;string&gt;()</c>: renaming a member leaves
 /// the OLD string in the column. A rename needs a migration that UPDATEs the stored values.
-/// </remarks>
+/// </summary>
 public class EnumStringStabilityTests
 {
     [HumansTheory]

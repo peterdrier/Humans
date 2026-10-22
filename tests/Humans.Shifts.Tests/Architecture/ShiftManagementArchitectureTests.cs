@@ -18,19 +18,9 @@ using ShiftManagementService = Humans.Shifts.Services.ShiftManagementService;
 
 namespace Humans.Shifts.Tests.Architecture;
 
-/// <summary>
-/// Architecture tests enforcing the §15 repository pattern for the
-/// <c>ShiftManagementService</c> portion of the Shifts section (issue nobodies-collective/Humans#541a).
-/// Sibling services (<c>ShiftSignupService</c>, <c>VolunteerTrackingService</c>)
-/// cover signup and user-oriented tracking workflows.
-/// </summary>
 public class ShiftManagementArchitectureTests
 {
-    /// <summary>
-    /// Asserts that <see cref="IShiftManagement"/> and <see cref="IShiftService"/> resolve to the same
-    /// scoped instance from the production DI registration — <c>Section.Register</c>
-    /// itself, not a test-built mirror of it.
-    /// </summary>
+    /// <summary>Resolved from the production <c>Section.Register</c>, not a test-built mirror of it.</summary>
     [HumansFact]
     public void IShiftManagement_And_IShiftManagementService_ResolveToSameInstance()
     {
@@ -44,11 +34,7 @@ public class ShiftManagementArchitectureTests
             because: "both interfaces must forward to the one ShiftManagementService per scope");
     }
 
-    /// <summary>
-    /// Asserts that <see cref="IVolunteerTrackingManagement"/> and <see cref="IVolunteerTrackingService"/> resolve to the same
-    /// scoped instance from the production DI registration — <c>Section.Register</c>
-    /// itself, not a test-built mirror of it.
-    /// </summary>
+    /// <summary>Resolved from the production <c>Section.Register</c>, not a test-built mirror of it.</summary>
     [HumansFact]
     public void IVolunteerTrackingManagement_And_IVolunteerTrackingService_ResolveToSameInstance()
     {
@@ -62,10 +48,6 @@ public class ShiftManagementArchitectureTests
             because: "both interfaces must forward to the one VolunteerTrackingService per scope");
     }
 
-    /// <summary>
-    /// The section's production registrations, plus stand-ins for the other
-    /// sections' contracts the Shifts services are constructed with.
-    /// </summary>
     private static ServiceProvider BuildProvider()
     {
         var services = new ServiceCollection();

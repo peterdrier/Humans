@@ -68,9 +68,8 @@ public class GuideRendererTests
     [HumansFact]
     public void Render_CarriesNoRoleMarkupAtAll()
     {
-        // The role model used to survive into the HTML as data-guide-* attributes, because the
-        // filter ran after rendering. Filtering markdown deleted that round trip; if an
-        // attribute ever comes back, the filter has grown a second home.
+        // The role model must not survive into the HTML as data-guide-* attributes; if one
+        // ever comes back, the filter has grown a second home.
         const string markdown = """
             ## As a Coordinator (Consent Coordinator)
 

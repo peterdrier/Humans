@@ -4,16 +4,9 @@ using Humans.Campaigns.Domain;
 namespace Humans.Campaigns.Tests.Enums;
 
 /// <summary>
-/// Campaigns' string-stored-enum guard. Lives here rather than the central
-/// <c>Humans.Domain.Tests.Enums.EnumStringStabilityTests</c> because <see cref="CampaignStatus"/>
-/// is internal to <c>Humans.Campaigns</c>, so the central project cannot name it.
+/// <see cref="CampaignStatus"/> is persisted with <c>HasConversion&lt;string&gt;()</c>: renaming a member
+/// leaves the OLD string in <c>campaigns.status</c>, so a rename needs a migration that UPDATEs it.
 /// </summary>
-/// <remarks>
-/// Persisted with <c>HasConversion&lt;string&gt;()</c> / <c>HasMaxLength(20)</c>: renaming a
-/// member leaves the OLD string in <c>campaigns.status</c>. A rename needs a migration that
-/// UPDATEs the stored values. A <c>[Fact]</c> rather than a theory: a public test method
-/// cannot take an internal enum type as a parameter (CS0051, Issues' fold).
-/// </remarks>
 public class EnumStringStabilityTests
 {
     [HumansFact]

@@ -109,9 +109,8 @@ public class UserStateClassifierTests
         UserStateEvaluator.Classify(gdprDeleted, profile: null).Should().Be(UserState.Deleted);
     }
 
-    // Regression test for nobodies-collective/Humans#1742: a member typing "Deleted User" as their
-    // own burner name must not be classified as GDPR-deleted and lose application access. Fails
-    // against the pre-fix BurnerName arm in UserStateEvaluator.IsGdprTombstoned.
+    // A member typing "Deleted User" as their own burner name must not be classified as
+    // GDPR-deleted and lose application access.
     [HumansFact]
     public void Classify_entity_does_not_treat_a_user_typed_BurnerName_as_deletion()
     {
@@ -148,8 +147,8 @@ public class UserStateClassifierTests
     [HumansFact]
     public void Classify_entity_does_not_treat_the_DisplayName_sentinel_alone_as_deletion()
     {
-        // Narrower than pre-#1742: the legacy fallback requires the complete tombstone shape, not
-        // the DisplayName sentinel on its own — a normal FirstName/LastName/email must stay Active.
+        // The legacy fallback requires the complete tombstone shape, not the DisplayName sentinel
+        // on its own: a normal FirstName/LastName/email must stay Active.
         var user = NewUser(displayName: UserStateClassifier.GdprAnonymizedDisplayName);
         user.FirstName = "First";
         user.LastName = "Last";

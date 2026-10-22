@@ -13,21 +13,11 @@ using Humans.Users.Contracts;
 namespace Humans.Tickets.Tests.Architecture;
 
 /// <summary>
-/// Architecture tests enforcing the §15 repository pattern for the Tickets
-/// query surface.
-///
-/// <para>
-/// The inner <see cref="TicketQueryService"/> goes through
-/// <see cref="ITicketRepository"/> and never takes <c>IMemoryCache</c>. The Singleton
-/// <see cref="CachingTicketQueryService"/>
-/// decorator (Services/Stores/) owns the tracked ticket slices and evicts them on
-/// its own write pass-throughs.
-/// </para>
+/// The inner <see cref="TicketQueryService"/> reads through <see cref="ITicketRepository"/> and never
+/// takes <c>IMemoryCache</c>; the <see cref="CachingTicketQueryService"/> decorator owns the cached slices.
 /// </summary>
 public class TicketQueryArchitectureTests
 {
-    // ── CachingTicketQueryService (decorator) ────────────────────────────────
-
     [HumansFact]
     public void CachingTicketQueryService_ImplementsITicketManagement()
     {
@@ -77,9 +67,8 @@ public class TicketQueryArchitectureTests
             .ToList();
 
     /// <summary>
-    /// Asserts that <see cref="ITicketManagement"/> and <see cref="ITicketService"/> resolve to the same
-    /// singleton from the production DI registration — <c>Section.Register</c>
-    /// itself, not a test-built mirror of it.
+    /// <see cref="ITicketManagement"/> and <see cref="ITicketService"/> resolve to one singleton from the
+    /// production <c>Section.Register</c>, not a test-built mirror of it.
     /// </summary>
     [HumansFact]
     public void ITicketManagement_And_ITicketService_ResolveToSameInstance()

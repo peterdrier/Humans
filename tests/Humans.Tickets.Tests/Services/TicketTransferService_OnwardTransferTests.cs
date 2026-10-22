@@ -84,9 +84,8 @@ public sealed class TicketTransferService_OnwardTransferTests
     [HumansFact]
     public async Task GetMyAttendees_DeniesTransfer_WhenCheckedIn()
     {
-        // A gate scan keeps Status = Valid and records CheckedInAt
-        // (nobodies-collective/Humans#736); the owner must not be able to send a
-        // ticket they've already used at the door.
+        // A gate scan keeps Status = Valid and records CheckedInAt; the owner must not be able
+        // to send a ticket they've already used at the door.
         StubHoldings(UserB, Held(checkedInAt: Now));
 
         var rows = await _service.GetMyAttendeesAsync(UserB, Xunit.TestContext.Current.CancellationToken);

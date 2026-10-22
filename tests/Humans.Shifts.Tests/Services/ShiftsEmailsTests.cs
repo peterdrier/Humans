@@ -8,12 +8,8 @@ using Humans.Shifts.Tests.Infrastructure;
 namespace Humans.Shifts.Tests.Services;
 
 /// <summary>
-/// The per-template routing policy Shifts stamps on its own coordinator messages —
-/// template name, opt-out category and the coordinator reply-to — the markdown body path,
-/// plus the gallery-coverage gate: every template <see cref="ShiftsEmails"/> can build has
-/// a sample in <see cref="ShiftsEmailPreviews"/>, so a new template cannot ship invisible
-/// (peterdrier/Humans#1651). Transport (opt-out, unsubscribe, wrapping, enqueue) stays
-/// Email's, covered there.
+/// Includes the gallery-coverage gate: every template <see cref="ShiftsEmails"/> can build has a
+/// sample in <see cref="ShiftsEmailPreviews"/>, so a new template cannot ship invisible.
 /// </summary>
 public sealed class ShiftsEmailsTests
 {

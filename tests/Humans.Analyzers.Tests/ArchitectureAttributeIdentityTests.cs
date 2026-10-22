@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis;
 namespace Humans.Analyzers.Tests;
 
 /// <summary>
-/// Alarm for the failure mode behind nobodies-collective/Humans#1057.
+/// Alarm for analyzers whose marker attribute silently stops resolving.
 ///
 /// <para>
 /// Every analyzer here finds its marker attribute with

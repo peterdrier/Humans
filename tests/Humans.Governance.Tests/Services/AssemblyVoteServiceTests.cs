@@ -121,10 +121,6 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         }
     }
 
-    // ==========================================================================
-    // Casting a ballot
-    // ==========================================================================
-
     [HumansFact]
     public async Task CastBallotAsync_RosterMember_Records()
     {
@@ -419,10 +415,6 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             Arg.Any<string>(), adminId);
     }
 
-    // ==========================================================================
-    // GDPR export
-    // ==========================================================================
-
     [HumansFact]
     public async Task ContributeForUserAsync_IncludesTheVotesAnOfficerRanAndPeekedAt()
     {
@@ -454,8 +446,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         json.Should().Contain("Opened").And.Contain("Closed");
 
         // Instants are serialized by the export's plain System.Text.Json options, which know
-        // nothing about NodaTime: an unformatted Instant lands in the file as "{}". Seen for
-        // real on the PR preview before this was fixed.
+        // nothing about NodaTime: an unformatted Instant lands in the file as "{}".
         json.Should().MatchRegex("\"PeekedAt\":\"[0-9]{4}-");
         json.Should().MatchRegex("\"ClosedAt\":\"[0-9]{4}-");
     }
@@ -493,10 +484,6 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         outcome.Should().Be(BallotSubmissionOutcome.VoteNotOpen);
     }
-
-    // ==========================================================================
-    // Ballot validation
-    // ==========================================================================
 
     [HumansFact]
     public async Task CastBallotAsync_RankedVote_DuplicateKeysInRanking_IsRejected()
@@ -576,10 +563,6 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         outcome.Should().Be(BallotSubmissionOutcome.Recorded);
     }
 
-    // ==========================================================================
-    // Lifecycle: lapse without the job
-    // ==========================================================================
-
     [HumansFact]
     public async Task Read_AfterClosesAtPasses_SettlesTheVoteClosedWithoutTheLapseJob()
     {
@@ -645,10 +628,6 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .FirstAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         stored.Status.Should().Be(AssemblyVoteStatus.Closed);
     }
-
-    // ==========================================================================
-    // Terminal states
-    // ==========================================================================
 
     [HumansFact]
     public async Task StopAsync_AlreadyClosed_ReturnsWrongState()
@@ -719,10 +698,6 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         result.Should().Be(AssemblyVoteActionResult.WrongState);
     }
 
-    // ==========================================================================
-    // GDPR erasure
-    // ==========================================================================
-
     [HumansFact]
     public async Task EraseForUserAsync_TombstonesRosterRow_AndLeavesTheStoredResultIntact()
     {
@@ -763,9 +738,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             AssemblyVoteService.AssemblyVotes);
     }
 
-    // ==========================================================================
-    // An elapsed vote is closed for every purpose, admin actions included
-    // ==========================================================================
+    // An elapsed vote is closed for every purpose, admin actions included.
 
     [HumansFact]
     public async Task CancelAsync_AfterClosesAtPasses_IsRejectedAndTheStoredResultSurvives()
@@ -809,10 +782,6 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         stored.Status.Should().Be(AssemblyVoteStatus.Closed);
         stored.ClosedByUserId.Should().BeNull();
     }
-
-    // ==========================================================================
-    // A ranked draft can be edited more than once
-    // ==========================================================================
 
     [HumansTheory]
     [InlineData(false, true)]
@@ -1107,10 +1076,6 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             "AssemblyVote");
     }
 
-    // ==========================================================================
-    // Translation pre-fill
-    // ==========================================================================
-
     [HumansFact]
     public async Task PreFillTranslationsAsync_FillsBlanksAndLeavesAuthoredTextAlone()
     {
@@ -1220,9 +1185,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
                 [.. ci.Arg<IReadOnlyList<string>>().Select(t => prefix + t)]));
     }
 
-    // ==========================================================================
-    // Post-transition side effects are never allowed to undo the transition
-    // ==========================================================================
+    // Post-transition side effects are never allowed to undo the transition.
 
     [HumansFact]
     public async Task OpenAsync_Succeeds_EvenWhenRecipientLookupThrows()
@@ -1391,9 +1354,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         storedClosed.OpenedByUserId.Should().BeNull();
     }
 
-    // ==========================================================================
-    // A snapshot taken before somebody else's transition never undoes it
-    // ==========================================================================
+    // A snapshot taken before somebody else's transition never undoes it.
 
     [HumansFact]
     public async Task UpdateAsync_WithASnapshotTakenBeforeTheVoteClosed_WritesNothing()
@@ -1584,7 +1545,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     [HumansFact]
     public async Task RunLapseAndReminderSweepAsync_MergedRosterRows_AuditsOneMemberNotTwoRows()
     {
-        // #1704: a merge chain leaves the survivor holding two roster rows. Both are stamped so
+        // A merge chain leaves the survivor holding two roster rows. Both are stamped so
         // neither is re-sent, but one email went out, so the audit line the Board reads has to
         // count humans — counting rows overstates who was reminded.
         var vote = await _fx.AddVoteAsync(
@@ -2087,7 +2048,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         // The merge leaves the roster row on the archived id deliberately — it records who
         // was entitled when the vote opened. Users resolves that id forward, so the member is
-        // reminded at the address they read, not at the `@merged.local` sentinel (#1704).
+        // reminded at the address they read, not at the `@merged.local` sentinel.
         await _fx.Email.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == "assembly_vote_reminder"
                 && m.RecipientEmail == survivor + "@example.org"),

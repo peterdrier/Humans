@@ -18,7 +18,7 @@ using NSubstitute;
 namespace Humans.GoogleIntegration.Tests;
 
 /// <summary>
-/// The GDPR Article 17 side of <see cref="GoogleSyncLogService"/>, around merge chains (#1704).
+/// The GDPR Article 17 side of <see cref="GoogleSyncLogService"/>, around merge chains.
 /// Erasure is driven per id by Users' AccountDeletionService, which walks the chain raw, so a
 /// contributor that fans out again reaches rows that are not the subject's.
 /// </summary>

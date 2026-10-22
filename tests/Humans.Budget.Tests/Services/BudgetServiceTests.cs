@@ -34,12 +34,8 @@ using Humans.Users.Contracts;
 namespace Humans.Budget.Tests.Services;
 
 /// <summary>
-/// Owns its fixture rather than deriving from <c>Humans.Application.Tests</c>'
-/// <c>ServiceTestHarness</c>: that harness is built around an in-memory
-/// <c>UsersDbContext</c> and this test only ever used two of its members — the clock and
-/// the Budget section context. Inheriting it would have granted a section test project
-/// <c>InternalsVisibleTo</c> on <c>UsersDbContext</c>, which is the boundary the G5 split
-/// exists to draw (nobodies-collective/Humans#866).
+/// Owns its fixture: inheriting the <c>UsersDbContext</c>-based harness would grant this project
+/// <c>InternalsVisibleTo</c> on another section's context.
 /// </summary>
 public sealed class BudgetServiceTests
 {
@@ -630,8 +626,6 @@ public sealed class BudgetServiceTests
         }
     }
 
-    // ─── VAT rate validation ─────────────────────────────────────────────────
-
     [HumansTheory]
     [InlineData(-1)]
     [InlineData(22)]
@@ -751,8 +745,6 @@ public sealed class BudgetServiceTests
         await act.Should().ThrowAsync<ArgumentOutOfRangeException>()
             .WithMessage("*between 0 and 21*");
     }
-
-    // ─── CreateYearAsync with scaffold ──────────────────────────────────────
 
     [HumansFact]
     public async Task UpdateLineItemAsync_PersistsChanges()
@@ -940,8 +932,6 @@ public sealed class BudgetServiceTests
             .Which.Description.Should().Contain("Created budget year");
     }
 
-    // ─── UpdateYearStatusAsync auto-closes previously active years ──────────
-
     [HumansTheory]
     [InlineData(BudgetYearStatus.Draft)]
     [InlineData(BudgetYearStatus.Closed)]
@@ -1032,8 +1022,6 @@ public sealed class BudgetServiceTests
             .WithMessage("*not found*");
     }
 
-    // ─── UpdateYearAsync writes field audits only for changes ────────────────
-
     [HumansFact]
     public async Task UpdateYearAsync_writes_field_audit_only_for_changed_fields()
     {
@@ -1085,8 +1073,6 @@ public sealed class BudgetServiceTests
             TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
-    // ─── DeleteYearAsync refuses active ─────────────────────────────────────
-
     [HumansFact]
     public async Task DeleteYearAsync_refuses_when_year_is_active()
     {
@@ -1132,8 +1118,6 @@ public sealed class BudgetServiceTests
         year.Status.Should().Be(BudgetYearStatus.Closed);
     }
 
-    // ─── Closed year blocks edits ──────────────────────────────────────────
-
     [HumansFact]
     public async Task CreateGroupAsync_refuses_when_year_is_closed()
     {
@@ -1154,8 +1138,6 @@ public sealed class BudgetServiceTests
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*closed*");
     }
-
-    // ─── SyncTicketingActuals materializes projections inside one save ─────
 
     [HumansFact]
     public async Task SyncTicketingActualsAsync_upserts_weekly_actuals_and_updates_projection_params()
@@ -1662,8 +1644,6 @@ public sealed class BudgetServiceTests
         }
     }
 
-    // ─── Sync never touches hand-entered items ──────────────────────────────
-
     [HumansFact]
     public async Task SyncTicketingActualsAsync_never_touches_hand_entered_line_items()
     {
@@ -1731,8 +1711,6 @@ public sealed class BudgetServiceTests
             .Should().BeTrue(because: "the sync must still materialize its own auto items alongside");
     }
 
-    // ─── Summary computation ────────────────────────────────────────────────
-
     [HumansFact]
     public void ComputeBudgetSummary_excludes_cashflow_only_and_breaks_out_vat()
     {
@@ -1783,8 +1761,6 @@ public sealed class BudgetServiceTests
         _service.ComputeBudgetSummaryWithBuffers(groups).TotalLineItems.Should().Be(150m);
     }
 
-    // ─── GDPR export follows the merge chain ────────────────────────────────
-
     [HumansFact]
     public async Task ContributeForUserAsync_includes_audit_rows_of_merged_accounts_only()
     {
@@ -1819,8 +1795,6 @@ public sealed class BudgetServiceTests
         json.Should().Contain("\"own\"").And.Contain("\"merged\"");
         json.Should().NotContain("stranger").And.NotContain("automation");
     }
-
-    // ─── Closed year gates every tree mutation ──────────────────────────────
 
     public static TheoryData<string> ClosedYearMutations => new()
     {
@@ -1877,8 +1851,6 @@ public sealed class BudgetServiceTests
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*closed*");
     }
-
-    // ─── Seeding helpers ────────────────────────────────────────────────────
 
     private async Task<BudgetCategory> SeedCategoryAsync(bool isRestricted = false, bool isTicketingGroup = false)
     {

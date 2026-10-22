@@ -7,12 +7,7 @@ using Humans.Issues.Tests.Infrastructure;
 namespace Humans.Issues.Tests.Services;
 
 /// <summary>
-/// The per-template routing policy Issues stamps on its own messages — template name
-/// and opt-out category — plus the gallery-coverage gate: every template
-/// <see cref="IssuesEmails"/> can build has a sample in
-/// <see cref="IssuesEmailPreviews"/>, so a new template cannot ship invisible
-/// (peterdrier/Humans#1651). Transport (opt-out, unsubscribe, wrapping, enqueue) stays
-/// Email's, covered there.
+/// Includes the gallery-coverage gate: every template <see cref="IssuesEmails"/> can build has a sample in <see cref="IssuesEmailPreviews"/>, so a new template cannot ship invisible.
 /// </summary>
 public sealed class IssuesEmailsTests
 {

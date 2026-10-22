@@ -12,7 +12,7 @@ namespace Humans.Email.Tests.Services;
 /// Email's one remaining template, built by <see cref="EmailMessageFactory"/>: the
 /// content it renders and the policy it stamps (template name, opt-out category,
 /// reply-to). Every other section's templates are tested in that section's own test
-/// project (peterdrier/Humans#1651). The shared transport (opt-out, unsubscribe,
+/// project. The shared transport (opt-out, unsubscribe,
 /// wrapping, enqueue) is covered by <see cref="OutboxEmailServiceTests"/>.
 /// </summary>
 public sealed class EmailMessageFactoryTests

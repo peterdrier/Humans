@@ -100,10 +100,6 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         base.Dispose();
     }
 
-    // ==========================================================================
-    // ICampSeeding.CreateCampForSeedAsync must invalidate, like every other write
-    // ==========================================================================
-
     /// <summary>
     /// The leaf's seeding verb has to go through the decorator's own write path, not straight
     /// to the inner service. Routing it to the inner leaves the all-camps snapshot unchanged,
@@ -182,10 +178,6 @@ public sealed class CachingCampServiceTests : CampsTestHarness
             SoundZone: null,
             ElectricalGrid: null);
 
-    // ==========================================================================
-    // P1 — InvalidateCampAsync rebuilds EeGrantedCount from loaded members
-    // ==========================================================================
-
     [HumansFact]
     public async Task InvalidateCampAsync_RefreshesProjectionWithEeGrantedCount()
     {
@@ -222,10 +214,6 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         refreshedSeason.EeGrantedCount.Should().Be(3,
             because: "InvalidateCampAsync must load Seasons.Members so the rebuilt CampInfo reflects the new EE count — without the Include, the projection sees zero members and reports 0");
     }
-
-    // ==========================================================================
-    // P2 — cold-year fallback to inner service
-    // ==========================================================================
 
     [HumansFact]
     public async Task GetCampsForYearAsync_ColdYear_FallsBackToInnerService()
@@ -466,10 +454,6 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         grants.Should().BeEmpty();
     }
 
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
-
     private async Task SeedSettingsAsync(
         int publicYear,
         List<int> openSeasons)
@@ -497,11 +481,10 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         var hit = results.Should().ContainSingle().Subject;
         hit.CampId.Should().Be(camp.Id);
         hit.Name.Should().Be("Test Camp");
-        // Scoring belongs to the section, not the global-search orchestrator
-        // (nobodies-collective/Humans#1062).
+        // Scoring belongs to the section, not the global-search orchestrator.
         hit.Score.Should().Be(StringSearchExtensions.ExactNameScore);
 
-        // Search must never reach the inner service's SearchAsync (the DB ILike path is gone).
+        // Search must never reach the inner service's SearchAsync.
         await _innerSubstitute.DidNotReceive().SearchAsync(
             Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
@@ -512,8 +495,8 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     [InlineData(CampSeasonStatus.Withdrawn)]
     public async Task SearchAsync_TextQuery_ExcludesNonPublicSeasonStatuses(CampSeasonStatus status)
     {
-        // The ruling on nobodies-collective/Humans#985 narrowed the privacy guarantee to
-        // by-GUID lookups only — text queries are unchanged and still see Active/Full alone.
+        // The privacy guarantee covers by-GUID lookups only: text queries still see
+        // Active/Full alone.
         await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
         await SeedCampWithSeasonAsync(year: 2026, status);
 
@@ -539,10 +522,6 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         hit.Score.Should().Be(StringSearchExtensions.ExactNameScore,
             because: "an id paste is as exact as a match gets");
     }
-
-    // ==========================================================================
-    // T4 — every write verb invalidates its slice of the cache
-    // ==========================================================================
 
     public static TheoryData<string, Func<CachingCampServiceTests, Guid, Guid, CancellationToken, Task>> SnapshotWriteVerbs => new()
     {
@@ -585,10 +564,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     private static readonly UpdateCampRoleDefinitionInput RoleInput =
         new("Role", "role", null, SlotCount: 1, MinimumRequired: 0, SortOrder: 0);
 
-    /// <summary>
-    /// Role writes that changed nothing (refused assignment, missing row) leave the
-    /// snapshot alone, as they did when CampRoleService signalled the cache itself.
-    /// </summary>
+    /// <summary>Role writes that changed nothing (refused assignment, missing row) leave the snapshot alone.</summary>
     [HumansFact]
     public async Task RoleWriteThatChangedNothing_KeepsTheCampSnapshot()
     {

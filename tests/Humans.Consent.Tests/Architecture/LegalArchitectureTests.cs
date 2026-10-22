@@ -3,9 +3,6 @@ using LegalDocumentSyncService = Humans.Consent.Services.LegalDocumentSyncServic
 
 namespace Humans.Consent.Tests.Architecture;
 
-/// <summary>
-/// Architecture tests for the Legal-document migration.
-/// </summary>
 public sealed class LegalArchitectureTests
 {
     [HumansFact]

@@ -14,10 +14,8 @@ using System.Security.Claims;
 namespace Humans.Backdoor.Tests.Controllers;
 
 /// <summary>
-/// The one gate on <c>/api/backdoor/*</c>. Unlike the five per-section filters it replaced,
-/// it resolves the key to a person rather than comparing it to an env var — so the
-/// interesting assertion is the principal it installs, not just the status code
-/// (nobodies-collective/Humans#1128).
+/// The one gate on <c>/api/backdoor/*</c>. It resolves the key to a person rather than comparing it
+/// to an env var, so the interesting assertion is the principal it installs, not just the status code.
 /// </summary>
 public class BackdoorApiKeyAuthFilterTests
 {
@@ -50,8 +48,7 @@ public class BackdoorApiKeyAuthFilterTests
     [HumansFact]
     public async Task Unresolvable_key_is_401()
     {
-        // No 503 "not configured" branch any more: keys are rows, not deploy-time config,
-        // so an empty table is an unauthorized caller, not a broken server.
+        // Keys are rows, not deploy-time config, so an empty table is an unauthorized caller, not a broken server.
         _keys.ResolveOwnerAsync("wrong-key", Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<BackdoorKeyOwner?>(null));
         var ctx = MakeContext(headerKey: "wrong-key");

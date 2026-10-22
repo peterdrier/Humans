@@ -6,10 +6,8 @@ using TeamPageService = Humans.Teams.Services.TeamPageService;
 namespace Humans.Teams.Tests.Architecture;
 
 /// <summary>
-/// <see cref="TeamPageService"/> owns no tables — it composes across the management
-/// service, <see cref="ITeamResourceService"/>, Shifts' and Users' read interfaces and
-/// <c>ISettingsService</c>. No repository is needed; the tests below guard that it
-/// never takes one.
+/// <see cref="TeamPageService"/> composes other sections' read interfaces and owns no tables, so
+/// it must never take a repository.
 /// </summary>
 public class TeamPageArchitectureTests
 {

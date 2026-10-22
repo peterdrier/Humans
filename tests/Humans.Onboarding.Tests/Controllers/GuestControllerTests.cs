@@ -14,7 +14,6 @@ namespace Humans.Onboarding.Tests.Controllers;
 /// Verifies that <see cref="GuestController.Index"/> defers to
 /// <see cref="IOnboardingWidgetState"/>: incomplete users are redirected into
 /// the onboarding widget, complete users fall through to the guest dashboard.
-/// Moved from Humans.Web.Tests with the controller (nobodies-collective/Humans#1091).
 /// </summary>
 public class GuestControllerTests
 {

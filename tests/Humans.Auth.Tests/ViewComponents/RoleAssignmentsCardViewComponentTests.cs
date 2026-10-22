@@ -16,8 +16,8 @@ using NSubstitute;
 namespace Humans.Auth.Tests.ViewComponents;
 
 /// <summary>
-/// The "Role Assignments" card Auth contributes to the admin human-detail page (Users decomposition
-/// commit 4): who sees it, and what it shows.
+/// The "Role Assignments" card Auth contributes to the admin human-detail page: who sees it,
+/// and what it shows.
 /// </summary>
 public sealed class RoleAssignmentsCardViewComponentTests
 {

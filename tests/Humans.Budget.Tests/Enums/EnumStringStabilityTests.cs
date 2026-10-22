@@ -5,17 +5,9 @@ using Xunit;
 namespace Humans.Budget.Tests.Enums;
 
 /// <summary>
-/// Budget's half of the string-stored-enum guard. The rest live in the test project of the
-/// section that owns each enum; these two moved out with the
-/// section because <see cref="BudgetYearStatus"/> and <see cref="ExpenditureType"/> now sit
-/// in Budget's Contracts/ folder, where <c>Humans.Domain.Tests</c> cannot name them
-/// (nobodies-collective/Humans#866).
+/// Both are persisted with <c>HasConversion&lt;string&gt;()</c>: renaming a member leaves the OLD
+/// string in the column, so a rename needs a migration that UPDATEs the stored values.
 /// </summary>
-/// <remarks>
-/// Both are persisted with <c>HasConversion&lt;string&gt;()</c>: renaming a member leaves
-/// the OLD string in <c>budget_years.status</c> / <c>budget_categories.expenditure_type</c>.
-/// A rename needs a migration that UPDATEs the stored values.
-/// </remarks>
 public class EnumStringStabilityTests
 {
     [HumansTheory]

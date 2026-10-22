@@ -4,12 +4,6 @@ using NodaTime;
 
 namespace Humans.Shifts.Tests.Domain;
 
-/// <summary>
-/// Covers <see cref="EventSettings.IsEarlyEntryClosed"/> — the single home for the
-/// early-entry-closed clock rule. Both the server gates (ShiftSignupService) and the
-/// browse/onboarding UI call this, ANDing it with the viewer's privilege and the
-/// shift's <see cref="Shift.IsEarlyEntry"/> at each call site.
-/// </summary>
 public class EventSettingsTests
 {
     private static readonly Instant Close = Instant.FromUtc(2026, 6, 15, 12, 0);
@@ -44,10 +38,6 @@ public class EventSettingsTests
         EventWithClose(Close).IsEarlyEntryClosed(Close.Plus(Duration.FromHours(1)))
             .Should().BeTrue();
     }
-
-    // IsEarlyEntrySignupsClosedFor — the page-level eligibility the browse/onboarding
-    // UI surfaces (was a controller helper; pushed to the domain per
-    // memory/architecture/no-business-logic-in-controllers.md).
 
     [HumansFact]
     public void IsEarlyEntrySignupsClosedFor_NonPrivileged_AfterClose_ReturnsTrue()

@@ -5,15 +5,9 @@ using Xunit;
 namespace Humans.Teams.Tests.Enums;
 
 /// <summary>
-/// Teams' share of the string-stored-enum guard:
-/// <see cref="TeamMemberRole"/>, <see cref="TeamJoinRequestStatus"/> and
-/// <see cref="RolePeriod"/> live on <c>Humans.Teams.Contracts</c>, so the guard belongs to the
-/// section that owns them.
-/// </summary>
-/// <remarks>
 /// All three are persisted with <c>HasConversion&lt;string&gt;()</c>: renaming a member leaves
 /// the OLD string in the column. A rename needs a migration that UPDATEs the stored values.
-/// </remarks>
+/// </summary>
 public class EnumStringStabilityTests
 {
     [HumansTheory]

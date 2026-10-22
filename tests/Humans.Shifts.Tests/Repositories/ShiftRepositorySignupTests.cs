@@ -8,12 +8,6 @@ using NodaTime.Testing;
 using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Tests.Repositories;
 
-/// <summary>
-/// Unit tests for <see cref="ShiftRepository"/> — focused on the
-/// behaviors the service relies on (duplicate detection, capacity counting,
-/// active-signup filtering, block load-for-mutation). Full state-machine
-/// coverage lives in <c>ShiftSignupServiceTests</c>.
-/// </summary>
 public class ShiftRepositorySignupTests : IDisposable
 {
     private readonly ShiftsDbContext _shiftsDbContext;
@@ -129,8 +123,6 @@ public class ShiftRepositorySignupTests : IDisposable
         pendingOrConfirmed.Should().BeEquivalentTo([user1, user2, pendingUser]);
     }
 
-    // ── helpers ─────────────────────────────────────────────────────────────
-
     private static ShiftSignup MakeSignup(Guid userId, Guid shiftId, SignupStatus status) => new()
     {
         Id = Guid.NewGuid(),
@@ -153,7 +145,6 @@ public class ShiftRepositorySignupTests : IDisposable
             teamId = Guid.NewGuid();
         }
 
-        // Reuse/create EventSettings for this esId.
         if (!_shiftsDbContext.EventSettings.Any(e => e.Id == esId))
         {
             _shiftsDbContext.EventSettings.Add(new EventSettings

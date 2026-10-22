@@ -20,7 +20,7 @@ using NSubstitute;
 namespace Humans.Development.Tests;
 
 /// <summary>
-/// Covers the #867 persona repair invariant: personas hold governance roles, and the
+/// Covers the persona repair invariant: personas hold governance roles, and the
 /// nightly SuspendNonCompliantMembersJob suspends them otherwise, so EnsureActiveAsync
 /// must submit missing consents through the canonical consent path and lift a consent
 /// suspension, on every dev sign-in, idempotently.
@@ -249,7 +249,7 @@ public class DevPersonaSeederTests
     [HumansFact]
     public async Task ResetLegalNamesAsync_BlanksLegalNamesAndKeepsBurnerName()
     {
-        // The no-name persona must hit the onboarding name gate (#812) on every sign-in.
+        // The no-name persona must hit the onboarding name gate on every sign-in.
         var userId = DevPersonaSeeder.PersonaGuid("no-name");
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(NamedUserInfo(userId, UserState.Active)));

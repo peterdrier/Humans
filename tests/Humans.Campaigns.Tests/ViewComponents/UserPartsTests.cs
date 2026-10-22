@@ -16,7 +16,7 @@ namespace Humans.Campaigns.Tests.ViewComponents;
 
 /// <summary>
 /// The "My Codes" and "Campaign Codes" cards, contributed to the profile and admin-detail
-/// slots (Users decomposition commit 2): who sees them, and what they show.
+/// slots: who sees them, and what they show.
 /// </summary>
 public class UserPartsTests
 {
@@ -38,8 +38,6 @@ public class UserPartsTests
             new UserPart(UserPartSlots.AdminDetail, typeof(CampaignCodesViewComponent), 100),
         ]);
     }
-
-    // ─── My Codes ───────────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task MyCodes_ShowsTheViewersActiveOrCompletedGrants()
@@ -85,8 +83,6 @@ public class UserPartsTests
         await _campaigns.DidNotReceive().GetActiveOrCompletedGrantsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
-    // ─── Campaign Codes ─────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task CampaignCodes_ShowsEveryGrantToAnAuthorizedAdminView()
     {
@@ -120,8 +116,6 @@ public class UserPartsTests
         result.Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
         await _campaigns.DidNotReceive().GetAllGrantsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
-
-    // ─── Builders ───────────────────────────────────────────────────────────────
 
     private MyCodesViewComponent BuildMyCodes(Guid viewerId) =>
         new(_campaigns) { ViewComponentContext = Context(viewerId) };

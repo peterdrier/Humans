@@ -501,13 +501,8 @@ public class UserEmailServiceTests
     [HumansFact]
     public async Task DeleteEmailAsync_LastVerifiedEmailEvenWithOAuthLogin_ReturnsRefusal()
     {
-        // Tightened from the original auth-method rule: even with an OAuth
-        // login present, deleting the last verified email is blocked because
-        // GetEffectiveEmail() falls back to User.Email which is null for
-        // post-PR-1 users — the user would be un-notifiable. OAuth sign-in
-        // still working isn't enough; the user must keep at least one
-        // verified email so system mail (re-consent reminders, suspension
-        // notices) has somewhere to go.
+        // Even with an OAuth login, deleting the last verified email is blocked: the user would be
+        // un-notifiable, and system mail (re-consent reminders, suspension notices) needs an address.
         var userId = Guid.NewGuid();
         var emailId = Guid.NewGuid();
         var only = new UserEmail
@@ -559,8 +554,8 @@ public class UserEmailServiceTests
     [HumansFact]
     public async Task DeleteEmailAsync_PrimaryEmail_ReturnsRefusal()
     {
-        // see nobodies-collective/Humans#758 — the primary email can't be deleted even
-        // when other verified emails remain; the user must promote another to primary first.
+        // The primary email can't be deleted even when other verified emails remain; the user
+        // must promote another to primary first.
         var userId = Guid.NewGuid();
         var primaryId = Guid.NewGuid();
         var primary = new UserEmail
@@ -629,8 +624,8 @@ public class UserEmailServiceTests
     [HumansFact]
     public async Task DeleteEmailAsync_TicketLinkedEmail_ReturnsRefusal()
     {
-        // see nobodies-collective/Humans#758 — a non-primary verified email that matches the
-        // user's ticket (attendee email here) is blocked: removing it could disconnect the ticket.
+        // A non-primary verified email that matches the user's ticket (attendee email here) is
+        // blocked: removing it could disconnect the ticket.
         var userId = Guid.NewGuid();
         var ticketEmailId = Guid.NewGuid();
         var ticketEmail = new UserEmail
@@ -692,8 +687,7 @@ public class UserEmailServiceTests
     [HumansFact]
     public async Task ClearPrimaryAsync_FlaggedRow_ClearsAndAudits()
     {
-        // Two rows carry IsPrimary (the duplicate-flag recovery scenario);
-        // the sole-row guard (issue 686) is satisfied.
+        // Two rows carry IsPrimary (the duplicate-flag recovery case), so the sole-row guard is satisfied.
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
@@ -734,10 +728,8 @@ public class UserEmailServiceTests
     [HumansFact]
     public async Task ClearPrimaryAsync_SoleIsPrimaryRow_ReturnsFalse()
     {
-        // Issue 686: clearing the only IsPrimary row would leave the user in
-        // the ZeroIsPrimary state /Profile/Admin/EmailProblems flags as a bug.
-        // Reject the call so admins can't reach that state via direct form
-        // replay even after the view hides the button.
+        // Clearing the only IsPrimary row would leave the ZeroIsPrimary state EmailProblems flags
+        // as a bug. Reject it so a replayed form can't reach that state after the view hides the button.
         var userId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
         var row = new UserEmail
@@ -765,12 +757,9 @@ public class UserEmailServiceTests
     [HumansFact]
     public async Task ClearPrimaryAsync_OnlyUnverifiedSuccessor_ReturnsFalse()
     {
-        // Issue 686 hardening: an unverified row carrying IsPrimary doesn't
-        // count as a valid successor — clearing the sole verified IsPrimary
-        // row would still leave the user in a zero-verified-primary state
-        // EmailProblems flags as a bug. The guard mirrors the view's
-        // `hasMultiplePrimary` (verified-only) and the scanner's
-        // `verifiedPrimaryCount` semantics.
+        // An unverified IsPrimary row is not a valid successor: clearing the sole verified IsPrimary
+        // row would still leave zero verified primaries. Mirrors the view's `hasMultiplePrimary`
+        // and the scanner's `verifiedPrimaryCount` (both verified-only).
         var userId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
         var row = new UserEmail
@@ -804,12 +793,9 @@ public class UserEmailServiceTests
     [HumansFact]
     public async Task ClearPrimaryAsync_DoesNotAutoPromoteSuccessor()
     {
-        // Admin-recovery semantics: after Clear, the user is left with the
-        // remaining IsPrimary row(s) untouched. The service must NOT call
-        // EnsurePrimaryInvariantAsync on this path — that helper would
-        // demote the sibling and re-pick a winner. Use GetByUserIdForMutationAsync
-        // (which the helper alone calls; the new sole-row guard reads via
-        // GetByUserIdReadOnlyAsync) as the witness that the helper didn't run.
+        // Clear must leave the remaining IsPrimary rows untouched and not call
+        // EnsurePrimaryInvariantAsync, which would demote the sibling and re-pick a winner.
+        // Only that helper calls GetByUserIdForMutationAsync, so it is the witness.
         var userId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
         var row = new UserEmail
@@ -842,9 +828,7 @@ public class UserEmailServiceTests
     [HumansFact]
     public async Task GetEmailFlagViolationsAsync_FlagsBadPrimaryCounts()
     {
-        // Two flagged scenarios + one healthy user. Healthy user must not
-        // appear in the result. (The Google identity is GoogleIntegration's since Users
-        // decomposition commit 15, so it is no longer a flag invariant here.)
+        // Two flagged scenarios plus one healthy user, who must not appear in the result.
         var userNoPrimary = Guid.NewGuid();
         var userMultiplePrimary = Guid.NewGuid();
         var userHealthy = Guid.NewGuid();
@@ -967,7 +951,7 @@ public class UserEmailServiceTests
     [HumansFact]
     public async Task UnlinkAsync_LastVerifiedEmail_ReturnsRefusalAndMutatesNothing()
     {
-        // Auth-method invariant (P5): unlinking the user's only verified email would
+        // Auth-method invariant: unlinking the user's only verified email would
         // lock them out completely — magic link also requires a verified address.
         // The guard runs BEFORE RemoveLoginAsync, so a refusal leaves both stores intact.
         var userId = Guid.NewGuid();
@@ -1000,11 +984,9 @@ public class UserEmailServiceTests
     [HumansFact]
     public async Task UnlinkAsync_UnverifiedRow_NoOtherVerifiedEmail_ReturnsRefusalAndMutatesNothing()
     {
-        // An unverified row can still carry the user's only OAuth login (reachable via
-        // AddUserEmailAsync IsVerified=false and the provider backfill). OAuth sign-in
-        // resolves off the AspNetUserLogins entry, not the row's IsVerified flag, so
-        // removing this login with no other verified email locks the user out — the
-        // floor check must apply regardless of the unlinked row's verified state.
+        // An unverified row can still carry the only OAuth login, and OAuth sign-in resolves off
+        // AspNetUserLogins, not IsVerified: removing it with no other verified email locks the
+        // user out, so the floor check applies regardless of the row's verified state.
         var userId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
         var row = new UserEmail
@@ -1098,21 +1080,11 @@ public class UserEmailServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    // -------------------------------------------------------------------------
-    // IsPrimary invariant tests. EnsurePrimaryInvariantAsync is called from
-    // AddVerifiedEmailAsync, AddEmailAsync, UnlinkAsync, and DeleteEmailAsync.
-    // The OAuth-callback path used to flow through LinkAsync; it now flows
-    // through ReconcileOAuthIdentityAsync (issue
-    // nobodies-collective/Humans#697) — see UserEmailServiceReconcileOAuthTests.
-    // -------------------------------------------------------------------------
-
     [HumansFact]
     public async Task AddVerifiedEmailAsync_FirstRow_SetsIsPrimaryTrueEvenForGmail()
     {
-        // Magic-link signup: a non-Workspace email (gmail) goes through
-        // AddVerifiedEmailAsync. Pre-fix this set IsPrimary=isNobodiesTeam=false,
-        // leaving the user with NO primary row. The helper promotes the first
-        // verified row regardless of domain.
+        // Magic-link signup with a non-Workspace email goes through AddVerifiedEmailAsync;
+        // the first verified row is promoted to primary regardless of domain.
         var userId = Guid.NewGuid();
         _repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns([]);
@@ -1168,11 +1140,9 @@ public class UserEmailServiceTests
     [HumansFact]
     public async Task AddEmailAsync_ReAddPreviouslyRemovedAddress_LingeringInLegacyColumn_Succeeds()
     {
-        // see nobodies-collective/Humans#758 — the original incident. The user removed their
-        // primary UserEmail row, but the legacy AspNetUsers.Email column still holds the
-        // address. The old guard called GetPrimaryEmailAsync (which falls back to that column)
-        // and threw "This is already your sign-in email", so the user could never re-add it.
-        // No live UserEmail row exists for the address, so the re-add must now succeed.
+        // The UserEmail row for the address was deleted but the legacy AspNetUsers.Email column
+        // still holds it. With no live row, the re-add must succeed, not claim it is already the
+        // sign-in email.
         var userId = Guid.NewGuid();
         var user = new User { Id = userId };
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
@@ -1363,17 +1333,8 @@ public class UserEmailServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    // The OAuth-callback rename / backfill path used to be `UpdateEmailAsync`
-    // on this service. It is now `ReconcileOAuthIdentityAsync` — see
-    // `UserEmailServiceReconcileOAuthTests` (issue
-    // nobodies-collective/Humans#697).
-
-    // ─── VerifyEmailAsync row-Id disambiguation — issue #611 ──────────────
-    // VerifyEmailAsync MUST load the pending row by the Id passed in (which
-    // matches the token's purpose suffix), not by `FirstOrDefault(!IsVerified
-    // && Provider == null)`. Otherwise a user with two pending plain rows
-    // gets a confusing "expired or invalid" error when verifying via a link
-    // that was actually issued for a different row.
+    // VerifyEmailAsync must load the pending row by the Id passed in (it matches the token's
+    // purpose suffix), or a user with two pending plain rows gets "expired or invalid" from a valid link.
 
     [HumansFact]
     public async Task VerifyEmailAsync_LoadsRowByEmailIdNotFirstPending()
@@ -1576,9 +1537,7 @@ public class UserEmailServiceTests
         row.IsVerified.Should().BeFalse();
     }
 
-    // ─── AdminMarkVerifiedAsync — issue #659 ─────────────────────────────
-    // Admin manual verification: skip the token flow but reuse the same
-    // duplicate-email merge-request branch as VerifyEmailAsync.
+    // AdminMarkVerifiedAsync skips the token flow but reuses VerifyEmailAsync's duplicate-email merge-request branch.
 
     [HumansFact]
     public async Task AdminMarkVerifiedAsync_PendingPlainRow_VerifiesAndAudits()
@@ -1724,21 +1683,11 @@ public class UserEmailServiceTests
         await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Provisioned rows. The Google Workspace identity (formerly the IsGoogle stamp) is
-    // GoogleIntegration's since Users decomposition commit 15; its tests live there.
-    // ─────────────────────────────────────────────────────────────────────────
-
-    // Coverage of the OAuth-signup IsPrimary stamp moved to
-    // `UserEmailServiceReconcileOAuthTests` along with the rest of the
-    // OAuth-callback flow (issue nobodies-collective/Humans#697).
-
     [HumansFact]
     public async Task AddProvisionedEmailAsync_NewUser_StampsIsPrimaryOnFirstRow()
     {
-        // Spec acceptance criterion: AccountProvisioningService path enforces
-        // the invariant — the first UserEmail row added for a brand-new user
-        // becomes IsPrimary (it's the only verified row).
+        // The first UserEmail row added for a brand-new user becomes IsPrimary (it is the
+        // only verified row).
         var userId = Guid.NewGuid();
         UserEmail? added = null;
 
@@ -1772,7 +1721,7 @@ public class UserEmailServiceTests
             .AddUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 
-    // --- nobodies-collective/Humans#828: verified-email lookups match in-memory against UserInfo cache ---
+    // Verified-email lookups match in memory against the UserInfo cache.
 
     [HumansFact]
     public async Task FindByAddressAsync_Aliased_MatchesGmailAndGooglemailForms()
@@ -1866,7 +1815,7 @@ public class UserEmailServiceTests
     [HumansFact]
     public async Task GetNotificationTargetEmailsAsync_ForAMergedAwayId_ReturnsTheSurvivorsAddress()
     {
-        // #1704: keyed by the requested id, addressed to the resolved human. The merge scrubs
+        // Keyed by the requested id, addressed to the resolved human. The merge scrubs
         // the tombstone's own address to a merged-<id>@merged.local sentinel for Identity
         // uniqueness, so answering by the requested id would hand out an address that bounces.
         var archived = Guid.NewGuid();
@@ -1906,7 +1855,7 @@ public class UserEmailServiceTests
     [HumansFact]
     public async Task GetEntitiesByUserIdAsync_MergeTombstone_ReturnsThatRowsOwnEmails()
     {
-        // #1704: the snapshots carry the owner id and the callers edit and delete rows by it,
+        // The snapshots carry the owner id and the callers edit and delete rows by it,
         // so this read stays raw. Resolving forward would hand the tombstone's caller the
         // survivor's row ids stamped with the archived id — an admin detail page showing one
         // user's addresses under another's, and a delete aimed at the wrong account.
@@ -1943,7 +1892,7 @@ public class UserEmailServiceTests
     [HumansFact]
     public async Task GetEntitiesByUserIdsAsync_MergeTombstone_ReturnsEachRowsOwnEmails()
     {
-        // #1704: raw for the same reason as the singular read, each requested id gets its own
+        // Raw for the same reason as the singular read: each requested id gets its own
         // rows, stamped with itself.
         var archived = Guid.NewGuid();
         var survivor = Guid.NewGuid();
@@ -1964,7 +1913,7 @@ public class UserEmailServiceTests
     [HumansFact]
     public async Task GetNobodiesTeamEmailAsync_MergeTombstone_ReturnsNull()
     {
-        // #1704: raw. Its sole consumer is GDPR erasure, which runs per id down the merge chain.
+        // Raw. Its sole consumer is GDPR erasure, which runs per id down the merge chain.
         // A merge moves the addresses to the survivor, so a tombstone owns none — resolving
         // forward would answer with the survivor's Workspace address and get a living human's
         // mailbox suspended by a purge aimed at an archived row.

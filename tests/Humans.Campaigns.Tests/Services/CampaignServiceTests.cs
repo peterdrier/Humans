@@ -33,11 +33,8 @@ using CampaignServiceImpl = Humans.Campaigns.Services.CampaignService;
 namespace Humans.Campaigns.Tests.Services;
 
 /// <summary>
-/// Owns its fixture rather than deriving from <c>Humans.Application.Tests</c>'
-/// <c>ServiceTestHarness</c>: that harness is built around an in-memory
-/// <c>UsersDbContext</c>, and inheriting it would grant a section test project
-/// <c>InternalsVisibleTo</c> on <c>UsersDbContext</c> — a section-boundary breach. An in-memory people/team registry backs
-/// the cross-section stubs instead.
+/// Owns its fixture: inheriting the <c>UsersDbContext</c>-based harness would grant this project
+/// <c>InternalsVisibleTo</c> on another section's context, so users come from an in-memory registry.
 /// </summary>
 public sealed class CampaignServiceTests
 {
@@ -72,8 +69,7 @@ public sealed class CampaignServiceTests
         var userService = Substitute.For<IUserService>();
         _ticketDiscountCodes = Substitute.For<ITicketDiscountCodes>();
 
-        // Stubs read the in-memory registries the Seed* helpers write to, so the existing
-        // seed-then-exercise scenarios still drive the service end to end.
+        // Stubs read the in-memory registries the Seed* helpers write to.
         teamService
             .GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => _teams.GetValueOrDefault(call.ArgAt<Guid>(0)));
@@ -1156,10 +1152,6 @@ public sealed class CampaignServiceTests
         refreshed.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Queued).Should().Be(1);
     }
 
-    // ==========================================================================
-    // PreviewWaveSendAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task PreviewWaveSendAsync_ReturnsCorrectCounts()
     {
@@ -1409,9 +1401,6 @@ public sealed class CampaignServiceTests
         ClearAllTrackers();
         return campaign;
     }
-
-    // A section test project cannot see the Users section's tables, so the registry
-    // holds the projections the service actually consumes: UserInfo and TeamInfo.
 
     private UserInfo SeedUser(Guid? id = null, string displayName = "Test User", string preferredLanguage = "en")
     {

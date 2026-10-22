@@ -176,7 +176,7 @@ public sealed class EventSettingsViewModelTests
         parsed.Settings.FinishingWeekendStartOffset.Should().Be(saved.FinishingWeekendStartOffset);
     }
 
-    // ── EarlyEntryStartOffset: BuildStartOffset ≤ offset < 0, null until configured.
+    // EarlyEntryStartOffset: BuildStartOffset ≤ offset < 0, null until configured.
 
     [HumansFact]
     public void NullEarlyEntryStartOffset_IsAccepted()

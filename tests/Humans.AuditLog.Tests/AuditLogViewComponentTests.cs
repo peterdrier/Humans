@@ -17,8 +17,7 @@ namespace Humans.AuditLog.Tests;
 
 /// <summary>
 /// Covers <see cref="AuditLogViewComponent"/>'s predicate routing, the <c>since</c> filter and
-/// the layout/column selection: the four consumers that used to read audit and hand-roll a
-/// table now emit <c>&lt;vc:audit-log&gt;</c> and rely on these.
+/// the layout/column selection that every <c>&lt;vc:audit-log&gt;</c> consumer relies on.
 /// </summary>
 public class AuditLogViewComponentTests
 {

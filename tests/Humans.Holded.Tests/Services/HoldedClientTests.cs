@@ -122,7 +122,7 @@ public class HoldedClientTests
         capturedBody.Should().Contain("\"date\":\"2026-05-10\"");
         capturedBody.Should().Contain("\"account\":\"acc-629001\"");
         capturedBody.Should().Contain("\"notes\":\"Expense report abc-123\"");
-        // Tags are dead on the write side (Peter, 2026-08-10) — the mapped account books the doc
+        // Tags are dead on the write side — the mapped account books the doc
         // to the right category from creation, so no tags are sent at all.
         capturedBody.Should().NotContain("tags");
     }

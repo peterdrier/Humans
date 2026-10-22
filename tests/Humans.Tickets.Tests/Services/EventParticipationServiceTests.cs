@@ -32,11 +32,6 @@ using TicketRow = Humans.Tickets.Domain.EventParticipation;
 
 namespace Humans.Tickets.Tests.Services;
 
-/// <summary>
-/// tickets_event_participations (Users decomposition commit 13): the read with its legacy Users
-/// fallback, writes over a legacy row, the admin backfill audit, the tickets.event-participations
-/// copy, the merge fold, export and erasure, the onsite chip and the declaration endpoints.
-/// </summary>
 public sealed class EventParticipationServiceTests : IDisposable
 {
     private static readonly Instant Now = Instant.FromUtc(2026, 10, 21, 12, 0);
@@ -91,8 +86,6 @@ public sealed class EventParticipationServiceTests : IDisposable
     private Task<List<TicketRow>> RowsAsync(Guid userId) =>
         _db.EventParticipations.AsNoTracking().Where(r => r.UserId == userId).ToListAsync(Ct);
 
-    // ─── Read ────────────────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Read_FallsBackToTheLegacyRow_UntilARowExistsForThatYear()
     {
@@ -124,8 +117,6 @@ public sealed class EventParticipationServiceTests : IDisposable
         (await _sut.GetParticipationsAsync(archivedId, Ct)).Should().ContainSingle()
             .Which.UserId.Should().Be(survivor.Id);
     }
-
-    // ─── Writes over a legacy row ────────────────────────────────────────────────
 
     [HumansFact]
     public async Task Undo_OfALegacyDeclaration_LeavesAClearedRow_SoTheLegacyValueNeverComesBack()
@@ -193,8 +184,6 @@ public sealed class EventParticipationServiceTests : IDisposable
         _audit.ReceivedCalls().Should().HaveCount(1);
     }
 
-    // ─── tickets.event-participations ────────────────────────────────────────────
-
     [HumansFact]
     public async Task Copy_ListsEveryUncopiedLegacyRow_ThenIsIdempotent()
     {
@@ -241,8 +230,6 @@ public sealed class EventParticipationServiceTests : IDisposable
         (await migration.Status(services, Ct)).Pending.Should().Be(0);
     }
 
-    // ─── Merge ───────────────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Merge_FoldsBothUsersLegacyRows_ByPrecedence_AndClearsTheSource()
     {
@@ -265,8 +252,6 @@ public sealed class EventParticipationServiceTests : IDisposable
         (await _sut.GetParticipationsAsync(source.Id, Ct)).Should().BeEmpty();
         (await RowsAsync(source.Id)).Should().OnlyContain(r => r.Status == null);
     }
-
-    // ─── Export, erasure ─────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task Export_CarriesTheEffectiveRows_AsAList()
@@ -293,8 +278,6 @@ public sealed class EventParticipationServiceTests : IDisposable
         _sut.ErasureDeclaration[EventParticipationService.EventParticipationsSlice].Should().StartWith("Retained");
         (await RowsAsync(user.Id)).Should().ContainSingle();
     }
-
-    // ─── Onsite chip ─────────────────────────────────────────────────────────────
 
     [HumansFact]
     public void UserParts_IncludeTheOnsiteChipOnTheProfile()
@@ -349,8 +332,6 @@ public sealed class EventParticipationServiceTests : IDisposable
         (await component.InvokeAsync(userId, ProfileCardViewMode.Self))
             .Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
     }
-
-    // ─── /Tickets/DeclareNotAttending, /Tickets/UndoNotAttending ───────────────────
 
     [HumansTheory]
     [InlineData(nameof(TicketParticipationController.DeclareNotAttending), "DeclareNotAttending")]

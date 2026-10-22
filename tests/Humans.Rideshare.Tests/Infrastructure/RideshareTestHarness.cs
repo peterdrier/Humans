@@ -93,8 +93,6 @@ public abstract class RideshareTestHarness : IDisposable
     /// <summary>A fresh context over the same store — what a test reads back through, so it never sees <see cref="Db"/>'s stale tracked rows.</summary>
     private protected RideshareDbContext OpenContext() => DbFactory.CreateDbContext();
 
-    // ── Seeders ───────────────────────────────────────────────────────────
-
     /// <summary>Registers a human the <see cref="IUserService"/> substitute knows by burner name.</summary>
     protected Guid SeedUser(string burnerName = "Test Human", Guid? id = null)
     {
@@ -211,8 +209,6 @@ public abstract class RideshareTestHarness : IDisposable
         return interest;
     }
 
-    // ── Command builders ──────────────────────────────────────────────────
-
     private protected static TripSave NewTripSave(
         RideshareDirection direction = RideshareDirection.Inbound,
         string place = "Paris",
@@ -236,8 +232,6 @@ public abstract class RideshareTestHarness : IDisposable
         int partySize = 1) =>
         new(direction, place, latitude, longitude, desiredDate ?? new LocalDate(Year, 7, 3),
             partySize, LuggageSize.Minimal, CanContributeToFuel: true, null);
-
-    // ── Read-back helpers ─────────────────────────────────────────────────
 
     private protected static IReadOnlyList<string> WaypointLabels(string? waypointsJson) =>
         string.IsNullOrEmpty(waypointsJson)

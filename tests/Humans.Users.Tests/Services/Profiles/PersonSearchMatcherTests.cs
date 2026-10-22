@@ -64,8 +64,7 @@ public class PersonSearchMatcherTests
         var user = new User
         {
             Id = userId,
-            // Mirrors UserRepository.Profiles.cs's CopyNamesToUser dual-write (#1097): every real
-            // Profile save copies BurnerName onto the owning User row in the same transaction.
+            // Every real Profile save copies BurnerName onto the owning User row.
             BurnerName = burnerName,
             DisplayName = displayName,
             PreferredLanguage = "en",
@@ -127,10 +126,8 @@ public class PersonSearchMatcherTests
     [HumansFact]
     public void Matches_nothing_when_burnername_blank_even_with_a_legacy_DisplayName()
     {
-        // nobodies-collective/Humans#1098: the resolver no longer falls back to the legacy
-        // DisplayName for an ordinary (non-sentinel) row — this INTENTIONALLY reverses the old
-        // "SSO/legacy" fix this test used to protect (Profile.BurnerName blank, User.DisplayName
-        // populated resolved via the fallback). A blank BurnerName now renders/searches blank.
+        // No DisplayName fallback for an ordinary (non-sentinel) row: a blank BurnerName renders
+        // and searches blank, even with a legacy DisplayName set.
         var human = Human(burnerName: "", displayName: "Maria Garcia");
 
         var match = PersonSearchMatcher.Match(human, "maria", PersonSearchFields.Name);
@@ -377,7 +374,7 @@ public class PersonSearchMatcherTests
     [HumansFact]
     public void ExactName_does_not_resolve_display_name_when_burnername_blank()
     {
-        // nobodies-collective/Humans#1098 — see Matches_nothing_when_burnername_blank... above.
+        // No DisplayName fallback: a blank BurnerName searches blank.
         var human = Human(burnerName: "", displayName: "Maria Garcia");
 
         PersonSearchMatcher.Match(human, "maria garcia", PersonSearchFields.ExactName).Should().BeNull();

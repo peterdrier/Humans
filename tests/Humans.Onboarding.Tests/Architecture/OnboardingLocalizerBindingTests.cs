@@ -8,26 +8,10 @@ namespace Humans.Onboarding.Tests.Architecture;
 /// Every resource key the section renders exists in the resource set its call site is bound to.
 /// </summary>
 /// <remarks>
-/// <para>
-/// A key looked up against the wrong <c>IStringLocalizer&lt;T&gt;</c> is not an error. The
-/// localizer returns the key as its own value, so the page renders the literal
-/// <c>Onboarding_BannerText</c> — with a green build, a 200, no log line, and identical
-/// behaviour in all six languages, which is what makes it survive a translation review too.
-/// The section shipped two of these: the progress banner's two keys were bound to
-/// <c>SharedResource</c> after the carve moved them into <c>OnboardingResource</c>, and the
-/// review detail page rendered <c>Admin_*</c> labels through the section's own set.
-/// </para>
-/// <para>
-/// <c>OnboardingPageRenderTests</c> is the render-level counterpart, but it cannot be the
-/// guard: it asserts the absence of the three carved prefixes, so a key from any other prefix
-/// passes, and its banner assertion runs against a fully-onboarded persona, for whom the
-/// banner renders nothing at all. This test needs no database and no Docker, and it covers
-/// every call site rather than the pages a fixture can reach.
-/// </para>
-/// <para>
-/// Scoped to this section deliberately. The same sweep run repo-wide reports hits in Users and
-/// Governance; those belong to their own runs, not this one.
-/// </para>
+/// A key looked up against the wrong <c>IStringLocalizer&lt;T&gt;</c> is not an error: the
+/// localizer returns the key as its value, so the page renders the literal key with a green build,
+/// a 200 and no log line. <c>OnboardingPageRenderTests</c> cannot be the guard: it only asserts the
+/// absence of the carved prefixes, and its banner check runs for a fully-onboarded persona.
 /// </remarks>
 public class OnboardingLocalizerBindingTests
 {

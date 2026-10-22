@@ -6,12 +6,8 @@ using NodaTime;
 namespace Humans.Cantina.Tests.Models;
 
 /// <summary>
-/// Tests for <see cref="CantinaRosterAssembler.SortForDisplay"/>, the
-/// presentation-layer sort the Cantina controller applies before handing the
-/// weekly DTO to the CSV writer. Moved here
-/// from <c>CantinaRosterServiceTests</c> when display sort migrated out
-/// of the Application service per
-/// <c>memory/architecture/display-sort-in-controllers.md</c>.
+/// <see cref="CantinaRosterAssembler.SortForDisplay"/>, the presentation-layer sort the Cantina
+/// controller applies before handing the weekly DTO to the CSV writer.
 /// </summary>
 public class CantinaRosterAssemblerTests
 {
@@ -159,8 +155,6 @@ public class CantinaRosterAssemblerTests
         CantinaRosterAssembler.DietaryPriority("UnknownLegacy").Should().BeGreaterThan(
             CantinaRosterAssembler.DietaryPriority("Pescatarian"));
     }
-
-    // ---- Daily matrix assembler tests --------------------------------------
 
     private static DailyPersonRowDto DP(string burnerName) =>
         new(

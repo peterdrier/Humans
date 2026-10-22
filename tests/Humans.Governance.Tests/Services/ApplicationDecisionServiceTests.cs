@@ -44,15 +44,6 @@ using Humans.Teams.Contracts;
 
 namespace Humans.Governance.Tests.Services;
 
-/// <summary>
-/// Owns its fixture rather than deriving from <c>Humans.Application.Tests</c>'
-/// <c>ServiceTestHarness</c>: that harness is built around an in-memory
-/// <c>UsersDbContext</c>, and inheriting it would grant a section test project
-/// <c>InternalsVisibleTo</c> on <c>UsersDbContext</c> — the boundary the G5 split exists to
-/// draw (nobodies-collective/Humans#866). These tests used four of its members (the clock,
-/// the audit substitute, the Governance context and its factory) and stub every user read
-/// they care about themselves, so the replacement is a handful of fields.
-/// </summary>
 public sealed class ApplicationDecisionServiceTests : IDisposable
 {
     private const string ValidMotivation = "I want to contribute to the collective and support its members.";
@@ -130,8 +121,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
     private bool VotingBadgeCached(Guid boardMemberId) =>
         _cache.TryGetValue(ApplicationDecisionService.VotingBadgeCacheKey(boardMemberId), out _);
-
-    // --- Submit flow ---
 
     [HumansFact]
     public async Task SubmitAsync_ValidColaborador_CreatesApplication()
@@ -366,8 +355,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         (await GovernanceDb.Applications.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
-    // --- Withdraw flow ---
-
     [HumansFact]
     public async Task WithdrawAsync_SubmittedApplication_SetsWithdrawn()
     {
@@ -433,8 +420,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         (await _service.GetApplicationDetailAsync(app.Id, ct))!.CanApproveReject.Should().BeFalse();
         (await _service.GetSubmittedApplicationForUserAsync(userId, ct)).Should().BeNull();
     }
-
-    // --- Approve flow ---
 
     [HumansFact]
     public async Task ApproveAsync_SubmittedApplication_SetsApproved()
@@ -802,8 +787,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         {
             Id = userId,
             DisplayName = "Alice",
-            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
             BurnerName = "Alice",
             UserName = "alice@test.com",
             Email = "alice@test.com",
@@ -841,8 +825,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         {
             Id = userId,
             DisplayName = "Bob",
-            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
             BurnerName = "Bob",
             UserName = "bob",
             Email = null,
@@ -877,8 +860,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         {
             Id = userId,
             DisplayName = "Carol",
-            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
             BurnerName = "Carol",
             UserName = "carol",
             Email = null,
@@ -893,8 +875,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             Arg.Is<EmailMessage>(m => m.TemplateName == "application_approved"),
             Arg.Any<CancellationToken>());
     }
-
-    // --- Reject flow ---
 
     [HumansFact]
     public async Task RejectAsync_SubmittedApplication_SetsRejected()
@@ -1089,8 +1069,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         }
     }
 
-    // --- GetUserApplicationsAsync ---
-
     [HumansFact]
     public async Task GetUserApplicationsAsync_ReturnsAllStatusesForUser()
     {
@@ -1129,9 +1107,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         var result = await _service.GetUserApplicationsAsync(userId, TestContext.Current.CancellationToken);
 
-        // Display ordering (SubmittedAt desc) now lives in the controller per the
-        // DisplaySortInControllers rule; the service returns all of the user's
-        // applications regardless of order.
+        // Display ordering (SubmittedAt desc) lives in the controller; the service returns
+        // the user's applications in any order.
         result.Should().HaveCount(3);
         result.Select(a => a.Id).Should().BeEquivalentTo([app1.Id, app2.Id, app3.Id]);
     }
@@ -1428,8 +1405,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         await Assert.ThrowsAnyAsync<OperationCanceledException>(ReadPageAsync);
     }
 
-    // --- GetUserApplicationDetailAsync ---
-
     [HumansFact]
     public async Task GetUserApplicationDetailAsync_ReturnsStitchedUserDetailDto()
     {
@@ -1439,8 +1414,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         {
             Id = reviewerId,
             DisplayName = "Reviewer",
-            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
             BurnerName = "Reviewer",
             UserName = "r@t.com",
             Email = "r@t.com"
@@ -1523,8 +1497,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             .Motivation.Should().Be(motivation);
     }
 
-    // --- GetFilteredApplicationsAsync ---
-
     // These two are the service's own behaviour, not the repository's: the admin form posts
     // the filters as strings and this layer is where they become enums. The null/int
     // pass-through cases are covered by ApplicationRepositoryTests over the same query.
@@ -1565,8 +1537,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         {
             Id = userId,
             DisplayName = "Applicant",
-            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
             BurnerName = "Applicant",
             UserName = "a@t.com",
             Email = "a@t.com"
@@ -1584,8 +1555,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         items[0].UserEmail.Should().Be("a@t.com");
     }
 
-    // --- GetApplicationDetailAsync (admin) ---
-
     [HumansFact]
     public async Task GetApplicationDetailAsync_ReturnsStitchedAdminDetailDto()
     {
@@ -1595,8 +1564,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         {
             Id = applicantId,
             DisplayName = "Applicant",
-            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
             BurnerName = "Applicant",
             UserName = "a@t.com",
             Email = "a@t.com",
@@ -1606,8 +1574,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         {
             Id = reviewerId,
             DisplayName = "Admin",
-            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
             BurnerName = "Admin",
             UserName = "r@t.com",
             Email = "r@t.com"
@@ -1660,8 +1627,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result.UserId.Should().Be(userId);
     }
 
-    // --- Term expiry correction (temporary screen) ---
-
     [HumansFact]
     public async Task GetTermExpiryDriftAsync_ReportsOnlyApprovedRowsWhoseStoredExpiryDisagreesWithCalculator()
     {
@@ -1693,8 +1658,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             Arg.Any<string>(), adminId);
         (await _service.GetTermExpiryDriftAsync(TestContext.Current.CancellationToken)).Should().BeEmpty();
     }
-
-    // --- Helpers ---
 
     // Approved today (Clock: 2026-03-01) with the given stored expiry.
     private async Task<MemberApplication> SeedApprovedApplicationAsync(LocalDate storedExpiry)

@@ -12,7 +12,7 @@ namespace Humans.Base.Tests.ViewComponents;
 public class AdminBreadcrumbViewComponentTests
 {
     /// <summary>
-    /// A minimal stand-in for the real, section-contributed nav (nobodies-collective/Humans#1077):
+    /// A minimal stand-in for the real, section-contributed nav:
     /// one item per group this file's assertions need to resolve.
     /// </summary>
     private sealed class FakeNav : ISectionAdminNav

@@ -108,11 +108,7 @@ public class ProfileControllerEditTests
             .Returns(new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" });
         userManager.GetUserId(Arg.Any<ClaimsPrincipal>()).Returns(_userId.ToString());
 
-        // Edit POST resolves the current user through GetCurrentUserInfoAsync
-        // (cache-resident); subsequent setup-detection lookups in the action body
-        // also call IUserManagement.GetUserInfoAsync. Default stub returns a UserInfo
-        // with no profile so the initial-setup branch is taken; per-test overrides
-        // (e.g. approved profile) replace it.
+        // The default UserInfo has no profile, so the initial-setup branch is taken.
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(
                 new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" }
@@ -126,10 +122,6 @@ public class ProfileControllerEditTests
         _userService.SaveProfileLanguagesAsync(
                 Arg.Any<Guid>(), Arg.Any<IReadOnlyList<ProfileLanguageInfo>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new UserProfileLanguagesSaveResult(true, _userId)));
-
-        // The happy path now also writes meal-pref + allergies onto the shift
-        // profile. Return a fresh profile by default so existing tests don't NRE
-        // when the controller sets fields on it.
     }
 
     [HumansTheory]
@@ -403,8 +395,7 @@ public class ProfileControllerEditTests
     [HumansFact]
     public async Task Edit_InitialSetup_SavesProfileWithoutTouchingTierApplications()
     {
-        // Tier applications left the edit form for /Governance/Applications/Create
-        // (Users decomposition commit 11): saving the profile never reads or writes them.
+        // Tier applications live at /Governance/Applications/Create: saving the profile never touches them.
         var model = MakeValidModel();
 
         await _controller.Edit(model);
@@ -445,8 +436,6 @@ public class ProfileControllerEditTests
         await _userService.DidNotReceiveWithAnyArgs().SaveProfileLanguagesAsync(default, default!, default);
         await _onboardingService.DidNotReceiveWithAnyArgs().ProfileSavedAsync(default, default);
     }
-
-    // ─── /Profile/Me/Medical (GDPR Art. 9, owner-only) ─────────────────────────
 
     [HumansFact]
     public async Task Medical_Get_ShowsOnlyTheSignedInMembersOwnConditions()

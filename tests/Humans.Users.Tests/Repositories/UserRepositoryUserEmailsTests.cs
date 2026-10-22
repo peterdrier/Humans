@@ -8,9 +8,6 @@ using Humans.Users.Data;
 
 namespace Humans.Users.Tests.Repositories;
 
-/// <summary>
-/// Repository tests for <c>UserRepository</c> user-email lookups.
-/// </summary>
 public sealed class UserRepositoryUserEmailTests : IDisposable
 {
     [HumansTheory]
@@ -62,15 +59,6 @@ public sealed class UserRepositoryUserEmailTests : IDisposable
         _dbContext.Dispose();
     }
 
-    // Note: GetUserEmailsByEmailsAsync's Gmail-alias fallback (nobodies-collective/Humans#1101)
-    // is not unit-tested here — it uses EF.Functions.ILike, which is Npgsql-specific
-    // and does not evaluate against the InMemory provider. Its identity key (GmailAliasEmailComparer)
-    // is covered in EmailNormalizationTests, and the consumer lookups that must
-    // agree with it in GoogleGroupSyncServiceTests / GoogleWorkspaceSyncServiceTests.
-
-    // Note: the OAuth-callback write path is now driven by
-    // UserEmailService.ReconcileOAuthIdentityAsync; the legacy repo-level
-    // UpdateEmailAsync primitive is gone. Service-level coverage lives in
-    // UserEmailServiceReconcileOAuthTests; controller-level coverage in
-    // AccountControllerOAuthReconcileTests.
+    // The Gmail-alias fallback in GetUserEmailsByEmailsAsync uses EF.Functions.ILike, which InMemory
+    // cannot evaluate; its identity key (GmailAliasEmailComparer) is covered in EmailNormalizationTests.
 }

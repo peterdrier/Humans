@@ -18,23 +18,14 @@ using TeamService = Humans.Teams.Services.TeamService;
 namespace Humans.Teams.Tests.Services;
 
 /// <summary>
-/// Regression tests for Codex PR#300 P2: the create-team slug retry loop
-/// no longer catches an EF-specific exception type. Instead,
-/// <c>ITeamRepository.AddTeamWithRequiresApprovalOverrideAsync</c> returns
-/// <c>bool</c> — <c>false</c> signals a unique-constraint race that the
-/// service layer should handle by retrying with the next suffixed slug.
-/// These tests mock <c>ITeamRepository</c> so the race can be simulated
-/// deterministically without a real Postgres connection (the in-memory
-/// provider doesn't enforce unique indexes and wouldn't surface the Npgsql
-/// 23505 error code at all).
+/// The repository is mocked so the unique-key race is deterministic: InMemory enforces no unique
+/// indexes. A lost race returns false, and the service retries with the next suffixed slug.
 /// </summary>
 public class TeamServiceSlugRaceTests
 {
     /// <summary>
-    /// Simulated scenario: concurrent create races past the pre-check
-    /// (<c>SlugExistsAsync</c>) — first persist attempt loses the unique-key
-    /// contest and the repo returns <c>false</c>. The service must retry
-    /// with the next suffix rather than bubble an unrecognised exception.
+    /// A concurrent create races past <c>SlugExistsAsync</c> and the first persist loses: the service
+    /// must retry with the next suffix rather than bubble an exception.
     /// </summary>
     [HumansFact]
     public async Task CreateTeamAsync_WhenFirstPersistReturnsFalse_RetriesWithSuffixedSlug()
@@ -56,11 +47,7 @@ public class TeamServiceSlugRaceTests
             Arg.Any<Team>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
-    /// <summary>
-    /// Happy path: persist succeeds on the first attempt; no retry, no
-    /// suffix. Pins the non-race behaviour so the retry logic isn't mistaken
-    /// for always-on.
-    /// </summary>
+    /// <summary>No race: no retry, no suffix, so the retry logic is not mistaken for always-on.</summary>
     [HumansFact]
     public async Task CreateTeamAsync_WhenFirstPersistSucceeds_UsesBaseSlug()
     {

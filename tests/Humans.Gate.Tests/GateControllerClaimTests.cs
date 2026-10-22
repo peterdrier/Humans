@@ -18,11 +18,8 @@ using Xunit;
 namespace Humans.Gate.Tests;
 
 /// <summary>
-/// Gate claim flow: per-staffer PIN throttling, claimant validation, and the
-/// kiosk-scoped name search. Covers the fixes for the gate-wide throttle lockout
-/// (per-target-user, not per shared device), unvalidated-claimant attribution,
-/// and the route-locked /Gate/Search the kiosk picker uses instead of the
-/// blocked /api/profiles/search.
+/// Gate claim flow: per-staffer PIN throttling (never a gate-wide lockout), claimant validation,
+/// and the route-locked kiosk name search used instead of the blocked /api/profiles/search.
 /// </summary>
 public class GateControllerClaimTests
 {
@@ -46,7 +43,6 @@ public class GateControllerClaimTests
         _controller.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
     }
 
-    // ── S1: per-user throttle, no gate-wide lockout ──────────────────────────
     [HumansFact]
     public async Task ClaimPin_Throttle_IsPerUser_OneStafferLockoutDoesNotBlockAnother()
     {
@@ -74,7 +70,6 @@ public class GateControllerClaimTests
         Assert.Equal(userB.ToString(), _session.GetString(ScannerSessionKey));
     }
 
-    // ── S2: claimant must resolve to an active member ────────────────────────
     [HumansFact]
     public async Task ClaimPin_UnknownUserId_DoesNotEnrolOrStampSession()
     {
@@ -90,7 +85,6 @@ public class GateControllerClaimTests
         Assert.DoesNotContain(ScannerSessionKey, _session.Keys, StringComparer.Ordinal);
     }
 
-    // ── F2: kiosk-scoped name search (replaces the route-blocked profile API) ──
     [HumansFact]
     public async Task Search_ReturnsNameMatches_ShapedForThePicker()
     {
@@ -124,9 +118,7 @@ public class GateControllerClaimTests
     }
 
     /// <summary>
-    /// A minimal active UserInfo for the claimant-validation path. Inlined rather than
-    /// shared from Humans.Application.Tests' UserInfoStubHelpers: this suite needs one
-    /// member of it, and linking the helper into the shared test set would pull
+    /// Inlined rather than linking the shared UserInfoStubHelpers, which would pull
     /// UsersDbContext into a section test project.
     /// </summary>
     private static UserInfo MakeUserInfo(Guid userId, string displayName = "User") =>

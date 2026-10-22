@@ -22,8 +22,7 @@ public class GoogleWorkspaceUserArchitectureTests
     [HumansFact]
     public void IWorkspaceUserDirectoryClient_HasNoGoogleSdkTypesInSignatures()
     {
-        // Every method parameter and return type must come from Humans.Application
-        // or the BCL — never Google.Apis.*. Enforces the "shape-neutral" contract.
+        // No method parameter or return type may name a Google.Apis.* type.
         var methods = typeof(IWorkspaceUserDirectoryClient).GetMethods();
 
         foreach (var method in methods)

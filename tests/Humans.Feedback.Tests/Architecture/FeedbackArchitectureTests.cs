@@ -6,20 +6,8 @@ using FeedbackService = Humans.Feedback.Services.FeedbackService;
 
 namespace Humans.Feedback.Tests.Architecture;
 
-/// <summary>
-/// Architecture tests enforcing the section shape for Feedback
-/// (nobodies-collective/Humans#866, G5) plus the §15 repository pattern it already had
-/// (issue #549). Feedback is admin-review-only and low-traffic, so no caching decorator sits
-/// in front of the service — the service goes directly through
-/// <see cref="IFeedbackRepository"/> and evicts its own nav-badge count after successful writes.
-/// </summary>
 public class FeedbackArchitectureTests
 {
-    // ── FeedbackService ──────────────────────────────────────────────────────
-
-    // IMemoryCache check covered by ApplicationServicesTakeNoMemoryCacheRule.
-    // TakesRepository check covered by pattern G (positive wiring noise).
-
     [HumansFact]
     public void FeedbackService_TakesCrossSectionServiceInterfaces()
     {
@@ -44,9 +32,4 @@ public class FeedbackArchitectureTests
         // (memory/code/type-name-as-persisted-string.md).
         Humans.Feedback.Services.AuditEntityTypes.FeedbackReport.Should().Be("FeedbackReport");
     }
-
-    // ── IFeedbackRepository ──────────────────────────────────────────────────
-
-    // Sealed-repository check covered by HUM0034 (section types are internal) plus
-    // MA0053 (an unsealed internal class is a build error).
 }

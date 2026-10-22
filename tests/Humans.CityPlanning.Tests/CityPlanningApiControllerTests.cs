@@ -281,7 +281,6 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         (await CityPlanningDb.CampPolygonHistories.CountAsync(ct)).Should().Be(1);
     }
 
-    // peterdrier/Humans#2102: the map's state GET used to create the year's settings row.
     [HumansFact]
     public async Task GetState_NoSettingsRow_ReturnsOkAndWritesNothing()
     {

@@ -14,10 +14,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Tests.Services;
 
-/// <summary>
-/// Aggregation arithmetic on the ShiftManagementService read paths: the per-day
-/// staffing snapshot, the department shift summary, and urgent-shift filtering.
-/// </summary>
 public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
 {
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
@@ -61,10 +57,6 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
             Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
     }
-
-    // ============================================================
-    // GetStaffingSnapshotAsync
-    // ============================================================
 
     [HumansFact]
     public async Task GetStaffingSnapshot_ReturnsEmpty_WhenEventMissing()
@@ -196,10 +188,6 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
         hours.NormalHours.Should().Be(Shift.AllDayWindowHours * 2);
     }
 
-    // ============================================================
-    // GetShiftsSummaryAsync
-    // ============================================================
-
     [HumansFact]
     public async Task GetShiftsSummary_CancelledRequest_AbortsRotaRead()
     {
@@ -279,10 +267,6 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
 
         summary!.TeamIdsWithShifts.Should().BeEquivalentTo([rota.TeamId]);
     }
-
-    // ============================================================
-    // GetUrgentShiftsAsync
-    // ============================================================
 
     [HumansFact]
     public async Task GetUrgentShifts_ExcludesShiftsThatHaveAlreadyEnded()
@@ -376,10 +360,6 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
 
         urgent.Select(u => u.Shift.Id).Should().BeEquivalentTo([beforeBound.Id, onBound.Id]);
     }
-
-    // ============================================================
-    // Helpers
-    // ============================================================
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 

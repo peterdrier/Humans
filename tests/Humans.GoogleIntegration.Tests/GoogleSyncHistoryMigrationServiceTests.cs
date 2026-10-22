@@ -12,10 +12,8 @@ using NSubstitute;
 namespace Humans.GoogleIntegration.Tests;
 
 /// <summary>
-/// Behaviour of the one-time <c>audit_log</c> → <c>google_sync_log</c> history move
-/// (nobodies-collective/Humans#1083): what maps, what does not, and that a second run is a
-/// no-op. Runs against a real <see cref="GoogleSyncLogRepository"/> so the idempotency claim
-/// is tested through EF rather than through a substitute's memory.
+/// Runs against a real <see cref="GoogleSyncLogRepository"/> so the idempotency claim is tested
+/// through EF rather than through a substitute's memory.
 /// </summary>
 public sealed class GoogleSyncHistoryMigrationServiceTests : IDisposable
 {

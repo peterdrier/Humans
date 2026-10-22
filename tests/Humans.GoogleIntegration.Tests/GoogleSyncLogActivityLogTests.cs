@@ -13,7 +13,6 @@ using NSubstitute;
 
 namespace Humans.GoogleIntegration.Tests;
 
-/// <summary>The Activity Log read: repository filters, newest-first, cap, and the viewer's name mapping.</summary>
 public sealed class GoogleSyncLogActivityLogTests
 {
     private static readonly Instant T0 = Instant.FromUtc(2026, 10, 1, 12, 0);

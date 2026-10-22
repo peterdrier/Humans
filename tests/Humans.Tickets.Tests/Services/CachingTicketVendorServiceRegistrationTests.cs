@@ -8,11 +8,9 @@ using NodaTime;
 namespace Humans.Tickets.Tests.Services;
 
 /// <summary>
-/// Pins the DI shape Humans.Tickets' own <c>Section.cs</c> registers for the vendor caching
-/// decorator (moved there from <c>Humans.TicketTailor</c>, which never named it):
-/// <see cref="ITicketVendorService"/> and its <see cref="ICacheStats"/> both forward to one <see cref="CachingTicketVendorService"/>
-/// singleton. Mirrors the registration lines directly rather than exercising the full section
-/// (which needs a live database via <c>AddSectionDbContext</c>).
+/// <see cref="ITicketVendorService"/> and its <see cref="ICacheStats"/> both forward to one
+/// <see cref="CachingTicketVendorService"/> singleton. Mirrors <c>Section.cs</c>'s registration lines
+/// rather than running the section, which needs a live database via <c>AddSectionDbContext</c>.
 /// </summary>
 public sealed class CachingTicketVendorServiceRegistrationTests
 {

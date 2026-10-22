@@ -4,8 +4,7 @@ using Humans.Base.Authorization;
 namespace Humans.Shifts.Tests;
 
 /// <summary>
-/// The /Settings#shifts tab contribution (peterdrier/Humans#1634). The Policy assertion is
-/// the negative case: <c>SettingsTabComposition</c> (Humans.Settings.Tests) drops any tab
+/// The Policy assertion is the negative case: <c>SettingsTabComposition</c> drops any tab
 /// whose policy the viewer fails, so a non-admin never sees this tab.
 /// </summary>
 public sealed class SectionSettingsTests

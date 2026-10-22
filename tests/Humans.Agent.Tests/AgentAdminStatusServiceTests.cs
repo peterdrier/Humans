@@ -61,14 +61,13 @@ public class AgentAdminStatusServiceTests
         report.TopDocs7d.Should().ContainSingle(d => d.Slug == "agent" && d.Count == 1);
         report.TopDocs7d.Should().ContainSingle(d => d.Slug == "tickets" && d.Count == 1);
 
-        // Top users 7d
         report.TopUsers7d.Should().ContainSingle(u => u.UserId == user1 && u.MessageCount == 2);
     }
 
     [HumansFact]
     public async Task Latency_panel_excludes_user_rows_and_zero_duration_refusals()
     {
-        // nobodies-collective/Humans#990: user rows carry no duration at all, and
+        // User rows carry no duration at all, and
         // refusal/error rows (rate_limited, abuse_flag, "error" traces) are
         // structural zeros — none of them represent a timed provider turn. Mixing
         // them into AverageTurnMs/P95TurnMs dilutes both toward roughly half the

@@ -18,7 +18,7 @@ using NSubstitute;
 namespace Humans.CityPlanning.Tests;
 
 /// <summary>
-/// peterdrier/Humans#2102 part B: the barrio placement window runs on day offsets from the active
+/// The barrio placement window runs on day offsets from the active
 /// event's gate opening, in the event's time zone, with the admins' Open/Close as a manual override.
 /// The fixture event opens its gate on 1 July 2026 in Europe/Madrid (UTC+2 in summer); the schedule
 /// opens on day -30 (1 June), closes after day -10 (21 June) and stays adjustable through day -5 (26 June).
@@ -70,8 +70,6 @@ public sealed class PlacementScheduleTests : CityPlanningTestBase
 
     private async Task<BarrioPlacementState> StateAsync() =>
         (await _sut.GetSettingsAsync(TestContext.Current.CancellationToken))!.PlacementState;
-
-    // --- The schedule, day by day, in the event's time zone ---
 
     // Each boundary sits on Madrid midnight (22:00 UTC the evening before), so a UTC reading
     // of "today" would land on the wrong side of every one of them.
@@ -141,8 +139,6 @@ public sealed class PlacementScheduleTests : CityPlanningTestBase
         settings.PlacementOpensOn.Should().BeNull();
     }
 
-    // --- The manual override ---
-
     [HumansFact]
     public async Task GetSettingsAsync_ForcedOpen_WinsAfterTheScheduleLocks()
     {
@@ -190,8 +186,6 @@ public sealed class PlacementScheduleTests : CityPlanningTestBase
             Arg.Any<Guid?>(),
             Arg.Any<string?>());
     }
-
-    // --- What a lead may do ---
 
     [HumansFact]
     public async Task CanUserEditAsync_Changeable_LeadMayAdjustAnExistingPolygon()
@@ -245,8 +239,6 @@ public sealed class PlacementScheduleTests : CityPlanningTestBase
 
         (await _sut.CanUserEditAsync(leadId, otherSeasonId, TestContext.Current.CancellationToken)).Should().BeFalse();
     }
-
-    // --- Editing the schedule ---
 
     [HumansFact]
     public async Task UpdatePlacementScheduleAsync_PersistsTheOffsets_AndAuditsThem()
@@ -305,8 +297,6 @@ public sealed class PlacementScheduleTests : CityPlanningTestBase
         (await CityPlanningDb.CityPlanningSettings.AsNoTracking().CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
         _auditLog.ReceivedCalls().Should().BeEmpty();
     }
-
-    // --- The schema mapping that carries the old flag over ---
 
     [HumansFact]
     public void PlacementOverride_IsStoredInTheOldIsPlacementOpenColumn_NowNullable()

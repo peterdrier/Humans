@@ -76,8 +76,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
                 call.ArgAt<IReadOnlyList<CVEntry>?>(4)));
     }
 
-    // --- Profile editor save flow ---
-
     [HumansFact(Timeout = 10000)]
     public async Task SaveProfileAsync_NewProfile_CreatesProfile()
     {
@@ -112,7 +110,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         user.State.Should().Be(UserState.Active);
     }
 
-    /// <summary>Missing required fields keeps the user Bare.</summary>
     [HumansFact(Timeout = 10000)]
     public async Task ProfileEditorService_SaveProfileAsync_StaysBare_WhenRequiredFieldsBlank()
     {
@@ -180,8 +177,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         profile.DateOfBirth.Should().BeNull();
     }
 
-    // --- Profile picture write paths (file share is the source of truth; the
-    // DB bytes column is obsolete and untouched by code) ---
+    // The file share is the picture's source of truth; the DB bytes column is obsolete and untouched.
 
     [HumansFact]
     public async Task SaveProfileAsync_UploadsProfilePicture_WritesToFilesystem()
@@ -516,10 +512,8 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task GetProfilePictureAsync_FilesystemHit_ServesFromStoreWithoutDbBytes()
     {
-        // FS-first fast path: when the picture is already on disk we should
-        // serve those bytes directly even if they differ from the DB copy.
-        // This pins the read path to the store as the authoritative source
-        // when the DB content-type column says a picture exists.
+        // FS-first: when the picture is on disk, serve those bytes even if they differ from
+        // the DB copy. The store is authoritative once the content-type column says a picture exists.
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: true);
         var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
@@ -537,9 +531,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task GetProfilePictureAsync_FilesystemMiss_ReturnsNull()
     {
-        // Content-type gate passes but the file is gone — the picture is
-        // simply missing. (Pre-cleanup PR a DB-bytes fallback masked this;
-        // the file share is now the only source of truth.)
+        // The content-type gate passes but the file is gone: the picture is simply missing.
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: true);
         var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
@@ -574,17 +566,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         result.Should().BeNull("DB content-type is null after anonymization, so the stale on-disk file must not be served");
     }
 
-    // Profile-index/edit/admin-detail bundling is a controller concern:
-    // Profile + Application data are fetched separately and assembled for the view.
-
-    // Birthday/Location widgets read directly from the UserInfo cache via
-    // CachingUserService.
-
-    // --- Cooldown and export ---
-
-    // The search surface lives on IUserManagement.SearchUsersAsync and is
-    // covered by CachingUserServiceTests.
-
     [HumansFact]
     public async Task SaveProfileLanguages_OwnerLookupFailure_DoesNotCommitWithoutCacheRefresh()
     {
@@ -614,10 +595,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         (await Db.ProfileLanguages.AsNoTracking().SingleAsync(ct)).LanguageCode.Should().Be("es");
     }
 
-    /// <summary>
-    /// Builds a <see cref="UserService"/> with a custom <see cref="IUserRepository"/>
-    /// while keeping all other dependencies wired to the same test-class fields.
-    /// </summary>
     private UserService BuildUserServiceWith(IUserRepository userRepository) => new(
         userRepository,
         _communicationPreferenceRepository,
@@ -625,10 +602,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         Substitute.For<IFileStorage>(),
         Clock,
         NullLogger<UserService>.Instance, AuditLog);
-
-    // --- Helpers ---
-
-    // --- SaveProfileAsync workflow (audit P1-P4) ---
 
     [HumansFact]
     public async Task SaveProfileAsync_EmptyCvWithoutNoPriorExperienceFlag_ReturnsRefusalWithoutWrites()

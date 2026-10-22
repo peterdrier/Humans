@@ -15,7 +15,7 @@ public class TicketTailorServiceTests
     [Xunit.InlineData("GetCheckInsAsync")]
     public async Task PaginatedRead_TimesEachPageSeparately_NotTheWholeLoop(string operation)
     {
-        // nobodies-collective/Humans#946: HttpClient.Timeout and the timing extension's Error
+        // HttpClient.Timeout and the timing extension's Error
         // threshold are both per request, so each page gets its own timing scope. Asserted via
         // the shared registry; forcing the real 30s+ elapsed time isn't practical here.
         var handler = new RecordingHttpHandler();

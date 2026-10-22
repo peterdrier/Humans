@@ -27,8 +27,6 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     private static readonly GeoPoint Lyon = new(45.76, 4.84);
     private static readonly GeoPoint Bordeaux = new(44.84, -0.58);
 
-    // ── Offers: inverse leg ───────────────────────────────────────────────
-
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
@@ -92,8 +90,6 @@ public sealed class RideshareServiceTests : RideshareTestHarness
             routed[1].Should().Equal(DefaultPoint, Bordeaux, Lyon, destination);
         }
     }
-
-    // ── Offers: geocoding and routing ─────────────────────────────────────
 
     [HumansFact]
     public async Task CreateOffer_GeocodesTheMemberPlace_WhenCoordinatesAreMissing()
@@ -172,8 +168,6 @@ public sealed class RideshareServiceTests : RideshareTestHarness
 
         (await act()).Refusal!.Args.Should().Contain(Year);
     }
-
-    // ── Offers: ownership and state ───────────────────────────────────────
 
     [HumansFact]
     public async Task UpdateOffer_OnACancelledTrip_ReturnsARefusal()
@@ -320,8 +314,6 @@ public sealed class RideshareServiceTests : RideshareTestHarness
 
         await act.Should().ThrowAsync<UnauthorizedAccessException>();
     }
-
-    // ── Seats ─────────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task Snapshot_DerivesSeatsRemainingFromAcceptedInterestsOnly()
@@ -560,8 +552,6 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         (await ctx.Interests.SingleAsync(i => i.Id == accepted.Id, Ct)).Status.Should().Be(InterestStatus.Withdrawn);
     }
 
-    // ── Interests: who may do what ────────────────────────────────────────
-
     [HumansFact]
     public async Task AcceptAndDecline_ByAnyoneButThePostingOwner_Throw()
     {
@@ -789,8 +779,6 @@ public sealed class RideshareServiceTests : RideshareTestHarness
             "/Rideshare/Mine", Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
-    // ── Interests: decline privacy, matching ──────────────────────────────
-
     [HumansFact]
     public async Task DeclineInterest_StoresNoReason_StampsRespondedAt_AndTellsTheAuthorNeutrally()
     {
@@ -877,8 +865,6 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         snapshot.Requests.Single(r => r.Id == pendingRequest.Id).IsMatched.Should().BeFalse();
         snapshot.Requests.Single(r => r.Id == strandedRequest.Id).IsMatched.Should().BeFalse();
     }
-
-    // ── Notifications ─────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task ExpressInterest_TellsTheDriver()
@@ -1074,8 +1060,6 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         Logger.Entries.Should().NotContain(e => e.Level == LogLevel.Error);
     }
 
-    // ── Settings ──────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task SaveSettings_UpsertsByYear_AndAuditsEachSave()
     {
@@ -1135,8 +1119,6 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         await using var ctx = OpenContext();
         (await ctx.Settings.CountAsync(Ct)).Should().Be(0);
     }
-
-    // ── GDPR ──────────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task Export_ReturnsThreeSlices_WithEmptyListsForAHumanWithNothing()

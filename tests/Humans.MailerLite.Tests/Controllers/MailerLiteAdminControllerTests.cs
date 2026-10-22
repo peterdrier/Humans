@@ -71,10 +71,6 @@ public class MailerLiteAdminControllerTests
             VanishedBetweenPlanAndApply: 0, DecisionsThrottled: 0,
             Errors: 0, Elapsed: Duration.Zero);
 
-    // -----------------------------------------------------------------------
-    // Commit — drift detected (>10%), redirects back to Import with banner.
-    // -----------------------------------------------------------------------
-
     [HumansFact]
     public async Task Commit_InvalidLimitBinding_DoesNotBuildOrApplyAnUnlimitedPlan()
     {
@@ -126,14 +122,10 @@ public class MailerLiteAdminControllerTests
             Arg.Any<ImportPlan>(), Arg.Any<Guid>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
     }
 
-    // -----------------------------------------------------------------------
-    // Index — MailerLite outage: page still renders with MlError set.
-    // -----------------------------------------------------------------------
-
     [HumansFact]
     public async Task Index_RendersWithMlError_WhenMailerLiteApiUnauthorized()
     {
-        // Arrange: ML call throws 401 (e.g., missing/invalid MAILERLITE_API_KEY).
+        // The ML call throws 401 (e.g., missing/invalid MAILERLITE_API_KEY).
         _mlService.GetAccountSummaryAsync(Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException(
                 "Response status code does not indicate success: 401 (Unauthorized).",
@@ -151,10 +143,9 @@ public class MailerLiteAdminControllerTests
             .Returns(3);
         var ctrl = BuildSut();
 
-        // Act
         var result = await ctrl.Index(TestContext.Current.CancellationToken);
 
-        // Assert: page rendered with friendly error, Humans-side data preserved, no ML data.
+        // Page rendered with friendly error, Humans-side data preserved, no ML data.
         var view = Assert.IsType<ViewResult>(result);
         var vm = Assert.IsType<MailerLiteDashboardViewModel>(view.Model);
         Assert.NotNull(vm.MlError);
@@ -165,10 +156,6 @@ public class MailerLiteAdminControllerTests
         Assert.Null(vm.Drift);
         Assert.Equal(7, vm.HumansMailerLiteContacts);
     }
-
-    // -----------------------------------------------------------------------
-    // Refresh — calls IMailerLiteService.RefreshAsync and redirects to Index.
-    // -----------------------------------------------------------------------
 
     [HumansFact]
     public async Task Refresh_CallsRefreshAsync_AndRedirectsToIndex()
@@ -223,10 +210,6 @@ public class MailerLiteAdminControllerTests
         Assert.Contains("timed out", banner, StringComparison.Ordinal);
     }
 
-    // -----------------------------------------------------------------------
-    // Commit — counts within tolerance, calls ApplyAsync and redirects to Index.
-    // -----------------------------------------------------------------------
-
     [HumansTheory]
     [InlineData(1)]
     [InlineData(null)]
@@ -264,10 +247,6 @@ public class MailerLiteAdminControllerTests
         Assert.Equal(nameof(MailerLiteAdminController.Index), redirect.ActionName);
         await _importService.Received(1).ApplyAsync(freshPlan, _actorUserId, limit, CancellationToken.None);
     }
-
-    // -----------------------------------------------------------------------
-    // Debug — renders the per-audience debug VM with the five paged sections.
-    // -----------------------------------------------------------------------
 
     [HumansFact]
     public async Task Debug_RendersFiveSections_AndListsAvailableAudiencesInDropdown()

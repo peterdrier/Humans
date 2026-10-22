@@ -8,12 +8,6 @@ using NodaTime.Testing;
 using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Tests.Repositories;
 
-/// <summary>
-/// Smoke tests for <see cref="ShiftRepository"/>, the EF-backed
-/// repository introduced in issue nobodies-collective/Humans#541a. Covers the repository primitives
-/// most likely to regress: the narrow-field pending-signup count, the
-/// active-event lookup, and the tag reconcile.
-/// </summary>
 public sealed class ShiftRepositoryManagementTests : IDisposable
 {
     private static readonly Instant TestNow = Instant.FromUtc(2026, 4, 1, 12, 0);
@@ -255,10 +249,6 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         sourcePrefs.Should().BeEmpty("the source row was folded away, not left orphaned");
     }
-
-    // ─────────────────────────────────────────────────────────
-    // helpers
-    // ─────────────────────────────────────────────────────────
 
     private EventSettings NewEvent(bool isActive) => new()
     {

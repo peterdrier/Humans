@@ -23,17 +23,9 @@ using Humans.Users.Contracts;
 namespace Humans.Teams.Tests.Services;
 
 /// <summary>
-/// Regression tests for <see cref="SystemTeamSyncJob.SyncMembershipForUserAsync"/>.
-/// Covers nobodies-collective/Humans#498: duplicate camp registration for a user who is already an active member of the
-/// Barrio Leads system team must not violate IX_team_members_active_unique.
+/// A duplicate camp registration for a user already active in Barrio Leads must not violate
+/// IX_team_members_active_unique. The team's Members are stubbed so the job's guard sees that row.
 /// </summary>
-/// <remarks>
-/// The job owns no DbContext, so the test coordinates through the
-/// <see cref="ITeamManagementService"/> / <see cref="ICampLeadDirectory"/> seams. The
-/// Barrio Leads system team's <see cref="Team.Members"/> collection is stubbed
-/// so the job's idempotency guard can see the existing active membership
-/// without reading the DB directly.
-/// </remarks>
 public class SystemTeamSyncJobBarrioLeadsTests
 {
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 15, 12, 0));
@@ -213,8 +205,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
 
         var job = CreateJob();
 
-        // Act + Assert: should not throw and must not call the membership
-        // delta apply path (otherwise a duplicate insert would surface).
+        // Must not throw nor reach the membership delta apply path, where a duplicate insert would surface.
         var act = async () => await job.SyncMembershipForUserAsync(userId, SystemTeamType.BarrioLeads, Xunit.TestContext.Current.CancellationToken);
         await act.Should().NotThrowAsync();
 

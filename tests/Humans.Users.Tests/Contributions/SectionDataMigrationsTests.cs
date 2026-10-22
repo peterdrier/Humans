@@ -11,8 +11,6 @@ using NSubstitute;
 namespace Humans.Users.Tests.Contributions;
 
 /// <summary>
-/// Users' data migrations on <c>/Debug/DataMigrations</c>: the four retired Temp screens, plus the
-/// legacy GDPR tombstone re-erasure.
 /// Each status must list exactly what its apply will fix (or <c>done</c> never arrives), and each
 /// apply must carry the acting admin and be a no-op once nothing is pending.
 /// </summary>
@@ -193,7 +191,7 @@ public class SectionDataMigrationsTests
             AuditAction.AccountAnonymized, nameof(User), legacy, Arg.Any<string>(), _actorId);
     }
 
-    // Erased before the email scrub existed: the pre-#1098 name shape, real address still set.
+    // Erased before the email scrub existed: the old tombstone name shape, real address still set.
     private static UserInfo LegacyTombstone(Guid userId) =>
         new User
         {

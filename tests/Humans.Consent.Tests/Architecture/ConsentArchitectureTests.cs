@@ -15,35 +15,12 @@ using ConsentService = Humans.Consent.Services.ConsentService;
 namespace Humans.Consent.Tests.Architecture;
 
 /// <summary>
-/// Architecture tests enforcing the §15 repository pattern for the Legal &amp;
-/// Consent section's <see cref="ConsentService"/> and the T-04 two-layer
-/// cache (<see cref="CachingConsentService"/>, <see cref="CachingLegalDocumentSyncService"/>).
-///
-/// <para>
-/// <c>consent_records</c> is append-only per design-rules §12 — the
-/// repository exposes only <c>AddAsync</c> for mutations; no
-/// <c>UpdateAsync</c>, <c>DeleteAsync</c>, or <c>RemoveAsync</c> surface is
-/// allowed. Database triggers additionally reject UPDATE/DELETE at the
-/// storage layer.
-/// </para>
-///
-/// <para>
-/// T-04 introduces a per-user <see cref="UserConsentInfo"/> cache and a
-/// global <see cref="LegalDocumentInfo"/> cache. The decorators
-/// (<see cref="CachingConsentService"/>, <see cref="CachingLegalDocumentSyncService"/>)
-/// own the <c>IMemoryCache</c>-style state; the inner Application-layer
-/// services (<see cref="ConsentService"/>, <see cref="LegalDocumentSyncService"/>)
-/// hold no cache state themselves. <see cref="LegalDocumentSyncService"/> is the
-/// sole writer for <c>legal_documents</c>/<c>document_versions</c>
-/// (nobodies-collective/Humans#751) and evicts its decorator's cache
-/// directly after each successful write, rather than via a SaveChanges
-/// interceptor.
-/// </para>
+/// <c>consent_records</c> is append-only (database triggers reject UPDATE/DELETE). The caching
+/// decorators own all cache state; <see cref="LegalDocumentSyncService"/> is the sole writer for
+/// <c>legal_documents</c>/<c>document_versions</c> and evicts its decorator directly after each write.
 /// </summary>
 public sealed class ConsentArchitectureTests
 {
-    // ── IConsentRepository ───────────────────────────────────────────────────
-
     /// <summary>
     /// Positive assertion: the repository must expose an <c>AddAsync</c>
     /// method. Pins the append-only surface so removing the only write
@@ -59,14 +36,8 @@ public sealed class ConsentArchitectureTests
             because: "append-only repositories must expose AddAsync as the sole mutation primitive");
     }
 
-    // No companion "has no Update/Delete/Remove" test: memory/architecture/
-    // no-tests-for-absences.md — the absent surface has no behaviour to regress;
-    // the DB triggers enforce append-only at the storage layer.
-
-    // ── T-04 cache decorators ────────────────────────────────────────────────
-
     /// <summary>
-    /// T-04 load-bearing invariant: the decorator's
+    /// Load-bearing invariant: the decorator's
     /// <see cref="Humans.Consent.Contracts.IConsentSubmission.SubmitConsentAsync"/> override is
     /// declared on the decorator type itself — it cannot be a default
     /// interface implementation or a base-class inheritance, because
@@ -89,9 +60,8 @@ public sealed class ConsentArchitectureTests
     }
 
     /// <summary>
-    /// Asserts that <see cref="IConsentManagement"/> and <see cref="IConsentService"/>
-    /// resolve to the same singleton instance from the production DI registration —
-    /// <c>Section.Register</c> itself, not a test-built mirror of it.
+    /// <see cref="IConsentManagement"/> and <see cref="IConsentService"/> resolve to one singleton from
+    /// the production <c>Section.Register</c>, not a test-built mirror of it.
     /// </summary>
     [HumansFact]
     public void IConsentManagement_And_IConsentService_ResolveToSameSingleton()
@@ -119,11 +89,8 @@ public sealed class ConsentArchitectureTests
     [HumansFact]
     public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
     {
-        // This section keeps its own translation file. A type that asks for a third
-        // one gets nothing back and shows people the key name instead of the text.
-        // ConsentController shipped exactly that on five paths, all of them behind a
-        // form submission no page test goes through. SharedResource is fine — the
-        // Nav_Consents link stayed there and the login partial renders it.
+        // This section keeps its own translation file; a type asking for a third gets the key
+        // name back instead of the text. SharedResource stays allowed for the Nav_Consents link.
         var allowed = new[] { typeof(ConsentResource), typeof(SharedResource) };
         var offenders = typeof(Section).Assembly.GetTypes()
             .SelectMany(t => t.GetConstructors().SelectMany(c => c.GetParameters()

@@ -93,8 +93,6 @@ public class ExpenseReportServiceGdprTests
         profile: profile,
         communicationPreferences: []);
 
-    // ─── helpers ──────────────────────────────────────────────────────────────
-
     private static ExpenseReportDto MakeReport(Guid submitterId) => new()
     {
         Id = Guid.NewGuid(),
@@ -123,8 +121,6 @@ public class ExpenseReportServiceGdprTests
             }
         }
     };
-
-    // ─── happy path ───────────────────────────────────────────────────────────
 
     [HumansTheory]
     [Xunit.InlineData(false)]

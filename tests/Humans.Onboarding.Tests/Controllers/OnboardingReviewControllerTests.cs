@@ -20,18 +20,12 @@ using Xunit;
 namespace Humans.Onboarding.Tests.Controllers;
 
 /// <summary>
-/// The Consent Coordinator review queue — the section's only privileged surface, and until
-/// this file the only controller in it with no tests at all.
+/// The Consent Coordinator review queue, the section's only privileged surface.
 /// </summary>
 /// <remarks>
-/// Two things are covered here that the section states as invariants and nothing checked.
-/// The first is the negative access rule: a Volunteer Coordinator may read the queue and may
-/// not act on it, which is a per-action policy attribute and therefore a fact about metadata
-/// rather than about behaviour — a reflection assertion is the honest way to test it, and it
-/// catches the failure that matters (someone adds an action and forgets the attribute, so it
-/// inherits the class-level read policy and every VC can reject signups). The second is that
-/// each action tells the coordinator what actually happened: the queue is the only place a
-/// human sees the outcome, and a silent failure there reads as success.
+/// A Volunteer Coordinator may read the queue but not act on it. That is a per-action policy
+/// attribute, so a reflection assertion catches an action that forgot it. Each action must report
+/// what happened: the queue is the only place a human sees the outcome.
 /// </remarks>
 public class OnboardingReviewControllerTests
 {
@@ -55,8 +49,6 @@ public class OnboardingReviewControllerTests
         _userService.GetUserInfoAsync(_reviewerId, Arg.Any<CancellationToken>())
             .Returns(UserInfoStubs.MakeUserInfo(_reviewerId, displayName: "Reviewer"));
     }
-
-    // --- Negative access rule ---
 
     /// <summary>
     /// <c>ReviewQueueAccess</c> lets a Volunteer Coordinator see the queue.
@@ -89,8 +81,6 @@ public class OnboardingReviewControllerTests
             "Volunteer Coordinators are meant to read the queue to help new humans");
     }
 
-    // --- Merged-away ids ---
-
     /// <summary>
     /// A stale link to an archived id resolves to the survivor. If the page rendered under
     /// the archived id, Clear/Flag/Reject would post that id and the consent check would land
@@ -111,8 +101,6 @@ public class OnboardingReviewControllerTests
         redirect.RouteValues.Should().ContainKey("userId").WhoseValue.Should().Be(survivorId);
         await _onboarding.DidNotReceiveWithAnyArgs().GetReviewDetailAsync(default);
     }
-
-    // --- Outcome reporting ---
 
     [HumansFact]
     public async Task Clear_TellsTheCoordinatorWhenTheHumanWasAlreadyRejected()

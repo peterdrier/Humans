@@ -11,11 +11,6 @@ using Humans.Users.Services;
 
 namespace Humans.Users.Tests.Services;
 
-/// <summary>
-/// Unit tests for the lifecycle state-machine surface. Verifies that
-/// suspend/unsuspend produce the same writes, notifications, and metric
-/// emissions as the original onboarding-bundled implementation.
-/// </summary>
 public class HumanLifecycleServiceTests
 {
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
@@ -214,9 +209,8 @@ public class HumanLifecycleServiceTests
     [HumansFact]
     public async Task SuspendAsync_WhenNotificationDispatchThrows_StillReturnsSuccessAndRecordsMetric()
     {
-        // Notification dispatch failures must not surface to the caller — the
-        // profile write already succeeded; suspension is durable. Mirrors the
-        // try/catch contract in the original OnboardingService implementation.
+        // Notification dispatch failures must not surface to the caller: the
+        // profile write already succeeded and the suspension is durable.
         var userId = Guid.NewGuid();
         var adminId = Guid.NewGuid();
 
@@ -247,9 +241,8 @@ public class HumanLifecycleServiceTests
     [HumansFact]
     public async Task UnsuspendAsync_WhenInboxResolutionThrows_StillReturnsSuccess()
     {
-        // Inbox-resolution failures must not surface to the caller — the
-        // profile write already succeeded and unsuspension is durable.
-        // Mirrors the try/catch contract on the SuspendAsync notification path.
+        // Inbox-resolution failures must not surface to the caller: the
+        // profile write already succeeded and the unsuspension is durable.
         var userId = Guid.NewGuid();
         var adminId = Guid.NewGuid();
 

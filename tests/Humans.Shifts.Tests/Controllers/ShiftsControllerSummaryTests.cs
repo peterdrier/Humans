@@ -23,12 +23,6 @@ using Humans.Users.Services;
 
 namespace Humans.Shifts.Tests.Controllers;
 
-/// <summary>
-/// Tests for the Shift Summary by Camp actions on <see cref="ShiftsController"/>:
-/// the coordinator/manager authorization gate, the no-active-event short-circuit,
-/// the invalid-scope 404, and the controller's display sort (Table 2 by hours
-/// descending with the campless row last).
-/// </summary>
 public class ShiftsControllerSummaryTests
 {
     private readonly IShiftManagement _shiftMgmt = Substitute.For<IShiftManagement>();
@@ -70,9 +64,8 @@ public class ShiftsControllerSummaryTests
         _builder = new ShiftBrowsePageBuilder(_shiftMgmt, _burnSettings, _teamService);
     }
 
-    // Authorization is declarative: [Authorize(Policy = ShiftDepartmentManager)] on
-    // each Summary action (enforced by the auth middleware / the policy's own tests),
-    // so it isn't re-tested here by calling the action method directly.
+    // Authorization is the [Authorize(Policy = ShiftDepartmentManager)] attribute's job,
+    // so it isn't re-tested by calling the action methods directly.
 
     [HumansFact]
     public async Task Summary_NoActiveEvent_ReturnsNoActiveEventView()
@@ -138,7 +131,6 @@ public class ShiftsControllerSummaryTests
 
         // Real camps by hours desc (Y, X, Z), campless last regardless of its hours.
         model.Camps.Select(c => c.CampId).Should().Equal(campY, campX, campZ, null);
-        // Table 1 by hours desc.
         model.Humans.Select(h => h.Name).Should().Equal("High", "Low");
     }
 

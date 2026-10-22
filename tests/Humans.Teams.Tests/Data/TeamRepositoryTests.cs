@@ -17,11 +17,6 @@ using Xunit;
 
 namespace Humans.Teams.Tests.Data;
 
-/// <summary>
-/// Repository tests for the Teams section: the bundled-write paths (compound
-/// mutations across TeamMembers / TeamJoinRequests / TeamRoleAssignments) and the
-/// narrow read shapes the service depends on for cross-section stitching.
-/// </summary>
 public sealed class TeamRepositoryTests : IDisposable
 {
     [HumansTheory]
@@ -127,10 +122,6 @@ public sealed class TeamRepositoryTests : IDisposable
     {
         _dbContext.Dispose();
     }
-
-    // ==========================================================================
-    // Team reads
-    // ==========================================================================
 
     [HumansTheory]
     [InlineData(true)]
@@ -266,10 +257,6 @@ public sealed class TeamRepositoryTests : IDisposable
 
         all.Should().ContainSingle(t => t.Name == "Active");
     }
-
-    // ==========================================================================
-    // Membership writes — compound transactions
-    // ==========================================================================
 
     [HumansFact]
     public async Task TryAddMemberAsync_PersistsMember()
@@ -561,10 +548,6 @@ public sealed class TeamRepositoryTests : IDisposable
         (await _dbContext.TeamMembers.AsNoTracking().CountAsync(m => m.UserId == user.Id && m.LeftAt == null, TestContext.Current.CancellationToken)).Should().Be(0);
         (await _dbContext.Set<TeamRoleAssignment>().AsNoTracking().CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
-
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
 
     private async Task<Team> SeedTeamAsync(
         string name,

@@ -14,7 +14,7 @@ namespace Humans.Backdoor.Tests.Services;
 
 /// <summary>
 /// The key lifecycle: who may hold one, what the database keeps, and what the caller gets
-/// back (nobodies-collective/Humans#1128).
+/// back.
 /// </summary>
 public class BackdoorApiKeyServiceTests
 {
@@ -49,10 +49,6 @@ public class BackdoorApiKeyServiceTests
                 [], [], [], profile: null, [])));
     }
 
-    // ==========================================================================
-    // List
-    // ==========================================================================
-
     [HumansFact]
     public async Task List_flags_a_key_whose_owner_the_service_would_refuse()
     {
@@ -68,10 +64,6 @@ public class BackdoorApiKeyServiceTests
         rows.Single(r => r.Id == good.Id).IsOwnerEligible.Should().BeTrue();
         rows.Single(r => r.Id == stranded.Id).IsOwnerEligible.Should().BeFalse();
     }
-
-    // ==========================================================================
-    // Issue
-    // ==========================================================================
 
     [HumansFact]
     public async Task Issue_stores_only_a_hash_and_a_prefix()
@@ -168,10 +160,6 @@ public class BackdoorApiKeyServiceTests
         first.PlaintextKey.Should().NotBe(second.PlaintextKey);
     }
 
-    // ==========================================================================
-    // Revoke
-    // ==========================================================================
-
     [HumansFact]
     public async Task Revoke_stamps_the_row_and_audits()
     {
@@ -197,10 +185,6 @@ public class BackdoorApiKeyServiceTests
 
         await _repository.DidNotReceiveWithAnyArgs().RevokeAsync(default, default, default);
     }
-
-    // ==========================================================================
-    // Rotate
-    // ==========================================================================
 
     [HumansFact]
     public async Task Rotate_revokes_the_old_key_and_issues_a_new_one_with_the_same_label()
@@ -275,10 +259,6 @@ public class BackdoorApiKeyServiceTests
         result.Succeeded.Should().BeFalse();
         await _repository.DidNotReceiveWithAnyArgs().RotateAsync(default, default, default, default!);
     }
-
-    // ==========================================================================
-    // Resolve
-    // ==========================================================================
 
     [HumansFact]
     public async Task ResolveOwner_returns_the_owner_and_stamps_last_used()
@@ -356,10 +336,6 @@ public class BackdoorApiKeyServiceTests
         await _repository.DidNotReceiveWithAnyArgs().TouchAsync(default, default);
         await _repository.DidNotReceiveWithAnyArgs().RevokeAsync(default, default, default);
     }
-
-    // ==========================================================================
-    // User-data fan-outs
-    // ==========================================================================
 
     [HumansFact]
     public async Task Export_lists_the_owner_keys_without_the_hash()

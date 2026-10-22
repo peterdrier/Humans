@@ -10,23 +10,9 @@ namespace Humans.Users.Tests.Services;
 public sealed class DependencyCycleResolutionTests : ServiceTestHarness
 {
     /// <summary>
-    /// Generic cycle guard. Scans every concrete class implementing
-    /// <see cref="IApplicationService"/> or <see cref="IOrchestrator"/> across
-    /// the Humans assemblies — the role axis is exclusive, so both markers must
-    /// be swept or reclassifying a service silently drops it from the graph —
-    /// maps each
-    /// interface ctor parameter to every in-scope concrete implementation of that
-    /// interface, and DFS-detects cycles. Edges through lazy escape hatches
-    /// (<see cref="IServiceProvider"/>, <see cref="Lazy{T}"/>, <see cref="Func{T}"/>,
-    /// <see cref="IEnumerable{T}"/>) are deliberately not followed — those defer
-    /// resolution out of the ctor and break cycles in MS DI.
-    ///
-    /// This test fails fast at build time, instead of hanging at first request
-    /// like the original <c>IOnboardingEligibilityQuery</c> incident, by
-    /// inspecting the graph directly rather than relying on
-    /// <c>ServiceProviderOptions.ValidateOnBuild</c>, which misses cycles routed
-    /// through <c>sp => sp.GetRequiredService&lt;ConcreteImpl&gt;()</c>
-    /// forwarder factories.
+    /// Fails fast instead of hanging at first request: <c>ValidateOnBuild</c> misses cycles routed through
+    /// <c>sp => sp.GetRequiredService&lt;Impl&gt;()</c> forwarders. Both role markers are swept (the role axis is
+    /// exclusive); lazy edges (IServiceProvider, Lazy, Func, IEnumerable) are not followed, as they break cycles in MS DI.
     /// </summary>
     [HumansFact]
     public void NoCircularConstructorDependencies_AcrossApplicationServices()
@@ -45,21 +31,9 @@ public sealed class DependencyCycleResolutionTests : ServiceTestHarness
                         || typeof(IOrchestrator).IsAssignableFrom(t))
             .ToHashSet();
 
-        // Interface → EVERY concrete service implementing it, restricted to the
-        // types collected above so external implementations don't pollute the
-        // graph.
-        //
-        // Keying on the "IFoo → Foo" naming convention passes silently when the
-        // convention is broken: the name-matched class
-        // may not be what is registered, because `IUserService` (and ITeamService / ICampService /
-        // IEventService) is registered as a forwarder factory onto the matching
-        // `Caching*Service` decorator. Any edge through a read interface therefore
-        // vanished, so a cycle routed via a decorator resolved fine here and blew up
-        // only in MS DI — the exact failure mode this guard exists to prevent.
-        //
-        // Over-approximating (all implementers rather than one) is the safe direction
-        // for a cycle guard: a missing edge hides a real cycle, whereas a surplus edge
-        // can at worst report one that DI's single chosen implementation wouldn't hit.
+        // Interface → EVERY in-scope implementer, not the "IFoo → Foo" name match: read interfaces
+        // are forwarders onto Caching* decorators, so a name match drops exactly the edges this guard
+        // exists for. A surplus edge can at worst over-report; a missing one hides a real cycle.
         var implsByInterface = new Dictionary<Type, HashSet<Type>>();
         foreach (var concrete in concreteServices)
         {
@@ -87,10 +61,8 @@ public sealed class DependencyCycleResolutionTests : ServiceTestHarness
                 if (IsLazyEscapeHatch(pt)) continue;
                 if (pt.IsInterface && implsByInterface.TryGetValue(pt, out var impls))
                 {
-                    // Drop the self-edge a decorator creates by injecting the very
-                    // interface it implements — `CachingUserService(IUserManagement inner)`
-                    // is the decorator pattern wrapping the separately-registered
-                    // concrete, not a cycle.
+                    // Drop the self-edge a decorator creates by injecting the interface it
+                    // implements: it wraps a separately-registered concrete, not a cycle.
                     foreach (var impl in impls)
                         if (impl != concrete)
                             deps.Add(impl);

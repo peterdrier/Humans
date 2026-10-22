@@ -7,9 +7,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Campaigns.Tests.Controllers;
 
-/// <summary>
-/// Verifies CampaignController action authorization wiring.
-/// </summary>
 public class CampaignControllerTests
 {
     [HumansFact]

@@ -4,13 +4,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Campaigns.Tests.Architecture;
 
-/// <summary>
-/// Architecture tests enforcing the section shape for Campaigns.
-/// </summary>
-/// <remarks>
-/// No EF-reference assertion here: the section assembly holds the repository and
-/// legitimately references EF. Keeping the service off the DbSets is HUM0025's job.
-/// </remarks>
 public class CampaignsArchitectureTests
 {
     [HumansFact]

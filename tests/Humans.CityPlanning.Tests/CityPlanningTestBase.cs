@@ -13,13 +13,9 @@ using NSubstitute;
 namespace Humans.CityPlanning.Tests;
 
 /// <summary>
-/// The three <c>ServiceTestHarness</c> members this project's suites used — an in-memory
-/// <see cref="CityPlanningDbContext"/>, a factory over the same store, and a fixed clock.
-/// Owned here rather than linked into <c>tests/Directory.Build.props</c>: the harness is
-/// built around <c>UsersDbContext</c>, and sharing it would grant a section test project
-/// <c>InternalsVisibleTo</c> on Base's context and push Humans.Infrastructure into every
-/// test project compiling the shared set.
-/// Each test gets a fresh instance, so every case gets its own store.
+/// An in-memory <see cref="CityPlanningDbContext"/>, a factory over the same store, and a fixed
+/// clock, owned here: sharing the <c>UsersDbContext</c>-based harness would grant this project
+/// <c>InternalsVisibleTo</c> on another section's context. Each test gets its own store.
 /// </summary>
 public abstract class CityPlanningTestBase : IDisposable
 {

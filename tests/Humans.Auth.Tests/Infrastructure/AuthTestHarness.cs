@@ -12,16 +12,9 @@ using Humans.Users.Contracts;
 namespace Humans.Auth.Tests.Infrastructure;
 
 /// <summary>
-/// Base class for the section's service tests: the in-memory <see cref="AuthDbContext"/>
-/// and its factory, a deterministic clock, the two substituted horizontal collaborators,
-/// and a dictionary-backed <see cref="IUserService"/>.
+/// Base class for the section's service tests. Auth reads only display names from
+/// <c>IUserService</c>, so the stub is a dictionary rather than a seeded user database.
 /// </summary>
-/// <remarks>
-/// Auth's service reads only <c>GetUserInfoAsync</c> and <c>GetUserInfosAsync</c> from
-/// <c>IUserService</c>, for display-name stitching, so the stub is a dictionary rather than
-/// a seeded user database. <c>UserInfo.Create</c> is Governance's <c>UserInfoFixtures</c>
-/// projection.
-/// </remarks>
 public abstract class AuthTestHarness : IDisposable
 {
     private readonly Dictionary<Guid, UserInfo> _users = [];
@@ -54,8 +47,7 @@ public abstract class AuthTestHarness : IDisposable
         {
             Id = id ?? Guid.NewGuid(),
             DisplayName = displayName,
-            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
             BurnerName = displayName,
             UserName = $"test-{id ?? Guid.NewGuid()}@test.com",
             Email = $"test-{id ?? Guid.NewGuid()}@test.com",

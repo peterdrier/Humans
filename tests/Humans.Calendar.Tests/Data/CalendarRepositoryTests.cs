@@ -245,10 +245,6 @@ public sealed class CalendarRepositoryTests : IDisposable
         _dbContext.Dispose();
     }
 
-    // ==========================================================================
-    // AddAsync / GetEventByIdAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task AddAsync_PersistsEvent()
     {
@@ -297,10 +293,6 @@ public sealed class CalendarRepositoryTests : IDisposable
         fetched.Should().BeNull();
     }
 
-    // ==========================================================================
-    // GetAllAsync
-    // ==========================================================================
-
     // GetAllAsync is the section's only bulk read:
     // the Singleton cache warms from it and every window read is answered off that snapshot.
 
@@ -338,10 +330,6 @@ public sealed class CalendarRepositoryTests : IDisposable
         events.Should().ContainSingle(e => e.Id == kept.Id);
     }
 
-    // ==========================================================================
-    // UpdateAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task UpdateAsync_MutatesTrackedEntity()
     {
@@ -366,10 +354,6 @@ public sealed class CalendarRepositoryTests : IDisposable
         var updated = await _repo.UpdateAsync(Guid.NewGuid(), _ => { }, Xunit.TestContext.Current.CancellationToken);
         updated.Should().BeFalse();
     }
-
-    // ==========================================================================
-    // SoftDeleteAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task SoftDeleteAsync_ReturnsTeamIdAndTitleAndStampsDeletedAt()
@@ -397,10 +381,6 @@ public sealed class CalendarRepositoryTests : IDisposable
         var result = await _repo.SoftDeleteAsync(Guid.NewGuid(), Instant.FromUtc(2026, 4, 10, 0, 0), Xunit.TestContext.Current.CancellationToken);
         result.Should().BeNull();
     }
-
-    // ==========================================================================
-    // UpsertExceptionAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task UpsertExceptionAsync_InsertsNewRowWhenMissing()
@@ -466,10 +446,6 @@ public sealed class CalendarRepositoryTests : IDisposable
         (await _repo.GetEventByIdAsync(ev.Id, Xunit.TestContext.Current.CancellationToken))!.Exceptions.Should().BeEmpty();
     }
 
-    // ==========================================================================
-    // Soft-delete query filters
-    // ==========================================================================
-
     // CalendarEventException carries its own filter (ex => ex.Event.DeletedAt == null),
     // so exception rows hanging off a soft-deleted event are hidden too. Without it a
     // deleted series' cancellations and overrides keep surfacing.
@@ -531,10 +507,6 @@ public sealed class CalendarRepositoryTests : IDisposable
         rows.Should().ContainSingle();
         rows[0].OverrideTitle.Should().Be("Moved");
     }
-
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
 
     private static CalendarEvent BuildEvent(
         Guid? teamId = null,

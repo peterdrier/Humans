@@ -104,7 +104,7 @@ public class IdentityColumnReadAnalyzerTests
     public async Task Does_not_fire_on_UserInfo_Email_read()
     {
         // UserInfo (DTO) has its own `Email` property — reads of that are
-        // the CORRECT path post-#506. Analyzer must not flag them.
+        // the CORRECT path. Analyzer must not flag them.
         var source = DomainStub + """
 
             namespace Some.App.Code

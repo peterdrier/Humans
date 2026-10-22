@@ -21,7 +21,7 @@ namespace Humans.Backdoor.Tests.Controllers;
 /// <remarks>
 /// The invariant these pin is attribution: every write here must reach Feedback carrying the
 /// human the presented key was issued to, not <c>null</c> and not somebody else. Backdoor
-/// exists to close exactly that hole, and until now nothing tested it on this controller.
+/// exists to close exactly that hole.
 /// </remarks>
 public class BackdoorFeedbackControllerTests
 {
@@ -86,10 +86,6 @@ public class BackdoorFeedbackControllerTests
         }
     }
 
-    // ==========================================================================
-    // Every write records the key owner as the actor
-    // ==========================================================================
-
     [HumansFact]
     public async Task PostMessage_records_the_key_owner_as_the_sender()
     {
@@ -144,10 +140,6 @@ public class BackdoorFeedbackControllerTests
         await _feedback.Received(1).SetGitHubIssueNumberAsync(
             id, 1234, KeyOwnerId, Arg.Any<CancellationToken>());
     }
-
-    // ==========================================================================
-    // A report that is gone is a 404, not a 500
-    // ==========================================================================
 
     [HumansFact]
     public async Task Get_returns_NotFound_for_a_missing_report()
@@ -241,10 +233,6 @@ public class BackdoorFeedbackControllerTests
         error.StatusCode.Should().Be(500);
         System.Text.Json.JsonSerializer.Serialize(error.Value).Should().NotContain("Provider not found");
     }
-
-    // ==========================================================================
-    // List
-    // ==========================================================================
 
     [HumansFact]
     public async Task List_passes_the_status_and_category_filters_through()

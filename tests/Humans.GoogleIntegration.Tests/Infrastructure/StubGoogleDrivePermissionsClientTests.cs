@@ -5,12 +5,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Humans.GoogleIntegration.Tests.Infrastructure;
 
 /// <summary>
-/// Contract tests for <see cref="StubGoogleDrivePermissionsClient"/>. These
-/// exercise the idempotency and lifecycle contracts shared with the real
-/// <see cref="GoogleDrivePermissionsClient"/>: permission adds deduplicate
-/// by email, deletes target an
-/// existing permission id, and the file metadata round-trips the
-/// inherited-permissions-disabled flag.
+/// Pins the idempotency and lifecycle contracts shared with the real
+/// <see cref="GoogleDrivePermissionsClient"/>.
 /// </summary>
 public class StubGoogleDrivePermissionsClientTests
 {

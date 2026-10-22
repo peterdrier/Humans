@@ -213,7 +213,7 @@ public class ControllerDbContextRuleTests
     {
         // Detection is structural (any DbContext-derived type), so the message
         // must name the actual context injected rather than a hardcoded
-        // "UsersDbContext" (nobodies-collective/Humans#960).
+        // "UsersDbContext".
         var source = Stubs + """
 
             namespace Humans.Web.Controllers

@@ -14,12 +14,6 @@ using Humans.Users.Domain;
 using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Tests.Services;
 
-/// <summary>
-/// Behaviour tests for <see cref="WorkloadService"/> — verifies that
-/// per-person hour totals (split by Build/Event/Strike), per-rota roll-ups,
-/// and per-department roll-ups match what the spec at
-/// nobodies-collective/Humans#734 promises.
-/// </summary>
 public sealed class WorkloadServiceTests : ShiftsTestHarness
 {
     private readonly WorkloadService _service;
@@ -372,8 +366,6 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
         report.ByDepartment.Single().FilledHours.Should().Be(10m);
     }
 
-    // ── Role-hours fixtures (cached TeamInfo projection the service reads) ─────────
-
     private void StubTeams(params TeamInfo[] teams) =>
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(teams.ToDictionary(t => t.Id));
@@ -397,8 +389,6 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
             Guid.NewGuid(), teamId, teamName, teamSlug, "Role", null, slotCount, estimatedHours,
             [], 0, false, period, true, assignments);
     }
-
-    // ── Test-local seeders (Workload-specific shape; harness covers User/Team/etc.) ─
 
     private async Task<EventSettings> SeedEventAsync()
     {

@@ -11,10 +11,8 @@ using Humans.Users.Contracts;
 namespace Humans.MailerLite.Tests.Models;
 
 /// <summary>
-/// Acceptance criteria #5 / #7: §5 pairing surfaces non-primary subscribers
-/// with their user's current primary, and the snapshot build does not query
-/// the database (audience compute uses cached interfaces, name/email reads
-/// route through cached UserInfo).
+/// Pairing surfaces non-primary subscribers with their user's current primary, and the snapshot
+/// build does not query the database.
 /// </summary>
 public class MailerLiteAudienceDebugSnapshotBuilderTests
 {
@@ -259,8 +257,6 @@ public class MailerLiteAudienceDebugSnapshotBuilderTests
         last.Names.Should().Equal(Enumerable.Range(count == 0 ? 0 : 50, count == 0 ? 0 : 10).Select(i => $"User {i:D3}"));
     }
 
-    // -- helpers ---------------------------------------------------------------
-
     private static IMailerLiteAudience StubAudience(string key, string groupName, IEnumerable<Guid> members)
     {
         var set = new HashSet<Guid>(members);
@@ -330,8 +326,7 @@ public class MailerLiteAudienceDebugSnapshotBuilderTests
             {
                 Id = id,
                 DisplayName = displayName,
-                // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-                // UserInfo.BurnerName reads User.BurnerName only (#1098).
+                // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
                 BurnerName = displayName,
                 PreferredLanguage = "en",
                 CreatedAt = now,

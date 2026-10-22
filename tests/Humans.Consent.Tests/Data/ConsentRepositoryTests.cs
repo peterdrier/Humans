@@ -8,10 +8,7 @@ using NodaTime.Testing;
 namespace Humans.Consent.Tests.Data;
 
 /// <summary>
-/// Integration tests for <see cref="ConsentRepository"/>. Covers the
-/// append-only write path and every read shape. Uses the shared
-/// <see cref="TestDbContextFactory{TContext}"/> so the repository sees a fresh
-/// context per call while the test keeps one for seeding/verification.
+/// The repository sees a fresh context per call, while the test keeps one for seeding and verification.
 /// </summary>
 public sealed class ConsentRepositoryTests : IDisposable
 {
@@ -34,10 +31,6 @@ public sealed class ConsentRepositoryTests : IDisposable
         _dbContext.Dispose();
     }
 
-    // ==========================================================================
-    // AddAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task AddAsync_PersistsNewRecord()
     {
@@ -54,9 +47,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     [HumansFact]
     public async Task AddAsync_AutoSaves_PerCall()
     {
-        // The old ConsentService added to a shared-scope DbContext and relied on
-        // the caller's SaveChangesAsync. The new repository auto-saves each call,
-        // so a subsequent read from a different context sees the row immediately.
+        // The repository saves each call, so a read from a different context sees the row immediately.
         var record = BuildRecord(Guid.NewGuid(), Guid.NewGuid());
 
         await _repo.AddAsync(record, Xunit.TestContext.Current.CancellationToken);
@@ -64,10 +55,6 @@ public sealed class ConsentRepositoryTests : IDisposable
         var count = await _dbContext.ConsentRecords.CountAsync(Xunit.TestContext.Current.CancellationToken);
         count.Should().Be(1);
     }
-
-    // ==========================================================================
-    // ExistsForUserIdsAndVersionAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task ExistsForUserIdsAndVersionAsync_ReturnsTrue_WhenRecordExists()
@@ -100,10 +87,6 @@ public sealed class ConsentRepositoryTests : IDisposable
         exists.Should().BeFalse();
     }
 
-    // ==========================================================================
-    // GetByUserIdsAndVersionAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task GetByUserIdsAndVersionAsync_ReturnsRecord_WhenExists()
     {
@@ -125,10 +108,6 @@ public sealed class ConsentRepositoryTests : IDisposable
 
         record.Should().BeNull();
     }
-
-    // ==========================================================================
-    // GetAllForUserIdsAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task GetAllForUserIdsAsync_ReturnsOnlyThoseUsersRecords_NewestFirst()
@@ -208,10 +187,6 @@ public sealed class ConsentRepositoryTests : IDisposable
         results.Should().BeEmpty();
     }
 
-    // ==========================================================================
-    // GetCountForUserIdsAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task GetCountForUserIdsAsync_ReturnsCount()
     {
@@ -246,10 +221,6 @@ public sealed class ConsentRepositoryTests : IDisposable
 
         count.Should().Be(2);
     }
-
-    // ==========================================================================
-    // GetExplicitlyConsentedVersionIdsForUserIdsAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task GetExplicitlyConsentedVersionIdsForUserIdsAsync_ReturnsOnlyExplicitConsents()
@@ -292,10 +263,6 @@ public sealed class ConsentRepositoryTests : IDisposable
         ids.Should().Contain(sourceVersion);
     }
 
-    // ==========================================================================
-    // GetExplicitlyConsentedVersionIdsForUsersAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task GetExplicitlyConsentedVersionIdsForUsersAsync_EmptyInput_ReturnsEmpty()
     {
@@ -337,10 +304,6 @@ public sealed class ConsentRepositoryTests : IDisposable
         map[userId].Should().NotContain(implicitVersion);
     }
 
-    // ==========================================================================
-    // GetPairsForUsersAndVersionsAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task GetPairsForUsersAndVersionsAsync_EmptyUsers_ReturnsEmpty()
     {
@@ -380,10 +343,6 @@ public sealed class ConsentRepositoryTests : IDisposable
         pairs.Should().Contain((userA, versionY));
         pairs.Should().Contain((userB, versionX));
     }
-
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
 
     private async Task<Guid> SeedVersionAsync(string documentName = "Doc")
     {

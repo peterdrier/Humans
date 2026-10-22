@@ -67,10 +67,8 @@ public class GuideHtmlPostprocessorTests
         result.Should().NotContain("target=\"_blank\"");
     }
 
-    // Both rows must produce the same raw URL — row 2 exercises the
-    // prefix-stripping branch in RewriteImgSrc (line ~137) where the input
-    // already starts with the guide folder; without stripping, the result
-    // would have a doubled "docs/guide/" segment.
+    // Both rows must produce the same raw URL: row 2 already starts with the guide folder, and
+    // without prefix-stripping the result would carry a doubled "docs/guide/" segment.
     [HumansTheory]
     [InlineData("img/screenshot.png")]
     [InlineData("docs/guide/img/screenshot.png")]

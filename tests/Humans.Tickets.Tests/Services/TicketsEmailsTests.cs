@@ -8,12 +8,7 @@ using Humans.Tickets.Tests.Infrastructure;
 namespace Humans.Tickets.Tests.Services;
 
 /// <summary>
-/// The per-template routing policy Tickets stamps on its own messages — template name,
-/// opt-out category and the ticket-team inbox — plus the gallery-coverage gate: every
-/// template <see cref="TicketsEmails"/> can build has a sample in
-/// <see cref="TicketsEmailPreviews"/>, so a new template cannot ship invisible
-/// (peterdrier/Humans#1651). Transport (opt-out, unsubscribe, wrapping, enqueue) stays
-/// Email's, covered there.
+/// Includes the gallery-coverage gate: every template <see cref="TicketsEmails"/> can build has a sample in <see cref="TicketsEmailPreviews"/>, so a new template cannot ship invisible.
 /// </summary>
 public sealed class TicketsEmailsTests
 {

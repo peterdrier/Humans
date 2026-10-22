@@ -13,7 +13,6 @@ using NSubstitute;
 
 namespace Humans.Shifts.Tests.ViewComponents;
 
-/// <summary>The member dashboard's shift block honours the off-season switch.</summary>
 public sealed class DashboardShiftsViewComponentTests
 {
     private readonly IShiftService _shiftMgmt = Substitute.For<IShiftService>();

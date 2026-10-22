@@ -13,18 +13,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Gate.Tests;
 
-/// <summary>
-/// Architecture tests enforcing the section shape for Gate
-/// (nobodies-collective/Humans#866, G5).
-/// </summary>
-/// <remarks>
-/// Replaces <c>Humans.Application.Tests/Architecture/GateArchitectureTests.cs</c>, whose four
-/// tests pinned the Application/Infrastructure split the section no longer has — that
-/// <c>GateService</c> sat in <c>Humans.Application.Services.Gate</c>, took no DbContext, and
-/// reached its tables through <c>IGateRepository</c>. One assembly with one internal surface
-/// subsumes the first three; the cross-section read assertion is kept below because it is
-/// about Tickets, not about where Gate lives.
-/// </remarks>
 public class GateArchitectureTests
 {
     [HumansFact]
@@ -35,9 +23,8 @@ public class GateArchitectureTests
 
         paramTypes.Should().Contain(typeof(ITicketService));
 
-        // The full ticket service is internal to Humans.Tickets since that section's G5 move,
-        // so it can no longer be named here — assert on the namespace instead, which also
-        // catches a future Tickets type that is public but not on the contracts leaf.
+        // The full ticket service is internal to Humans.Tickets, so assert on the namespace,
+        // which also catches a public Tickets type that is not on the contracts leaf.
         paramTypes
             .Where(t => t.Namespace?.StartsWith("Humans.Tickets", StringComparison.Ordinal) == true)
             .Should().OnlyContain(t => t.Namespace == "Humans.Tickets.Contracts",

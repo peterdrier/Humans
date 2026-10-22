@@ -129,8 +129,7 @@ public class AgentPreloadAugmentorTests
 
     /// <summary>
     /// The glossary block is the only place the corpus prints something that looks like a
-    /// <c>fetch_section_guide</c> argument, and the model takes it literally
-    /// (nobodies-collective/Humans#949).
+    /// <c>fetch_section_guide</c> argument, and the model takes it literally.
     /// Every heading emitted here must be a key the reader can actually serve.
     /// </summary>
     [HumansFact]

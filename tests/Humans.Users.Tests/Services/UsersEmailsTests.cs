@@ -14,13 +14,8 @@ using NodaTime;
 namespace Humans.Users.Tests.Services;
 
 /// <summary>
-/// The per-template routing policy Users stamps on its own messages — template name,
-/// always-send (no opt-out category), the time-sensitive verification name the outbox
-/// drains immediately, and the do-not-persist rule on the erasure confirmation — plus
-/// the gallery-coverage gate: every template <see cref="UsersEmails"/> can build has a
-/// sample in <see cref="UsersEmailPreviews"/>, so a new template cannot ship invisible
-/// (peterdrier/Humans#1651). Transport (opt-out, unsubscribe, wrapping, enqueue) stays
-/// Email's, covered there.
+/// Includes the gallery-coverage gate: every template <see cref="UsersEmails"/> can build has a
+/// sample in <see cref="UsersEmailPreviews"/>, so a new template cannot ship invisible.
 /// </summary>
 public sealed class UsersEmailsTests
 {

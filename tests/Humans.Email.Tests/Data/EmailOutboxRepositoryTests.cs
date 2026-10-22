@@ -31,10 +31,6 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         _dbContext.Dispose();
     }
 
-    // ==========================================================================
-    // AddAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task AddAsync_PersistsRow()
     {
@@ -52,10 +48,6 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
             .FindProperty(nameof(EmailOutboxMessage.RecipientName))!.GetMaxLength()
             .Should().BeGreaterThanOrEqualTo(msg.RecipientName.Length);
     }
-
-    // ==========================================================================
-    // Stats-shape reads
-    // ==========================================================================
 
     [HumansFact]
     public async Task GetTotalCountAsync_CountsAllRows()
@@ -155,10 +147,6 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         pending.Should().Be(2);
     }
 
-    // ==========================================================================
-    // Retry / Discard
-    // ==========================================================================
-
     [HumansFact]
     public async Task RetryAsync_ResetsStatusAndCountersAndReturnsRecipient()
     {
@@ -205,10 +193,6 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         result.Should().BeNull();
     }
 
-    // ==========================================================================
-    // Processor helpers
-    // ==========================================================================
-
     [HumansFact]
     public async Task GetProcessingBatchAsync_FiltersOnAllCriteria()
     {
@@ -243,7 +227,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         var stale = now - Duration.FromMinutes(5);
 
         // 20 bulk messages queued first, then the magic link — FIFO alone would
-        // leave the login mail at the back (nobodies-collective/Humans#1122).
+        // leave the login mail at the back.
         foreach (var i in Enumerable.Range(0, 20))
         {
             await _repo.AddAsync(
@@ -381,10 +365,6 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         reloaded.LastError.Should().Be(prefix + expectedTail);
     }
 
-    // ==========================================================================
-    // Cleanup
-    // ==========================================================================
-
     [HumansFact]
     public async Task DeleteSentOlderThanAsync_RemovesOnlyOldSentMessages()
     {
@@ -456,10 +436,6 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         rows[targetRow.Id].UserId.Should().Be(targetId);
         rows[otherRow.Id].UserId.Should().Be(otherId);
     }
-
-    // ==========================================================================
-    // Daily send counts (#1195)
-    // ==========================================================================
 
     [HumansFact]
     public async Task IncrementDailySendCountAsync_CreatesRowOnFirstCall()
@@ -554,10 +530,6 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
 
         result.Select(m => m.Id).Should().BeEquivalentTo([sent.Id]);
     }
-
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
 
     [HumansTheory]
     [InlineData("23505", "PK_email_outbox_messages", true, true)]

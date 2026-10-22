@@ -17,10 +17,6 @@ using Microsoft.Extensions.Hosting;
 
 namespace Humans.Events.Tests;
 
-/// <summary>
-/// Architecture tests enforcing the repository/service shape and the URL shape
-/// of the Events section.
-/// </summary>
 public class EventsArchitectureTests
 {
     [HumansFact]
@@ -101,8 +97,6 @@ public class EventsArchitectureTests
             because: "MVC action filters resolve per-request; a Singleton filter would capture per-request state");
     }
 
-    // ── T-03: Caching decorator invariants ───────────────────────────────────
-
     [HumansFact]
     public void CachingEventService_ImplementsIEventManagement()
     {
@@ -127,11 +121,8 @@ public class EventsArchitectureTests
     [HumansFact]
     public void CachingEventService_IsItsOwnHostedService()
     {
-        // TrackedCache self-hosting pattern: caching decorators
-        // implement IHostedService directly rather than relying on an external
-        // *WarmupHostedService. CachingEventService composes TrackedCache
-        // (mixed-state decorator), so it owns IHostedService on the class
-        // itself — same shape CachingShiftViewService uses.
+        // Caching decorators host themselves: CachingEventService composes TrackedCache, so it
+        // implements IHostedService rather than relying on an external warmup service.
         typeof(IHostedService).IsAssignableFrom(typeof(CachingEventService))
             .Should().BeTrue(
                 because: "the decorator drives its own startup warmup via IHostedService");
@@ -156,9 +147,7 @@ public class EventsArchitectureTests
     }
 
     /// <summary>
-    /// Asserts that <see cref="IEventManagement"/> and <see cref="IEventService"/> resolve to the same
-    /// singleton from the production DI registration — <c>Section.Register</c>
-    /// itself, not a test-built mirror of it.
+    /// <see cref="IEventManagement"/> and <see cref="IEventService"/> resolve to one singleton from the production <c>Section.Register</c>, not a test-built mirror of it.
     /// </summary>
     [HumansFact]
     public void IEventManagement_And_IEventService_ResolveToSameInstance()

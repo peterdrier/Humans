@@ -29,11 +29,8 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     public ShiftDashboardMetricsTests()
         : base(TestNow)
     {
-        // The dashboard compute methods now reach cross-domain data through
-        // ITicketService / ITeamService / IUserService. Wire thin fakes that
-        // read from the same in-memory DbContext so existing DbContext-based
-        // test seed helpers still drive the scenarios end-to-end. The repository
-        // is backed by the same in-memory options via TestDbContextFactory.
+        // Thin fakes read the same in-memory DbContext, so the seed helpers drive the
+        // cross-section scenarios end-to-end.
         var fakeUserService = new FakeUserService(Db);
         var fakeTicketService = new FakeTicketQueryService(_ticketOrders);
         var fakeTeamService = new FakeTeamService(TeamsDb);
@@ -642,10 +639,6 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         result.Take(6).Should().OnlyContain(p => p.NewSignups == 0);
     }
 
-    // ================================================================
-    // GetDailyDepartmentStaffingAsync
-    // ================================================================
-
     [HumansFact]
     public async Task GetDailyDepartmentStaffing_EventPeriod_ReturnsEmpty()
     {
@@ -716,10 +709,6 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         dayRow.Departments[0].ConfirmedCount.Should().Be(3);
     }
 
-    // ================================================================
-    // GetShiftDurationBreakdownAsync
-    // ================================================================
-
     [HumansFact]
     public async Task GetShiftDurationBreakdown_NullPeriod_ReturnsEmpty()
     {
@@ -766,10 +755,6 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         result.Should().Contain(r => !r.IsAllDay && r.DurationHours == 2 && r.TotalSlots == 3);
         result.Should().Contain(r => !r.IsAllDay && r.DurationHours == 4 && r.TotalSlots == 10);
     }
-
-    // ================================================================
-    // GetCoverageHeatmapAsync
-    // ================================================================
 
     [HumansFact]
     public async Task GetCoverageHeatmap_PromotedSubteam_GetsOwnRow()
@@ -852,16 +837,11 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         result.Days.Should().Contain(d => d.DayOffset > es.EventEndOffset && d.Period == ShiftPeriod.Strike);
     }
 
-    // ================================================================
-    // BuildSubPeriod narrowing — Shifts.md invariant line 238
-    // ================================================================
-
     [HumansFact]
     public async Task GetDashboardOverview_SubPeriodWithNonBuildPeriod_IsIgnored()
     {
-        // Sub-period only narrows when period == Build. For any other period
-        // the call must behave as if sub-period were null. Arrange a mixed
-        // event with shifts spread across Build and Event periods.
+        // Sub-period only narrows when period == Build; for any other period the call must
+        // behave as if sub-period were null.
         var es = await SeedEventAsync();
         var team = await SeedTeamAsync("Gate");
         var buildRota = await SeedRotaAsync(team, es, RotaPeriod.Build);
@@ -873,23 +853,17 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         await SeedShiftAsync(eventRota, dayOffset: 1, min: 2, max: 4);
         await SeedShiftAsync(eventRota, dayOffset: 3, min: 2, max: 4);
 
-        // Act: period=Event with sub-period set (FirstCrew) and without.
         var withSubPeriod = await _service.GetDashboardOverviewAsync(
             es.Id, period: ShiftPeriod.Event, subPeriod: BuildSubPeriod.FirstCrew);
         var withoutSubPeriod = await _service.GetDashboardOverviewAsync(
             es.Id, period: ShiftPeriod.Event, subPeriod: null);
 
-        // Assert: sub-period silently ignored when period != Build. The two
-        // counters must agree on totals — anything else means narrowing
-        // leaked into a period it should not.
+        // The two counters must agree on totals; anything else means narrowing leaked into
+        // a period it should not.
         withSubPeriod.TotalShifts.Should().Be(withoutSubPeriod.TotalShifts);
         withSubPeriod.TotalSlots.Should().Be(withoutSubPeriod.TotalSlots);
         withSubPeriod.FilledShifts.Should().Be(withoutSubPeriod.FilledShifts);
     }
-
-    // ================================================================
-    // Seeding helpers.
-    // ================================================================
 
     private async Task<EventSettings> SeedEventAsync()
     {
@@ -1059,9 +1033,8 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
     }
 
-    // Tickets seeds go straight onto the read DTO the dashboard consumes: ticket_orders
-    // and the TicketOrder entity are internal to Humans.Tickets since that section's G5
-    // move, and this suite's subject is ShiftManagementService, not the ticket read path.
+    // Tickets seeds go straight onto the read DTO the dashboard consumes: the TicketOrder
+    // entity is internal to Humans.Tickets.
     private readonly List<TicketOrderInfo> _ticketOrders = [];
 
     private Task SeedTicketOrderAsync(Guid userId, TicketPaymentStatus status)
@@ -1096,17 +1069,6 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
     }
 
-    // ================================================================
-    // Thin fakes for cross-domain service interfaces. Each method covers
-    // only the service surface used by ShiftManagementService's dashboard
-    // compute paths. All reads go through the same in-memory DbContext
-    // so the test seed helpers (Db.*.Add) drive results end-to-end.
-    // ================================================================
-
-    // Only the ticket-order read surface now: the full ITicketManagement is internal to
-    // Humans.Tickets since that section's G5 move, and this fake never needed the other
-    // eleven members. Seeds come from the section's own fixture, so the fake returns the
-    // rows the dashboard paths read rather than querying a context this project cannot see.
     private sealed class FakeTicketQueryService(IReadOnlyList<TicketOrderInfo> orders) : ITicketService
     {
         public Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrdersAsync(CancellationToken ct = default) =>
@@ -1138,9 +1100,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
 
         public Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default)
         {
-            // Build a UserInfo snapshot from the in-memory DB so dashboard-metrics
-            // tests that drive ComputeDashboardTrendsAsync (which now filters
-            // LastLoginAt off the cached snapshot) can observe the fake's data.
+            // ComputeDashboardTrendsAsync filters LastLoginAt off the UserInfo snapshot.
             var users = db.Users.ToList();
             IReadOnlyCollection<UserInfo> result = users.Select(u => UserInfoFactory.Create(
                 u,
@@ -1174,12 +1134,6 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         public Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default) => throw new NotSupportedException();
     }
 
-    /// <summary>
-    /// The dashboard compute paths read teams two ways; everything else on the section's
-    /// cross-section interface throws. Shrank at Teams' G5 from ~55 members to the leaf's
-    /// (Tickets finding 13's shape: a fake that implements a fat interface to use two members
-    /// is a carve waiting to happen).
-    /// </summary>
     private sealed class FakeTeamService(TeamsDbContext db) : ITeamService
     {
         public async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsWithParentsAsync(IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default)

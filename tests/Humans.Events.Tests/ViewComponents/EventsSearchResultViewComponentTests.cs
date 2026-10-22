@@ -11,7 +11,7 @@ namespace Humans.Events.Tests.ViewComponents;
 
 /// <summary>
 /// Covers <see cref="EventsSearchResultViewComponent"/>: the global-search row for an event.
-/// Callers pass an event id and nothing else (nobodies-collective/Humans#1062), so the
+/// Callers pass an event id and nothing else, so the
 /// cache-served by-id fetch and the empty-content fallback are the whole behaviour.
 /// </summary>
 public class EventsSearchResultViewComponentTests

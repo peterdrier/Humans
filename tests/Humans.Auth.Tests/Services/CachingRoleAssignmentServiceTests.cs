@@ -11,23 +11,10 @@ using NSubstitute;
 namespace Humans.Auth.Tests.Services;
 
 /// <summary>
-/// Exercises <see cref="CachingRoleAssignmentService"/>'s cache-served paths
-/// (<c>GetActiveCountsByRoleAsync</c>, <c>GetActiveForUserAsync</c>) and
-/// wholesale invalidation. Pass-through methods are not tested here — the
-/// build verifies they satisfy <see cref="IRoleAssignmentManagement"/>; their
-/// behavior is the inner service's behavior, covered by
-/// <c>RoleAssignmentServiceTests</c>.
+/// Pass-throughs are covered by <c>RoleAssignmentServiceTests</c>. <c>GetFilteredAsync</c> is stubbed with
+/// <c>Arg.Any</c> so a change to the warm path fails readably, not as a null-tuple crash; the warm
+/// call's shape is asserted only in <see cref="WarmsByAskingInnerForEveryRow"/>.
 /// </summary>
-/// <remarks>
-/// The decorator's only collaborator is the keyed inner
-/// <see cref="IRoleAssignmentManagement"/>, resolved per call through
-/// <c>IServiceScopeFactory</c> — it never sees a repository. So the warm-count
-/// assertions below are made against the inner service itself, and
-/// <c>GetFilteredAsync</c> is stubbed with <c>Arg.Any</c>: matching the warm
-/// call's exact arguments would turn a deliberate change to the warm path into
-/// a null-tuple crash instead of a readable failure. The one place the warm
-/// call's shape is asserted is <see cref="WarmsByAskingInnerForEveryRow"/>.
-/// </remarks>
 public sealed class CachingRoleAssignmentServiceTests
 {
     [HumansFact]
@@ -121,10 +108,8 @@ public sealed class CachingRoleAssignmentServiceTests
     [HumansFact]
     public async Task GetActiveCountsByRoleAsync_ReflectsClockAdvance_WithoutInvalidation()
     {
-        // The cache holds raw rows; "active" is derived from the clock per
-        // call. Advancing the clock past a ValidTo boundary must drop that
-        // row's contribution to the count without requiring an explicit
-        // invalidation — proves the count is recomputed, not memoized.
+        // The cache holds raw rows and derives "active" from the clock per call, so passing a
+        // ValidTo boundary must drop the row's count without an invalidation.
         var t0 = Instant.FromUtc(2026, 5, 17, 12, 0);
         var clock = new FakeClock(t0);
         var expiresAt = t0 + Duration.FromHours(1);

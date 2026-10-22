@@ -20,10 +20,6 @@ namespace Humans.Development.Tests;
 /// "DevelopmentDashboardSeeder and its POST /dev/seed/dashboard endpoint are
 /// gated to IWebHostEnvironment.IsDevelopment() AND the DevAuth:Enabled setting.
 /// QA, preview, and production environments cannot invoke it regardless of role."
-///
-/// The role policy (<c>ShiftDashboardAccess</c>) is enforced by the
-/// <c>[Authorize]</c> attribute and tested elsewhere; this file exercises the
-/// in-action environment / config gating that runs even after the policy passes.
 /// </summary>
 public class DevSeedControllerTests
 {
@@ -36,17 +32,13 @@ public class DevSeedControllerTests
     [HumansFact]
     public async Task SeedDashboard_NotDevelopmentEnvironment_ReturnsNotFound()
     {
-        // Arrange: ASPNETCORE_ENVIRONMENT != Development (e.g. QA / preview / prod).
-        // Even if DevAuth:Enabled were true, the stricter IsDevelopment() gate must
-        // refuse the seed.
+        // Even if DevAuth:Enabled were true, the stricter IsDevelopment() gate must refuse the seed.
         _environment.EnvironmentName.Returns("Production");
         SetDevAuthEnabled(true);
         var ctrl = BuildSut();
 
-        // Act
         var result = await ctrl.SeedDashboard(Xunit.TestContext.Current.CancellationToken);
 
-        // Assert
         result.Should().BeOfType<NotFoundResult>();
         // Seeder must not be resolved when gating fails — verifies the early-out
         // happened before any DI lookup of the seeder dependency.
@@ -56,16 +48,13 @@ public class DevSeedControllerTests
     [HumansFact]
     public async Task SeedDashboard_DevelopmentButDevAuthDisabled_ReturnsNotFound()
     {
-        // Arrange: ASPNETCORE_ENVIRONMENT == Development but DevAuth:Enabled == false.
         // The seed endpoint requires BOTH gates — config alone gates QA/preview.
         _environment.EnvironmentName.Returns("Development");
         SetDevAuthEnabled(false);
         var ctrl = BuildSut();
 
-        // Act
         var result = await ctrl.SeedDashboard(Xunit.TestContext.Current.CancellationToken);
 
-        // Assert
         result.Should().BeOfType<NotFoundResult>();
         _serviceProvider.DidNotReceive().GetService(Arg.Any<Type>());
     }
