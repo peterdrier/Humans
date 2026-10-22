@@ -1,14 +1,16 @@
 using Humans.Base.Interfaces;
 using Humans.Camps.Contracts;
 using Humans.Settings.Contracts;
+using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
+using Humans.Store.Services.Dtos;
 using Humans.Teams.Contracts;
 using NodaTime;
 
 namespace Humans.Store.Services;
 
-/// <summary>Shared live prices and counterparty names for Store order views and issuance.</summary>
+/// <summary>Order view projection, live prices and counterparty names for Store reads and issuance.</summary>
 internal sealed class StoreOrderReader(
     IStoreRepository repo,
     ICampService campService,
@@ -39,6 +41,58 @@ internal sealed class StoreOrderReader(
             prices[product.Id] = new BalanceCalculator.ProductPrice(
                 product.UnitPriceEur, product.VatRatePercent, product.DepositAmountEur);
         return prices;
+    }
+
+    /// <summary>Display names for the given product ids, live or deactivated, any year.</summary>
+    public async Task<IReadOnlyDictionary<Guid, string>> LoadProductNamesAsync(
+        IReadOnlyCollection<Guid> productIds, CancellationToken ct) =>
+        (await repo.GetProductsByIdsAsync(productIds, ct)).ToDictionary(p => p.Id, p => p.Name);
+
+    public async Task<OrderDto> MapOrderAsync(
+        Order o,
+        IReadOnlyDictionary<Guid, string> productNames,
+        IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice> currentPrices,
+        CancellationToken ct,
+        string? displayName = null)
+    {
+        var balance = BalanceCalculator.Compute(o, currentPrices);
+        var totalsByLine = balance.Lines.ToDictionary(t => t.LineId);
+        var lines = o.Lines.Select(l =>
+        {
+            var t = totalsByLine[l.Id];
+            return new OrderLineDto(
+                l.Id, l.OrderId, l.ProductId,
+                productNames.GetValueOrDefault(l.ProductId, "(unknown product)"),
+                l.Qty, t.EffectiveUnitPrice, t.EffectiveVatRate, t.EffectiveDeposit, l.AddedAt,
+                t.SubtotalEur, t.VatEur, t.DepositEur, t.TotalEur);
+        }).ToList();
+
+        var payments = o.Payments
+            .Select(p => new OrderPaymentDto(
+                p.Id, p.AmountEur, p.Method, p.Status, p.StripePaymentIntentId, p.ExternalRef, p.ReceivedAt, p.Notes))
+            .ToList();
+
+        var counterpartyType = o.TeamId is not null
+            ? OrderCounterpartyType.Team
+            : OrderCounterpartyType.Camp;
+
+        displayName ??= await ResolveCounterpartyDisplayNameAsync(o, ct);
+
+        return new OrderDto(
+            o.Id,
+            o.CampSeasonId,
+            o.TeamId,
+            counterpartyType,
+            displayName,
+            o.Year,
+            o.State,
+            o.CounterpartyName, o.CounterpartyVatId, o.CounterpartyAddress, o.CounterpartyCountryCode, o.CounterpartyEmail,
+            o.IssuedInvoiceId,
+            lines,
+            payments,
+            balance.LinesSubtotalEur, balance.VatTotalEur, balance.DepositTotalEur,
+            balance.PaymentsTotalEur, balance.BalanceEur,
+            o.CreatedAt);
     }
 
     public async Task<string> ResolveCounterpartyDisplayNameAsync(Order o, CancellationToken ct)
