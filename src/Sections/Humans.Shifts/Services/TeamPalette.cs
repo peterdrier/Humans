@@ -5,8 +5,7 @@ namespace Humans.Shifts.Services;
 
 internal static class TeamPalette
 {
-    // 20 distinct hues, all dark enough that white bold text reads on top.
-    // Order matters only for determinism — changing it shifts every team's color.
+    // Dark enough for white bold text. Reordering shifts every team's color.
     private static readonly string[] Palette =
     [
         "#1F77B4", "#FF7F0E", "#2CA02C", "#D62728", "#9467BD",

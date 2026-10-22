@@ -4,20 +4,9 @@ using Humans.Settings.Contracts;
 namespace Humans.Shifts.Services.Dtos;
 
 /// <summary>
-/// Cached per-user projection of every Shifts-section row keyed off
-/// <see cref="UserId"/>. Bundles raw EF rows only — no computed fields,
-/// aggregates, or absolute-time resolution. Consumers compute what they need
-/// from the raw rows.
+/// Raw rows only: no computed fields or absolute times. Empty, never null, for an unknown user or no active event.
+/// All signups belong to the active event, so the one <see cref="Calendar"/> covers them.
 /// </summary>
-/// <remarks>
-/// Returned by <see cref="Humans.Shifts.Services.IShiftRowView.GetUserAsync"/> /
-/// <see cref="Humans.Shifts.Services.IShiftRowView.GetUsersAsync"/>. Missing users (or
-/// "no active event") yield an empty view — never <c>null</c>, never an
-/// exception. <see cref="Calendar"/> is the active event's Settings-sourced calendar
-/// (nobodies-collective/Humans#1630), resolved once alongside <see cref="Signups"/> —
-/// every signup in this view belongs to the same active event, so one calendar covers
-/// them all.
-/// </remarks>
 internal sealed record ShiftUserView(
     Guid UserId,
     VolunteerEventProfile? Profile,
@@ -27,40 +16,21 @@ internal sealed record ShiftUserView(
     IReadOnlyList<ShiftSignup> Signups,
     EventSettingsInfo? Calendar = null)
 {
-    /// <summary>
-    /// True when the user has at least one signup in an active state
-    /// (<see cref="SignupStatus.Pending"/> or <see cref="SignupStatus.Confirmed"/>)
-    /// in the active event. Refused / Bailed / Cancelled / NoShow signups
-    /// don't count — they're no longer commitments. Mirrors the convention
-    /// used by <c>ShiftRepository</c> and <c>ShiftManagementService</c>.
-    /// </summary>
+    /// <summary>Pending or Confirmed; the other statuses are no longer commitments.</summary>
     public bool HasShift => Signups.Any(s =>
         s.Status is SignupStatus.Pending or SignupStatus.Confirmed);
 
-    /// <summary>
-    /// Number of active-state signups (<see cref="SignupStatus.Pending"/> or
-    /// <see cref="SignupStatus.Confirmed"/>) the user holds in the active event.
-    /// Refused / Bailed / Cancelled / NoShow signups don't count. Same
-    /// "active commitment" rule as <see cref="HasShift"/>, expressed as a count.
-    /// </summary>
     public int ActiveSignupCount => Signups.Count(s =>
         s.Status is SignupStatus.Pending or SignupStatus.Confirmed);
 
     /// <summary>
-    /// True when the user has at least one active signup (Pending/Confirmed) on
-    /// a shift classified into the given <paramref name="period"/>. Each shift's
-    /// period is derived from its <see cref="Shift.DayOffset"/> against
-    /// <see cref="Calendar"/> (Build = before gates open, Event = during, Strike =
-    /// after) via <see cref="Shift.GetShiftPeriod"/>. No calendar (no active event,
-    /// or Settings has no calendar for it yet) means no signup can be classified.
+    /// Active signups only. With no <see cref="Calendar"/> (no active event, or none in Settings yet) nothing can be
+    /// classified.
     /// </summary>
     public bool HasShiftInPeriod(ShiftPeriod period) => Calendar is not null && Signups.Any(s =>
         s.Status is SignupStatus.Pending or SignupStatus.Confirmed
         && s.Shift.GetShiftPeriod(Calendar) == period);
 
-    /// <summary>
-    /// Empty view returned for unknown ids / no active event.
-    /// </summary>
     internal static ShiftUserView Empty(Guid userId) => new(
         userId,
         Profile: null,

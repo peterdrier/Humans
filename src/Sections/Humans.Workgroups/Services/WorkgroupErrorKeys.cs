@@ -1,9 +1,6 @@
 namespace Humans.Workgroups.Services;
 
-/// <summary>
-/// The resource keys carried by <see cref="WorkgroupRefusal"/>. Named constants
-/// rather than literals so a renamed key is a build error, not a raw key on the page.
-/// </summary>
+/// <summary>Constants rather than literals, so a renamed key is a build error, not a raw key on the page.</summary>
 internal static class WorkgroupErrorKeys
 {
     public const string NotFound = "Workgroups_Error_NotFound";

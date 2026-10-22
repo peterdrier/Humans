@@ -51,7 +51,6 @@ else
 
             @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
 
-            // Read CSS variables for JS-generated markup
             const _cs = getComputedStyle(document.documentElement);
             const cssVar = (name) => _cs.getPropertyValue(name).trim();
             const clrMutedText = cssVar('--h-muted-text');
@@ -85,7 +84,6 @@ else
                     '</div></div>';
             }
 
-            // Group markers by exact lat/lng
             function groupByLocation(data) {
                 const groups = {};
                 for (const m of data) {
@@ -115,7 +113,6 @@ else
                     let pinContent;
 
                     if (group.length > 1) {
-                        // Multi-person pin with count
                         const pin = new PinElement({
                             glyph: '' + group.length,
                             glyphColor: clrTextOnDark,
@@ -152,13 +149,11 @@ else
                     mapMarkers.push(marker);
                 }
 
-                // Cluster with count rendering
                 if (typeof markerClusterer !== 'undefined') {
                     var renderer = {
                         render: function(ref) {
                             var count = ref.count;
                             var position = ref.position;
-                            // Sum actual people counts from grouped markers
                             var totalPeople = 0;
                             for (var gm of ref.markers) {
                                 totalPeople += (gm._people ? gm._people.length : 1);
@@ -179,14 +174,13 @@ else
                     new markerClusterer.MarkerClusterer({ markers: mapMarkers, map: map, renderer: renderer });
                 }
 
-                // Fit bounds with European focus fallback
                 if (markers.length > 1) {
                     const bounds = new google.maps.LatLngBounds();
                     for (const m of markers) {
                         bounds.extend({ lat: m.latitude, lng: m.longitude });
                     }
                     map.fitBounds(bounds, 50);
-                    // If outliers cause extreme zoom-out, default to Europe-centered view
+                    // Outliers can zoom far out: fall back to a Europe-centred view.
                     google.maps.event.addListenerOnce(map, 'idle', function() {
                         if (map.getZoom() < 4) {
                             map.setCenter({ lat: 43, lng: 5 });

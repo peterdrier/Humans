@@ -1,9 +1,6 @@
 namespace Humans.Shifts.Contracts;
 
-/// <summary>
-/// Computed sub-classification of a Build-period shift, narrowed by day-offset
-/// boundaries on EventSettings. NOT stored in DB — derived per shift on read.
-/// </summary>
+/// <summary>Derived per shift on read, never stored.</summary>
 public enum BuildSubPeriod
 {
     /// <summary>FirstCrewStartOffset ≤ DayOffset &lt; SetupWeekStartOffset.</summary>

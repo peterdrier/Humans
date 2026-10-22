@@ -17,7 +17,7 @@
 @{
     var rosterTable = TableModel.For(Model.Rows)
         .Template("Human", @<text><vc:human user-id="@item.UserId" layout="AvatarName" size="32" /></text>)
-        // null (not "") so a profile-less human gets the muted em-dash, not a blank cell.
+        // null, not "", so a profile-less human gets the muted em dash, not a blank cell.
         .Column("Legal name", x => string.IsNullOrEmpty(x.LegalName) ? null : x.LegalName)
         .Column("Joined", x => x.JoinedAt, c => c.Date())
         .Empty("No humans on this team.")

@@ -5,13 +5,6 @@ using NodaTime;
 
 namespace Humans.Workgroups.Services;
 
-/// <summary>
-/// One pass of the reporting rhythm of design §13: the monthly update nudge to a group's
-/// coordinators, and clause 1's fourteen-day notice to the Board about an application
-/// nobody has decided. It notifies and records; it never registers, closes or refuses
-/// anything, and it does not track whether a group has gone quiet — ending a group is the
-/// Board's decision alone, taken on the Board's own reading of the register.
-/// </summary>
 internal sealed partial class WorkgroupService
 {
     public async Task RunDailyRhythmAsync(CancellationToken ct = default)
@@ -24,7 +17,7 @@ internal sealed partial class WorkgroupService
             ct.ThrowIfCancellationRequested();
             var info = ToInfo(workgroup);
 
-            // One group's failure is not the pass's: the rest still get their notices.
+            // One group's failure isn't the pass's: the rest still get their notices.
             try
             {
                 if (info.Status == WorkgroupStatus.Active)
@@ -43,15 +36,14 @@ internal sealed partial class WorkgroupService
         }
     }
 
-    /// <summary>Thirty days without an Update or a meeting: the coordinators get a nudge, in-app only.</summary>
+    /// <summary>In-app only.</summary>
     private async Task NudgeForUpdateAsync(
         Workgroup workgroup, WorkgroupInfo info, Instant now, CancellationToken ct)
     {
         if (info.SilenceFor(now) is not { } silence || !info.IsUpdateDue(now))
             return;
 
-        // Once per thirty-day window rather than every day the group stays quiet: the nudge
-        // repeats on day 30, 60, 90 …, and the register badge carries it in between.
+        // Once per thirty-day window (day 30, 60, 90 …); the register badge carries it in between.
         var days = (int)silence.TotalDays;
         if (days % (int)WorkgroupRhythm.UpdateDueAfter.TotalDays != 0)
             return;
@@ -64,7 +56,7 @@ internal sealed partial class WorkgroupService
                 workgroup, $"Requested update notices for {dispatched} coordinators after {days} days of silence");
     }
 
-    /// <summary>Clause 1's fourteen days: the Board is told once; the queue keeps showing it.</summary>
+    /// <summary>The Board is told once; the queue keeps showing it.</summary>
     private async Task FlagOverdueRegistrationAsync(
         Workgroup workgroup, WorkgroupInfo info, Instant now, CancellationToken ct)
     {
@@ -82,9 +74,8 @@ internal sealed partial class WorkgroupService
     }
 
     /// <summary>
-    /// True on the one daily pass that first sees <paramref name="elapsed"/> past
-    /// <paramref name="threshold"/>. The queue row, not the notification, is the durable
-    /// signal (§13), so a missed pass costs a nudge and nothing more.
+    /// True on the one daily pass that first sees <paramref name="elapsed"/> past <paramref name="threshold"/>.
+    /// The queue row is the durable signal, so a missed pass costs only a nudge.
     /// </summary>
     private static bool JustCrossed(Duration elapsed, Duration threshold) =>
         elapsed >= threshold && elapsed - threshold < Duration.FromDays(1);

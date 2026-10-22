@@ -9,16 +9,9 @@ using NodaTime;
 namespace Humans.Shifts.Data;
 
 /// <summary>
-/// Signup-focused portion of <see cref="ShiftRepository"/>.
+/// Uses the scoped <see cref="ShiftsDbContext"/>, not the factory, so a multi-step mutation (load, mutate, audit,
+/// save) shares one change tracker.
 /// </summary>
-/// <remarks>
-/// Uses the Scoped <see cref="ShiftsDbContext"/> directly (not
-/// <see cref="IDbContextFactory{TContext}"/>).
-/// Because <see cref="ShiftSignupService"/>'s mutation paths are
-/// multi-step (load, mutate, audit-log, save), a Scoped context lets all
-/// steps participate in a single EF change-tracker, which is simpler than
-/// juggling per-method contexts in the service.
-/// </remarks>
 internal sealed partial class ShiftRepository
 {
     public async Task<IReadOnlyList<ShiftSignup>> GetForUsersAsync(
@@ -36,10 +29,7 @@ internal sealed partial class ShiftRepository
         if (eventSettingsId.HasValue)
             query = query.Where(d => d.Shift.Rota.EventSettingsId == eventSettingsId.Value);
 
-        // No display ordering here — every consumer either re-sorts for display
-        // (ShiftSignupBucketer orders by AbsoluteStart; GetNoShow/Contribute order
-        // by ReviewedAt/CreatedAt) or treats the result as an unordered set
-        // (dict/HashSet/Any/Count). Display ordering belongs at the presentation layer.
+        // Unordered on purpose: every consumer re-sorts for display or treats the result as a set.
         return await query.ToListAsync(ct);
     }
 
@@ -213,8 +203,7 @@ internal sealed partial class ShiftRepository
         {
             if (targetShiftIdSet.Contains(src.ShiftId))
             {
-                // Defensive: target already has a signup for this shift.
-                // Drop the source row — target's slot stands.
+                // The target already holds this shift; its slot stands.
                 _dbContext.ShiftSignups.Remove(src);
             }
             else
@@ -243,11 +232,8 @@ internal sealed partial class ShiftRepository
     public async Task<IReadOnlyList<EligibleBuildSignup>> GetEligibleBuildSignupsAsync(
         Guid eventSettingsId, int buildStartOffset, CancellationToken ct = default)
     {
-        // SignupStatus and RotaPeriod are stored as strings via
-        // HasConversion<string>(). Per memory/code/no-enum-compare-in-ef.md, we
-        // avoid `>=`/`<=` on those enums and use an explicit `||` chain so the
-        // SQL stays a literal-IN match (no lexicographic comparison).
-        // DayOffset is an int — direct numeric comparison is safe.
+        // The enums are stored as strings, so an explicit || chain keeps the SQL a literal IN, never a lexicographic
+        // >= (memory/code/no-enum-compare-in-ef.md).
         return await _dbContext.ShiftSignups
             .Where(s => s.Status == SignupStatus.Confirmed || s.Status == SignupStatus.Pending)
             .Where(s => s.Shift.DayOffset >= buildStartOffset && s.Shift.DayOffset < 0)
@@ -266,15 +252,8 @@ internal sealed partial class ShiftRepository
         Guid? departmentId,
         CancellationToken ct)
     {
-        // Shift.StartsAtUtc / EndsAtUtc are NOT stored columns: absolute times are
-        // computed from (GateOpeningDate + DayOffset + StartTime + Duration) via
-        // Shift.GetAbsoluteStart / GetAbsoluteEnd, which involve a NodaTime zone
-        // conversion that cannot be translated to SQL. Load this event/department's
-        // confirmed rows and check the real interval overlap in memory: durations
-        // can span several days, so a fixed DayOffset buffer can omit live work.
-        // The calendar comes
-        // from the caller's Settings-sourced resolution, not this section's own row
-        // (nobodies-collective/Humans#1630).
+        // Absolute times are not columns: they need a NodaTime zone conversion SQL can't do. So the event's confirmed
+        // rows load and overlap is checked in memory; a shift can span days, so a DayOffset buffer would miss work.
         var settings = calendar;
 
         var zone = DateTimeZoneProviders.Tzdb[settings.TimeZoneId];
@@ -307,14 +286,11 @@ internal sealed partial class ShiftRepository
 
         if (raw.Count == 0) return [];
 
-        // Team names are NOT resolved here: Teams is another section's table and a
-        // Shifts repo must not query db.Teams (memory/architecture/no-cross-section-ef-joins.md).
-        // The caller (VolunteerTrackingExportService) stitches TeamId → name via
-        // IShiftManagement.GetDepartmentsWithRotasAsync.
+        // Team names are another section's table; the caller stitches them in.
         var rows = new List<ConfirmedShiftRow>(raw.Count);
         foreach (var r in raw)
         {
-            // Reconstruct a minimal Shift so we can reuse the canonical helpers.
+            // A minimal Shift, to reuse the canonical time helpers.
             var shift = new Shift
             {
                 RotaId = r.RotaId,

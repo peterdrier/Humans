@@ -11,21 +11,13 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Calendar;
 
-/// <summary>
-/// Calendar's DI entry point, at the project root by convention. Discovered by Shell —
-/// nothing names it, so it needs no section prefix.
-/// </summary>
-/// <remarks>
-/// The §15 keyed inner-service / Singleton-decorator pair moves as a unit.
-/// </remarks>
+/// <summary>The keyed inner service and the Singleton decorator move as a unit.</summary>
 public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSectionDbContext<CalendarDbContext>(sentinelTable: "calendar_events");
 
-        // §15 repository pattern (nobodies-collective/Humans#569). Singleton + IDbContextFactory: the repo owns
-        // the context lifetime.
         services.AddSingleton<ICalendarRepository, CalendarRepository>();
         services.AddKeyedScoped<ICalendarService, CalendarService>(
             CachingCalendarService.InnerServiceKey);
@@ -37,17 +29,11 @@ public sealed class Section : ISection
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingCalendarService>());
         services.AddHostedService(sp => sp.GetRequiredService<CachingCalendarService>());
 
-        // The feed credential: Calendar's own table, so its whole lifecycle — mint,
-        // rotate, GDPR erase, merge — is registered here and nothing outside the
-        // section writes it. Scoped to match the audit writer it consumes.
         services.AddScoped<CalendarFeedTokenService>();
         services.AddScoped<ICalendarFeedTokenService>(sp => sp.GetRequiredService<CalendarFeedTokenService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CalendarFeedTokenService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CalendarFeedTokenService>());
 
-        // iCal feed orchestrator — pure fan-out over every ICalendarFeedContributor.
-        // The contributors themselves are registered by the sections that implement
-        // the interface (Shifts, Events, Workgroups), so Calendar never names them.
         services.AddScoped<IICalFeedService, ICalFeedService>();
     }
 }

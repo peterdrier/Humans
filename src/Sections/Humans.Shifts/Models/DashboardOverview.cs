@@ -64,10 +64,7 @@ internal sealed record DashboardTrendPoint(
     int DistinctLogins);
 
 /// <summary>
-/// One bar on the "people on site per day, stacked by department" chart. Only
-/// populated for Set-up and Strike periods — Event day-over-day mix has a
-/// different planning flow so the dashboard deliberately omits it there.
-/// Counts are <c>Confirmed</c> signups only (pending/cancelled are excluded).
+/// Set-up and Strike only: Event days plan differently. Counts Confirmed signups only.
 /// </summary>
 internal sealed record DailyDepartmentStaffing(
     LocalDate Date,
@@ -76,22 +73,14 @@ internal sealed record DailyDepartmentStaffing(
 
 internal sealed record DepartmentDayCount(string DepartmentName, int ConfirmedCount);
 
-/// <summary>
-/// A row in the "shift duration mix" table. One row per distinct duration bucket
-/// (full-day shifts share a bucket regardless of nominal duration). Scope is the
-/// selected period — Build, Event, or Strike.
-/// </summary>
+/// <summary>All-day shifts share one bucket whatever their nominal duration.</summary>
 internal sealed record ShiftDurationBreakdownRow(
     bool IsAllDay,
     int DurationHours,
     int TotalSlots,
     int FilledSlots);
 
-/// <summary>
-/// Coverage heatmap: one row per rota, one cell per day in the selected scope.
-/// Each cell reports slot fill for shifts that overlap that calendar day, so
-/// coordinators can spot day-of-week patterns across the whole event.
-/// </summary>
+/// <summary>Each cell counts slot fill for shifts overlapping that calendar day.</summary>
 internal sealed record CoverageHeatmap(
     IReadOnlyList<CoverageHeatmapDay> Days,
     IReadOnlyList<CoverageHeatmapRotaRow> Rotas);

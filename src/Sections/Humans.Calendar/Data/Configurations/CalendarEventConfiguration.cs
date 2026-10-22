@@ -19,9 +19,6 @@ internal sealed class CalendarEventConfiguration : IEntityTypeConfiguration<Cale
         b.Property(e => e.RecurrenceTimezone).HasMaxLength(100);
         b.Property(e => e.OwningTeamId).IsRequired();
 
-        // OwningTeamId is a bare cross-section Guid column — no FK constraint, no nav
-        // (memory/architecture/no-cross-section-ef-joins.md).
-
         b.HasMany(e => e.Exceptions)
          .WithOne(x => x.Event)
          .HasForeignKey(x => x.EventId)

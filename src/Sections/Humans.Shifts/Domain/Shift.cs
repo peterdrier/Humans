@@ -5,10 +5,7 @@ using NodaTime;
 
 namespace Humans.Shifts.Domain;
 
-/// <summary>
-/// A single work slot within a rota — defined by DayOffset from gate opening,
-/// start time, and duration. Absolute times are resolved via EventSettings.
-/// </summary>
+/// <summary>Absolute times resolve through the event's calendar, from <see cref="DayOffset"/>.</summary>
 internal sealed class Shift
 {
     public Guid Id { get; init; }
@@ -18,59 +15,37 @@ internal sealed class Shift
     [MarkdownContent]
     public string? Description { get; set; }
 
-    /// <summary>
-    /// Day offset from gate opening date. Negative = build, 0+ = event/strike.
-    /// </summary>
+    /// <summary>Days from gate opening: negative is build.</summary>
     public int DayOffset { get; set; }
 
     public LocalTime StartTime { get; set; }
 
     public Duration Duration { get; set; }
 
-    /// <summary>
-    /// Minimum volunteers needed (understaffed threshold for urgency scoring).
-    /// </summary>
+    /// <summary>The understaffed threshold for urgency scoring.</summary>
     public int MinVolunteers { get; set; }
 
-    /// <summary>
-    /// Maximum volunteers allowed (hard capacity ceiling — signups and approvals are blocked at this limit).
-    /// </summary>
+    /// <summary>Hard ceiling: signups and approvals are blocked at it.</summary>
     public int MaxVolunteers { get; set; }
 
     public bool AdminOnly { get; set; }
 
-    /// <summary>
-    /// The standard work-block start for all-day shifts (08:00 local). When
-    /// <see cref="IsAllDay"/> is <c>true</c>, <see cref="GetAbsoluteStart"/> uses this
-    /// value regardless of the stored <see cref="StartTime"/>.
-    /// </summary>
+    /// <summary>Used by <see cref="GetAbsoluteStart"/> for all-day shifts, whatever <see cref="StartTime"/> holds.</summary>
     internal static readonly LocalTime AllDayWindowStart = new(8, 0);
 
-    /// <summary>
-    /// The standard work-block end for all-day shifts (18:00 local). When
-    /// <see cref="IsAllDay"/> is <c>true</c>, <see cref="GetAbsoluteEnd"/> uses this
-    /// value to compute the absolute end instant.
-    /// </summary>
+    /// <summary>Used by <see cref="GetAbsoluteEnd"/> for all-day shifts.</summary>
     internal static readonly LocalTime AllDayWindowEnd = new(18, 0);
 
     /// <summary>
-    /// Width of the all-day work block in hours (<see cref="AllDayWindowEnd"/> −
-    /// <see cref="AllDayWindowStart"/>, i.e. 10h). The effective worked hours for an
-    /// all-day shift, used in place of the don't-care stored <see cref="Duration"/>
-    /// (which holds a 24h sentinel for build/strike rows). See the note on
-    /// <see cref="IsAllDay"/>.
+    /// The worked hours of an all-day shift, used in place of its stored <see cref="Duration"/>, which holds a 24h
+    /// sentinel.
     /// </summary>
     internal static double AllDayWindowHours =>
         Duration.FromTicks(AllDayWindowEnd.TickOfDay - AllDayWindowStart.TickOfDay).TotalHours;
 
     /// <summary>
-    /// Whether this is an all-day shift (build/strike). When <c>true</c>,
-    /// <see cref="StartTime"/> and <see cref="Duration"/> on this row are don't-care —
-    /// the absolute start/end are computed from <see cref="AllDayWindowStart"/> /
-    /// <see cref="AllDayWindowEnd"/>. Existing all-day rows created before this policy
-    /// was enforced may store any StartTime/Duration; readers must use
-    /// <see cref="GetAbsoluteStart"/> / <see cref="GetAbsoluteEnd"/> rather than the
-    /// raw fields whenever <c>IsAllDay = true</c>.
+    /// When true, <see cref="StartTime"/> and <see cref="Duration"/> are don't-care and older rows may hold anything:
+    /// read times through <see cref="GetAbsoluteStart"/> / <see cref="GetAbsoluteEnd"/>, never the raw fields.
     /// </summary>
     public bool IsAllDay { get; set; }
 
@@ -82,12 +57,7 @@ internal sealed class Shift
 
     public ICollection<ShiftSignup> ShiftSignups { get; } = new List<ShiftSignup>();
 
-    /// <summary>
-    /// Resolves the absolute start instant using event settings timezone and gate opening date.
-    /// Uses InZoneLeniently for DST safety. When <see cref="IsAllDay"/> is <c>true</c>,
-    /// always returns the date at <see cref="AllDayWindowStart"/> (08:00), ignoring the
-    /// stored <see cref="StartTime"/>.
-    /// </summary>
+    /// <summary>InZoneLeniently, for DST safety.</summary>
     public Instant GetAbsoluteStart(IEventSettingsInfo eventSettings) =>
         ResolveAbsoluteStart(DayOffset, StartTime, IsAllDay, eventSettings);
 
@@ -104,11 +74,6 @@ internal sealed class Shift
         return date.At(wallTime).InZoneLeniently(tz).ToInstant();
     }
 
-    /// <summary>
-    /// Resolves the absolute end instant. When <see cref="IsAllDay"/> is <c>true</c>,
-    /// returns the date at <see cref="AllDayWindowEnd"/> (18:00), ignoring the stored
-    /// <see cref="Duration"/>. When <c>false</c>, returns start + duration.
-    /// </summary>
     public Instant GetAbsoluteEnd(IEventSettingsInfo eventSettings) =>
         ResolveAbsoluteEnd(DayOffset, StartTime, Duration, IsAllDay, eventSettings);
 
@@ -126,23 +91,14 @@ internal sealed class Shift
     }
 
     /// <summary>
-    /// True when this shift qualifies a volunteer for cantina meal planning.
-    /// All-day shifts always qualify (08:00–18:00 = 10h);
-    /// timed shifts qualify when <see cref="Duration"/> is at least 6 hours.
-    /// Pure helper — no DB hit, no clock, no <see cref="EventSettings"/> needed.
-    /// See: src/Sections/Humans.Cantina/Docs/features/dietary-nudge.md
+    /// All-day shifts always qualify; timed shifts need at least 6 hours. See
+    /// <c>src/Sections/Humans.Cantina/Docs/features/dietary-nudge.md</c>.
     /// </summary>
     public bool QualifiesForCantinaMeal() =>
         IsAllDay || Duration >= Duration.FromHours(6);
 
-    /// <summary>
-    /// Whether this shift falls in the build period (before gate opening).
-    /// </summary>
     public bool IsEarlyEntry => DayOffset < 0;
 
-    /// <summary>
-    /// Classifies the shift into Build, Event, or Strike period based on its day offset.
-    /// </summary>
     public ShiftPeriod GetShiftPeriod(IEventSettingsInfo eventSettings) =>
         ResolveShiftPeriod(DayOffset, eventSettings);
 

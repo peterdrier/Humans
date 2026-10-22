@@ -40,9 +40,7 @@
                 {
                     var rowId = "dept-" + row.DepartmentId.ToString("N");
                     var pct = SlotPct(row.FilledSlots, row.TotalSlots);
-                    // Drill-down is shown when there are subgroups (always worth seeing)
-                    // or when no period is selected (so the per-period breakdown has something to say).
-                    // Otherwise we render a plain non-interactive row — no chevron, no collapse target.
+                    // Subgroups are always worth a drill-down; with no period selected the per-period breakdown is too.
                     var hasDrilldown = row.Subgroups.Count > 0 || !periodSelected;
                     if (hasDrilldown)
                     {
@@ -175,9 +173,7 @@
 </div>
 
 <script>
-    // Team-page links inside a clickable-collapse row must not trigger the row's
-    // data-bs-toggle="collapse" behaviour — stop propagation so the link navigates
-    // cleanly without also opening/closing the drill-down.
+    // Stop propagation so a team link inside a collapse row navigates without toggling the row.
     (function () {
         document.querySelectorAll('[data-dashboard-team-link="true"]').forEach(function (el) {
             el.addEventListener('click', function (e) { e.stopPropagation(); });

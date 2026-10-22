@@ -5,10 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Teams.Services;
 
-/// <summary>
-/// Owns the Teams-section observable gauges split out of <c>HumansMetricsService</c>
-/// (nobodies-collective/Humans#1091): teams by status and pending join requests.
-/// </summary>
 internal sealed class TeamsMetricsService : PolledGaugeService
 {
     private static readonly Meter HumansMeter = new("Humans.Metrics");

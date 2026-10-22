@@ -13,8 +13,6 @@ internal sealed class WorkgroupDocumentCommentConfiguration : IEntityTypeConfigu
 
         b.Property(c => c.DocumentId).IsRequired();
         b.Property(c => c.Category).HasMaxLength(100).IsRequired();
-        // AuthorUserId, RespondedByUserId and HiddenByUserId are bare cross-section
-        // references: no FK, no navigation. AuthorUserId is nulled on erasure; the body stays.
         b.Property(c => c.Body).HasMaxLength(4000).IsRequired();
         b.Property(c => c.CreatedAt).IsRequired();
         b.Property(c => c.Disposition).IsRequired().HasConversion<string>().HasMaxLength(50);

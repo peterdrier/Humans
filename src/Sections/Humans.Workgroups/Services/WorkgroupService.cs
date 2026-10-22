@@ -17,18 +17,6 @@ using NodaTime;
 
 namespace Humans.Workgroups.Services;
 
-/// <summary>
-/// The register's rules: apply, register, refer, refuse, withdraw, close, reactivate;
-/// join and leave with the one-or-two-coordinators invariant; meetings, the log, and the
-/// documents with their comment period. Registration is administrative recognition only
-/// (Board Resolution clause 4), so every decision here is a human's — the section
-/// notifies, flags and records, and never decides.
-/// </summary>
-/// <remarks>
-/// EF-free: the repository hands over detached entities and takes them back. Every
-/// lifecycle step writes a system log entry, an audit entry, and the §14 notifications;
-/// every change to who may see a group's Drive folder asks GoogleIntegration for a sync.
-/// </remarks>
 internal sealed partial class WorkgroupService(
     IWorkgroupRepository repository,
     IUserService users,
@@ -47,10 +35,7 @@ internal sealed partial class WorkgroupService(
     IClock clock,
     ILogger<WorkgroupService> logger) : IWorkgroupService
 {
-    /// <summary>Route segments a group slug may not take.</summary>
     private static readonly string[] ReservedSlugs = ["apply", "admin"];
-
-    // ── Reads ─────────────────────────────────────────────────────────────
 
     public async Task<IReadOnlyList<WorkgroupInfo>> GetRegisterAsync(CancellationToken ct = default)
     {
@@ -72,9 +57,6 @@ internal sealed partial class WorkgroupService(
         var register = await GetRegisterAsync(ct);
         return register.Where(w => w.IsMember(userId)).ToList();
     }
-
-
-    // ── Applying and joining ──────────────────────────────────────────────
 
     public async Task<WorkgroupMutationResult<Guid>> ApplyAsync(
         Guid actorUserId, WorkgroupApplication application, CancellationToken ct = default)
@@ -104,7 +86,6 @@ internal sealed partial class WorkgroupService(
             application.DeliverableKind, application.Audience, application.TargetDate,
             application.DiscordChannelUrl, application.IsSensitive);
 
-        // The applicant is a coordinator from the start; the optional second name joins with them.
         workgroup.Members.Add(NewMember(workgroup.Id, actorUserId, WorkgroupMemberRole.Coordinator, now));
         if (application.SecondCoordinatorUserId is { } second && second != actorUserId)
             workgroup.Members.Add(NewMember(workgroup.Id, second, WorkgroupMemberRole.Coordinator, now));
@@ -136,9 +117,8 @@ internal sealed partial class WorkgroupService(
         var now = clock.GetCurrentInstant();
         await repository.AddMemberAsync(
             NewMember(workgroup.Id, userId, WorkgroupMemberRole.Member, now, isPending: true), ct);
-        // The request has committed; the coordinators' notice must survive a closed tab. It
-        // names nobody: the requester's name lives on the pending row, which erasure deletes,
-        // never in a coordinator's inbox, which it does not reach.
+        // Committed: the notice must survive a closed tab. It names nobody: the requester's name lives only on the
+        // pending row, which erasure deletes, never in an inbox it can't reach.
         ct = CancellationToken.None;
         var info = ToInfo(workgroup);
         await NotifyAsync(info.CoordinatorUserIds(), NotificationSource.WorkgroupMembershipRequested,
@@ -175,7 +155,6 @@ internal sealed partial class WorkgroupService(
         var name = await NameOfAsync(userId, ct);
         pending.LeftAt = clock.GetCurrentInstant();
         await repository.UpdateMembersAsync([pending], ct);
-        // The decision committed; finish its audit and notice independently of the browser.
         ct = CancellationToken.None;
         await auditLog.LogAsync(AuditAction.WorkgroupMembershipDeclined, AuditEntityTypes.Workgroup, workgroup.Id,
             $"Declined the join request of {name}", actorUserId,
@@ -201,16 +180,13 @@ internal sealed partial class WorkgroupService(
         if (existing is { IsPending: not true })
             return new(Refusal: new(WorkgroupErrorKeys.AlreadyAMember));
 
-        // A pending request from the same person is simply approved by the add.
+        // A pending request from the same person is approved by the add.
         var member = existing ?? NewMember(workgroup.Id, userId, WorkgroupMemberRole.Member, clock.GetCurrentInstant(), isPending: true);
         return await AdmitAsync(workgroup, member, actorUserId, AuditAction.WorkgroupMemberAdded,
             "Workgroups_Notice_MemberAdded", ct, isNew: existing is null);
     }
 
-    /// <summary>
-    /// The one place a person becomes a member: the pending row flips, the log and audit
-    /// record who let them in, the person is told, and the Drive folder picks them up.
-    /// </summary>
+    /// <summary>The one place a person becomes a member.</summary>
     private async Task<WorkgroupMutationResult> AdmitAsync(
         Workgroup workgroup, WorkgroupMember member, Guid actorUserId, AuditAction auditAction,
         string noticeKey, CancellationToken ct, bool isNew = false)
@@ -221,11 +197,9 @@ internal sealed partial class WorkgroupService(
         member.JoinedAt = now;
         if (isNew) await repository.AddMemberAsync(member, ct);
         else await repository.UpdateMembersAsync([member], ct);
-        // Membership has committed; its log, audit and follow-up work must survive a closed tab.
         ct = CancellationToken.None;
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.MemberJoined, now, name, ct);
-        // Related entity is the person admitted: the audit trail is retained personal data
-        // about them, and their GDPR export selects rows by that column.
+        // Related entity is the person admitted: their GDPR export selects audit rows by that column.
         await auditLog.LogAsync(auditAction, AuditEntityTypes.Workgroup, workgroup.Id,
             $"{name} admitted to the group", actorUserId,
             relatedEntityId: member.UserId, relatedEntityType: AuditEntityTypes.User);
@@ -255,7 +229,6 @@ internal sealed partial class WorkgroupService(
         var changed = new List<WorkgroupMember> { leaving };
         leaving.LeftAt = now;
 
-        // Withdrawing a request that was never approved: nothing to log, nothing to sync.
         if (leaving.IsPending == true)
         {
             await repository.UpdateMembersAsync(changed, ct);
@@ -269,9 +242,8 @@ internal sealed partial class WorkgroupService(
         WorkgroupMember? promoted = null;
         if (leaving.Role == WorkgroupMemberRole.Coordinator && remainingCoordinators.Count == 0)
         {
-            // One or two coordinators at all times: the last one names a successor.
-            // An admin may override, which leaves the group coordinatorless on purpose so
-            // the Secretary can appoint someone.
+            // The last coordinator names a successor. An admin may override, leaving the group coordinatorless on
+            // purpose so the Secretary can appoint someone.
             if (replacementCoordinatorUserId is { } replacementId)
             {
                 promoted = workgroup.Members
@@ -289,7 +261,6 @@ internal sealed partial class WorkgroupService(
         var leavingName = await NameOfAsync(userId, ct);
         var promotedName = promoted is null ? null : await NameOfAsync(promoted.UserId, ct);
         await repository.UpdateMembersAsync(changed, ct);
-        // Membership has committed; finish its log, audit and follow-up work.
         ct = CancellationToken.None;
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.MemberLeft, now, leavingName, ct);
         if (promoted is not null)
@@ -326,15 +297,12 @@ internal sealed partial class WorkgroupService(
             CreatedAt = now,
             UpdatedAt = now
         }, ct);
-        // The change committed; finish its log or notice independently of the browser.
         ct = CancellationToken.None;
 
         await NotifyAsync(info.CoordinatorUserIds(), NotificationSource.WorkgroupReportingDue,
             "Workgroups_Todo_StatusRequested_Title", info, Trimmed(question), ct);
         return new();
     }
-
-    // ── Member work on the group page ─────────────────────────────────────
 
     public async Task<WorkgroupMutationResult> EditRegisterAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupRegisterEdit edit, CancellationToken ct = default)
@@ -346,8 +314,7 @@ internal sealed partial class WorkgroupService(
         if (ValidateRegisterFields(edit.Name, edit.Purpose, edit.Deliverable, edit.DiscordChannelUrl) is { } fieldsRefusal) return new(Refusal: fieldsRefusal);
 
         var now = clock.GetCurrentInstant();
-        // The deliverable sentence is the group's promise; changing any part of it is a
-        // scope change and goes on the record.
+        // The deliverable sentence is the group's promise: changing any part of it is a scope change on the record.
         var scopeChanged = !string.Equals(workgroup.Deliverable, edit.Deliverable.Trim(), StringComparison.Ordinal)
             || workgroup.DeliverableKind != edit.DeliverableKind
             || workgroup.Audience != edit.Audience
@@ -364,7 +331,6 @@ internal sealed partial class WorkgroupService(
             edit.Audience, edit.TargetDate, edit.DiscordChannelUrl, edit.IsSensitive);
         workgroup.UpdatedAt = now;
         await repository.UpdateWorkgroupAsync(workgroup, ct);
-        // The change committed; finish its log or notice independently of the browser.
         ct = CancellationToken.None;
 
         if (scopeChanged)
@@ -418,7 +384,6 @@ internal sealed partial class WorkgroupService(
 
         var names = await NamesOfAsync(wanted, ct);
         await repository.UpdateMembersAsync(changed, ct);
-        // Membership has committed; finish its log, audit and follow-up work.
         ct = CancellationToken.None;
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.CoordinatorChanged, now,
             string.Join(", ", names), ct, authorUserId: asAdmin ? null : actorUserId);
@@ -474,8 +439,7 @@ internal sealed partial class WorkgroupService(
         meeting.UpdatedAt = clock.GetCurrentInstant();
         await repository.UpdateMeetingAsync(meeting, ct);
 
-        // The row is overwritten, so the audit entry is the only record that the meeting
-        // the members were told about is not the one on the page now.
+        // The row is overwritten, so the audit entry is the only record of the meeting the members were told about.
         await AuditAsync(AuditAction.WorkgroupMeetingUpdated, workgroup,
             $"Edited the meeting of {meeting.StartUtc.InUtc().Date.ToInvariantDate()}", actorUserId,
             AuditEntityTypes.WorkgroupMeeting, meeting.Id);
@@ -542,7 +506,6 @@ internal sealed partial class WorkgroupService(
         var workgroupResult = await RequireActiveAsync(entry.WorkgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        // System entries are the section's record of what it did; they never change.
         if (RequireMemberKind(entry.Kind) is { } kindRefusal) return new(Refusal: kindRefusal);
         if (RequireMemberKind(save.Kind) is { } newKindRefusal) return new(Refusal: newKindRefusal);
         if (string.IsNullOrWhiteSpace(save.Body))
@@ -557,8 +520,7 @@ internal sealed partial class WorkgroupService(
         entry.UpdatedAt = clock.GetCurrentInstant();
         await repository.UpdateLogEntryAsync(entry, ct);
 
-        // The log keeps no history of its own, so an edit is as invisible as a deletion
-        // without this.
+        // The log keeps no history of its own, so without this an edit is as invisible as a deletion.
         await AuditAsync(AuditAction.WorkgroupLogEntryUpdated, workgroup,
             $"Edited the {entry.Kind} entry of {entry.OccurredOn.ToInvariantDate()}", actorUserId,
             AuditEntityTypes.WorkgroupLogEntry, entryId);
@@ -589,9 +551,7 @@ internal sealed partial class WorkgroupService(
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
 
-        // The entry is a trusted system record naming a survey, so the id has to be one the
-        // member actually authored — otherwise the log can point at somebody else's survey, or
-        // at nothing at all. Author == actor is the whole check.
+        // The entry is a trusted record naming a survey, so it must be one the actor authored.
         var survey = (await surveys.GetSummariesAsync(ct))
             .FirstOrDefault(s => s.Id == surveyId);
         if (survey is null || survey.CreatedByUserId != actorUserId)
@@ -623,8 +583,7 @@ internal sealed partial class WorkgroupService(
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
 
-        // Same gate as delivering a document (design §7): ending the group while a comment
-        // period is still running would cut short a window the group promised publicly.
+        // Ending while a comment period runs would cut short a window the group promised publicly.
         var now = clock.GetCurrentInstant();
         if (workgroup.Documents.Any(d => d.CommentsCloseAt is { } closes && closes > now))
             return new(Refusal: new(WorkgroupErrorKeys.CommentsStillOpen));
@@ -632,8 +591,6 @@ internal sealed partial class WorkgroupService(
         await EndAsync(workgroup, actorUserId, reason, reasons: null, ct);
         return new();
     }
-
-    // ── Budget ────────────────────────────────────────────────────────────
 
     public async Task<WorkgroupMutationResult<HoldedExpenseAccountRef?>> SetBudgetAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupBudgetSave save, CancellationToken ct = default)
@@ -648,8 +605,7 @@ internal sealed partial class WorkgroupService(
         if (RequireStatus(workgroup, WorkgroupStatus.Applied, WorkgroupStatus.Referred,
             WorkgroupStatus.Active, WorkgroupStatus.Dormant) is { } statusRefusal) return new(Refusal: statusRefusal);
 
-        // Finance is asked first, before anything is written: a failed create or an unknown
-        // account number leaves the row exactly as it was.
+        // Finance first, before any write: a failed create or unknown account leaves the row as it was.
         HoldedExpenseAccountRef? account = null;
         var needsAccount = save.Amount is not null
             && (workgroup.HoldedAccountNumber is null
@@ -672,7 +628,6 @@ internal sealed partial class WorkgroupService(
         }
         workgroup.UpdatedAt = now;
         await repository.UpdateWorkgroupAsync(workgroup, ct);
-        // Amount-only saves also need their log and audit after browser cancellation.
         ct = CancellationToken.None;
 
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.BudgetSet, now, BudgetLogBody(workgroup), ct,
@@ -707,8 +662,7 @@ internal sealed partial class WorkgroupService(
         }
     }
 
-    // The History body is read in six cultures under the localized "Budget set" badge, so it
-    // carries only figures, never English prose.
+    // Read in six cultures under the localized "Budget set" badge, so it carries figures only, never English prose.
     private static string BudgetLogBody(Workgroup w) => w.BudgetAmount is { } amount
         ? $"{amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR · {w.HoldedAccountNumber}"
         : "—";
@@ -716,8 +670,6 @@ internal sealed partial class WorkgroupService(
     private static string BudgetAuditSummary(Workgroup w) => w.BudgetAmount is { } amount
         ? $"Budget set to {amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR, account {w.HoldedAccountNumber}"
         : "Budget cleared";
-
-    // ── Settings ──────────────────────────────────────────────────────────
 
     public async Task<string?> GetRootDriveFolderIdAsync(CancellationToken ct = default)
     {
@@ -734,7 +686,7 @@ internal sealed partial class WorkgroupService(
             return new(Refusal: new(WorkgroupErrorKeys.RootFolderNotConfigured));
 
         var id = NormalizeFolderId(folderId);
-        // Registration creates each group's folder under this one; a 404 there blocks every registration.
+        // A missing root folder blocks every registration, so refuse it now rather than then.
         if (!await googleSync.IsFolderReachableAsync(id, ct))
             return new(Refusal: new(WorkgroupErrorKeys.RootFolderUnreachable));
 

@@ -7,33 +7,21 @@ using Humans.Base.Interfaces;
 namespace Humans.Shifts.Services;
 
 /// <summary>
-/// Manages the shift signup state machine with invariant enforcement.
+/// The signup state machine. Members other sections call live on <see cref="IShiftSignups"/> and
+/// <see cref="IShiftSignupSeeding"/>, which this inherits.
 /// </summary>
-/// <remarks>
-/// The section's own interface. The members something outside the section
-/// calls live on <see cref="IShiftSignups"/> and <see cref="IShiftSignupSeeding"/>
-/// in <c>Humans.Shifts.Contracts</c>; this inherits them, so the section's own
-/// injection sites are unchanged. Everything declared here — the review
-/// surface, the block-range operations, the orphan scan, the team probe, the
-/// audience read and the day toggle — has no external caller.
-/// </remarks>
 internal interface IShiftSignupService : IShiftSignupSeeding, IApplicationService
 {
-    /// <summary>
-    /// Approves a pending signup. Re-validates invariants.
-    /// </summary>
+    /// <summary>Re-validates invariants.</summary>
     Task<SignupResult> ApproveAsync(Guid signupId, Guid reviewerUserId);
 
     /// <summary>
-    /// Creates confirmed signups across a date range on behalf of a volunteer (batch voluntell).
-    /// Skips shifts where the user already has an active signup.
-    /// All signups share a SignupBlockId for grouped bail.
+    /// Confirmed signups across a range, skipping shifts the user already holds. All share a SignupBlockId for
+    /// grouped bail.
     /// </summary>
     Task<SignupResult> VoluntellRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid enrollerUserId);
 
-    /// <summary>
-    /// Marks a confirmed signup as no-show. Fails before the shift has ended.
-    /// </summary>
+    /// <summary>Fails before the shift has ended.</summary>
     Task<SignupResult> MarkNoShowAsync(Guid signupId, Guid reviewerUserId);
 
     Task<SignupResult> RemoveSignupAsync(Guid signupId, Guid removedByUserId, string? reason);
@@ -45,32 +33,19 @@ internal interface IShiftSignupService : IShiftSignupSeeding, IApplicationServic
     Task<BailRangeResult> BailRangeAsync(Guid signupBlockId, Guid actorUserId, string? reason = null);
 
     /// <summary>
-    /// The user's signups across every event (or only <paramref name="eventSettingsId"/>'s),
-    /// each resolved against its own event's calendar. Signups whose shift, rota or
-    /// calendar is missing are dropped.
+    /// Each resolved against its own event's calendar; signups whose shift, rota or calendar is missing are dropped.
     /// </summary>
     Task<IReadOnlyList<ShiftSignupSummary>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null, CancellationToken ct = default);
 
-    /// <summary>
-    /// Gets signup team ownership data for admin authorization checks.
-    /// </summary>
+    /// <summary>For admin authorization checks.</summary>
     Task<ShiftSignupTeamProbe?> GetTeamProbeAsync(Guid id, ShiftSignupTeamProbeScope scope);
 
-    /// <summary>
-    /// Returns every <see cref="ShiftSignup"/> in the system, with
-    /// <c>Shift.Rota.EventSettings</c> included, for use by the
-    /// orphan-signup reconciliation screen. Admin-only diagnostic.
-    /// </summary>
     Task<IReadOnlyList<OrphanSignupSnapshot>> GetAllForOrphanScanAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Self-service day-row toggle for the current user: bails an existing active
-    /// signup for <paramref name="shiftId"/>, or signs up if none exists (auto-confirm
-    /// per <paramref name="privileged"/>, mirroring <see cref="IShiftSignups.SignUpAsync"/>'s
-    /// Privileged flag). Dietary info never gates it (dietary info is opt-in).
-    /// <see cref="ToggleDaySignupOutcome.CanViewRestricted"/> folds
-    /// <paramref name="privileged"/> together with dept-coordinator status, matching the
-    /// browse page's broader privilege check, for restricted-shift row rendering.
+    /// Bails an active signup on the shift, else signs up. Dietary info never gates it.
+    /// <see cref="ToggleDaySignupOutcome.CanViewRestricted"/> adds dept-coordinator status to
+    /// <paramref name="privileged"/>, matching the browse page's privilege check.
     /// </summary>
     Task<ToggleDaySignupOutcome> ToggleDayAsync(
         Guid userId,
@@ -80,16 +55,12 @@ internal interface IShiftSignupService : IShiftSignupSeeding, IApplicationServic
         CancellationToken ct = default);
 }
 
-/// <summary>
-/// Outcome of <see cref="IShiftSignupService.ToggleDayAsync"/>.
-/// </summary>
 internal sealed record ToggleDaySignupOutcome(
     SignupResult Result,
     bool SignedUp,
     bool CanViewRestricted,
     IReadOnlyList<ShiftSignup> SignupsAfter)
 {
-    /// <summary>The user's active (Pending or Confirmed) signups after the toggle.</summary>
     public int ActiveSignupCount => SignupsAfter.Count(s => s.Status is SignupStatus.Pending or SignupStatus.Confirmed);
 }
 

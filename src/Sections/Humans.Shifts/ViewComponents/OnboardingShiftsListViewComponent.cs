@@ -5,16 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Shifts.ViewComponents;
 
 /// <summary>
-/// Renders the rota tables for the onboarding widget's step-2 shift picker.
+/// The caller has already filtered <c>shifts</c> to the selected priority pill. Takes the event by id because the
+/// rota partials need this section's own <see cref="BurnSettingsInfo"/>.
 /// </summary>
-/// <remarks>
-/// Contributed as the <c>IOnboardingShiftsStep.ShiftsList</c> Type from
-/// <c>SectionOnboarding</c>; invoked by <see cref="Type"/> from <c>Humans.Onboarding</c>'s
-/// <c>Views/OnboardingWidget/Shifts.cshtml</c> (nobodies-collective/Humans#1815). The caller
-/// has already filtered <c>shifts</c> to the selected priority pill. It takes the
-/// event by id, not as a DTO: the rota partials need this section's own
-/// <see cref="BurnSettingsInfo"/>.
-/// </remarks>
 public sealed class OnboardingShiftsListViewComponent(IBurnSettingsService burnSettings) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(

@@ -5,9 +5,8 @@ using NodaTime;
 namespace Humans.Shifts.Services;
 
 /// <summary>
-/// Pure projection from confirmed build-shift rows to EE grants. Per user, the
-/// earliest local shift day drives the grant: entry date = that day - 1, source
-/// = "Shift: {team of that earliest shift}". Callers pass only build-period rows.
+/// Per user, the earliest local shift day drives the grant: entry the day before, sourced to that shift's team.
+/// Callers pass only build-period rows.
 /// </summary>
 internal static class ShiftEarlyEntryProjection
 {
@@ -33,7 +32,7 @@ internal static class ShiftEarlyEntryProjection
         return grants;
     }
 
-    /// <summary>Earliest local shift day per user. Shared by the XLSX export and the EE provider.</summary>
+    /// <summary>Shared by the XLSX export and the early-entry provider.</summary>
     internal static Dictionary<Guid, LocalDate> FirstShiftDayByUser(
         IReadOnlyList<ConfirmedShiftRow> rows, DateTimeZone zone)
     {

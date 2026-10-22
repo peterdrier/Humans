@@ -20,19 +20,16 @@ internal sealed class TeamMemberConfiguration : IEntityTypeConfiguration<TeamMem
         builder.Property(tm => tm.JoinedAt)
             .IsRequired();
 
-        // UserId is a bare cross-section Guid column — no FK constraint, no nav.
-
         builder.HasIndex(tm => new { tm.TeamId, tm.UserId });
         builder.HasIndex(tm => tm.UserId);
         builder.HasIndex(tm => tm.Role);
 
-        // Filtered unique index: one active membership per (Team, User)
+        // One active membership per team and user.
         builder.HasIndex(tm => new { tm.TeamId, tm.UserId })
             .HasFilter("\"LeftAt\" IS NULL")
             .IsUnique()
             .HasDatabaseName("IX_team_members_active_unique");
 
-        // Ignore computed property
         builder.Ignore(tm => tm.IsActive);
     }
 }

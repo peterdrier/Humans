@@ -4,16 +4,7 @@ using NodaTime;
 
 namespace Humans.Shifts.Data;
 
-/// <summary>
-/// EF-backed implementation of <see cref="IVolunteerTrackingRepository"/>. This
-/// user-oriented Shifts repository owns <c>DbContext.VolunteerBuildStatuses</c>
-/// and <c>DbContext.GeneralAvailability</c>.
-/// </summary>
-/// <remarks>
-/// Uses the Scoped <see cref="ShiftsDbContext"/> directly (same pattern as
-/// <see cref="ShiftRepository"/>) so multi-step mutations on
-/// <see cref="VolunteerBuildStatus"/> share one EF change-tracker.
-/// </remarks>
+/// <summary>Uses the scoped <see cref="ShiftsDbContext"/> so multi-step mutations share one change tracker.</summary>
 internal sealed class VolunteerTrackingRepository(ShiftsDbContext db) : IVolunteerTrackingRepository
 {
     public async Task<IReadOnlyList<VolunteerBuildStatus>> GetBuildStatusesForEventAsync(
@@ -155,8 +146,7 @@ internal sealed class VolunteerTrackingRepository(ShiftsDbContext db) : IVolunte
         IReadOnlyList<int> trimmed = [];
         if (setupOffsetThreshold is { } threshold)
         {
-            // DayOffs is persisted sorted (see UpsertDayOffAsync), so the
-            // filter preserves canonical order — no resort needed.
+            // DayOffs is persisted sorted, so the filter keeps canonical order.
             var toTrim = row.DayOffs
                 .Where(d => d.DayOffset >= threshold)
                 .Select(d => d.DayOffset)
@@ -204,11 +194,7 @@ internal sealed class VolunteerTrackingRepository(ShiftsDbContext db) : IVolunte
         return removed;
     }
 
-    /// <summary>
-    /// Loads the row for (userId, eventSettingsId) or creates a tracked-but-
-    /// not-saved one with empty DayOffs. Either way the caller mutates the
-    /// returned row and SaveChangesAsync once.
-    /// </summary>
+    /// <summary>A new row is tracked but not saved; the caller mutates it and saves once.</summary>
     private async Task<VolunteerBuildStatus> GetOrCreateAsync(
         Guid userId, Guid eventSettingsId, CancellationToken ct)
     {

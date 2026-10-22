@@ -19,9 +19,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Humans.Shifts.Services;
 
-/// <summary>
-/// Manages the shift signup state machine. No caching decorator (§15 Option A).
-/// </summary>
+/// <summary>No caching decorator.</summary>
 internal sealed class ShiftSignupService(
     IShiftManagementRepository repo,
     IVolunteerTrackingRepository trackingRepo,
@@ -38,17 +36,16 @@ internal sealed class ShiftSignupService(
     IStringLocalizer<ShiftsResource> localizer) : IShiftSignupService, IUserDataContributor, IUserMerge, ICalendarFeedContributor
 {
     private static readonly ResourceManager NoticeResources = new(typeof(ShiftsResource));
-    // Release after the enrollment save, before audit and notices; using scopes
-    // still release the gate on refusals and failures.
+    // Released after the enrollment save, before audit and notices; refusals and failures release via using.
     private static readonly TrackedLock EnrollmentLock = new("Shifts.Enrollment");
 
-    /// <summary>GDPR export JSON keys for this contributor's data.</summary>
+    /// <summary>GDPR export key.</summary>
     internal const string ShiftSignups = "ShiftSignups";
     internal const string VolunteerEventProfiles = "VolunteerEventProfiles";
     internal const string GeneralAvailability = "GeneralAvailability";
     internal const string ShiftTagPreferences = "ShiftTagPreferences";
 
-    // Lazy-resolved for notification coordinator / team-name lookups.
+    // Lazy, to break the DI cycle with TeamService.
     private ITeamService TeamService => serviceProvider.GetRequiredService<ITeamService>();
 
     public async Task<SignupResult> SignUpAsync(
@@ -104,8 +101,7 @@ internal sealed class ShiftSignupService(
 
         var canApprove = await shiftMgmt.CanApproveSignupsAsync(userId, shift.Rota.TeamId);
 
-        // For Active accounts, Public rotas auto-confirm regardless of admission/consent
-        // status; only RequireApproval rotas park signups as Pending for coordinator review.
+        // Public rotas auto-confirm whatever the admission or consent status; only RequireApproval parks as Pending.
         var autoConfirm = shift.Rota.Policy == SignupPolicy.Public || canApprove;
 
         var signup = new ShiftSignup
@@ -240,7 +236,6 @@ internal sealed class ShiftSignupService(
         var isOwner = signup.UserId == actorUserId;
         var isPrivileged = await IsPrivilegedAsync(actorUserId, signup.Shift.Rota.TeamId);
 
-        // Auth: must be signup owner or privileged (dept coordinator/NoInfoAdmin/Admin)
         if (!isOwner && !isPrivileged)
             return SignupResult.Fail(localizer["Shifts_Bail_NotAuthorized"]);
 
@@ -448,7 +443,7 @@ internal sealed class ShiftSignupService(
         enrollment.Dispose();
         shiftMgmt.InvalidateDashboardCaches(calendar.Id);
         viewInvalidator.InvalidateUser(userId);
-        // Range affects every shift in the rota; cascade via the rota.
+        // A range touches every shift in the rota.
         viewInvalidator.InvalidateRota(rotaId);
         foreach (var (auditedSignup, dayOffset) in voluntoldForAudit)
         {
@@ -706,8 +701,7 @@ internal sealed class ShiftSignupService(
         IEnumerable<ShiftSignup> existingSignups,
         EventSettingsInfo eventSettings)
     {
-        // Range candidates are all-day shifts from one rota, so two on the same
-        // date overlap in the standard work block, even with no existing bookings.
+        // Range candidates are all-day shifts from one rota, so two on one date overlap even with no bookings.
         var conflictingDays = shiftsInRange.GroupBy(s => s.DayOffset)
             .Where(day => day.Count() > 1)
             .Select(day => day.Key)
@@ -783,7 +777,7 @@ internal sealed class ShiftSignupService(
     private static string FormatRangeDayList(EventSettingsInfo eventSettings, IEnumerable<int> dayOffsets)
         => string.Join(", ", dayOffsets.Select(offset => eventSettings.GateOpeningDate.PlusDays(offset).ToWeekdayDayMonth()));
 
-    // Audit and coordinator-notice text is persisted English; keep its dates out of the actor's UI culture.
+    // Audit and notice text is persisted English; keep its dates out of the actor's UI culture.
     private static string FormatAuditDay(EventSettingsInfo eventSettings, int dayOffset)
     {
         using var culture = new CultureScope("en");
@@ -1024,8 +1018,7 @@ internal sealed class ShiftSignupService(
         if (IsStatusReasonTooLong(reason, firstSignup.Id, actorUserId))
             return new("Shifts_StatusReasonTooLong");
 
-        // Only withdrawing confirmed signups reduces staffing. Capture them before
-        // Bail replaces both Pending and Confirmed with the same terminal status.
+        // Captured before Bail gives Pending and Confirmed the same status: only confirmed ones reduce staffing.
         var confirmedSignups = signups.Where(s => s.Status == SignupStatus.Confirmed).ToList();
         foreach (var signup in signups)
         {
@@ -1272,7 +1265,7 @@ internal sealed class ShiftSignupService(
             var teamId = rota.TeamId;
             var rotaName = rota.Name;
 
-            // Calendar comes from Settings, not this row's own (dead) columns (nobodies-collective/Humans#1631).
+            // From Settings: the row's own calendar columns are dead.
             var calendar = await calendarResolver.GetAsync(rota.EventSettingsId);
             if (calendar is null) return;
             var enrichedDescription = $"{changeDescription} ({rotaName}, {FormatAuditDay(calendar, shift.DayOffset)})";
@@ -1305,12 +1298,11 @@ internal sealed class ShiftSignupService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        // No `.Include(r => r.Team)` — Teams is a different section; resolve via ITeamService.
         var signups = (await repo.GetForUsersAsync([userId], ct: ct))
             .OrderByDescending(ss => ss.CreatedAt)
             .ToList();
 
-        // GetTeamsAsync includes deactivated teams so historical signups still resolve a name (GDPR).
+        // Includes deactivated teams, so historical signups still resolve a name.
         var referencedTeamIds = signups
             .Select(ss => ss.Shift.Rota.TeamId)
             .Distinct()
@@ -1326,8 +1318,6 @@ internal sealed class ShiftSignupService(
         var generalAvailability = await trackingRepo.GetAvailabilityForUserAsync(userId, ct: ct);
         var tagPreferences = await repo.GetVolunteerTagPreferencesForUsersAsync([userId], ct);
 
-        // Resolve EventName for each distinct EventSettingsId via the Settings-sourced calendar
-        // (nobodies-collective/Humans#1630) — covers both signups and general availability.
         var distinctEventSettingsIds = signups.Select(ss => ss.Shift.Rota.EventSettingsId)
             .Concat(generalAvailability.Select(ga => ga.EventSettingsId))
             .Distinct();
@@ -1354,8 +1344,7 @@ internal sealed class ShiftSignupService(
             ReviewedAt = ss.ReviewedAt.ToIso8601()
         }).ToList());
 
-        // Dietary + medical moved to Profile — they are exported by the Profiles
-        // data contributor now. The Shifts VEP slice carries only shift-matching data.
+        // Dietary and medical are exported by Profiles; this slice is shift-matching data only.
         var vepSlice = new UserDataSlice(VolunteerEventProfiles, volunteerEventProfiles.Select(vep => new
         {
             vep.Skills,
@@ -1396,16 +1385,11 @@ internal sealed class ShiftSignupService(
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
-    /// <summary>
-    /// Cancels live commitments, then deletes the volunteer event profile (free-text
-    /// skills/quirks/languages), the availability and build-status rows, and the
-    /// shift-tag preferences.
-    /// </summary>
+    /// <summary>Cancels live commitments, then deletes the profile, availability, build-status and tag rows.</summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
-        // Before cancelling, so the "Account deletion" reason the cancel writes survives:
-        // the retained signup row is shift/status/timestamps, not whatever a coordinator
-        // typed about this person when they bailed or no-showed.
+        // Before cancelling, so the "Account deletion" reason survives: the kept row is shift, status and
+        // timestamps, not what a coordinator typed about the person.
         await repo.ClearSignupStatusReasonsForUserAsync(userId, ct);
 
         var cancelled = await CancelActiveSignupsForUserAsync(userId, "Account deletion", ct);
@@ -1423,20 +1407,17 @@ internal sealed class ShiftSignupService(
         viewInvalidator.InvalidateUser(userId);
     }
 
-    // Nothing public to contribute to the community calendar yet.
     public Task<IReadOnlyList<CalendarFeedItem>> GetPublicItemsForWindowAsync(Instant from, Instant to, CancellationToken ct) =>
         Task.FromResult<IReadOnlyList<CalendarFeedItem>>([]);
 
     public async Task<IReadOnlyList<CalendarFeedItem>> GetCalendarItemsForUserAsync(Guid userId, CancellationToken ct)
     {
-        // Active commitments only — Confirmed + Pending. Cancelled/bailed/noshow
-        // history is deliberately out of feed scope (spec 2026-06-09-ical-feed).
+        // Active commitments only; history is out of feed scope (spec 2026-06-09-ical-feed).
         var signups = (await repo.GetForUsersAsync([userId], ct: ct))
             .Where(ss => ss.Status is SignupStatus.Confirmed or SignupStatus.Pending)
             .ToList();
         if (signups.Count == 0) return [];
 
-        // Team names cross-section via ITeamService (same as the GDPR contributor).
         var teamsById = await TeamService.GetTeamsAsync(ct);
 
         var calendarsById = new Dictionary<Guid, EventSettingsInfo>();
@@ -1493,7 +1474,7 @@ internal sealed class ShiftSignupService(
         await adminAuthorization.RequireCurrentUserIsAdminAsync(ct);
         var eventIds = await GetSignupEventIdsAsync(userIds, ct);
         var deleted = await repo.DeleteAllForUsersAsync(userIds, ct);
-        // Repo doesn't return affected shift ids; cheap at our small scale to drop all and lazy-rebuild.
+        // The repository doesn't return affected shift ids; at this scale dropping all is cheap.
         if (deleted > 0)
         {
             viewInvalidator.InvalidateAll();
@@ -1574,7 +1555,7 @@ internal sealed class ShiftSignupService(
 
         viewInvalidator.InvalidateUser(sourceUserId);
         viewInvalidator.InvalidateUser(targetUserId);
-        // Affected shifts unknown; cheap to drop all at our small scale.
+        // Affected shifts unknown; at this scale dropping all is cheap.
         if (movedCount > 0)
             viewInvalidator.InvalidateAll();
 

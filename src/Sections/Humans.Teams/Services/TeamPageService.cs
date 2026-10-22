@@ -197,10 +197,8 @@ internal sealed class TeamPageService(
             if (membership is null)
                 continue;
 
-            // Inherited coordinator: a user can manage a team if they're a
-            // direct Coordinator, a board member, or coordinate any ancestor
-            // team (matches CanUserApproveRequestsForTeamAsync's recursive
-            // parent walk via IsUserCoordinatorOfActiveTeam).
+            // A direct Coordinator, a board member, or a coordinator of any ancestor team: the same parent walk as
+            // CanUserApproveRequestsForTeamAsync.
             var canManage =
                 (isBoardMember || TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, team.Id, userId))
                 && !team.IsSystemTeam;
@@ -246,7 +244,7 @@ internal sealed class TeamPageService(
         Guid? userId,
         CancellationToken cancellationToken = default)
     {
-        // TeamInfo is the canonical cached read shape; pending requests stay live reads.
+        // Pending requests stay live reads.
         var teamsById = await teamService.GetTeamsAsync(cancellationToken);
         var team = TeamSlugResolver.Find(teamsById, slug);
         if (team is null)
@@ -377,11 +375,7 @@ internal sealed class TeamPageService(
             Role: member.Role,
             JoinedAt: member.JoinedAt);
 
-    /// <summary>
-    /// Department page's subteam-member rollup: every child-team coordinator
-    /// (as a "lead"), plus every other child-team member not already a direct
-    /// department member (deduplicated across multiple child teams).
-    /// </summary>
+    /// <summary>Other child-team members are deduplicated across child teams.</summary>
     private async Task<(IReadOnlyList<TeamPageChildTeamMemberSummary> Leads, IReadOnlyList<TeamPageChildTeamMemberSummary> Members)>
         BuildSubteamRollupAsync(
             IReadOnlyList<TeamPageTeamLink> childTeams,

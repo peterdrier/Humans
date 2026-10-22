@@ -53,7 +53,7 @@
     {
         var es = Model.EventSettings;
 
-        @* Prominent availability prompt — jumps to the calendar grid lower on the page so members find it before manually browsing shifts. *@
+        @* Jumps to the grid below, so members find it before browsing shifts by hand. *@
         <div class="card border-primary mb-4">
             <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <div class="d-flex align-items-center gap-2">
@@ -75,7 +75,7 @@
                 <div id="mine-upcoming" class="collapse show">
                 <div class="card-body">
                     @{
-                        // Group build/strike range signups by SignupBlockId, show individual signups separately
+                        // Range signups group by SignupBlockId; others show individually.
                         var rangeBlocks = Model.Upcoming
                             .Where(i => i.Signup.SignupBlockId != null)
                             .GroupBy(i => i.Signup.SignupBlockId!.Value)
@@ -92,8 +92,7 @@
                             var first = block.OrderBy(b => b.Signup.Shift.DayOffset).First();
                             var last = block.OrderBy(b => b.Signup.Shift.DayOffset).Last();
                             var shift = first.Signup.Shift;
-                            // Early-entry close locks bails on build shifts unless the viewer can
-                            // approve signups for the block's own department (per-team, set by the controller).
+                            // Set per team by the controller, mirroring the bail gate after early-entry close.
                             var bailLocked = block.Any(b => b.BailLocked);
                             <div class="d-flex justify-content-between align-items-center border-bottom py-2">
                                 <div>
@@ -251,7 +250,6 @@
             <div class="alert alert-info">@Localizer["Shifts_NoSignups"] <a asp-action="Index">@Localizer["Shifts_BrowseAvailable"]</a>.</div>
         }
 
-        @* General Availability — Calendar Grid *@
         var culture = System.Globalization.CultureInfo.CurrentUICulture;
         var shortDays = culture.DateTimeFormat.AbbreviatedDayNames;
         var monFirstDays = new[] { shortDays[1], shortDays[2], shortDays[3], shortDays[4], shortDays[5], shortDays[6], shortDays[0] };
@@ -337,7 +335,6 @@
 
 <script>
 (function() {
-    // Availability calendar grid — click to toggle
     var form = document.getElementById('availabilityForm');
     if (form) {
         var days = form.querySelectorAll('.avail-cal-day:not(.avail-cal-empty)');

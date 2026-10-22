@@ -3,10 +3,7 @@ using Humans.Email.Contracts;
 namespace Humans.Shifts.Services;
 
 /// <summary>
-/// Shifts' contribution to the template gallery at <c>/Email/EmailPreview</c>: one sample
-/// per template <see cref="ShiftsEmails"/> can send, built through the same builder the
-/// real send path uses, so the gallery cannot drift from what volunteers receive
-/// (peterdrier/Humans#1651). Sample data only — no recipient is real and nothing is sent.
+/// Built through the real send path's builder, so the gallery cannot drift from what volunteers receive.
 /// </summary>
 internal sealed class ShiftsEmailPreviews(ShiftsEmails emails) : IEmailPreviewContributor
 {

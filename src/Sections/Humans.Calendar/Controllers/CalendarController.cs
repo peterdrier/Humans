@@ -12,8 +12,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Calendar.Controllers;
 
-// Any authenticated human can create/edit/cancel calendar events for any team.
-// Changes are captured in the audit log (IAuditLogService) rather than gated upfront.
+// Open by design: any authenticated member may edit any team's events; the audit log is the accountability.
 [Authorize]
 [Route("Calendar")]
 internal sealed class CalendarController : HumansControllerBase
@@ -56,10 +55,7 @@ internal sealed class CalendarController : HumansControllerBase
         var model = await BuildMonthViewAsync(year, month, teamId, ct);
         if (model is null) return BadRequest();
 
-        // The personal iCal feed card renders below the grid, on this page only.
-        // A viewer with no UserInfo row (merged away) simply gets no card rather
-        // than a broken calendar. GET never mints: a viewer without a token gets
-        // the card's create button, which POSTs to CreateIcal.
+        // A merged-away viewer gets no feed card rather than a broken calendar. GET never mints a token.
         var user = await GetCurrentUserInfoAsync(ct);
         if (user is null) return View(model);
         var token = await _feedTokens.GetAsync(user.Id, ct);
@@ -102,10 +98,6 @@ internal sealed class CalendarController : HumansControllerBase
         return model is null ? BadRequest() : View(model);
     }
 
-    /// <summary>
-    /// The month window Index and List both render — same query, same view model,
-    /// differing only in which view renders it (grid vs one row per day).
-    /// </summary>
     private async Task<CalendarMonthViewModel?> BuildMonthViewAsync(
         int? year, int? month, Guid? teamId, CancellationToken ct)
     {
@@ -114,9 +106,7 @@ internal sealed class CalendarController : HumansControllerBase
         if (resolvedMonth is null) return null;
         var ym = resolvedMonth.Value;
 
-        // The whole rendered grid, not just the month: Index pads the first and last weeks
-        // with adjacent-month days, and querying only [1st, 1st of next month) left those
-        // cells permanently empty. List and Team clip to the month themselves.
+        // The whole rendered grid, including the adjacent-month days that pad the first and last weeks.
         var (gridStart, gridEnd) = CalendarGridLayout.MonthGridBounds(ym);
         var from = gridStart.AtMidnight().InZoneLeniently(zone).ToInstant();
         var to = gridEnd.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
@@ -250,7 +240,7 @@ internal sealed class CalendarController : HumansControllerBase
     public async Task<IActionResult> Create([FromQuery] Guid? teamId, CancellationToken ct)
     {
         var teams = await GetSelectableTeamsAsync(ct);
-        if (teams.Count == 0) return NotFound(); // no usable teams to own an event
+        if (teams.Count == 0) return NotFound();
 
         var zone = GetViewerZone();
         var today = _clock.GetCurrentInstant().InZone(zone).Date.ToDateTimeUnspecified();
@@ -304,8 +294,7 @@ internal sealed class CalendarController : HumansControllerBase
         var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
-        // One-off events store no zone: render them in the viewer's zone, as the calendar
-        // pages do. An unknown stored zone falls back the same way so the form still renders.
+        // One-off events store no zone, and a stored zone may be unknown: both render in the viewer's zone.
         var zone = CalendarEventFormViewModel.TryResolveZone(ev.RecurrenceTimezone) ?? GetViewerZone();
         var startDate = ev.StartDate ?? ev.StartUtc!.Value.InZone(zone).Date;
         var endDateInclusive = ev.EndDateExclusive is { } endDate
@@ -360,9 +349,7 @@ internal sealed class CalendarController : HumansControllerBase
         return View(form);
     }
 
-    // Parses the posted date or time fields. The all-day storage shape
-    // itself is CalendarService.AllDayWindow's; what stays here is the ModelState translation.
-    // Bad input → ModelState (no throw).
+    // Bad input goes to ModelState, never a throw. The all-day storage shape is CalendarService.AllDayWindow's.
     private void TryResolveStartEnd(CalendarEventFormViewModel form, out Instant? start, out Instant? end,
         out LocalDate? startDate, out LocalDate? endDate)
     {
@@ -508,11 +495,7 @@ internal sealed class CalendarController : HumansControllerBase
     private Guid RequireCurrentUserId() =>
         GetCurrentUserId() ?? throw new InvalidOperationException("Current user has no valid ID claim.");
 
-    // The service names the member for the pair it validates by hand, and leaves it null for
-    // everything else — Title, EndUtc and start-after-end arrive through Failed(), which
-    // carries no member name at all. Null belongs at the form level, where the validation
-    // summary carries it; mapping null to RecurrenceRule is what put a Title error under the
-    // RRULE input.
+    // A null member name means a form-level error: it belongs in the validation summary, not under a field.
     private void AddCalendarEventMutationError(
         CalendarEventMutationResult result)
     {

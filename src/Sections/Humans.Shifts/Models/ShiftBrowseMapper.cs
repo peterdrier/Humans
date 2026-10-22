@@ -3,19 +3,10 @@ using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Models;
 
 /// <summary>
-/// Shared per-shift / per-rota mapping used by both the full browse
-/// (<c>ShiftsController.Index</c>) and the onboarding widget step-2 view
-/// (<c>OnboardingShiftsStepBuilder</c>).
-///
-/// Pure mapping over <see cref="UrgentShiftInfo"/> — no service dependencies and
-/// no arithmetic: the section resolves the absolute window and the period inside
-/// the projection, where the event is in scope.
+/// Shared by the browse page and the onboarding widget. Pure: the projection already resolved the window and period.
 /// </summary>
 internal static class ShiftBrowseMapper
 {
-    /// <summary>
-    /// Maps a single <see cref="UrgentShiftInfo"/> to a <see cref="ShiftDisplayItem"/>.
-    /// </summary>
     internal static ShiftDisplayItem MapToDisplayItem(UrgentShiftInfo u)
     {
         return new ShiftDisplayItem
@@ -31,11 +22,7 @@ internal static class ShiftBrowseMapper
         };
     }
 
-    /// <summary>
-    /// Builds a <see cref="RotaShiftGroup"/> from a group of <see cref="UrgentShiftInfo"/>s
-    /// sharing a rota. Caller may supply department name/slug (full browse) or omit
-    /// them (onboarding widget — no department grouping).
-    /// </summary>
+    /// <summary>The onboarding widget omits the department, as it has no department grouping.</summary>
     internal static RotaShiftGroup BuildRotaGroup(
         IGrouping<Guid, UrgentShiftInfo> rotaGroup,
         string? departmentName = null,

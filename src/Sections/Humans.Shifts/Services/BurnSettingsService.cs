@@ -5,13 +5,8 @@ using Humans.Shifts.Domain;
 namespace Humans.Shifts.Services;
 
 /// <summary>
-/// Read-only adapter mapping the app-wide calendar (Settings, via
-/// <see cref="EventCalendarResolver"/>) plus this section's own knobs row (if one
-/// has been created yet) to the external <see cref="BurnSettingsInfo"/> DTO.
-/// "Active" is Settings' concept (nobodies-collective/Humans#1631) — the Shifts
-/// knobs row for that id may not exist yet, so <see cref="IBurnSettingsInfo.IsShiftBrowsingOpen"/>
-/// defaults to <c>false</c> until the first rota or knob edit creates it. No caching
-/// (cold path).
+/// The Shifts knobs row for Settings' active event may not exist yet, so <see cref="IBurnSettingsInfo.IsShiftBrowsingOpen"/>
+/// is false until the first rota or knob edit creates it.
 /// </summary>
 internal sealed class BurnSettingsService(
     IShiftManagementRepository repo,

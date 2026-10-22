@@ -7,13 +7,7 @@ using NodaTime.Text;
 
 namespace Humans.Shifts.Models;
 
-/// <summary>
-/// Inputs for <see cref="ShiftBrowsePageBuilder"/>. <see cref="UserTagPreferences"/>
-/// is the raw <see cref="VolunteerTagPreference"/> rows from the cached
-/// <c>ShiftUserView</c>; the builder reads
-/// <see cref="VolunteerTagPreference.ShiftTagId"/> to build the preferred-tag
-/// id set on the view model.
-/// </summary>
+/// <summary><see cref="UserTagPreferences"/> are the raw rows from the cached <c>ShiftUserView</c>.</summary>
 internal sealed record ShiftBrowsePageRequest(
     BurnSettingsInfo EventSettings,
     Guid UserId,
@@ -37,9 +31,8 @@ internal sealed class ShiftBrowsePageBuilder(
     ITeamService teamService)
 {
     /// <summary>
-    /// Active (Confirmed / Pending) signups as shift-id set + status map.
-    /// <c>ShiftSignupHelper.ResolveActiveStatuses</c> is the same rule over the
-    /// section's boundary shape; this one reads the section's own rows.
+    /// <c>ShiftSignupHelper.ResolveActiveStatuses</c> is the same rule over the boundary shape; this one reads the
+    /// section's own rows.
     /// </summary>
     private static (HashSet<Guid> ShiftIds, Dictionary<Guid, SignupStatus> Statuses) ResolveActiveStatuses(
         IReadOnlyList<ShiftSignup> signups)
@@ -61,8 +54,7 @@ internal sealed class ShiftBrowsePageBuilder(
         if ((!string.IsNullOrEmpty(request.FromDate) || !string.IsNullOrEmpty(request.ToDate)) && !string.IsNullOrEmpty(period))
             period = null;
 
-        // Single-day filter wins over the phase/date-range filters —
-        // it's a separate dropdown control, not meant to compose with them.
+        // The day filter wins over phase and date range: a separate control, not meant to compose with them.
         var filterDay = !string.IsNullOrEmpty(request.Day) && LocalDatePattern.Iso.Parse(request.Day) is { Success: true } dayResult
             ? dayResult.Value
             : (LocalDate?)null;
@@ -113,25 +105,16 @@ internal sealed class ShiftBrowsePageBuilder(
             : periodFilteredShifts;
 
         var departments = await BuildDepartmentGroupsAsync(filteredShifts, ct);
-        // The day filter forces the flat, openings-ranked view — a department/period
-        // grouping doesn't express "most openings first".
+        // The day filter forces the flat, openings-ranked view; department grouping can't express "most openings first".
         var isUrgencySort = filterDay.HasValue || !string.Equals(request.Sort, "department", StringComparison.OrdinalIgnoreCase);
 
         var allDepartments = await GetDepartmentOptionsAsync(request.DepartmentId, departments, es.Id, ct);
         var allTags = await shiftManagement.GetTagsAsync(ct: ct);
         var dayOptions = await BuildDayOptionsAsync(es, browseFlags, ct);
-        // Preferred tag ids come from the cached ShiftUserView's
-        // TagPreferences — the controller already fetched the
-        // view for the signup read, so we reuse those rows here. The shape
-        // shift is harmless: ShiftTagPreferenceInfo.ShiftTagId == ShiftTag.Id ==
-        // VolunteerTagPreference.ShiftTagId.
         var (userSignupShiftIds, userSignupStatuses) = ResolveActiveStatuses(request.UserSignups);
 
-        // Pies use the same date window as the shift list so the percentages
-        // line up with what the user is filtering to.
-        // Service returns natural-name-ordered rows; apply the display
-        // grouping here so each promoted sub-team renders right after its
-        // parent (memory/architecture/display-sort-in-controllers).
+        // Pies use the shift list's date window so the percentages match the filter. Each promoted sub-team renders
+        // right after its parent (memory/architecture/display-sort-in-controllers).
         var coveragePies = OrderPiesGroupedByParent(
             await shiftManagement.GetDepartmentCoveragePiesAsync(
                 es.Id, filterFromDate, filterToDate, ct: ct));
@@ -166,16 +149,12 @@ internal sealed class ShiftBrowsePageBuilder(
     }
 
     /// <summary>
-    /// Rebuilds a single shift's display item plus the caller's signup state, for
-    /// re-rendering one browse-table row after a signup/cancel toggle (avoids
-    /// rebuilding the whole page). Resolves the active event and re-reads the shift
-    /// through the same <see cref="IShiftService.GetBrowseShiftsAsync"/>
-    /// path <see cref="BuildAsync"/> uses, so the row's counts stay consistent.
+    /// Re-renders one row after a toggle, through the same <see cref="IShiftService.GetBrowseShiftsAsync"/> path as
+    /// <see cref="BuildAsync"/> so its counts stay consistent.
     /// </summary>
     public async Task<(ShiftDisplayItem Item, bool IsSignedUp, SignupStatus? Status)?> BuildRowAsync(
         Guid shiftId, IReadOnlyList<ShiftSignup> userSignups, bool isPrivileged, CancellationToken ct)
     {
-        // GetActiveAsync() is BurnSettingsInfo? — guard for nullable + TreatWarningsAsErrors.
         var es = await burnSettings.GetActiveAsync(ct)
             ?? throw new InvalidOperationException("BuildRowAsync requires an active event.");
 
@@ -185,9 +164,8 @@ internal sealed class ShiftBrowsePageBuilder(
 
         var shifts = await shiftManagement.GetBrowseShiftsAsync(
             new ShiftBrowseQuery(es.Id, null, null, null, flags), ct);
-        // Returns null when the shift isn't in the browse set for this caller (e.g. it
-        // just filled/closed, or a visibility race). The caller turns that into a benign
-        // reload rather than a 500 — never call .First() here.
+        // Null when the shift just left the browse set (filled, closed, a visibility race): the caller reloads
+        // rather than 500s. Never .First() here.
         var urgent = shifts.FirstOrDefault(u => u.Shift.Id == shiftId);
         if (urgent is null) return null;
         var item = ShiftBrowseMapper.MapToDisplayItem(urgent);
@@ -197,22 +175,14 @@ internal sealed class ShiftBrowsePageBuilder(
     }
 
     /// <summary>
-    /// Orders the flat rota list. Openings-first (day filter) ranks by
-    /// total remaining slots descending, so fully-booked rotas naturally sink to
-    /// the bottom rather than needing a separate hide-when-full toggle. Otherwise
-    /// falls back to the existing urgency-score ranking.
+    /// By openings, full rotas sink to the bottom with no hide-when-full toggle. Otherwise by urgency score.
     /// </summary>
     private static List<RotaShiftGroup> RankRotas(IEnumerable<RotaShiftGroup> rotas, bool byOpenings) =>
         byOpenings
             ? rotas.OrderByDescending(r => r.Shifts.Sum(s => s.RemainingSlots)).ToList()
             : rotas.OrderByDescending(r => r.MaxUrgencyScore).ToList();
 
-    /// <summary>
-    /// Every calendar day with at least one browsable shift for the event, labeled
-    /// with its period/build-sub-period for the day-filter dropdown.
-    /// Deliberately unfiltered by department/tag/period/day so the option list
-    /// doesn't shrink as the viewer narrows other filters.
-    /// </summary>
+    /// <summary>Unfiltered, so the option list doesn't shrink as the viewer narrows other filters.</summary>
     private async Task<List<DayFilterOption>> BuildDayOptionsAsync(BurnSettingsInfo es, ShiftBrowseQueryFlags browseFlags, CancellationToken ct)
     {
         var allShifts = await shiftManagement.GetBrowseShiftsAsync(
@@ -306,10 +276,7 @@ internal sealed class ShiftBrowsePageBuilder(
     }
 
     /// <summary>
-    /// Orders pies for display: each promoted sub-team is placed immediately
-    /// after its parent (using the parent's name as the group key), instead
-    /// of strict alphabetical order. Multiple sub-teams under the same parent
-    /// sort alphabetically. <c>internal</c> so unit tests can target it.
+    /// Each promoted sub-team sits right after its parent, keyed on the parent's name; siblings sort alphabetically.
     /// </summary>
     internal static IReadOnlyList<DepartmentCoveragePie> OrderPiesGroupedByParent(
         IReadOnlyList<DepartmentCoveragePie> pies) =>

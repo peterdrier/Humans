@@ -22,15 +22,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Shifts;
 
-/// <summary>
-/// Shifts' DI entry point, at the project root by convention. Discovered by Shell —
-/// nothing names it, so it needs no section prefix.
-/// </summary>
-/// <remarks>
-/// Registrations are <c>ShiftsSectionExtensions.AddShiftsSection</c> verbatim, plus the
-/// <c>AddSectionDbContext&lt;ShiftsDbContext&gt;</c> line moved out of
-/// <c>InfrastructureServiceCollectionExtensions</c>.
-/// </remarks>
 public sealed class Section : ISection, IIssueQueueOwner
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
@@ -42,18 +33,14 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<ShiftManagementService>();
         services.AddScoped<IShiftManagement>(sp => sp.GetRequiredService<ShiftManagementService>());
 
-        // The three cross-section halves of IShiftManagement, registered onto the
-        // same Scoped instance.
         services.AddScoped<IShiftService>(sp => sp.GetRequiredService<ShiftManagementService>());
         services.AddScoped<IShiftVolunteerProfiles>(sp => sp.GetRequiredService<ShiftManagementService>());
         services.AddScoped<IShiftSeeding>(sp => sp.GetRequiredService<ShiftManagementService>());
 
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ShiftManagementService>());
 
-        // Cross-section DTO supplier so Events/Camps/Tickets/Notifications consume BurnSettingsInfo without Shifts-internal EventSettings.
         services.AddScoped<IBurnSettingsService, BurnSettingsService>();
 
-        // Per-request memoized calendar lookup off Settings (nobodies-collective/Humans#1630).
         services.AddScoped<EventCalendarResolver>();
 
         services.AddScoped<ShiftSignupService>();
@@ -76,7 +63,7 @@ public sealed class Section : ISection, IIssueQueueOwner
             sp.GetRequiredService<VolunteerTrackingExportService>());
         services.AddScoped<VolunteerTrackingXlsxBuilder>();
 
-        // ShiftView — Singleton decorator over keyed-Scoped inner, mirrors CachingUserService/CachingTeamService.
+        // Singleton decorator over a keyed-Scoped inner.
         services.AddKeyedScoped<IShiftRowView, ShiftViewService>(CachingShiftViewService.InnerServiceKey);
         services.AddSingleton<CachingShiftViewService>();
         services.AddSingleton<IShiftRowView>(sp => sp.GetRequiredService<CachingShiftViewService>());
@@ -87,33 +74,25 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftViewService>().UserCacheStats);
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftViewService>().RotaCacheStats);
 
-        // IHostedService for symmetry with sibling caches; StartAsync is a no-op today.
+        // StartAsync is a no-op; hosted for symmetry with the sibling caches.
         services.AddHostedService(sp => sp.GetRequiredService<CachingShiftViewService>());
         services.AddScoped<ShiftBrowsePageBuilder>();
         services.AddScoped<ShiftAdminPageBuilder>();
         services.AddScoped<ShiftDashboardPageBuilder>();
         services.AddScoped<ShiftVolunteerSearchBuilder>();
 
-        // Workload — no service-level cache; invalidation rides on CachingShiftViewService.
+        // No cache of its own; invalidation rides on CachingShiftViewService.
         services.AddScoped<IWorkloadService, WorkloadService>();
 
-        // Rota coordinator "email a rota".
         services.AddScoped<IRotaCoordinatorMessageService, RotaCoordinatorMessageService>();
 
-        // The section's own email templates plus their gallery samples
-        // (memory/architecture/email-templates-live-in-sender.md).
         services.AddScoped<ShiftsEmails>();
         services.AddScoped<IEmailPreviewContributor, ShiftsEmailPreviews>();
 
-        // Policy-backing handler. ShiftDepartmentManager's policy is this section's, in
-        // SectionPolicies.
         services.AddScoped<IAuthorizationHandler, IsAnyTeamManagerOrCoordinatorHandler>();
 
-        // Base's EnumBadgeMap cannot name ShiftPeriod/SignupStatus — both are this section's
-        // contracts leaf — so the section pushes its own rows in
-        // (memory/architecture/base-ui-registries-are-section-populated.md, Peter 2026-08-09).
-        // An unregistered value does not fail loudly: EnumBadgeMap.For falls back to
-        // "bg-secondary". ShiftsArchitectureTests pins all nine by value.
+        // Base cannot name these enums, so the section registers them. An unregistered value falls back to
+        // "bg-secondary" silently; ShiftsArchitectureTests pins all nine.
         EnumBadgeMap.Register(new Dictionary<Enum, string>
         {
             [ShiftPeriod.Build] = "bg-info",
@@ -129,8 +108,6 @@ public sealed class Section : ISection, IIssueQueueOwner
         });
     }
 
-    // This section owns the issue queue its members' reports land in; Issues discovers
-    // the seam rather than holding a list of sections (memory/architecture/section-contribution-seams.md).
     string IIssueQueueOwner.QueueKey => "Shifts";
 
     string IIssueQueueOwner.AreaLabelResourceKey => "Issues_Area_Shifts";

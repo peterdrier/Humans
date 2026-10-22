@@ -4,11 +4,8 @@ using NodaTime;
 namespace Humans.Workgroups.Services;
 
 /// <summary>
-/// One register entry as it leaves the section: the group and every child collection,
-/// projected off the EF entities so no entity crosses the boundary. Time-derived
-/// facts (update due, status overdue, open for comment) are NOT baked in — they are
-/// computed from these fields by <see cref="WorkgroupRhythm"/> against the caller's
-/// clock, so a cached snapshot never carries a stale badge.
+/// Time-derived facts (update due, overdue, open for comment) are not baked in: <see cref="WorkgroupRhythm"/>
+/// computes them against the caller's clock, so a cached snapshot never carries a stale badge.
 /// </summary>
 internal sealed record WorkgroupInfo(
     Guid Id,
@@ -40,13 +37,8 @@ internal sealed record WorkgroupInfo(
     public bool HasBudget => BudgetAmount is not null;
 }
 
-/// <summary>A working-group membership and its active period.</summary>
-/// <param name="Id">The membership’s identifier.</param>
-/// <param name="UserId">The member’s user identifier.</param>
-/// <param name="Role">The member’s role in the working group.</param>
-/// <param name="JoinedAt">When the membership began.</param>
-/// <param name="LeftAt">Null while the person is a current member.</param>
-/// <param name="IsPending">True while the join request awaits a coordinator's approval.</param>
+/// <summary><paramref name="LeftAt"/> is null for a current member; <paramref name="IsPending"/> is true until a
+/// coordinator approves the request.</summary>
 internal sealed record WorkgroupMemberInfo(
     Guid Id,
     Guid UserId,
@@ -116,11 +108,7 @@ internal sealed record WorkgroupCommentInfo(
     Guid? HiddenByUserId,
     string? HiddenReason);
 
-/// <summary>
-/// The clause 1 application: exactly what the resolution asks for. The applicant is
-/// always a coordinator; <paramref name="SecondCoordinatorUserId"/> is the optional
-/// second name (one or two coordinators at all times).
-/// </summary>
+/// <summary>The applicant is always a coordinator; <paramref name="SecondCoordinatorUserId"/> is optional.</summary>
 internal sealed record WorkgroupApplication(
     string Name,
     string Purpose,
@@ -132,7 +120,6 @@ internal sealed record WorkgroupApplication(
     Guid? SecondCoordinatorUserId,
     bool IsSensitive = false);
 
-/// <summary>The register fields any member may edit. Changing the deliverable sentence writes ScopeChanged.</summary>
 internal sealed record WorkgroupRegisterEdit(
     string Name,
     string Purpose,
@@ -152,11 +139,7 @@ internal sealed record WorkgroupMeetingSave(
     bool IsPublic,
     string? Minutes);
 
-/// <summary>A member-authored working-group log entry.</summary>
-/// <param name="OccurredOn">The date the logged event occurred.</param>
-/// <param name="Title">The optional entry title.</param>
-/// <param name="Body">The optional entry body.</param>
-/// <param name="Kind">A member kind only — Update, Disclosure, StatusRequested or Note. System kinds are the section's to write.</param>
+/// <summary><paramref name="Kind"/> must be a member kind: Update, Disclosure, StatusRequested or Note.</summary>
 internal sealed record WorkgroupLogEntrySave(
     WorkgroupLogKind Kind,
     LocalDate OccurredOn,
@@ -168,24 +151,18 @@ internal sealed record WorkgroupDocumentSave(
     WorkgroupDocumentKind Kind,
     string Body);
 
-/// <summary>The comment period: a window plus the categories a commenter must pick from.</summary>
 internal sealed record WorkgroupCommentWindow(
     Instant OpensAt,
     Instant ClosesAt,
     IReadOnlyList<string> Categories);
 
-/// <summary>
-/// Bootstrapping an existing group (design §21): the Secretary applies on behalf, the
-/// group goes straight to Active, and <paramref name="RegisteredAt"/> is backdated to
-/// when it really started.
-/// </summary>
+/// <summary>Bootstrapping: goes straight to Active, with <paramref name="RegisteredAt"/> backdated.</summary>
 internal sealed record WorkgroupBootstrap(
     WorkgroupApplication Application,
     Guid CoordinatorUserId,
     Instant RegisteredAt,
     WorkgroupBudgetSave? Budget = null);
 
-/// <summary>The budget form. <paramref name="Amount"/> null clears the budget (the account binding
-/// stays). <paramref name="ExistingAccountNum"/> set links that Holded account; null creates
-/// "Workgroups / {Name}" when nothing is bound yet, and is an amount-only change otherwise.</summary>
+/// <summary><paramref name="Amount"/> null clears the budget but keeps the binding. <paramref name="ExistingAccountNum"/>
+/// links that Holded account; null creates "Workgroups / {Name}" when nothing is bound, else changes the amount only.</summary>
 internal sealed record WorkgroupBudgetSave(decimal? Amount, int? ExistingAccountNum);

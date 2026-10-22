@@ -2,10 +2,7 @@ using NodaTime;
 
 namespace Humans.Calendar.Domain;
 
-/// <summary>
-/// An override for a single occurrence of a recurring <see cref="CalendarEvent"/>.
-/// Either cancels the occurrence or overrides one or more fields for it.
-/// </summary>
+/// <summary>Cancels or overrides one occurrence of a recurring series.</summary>
 internal sealed class CalendarEventException
 {
     public Guid Id { get; init; }

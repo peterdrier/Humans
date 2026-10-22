@@ -1,5 +1,5 @@
 using System.Runtime.CompilerServices;
 
-// Castle DynamicProxy, behind NSubstitute in Humans.Workgroups.Tests, needs to see
-// IWorkgroupRepository to proxy it.
+// Castle DynamicProxy, behind NSubstitute in Humans.Workgroups.Tests, needs to see the internal
+// section types to proxy them.
 [assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]

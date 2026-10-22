@@ -19,14 +19,11 @@ internal sealed class CalendarEventExceptionConfiguration : IEntityTypeConfigura
         b.HasIndex(x => new { x.EventId, x.OriginalOccurrenceStartUtc })
          .IsUnique();
 
-        // All-day exceptions identify their occurrence by date and leave
-        // OriginalOccurrenceStartUtc null, which the index above does not
-        // constrain (PostgreSQL allows repeated nulls).
+        // All-day exceptions leave OriginalOccurrenceStartUtc null, which the index above doesn't constrain.
         b.HasIndex(x => new { x.EventId, x.OriginalOccurrenceDate })
          .IsUnique();
 
-        // Match parent CalendarEvent's soft-delete filter so EF doesn't
-        // emit an advisory and orphan exception rows aren't returned.
+        // Matches the parent's soft-delete filter, so exceptions of a deleted event aren't returned.
         b.HasQueryFilter(ex => ex.Event.DeletedAt == null);
     }
 }

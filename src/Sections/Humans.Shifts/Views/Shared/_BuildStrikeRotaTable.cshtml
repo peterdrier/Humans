@@ -38,7 +38,7 @@ else
     var es = Model.EventSettings;
     var allDayShifts = rotaGroup.Shifts.Where(s => s.Shift.IsAllDay).OrderBy(s => s.Shift.DayOffset).ToList();
     var availableShifts = allDayShifts.Where(s => s.RemainingSlots > 0 && !Model.UserSignupShiftIds.Contains(s.Shift.Id)).ToList();
-    // Build (early-entry) date-range form locks once early-entry close has passed; strike shifts are never early-entry.
+    // Strike shifts are never early-entry.
     var earlyEntryLocked = Model.EarlyEntrySignupsClosed && availableShifts.Any(s => s.Shift.IsEarlyEntry);
 @if (availableShifts.Count > 0)
 {
@@ -178,8 +178,7 @@ else
         var endSel = form.querySelector('select[name="endDayOffset"]');
 
         function fmt(tpl, args) {
-            // Replace ALL occurrences of {0}, {1}, ... — guards future translations
-            // that might repeat a placeholder. JS String.replace replaces first only.
+            // JS String.replace replaces the first match only; a translation may repeat a placeholder.
             return Object.keys(args).reduce(function (s, k) {
                 return s.split('{' + k + '}').join(String(args[k]));
             }, tpl);
@@ -188,8 +187,8 @@ else
         function findConflictsForOffset(offset) {
             var win = rotaWindows[offset];
             if (!win) return [];
-            // overlap rule: existing.absStart < win.absEnd && existing.absEnd > win.absStart
-            // String comparison works on fixed-length ISO-8601 UTC strings (always whole seconds + 'Z').
+            // Overlap: existing start < window end && existing end > window start. String comparison is safe on
+            // fixed-length ISO-8601 UTC strings.
             return userSignups.filter(function (s) {
                 return s.absStart < win.absEnd && s.absEnd > win.absStart;
             });

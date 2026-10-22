@@ -6,10 +6,6 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Shifts;
 
-/// <summary>
-/// Shifts' authorization policies, at the project root by convention. Discovered by Shell
-/// alongside <see cref="Section"/> — nothing names it.
-/// </summary>
 internal sealed class SectionPolicies : ISectionPolicies
 {
     public void AddPolicies(AuthorizationOptions options)
@@ -21,7 +17,7 @@ internal sealed class SectionPolicies : ISectionPolicies
         options.AddPolicy(PolicyNames.VolunteerTrackingWrite, policy =>
             policy.RequireRole(RoleNames.Admin, RoleNames.VolunteerCoordinator));
 
-        // Role-OR-team-coord disjunction encoded in IsAnyTeamManagerOrCoordinatorHandler so the policy is one requirement (policy requirements AND).
+        // The role-or-team-coordinator disjunction lives in one handler because policy requirements AND.
         options.AddPolicy(PolicyNames.ShiftDepartmentManager, policy =>
             policy.AddRequirements(new IsAnyTeamManagerOrCoordinatorRequirement()));
 

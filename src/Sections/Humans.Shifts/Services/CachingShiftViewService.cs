@@ -9,36 +9,13 @@ using Microsoft.Extensions.Hosting;
 namespace Humans.Shifts.Services;
 
 /// <summary>
-/// Singleton caching decorator for <see cref="IShiftRowView"/> / <see cref="IShiftView"/>, and the
-/// owner of their eviction: every Shifts write calls its <c>Invalidate*</c> methods. Composes two
-/// <see cref="TrackedCache{TKey,TValue}"/> instances — one keyed by user id
-/// (<see cref="ShiftUserView"/>) and one keyed by rota id
-/// (<see cref="ShiftRotaView"/>). Dict hits complete synchronously via
-/// <see cref="ValueTask{TResult}"/>; misses resolve the Scoped inner via
-/// <see cref="IServiceScopeFactory"/> and lazily populate the cache.
+/// Owns eviction for the shift views: every Shifts write calls its <c>Invalidate*</c> methods. Batch reads gather
+/// all misses into one inner call, so a cold /Admin hit costs one round-trip per surface, not N.
 /// </summary>
-/// <remarks>
-/// This decorator only ever talks to its inner <see cref="IShiftView"/>; it
-/// never reaches sideways into repositories or sibling services. Single-id
-/// misses delegate to <see cref="IShiftRowView.GetUserAsync"/>; batch reads
-/// gather all cache-misses into one <see cref="IShiftRowView.GetUsersAsync"/>
-/// call so a cold /Admin first-hit collapses to one inner round-trip per
-/// surface, not N.
-/// <para>
-/// The two caches are exposed via <see cref="UserCacheStats"/> /
-/// <see cref="RotaCacheStats"/> and registered as <see cref="ICacheStats"/>
-/// in DI so /Debug/CacheStats can surface their counters.
-/// </para>
-/// </remarks>
 internal sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory, ILogger<CachingShiftViewService> logger)
     : IShiftRowView, IShiftView, IEventSettingsChangeListener, IHostedService
 {
-    /// <summary>
-    /// DI service key under which the undecorated (inner) <see cref="IShiftRowView"/>
-    /// is registered. Used by the Singleton decorator to resolve the Scoped
-    /// inner per-call without triggering self-resolution on the unkeyed
-    /// <see cref="IShiftRowView"/> registration (which maps to this Singleton).
-    /// </summary>
+    /// <summary>Keyed so the Singleton can resolve the Scoped inner without resolving itself.</summary>
     public const string InnerServiceKey = "shift-view-inner";
 
     private readonly TrackedCache<Guid, ShiftUserView> _userCache = new("ShiftView.UserView", warmOnStartup: false, logger);
@@ -62,13 +39,7 @@ internal sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory,
         return new ValueTask<ShiftUserView>(LoadAndCacheUserAsync(userId, generation, ct));
     }
 
-    /// <summary>
-    /// Batches all cache-misses into a single <see cref="IShiftRowView.GetUsersAsync"/>
-    /// call on the inner — the inner is responsible for bulk-loading every
-    /// contributing table in one round-trip per table. This is the hot path
-    /// for /Admin first-hit (set-membership across the full user base); a per-id
-    /// fan-out here is what made the page slow.
-    /// </summary>
+    /// <summary>The /Admin first-hit hot path: a per-id fan-out here is what made the page slow.</summary>
     public async ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>> GetUsersAsync(
         IEnumerable<Guid> userIds, CancellationToken ct = default)
     {
@@ -161,12 +132,7 @@ internal sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory,
         return view;
     }
 
-    // ==========================================================================
-    // IShiftView — the cross-section surface, projected off the cached rows.
-    // Explicit implementation: these differ from the IShiftRowView members
-    // above only in return type, which C# permits no other way.
-    // ==========================================================================
-
+    // Explicit: these differ from the IShiftRowView members only in return type.
     async ValueTask<ShiftUserSummary> IShiftView.GetUserAsync(Guid userId, CancellationToken ct) =>
         (await GetUserAsync(userId, ct).ConfigureAwait(false)).ToSummary();
 
@@ -190,11 +156,8 @@ internal sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory,
             _cacheGeneration++;
             _rotaCache.Invalidate(rotaId);
 
-            // ShiftUserView.Signups carries Shift.Rota nav data (Name, TeamId,
-            // Period, …) — a rota metadata change (rename / team-move / period
-            // flip) makes those user entries stale even if the signup rows are
-            // unchanged. Walk the snapshot and evict every user with a signup on
-            // a shift owned by this rota.
+            // A user's view carries rota metadata (name, team, period), so a rota edit stales every user with a
+            // signup on it even when the signup rows are unchanged.
             foreach (var kvp in _userCache.Snapshot())
             {
                 if (kvp.Value.Signups.Any(s => s.Shift?.RotaId == rotaId))
@@ -208,8 +171,7 @@ internal sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory,
         lock (_cacheGate)
         {
             _cacheGeneration++;
-            // Evict completed entries from the snapshot; the generation change
-            // above also prevents pending loads from caching pre-mutation data.
+            // The generation change above also stops pending loads from caching pre-mutation data.
             foreach (var kvp in _rotaCache.Snapshot())
             {
                 if (kvp.Value.Shifts.Any(s => s.Id == shiftId))
@@ -234,34 +196,21 @@ internal sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory,
     }
 
     /// <summary>
-    /// Every <see cref="ShiftUserView"/> is event-scoped — it carries the active event's
-    /// Settings-sourced calendar and that event's signups — so a gate-date, timezone, offset
-    /// or active-event change invalidates the lot. The coordinator-dashboard aggregates are
-    /// keyed by event and classify each shift into a period off that same calendar, so they
-    /// go too, for the event that changed. Both used to ride on the Shifts-owned EventSettings
-    /// write; that write moved to Settings, which now fans out to here
-    /// (peterdrier/Humans#1627).
+    /// Every user view and dashboard aggregate is classified off the event's Settings calendar, so a calendar or
+    /// active-event change invalidates them all for that event.
     /// </summary>
     public void EventSettingsChanged(Guid eventSettingsId)
     {
         InvalidateAll();
 
-        // The dashboard entries sit on IMemoryCache under keys only ShiftManagementService
-        // builds, and it is Scoped; resolve it in a scope rather than restating its key
-        // formats here. Sync on purpose: the listener seam is a void called inline on the
-        // Settings write path.
+        // Only ShiftManagementService, which is Scoped, knows the dashboard keys. Sync on purpose: the listener is
+        // called inline on the Settings write path.
         using var scope = scopeFactory.CreateScope();
         scope.ServiceProvider.GetRequiredService<IShiftManagement>()
             .InvalidateDashboardCaches(eventSettingsId);
     }
 
-    // ==========================================================================
-    // IHostedService — composition forces the decorator to own this directly
-    // (can't multi-inherit TrackedCache). No startup warm-up: misses go through
-    // the inner's batch path, which collapses a cold /Admin first-hit to a
-    // fixed number of bulk inner reads.
-    // ==========================================================================
-
+    // No startup warm-up: misses take the inner's batch path, a fixed number of bulk reads.
     Task IHostedService.StartAsync(CancellationToken ct) => Task.CompletedTask;
 
     Task IHostedService.StopAsync(CancellationToken ct) => Task.CompletedTask;

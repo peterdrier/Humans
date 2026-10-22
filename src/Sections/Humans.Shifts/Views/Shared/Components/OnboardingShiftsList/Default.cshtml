@@ -2,7 +2,7 @@
 @{
     var es = Model.EventSettings!;
 }
-@* Posts back to OnboardingWidget so success routes via the widget dispatcher to Consents. *@
+@* Posts to OnboardingWidget so success routes through the widget dispatcher. *@
 @foreach (var rotaGroup in Model.UrgencyRankedRotas)
 {
     var rotaFillPercent = rotaGroup.TotalSlots > 0

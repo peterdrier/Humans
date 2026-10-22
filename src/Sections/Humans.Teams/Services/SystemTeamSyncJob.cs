@@ -17,13 +17,10 @@ using Humans.Users.Contracts;
 
 namespace Humans.Teams.Services;
 
-/// <summary>Background job that syncs membership for system-managed teams.</summary>
-/// <remarks>
-/// System-team membership is a Teams invariant and every write this job makes lands in
-/// Teams' own tables, through the service's bulk-apply members — never the repository. The
-/// other sections it names are eligibility inputs and downstream effects, consumed through
-/// their contracts leaves.
-/// </remarks>
+/// <summary>
+/// Every write lands in Teams' own tables through the service's bulk-apply members, never the repository; other
+/// sections are eligibility inputs and downstream effects only.
+/// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 internal sealed class SystemTeamSyncJob(
     ITeamManagementService teamService,
@@ -40,7 +37,7 @@ internal sealed class SystemTeamSyncJob(
     ILogger<SystemTeamSyncJob> logger,
     IClock clock) : ISystemTeamSync
 {
-    // Lazy via IServiceProvider to break DI cycles (these services depend on ISystemTeamSync).
+    // Lazy via IServiceProvider to break DI cycles: these services depend on ISystemTeamSync.
 
     private IGovernanceService ApplicationDecisionService =>
         serviceProvider.GetRequiredService<IGovernanceService>();
@@ -57,9 +54,6 @@ internal sealed class SystemTeamSyncJob(
     private IConsentService ConsentService =>
         serviceProvider.GetRequiredService<IConsentService>();
 
-    /// <summary>
-    /// Executes the system team sync job and returns a report of what changed.
-    /// </summary>
     public async Task<SyncReport> ExecuteAsync(CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Starting system team sync at {Time}", clock.GetCurrentInstant());
@@ -67,7 +61,7 @@ internal sealed class SystemTeamSyncJob(
 
         try
         {
-            // Sequential — coordinator reconciliation must land before Coordinators sync.
+            // Sequential: coordinator reconciliation must land before the Coordinators sync.
             await SyncVolunteersTeamAsync(report, cancellationToken);
             await ReconcileCoordinatorRolesAsync(report, cancellationToken);
             await SyncCoordinatorsTeamAsync(report, cancellationToken);
@@ -76,8 +70,8 @@ internal sealed class SystemTeamSyncJob(
             await SyncColaboradorsTeamAsync(report, cancellationToken);
             await SyncBarrioLeadsTeamAsync(report, cancellationToken);
 
-            // Without credentials the group reconciler runs against in-memory stubs and would
-            // record successful sync-log rows; the team membership work above still lands.
+            // Without credentials the group reconciler runs against in-memory stubs and would record successful
+            // sync-log rows.
             if (googleClient.IsConfigured)
             {
                 await googleGroupSync.ReconcileAllAsync(SyncAction.Execute, cancellationToken, GoogleSyncSource.SystemTeamSync);
@@ -100,11 +94,7 @@ internal sealed class SystemTeamSyncJob(
         return report;
     }
 
-    /// <summary>
-    /// Reconciles TeamMember.Role with IsManagement role assignments.
-    /// Members assigned to an IsManagement role definition should have Role = Coordinator.
-    /// Members not assigned to any IsManagement role should have Role = Member.
-    /// </summary>
+    /// <summary>TeamMember.Role is Coordinator exactly when the member holds an IsManagement role assignment.</summary>
     public async Task ReconcileCoordinatorRolesAsync(SyncReport? report = null, CancellationToken cancellationToken = default)
     {
         logger.LogDebug("Reconciling coordinator roles with IsManagement assignments");
@@ -170,10 +160,6 @@ internal sealed class SystemTeamSyncJob(
         report?.Steps.Add(step);
     }
 
-    /// <summary>
-    /// Syncs the Volunteers team membership based on document compliance.
-    /// Members: All users with all required documents signed.
-    /// </summary>
     public async Task SyncVolunteersTeamAsync(SyncReport? report = null, CancellationToken cancellationToken = default)
     {
         logger.LogDebug("Syncing Volunteers team");
@@ -187,9 +173,8 @@ internal sealed class SystemTeamSyncJob(
             return;
         }
 
-        // Name-only access switch: Volunteers admission is name + consents. The Flagged consent-check
-        // is an audit annotation that no longer gates admission; Suspended + a recorded rejection
-        // remain the CC's kick-out levers. The review's IsApproved is not consulted.
+        // Admission is name + consents. A Flagged review is an audit annotation, not a gate; suspension and a recorded
+        // rejection are the kick-out levers. IsApproved is not consulted.
         var reviews = await ConsentService.GetConsentReviewsAsync(cancellationToken);
         var candidateIds = (await userService.GetAllUserInfosAsync(cancellationToken).ConfigureAwait(false))
             .Where(u => u.HasRequiredNameFields
@@ -205,10 +190,6 @@ internal sealed class SystemTeamSyncJob(
         report?.Steps.Add(step);
     }
 
-    /// <summary>
-    /// Syncs the Coordinators team membership based on Coordinator roles.
-    /// Members: All users who are Coordinator of any team.
-    /// </summary>
     public async Task SyncCoordinatorsTeamAsync(SyncReport? report = null, CancellationToken cancellationToken = default)
     {
         logger.LogDebug("Syncing Coordinators team");
@@ -222,7 +203,6 @@ internal sealed class SystemTeamSyncJob(
             return;
         }
 
-        // Department-level only (sub-team managers excluded).
         var teamsById = await teamService.GetTeamsAsync(cancellationToken);
         var leadUserIds = teamsById.Values
             .Where(t => t.IsActive && !t.IsSystemTeam && t.ParentTeamId is null)
@@ -237,10 +217,6 @@ internal sealed class SystemTeamSyncJob(
         report?.Steps.Add(step);
     }
 
-    /// <summary>
-    /// Syncs the Board team membership based on RoleAssignment.
-    /// Members: All users with active "Board" RoleAssignment.
-    /// </summary>
     public async Task SyncBoardTeamAsync(SyncReport? report = null, CancellationToken cancellationToken = default)
     {
         logger.LogDebug("Syncing Board team");
@@ -264,17 +240,10 @@ internal sealed class SystemTeamSyncJob(
         report?.Steps.Add(step);
     }
 
-    /// <summary>
-    /// Syncs the Asociados team membership based on approved applications.
-    /// Members: All users with an approved Asociado application.
-    /// </summary>
     public Task SyncAsociadosTeamAsync(SyncReport? report = null, CancellationToken cancellationToken = default) =>
         SyncTierTeamAsync(MembershipTier.Asociado, SystemTeamType.Asociados, SystemTeamIds.Asociados, report, cancellationToken);
 
-    /// <summary>
-    /// Syncs the Colaboradors team membership based on approved Colaborador applications.
-    /// Members: All users with an approved Colaborador application who are also in the Volunteers team.
-    /// </summary>
+    /// <summary>Also requires membership of the Volunteers team.</summary>
     public Task SyncColaboradorsTeamAsync(SyncReport? report = null, CancellationToken cancellationToken = default) =>
         SyncTierTeamAsync(MembershipTier.Colaborador, SystemTeamType.Colaboradors, SystemTeamIds.Colaboradors, report, cancellationToken);
 
@@ -316,11 +285,8 @@ internal sealed class SystemTeamSyncJob(
         SystemTeamType teamType,
         CancellationToken cancellationToken = default)
     {
-        // Several callers invoke this from inside their own mutation — e.g.
-        // TeamService.AssignToRoleAsync runs within CachingTeamService's delegate,
-        // before the decorator invalidates — so the cached team set still shows
-        // pre-mutation roles. The mutation is already committed; drop the cache so
-        // the eligibility reads below see the post-mutation state.
+        // Callers may run this inside their own committed mutation, before the caching decorator invalidates, so
+        // drop the cache for the eligibility reads below.
         teamService.InvalidateActiveTeamsCache();
 
         return teamType switch
@@ -336,9 +302,7 @@ internal sealed class SystemTeamSyncJob(
         };
     }
 
-    /// <summary>Volunteers membership for one user: in when the required name fields are filled and the
-    /// required consents are signed, and the user is neither suspended nor rejected. Coordinator review
-    /// (<c>ConsentReviewInfo.IsApproved</c>) annotates, it does not gate.</summary>
+    /// <summary>Coordinator review (<c>ConsentReviewInfo.IsApproved</c>) annotates; it doesn't gate.</summary>
     private async Task SyncVolunteersMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var team = await GetSystemTeamSnapshotAsync(SystemTeamType.Volunteers, cancellationToken);
@@ -350,9 +314,8 @@ internal sealed class SystemTeamSyncJob(
 
         var info = await userService.GetUserInfoAsync(userId, cancellationToken);
         if (info is not null)
-            userId = info.Id; // membership is synced for the live id the read describes
+            userId = info.Id; // the live id the read describes
 
-        // Name-only access switch: admission is name + consents — see SyncVolunteersTeamAsync.
         var isEligible = info is { HasRequiredNameFields: true, IsSuspended: false }
             && !(await ConsentService.GetConsentReviewAsync(userId, cancellationToken)).IsRejected
             && await MembershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, cancellationToken);
@@ -361,7 +324,6 @@ internal sealed class SystemTeamSyncJob(
         await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, singleUserSync: userId);
     }
 
-    /// <summary>Coordinators membership for one user: in when they hold a management role on any team.</summary>
     private async Task SyncCoordinatorsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var team = await GetSystemTeamSnapshotAsync(SystemTeamType.Coordinators, cancellationToken);
@@ -383,7 +345,6 @@ internal sealed class SystemTeamSyncJob(
         await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, singleUserSync: userId);
     }
 
-    /// <summary>Tier-team (Colaboradors / Asociados) membership for one user: in while the tier is active.</summary>
     private async Task SyncTierMembershipForUserAsync(Guid userId, MembershipTier tier,
         SystemTeamType teamType, Guid teamId, CancellationToken cancellationToken)
     {
@@ -412,10 +373,6 @@ internal sealed class SystemTeamSyncJob(
         await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, singleUserSync: userId);
     }
 
-    /// <summary>
-    /// Syncs the Barrio Leads team membership based on active CampLead assignments.
-    /// Members: All users who are active leads of any camp.
-    /// </summary>
     public async Task SyncBarrioLeadsTeamAsync(SyncReport? report = null, CancellationToken cancellationToken = default)
     {
         logger.LogDebug("Syncing Barrio Leads team");
@@ -436,7 +393,6 @@ internal sealed class SystemTeamSyncJob(
         report?.Steps.Add(step);
     }
 
-    /// <summary>Barrio Leads membership for one user: in while they are an active lead of any camp.</summary>
     private async Task SyncBarrioLeadsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var team = await GetSystemTeamSnapshotAsync(SystemTeamType.BarrioLeads, cancellationToken);
@@ -448,7 +404,7 @@ internal sealed class SystemTeamSyncJob(
 
         var isLeadAnywhere = await campLeadDirectory.IsLeadAnywhereAsync(userId, cancellationToken);
 
-        // Idempotency guard — avoids IX_team_members_active_unique violation when re-registering.
+        // Avoids an IX_team_members_active_unique violation when re-registering.
         if (isLeadAnywhere)
         {
             var alreadyActive = team.ActiveMemberUserIds.Contains(userId);
@@ -478,7 +434,7 @@ internal sealed class SystemTeamSyncJob(
 
         var eligibleSet = eligibleUserIds.ToHashSet();
 
-        // Single-user mode: only evaluate that user (don't remove others).
+        // Single-user mode evaluates only that user and removes nobody else.
         var scopeIds = singleUserSync.HasValue
             ? [singleUserSync.Value]
             : currentMemberIds.Union(eligibleSet).ToHashSet();
@@ -498,7 +454,7 @@ internal sealed class SystemTeamSyncJob(
         await teamService.ApplySystemTeamMembershipDeltaAsync(
             team.Id, toAdd, toRemove, now, cancellationToken);
 
-        // Google sync stays outside the Teams section so its failures don't roll back the DB write.
+        // Google sync stays outside the Teams write so its failures don't roll it back.
         var addedAudits = new List<(Guid UserId, string UserName)>();
         foreach (var userId in toAdd)
         {
@@ -524,9 +480,7 @@ internal sealed class SystemTeamSyncJob(
         foreach (var (auditUserId, userName) in addedAudits)
         {
             await auditLogService.LogAsync(
-                // "Team" is a persisted audit discriminator, matched by exact equality when the log is
-                // read back, so it stays a literal now that the entity lives in Humans.Teams and Base
-                // cannot name it (memory/code/type-name-as-persisted-string.md).
+                // A persisted audit discriminator: stays a literal.
                 AuditAction.TeamMemberAdded, "Team", team.Id,
                 $"{userName} added to {team.Name} by system sync",
                 nameof(SystemTeamSyncJob),
@@ -546,7 +500,6 @@ internal sealed class SystemTeamSyncJob(
             "Synced {TeamName} team: added {AddCount}, removed {RemoveCount}",
             team.Name, toAdd.Count, toRemove.Count);
 
-        // Send "added to team" emails for new members; skip hidden teams.
         if (toAdd.Count > 0 && !team.IsHidden)
         {
             var resources = await TeamResourceService.GetTeamResourcesAsync(team.Id, cancellationToken);

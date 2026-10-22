@@ -14,8 +14,7 @@
 @using NodaTime
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<WorkgroupsResource> Localizer
-@* Genuinely shared strings (Common_*) stay in SharedResource; a view that needs one uses
-   SharedLocalizer explicitly so the source set is visible at the call site. *@
+@* Common_* keys stay in SharedResource; views use SharedLocalizer explicitly so the source set is visible. *@
 @inject IStringLocalizer<SharedResource> SharedLocalizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @addTagHelper *, Humans.Base

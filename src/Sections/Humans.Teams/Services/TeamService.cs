@@ -45,7 +45,7 @@ internal sealed class TeamService(
     internal const string TeamJoinRequests = "TeamJoinRequests";
     internal const string TeamEarlyEntry = "TeamEarlyEntry";
 
-    // Lazy resolution — UserService injects ITeamManagement, closing the cycle.
+    // Lazy: UserService injects ITeamManagement, closing a cycle.
     private ITeamResourceService TeamResourceService
         => serviceProvider.GetRequiredService<ITeamResourceService>();
 
@@ -64,7 +64,7 @@ internal sealed class TeamService(
     private IUserService UserService
         => serviceProvider.GetRequiredService<IUserService>();
 
-    // GoogleIntegration's identity read resolves IUserService too, so it is lazy for the same reason.
+    // Lazy for the same reason: GoogleIntegration's identity read resolves IUserService.
     private IGoogleIntegrationService GoogleIdentities
         => serviceProvider.GetRequiredService<IGoogleIntegrationService>();
 
@@ -140,7 +140,7 @@ internal sealed class TeamService(
                 return team;
             }
 
-            // Slug/custom_slug unique-constraint race (Npgsql 23505 → false). Retry next suffix.
+            // Slug unique-constraint race: retry with the next suffix.
             logger.LogDebug(
                 "Slug collision for '{Slug}' at persist, retrying (attempt {Attempt})",
                 slug, attempt + 1);
@@ -167,9 +167,7 @@ internal sealed class TeamService(
         CancellationToken cancellationToken = default) =>
         await LoadTeamsByIdAsync(cancellationToken);
 
-    // Team search is served from the cached TeamInfo snapshot in CachingTeamService — it must
-    // never hit the DB. Reaching the inner service means a DI mistake. Mirrors
-    // UserService.SearchUsersAsync (search is cache-only; there is no repository search).
+    // Served from CachingTeamService's snapshot: reaching the inner service means a DI mistake.
     public Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
         string query, int max,
         CancellationToken cancellationToken = default) =>
@@ -201,7 +199,6 @@ internal sealed class TeamService(
         return (updated, previous);
     }
 
-    /// <inheritdoc />
     public async Task<IReadOnlyList<UserTeamMembershipInfo>> GetUserTeamMembershipsAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
@@ -305,10 +302,8 @@ internal sealed class TeamService(
             team.IsHidden = isHidden.Value;
         if (isSensitive.HasValue && isSensitive.Value != team.IsSensitive)
         {
-            // Docs/health.md §4: only a global Admin writes IsSensitive. The gate sits here rather
-            // than in the controller so every caller of this service is held to it. Gating on the
-            // change, not on the argument, keeps a caller that passes the flag's current value
-            // (the dev fixture seeders on ITeamSeeding do) out of it — a no-op is not a write.
+            // Only a global Admin writes IsSensitive, enforced here so every caller is held to it. Gated on the change,
+            // not the argument: a caller passing the current value (the seeders do) isn't writing.
             await adminAuthorization.RequireCurrentUserIsAdminAsync(cancellationToken);
             team.IsSensitive = isSensitive.Value;
         }
@@ -405,7 +400,7 @@ internal sealed class TeamService(
         }
     }
 
-    // Shared by writes and the page projection so unsafe legacy values never become links.
+    // Shared by writes and the page projection, so unsafe legacy values never become links.
     internal static bool IsSafeCallToActionUrl(string? url) =>
         !string.IsNullOrWhiteSpace(url)
         && !url.Any(char.IsControl)
@@ -440,8 +435,7 @@ internal sealed class TeamService(
             }
             catch (Exception ex)
             {
-                // Compensation: clear the prefix so the team never points at a
-                // group that does not exist; the admin can retry from team edit.
+                // Clear the prefix so the team never points at a missing group; the admin can retry from team edit.
                 logger.LogError(ex, "Failed to create Google Group for new team {TeamId}, clearing prefix", team.Id);
                 var compensation = await UpdateTeamAsync(
                     team.Id, team.Name, team.Description, team.RequiresApproval, team.IsActive,
@@ -519,8 +513,6 @@ internal sealed class TeamService(
                 actorUserId, relatedEntityId: userId, relatedEntityType: nameof(User));
         }
 
-        // GoogleResource.IsActive flipped later by Google reconciliation tick (deferred).
-
         logger.LogInformation(
             "Deactivated team {TeamId} ({TeamName}); closed {MemberCount} memberships",
             teamId, team.Name, closedUsers.Count);
@@ -536,8 +528,6 @@ internal sealed class TeamService(
         if (team is null)
             return new TeamJoinResult(ErrorKey: "Teams_NotFound");
 
-        // The join policy is the team's decision, not the caller's: approval-required
-        // teams queue a request, open teams join immediately.
         if (team.RequiresApproval)
         {
             var result = await RequestToJoinTeamAsync(teamId, userId, message, cancellationToken);
@@ -1182,8 +1172,7 @@ internal sealed class TeamService(
             logger.LogError(ex, "Failed to dispatch TeamMemberRemoved notification for user {UserId} team {TeamId}", userId, teamId);
         }
 
-        // Removing a coordinator changes their Coordinators system-team eligibility —
-        // reconcile as part of the mutation, not as a caller-remembered follow-up.
+        // A removed coordinator's Coordinators eligibility is reconciled in the mutation, not left to the caller.
         if (wasCoordinator && mergeTarget is null)
             await SystemTeamSync.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, cancellationToken);
         return new TeamMemberRemovalResult();
@@ -1212,7 +1201,7 @@ internal sealed class TeamService(
         if (isExisting)
             throw new InvalidOperationException("User is already a member of this team");
 
-        // Resolve any pending request via approve-with-member; otherwise AddMemberWithOutbox.
+        // A pending request is resolved by approving it with the membership.
         var pendingRequest = await repo.FindUserPendingRequestAsync(teamId, targetUserId, cancellationToken);
         var member = new TeamMember
         {
@@ -1569,8 +1558,7 @@ internal sealed class TeamService(
             actorUserId,
             relatedEntityId: targetUserId, relatedEntityType: nameof(User));
 
-        // Role assignment can change Coordinators system-team eligibility (management
-        // roles promote) — reconcile as part of the mutation.
+        // Management roles promote: reconcile Coordinators in the mutation.
         await SystemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.Coordinators, cancellationToken);
 
         return assignment;
@@ -1597,8 +1585,7 @@ internal sealed class TeamService(
             actorUserId,
             relatedEntityId: targetUserId, relatedEntityType: nameof(User));
 
-        // Losing a (possibly management) role can change Coordinators system-team
-        // eligibility — reconcile as part of the mutation.
+        // Losing a management role can demote: reconcile Coordinators in the mutation.
         await SystemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.Coordinators, cancellationToken);
     }
 
@@ -1633,12 +1620,6 @@ internal sealed class TeamService(
                 count, userId);
         }
     }
-
-    // ==========================================================================
-    // ITeamSeeding — the dev/demo fixture surface. Explicit implementations: the members of
-    // the same names on this class return the section's entities, which cannot leave the
-    // assembly, so these overloads differ only in their projection.
-    // ==========================================================================
 
     async Task<TeamInfo> ITeamSeeding.CreateTeamAsync(
         string name,
@@ -1687,13 +1668,11 @@ internal sealed class TeamService(
         CancellationToken cancellationToken) =>
         AddSeededMemberAsync(teamId, userId, role, joinedAt, cancellationToken);
 
-    /// <inheritdoc />
     public async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsWithParentsAsync(
         IReadOnlyCollection<Guid> teamIds,
         CancellationToken cancellationToken = default)
     {
-        // The read-model map is built from every team row, deactivated ones included, which is
-        // what the entity-returning sibling promises its Teams-internal callers.
+        // Deactivated teams included, as the entity-returning sibling promises its callers.
         var teamsById = await LoadTeamsByIdAsync(cancellationToken);
         var result = new Dictionary<Guid, TeamInfo>();
         foreach (var teamId in teamIds)
@@ -1757,7 +1736,7 @@ internal sealed class TeamService(
         if (hasActiveChildren)
             throw new InvalidOperationException("Cannot permanently delete a team that has active sub-teams. Remove or reassign sub-teams first.");
 
-        // GoogleResource → Team is OnDelete(Restrict); pre-check yields a clear message vs raw FK violation.
+        // Restrict FK: pre-check for a clear message instead of a raw violation.
         var resources = await TeamResourceService.GetTeamResourcesAsync(teamId, cancellationToken);
         if (resources.Count > 0)
             throw new InvalidOperationException("Cannot permanently delete a team that has Google resources linked. Unlink resources first.");
@@ -1789,7 +1768,7 @@ internal sealed class TeamService(
             totalCount);
     }
 
-    // Cache mutation/invalidation are owned by CachingTeamService.
+    // CachingTeamService owns the cache.
     public void InvalidateActiveTeamsCache() { }
 
     public Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default) =>
@@ -1802,8 +1781,8 @@ internal sealed class TeamService(
         Instant updatedAt,
         CancellationToken cancellationToken)
     {
-        // End source memberships through the ordinary authorized removal/outbox path,
-        // folding roles into the survivor in the same save. System teams reconcile separately.
+        // Ends source memberships through the ordinary removal/outbox path, folding roles into the survivor in the
+        // same save. System teams reconcile separately.
         var sourceMemberships = await GetUserTeamMembershipsAsync(sourceUserId, cancellationToken);
         var sourceTeamsById = await repo.GetByIdsWithParentsAsync(
             sourceMemberships.Select(m => m.TeamId).Distinct().ToList(), cancellationToken);
@@ -1819,13 +1798,10 @@ internal sealed class TeamService(
                 throw new InvalidOperationException(removal.ErrorMessage);
         }
 
-        // TeamJoinRequest fold.
         await repo.ReassignActiveJoinRequestsAsync(sourceUserId, targetUserId, cancellationToken);
 
-        // Early-entry grants fold.
         await repo.ReassignEarlyEntryGrantsAsync(sourceUserId, targetUserId, cancellationToken);
-        // Always retry both reconciles, even when a previous pass already ended every
-        // source membership before failing here.
+        // Always retry both reconciles, even when an earlier pass ended every source membership before failing here.
         await SystemTeamSync.SyncMembershipForUserAsync(sourceUserId, SystemTeamType.Coordinators, cancellationToken);
         await SystemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.Coordinators, cancellationToken);
     }
@@ -1892,22 +1868,15 @@ internal sealed class TeamService(
         return [membershipSlice, joinRequestSlice, earlyEntrySlice];
     }
 
-    /// <summary>
-    /// Ends live memberships, then hard-deletes the join requests (they carry the
-    /// applicant's free-text message) and the early-entry grants.
-    /// </summary>
+    /// <summary>Join requests are hard-deleted: they carry the applicant's free-text message.</summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
         await RevokeAllMembershipsAsync(userId, ct);
         await repo.DeleteJoinRequestsForUserAsync(userId, ct);
         await DeleteEarlyEntryGrantsForUserAsync(userId, ct);
 
-        // No cache call here: Gdpr reaches this through CachingTeamService, which evicts.
+        // No cache call: Gdpr reaches this through CachingTeamService, which evicts.
     }
-
-    // ==========================================================================
-    // Early-Entry Grants
-    // ==========================================================================
 
     public async Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct)
     {
@@ -1962,7 +1931,7 @@ internal sealed class TeamService(
     public async Task RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default)
     {
         var grant = await repo.FindEarlyEntryGrantForMutationAsync(grantId, ct);
-        if (grant is null || grant.TeamId != teamId) return; // idempotent / not found on this team
+        if (grant is null || grant.TeamId != teamId) return; // idempotent; another team's grant counts as missing
         await repo.RemoveEarlyEntryGrantAsync(grantId, ct);
         await auditLogService.LogAsync(AuditAction.EarlyEntryRevoked, nameof(TeamEarlyEntryGrant), grantId,
             $"EE revoked for {grant.UserId} (team {grant.TeamId})", actorUserId);

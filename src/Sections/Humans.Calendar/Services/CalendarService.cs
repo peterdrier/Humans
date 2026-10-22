@@ -13,11 +13,8 @@ using IcalEvent = Ical.Net.CalendarComponents.CalendarEvent;
 namespace Humans.Calendar.Services;
 
 /// <summary>
-/// Calendar application service — the keyed inner behind
-/// <see cref="CachingCalendarService"/>. Owns the section's mutations and the two row loads
-/// the cache warms and refreshes from. The occurrence-window and event-detail reads are the
-/// decorator's alone: it answers both from its snapshot, so an implementation here would be
-/// unreachable code.
+/// The keyed inner behind <see cref="CachingCalendarService"/>. Window and detail reads are the decorator's alone,
+/// answered from its snapshot.
 /// </summary>
 internal sealed class CalendarService(
     ICalendarRepository repo,
@@ -53,8 +50,7 @@ internal sealed class CalendarService(
 
         await repo.AddAsync(ev, ct);
 
-        // Audit best-effort: row already committed. Re-raising would lie to the caller;
-        // the caching decorator refreshes the committed row after this method returns.
+        // Audit best-effort: the row is committed, so re-raising would lie to the caller.
         try
         {
             await audit.LogAsync(
@@ -170,7 +166,7 @@ internal sealed class CalendarService(
         }
     }
 
-    // Reject malformed RRULE at write time so reads can't crash during occurrence expansion.
+    // Reject malformed RRULE at write time so reads can't crash during expansion.
     internal static void ValidateRecurrenceRule(string? rrule)
     {
         if (rrule is { Length: > 500 })
@@ -188,7 +184,7 @@ internal sealed class CalendarService(
         }
     }
 
-    // Reject unknown timezone at write time — controller-layer guard isn't enough for jobs/tests.
+    // At write time too: the controller guard doesn't cover jobs and tests.
     internal static void ValidateTimezone(string? tz)
     {
         if (string.IsNullOrWhiteSpace(tz)) return;
@@ -196,8 +192,7 @@ internal sealed class CalendarService(
             throw new ValidationException($"Recurrence timezone is unknown: '{tz}'.");
     }
 
-    // Denormalised RRULE end (UNTIL or COUNT-bounded last occurrence), read by
-    // CalendarOccurrenceExpander.FilterForWindow's in-memory prefilter. Null only for open-ended rules.
+    // Read by CalendarOccurrenceExpander.FilterForWindow's prefilter. Null only for open-ended rules.
     private static Instant? ComputeRecurrenceUntilUtc(string? rrule, string? tz, Instant? dtStart, Instant? dtEnd)
     {
         if (dtStart is null || string.IsNullOrWhiteSpace(rrule) || string.IsNullOrWhiteSpace(tz)) return null;
@@ -214,7 +209,6 @@ internal sealed class CalendarService(
             {
                 // Match the recurrence library's case-insensitive DATE-TIME parsing.
                 val = val.ToUpperInvariant();
-                // RFC 5545 allows UNTIL as either DATE-TIME (YYYYMMDDTHHMMSS[Z]) or DATE (YYYYMMDD).
                 var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(tz);
                 if (zone is null) return null;
 
@@ -358,7 +352,7 @@ internal sealed class CalendarService(
             return CalendarEventMutationResult.Missing("Calendar event not found.");
         }
 
-        // Audit best-effort: DB write already committed. See CreateEventAsync.
+        // Audit best-effort: already committed. See CreateEventAsync.
         try
         {
             await audit.LogAsync(
@@ -404,7 +398,7 @@ internal sealed class CalendarService(
         var result = await repo.SoftDeleteAsync(id, now, ct);
         if (result is null) return;
 
-        // Audit best-effort: soft-delete already committed. See CreateEventAsync.
+        // Audit best-effort: already committed. See CreateEventAsync.
         try
         {
             await audit.LogAsync(
@@ -489,7 +483,7 @@ internal sealed class CalendarService(
             ct: ct, originalDate: originalDate);
         if (repositoryRefusal is not null) return Refuse(repositoryRefusal);
 
-        // Audit best-effort: exception upsert already committed (see CreateEventAsync).
+        // Audit best-effort: already committed. See CreateEventAsync.
         try
         {
             await audit.LogAsync(

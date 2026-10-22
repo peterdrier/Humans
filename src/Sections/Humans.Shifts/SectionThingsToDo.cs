@@ -8,10 +8,7 @@ using NodaTime;
 
 namespace Humans.Shifts;
 
-/// <summary>
-/// Shifts' entry on the member dashboard's things-to-do list: the shift preferences a
-/// volunteer who already signed up still has to fill in. No signups, no entry.
-/// </summary>
+/// <summary>The preferences a volunteer with signups still has to fill in. No signups, no entry.</summary>
 internal sealed class SectionThingsToDo : ISectionThingsToDo
 {
     public async ValueTask<IEnumerable<ThingsToDoEntry>> EntriesAsync(
@@ -41,8 +38,8 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
     }
 
     /// <summary>
-    /// A pending signup, or a confirmed one that has not ended yet, while browsing is open —
-    /// the same commitment the dashboard's shift cards render.
+    /// A pending signup, or a confirmed one not yet ended, while browsing is open: the same commitment the
+    /// dashboard's shift cards render.
     /// </summary>
     private static async ValueTask<bool> HasSignupsAsync(IServiceProvider services, Guid userId)
     {

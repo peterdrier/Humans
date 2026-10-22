@@ -38,9 +38,6 @@ internal sealed class EventSettingsConfiguration : IEntityTypeConfiguration<Even
                 v => v == null ? null : JsonSerializer.Deserialize<Dictionary<int, int>>(v, (JsonSerializerOptions?)null),
                 nullableDictComparer);
 
-        // Build sub-period boundaries — defaults match the org convention so existing
-        // EventSettings rows backfill with sensible values when the migration adds the
-        // columns. Coordinators can adjust per event via /Admin (admin form).
         builder.Property(e => e.FirstCrewStartOffset).HasDefaultValue(-25).HasSentinel(-25);
         builder.Property(e => e.SetupWeekStartOffset).HasDefaultValue(-16).HasSentinel(-16);
         builder.Property(e => e.PreEventWeekStartOffset).HasDefaultValue(-9).HasSentinel(-9);

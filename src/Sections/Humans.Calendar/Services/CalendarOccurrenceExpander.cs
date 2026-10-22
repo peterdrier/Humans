@@ -8,12 +8,9 @@ using IcalEvent = Ical.Net.CalendarComponents.CalendarEvent;
 
 namespace Humans.Calendar.Services;
 
-/// <summary>Pure date or instant recurrence expansion over the cached event projection.</summary>
 internal static class CalendarOccurrenceExpander
 {
-    /// <summary>
-    /// Fallback zone for pure expansion callers; window reads always supply the viewer's zone.
-    /// </summary>
+    /// <summary>Only for pure expansion callers; window reads always supply the viewer's zone.</summary>
     private static readonly DateTimeZone OrganisationZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
     public static IReadOnlyList<CalendarOccurrence> Expand(
@@ -74,8 +71,7 @@ internal static class CalendarOccurrenceExpander
     }
 
     /// <summary>
-    /// Orders calendar-owned and contributed occurrences by the same viewer-local date.
-    /// Contributed items are timed, while all-day Calendar items deliberately have no instant.
+    /// One viewer-local date order for own and contributed occurrences: all-day Calendar items have no instant.
     /// </summary>
     internal static IReadOnlyList<CalendarOccurrence> OrderForDisplay(
         IEnumerable<CalendarOccurrence> occurrences, DateTimeZone viewerZone) => occurrences
@@ -231,7 +227,6 @@ internal static class CalendarOccurrenceExpander
             return "UNTIL=" + DateFormattingExtensions.IcalBasicDatePattern.Format(date);
         }));
 
-    /// <summary>Maps domain <c>CalendarEvent</c> (with Exceptions) to the immutable projection.</summary>
     public static CalendarEventInfo ToInfo(CalendarEvent ev)
     {
         // Legacy all-day instants are read as dates once, at the service boundary.

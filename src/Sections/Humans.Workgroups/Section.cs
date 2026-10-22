@@ -20,10 +20,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Workgroups;
 
-/// <summary>
-/// Workgroups' DI entry point, at the project root by convention. Discovered by Shell —
-/// nothing names it, so it needs no section prefix.
-/// </summary>
 public sealed class Section : ISection, ISectionAdminNav
 {
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
@@ -38,23 +34,18 @@ public sealed class Section : ISection, ISectionAdminNav
     {
         services.AddSectionDbContext<WorkgroupsDbContext>(sentinelTable: "workgroups");
 
-        // Singleton + IDbContextFactory pattern (§15b): the repository owns context lifetime.
         services.AddSingleton<IWorkgroupRepository, WorkgroupRepository>();
 
-        // Inner service — Scoped + keyed; the Singleton decorator resolves it per call and is
-        // what an unkeyed IWorkgroupService resolves to.
         services.AddKeyedScoped<IWorkgroupService, WorkgroupService>(CachingWorkgroupService.InnerServiceKey);
         services.AddSingleton<CachingWorkgroupService>();
         services.AddSingleton<IWorkgroupService>(sp => sp.GetRequiredService<CachingWorkgroupService>());
 
-        // GDPR and account-merge fan-outs bind to the decorator, not the inner: erasure and the
-        // merge fold change cached rows.
+        // The GDPR and merge fan-outs bind to the decorator: erasure and the merge fold change cached rows.
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CachingWorkgroupService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CachingWorkgroupService>());
 
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingWorkgroupService>().RegisterCacheStats);
 
-        // Inbound fan-outs: Calendar and GoogleIntegration name nothing of ours.
         services.AddScoped<ICalendarFeedContributor, WorkgroupCalendarContributor>();
         services.AddScoped<IGoogleDriveAccessSource, WorkgroupDriveAccessSource>();
 
@@ -62,8 +53,6 @@ public sealed class Section : ISection, ISectionAdminNav
 
         services.AddScoped<WorkgroupRhythmJob>();
 
-        // Workgroups owns its email copy and its gallery samples; Email keeps the mechanics
-        // (memory/architecture/email-templates-live-in-sender.md).
         services.AddScoped<WorkgroupsEmails>();
         services.AddScoped<IEmailPreviewContributor, WorkgroupsEmailPreviews>();
 

@@ -1,8 +1,7 @@
 @model Humans.Shifts.Models.EventSettingsViewModel
 
-@* Explicit asp-controller/asp-action: this view renders inside /Settings, so ambient
-   route data would otherwise resolve "Settings" against the wrong controller (Settings'
-   own _EventSettingsForm.cshtml documents the same gotcha). *@
+@* Explicit controller and action: inside /Settings, ambient route data would resolve "Settings" against the
+   wrong controller. *@
 <form method="post" asp-controller="Shifts" asp-action="Settings" style="max-width: 540px;">
     <div class="mb-3 form-check">
         <input asp-for="IsShiftBrowsingOpen" type="checkbox" class="form-check-input" />

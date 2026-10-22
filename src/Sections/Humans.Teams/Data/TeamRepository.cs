@@ -6,22 +6,8 @@ using Humans.Base.Enums;
 using Humans.Teams.Contracts;
 namespace Humans.Teams.Data;
 
-/// <summary>
-/// EF-backed implementation of <see cref="ITeamRepository"/>. The only
-/// non-test file that touches <c>DbContext.Teams</c>, <c>DbContext.TeamMembers</c>,
-/// <c>DbContext.TeamJoinRequests</c>, <c>DbContext.TeamRoleAssignments</c>,
-/// or <c>DbSet&lt;TeamRoleDefinition&gt;</c> after the Teams §15 migration.
-/// <para>
-/// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton.
-/// </para>
-/// </summary>
 internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) : ITeamRepository
 {
-    // ==========================================================================
-    // Team reads
-    // ==========================================================================
-
     public async Task<Team?> GetByIdAsync(Guid teamId, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
@@ -230,10 +216,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             ConstraintName: "IX_teams_Slug" or "IX_teams_CustomSlug"
         })
         {
-            // Slug-constraint collision — a slug race against a
-            // concurrent create of the same name. Return false so the service
-            // can retry with the next suffix. Detach the tracked entity so the
-            // caller can reuse the context-free Team instance if needed.
+            // A slug race against a concurrent create: false lets the service retry with the next suffix.
             db.Entry(team).State = EntityState.Detached;
             return false;
         }
@@ -274,10 +257,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         await db.SaveChangesAsync(ct);
         return (true, previous);
     }
-
-    // ==========================================================================
-    // TeamMember reads / writes
-    // ==========================================================================
 
     public async Task<IReadOnlyList<TeamMember>> GetActiveByUserIdAsync(
         Guid userId, CancellationToken ct = default)
@@ -370,16 +349,9 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
 
     public Task SaveChangesAsync(CancellationToken ct = default)
     {
-        // No-op at the interface level: repository methods each open/close
-        // their own context. This method exists purely to satisfy compound
-        // writes in the service that still want an explicit commit point
-        // after the repository has bundled multiple mutations in one method.
+        // No-op: each repository method commits its own context.
         return Task.CompletedTask;
     }
-
-    // ==========================================================================
-    // TeamJoinRequest reads / writes
-    // ==========================================================================
 
     public async Task<TeamJoinRequest?> FindUserPendingRequestAsync(
         Guid teamId, Guid userId, CancellationToken ct = default)
@@ -463,26 +435,18 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             if (src.Status == TeamJoinRequestStatus.Pending
                 && targetPendingTeamIdSet.Contains(src.TeamId))
             {
-                // Target already has an active pending request to this team —
-                // drop source's row (target's stands).
+                // The target's own pending request to this team stands.
                 db.TeamJoinRequests.Remove(src);
             }
             else
             {
-                // Re-FK to target. History (rejected/withdrawn/approved) and
-                // pending-without-target-conflict rows both flow through here.
-                // UserId is init-only on the entity; mutate via the EF
-                // change-tracker so the column is updated.
+                // UserId is init-only on the entity, so set it through the change tracker.
                 db.Entry(src).Property(nameof(TeamJoinRequest.UserId)).CurrentValue = targetUserId;
             }
         }
 
         await db.SaveChangesAsync(ct);
     }
-
-    // ==========================================================================
-    // TeamRoleDefinition
-    // ==========================================================================
 
     public async Task<IReadOnlyList<TeamRoleDefinition>> GetRoleDefinitionsAsync(
         Guid teamId, CancellationToken ct = default)
@@ -567,10 +531,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         await db.SaveChangesAsync(ct);
     }
 
-    // ==========================================================================
-    // TeamRoleAssignment
-    // ==========================================================================
-
     public async Task AddAssignmentAsync(TeamRoleAssignment assignment, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
@@ -589,10 +549,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             .Distinct()
             .ToListAsync(ct);
     }
-
-    // ==========================================================================
-    // Bulk / seed / revoke
-    // ==========================================================================
 
     public async Task<bool> TryAddMemberAsync(TeamMember member, CancellationToken ct = default)
     {
@@ -834,7 +790,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
     {
         await using var db = await factory.CreateDbContextAsync(ct);
 
-        // Attach the definition as modified (scalar properties updated in memory).
         db.Set<TeamRoleDefinition>().Attach(definition);
         db.Entry(definition).State = EntityState.Modified;
 
@@ -1000,10 +955,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         return true;
     }
 
-    // ==========================================================================
-    // Early-entry grants
-    // ==========================================================================
-
     public async Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForEnabledTeamsAsync(CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
@@ -1072,10 +1023,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         await db.TeamEarlyEntryGrants.Where(g => g.UserId == userId).ExecuteDeleteAsync(ct);
     }
 
-    // ==========================================================================
-    // GDPR export contribution
-    // ==========================================================================
-
     public async Task<IReadOnlyList<TeamMember>> GetAllMembershipsForUserAsync(
         Guid userId, CancellationToken ct = default)
     {
@@ -1093,7 +1040,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
     {
         await using var db = await factory.CreateDbContextAsync(ct);
 
-        // Load+remove (not ExecuteDelete) so the state-history children come with the parent.
+        // Load+remove, not ExecuteDelete, so the state-history children go with the parent.
         var requests = await db.TeamJoinRequests
             .Include(tjr => tjr.StateHistory)
             .Where(tjr => tjr.UserId == userId)
@@ -1116,10 +1063,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             .Where(tjr => tjr.UserId == userId)
             .ToListAsync(ct);
     }
-
-    // ==========================================================================
-    // System team sync support (issue #570 — §15 Google-writing jobs)
-    // ==========================================================================
 
     public async Task<IReadOnlyList<TeamMember>> GetActiveMembershipsForRoleReconciliationAsync(
         CancellationToken ct = default)
@@ -1191,8 +1134,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             });
         }
 
-        // Soft-removes: load active memberships for the users being removed,
-        // also eager-load their TeamRoleAssignments so EF cascades the delete.
+        // Eager-load role assignments so EF cascades their delete.
         if (userIdsToRemove.Count > 0)
         {
             var removeIds = userIdsToRemove is IList<Guid> list
@@ -1213,7 +1155,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             }
         }
 
-        // Bump Team.UpdatedAt so the cached projection refresh picks up the change.
+        // Bump UpdatedAt so the cached projection refresh picks up the change.
         var team = await db.Teams.FirstOrDefaultAsync(t => t.Id == teamId, ct);
         if (team is not null)
         {

@@ -212,10 +212,8 @@ internal sealed class TeamAdminController(
     };
 
     /// <summary>
-    /// Board/Admin-only roster: every member's burner name next to their legal name.
-    /// <c>TeamAuthorizationHandler</c> already passes Board and Admin for
-    /// <c>ManageCoordinators</c>, so the policy narrows <see cref="HumansTeamControllerBase.ResolveTeamManagementAsync"/>
-    /// (which also serves coordinators) down to exactly Board-or-Admin.
+    /// The policy narrows <see cref="HumansTeamControllerBase.ResolveTeamManagementAsync"/>, which also passes
+    /// coordinators, to Board or Admin.
     /// </summary>
     [HttpGet("Roster")]
     [Authorize(Policy = PolicyNames.BoardOrAdmin)]
@@ -231,8 +229,7 @@ internal sealed class TeamAdminController(
         var infos = await _userService.GetUserInfosAsync(
             members.Select(m => m.UserId).ToList(), ct);
 
-        // Display sort at controller (memory/architecture/display-sort-in-controllers.md);
-        // the table's headers re-sort client-side from here.
+        // The table's headers re-sort client-side from here.
         var rows = members
             .Select(m => new TeamRosterRowViewModel(
                 m.UserId,
@@ -276,7 +273,7 @@ internal sealed class TeamAdminController(
             return teamError;
         }
 
-        // Reject empty userId at controller — google_sync_outbox FK rejects Guid.Empty.
+        // google_sync_outbox's FK rejects Guid.Empty.
         if (model.UserId == Guid.Empty)
         {
             SetError("Select a user to add.");
@@ -357,16 +354,14 @@ internal sealed class TeamAdminController(
             return Json(Array.Empty<HumanLookupSearchResult>());
         }
 
-        // Name-only — team admins are not global admins, so no contact-data search.
-        // Uncapped + relevance-ranked: a hard cap returned an arbitrary subset (the target could be
-        // missing) alphabetized; now the best name match leads the scrollable picker.
+        // Name-only: team admins aren't global admins, so no contact-data search. Uncapped and relevance-ranked, so the
+        // target can't fall outside an arbitrary cap.
         var results = await _userService.SearchUsersAsync(
             q, PersonSearchFields.Name, limit: int.MaxValue);
 
         var teamInfo = await _teamService.GetTeamAsync(team.Id);
         var existingMemberIds = teamInfo?.Members.Select(m => m.UserId).ToHashSet() ?? [];
 
-        // Display sort at controller (memory/architecture/display-sort-in-controllers.md).
         var filtered = results
             .Where(r => !existingMemberIds.Contains(r.UserId))
             .OrderByRelevance()
@@ -836,7 +831,6 @@ internal sealed class TeamAdminController(
         var humans = await _userService.GetUserInfosAsync(
             grants.Select(g => g.UserId).Distinct().ToList(), ct);
 
-        // Display sort is a presentation concern (peters-hard-rules: controllers sort).
         var rows = grants
             .Select(g => new TeamEarlyEntryRowViewModel
             {
@@ -858,10 +852,8 @@ internal sealed class TeamAdminController(
     }
 
     /// <summary>
-    /// Build the 0-or-1 picker row for a barcode hit. A row is emitted only when the
-    /// attendee is personally paired to a human (<see cref="TicketAttendeeInfo.MatchedUserId"/>)
-    /// who still resolves and is active. Otherwise empty — the picker stays silent (it just
-    /// shows name matches), matching the type-ahead "no result" convention.
+    /// A row only when the attendee is paired to a human who still resolves and is active; otherwise empty, so the
+    /// picker shows only name matches.
     /// </summary>
     internal static List<HumanLookupSearchResult> BuildTicketLookupRows(
         TicketAttendeeInfo? hit, UserInfo? matchedUser, string detailLabel)
@@ -897,18 +889,14 @@ internal sealed class TeamAdminController(
             .Select(m => m.UserId)
             .ToHashSet();
 
-        // Name-only for role-picker (no bio/contact data); team admins are not global admins.
-        // Uncapped folded name search over everyone (accent/case-insensitive); relevance-ranked.
+        // Name-only (team admins aren't global admins); uncapped, folded and relevance-ranked.
         var allResults = await _userService.SearchUsersAsync(
             q, PersonSearchFields.Name, limit: int.MaxValue);
         var nameMatchIds = allResults.Select(r => r.UserId).ToHashSet();
 
-        // Team members first, matched by any of:
-        //  - folded name via the search above (so "joel" finds "Joël") — profiled members;
-        //  - direct DisplayName contains — keeps legacy/imported members who appear in team.Members
-        //    but have no searchable Profile findable by name (SearchUsersAsync skips profile-less users);
-        //  - email — team admins may know their own members' emails, which the global name-only
-        //    search deliberately won't surface for privacy.
+        // Team members first, matched by folded name (profiled members), by DisplayName (legacy members without a
+        // searchable profile), or by email: admins may know their own members' emails, which the global name-only
+        // search won't surface for privacy.
         var matchingTeamMembers = teamMembers
             .Where(m => nameMatchIds.Contains(m.UserId) ||
                         m.DisplayName.ContainsOrdinalIgnoreCase(q) ||

@@ -21,48 +21,34 @@ internal interface IVolunteerTrackingManagement : IApplicationService, IVoluntee
         Guid eventSettingsId, int dayOffset, CancellationToken ct = default);
 
     /// <summary>
-    /// Add (available=true) or remove (available=false) one build-day offset from
-    /// the user's declared availability. Read-modify-write; preserves other
-    /// offsets; invalidates the user's shift view cache. Additions require a known
-    /// calendar and an offset inside its build period; removals can clear old offsets.
-    /// Coordinator path: a change is audited against <paramref name="coordinatorUserId"/>.
+    /// Adds or removes one build-day offset. Additions need a known calendar and an offset in its build period;
+    /// removals can clear old offsets. Audited against <paramref name="coordinatorUserId"/>.
     /// </summary>
     Task<bool> SetDayAvailabilityAsync(
         Guid userId, Guid eventSettingsId, int dayOffset, bool available,
         Guid coordinatorUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Coordinator path. Caller has already authorized. When the new
-    /// camp-setup span newly covers existing day-off entries, those entries
-    /// are auto-cleared in the same transaction; the service audits the
-    /// camp-setup change plus one
-    /// <see cref="Humans.AuditLog.Contracts.AuditAction.VolunteerDayOffCleared"/>
-    /// row per cleared offset, and returns the cleared offsets.
+    /// Caller has authorized. Day-offs the new span covers are cleared in the same transaction, each audited, and
+    /// returned.
     /// </summary>
     Task<SetCampSetupResult> SetCampSetupAsync(
         Guid targetUserId, LocalDate barrioSetupStartDate,
         string? notes, Guid coordinatorUserId, CancellationToken ct = default);
 
-    /// <summary>Coordinator path. Caller has already authorized. Audited.</summary>
+    /// <summary>Caller has authorized. Audited.</summary>
     Task ClearCampSetupAsync(
         Guid targetUserId, Guid coordinatorUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Coordinator path. Caller has already authorized. Marks
-    /// (targetUserId, dayOffset) as a "day off" with the optional reason.
-    /// Replaces any existing entry for that day. Camp-setup overlap is
-    /// not validated server-side — the UI prevents it by not rendering
-    /// the action on CampSetup cells. Audited when it succeeds.
+    /// Caller has authorized. Replaces any entry for the day. Camp-setup overlap is not checked server-side: the UI
+    /// never renders the action on CampSetup cells.
     /// </summary>
     Task<SetDayOffResult> SetDayOffAsync(
         Guid targetUserId, int dayOffset, string? reason,
         Guid coordinatorUserId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Coordinator path. Caller has already authorized. Idempotent: returns
-    /// <c>Removed = false</c> if no entry exists for (userId, dayOffset).
-    /// Audited only when an entry was removed.
-    /// </summary>
+    /// <summary>Caller has authorized. Idempotent; audited only when an entry was removed.</summary>
     Task<ClearDayOffResult> ClearDayOffAsync(
         Guid targetUserId, int dayOffset,
         Guid coordinatorUserId, CancellationToken ct = default);

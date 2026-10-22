@@ -9,14 +9,9 @@ using NodaTime;
 
 namespace Humans.Workgroups.Services;
 
-/// <summary>
-/// The projection off EF entities, the guard clauses, and the one place each crosscut
-/// is called from. Kept in its own partial so the rule files above read as rules.
-/// </summary>
+/// <summary>Projection, guards and crosscut calls, kept apart so the rule files read as rules.</summary>
 internal sealed partial class WorkgroupService
 {
-    // ── Projection ────────────────────────────────────────────────────────
-
     private static WorkgroupInfo ToInfo(Workgroup w) => new(
         w.Id,
         w.Slug,
@@ -40,8 +35,7 @@ internal sealed partial class WorkgroupService
             .ThenBy(m => m.JoinedAt)
             .Select(m => new WorkgroupMemberInfo(m.Id, m.UserId, m.Role, m.JoinedAt, m.LeftAt, m.IsPending == true))
             .ToList(),
-        // Soft-deleted meetings are gone as far as anything outside the repository is
-        // concerned; the log keeps the history of what was scheduled.
+        // Soft-deleted meetings are gone outside the repository; the log keeps the history.
         w.Meetings
             .Where(m => m.DeletedAt is null)
             .OrderBy(m => m.StartUtc)
@@ -92,8 +86,6 @@ internal sealed partial class WorkgroupService
                 c.HiddenByUserId, c.HiddenReason))
             .ToList());
 
-    // ── Guards ────────────────────────────────────────────────────────────
-
     private async Task<WorkgroupMutationResult<Workgroup>> RequireAsync(Guid workgroupId, CancellationToken ct)
     {
         var workgroup = await repository.GetWorkgroupAsync(workgroupId, ct);
@@ -111,7 +103,6 @@ internal sealed partial class WorkgroupService
         return result;
     }
 
-    /// <summary>Soft-deleted meetings cannot be edited or deleted again.</summary>
     private async Task<WorkgroupMutationResult<WorkgroupMeeting>> RequireLiveMeetingAsync(Guid meetingId, CancellationToken ct)
     {
         var meeting = await repository.GetMeetingAsync(meetingId, ct);
@@ -128,7 +119,6 @@ internal sealed partial class WorkgroupService
         return null;
     }
 
-    /// <summary>Membership decisions are the coordinators' (or the Board's/Admin's), not every member's.</summary>
     private static WorkgroupRefusal? RequireCoordinator(Workgroup w, Guid actorUserId, bool asAdmin)
     {
         if (asAdmin) return null;
@@ -147,7 +137,6 @@ internal sealed partial class WorkgroupService
         return null;
     }
 
-    /// <summary>The four kinds a human writes; everything else is the section's own record.</summary>
     private static WorkgroupRefusal? RequireMemberKind(WorkgroupLogKind kind)
     {
         if (kind is not (WorkgroupLogKind.Update or WorkgroupLogKind.Disclosure
@@ -199,7 +188,7 @@ internal sealed partial class WorkgroupService
         return null;
     }
 
-    // The same check protects existing stored links when projecting them into an href.
+    // Also guards stored legacy links when projecting them into an href.
     private static string? SafeDiscordLink(string? url)
     {
         var trimmed = Trimmed(url);
@@ -217,8 +206,6 @@ internal sealed partial class WorkgroupService
             return new(WorkgroupErrorKeys.TextTooLong, 2000);
         return null;
     }
-
-    // ── Field application ─────────────────────────────────────────────────
 
     private static void ApplyFields(
         Workgroup w,
@@ -293,9 +280,8 @@ internal sealed partial class WorkgroupService
         repository.AddLogEntryAsync(SystemEntry(w.Id, kind, now, body, authorUserId, documentId), ct);
 
     /// <summary>
-    /// A kebab slug from the name, suffixed until it is free. Reserved segments
-    /// (<c>/Workgroups/Apply</c>, <c>/Workgroups/Admin</c>) are taken by routes, so a group
-    /// called "Apply" gets <c>apply-2</c> rather than shadowing the form.
+    /// Suffixed until free. Reserved route segments count as taken, so a group called "Apply" gets <c>apply-2</c>
+    /// rather than shadowing the form.
     /// </summary>
     private async Task<WorkgroupMutationResult<string>> ReserveSlugAsync(string name, Guid? exceptId, CancellationToken ct)
     {
@@ -303,8 +289,7 @@ internal sealed partial class WorkgroupService
         if (string.IsNullOrEmpty(baseSlug))
             baseSlug = "workgroup";
 
-        // Name allows 200 characters, Slug's column holds 100, and the suffix loop below can
-        // add up to "-100" — so trim here rather than let a long name fail on insert.
+        // Name allows 200 characters but Slug holds 100, with room for a "-100" suffix: trim rather than fail on insert.
         if (baseSlug.Length > SlugBudget)
             baseSlug = baseSlug[..SlugBudget].TrimEnd('-');
 
@@ -325,13 +310,10 @@ internal sealed partial class WorkgroupService
         }
     }
 
-    /// <summary>The Slug column's 100 characters, less room for the longest "-100" suffix.</summary>
     private const int SlugBudget = 96;
 
     private static string? Trimmed(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-
-    // ── Names ─────────────────────────────────────────────────────────────
 
     private async Task<string> NameOfAsync(Guid userId, CancellationToken ct)
     {
@@ -347,13 +329,11 @@ internal sealed partial class WorkgroupService
             .ToList();
     }
 
-    // ── Notifications and email ───────────────────────────────────────────
-
     private static string PageUrl(WorkgroupInfo w) => $"/Workgroups/{w.Slug}";
 
     private static readonly System.Resources.ResourceManager NoticeResources = new(typeof(WorkgroupsResource));
 
-    // Return successful dispatch requests for the rhythm audit; Notifications applies inbox preferences.
+    // Returns successful dispatch requests for the rhythm audit; Notifications applies inbox preferences.
     private async Task<int> NotifyAsync(
         IReadOnlyList<Guid> recipientUserIds, NotificationSource source, string titleKey,
         WorkgroupInfo w, string? body, CancellationToken ct)
@@ -425,10 +405,7 @@ internal sealed partial class WorkgroupService
         }
     }
 
-    /// <summary>
-    /// One notice per recipient, addressed by name. Email failures never fail the write:
-    /// the log entry and the audit trail are the record, the email is a courtesy.
-    /// </summary>
+    /// <summary>Email failures never fail the write: the log and audit are the record, the email a courtesy.</summary>
     private async Task EmailAsync(
         IReadOnlyList<Guid> recipientUserIds,
         WorkgroupNoticeKind kind,
@@ -508,8 +485,6 @@ internal sealed partial class WorkgroupService
         }
     }
 
-    // ── Audit ─────────────────────────────────────────────────────────────
-
     private async Task AuditAsync(
         AuditAction action,
         Workgroup w,
@@ -524,23 +499,15 @@ internal sealed partial class WorkgroupService
             relatedEntityType: id == w.Id ? null : AuditEntityTypes.Workgroup);
     }
 
-    /// <summary>The daily job's actions are the section's, not a human's — they audit by job name.</summary>
     private async Task AuditJobAsync(AuditAction action, Workgroup w, string description)
     {
         await auditLog.LogAsync(action, AuditEntityTypes.Workgroup, w.Id, description,
             WorkgroupRhythmJobName);
     }
 
-    /// <summary>Audit actor name for the daily rhythm pass.</summary>
     internal const string WorkgroupRhythmJobName = "WorkgroupRhythmJob";
 
-    // ── Drive ─────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Asks GoogleIntegration to reconcile the group's folder against the access source.
-    /// A group with no folder yet (Applied, Referred, Refused) has nothing to reconcile.
-    /// Failures are logged, never surfaced: the daily reconciliation covers the drift.
-    /// </summary>
+    /// <summary>Failures are logged, never surfaced: the daily reconciliation covers the drift.</summary>
     private async Task RequestDriveSyncAsync(Workgroup w, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(w.DriveFolderId))
@@ -557,9 +524,7 @@ internal sealed partial class WorkgroupService
     }
 
     /// <summary>
-    /// Retires or restores the group's Holded account in Finance's registry so the pickers stop
-    /// (or start) offering it. Failures are logged, never surfaced: the lifecycle step is the
-    /// Board's decision and does not wait on Holded. A group with no account has nothing to flip.
+    /// Failures are logged, never surfaced: the lifecycle step is the Board's decision and doesn't wait on Holded.
     /// </summary>
     private async Task SetAccountActiveAsync(Workgroup w, bool isActive, CancellationToken ct)
     {
@@ -575,12 +540,7 @@ internal sealed partial class WorkgroupService
         }
     }
 
-    // ── Shared transitions ────────────────────────────────────────────────
-
-    /// <summary>
-    /// A group that stops being Active has nobody left to decide its join requests, so
-    /// the transition closes them: the pending rows get <c>LeftAt</c>, nothing is logged.
-    /// </summary>
+    /// <summary>A group that stops being Active has nobody left to decide its join requests. Nothing is logged.</summary>
     private async Task ClosePendingRequestsAsync(Workgroup w, Instant now, CancellationToken ct)
     {
         var pending = w.Members.Where(m => m.LeftAt is null && m.IsPending == true).ToList();
@@ -589,11 +549,7 @@ internal sealed partial class WorkgroupService
         await repository.UpdateMembersAsync(pending, ct);
     }
 
-    /// <summary>
-    /// The one place a group ends, whether a member marked it done or the Secretary closed
-    /// it: Dormant with a reason, the log entry, the audit entry, the coordinators told, and
-    /// the Drive folder dropped to read-only through the access source.
-    /// </summary>
+    /// <summary>The one place a group ends, whether a member marked it done or the Secretary closed it.</summary>
     private async Task EndAsync(
         Workgroup w,
         Guid actorUserId,
@@ -608,7 +564,6 @@ internal sealed partial class WorkgroupService
         w.EndedAt = now;
         w.UpdatedAt = now;
         await repository.UpdateWorkgroupAsync(w, ct);
-        // The end decision committed; complete its record, notices and access changes.
         ct = CancellationToken.None;
         await ClosePendingRequestsAsync(w, now, ct);
 
@@ -624,7 +579,7 @@ internal sealed partial class WorkgroupService
             "Enum_WorkgroupLogKind_Ended", info, Trimmed(reasons), ct);
         await EmailAsync(coordinators, WorkgroupNoticeKind.Ended, info, Trimmed(reasons), ct);
 
-        // Dormant means read-only for the folder: the source now returns Viewer.
+        // Dormant: the access source now returns Viewer.
         await RequestDriveSyncAsync(w, ct);
         await SetAccountActiveAsync(w, isActive: false, ct);
     }

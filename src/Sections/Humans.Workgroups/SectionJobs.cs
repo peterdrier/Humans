@@ -3,7 +3,6 @@ using Humans.Workgroups.Jobs;
 
 namespace Humans.Workgroups;
 
-/// <summary>Workgroups' one recurring job: the daily reporting-rhythm pass of design §13.</summary>
 internal sealed class SectionJobs : ISectionJobs
 {
     public IEnumerable<RecurringJobDescriptor> Jobs(IServiceProvider services)

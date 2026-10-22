@@ -157,8 +157,6 @@ internal sealed class TeamController(
             ShiftsSummary = MapShiftsSummary(teamPage.ShiftsSummary, slug),
         };
 
-        // Surface the per-team Early Entry link when EE is enabled and the viewer can
-        // manage it (coordinator / cross-team EETeamAdmin / TeamsAdmin / Board / Admin).
         var teamInfo = await teamService.GetTeamAsync(team.Id, ct);
         viewModel.CanManageEarlyEntry = teamInfo is { EarlyEntryEnabled: true }
             && (await authorizationService.AuthorizeAsync(
@@ -609,7 +607,7 @@ internal sealed class TeamController(
 
         var viewModel = new AdminTeamListViewModel();
 
-        // Parent-then-children flat list; children inherit the parent's bucket.
+        // Children inherit the parent's bucket.
         List<AdminTeamViewModel>? currentBucket = null;
         foreach (var team in result.Teams.Select(summary => new AdminTeamViewModel
         {
@@ -752,9 +750,8 @@ internal sealed class TeamController(
             return View(model);
         }
 
-        // The IsSensitive checkbox is suppressed (authorize-policy="AdminOnly") for non-Admin
-        // editors, so it posts nothing and binds to false. Pass null (leave-unchanged) unless
-        // the editor is a global Admin, mirroring the EarlyEntryEnabled leave-unchanged guard.
+        // Non-Admins don't see the IsSensitive checkbox, so it binds false: pass null (leave unchanged) unless the editor
+        // is a global Admin.
         var isAdmin = (await authorizationService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
         bool? isSensitive = isAdmin ? model.IsSensitive : null;
         var result = await teamService.UpdateTeamWithGoogleGroupAsync(

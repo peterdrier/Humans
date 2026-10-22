@@ -8,22 +8,8 @@ using NodaTime;
 
 namespace Humans.Workgroups.Services;
 
-/// <summary>
-/// The Workgroups section's business surface: the register, the member work that happens
-/// on a group's page, the Secretary's and the Board's decisions, and the daily rhythm
-/// pass. The only caller of <c>IWorkgroupRepository</c>.
-/// </summary>
-/// <remarks>
-/// Reads return the whole register or one group; the dataset is a few dozen rows, so
-/// callers filter and sort in memory rather than asking for shape variants. Writes that
-/// change who may see a group's Drive folder ask GoogleIntegration for a sync; writes
-/// that change the register's state write a system log entry, an audit entry and the
-/// notifications of §14.
-/// </remarks>
 internal interface IWorkgroupService : IApplicationService
 {
-    // ── Reads ─────────────────────────────────────────────────────────────
-
     /// <summary>Every register entry, whatever its status, with its children.</summary>
     Task<IReadOnlyList<WorkgroupInfo>> GetRegisterAsync(CancellationToken ct = default);
 
@@ -34,13 +20,7 @@ internal interface IWorkgroupService : IApplicationService
     /// <summary>Groups this person is a current member of, whatever their role.</summary>
     Task<IReadOnlyList<WorkgroupInfo>> GetForMemberAsync(Guid userId, CancellationToken ct = default);
 
-
-    // ── Applying and joining ──────────────────────────────────────────────
-
-    /// <summary>
-    /// Clause 1: applies for a group. The applicant becomes its first coordinator, the
-    /// group starts <see cref="WorkgroupStatus.Applied"/>, and the Board is notified.
-    /// </summary>
+    /// <summary>The applicant becomes the first coordinator; the group starts Applied and the Board is notified.</summary>
     Task<WorkgroupMutationResult<Guid>> ApplyAsync(Guid actorUserId, WorkgroupApplication application, CancellationToken ct = default);
 
     /// <summary>Asks to join: a pending row, and the coordinators are notified. Nothing else changes until a decision.</summary>
@@ -70,21 +50,16 @@ internal interface IWorkgroupService : IApplicationService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Any signed-in human, as often as they like. Notifies the coordinators. Deliberately
-    /// unmetered: rationing how often a member may ask a group what it is doing would be the
-    /// section deciding a group has gone quiet, which is the Board's call alone.
+    /// Deliberately unmetered: rationing it would be the section judging a group quiet, which is the Board's call.
     /// </summary>
     Task<WorkgroupMutationResult> RequestStatusAsync(Guid workgroupId, Guid actorUserId, string? question, CancellationToken ct = default);
-
-    // ── Member work on the group page ─────────────────────────────────────
 
     /// <summary>Register fields. A changed deliverable sentence writes a ScopeChanged entry.</summary>
     Task<WorkgroupMutationResult> EditRegisterAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupRegisterEdit edit, CancellationToken ct = default);
 
     /// <summary>
-    /// Sets the one or two coordinators. Members hand over among themselves;
-    /// <paramref name="asAdmin"/> lets the Board override (design §5).
+    /// One or two coordinators. Members hand over among themselves; <paramref name="asAdmin"/> lets the Board override.
     /// </summary>
     Task<WorkgroupMutationResult> SetCoordinatorsAsync(
         Guid workgroupId,
@@ -100,10 +75,7 @@ internal interface IWorkgroupService : IApplicationService
 
     Task<WorkgroupMutationResult> DeleteMeetingAsync(Guid meetingId, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Adds a member log entry (Update, Disclosure, StatusRequested or Note). System kinds are
-    /// refused.
-    /// </summary>
+    /// <summary>Member kinds only; system kinds are refused.</summary>
     Task<WorkgroupMutationResult<Guid>> AddLogEntryAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupLogEntrySave save, CancellationToken ct = default);
 
@@ -118,8 +90,6 @@ internal interface IWorkgroupService : IApplicationService
     /// <summary>A member ends the group: Dormant with reason Delivered or Abandoned.</summary>
     Task<WorkgroupMutationResult> MarkDoneAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupDormantReason reason, CancellationToken ct = default);
-
-    // ── Documents ─────────────────────────────────────────────────────────
 
     Task<WorkgroupMutationResult<Guid>> CreateDocumentAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupDocumentSave save, CancellationToken ct = default);
@@ -140,8 +110,6 @@ internal interface IWorkgroupService : IApplicationService
 
     /// <summary>Delivers to the audience: freezes the body and puts the Board on the clock.</summary>
     Task<WorkgroupMutationResult> DeliverDocumentAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default);
-
-    // ── Comments ──────────────────────────────────────────────────────────
 
     /// <summary>Any signed-in human, while the window is open, in one of the document's categories.</summary>
     Task<WorkgroupMutationResult<Guid>> AddCommentAsync(
@@ -167,12 +135,9 @@ internal interface IWorkgroupService : IApplicationService
     /// <summary>Moderation with a reason. Audited; the text stays readable to admins.</summary>
     Task<WorkgroupMutationResult> HideCommentAsync(Guid commentId, Guid actorUserId, string reason, CancellationToken ct = default);
 
-    // ── The Secretary and the Board ───────────────────────────────────────
-
     /// <summary>
-    /// Registers the group: creates its Drive subfolder, stores the id, then flips the
-    /// status. A folder-creation failure leaves the group <see cref="WorkgroupStatus.Applied"/>
-    /// and surfaces the error, so the Secretary can retry (design §6).
+    /// Creates the Drive subfolder before flipping the status: a folder failure leaves the group Applied, so the
+    /// Secretary can retry.
     /// </summary>
     [ExternalWrite]
     Task<WorkgroupMutationResult> RegisterAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default);
@@ -189,18 +154,16 @@ internal interface IWorkgroupService : IApplicationService
     /// <summary>Reverses Dormant: the page unfreezes and the Drive folder goes writable again.</summary>
     Task<WorkgroupMutationResult> ReactivateAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Bootstrapping (design §21): applies on behalf, backdated, immediately Active.</summary>
+    /// <summary>Bootstrapping: applies on behalf, backdated, immediately Active.</summary>
     [ExternalWrite]
     Task<WorkgroupMutationResult<Guid>> RegisterExistingAsync(Guid actorUserId, WorkgroupBootstrap bootstrap, CancellationToken ct = default);
 
-    /// <summary>Board/Admin: set, change or clear the group's budget and bind its Holded account
-    /// through Finance. Returns the account Finance resolved when one was created or linked this
-    /// call, else null. Refused and Withdrawn groups are rejected.</summary>
+    /// <summary>Refused and Withdrawn groups are rejected. Returns the Holded account when one was created or
+    /// linked by this call, else null.</summary>
     Task<WorkgroupMutationResult<HoldedExpenseAccountRef?>> SetBudgetAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupBudgetSave save, CancellationToken ct = default);
 
-    /// <summary>The live Holded expense chart for the budget form's link-existing picker; empty
-    /// when Holded is unreachable, so the page still renders.</summary>
+    /// <summary>Empty when Holded is unreachable, so the page still renders.</summary>
     Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(CancellationToken ct = default);
 
     /// <summary>The Board's written reply to a delivered document.</summary>
@@ -211,25 +174,15 @@ internal interface IWorkgroupService : IApplicationService
         string note,
         CancellationToken ct = default);
 
-    // ── Settings ──────────────────────────────────────────────────────────
-
-    /// <summary>The Drive folder every group's subfolder is created under, or null when unset.</summary>
+    /// <summary>Null when unset.</summary>
     Task<string?> GetRootDriveFolderIdAsync(CancellationToken ct = default);
 
     Task<WorkgroupMutationResult> SetRootDriveFolderIdAsync(string folderId, Guid actorUserId, CancellationToken ct = default);
 
-    // ── The daily job ─────────────────────────────────────────────────────
-
-    /// <summary>
-    /// One pass of the reporting rhythm (design §13): notifies, flags and records.
-    /// It never registers or closes a group — a human does that.
-    /// </summary>
+    /// <summary>Notices only, each audited: it never registers, closes or flags a group.</summary>
     Task RunDailyRhythmAsync(CancellationToken ct = default);
 
-    // ── GDPR and account merge ────────────────────────────────────────────
-    // Carried by CachingWorkgroupService (erasure and the merge fold change cached rows);
-    // on the interface so the decorator reaches the inner service.
-
+    // On the interface so the caching decorator, which must invalidate on erasure and merge, reaches the inner.
     Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct);
 
     Task EraseForUserAsync(Guid userId, CancellationToken ct);

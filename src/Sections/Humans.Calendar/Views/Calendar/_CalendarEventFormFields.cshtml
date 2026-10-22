@@ -76,13 +76,12 @@
 
 @{
     var culture = System.Globalization.CultureInfo.CurrentUICulture;
-    // Monday-first; weekday names come from culture data, not resources.
+    // Weekday names come from culture data, not resources.
     var weekdays = new[] { ("MO", DayOfWeek.Monday), ("TU", DayOfWeek.Tuesday), ("WE", DayOfWeek.Wednesday),
         ("TH", DayOfWeek.Thursday), ("FR", DayOfWeek.Friday), ("SA", DayOfWeek.Saturday), ("SU", DayOfWeek.Sunday) };
     var fullDayNames = string.Join("|", Enumerable.Range(0, 7).Select(i => culture.DateTimeFormat.GetDayName((DayOfWeek)i)));
 }
 
-@* IsRecurring is driven by the picker: true for every choice except "Does not repeat". *@
 @Html.HiddenFor(m => m.IsRecurring)
 
 <div id="calendar-recurrence" class="mb-3"
@@ -185,7 +184,7 @@
         var dayNames = root.dataset.dayNames.split('|');
         var weekdaysTouched = false;
 
-        // Event start as {day, dow}; falls back to today while the form is still empty.
+        // Falls back to today while the form is still empty.
         function start() {
             var el = allDay.checked ? $('StartDateLocal') : $('StartLocal');
             var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(el && el.value);
@@ -193,7 +192,7 @@
             if (!m) d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
             return { day: d.getUTCDate(), dow: d.getUTCDay() };
         }
-        // 1-4 = nth weekday of the month; the 5th is expressed as the last (-1).
+        // The 5th weekday is expressed as the last (-1).
         function nth(s) { var n = Math.ceil(s.day / 7); return n > 4 ? -1 : n; }
 
         function compose() {
@@ -215,8 +214,7 @@
             return p.join(';');
         }
 
-        // Fill the controls from an existing rule. Anything the picker cannot reproduce exactly
-        // (compared as an unordered set of parts) is left to Custom so nothing is rewritten.
+        // A rule the picker can't reproduce exactly (as an unordered set of parts) is left to Custom, so nothing is rewritten.
         function load(text) {
             var kv = {};
             var ok = text.split(';').every(function (part) {

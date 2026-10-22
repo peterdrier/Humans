@@ -1,17 +1,9 @@
 namespace Humans.Shifts.Services;
 
 /// <summary>
-/// Payload for a coordinator "email a rota" message to a single signup.
-/// <see cref="ShiftLines"/> are pre-rendered, chronologically-ordered shift labels
-/// for the recipient on this rota (e.g. "Mon July 6 @ 19:30") — <see cref="ShiftsEmails"/>
-/// HTML-encodes them, it does not parse or sort them. <see cref="IncludeShifts"/>
-/// false drops the shift section (lead-in included) from the body; it is distinct from
-/// an empty <see cref="ShiftLines"/>, which still prints the "no shifts yet" note.
+/// <see cref="ShiftLines"/> are pre-rendered and sorted; <see cref="ShiftsEmails"/> only encodes them.
+/// <see cref="IncludeShifts"/> false drops the section, unlike an empty list, which prints the "no shifts yet" note.
 /// </summary>
-/// <remarks>
-/// Lived on <c>Humans.Email.Contracts</c> until Shifts took its own templates; only
-/// <c>RotaCoordinatorMessageService</c> ever built one (peterdrier/Humans#1651).
-/// </remarks>
 internal sealed record CoordinatorRotaMessageRequest(
     string RecipientEmail,
     string RecipientName,
@@ -24,10 +16,8 @@ internal sealed record CoordinatorRotaMessageRequest(
     string? Culture = null);
 
 /// <summary>
-/// Payload for a coordinator team-level "email all rotas" message to a single signup.
-/// <see cref="ShiftGroups"/> are pre-rendered, per-rota lists of chronologically-ordered
-/// shift labels for the recipient (each rota's shifts in the rota's own timezone).
-/// <see cref="IncludeShifts"/> false drops the shift section from the body entirely.
+/// <see cref="ShiftGroups"/> are pre-rendered, each rota in its own timezone. <see cref="IncludeShifts"/> false
+/// drops the shift section.
 /// </summary>
 internal sealed record CoordinatorTeamRotasMessageRequest(
     string RecipientEmail,
@@ -40,12 +30,4 @@ internal sealed record CoordinatorTeamRotasMessageRequest(
     bool IncludeShifts = true,
     string? Culture = null);
 
-/// <summary>
-/// A recipient's shifts on a single rota, ready for the team-level coordinator message.
-/// <see cref="ShiftLines"/> are already chronological and formatted in the rota's timezone.
-/// </summary>
-/// <remarks>
-/// Named <c>RotaShiftGroup</c> on <c>Humans.Email.Contracts</c>; renamed on the move because
-/// Shifts already owns an unrelated <c>Humans.Shifts.Models.RotaShiftGroup</c> view model.
-/// </remarks>
 internal sealed record CoordinatorRotaShiftGroup(string RotaName, IReadOnlyList<string> ShiftLines);

@@ -334,7 +334,6 @@ document.querySelectorAll('.slot-count-input').forEach(function(input) {
     });
 });
 
-// Dirty-state tracking for role edit forms
 document.querySelectorAll('form[action*="/Edit"]').forEach(function(form) {
     var card = form.closest('.card');
     var saveBtn = form.querySelector('button[type="submit"]');
