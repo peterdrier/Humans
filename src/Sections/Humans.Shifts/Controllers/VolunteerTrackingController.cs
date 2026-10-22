@@ -308,42 +308,19 @@ internal sealed class VolunteerTrackingController(
     [HttpPost("SetAvailabilityDay")]
     [Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetAvailabilityDay(
+    public Task<IActionResult> SetAvailabilityDay(
         Guid? userId, int? dayOffset, string? returnUrl, CancellationToken ct)
-    {
-        var es = await burnSettings.GetActiveAsync(ct);
-        if (es is null) { SetError(localizer["VolTrack_Err_BadRequest"]); return RedirectBack(returnUrl); }
-
-        var current = await GetCurrentUserInfoAsync();
-        if (current is null) return Forbid();
-
-        if (!ModelState.IsValid || userId is not { } targetUserId || dayOffset is not { } offset
-            || targetUserId == Guid.Empty)
-        {
-            logger.LogWarning("Rejected malformed coordinator availability addition for user {UserId}, day {DayOffset}",
-                userId, dayOffset);
-            return BadRequest();
-        }
-
-        var changed = await service.SetDayAvailabilityAsync(
-            targetUserId,
-            es.Id,
-            offset,
-            available: true,
-            current.Id,
-            ct);
-        if (changed)
-        {
-            SetSuccess(localizer["VolTrack_Msg_AvailabilitySet"]);
-        }
-        return RedirectBack(returnUrl);
-    }
+        => UpdateAvailabilityDayAsync(userId, dayOffset, returnUrl, available: true, ct);
 
     [HttpPost("ClearAvailabilityDay")]
     [Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ClearAvailabilityDay(
+    public Task<IActionResult> ClearAvailabilityDay(
         Guid? userId, int? dayOffset, string? returnUrl, CancellationToken ct)
+        => UpdateAvailabilityDayAsync(userId, dayOffset, returnUrl, available: false, ct);
+
+    private async Task<IActionResult> UpdateAvailabilityDayAsync(
+        Guid? userId, int? dayOffset, string? returnUrl, bool available, CancellationToken ct)
     {
         var es = await burnSettings.GetActiveAsync(ct);
         if (es is null) { SetError(localizer["VolTrack_Err_BadRequest"]); return RedirectBack(returnUrl); }
@@ -354,8 +331,8 @@ internal sealed class VolunteerTrackingController(
         if (!ModelState.IsValid || userId is not { } targetUserId || dayOffset is not { } offset
             || targetUserId == Guid.Empty)
         {
-            logger.LogWarning("Rejected malformed coordinator availability removal for user {UserId}, day {DayOffset}",
-                userId, dayOffset);
+            logger.LogWarning("Rejected malformed coordinator availability {Operation} for user {UserId}, day {DayOffset}",
+                available ? "addition" : "removal", userId, dayOffset);
             return BadRequest();
         }
 
@@ -363,12 +340,12 @@ internal sealed class VolunteerTrackingController(
             targetUserId,
             es.Id,
             offset,
-            available: false,
+            available,
             current.Id,
             ct);
         if (changed)
         {
-            SetSuccess(localizer["VolTrack_Msg_AvailabilityCleared"]);
+            SetSuccess(localizer[available ? "VolTrack_Msg_AvailabilitySet" : "VolTrack_Msg_AvailabilityCleared"]);
         }
         return RedirectBack(returnUrl);
     }
