@@ -121,6 +121,8 @@ Known area labels in the member submission form, issue list and detail view use 
 
 ## Invariants
 
+- The unavailable-detail fallback HTML-encodes its translated message and JSON-serializes it for JavaScript, preserving literal copy when translations contain quotes, line breaks or script delimiters.
+
 - The queue detail panel accepts only the latest selection request’s response; earlier successes and unavailable responses cannot replace the selected item’s content or wire stale forms.
 
 - Browser mutation result wrappers distinguish known missing/inaccessible issues and section-rule rejections from unexpected failures. Known rejections log Warning without exception stacks; unexpected failures retain Error logs and their exceptions and return generic failure text, never persistence diagnostics or false missing results. Every browser triage action returns 404 if the issue disappears after preflight.

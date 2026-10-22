@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
@@ -52,6 +53,7 @@ public class CommunicationPreferenceAccessibilityTests
             EnvironmentName = "Testing",
         });
         builder.Services.AddLocalization();
+        builder.Services.AddHttpContextAccessor();
         builder.Services.AddControllersWithViews().AddApplicationPart(typeof(EmailResource).Assembly);
         builder.Services.AddSingleton<IClock>(new FakeClock(Instant.FromUtc(2026, 5, 20, 0, 0)));
         builder.Services.AddSingleton<IDataProtectionProvider>(new EphemeralDataProtectionProvider());
@@ -97,5 +99,15 @@ public class CommunicationPreferenceAccessibilityTests
             return guest ? new[] { email, $"{localizer["Email_CommPrefs_Alert"].Value} — {name}" } : [email];
         }).ToArray();
         Assert.Equal(expected, labels);
+        if (guest)
+        {
+            await ((RazorView)result.View).RazorPage.SectionWriters["Scripts"]();
+            var script = writer.ToString();
+            var literal = Regex.Match(script, @"banner\.innerHTML = (?<literal>.*);", RegexOptions.NonBacktracking)
+                .Groups["literal"].Value;
+            var fragment = JsonSerializer.Deserialize<string>(literal);
+            Assert.Equal("<strong>" + System.Text.Encodings.Web.HtmlEncoder.Default.Encode(localizer["Email_CommPrefs_OneClick_Done"].Value) + "</strong>", fragment);
+            Assert.DoesNotContain("</script>", literal);
+        }
     }
 }
