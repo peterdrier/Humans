@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Humans.Base.Enums;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Domain;
@@ -69,12 +70,13 @@ internal sealed class GoogleSyncLogRepository(IDbContextFactory<GoogleIntegratio
         var query = ctx.GoogleSyncLog.AsNoTracking();
         if (unlinkedDescriptionContains is not null)
         {
-            var needle = unlinkedDescriptionContains.ToLowerInvariant();
+            // Escaped literal matching translates to PostgreSQL regex filtering before Take;
+            // InMemory evaluates the same expression without culture-dependent lowercasing.
+            var pattern = Regex.Escape(unlinkedDescriptionContains);
             var ids = resourceIds ?? [];
-#pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
             query = query.Where(e => ids.Contains(e.ResourceId)
-                || (e.ResourceId == Guid.Empty && e.Description.ToLower().Contains(needle)));
-#pragma warning restore MA0011
+                || (e.ResourceId == Guid.Empty && Regex.IsMatch(e.Description, pattern,
+                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)));
         }
         else if (resourceIds is not null) query = query.Where(e => resourceIds.Contains(e.ResourceId));
         if (from.HasValue) query = query.Where(e => e.OccurredAt >= from.Value);

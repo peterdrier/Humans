@@ -1,4 +1,4 @@
-using System.Diagnostics.CodeAnalysis;
+using System.Text.RegularExpressions;
 using Humans.Base.Extensions;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
@@ -21,6 +21,9 @@ namespace Humans.Tickets.Data;
 /// </remarks>
 internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> factory, IClock clock) : ITicketRepository
 {
+    private const RegexOptions LiteralSearchOptions =
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking;
+
     public async Task<TicketSyncState?> GetSyncStateAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -643,8 +646,6 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
             .ToListAsync(ct);
     }
 
-    [SuppressMessage("Meziantou", "MA0011:IFormatProvider is missing",
-        Justification = "ToLower() translates to SQL lower() in EF/Npgsql for case-insensitive search.")]
     public async Task<(IReadOnlyList<OrderRow> Rows, int TotalCount)> GetOrdersPageAsync(
         string? search,
         string sortBy,
@@ -661,14 +662,12 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
 
         if (search.HasSearchTerm(1))
         {
-            var normalizedSearch = search.ToLowerInvariant();
-#pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
+            var pattern = Regex.Escape(search);
             query = query.Where(o =>
-                o.BuyerName.ToLower().Contains(normalizedSearch) ||
-                o.BuyerEmail.ToLower().Contains(normalizedSearch) ||
-                o.VendorOrderId.ToLower().Contains(normalizedSearch) ||
-                (o.DiscountCode != null && o.DiscountCode.ToLower().Contains(normalizedSearch)));
-#pragma warning restore MA0011
+                Regex.IsMatch(o.BuyerName, pattern, LiteralSearchOptions) ||
+                Regex.IsMatch(o.BuyerEmail, pattern, LiteralSearchOptions) ||
+                Regex.IsMatch(o.VendorOrderId, pattern, LiteralSearchOptions) ||
+                (o.DiscountCode != null && Regex.IsMatch(o.DiscountCode, pattern, LiteralSearchOptions)));
         }
 
         if (filterPaymentStatus is { } paymentStatus)
@@ -719,8 +718,6 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         return (rows, totalCount);
     }
 
-    [SuppressMessage("Meziantou", "MA0011:IFormatProvider is missing",
-        Justification = "ToLower() translates to SQL lower() in EF/Npgsql for case-insensitive search.")]
     public async Task<(IReadOnlyList<AttendeeRow> Rows, int TotalCount)> GetAttendeesPageAsync(
         string? search,
         string sortBy,
@@ -742,13 +739,11 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
 
         if (search.HasSearchTerm(1))
         {
-            var normalizedSearch = search.ToLowerInvariant();
-#pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
+            var pattern = Regex.Escape(search);
             query = query.Where(a =>
-                a.AttendeeName.ToLower().Contains(normalizedSearch) ||
-                (a.AttendeeEmail != null && a.AttendeeEmail.ToLower().Contains(normalizedSearch)) ||
-                (a.Barcode != null && a.Barcode.ToLower().Contains(normalizedSearch)));
-#pragma warning restore MA0011
+                Regex.IsMatch(a.AttendeeName, pattern, LiteralSearchOptions) ||
+                (a.AttendeeEmail != null && Regex.IsMatch(a.AttendeeEmail, pattern, LiteralSearchOptions)) ||
+                (a.Barcode != null && Regex.IsMatch(a.Barcode, pattern, LiteralSearchOptions)));
         }
 
         if (!string.IsNullOrEmpty(filterTicketType))
@@ -770,17 +765,19 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 .Where(g => g.Count() > 1)
                 .Select(g => g.Key);
 
-#pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
-            var dupEmails = ctx.TicketAttendees
+            var unlinkedEmails = await ctx.TicketAttendees.AsNoTracking()
                 .Where(a => a.MatchedUserId == null && a.AttendeeEmail != null)
-                .GroupBy(a => a.AttendeeEmail!.ToLower())
-                .Where(g => g.Count() > 1)
-                .Select(g => g.Key);
+                .Select(a => new { a.Id, Email = a.AttendeeEmail! })
+                .ToListAsync(ct);
+            var duplicateEmailIds = unlinkedEmails
+                .GroupBy(a => a.Email, StringComparer.OrdinalIgnoreCase)
+                .Where(group => group.Count() > 1)
+                .SelectMany(group => group.Select(a => a.Id))
+                .ToList();
 
             query = query.Where(a =>
                 (a.MatchedUserId != null && dupMatchedIds.Contains(a.MatchedUserId!.Value)) ||
-                (a.MatchedUserId == null && a.AttendeeEmail != null && dupEmails.Contains(a.AttendeeEmail.ToLower())));
-#pragma warning restore MA0011
+                (a.MatchedUserId == null && duplicateEmailIds.Contains(a.Id)));
         }
 
         var totalCount = await query.CountAsync(ct);

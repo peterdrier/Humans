@@ -193,7 +193,3 @@ inbox:
     id: CENTRAL-95
     what: "Retirement PR for data migration google.workspace-identities (Users decomposition, GoogleIntegration): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: WorkspaceIdentityService's legacy fallback, UserEmailInfo.IsGoogle/GoogleEmailStatus (HUM_USER_GOOGLE_IDENTITY), LegacyGoogleEmailStatus, the merge re-FK's IsGoogle = false, and the Users export keys IsGoogle/GoogleEmailStatus. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
     review: panel
-  - added: 2026-10-21
-    id: CENTRAL-96
-    what: "Remaining MA0011 suppressions on column-side .ToLower() in EF queries: TicketRepository (GetOrdersPageAsync/GetAttendeesPageAsync search + duplicate-email grouping), UserRepository.UserEmails (batch lowered-IN lookup; UserEmail.Email is not stored normalized, OAuth claim emails keep their case), GoogleSyncLogRepository.GetRecentAsync (text filter applied before Take(limit) on an unbounded log). Npgsql 10 translates only parameterless ToLower() (ToLowerInvariant/ToLower(culture) throw); EF.Functions.ILike breaks the InMemory repo tests. Fix needs a cheap in-memory shape or an accepted test strategy. Found in the debt/ma0011 burndown."
-    review: light
