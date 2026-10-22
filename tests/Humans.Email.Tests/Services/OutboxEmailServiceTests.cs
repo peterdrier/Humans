@@ -70,7 +70,6 @@ public sealed class OutboxEmailServiceTests : IDisposable
 
         _service = new OutboxEmailService(
             repo,
-            _userEmailService,
             _bodyComposer,
             _immediate,
             _transport,
@@ -92,7 +91,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         Guid? campaignGrantId = null,
         Guid? campaignId = null,
         bool doNotPersist = false) =>
-        new(recipient, name, subject, html, template, category, replyTo, userId,
+        new(recipient, name, userId, subject, html, template, category, replyTo,
             campaignGrantId, campaignId, doNotPersist);
 
     [HumansTheory]
@@ -353,11 +352,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     [HumansFact]
     public async Task SendAsync_NullCategory_NeverSuppressesAndStampsNoUnsubscribe()
     {
-        var userId = Guid.NewGuid();
-        _userEmailService.FindByAddressAsync("alice@example.com", false, true, Arg.Any<CancellationToken>())
-            .Returns([UserEmailFixtures.Row(userId, "alice@example.com")]);
-
-        await _service.SendAsync(Message(category: null), TestContext.Current.CancellationToken);
+        await _service.SendAsync(Message(category: null, userId: Guid.NewGuid()), TestContext.Current.CancellationToken);
 
         var msg = await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken);
         msg.ExtraHeaders.Should().NotContain("List-Unsubscribe", "always-send mail carries no List-Unsubscribe headers");
@@ -370,11 +365,8 @@ public sealed class OutboxEmailServiceTests : IDisposable
     [HumansFact]
     public async Task SendAsync_SystemCategory_NeverSuppressesAndStampsNoUnsubscribe()
     {
-        var userId = Guid.NewGuid();
-        _userEmailService.FindByAddressAsync("alice@example.com", false, true, Arg.Any<CancellationToken>())
-            .Returns([UserEmailFixtures.Row(userId, "alice@example.com")]);
-
-        await _service.SendAsync(Message(template: "signup_rejected", category: MessageCategory.System), TestContext.Current.CancellationToken);
+        await _service.SendAsync(Message(template: "signup_rejected", category: MessageCategory.System, userId: Guid.NewGuid()),
+            TestContext.Current.CancellationToken);
 
         var msg = await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken);
         msg.ExtraHeaders.Should().NotContain("List-Unsubscribe");
@@ -429,14 +421,12 @@ public sealed class OutboxEmailServiceTests : IDisposable
     public async Task SendAsync_WhenUserOptedOutOfCategory_DoesNotCreateOutboxRow()
     {
         var userId = Guid.NewGuid();
-        _userEmailService.FindByAddressAsync("charlie@example.com", false, true, Arg.Any<CancellationToken>())
-            .Returns([UserEmailFixtures.Row(userId, "charlie@example.com")]);
         _commPrefService.IsOptedOutAsync(userId, MessageCategory.TeamUpdates, Arg.Any<CancellationToken>())
             .Returns(true);
 
         await _service.SendAsync(Message(
             recipient: "charlie@example.com", name: "Charlie",
-            template: "added_to_team", category: MessageCategory.TeamUpdates), TestContext.Current.CancellationToken);
+            template: "added_to_team", category: MessageCategory.TeamUpdates, userId: userId), TestContext.Current.CancellationToken);
 
         (await _emailDb.EmailOutboxMessages.ToListAsync(TestContext.Current.CancellationToken)).Should()
             .BeEmpty("the email is suppressed because the user opted out of TeamUpdates");
@@ -446,8 +436,6 @@ public sealed class OutboxEmailServiceTests : IDisposable
     public async Task SendAsync_WhenOptedIn_StampsUnsubscribeHeadersAndUrl()
     {
         var userId = Guid.NewGuid();
-        _userEmailService.FindByAddressAsync("grace@example.com", false, true, Arg.Any<CancellationToken>())
-            .Returns([UserEmailFixtures.Row(userId, "grace@example.com")]);
         _commPrefService.IsOptedOutAsync(userId, MessageCategory.Governance, Arg.Any<CancellationToken>())
             .Returns(false);
         _commPrefService.GenerateUnsubscribeHeaders(userId, MessageCategory.Governance)
@@ -460,7 +448,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
 
         await _service.SendAsync(Message(
             recipient: "grace@example.com", name: "Grace",
-            template: "application_approved", category: MessageCategory.Governance), TestContext.Current.CancellationToken);
+            template: "application_approved", category: MessageCategory.Governance, userId: userId), TestContext.Current.CancellationToken);
 
         var msg = await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken);
         msg.UserId.Should().Be(userId);
@@ -469,7 +457,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendAsync_ExplicitUserId_UsedDirectlyWithoutAddressLookup()
+    public async Task SendAsync_PersistsTheSendersUserAndGrant()
     {
         var userId = Guid.NewGuid();
         var grantId = Guid.NewGuid();
@@ -488,8 +476,21 @@ public sealed class OutboxEmailServiceTests : IDisposable
         msg.CampaignGrantId.Should().Be(grantId);
         msg.ReplyTo.Should().Be("reply@example.com");
         msg.ExtraHeaders.Should().NotBeNull();
-        await _userEmailService.DidNotReceive()
-            .FindByAddressAsync(Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SendAsync_NoUser_IsNeverResolvedFromTheAddress_AndCarriesNoOptOut()
+    {
+        await _service.SendAsync(Message(
+            recipient: "camp@example.com", template: "facilitated_message",
+            category: MessageCategory.FacilitatedMessages, userId: null), TestContext.Current.CancellationToken);
+
+        var msg = await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken);
+        msg.UserId.Should().BeNull();
+        msg.ExtraHeaders.Should().NotContain("List-Unsubscribe");
+        await _commPrefService.DidNotReceive()
+            .IsOptedOutAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<CancellationToken>());
+        _bodyComposer.Received().Compose(Arg.Any<string>(), Arg.Is<string?>(url => url == null), Arg.Any<string?>());
     }
 
     [HumansFact]

@@ -552,7 +552,6 @@ graph LR
     CalFeedToken --> Audit
 
     %% Email
-    Email --> UEmail
     Email --> Metrics
     EmailOutbox --> SettingsSvc
     EmailOutbox --> Audit

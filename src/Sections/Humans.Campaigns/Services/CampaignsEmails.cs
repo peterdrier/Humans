@@ -35,10 +35,10 @@ internal sealed class CampaignsEmails
         }
 
         return new EmailMessage(
-            request.RecipientEmail, request.RecipientName,
+            request.RecipientEmail, request.RecipientName, request.UserId,
             subject, html,
             "campaign_code", MessageCategory.CampaignCodes,
-            ReplyTo: request.ReplyTo, UserId: request.UserId, CampaignGrantId: request.CampaignGrantId,
+            ReplyTo: request.ReplyTo, CampaignGrantId: request.CampaignGrantId,
             CampaignId: request.CampaignId);
     }
 

@@ -100,17 +100,20 @@ no-login page adds the inbox column and the highlighted row.
 
 - Every message handed to `IEmailService` writes a send-log row before any transport call,
   except one marked do-not-persist, which goes straight to the transport and is never
-  retried (`src/Sections/Humans.Email/Services/OutboxEmailService.cs:76`).
+  retried (`src/Sections/Humans.Email/Services/OutboxEmailService.cs:71`).
 - A recipient opted out of a message's category never gets it and no row is written
-  (`src/Sections/Humans.Email/Services/OutboxEmailService.cs:38`).
+  (`src/Sections/Humans.Email/Services/OutboxEmailService.cs:33`).
+- The recipient human is whoever the sender names; the send path never looks one up from the
+  address, so mail to an address no human owns carries no opt-out and no owner
+  (`src/Sections/Humans.Email/Services/OutboxEmailService.cs:26`).
 - Every message carries a `Feedback-ID`, and an opt-outable one also carries unsubscribe
-  headers and a footer link (`src/Sections/Humans.Email/Services/OutboxEmailService.cs:49`,
-  `src/Sections/Humans.Email/Services/OutboxEmailService.cs:53`).
+  headers and a footer link (`src/Sections/Humans.Email/Services/OutboxEmailService.cs:44`,
+  `src/Sections/Humans.Email/Services/OutboxEmailService.cs:48`).
 - The pause flag stops the drain and nothing else
   (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:37`).
 - Time-sensitive templates are picked up first, FIFO within each class
   (`src/Sections/Humans.Email/Data/EmailOutboxRepository.cs:129`), and the same list starts
-  an immediate drain (`src/Sections/Humans.Email/Services/OutboxEmailService.cs:116`).
+  an immediate drain (`src/Sections/Humans.Email/Services/OutboxEmailService.cs:111`).
 - A failed message is retried with exponential backoff
   (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:90`) until a fixed attempt
   count, then waits for an admin (`src/Sections/Humans.Email/Data/EmailOutboxRepository.cs:124`).

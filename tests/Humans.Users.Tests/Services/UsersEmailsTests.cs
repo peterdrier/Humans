@@ -26,7 +26,7 @@ public sealed class UsersEmailsTests
     [HumansFact]
     public void EmailVerification_IsAlwaysSend_NullCategory_AndTimeSensitive()
     {
-        var msg = Create().EmailVerification("a@x.com", "Alice", "https://verify", isConflict: false, "en");
+        var msg = Create().EmailVerification(Guid.NewGuid(), "a@x.com", "Alice", "https://verify", isConflict: false, "en");
 
         msg.RecipientEmail.Should().Be("a@x.com");
         msg.TemplateName.Should().Be(TimeSensitiveTemplates.EmailVerification);
@@ -40,9 +40,9 @@ public sealed class UsersEmailsTests
     {
         var emails = Create();
 
-        emails.EmailVerification("a@x.com", "Alice", "https://verify", isConflict: false, "en")
+        emails.EmailVerification(Guid.NewGuid(), "a@x.com", "Alice", "https://verify", isConflict: false, "en")
             .HtmlBody.Should().Contain("https://verify");
-        emails.EmailVerification("a@x.com", "Alice", "https://verify", isConflict: true, "en")
+        emails.EmailVerification(Guid.NewGuid(), "a@x.com", "Alice", "https://verify", isConflict: true, "en")
             .HtmlBody.Should().Contain("Users_Email_EmailVerification_Merge_Body");
     }
 
@@ -65,7 +65,7 @@ public sealed class UsersEmailsTests
         var emails = new UsersEmails(
             Options.Create(new EmailSettings { BaseUrl = TestUsersEmails.BaseUrl }),
             localizer, NullLogger<UsersEmails>.Instance);
-        var msg = emails.AccountDeletionRequested("a@x.com", "Alice", DeletionDate, culture);
+        var msg = emails.AccountDeletionRequested(Guid.NewGuid(), "a@x.com", "Alice", DeletionDate, culture);
 
         msg.TemplateName.Should().Be("deletion_requested");
         msg.Category.Should().BeNull();
@@ -77,7 +77,7 @@ public sealed class UsersEmailsTests
     [HumansFact]
     public void AccountDeleted_IsNeverPersisted()
     {
-        var msg = Create().AccountDeleted("a@x.com", "Alice", "en");
+        var msg = Create().AccountDeleted(Guid.NewGuid(), "a@x.com", "Alice", "en");
 
         msg.TemplateName.Should().Be("account_deleted");
         // Article 17: an outbox row would re-create the address the cascade just erased.
@@ -88,7 +88,7 @@ public sealed class UsersEmailsTests
     [HumansFact]
     public void AccessSuspended_IsAlwaysSend_AndEncodesTheReason()
     {
-        var msg = Create().AccessSuspended("a@x.com", "Alice", "Missing <consent>", "en");
+        var msg = Create().AccessSuspended(Guid.NewGuid(), "a@x.com", "Alice", "Missing <consent>", "en");
 
         msg.TemplateName.Should().Be("access_suspended");
         msg.Category.Should().BeNull();
@@ -98,7 +98,7 @@ public sealed class UsersEmailsTests
     [HumansFact]
     public void RendersInTheRecipientsCulture()
     {
-        Create().AccountDeleted("a@x.com", "Alice", "es")
+        Create().AccountDeleted(Guid.NewGuid(), "a@x.com", "Alice", "es")
             .Subject.Should().Be("Users_Email_AccountDeleted_Subject#es");
     }
 
@@ -145,6 +145,7 @@ public sealed class UsersEmailsTests
     private static object SampleArgument(ParameterInfo parameter)
     {
         var type = parameter.ParameterType;
+        if (type == typeof(Guid)) return Guid.NewGuid();
         if (type == typeof(string)) return string.Equals(parameter.Name, "culture", StringComparison.Ordinal) ? "en" : "sample";
         if (type == typeof(bool)) return false;
         if (type == typeof(Instant)) return DeletionDate;

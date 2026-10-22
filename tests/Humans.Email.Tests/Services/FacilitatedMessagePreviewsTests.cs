@@ -56,6 +56,7 @@ public sealed class FacilitatedMessagePreviewsTests
     private static object SampleArgument(ParameterInfo parameter)
     {
         var type = parameter.ParameterType;
+        if (type == typeof(Guid?)) return Guid.NewGuid();
         if (type == typeof(string)) return "x";
         if (type == typeof(bool)) return true;
         throw new NotSupportedException(

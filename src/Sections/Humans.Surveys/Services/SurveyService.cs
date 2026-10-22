@@ -793,6 +793,7 @@ internal sealed class SurveyService(
                 var customMessage = survey.InvitationEmailMessage.ResolveOptional(culture, survey.DefaultCulture);
                 var token = tokenProvider.Create(inv.Id);
                 var msg = emailMessages.SurveyInvitation(
+                    userId,
                     email, name, title, token, culture, customSubject, customMessage);
 
                 await emailService.SendAsync(msg, sendCt);

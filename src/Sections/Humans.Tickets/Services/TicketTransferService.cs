@@ -533,7 +533,7 @@ internal sealed class TicketTransferService(
         {
             await SafeSendAsync(request.Id, "transfer-requested (sender)", () =>
                 emailService.SendAsync(emailMessages.TicketTransferRequested(
-                    senderEmail, senderName, request.ReceiverLegalName, ticketLabel, senderCulture), ct), ct);
+                    senderUserId, senderEmail, senderName, request.ReceiverLegalName, ticketLabel, senderCulture), ct), ct);
         }
 
         await SafeSendAsync(request.Id, "transfer-requested (team)", () =>
@@ -555,7 +555,7 @@ internal sealed class TicketTransferService(
         {
             await SafeSendAsync(request.Id, "transfer-decision (sender)", () =>
                 emailService.SendAsync(emailMessages.TicketTransferDecision(
-                    senderEmail, senderName, successful, ticketLabel,
+                    request.SenderUserId, senderEmail, senderName, successful, ticketLabel,
                     request.ReceiverLegalName, reason, senderCulture), ct), ct);
         }
 
@@ -564,7 +564,7 @@ internal sealed class TicketTransferService(
             var receiverCulture = await SafeResolveReceiverCultureAsync(request, ct);
             await SafeSendAsync(request.Id, "transfer-decision (receiver)", () =>
                 emailService.SendAsync(emailMessages.TicketTransferDecision(
-                    request.ReceiverEmail, request.ReceiverLegalName, successful, ticketLabel,
+                    request.ReceiverUserId, request.ReceiverEmail, request.ReceiverLegalName, successful, ticketLabel,
                     request.ReceiverLegalName, reason, receiverCulture), ct), ct);
         }
     }

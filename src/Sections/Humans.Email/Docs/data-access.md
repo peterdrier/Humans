@@ -55,8 +55,9 @@ Repository: `IEmailOutboxRepository`.
 | EmailOutboxMessages | R/W |
 
 Implements `IEmailService` — the single `SendAsync(EmailMessage)` send
-path (the interface collapsed to one method). Cross-section calls via
-`IUserEmailService`, `IImmediateOutboxProcessor`, `IHumansMetrics`,
+path (the interface collapsed to one method). The row's `UserId` is the one the
+sender named; no address lookup. Cross-section calls via
+`IImmediateOutboxProcessor`, `IHumansMetrics`,
 plus `IClock`; `IEmailBodyComposer` and `ICommunicationPreferenceManagement`
 (opt-out checks, `List-Unsubscribe` headers) are section-internal. No
 `IMemoryCache`.

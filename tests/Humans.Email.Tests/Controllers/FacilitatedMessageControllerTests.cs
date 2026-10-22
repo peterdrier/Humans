@@ -60,9 +60,10 @@ public sealed class FacilitatedMessageControllerTests
             .Returns(new Dictionary<Guid, UserInfo> { [_viewerId] = viewer, [_targetId] = target });
         _commPrefs.AcceptsFacilitatedMessagesAsync(_targetId, Arg.Any<CancellationToken>()).Returns(true);
         _emailMessages.FacilitatedMessage(
-                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid?>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>())
-            .Returns(new EmailMessage("target@example.com", "Target", "Subject", "Body", "facilitated_message"));
+            .Returns(ci => new EmailMessage("target@example.com", "Target", ci.ArgAt<Guid?>(0), "Subject", "Body",
+                "facilitated_message"));
     }
 
     private static UserInfo Info(Guid id, string name, string email, string language = "en") =>
@@ -149,9 +150,9 @@ public sealed class FacilitatedMessageControllerTests
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("ViewProfile");
         _emailMessages.Received(1).FacilitatedMessage(
-            "target@example.com", "Target", "Viewer", "Hello", true, "viewer@example.com", "en");
+            _targetId, "target@example.com", "Target", "Viewer", "Hello", true, "viewer@example.com", "en");
         await _emailService.Received(1).SendAsync(
-            Arg.Is<EmailMessage>(m => m.ReplyTo == null), Arg.Any<CancellationToken>());
+            Arg.Is<EmailMessage>(m => m.ReplyTo == null && m.UserId == _targetId), Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
             AuditAction.FacilitatedMessageSent, "User", _targetId,
             Arg.Is<string>(d => d.Contains("contact info shared: yes", StringComparison.Ordinal)),
@@ -177,7 +178,7 @@ public sealed class FacilitatedMessageControllerTests
         await _controller.SendMessage(_targetId, new SendMessageViewModel { Message = "Hello" }, Ct);
 
         _emailMessages.Received(1).FacilitatedMessage(
-            "target@example.com", "Target", "Viewer", "Hello", true, "viewer@example.com", expectedCulture);
+            _targetId, "target@example.com", "Target", "Viewer", "Hello", true, "viewer@example.com", expectedCulture);
     }
 
     [HumansFact]

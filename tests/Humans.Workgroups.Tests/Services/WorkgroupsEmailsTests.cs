@@ -26,6 +26,7 @@ public sealed class WorkgroupsEmailsTests
             foreach (var kind in Enum.GetValues<WorkgroupNoticeKind>())
             {
                 var msg = emails.WorkgroupNotice(new WorkgroupNoticeRequest(
+                    Guid.NewGuid(),
                     RecipientEmail: "coord@x.com",
                     RecipientName: "Coord",
                     Kind: kind,
@@ -50,10 +51,12 @@ public sealed class WorkgroupsEmailsTests
         var emails = TestWorkgroupsEmails.CreateReal();
 
         var withReason = emails.WorkgroupNotice(new WorkgroupNoticeRequest(
+            Guid.NewGuid(),
             "a@x.com", "Alice", WorkgroupNoticeKind.Refused, "Safety", "safety", Detail: "not enough scope", Culture: "en"));
         withReason.HtmlBody.Should().Contain("not enough scope");
 
         var withoutReason = emails.WorkgroupNotice(new WorkgroupNoticeRequest(
+            Guid.NewGuid(),
             "a@x.com", "Alice", WorkgroupNoticeKind.Refused, "Safety", "safety", Detail: null, Culture: "en"));
         withoutReason.HtmlBody.Should().NotBeNullOrWhiteSpace();
         withoutReason.HtmlBody.Should().NotContain("{2}");
@@ -63,6 +66,7 @@ public sealed class WorkgroupsEmailsTests
     public void WorkgroupNotice_NullRecipientName_UsesGenericGreeting()
     {
         var msg = TestWorkgroupsEmails.CreateReal().WorkgroupNotice(new WorkgroupNoticeRequest(
+            Guid.NewGuid(),
             "board@x.com", null, WorkgroupNoticeKind.Applied, "Safety", "safety", Culture: "en"));
 
         msg.HtmlBody.Should().Contain("Hello,");
@@ -75,8 +79,10 @@ public sealed class WorkgroupsEmailsTests
         var emails = TestWorkgroupsEmails.CreateReal();
 
         var en = emails.WorkgroupNotice(new WorkgroupNoticeRequest(
+            Guid.NewGuid(),
             "a@x.com", "Alice", WorkgroupNoticeKind.Registered, "Safety", "safety", Culture: "en"));
         var es = emails.WorkgroupNotice(new WorkgroupNoticeRequest(
+            Guid.NewGuid(),
             "a@x.com", "Alice", WorkgroupNoticeKind.Registered, "Safety", "safety", Culture: "es"));
 
         en.Subject.Should().Be("Working group registered: Safety");
@@ -87,6 +93,7 @@ public sealed class WorkgroupsEmailsTests
     public void WorkgroupNotice_NameWithAnAmpersand_StaysRawInTheSubjectAndEncodedInTheBody()
     {
         var msg = TestWorkgroupsEmails.CreateReal().WorkgroupNotice(new WorkgroupNoticeRequest(
+            Guid.NewGuid(),
             "board@x.com", "Ada", WorkgroupNoticeKind.Applied, "Health & Safety", "health-safety",
             Culture: "en"));
 
@@ -99,6 +106,7 @@ public sealed class WorkgroupsEmailsTests
     public void WorkgroupNotice_StampsGovernanceAndRecipient()
     {
         var msg = TestWorkgroupsEmails.Create().WorkgroupNotice(new WorkgroupNoticeRequest(
+            Guid.NewGuid(),
             RecipientEmail: "coord@x.com",
             RecipientName: "Coord",
             Kind: WorkgroupNoticeKind.Registered,
@@ -135,6 +143,7 @@ public sealed class WorkgroupsEmailsTests
         foreach (var (kind, templateName) in expected)
         {
             var msg = emails.WorkgroupNotice(new WorkgroupNoticeRequest(
+                Guid.NewGuid(),
                 "a@x.com", "A", kind, "Safety", "safety", Culture: "en"));
 
             msg.TemplateName.Should().Be(templateName, because: $"{kind} keys its own metric");
@@ -183,7 +192,7 @@ public sealed class WorkgroupsEmailsTests
     {
         if (parameter.ParameterType == typeof(WorkgroupNoticeRequest))
         {
-            return new WorkgroupNoticeRequest("a@x.com", "A", kind, "Safety", "safety", "detail", "en");
+            return new WorkgroupNoticeRequest(Guid.NewGuid(), "a@x.com", "A", kind, "Safety", "safety", "detail", "en");
         }
 
         throw new NotSupportedException(

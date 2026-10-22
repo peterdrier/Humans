@@ -1340,6 +1340,7 @@ internal sealed class ExpenseReportService(
 
         var language = submitter.PreferredLanguage;
         await emailService.SendAsync(emails.ReportApproved(
+            submitter.Id,
             recipient, submitter.BurnerName, reportId, approved.Payable,
             IbanFormatter.Mask(approved.PayeeIban),
             language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode), ct);

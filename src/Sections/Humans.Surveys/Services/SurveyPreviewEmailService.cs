@@ -88,6 +88,7 @@ internal sealed class SurveyPreviewEmailService(
         var customMessage = survey.InvitationEmailMessage.ResolveOptional(culture, survey.DefaultCulture);
         var token = previewTokens.Create(surveyId, culture);
         return (emailMessages.SurveyInvitation(
+            userId,
             email, name, title, token, culture, customSubject, customMessage), null);
     }
 }

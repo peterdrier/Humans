@@ -12,12 +12,12 @@ internal sealed class GrantsEmailPreviews(GrantsEmails emails) : IEmailPreviewCo
         return
         [
             new EmailPreviewSample("grant-issued", "Grant — Issued",
-                emails.Notice(new GrantNoticeRequest(
+                emails.Notice(new GrantNoticeRequest(Guid.Empty,
                     persona.Email, persona.Name, GrantNoticeKind.Issued, "Build crew 2027",
                     "a ticket at the build-crew price", new LocalDate(2027, 5, 1), GrantService.ProfileUrl,
                     Culture: persona.Culture))),
             new EmailPreviewSample("grant-revoked", "Grant — Revoked",
-                emails.Notice(new GrantNoticeRequest(
+                emails.Notice(new GrantNoticeRequest(Guid.Empty,
                     persona.Email, persona.Name, GrantNoticeKind.Revoked, "Build crew 2027",
                     "a ticket at the build-crew price", null, GrantService.ProfileUrl,
                     "You are no longer on the build crew.", persona.Culture))),

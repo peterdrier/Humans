@@ -9,7 +9,7 @@ namespace Humans.Email.Contracts;
 /// <item><paramref name="HtmlBody"/> is the fragment before the branded wrap.</item>
 /// <item><paramref name="TemplateName"/> is stable per message type: the metrics key, and what <see cref="TimeSensitiveTemplates"/> matches on.</item>
 /// <item>A null or <see cref="MessageCategory.System"/> <paramref name="Category"/> is always sent, with no unsubscribe header or footer. Any other category gets the opt-out check and unsubscribe.</item>
-/// <item>A null <paramref name="UserId"/> is resolved from <paramref name="RecipientEmail"/>. Campaign codes pass the grant's user, which is authoritative.</item>
+/// <item><paramref name="UserId"/> is the recipient human, passed by every sender; Email never resolves it from <paramref name="RecipientEmail"/>. Null only where no account stands behind the address (a signup magic link, an operator mailbox): such a message gets no opt-out check, no unsubscribe link and no outbox owner.</item>
 /// <item><paramref name="CampaignId"/> feeds the campaign part of the Feedback-ID header for Google Postmaster.</item>
 /// <item><paramref name="DoNotPersist"/> sends straight to the transport with no outbox row, so no retry. Only for mail to a member being erased under GDPR Article 17: a row would recreate the data the erasure just removed, and outlive it.</item>
 /// <item>A null <paramref name="Culture"/> means an English footer.</item>
@@ -19,12 +19,12 @@ namespace Humans.Email.Contracts;
 public sealed record EmailMessage(
     string RecipientEmail,
     string? RecipientName,
+    Guid? UserId,
     string Subject,
     string HtmlBody,
     string TemplateName,
     MessageCategory? Category = null,
     string? ReplyTo = null,
-    Guid? UserId = null,
     Guid? CampaignGrantId = null,
     Guid? CampaignId = null,
     bool DoNotPersist = false,

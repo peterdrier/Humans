@@ -921,6 +921,7 @@ internal sealed class IssuesService(
             {
                 var language = reporter.PreferredLanguage;
                 await email.SendAsync(emailMessages.IssueComment(
+                    reporter.Id,
                     to,
                     reporter.BurnerName,
                     issue.Title,

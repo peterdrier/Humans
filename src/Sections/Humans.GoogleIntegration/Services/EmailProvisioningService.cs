@@ -133,7 +133,7 @@ internal sealed class EmailProvisioningService(
                 try
                 {
                     await emailService.SendAsync(emailMessages.WorkspaceCredentials(
-                        recoveryEmail, user.BurnerName, fullEmail, tempPassword,
+                        userId, recoveryEmail, user.BurnerName, fullEmail, tempPassword,
                         language));
                     credentialsQueued = true;
                 }

@@ -14,7 +14,7 @@ internal sealed class ExpensesEmailPreviews(ExpensesEmails emails) : IEmailPrevi
         return
         [
             new EmailPreviewSample("expense-approved", "Expense Report Approved",
-                emails.ReportApproved(email, name, SampleReportId, 123.45m, "ES79****789", culture)),
+                emails.ReportApproved(Guid.Empty, email, name, SampleReportId, 123.45m, "ES79****789", culture)),
         ];
     }
 }

@@ -32,8 +32,8 @@ internal sealed class ComposerSelfSendService(
             : string.Format(CultureInfo.CurrentCulture, localizer["Email_ComposerSelfTest_Subject"].Value, subject.Trim());
 
         await emailService.SendAsync(new EmailMessage(
-            email, user?.BurnerName, fullSubject, SanitizedMarkdownRenderer.Render(markdownBody),
-            TemplateName, MessageCategory.System, UserId: userId), ct);
+            email, user?.BurnerName, userId, fullSubject, SanitizedMarkdownRenderer.Render(markdownBody),
+            TemplateName, MessageCategory.System), ct);
 
         await audit.LogAsync(
             AuditAction.EmailComposerSelfTestSent, "User", userId,

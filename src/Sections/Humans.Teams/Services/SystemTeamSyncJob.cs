@@ -518,6 +518,7 @@ internal sealed class SystemTeamSyncJob(
                     var email = user.Email!;
                     var language = user.PreferredLanguage;
                     await emailService.SendAsync(emailMessages.AddedToTeam(
+                        user.Id,
                         email, user.BurnerName, team.Name, team.Slug,
                         resourceTuples, language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode), cancellationToken);
                 }

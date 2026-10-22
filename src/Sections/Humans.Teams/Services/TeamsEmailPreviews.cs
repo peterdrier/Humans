@@ -19,7 +19,7 @@ internal sealed class TeamsEmailPreviews(TeamsEmails emails) : IEmailPreviewCont
         return
         [
             new EmailPreviewSample("added-to-team", "Added to Team",
-                emails.AddedToTeam(email, name, "Art Collective", "art-collective", SampleResources, culture)),
+                emails.AddedToTeam(Guid.Empty, email, name, "Art Collective", "art-collective", SampleResources, culture)),
         ];
     }
 }

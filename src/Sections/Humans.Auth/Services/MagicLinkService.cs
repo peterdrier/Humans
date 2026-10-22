@@ -115,7 +115,7 @@ internal sealed class MagicLinkService(
             var displayName = string.IsNullOrWhiteSpace(userInfo?.BurnerName) ? sendToEmail : userInfo.BurnerName;
 
             await emailService.SendAsync(
-                emailMessages.MagicLinkLogin(sendToEmail, displayName, magicLinkUrl, userInfo?.PreferredLanguage), ct);
+                emailMessages.MagicLinkLogin(user.Id, sendToEmail, displayName, magicLinkUrl, userInfo?.PreferredLanguage), ct);
         }
         catch (Exception ex)
         {

@@ -31,7 +31,7 @@ public sealed class GovernanceEmailsTests
     {
         var emails = Create();
 
-        var approved = emails.ApplicationApproved("a@x.com", "Alice", MembershipTier.Colaborador, culture);
+        var approved = emails.ApplicationApproved(Guid.NewGuid(), "a@x.com", "Alice", MembershipTier.Colaborador, culture);
         approved.Culture.Should().Be(culture);
         approved.RecipientEmail.Should().Be("a@x.com");
         approved.RecipientName.Should().Be("Alice");
@@ -39,7 +39,7 @@ public sealed class GovernanceEmailsTests
         approved.Category.Should().Be(MessageCategory.Governance);
         approved.ReplyTo.Should().BeNull();
 
-        var rejected = emails.ApplicationRejected("a@x.com", "Alice", MembershipTier.Asociado, "No", culture);
+        var rejected = emails.ApplicationRejected(Guid.NewGuid(), "a@x.com", "Alice", MembershipTier.Asociado, "No", culture);
         rejected.Culture.Should().Be(culture);
         rejected.TemplateName.Should().Be("application_rejected");
         rejected.Category.Should().Be(MessageCategory.Governance);
@@ -60,7 +60,7 @@ public sealed class GovernanceEmailsTests
         using (new CultureScope(culture))
             expectedDate = WebUtility.HtmlEncode(expiry.ToDate());
 
-        var msg = Create().TermRenewalReminder("a@x.com", "Alice", "Colaborador", expiry, culture);
+        var msg = Create().TermRenewalReminder(Guid.NewGuid(), "a@x.com", "Alice", "Colaborador", expiry, culture);
 
         msg.TemplateName.Should().Be("term_renewal_reminder");
         msg.Category.Should().Be(MessageCategory.Governance);
@@ -73,15 +73,15 @@ public sealed class GovernanceEmailsTests
     {
         var emails = Create();
 
-        var opened = emails.AssemblyVoteOpened("a@x.com", "Alice", "Budget", ClosesAt, true, "/Governance/Votes/1", "en");
+        var opened = emails.AssemblyVoteOpened(Guid.NewGuid(), "a@x.com", "Alice", "Budget", ClosesAt, true, "/Governance/Votes/1", "en");
         opened.TemplateName.Should().Be("assembly_vote_opened");
         opened.Category.Should().Be(MessageCategory.System);
 
-        var reminder = emails.AssemblyVoteReminder("a@x.com", "Alice", "Budget", ClosesAt, false, "/Governance/Votes/1", "en");
+        var reminder = emails.AssemblyVoteReminder(Guid.NewGuid(), "a@x.com", "Alice", "Budget", ClosesAt, false, "/Governance/Votes/1", "en");
         reminder.TemplateName.Should().Be("assembly_vote_reminder");
         reminder.Category.Should().Be(MessageCategory.System);
 
-        var cancelled = emails.AssemblyVoteCancelled("a@x.com", "Alice", "Budget", "Withdrawn", "en");
+        var cancelled = emails.AssemblyVoteCancelled(Guid.NewGuid(), "a@x.com", "Alice", "Budget", "Withdrawn", "en");
         cancelled.TemplateName.Should().Be("assembly_vote_cancelled");
         cancelled.Category.Should().Be(MessageCategory.System);
     }
@@ -89,7 +89,7 @@ public sealed class GovernanceEmailsTests
     [HumansFact]
     public void AssemblyVoteOpened_BuildsAnAbsoluteVoteLink()
     {
-        var msg = Create().AssemblyVoteOpened("a@x.com", "Alice", "Budget", ClosesAt, true, "/Governance/Votes/1", "en");
+        var msg = Create().AssemblyVoteOpened(Guid.NewGuid(), "a@x.com", "Alice", "Budget", ClosesAt, true, "/Governance/Votes/1", "en");
 
         msg.HtmlBody.Should().Contain("https://humans.example/Governance/Votes/1");
     }
@@ -133,6 +133,7 @@ public sealed class GovernanceEmailsTests
     private static object SampleArgument(ParameterInfo parameter)
     {
         var type = parameter.ParameterType;
+        if (type == typeof(Guid)) return Guid.NewGuid();
         if (type == typeof(string)) return string.Equals(parameter.Name, "culture", StringComparison.Ordinal) ? "en" : "sample";
         if (type == typeof(bool)) return true;
         if (type == typeof(MembershipTier)) return MembershipTier.Colaborador;

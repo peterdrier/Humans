@@ -83,6 +83,7 @@ internal sealed class TermRenewalReminderJob(
                         ? applicant.PreferredLanguage : CultureCatalog.DefaultCultureCode;
 
                     await emailService.SendAsync(emailMessages.TermRenewalReminder(
+                        applicant.Id,
                         email,
                         applicant.BurnerName,
                         application.MembershipTier.ToString(),

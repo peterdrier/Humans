@@ -105,12 +105,12 @@ Each cites the line that enforces it.
 - An application exists only for Colaborador or Asociado; Volunteer is rejected at the entity
   (`Domain/Application.cs:99`).
 - `Submitted` is the only state anything can be done from — approve, reject, withdraw and vote
-  all refuse anything else (`Services/ApplicationDecisionService.cs:58`, `:138`, `:305`, `:546`;
+  all refuse anything else (`Services/ApplicationDecisionService.cs:58`, `:140`, `:307`, `:548`;
   the state machine permits nothing else, `Domain/Application.cs:121`).
 - A person may hold at most one `Submitted` application at a time, any tier
-  (`Services/ApplicationDecisionService.cs:266`).
+  (`Services/ApplicationDecisionService.cs:268`).
 - Approval and rejection require at least one Board vote to exist; with none, finalization is
-  refused and nothing is written (`Services/ApplicationDecisionService.cs:68`, `:145`).
+  refused and nothing is written (`Services/ApplicationDecisionService.cs:68`, `:147`).
 - Finalization is atomic: the application update and the destruction of every `BoardVote` row
   for it commit together (`Data/ApplicationRepository.cs:84`).
 - Approval sets a term expiring 31 December of the current cycle's odd year — the approval year
@@ -146,12 +146,12 @@ Each cites the line that enforces it.
   row (`Services/AssemblyVoteService.cs:263`).
 - The embargo: the only reads that return anything derived from ballot content are the stored
   result after close, the audited peek, and the audited post-close ballot list
-  (`Services/AssemblyVoteService.cs:609`, `:1315`, `:1348`; the contract is stated at
+  (`Services/AssemblyVoteService.cs:609`, `:1316`, `:1349`; the contract is stated at
   `Services/IAssemblyVoteService.cs:14`).
 - A peek is recorded before its tally is handed back, and only while the vote still accepts
-  ballots (`Services/AssemblyVoteService.cs:1315`, `Data/AssemblyVoteRepository.cs:470`).
+  ballots (`Services/AssemblyVoteService.cs:1316`, `Data/AssemblyVoteRepository.cs:470`).
 - Individual ballots are disclosed for a Closed vote only; a Cancelled vote's are not
-  (`Services/AssemblyVoteService.cs:1348`).
+  (`Services/AssemblyVoteService.cs:1349`).
 - The result is computed once and stored, and the close persists the closed status *before* it
   reads any ballot (`Services/AssemblyVoteService.cs:438`, `:484`).
 - A vote whose deadline has passed is closed for every purpose, whether or not the hourly job

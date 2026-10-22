@@ -13,15 +13,15 @@ namespace Humans.Email.Tests;
 public class EmailArchitectureTests
 {
     [HumansFact]
-    public void OutboxEmailService_TakesOutboxRepositoryAndUserEmailService()
+    public void OutboxEmailService_TakesOutboxRepositoryAndNoAddressLookup()
     {
         var ctor = typeof(OutboxEmailService).GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(IEmailOutboxRepository),
             because: "outbox writes go through the Email section's repository");
-        paramTypes.Should().Contain(typeof(IUserEmailService),
-            because: "looking up UserId by email is a Profile-section query — routed through IUserEmailService rather than direct access to user_emails (§2c)");
+        paramTypes.Should().NotContain(typeof(IUserEmailService),
+            because: "every sender passes the recipient's UserId; Email never resolves it from the address (nobodies-collective/Humans#1245)");
     }
 
     [HumansFact]

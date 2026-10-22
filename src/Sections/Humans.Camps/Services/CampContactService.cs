@@ -40,6 +40,7 @@ internal sealed class CampContactService(
         try
         {
             await emailService.SendAsync(emailMessages.FacilitatedMessage(
+                recipientUserId: null,
                 campContactEmail,
                 campDisplayName,
                 senderDisplayName,

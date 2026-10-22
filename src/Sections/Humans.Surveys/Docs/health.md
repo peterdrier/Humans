@@ -86,15 +86,15 @@ the line that enforces it.
 
 - **Identity is written onto a response only for the Identified tier**; the other two tiers leave
   no link, and nothing downstream — results, export, API, drill-down — can re-attach one:
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1188` writes it, `:1209` and `:1237`
-  refuse to, and the read paths honour the tier at `:1640` and `:1685`.
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1189` writes it, `:1210` and `:1238`
+  refuse to, and the read paths honour the tier at `:1641` and `:1686`.
 - **No completion timestamp for a tracked-but-unlinked answer, and no `UpdatedAt` on the ledger**
   — a time is a join key: `src/Sections/Humans.Surveys/Domain/SurveyInvitation.cs:15`, with the
   shared epoch that keeps a public start uncorrelated at
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1015`.
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1016`.
 - **Branching is decided on the server at submit**; a hidden question's answer never lands:
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1150`, over the effective-state pass at
-  `:2193`.
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1151`, over the effective-state pass at
+  `:2194`.
 - **Sending is additive and idempotent** — the same audience resolved twice invites nobody twice,
   and never revokes: `src/Sections/Humans.Surveys/Services/SurveyService.cs:716`, with the
   re-queue-not-re-create branch at `:739`.
@@ -103,8 +103,8 @@ the line that enforces it.
   `:250` stamps them.
 - **Individual submissions are never audit-logged; survey lifecycle, sends and availability
   recounts always are**: the lifecycle writes sit at
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:544`, `:559`, `:787` and `:881`, and the
-  submit path at `:1179`–`:1236` has no `auditLog` call at all.
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:544`, `:559`, `:787` and `:882`, and the
+  submit path at `:1180`–`:1237` has no `auditLog` call at all.
 - **Preview writes nothing to this section's tables** — no invitation, response, draft, reminder
   or funnel event. The rendering previews build view models and call no writing service method:
   `src/Sections/Humans.Surveys/Controllers/SurveyAdminController.cs:242` through
@@ -134,36 +134,36 @@ the line that enforces it.
   `src/Sections/Humans.Surveys/Authorization/SurveyAuthorizationHandler.cs:30`.
 - **An Asociado vote is CompletionTracked only, targets the Asociados audience only, and checks
   eligibility at entry, on every page, and again at submit** — current status, not status at send:
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:971`, `:1269` and `:1131`.
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:972`, `:1270` and `:1132`.
 - **Eligibility requires the stored id to be the live one.** A merged-away id resolves to an
   eligible survivor, and answering under it would give one Asociado two ballots:
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:957`.
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:958`.
 - **While an Asociado vote is Open, nothing answer-derived leaves the service**: results, both
   exports, the analysis API and the drill-down all return participation only:
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1474`, `:1651` and `:1685`.
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1475`, `:1652` and `:1686`.
 - **After close, a ballot is shown without name, id, participation id or timestamp, and exported
   without name or user id**, including any legacy Identified row:
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1502` and `:1506`.
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1503` and `:1507`.
 - **An Asociado vote's definition and audience are frozen once it opens; a ranked question's
   counting settings freeze at the first saved answer of any survey**; the only post-close mutable
   input is ranked-option availability, which never rewrites a stored ballot:
   `src/Sections/Humans.Surveys/Services/SurveyService.cs:255` and `:426` for the vote,
-  `:290` over `:2787` for the ranked settings.
+  `:290` over `:2788` for the ranked settings.
 - **A closed Asociado vote does not reopen**:
   `src/Sections/Humans.Surveys/Services/SurveyService.cs:539`.
 - **The official ranked method is Ranked Pairs**; authored option order is the disclosed final
   tie-break; every other method is sensitivity analysis and never the headline:
   `src/Sections/Humans.Surveys/Domain/RankedQuestionSettings.cs:14` is what the builder writes,
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1574` is what the results page calls
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1575` is what the results page calls
   official.
 - **A person leaving takes their answers and their authorship with them, and neither takes the
   survey with it.** Erasure anonymises responses and blanks authorship;
   an account merge moves authorship to the survivor:
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1872`, `:1873` and `:1882`, over
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1873`, `:1874` and `:1883`, over
   `src/Sections/Humans.Surveys/Data/SurveyRepository.cs:488` and `:504`.
 - **Three slices are exported**: the person's own Identified responses, the surveys they authored,
-  and their invitation ledger (`src/Sections/Humans.Surveys/Services/SurveyService.cs:1841`, `:1842`
-  and `:1843`). The ledger is what a member who was only invited, or who answered under completion
+  and their invitation ledger (`src/Sections/Humans.Surveys/Services/SurveyService.cs:1842`, `:1843`
+  and `:1844`). The ledger is what a member who was only invited, or who answered under completion
   tracking, gets — their response carries no `UserId`, so without it they would have nothing
   exported at all. It carries invitation-side timestamps only, which say nothing about when an
   anonymous answer arrived. Erasure deletes those rows outright:

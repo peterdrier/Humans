@@ -17,7 +17,7 @@ public sealed class FinanceEmailsTests
     [HumansFact]
     public void SepaPayoutGenerated_StampsSystem_AndFormatsTheAmountForTheRecipient()
     {
-        var msg = Create().SepaPayoutGenerated("a@x.com", "Alice <A>", 1234.5m, "ES79****789", "de");
+        var msg = Create().SepaPayoutGenerated(Guid.NewGuid(), "a@x.com", "Alice <A>", 1234.5m, "ES79****789", "de");
 
         msg.RecipientEmail.Should().Be("a@x.com");
         msg.RecipientName.Should().Be("Alice <A>");
@@ -69,6 +69,7 @@ public sealed class FinanceEmailsTests
     private static object SampleArgument(ParameterInfo parameter)
     {
         var type = parameter.ParameterType;
+        if (type == typeof(Guid)) return Guid.NewGuid();
         if (type == typeof(string)) return string.Equals(parameter.Name, "culture", StringComparison.Ordinal) ? "en" : "sample";
         if (type == typeof(decimal)) return 1m;
         if (type == typeof(LocalDate)) return new LocalDate(2026, 10, 18);

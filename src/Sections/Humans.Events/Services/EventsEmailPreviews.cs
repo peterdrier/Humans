@@ -17,13 +17,13 @@ internal sealed class EventsEmailPreviews(EventsEmails emails) : IEmailPreviewCo
         return
         [
             new EmailPreviewSample("event-submitted", "Event Submitted",
-                emails.EventLifecycle(Sample(EventStatus.Pending, name, culture), email)),
+                emails.EventLifecycle(Guid.Empty, Sample(EventStatus.Pending, name, culture), email)),
             new EmailPreviewSample("event-approved", "Event Approved",
-                emails.EventLifecycle(Sample(EventStatus.Approved, name, culture), email)),
+                emails.EventLifecycle(Guid.Empty, Sample(EventStatus.Approved, name, culture), email)),
             new EmailPreviewSample("event-rejected", "Event Rejected",
-                emails.EventLifecycle(Sample(EventStatus.Rejected, name, culture), email)),
+                emails.EventLifecycle(Guid.Empty, Sample(EventStatus.Rejected, name, culture), email)),
             new EmailPreviewSample("event-resubmit-requested", "Event Changes Requested",
-                emails.EventLifecycle(Sample(EventStatus.ResubmitRequested, name, culture), email)),
+                emails.EventLifecycle(Guid.Empty, Sample(EventStatus.ResubmitRequested, name, culture), email)),
         ];
     }
 

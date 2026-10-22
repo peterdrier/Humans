@@ -46,7 +46,7 @@ internal sealed class GrantsEmails(
                 _ => throw new InvalidOperationException($"Notice does not support kind {request.Kind}")
             };
 
-            return new EmailMessage(request.RecipientEmail, request.RecipientName, subject, body,
+            return new EmailMessage(request.RecipientEmail, request.RecipientName, request.RecipientUserId, subject, body,
                 templateName, MessageCategory.System, Culture: CultureInfo.CurrentUICulture.Name);
         }
     }

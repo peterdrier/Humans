@@ -82,6 +82,7 @@ internal sealed class AccountDeletionService(
         if (notificationEmail is not null)
         {
             await emailService.SendAsync(emailMessages.AccountDeletionRequested(
+                userId,
                 notificationEmail,
                 user.BurnerName,
                 effectiveDeletionDate,

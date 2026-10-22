@@ -231,6 +231,7 @@ internal sealed class EventService(
             var language = submitter.PreferredLanguage;
 
             await emailService.SendAsync(emailMessages.EventLifecycle(
+                submitter.Id,
                 new EventLifecycleNotification(
                     NewStatus: newStatus,
                     UserName: submitter.BurnerName,

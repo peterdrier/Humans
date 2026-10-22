@@ -14,16 +14,17 @@ internal sealed class AuthEmails(
     IStringLocalizer<AuthResource> localizer,
     ILogger<AuthEmails> logger)
 {
-    public EmailMessage MagicLinkLogin(string toEmail, string displayName, string magicLinkUrl, string? culture = null)
+    public EmailMessage MagicLinkLogin(Guid userId, string toEmail, string displayName, string magicLinkUrl, string? culture = null)
         => Localized(culture, () => new EmailMessage(
-            toEmail, displayName,
+            toEmail, displayName, userId,
             L("Auth_Email_MagicLinkLogin_Subject"),
             Lf("Auth_Email_MagicLinkLogin_Body", Encode(displayName), magicLinkUrl),
             TimeSensitiveTemplates.MagicLinkLogin));
 
+    /// <summary>No account stands behind the address yet, so the message carries no user.</summary>
     public EmailMessage MagicLinkSignup(string toEmail, string magicLinkUrl, string? culture = null)
         => Localized(culture, () => new EmailMessage(
-            toEmail, toEmail,
+            toEmail, toEmail, UserId: null,
             L("Auth_Email_MagicLinkSignup_Subject"),
             Lf("Auth_Email_MagicLinkSignup_Body", magicLinkUrl),
             TimeSensitiveTemplates.MagicLinkSignup));

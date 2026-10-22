@@ -90,7 +90,7 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
   `ResolvedByUserId`, with an audit row naming the reporter as actor.
   (`Services/IssuesService.cs:436`)
 - A new issue and a reporter's comment notify the queue's role-holders; Admins are notified
-  only when no role owns the queue. (`Services/IssuesService.cs:964`)
+  only when no role owns the queue. (`Services/IssuesService.cs:965`)
 - `Section` may be changed only while the issue is non-terminal.
   (`Services/IssuesService.cs:616`)
 - An unrouted section value is stored as null (the Admin queue), never refused; only an

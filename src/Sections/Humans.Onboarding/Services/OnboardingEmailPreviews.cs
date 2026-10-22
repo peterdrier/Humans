@@ -14,7 +14,7 @@ internal sealed class OnboardingEmailPreviews(OnboardingEmails emails) : IEmailP
         return
         [
             new EmailPreviewSample("signup-rejected", "Signup Rejected",
-                emails.SignupRejected(email, name, SampleReason, culture)),
+                emails.SignupRejected(Guid.Empty, email, name, SampleReason, culture)),
         ];
     }
 }

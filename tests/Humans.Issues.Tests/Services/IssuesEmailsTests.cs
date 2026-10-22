@@ -16,7 +16,7 @@ public sealed class IssuesEmailsTests
     [HumansFact]
     public void IssueComment_StampsSystem()
     {
-        var msg = Create().IssueComment("a@x.com", "Alice", "Title", "Body", "/Issues/12", "en");
+        var msg = Create().IssueComment(Guid.NewGuid(), "a@x.com", "Alice", "Title", "Body", "/Issues/12", "en");
 
         msg.RecipientEmail.Should().Be("a@x.com");
         msg.RecipientName.Should().Be("Alice");
@@ -29,6 +29,7 @@ public sealed class IssuesEmailsTests
     public void IssueComment_renders_sanitized_markdown_with_https_images()
     {
         var msg = Create().IssueComment(
+            Guid.NewGuid(),
             "a@x.com",
             "Daniel <Admin>",
             "Lights & sound",
@@ -47,7 +48,7 @@ public sealed class IssuesEmailsTests
     [HumansFact]
     public void IssueComment_keeps_html_encoding_out_of_the_plain_text_subject()
     {
-        var msg = Create().IssueComment("a@x.com", "Alice", "Lights & sound", "Body", "/Issues/12", "en");
+        var msg = Create().IssueComment(Guid.NewGuid(), "a@x.com", "Alice", "Lights & sound", "Body", "/Issues/12", "en");
 
         msg.Subject.Should().Be("New comment on Lights & sound");
         msg.HtmlBody.Should().Contain("Lights &amp; sound");
@@ -56,8 +57,8 @@ public sealed class IssuesEmailsTests
     [HumansFact]
     public void IssueComment_MakesARelativeIssueLinkAbsoluteAndLeavesAnAbsoluteOneAlone()
     {
-        var relative = Create().IssueComment("a@x.com", "Alice", "Title", "Body", "/Issues/12", "en");
-        var absolute = Create().IssueComment("a@x.com", "Alice", "Title", "Body", "https://elsewhere.example/Issues/12", "en");
+        var relative = Create().IssueComment(Guid.NewGuid(), "a@x.com", "Alice", "Title", "Body", "/Issues/12", "en");
+        var absolute = Create().IssueComment(Guid.NewGuid(), "a@x.com", "Alice", "Title", "Body", "https://elsewhere.example/Issues/12", "en");
 
         relative.HtmlBody.Should().Contain($"{TestIssuesEmails.BaseUrl}/Issues/12");
         absolute.HtmlBody.Should().Contain("https://elsewhere.example/Issues/12");
@@ -102,6 +103,7 @@ public sealed class IssuesEmailsTests
     private static object SampleArgument(ParameterInfo parameter)
     {
         var type = parameter.ParameterType;
+        if (type == typeof(Guid)) return Guid.NewGuid();
         if (type == typeof(string)) return string.Equals(parameter.Name, "preferredLanguage", StringComparison.Ordinal) ? "en" : "sample";
         throw new NotSupportedException(
             $"IssuesEmails.{parameter.Member.Name} takes a {type.Name}; teach this test how to sample one.");

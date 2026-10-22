@@ -10,7 +10,7 @@ internal sealed class EmailMessageFactory(
     IStringLocalizer<EmailResource> localizer,
     ILogger<EmailMessageFactory> logger) : IEmailMessageFactory
 {
-    public EmailMessage FacilitatedMessage(string recipientEmail, string recipientName, string senderName, string messageText, bool includeContactInfo, string? senderEmail, string? culture = null, string? replyTo = null)
+    public EmailMessage FacilitatedMessage(Guid? recipientUserId, string recipientEmail, string recipientName, string senderName, string messageText, bool includeContactInfo, string? senderEmail, string? culture = null, string? replyTo = null)
     {
         using (new CultureScope(culture, logger))
         {
@@ -21,7 +21,7 @@ internal sealed class EmailMessageFactory(
                 : $"<p><em>{Encode(L("Email_FacilitatedMessage_NoContactInfo"))}</em></p>";
 
             return new EmailMessage(
-                recipientEmail, recipientName,
+                recipientEmail, recipientName, recipientUserId,
                 Lf("Email_FacilitatedMessage_Subject", senderName),
                 Lf("Email_FacilitatedMessage_Body", Encode(recipientName), Encode(senderName), sanitizedMessage, contactInfoHtml),
                 "facilitated_message", MessageCategory.FacilitatedMessages,
