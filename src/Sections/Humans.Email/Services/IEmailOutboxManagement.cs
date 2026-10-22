@@ -1,5 +1,4 @@
 using Humans.Base.Interfaces;
-using Humans.Email.Contracts;
 using NodaTime;
 
 namespace Humans.Email.Services;

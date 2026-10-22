@@ -6,7 +6,6 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Base.Enums;
-using Humans.Email.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Domain;
 using Humans.Email.Services;
@@ -16,10 +15,8 @@ using Humans.Settings.Contracts;
 namespace Humans.Email.Tests.Services;
 
 /// <summary>
-/// The retention rule itself. It moved out of <c>CleanupEmailOutboxJob</c> and behind
-/// <see cref="IEmailOutboxRetention"/> at the section's G5 move —
-/// what is left of the job is a try/catch and a metric, which is why there is no job
-/// test any more.
+/// The retention rule behind <see cref="IEmailOutboxRetention"/>; <c>CleanupEmailOutboxJob</c>
+/// is a try/catch and a metric, so it has no test of its own.
 /// </summary>
 public class EmailOutboxRetentionTests : IDisposable
 {

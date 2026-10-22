@@ -1,4 +1,3 @@
-using Humans.Email.Contracts;
 using Humans.Email.Services;
 using NodaTime;
 

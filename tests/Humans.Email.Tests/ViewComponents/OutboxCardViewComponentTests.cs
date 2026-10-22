@@ -3,7 +3,7 @@ using AwesomeAssertions;
 using Humans.Base.Authorization;
 using Humans.Base.Enums;
 using Humans.Base.Interfaces;
-using Humans.Email.Contracts;
+using Humans.Email.Services;
 using Humans.Email.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;

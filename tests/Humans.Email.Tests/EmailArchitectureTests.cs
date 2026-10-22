@@ -17,11 +17,9 @@ namespace Humans.Email.Tests;
 /// in-memory entity dict. Admin dashboard reads are infrequent and small.
 /// </para>
 /// <para>
-/// Since the section's G5 move the SMTP transport and the outbox drain are both
-/// section-internal. <c>ProcessEmailOutboxJob</c> / <c>CleanupEmailOutboxJob</c> — the
-/// scheduler shims over <c>IEmailOutboxProcessor</c> / <c>IEmailOutboxRetention</c> — and
-/// <c>HangfireImmediateOutboxProcessor</c> joined them at G5 lane 5b-1, under
-/// <c>Contracts/</c> because Shell names each concrete type at registration.
+/// The SMTP transport, the outbox drain and its two scheduler shims are section-internal.
+/// <c>HangfireImmediateOutboxProcessor</c> sits under <c>Contracts/</c> because Shell names it
+/// at registration.
 /// </para>
 /// </summary>
 public class EmailArchitectureTests

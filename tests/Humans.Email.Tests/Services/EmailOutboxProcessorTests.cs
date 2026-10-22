@@ -10,7 +10,6 @@ using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Humans.Campaigns.Contracts;
 using Humans.Base.Enums;
-using Humans.Email.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Domain;
 using Humans.Email.Services;
@@ -24,9 +23,8 @@ using Xunit;
 namespace Humans.Email.Tests.Services;
 
 /// <summary>
-/// The outbox drain. It moved out of <c>ProcessEmailOutboxJob</c> and behind
-/// <see cref="IEmailOutboxProcessor"/> at the section's G5 move —
-/// what is left of the job is one call plus a metric.
+/// The outbox drain behind <see cref="IEmailOutboxProcessor"/>; <c>ProcessEmailOutboxJob</c>
+/// is one call plus a metric.
 /// </summary>
 public class EmailOutboxProcessorTests : IDisposable
 {
