@@ -30,7 +30,7 @@ internal sealed class CashFlowService(IBudgetService budgetService, ITicketServi
     /// </summary>
     internal async Task<decimal> GetGrossTicketRevenueAsync(BudgetYearDetail year, CancellationToken ct = default) =>
         (await ticketService.GetTicketOrdersAsync(ct))
-            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && IsYearTicketOrder(year, o))
+            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && o.IsForEvent(year.VendorEventId))
             .Sum(o => o.TotalAmount);
 
     /// <summary>Aggregates by period; an unknown period falls back to monthly.</summary>
@@ -148,11 +148,6 @@ internal sealed class CashFlowService(IBudgetService budgetService, ITicketServi
         };
         return quarterEnd.PlusDays(45);
     }
-
-    private static bool IsYearTicketOrder(BudgetYearDetail year, TicketOrderInfo order) =>
-        year.VendorEventId is { } eventId
-            ? string.Equals(order.VendorEventId, eventId, StringComparison.Ordinal)
-            : order.IsCurrentEvent;
 
     private static List<CashFlowCategoryRow> BuildCategoryRows(List<CashFlowEntry> items)
     {

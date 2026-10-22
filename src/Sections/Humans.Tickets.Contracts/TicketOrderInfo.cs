@@ -48,4 +48,13 @@ public sealed record TicketOrderInfo(
     decimal? StripeFee = null,
     decimal? ApplicationFee = null,
     decimal? FeeTax = null,
-    decimal? WithheldTax = null);
+    decimal? WithheldTax = null)
+{
+    /// <summary>
+    /// Matches a configured vendor event exactly, or the current event when no event is configured.
+    /// </summary>
+    public bool IsForEvent(string? vendorEventId) =>
+        vendorEventId is not null
+            ? string.Equals(VendorEventId, vendorEventId, StringComparison.Ordinal)
+            : IsCurrentEvent;
+}

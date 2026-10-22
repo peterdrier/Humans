@@ -170,10 +170,6 @@ inbox:
     what: "VAT math lives twice: Finance's CashFlowService (VatPortion, VatSettlementDate — the Spanish quarter-end + 45 days rule) copies BudgetService.ComputeVatPortion / ComputeVatSettlementDate, which Budget still needs for ComputeBudgetSummary (the /Finance and /Budget/Summary VAT totals) and VatProjection.ForLineItems (category VAT projections). Budget cannot call Finance (Finance -> Budget), so the copy stays until those VAT views move into Finance too (peterdrier/Humans#2105 direction: budget math belongs in Finance)."
     review: panel
   - added: 2026-10-21
-    id: CENTRAL-100
-    what: "Ticket-event rule lives twice: Finance's CashFlowService.IsYearTicketOrder (configured VendorEventId, else current event) copies TicketingBudgetService.IsYearTicketOrder, which Budget's ticketing actuals sync (SyncActualsAsync) still needs. The copy stays until the actuals sync moves into Finance (peterdrier/Humans#2105) or the rule gets one owner."
-    review: panel
-  - added: 2026-10-21
     id: CENTRAL-98
     what: "ITeamWrite.InvalidateActiveTeamsCache (Teams.Contracts) is the last cross-section cache flush: Users' account merge (AccountMergeService) calls it after its tombstone because CachingTeamService's TeamInfo stitches each member's UserInfo, which no Teams write sees. Fix: Teams reads member display data from IUserService at read time so the flush and the write method go away. Left by the HUM0028 burn-down (peterdrier/Humans#2095); Peter deciding the shape."
     review: panel
