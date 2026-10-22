@@ -189,15 +189,22 @@ internal sealed class SurveyAdminController(
         return View("Builder", vm);
     }
 
+    private async Task<(IActionResult? Error, SurveyDetail? Detail)> RequirePreviewAsync(Guid id, CancellationToken ct)
+    {
+        var detail = await surveyService.GetForEditAsync(id, ct);
+        if (detail is null) return (NotFound(), null);
+        var auth = await authorizationService.AuthorizeAsync(
+            User, detail, new SurveyOperationRequirement(SurveyOperation.Preview));
+        return auth.Succeeded ? (null, detail) : (Forbid(), null);
+    }
+
     [HttpGet("Preview/{id:guid}")]
     public async Task<IActionResult> Preview(Guid id, string? culture, CancellationToken ct)
     {
-        var detail = await surveyService.GetForEditAsync(id, ct);
-        if (detail is null) return NotFound();
-        var auth = await authorizationService.AuthorizeAsync(
-            User, detail, new SurveyOperationRequirement(SurveyOperation.Preview));
-        if (!auth.Succeeded) return Forbid();
+        var access = await RequirePreviewAsync(id, ct);
+        if (access.Error is not null) return access.Error;
 
+        var detail = access.Detail!;
         var editable = detail.Editable;
         var resolvedCulture = SurveyPageViewModelFactory.ResolveCulture(culture, editable.DefaultCulture);
         var vm = new SurveyIntroViewModel
@@ -217,12 +224,10 @@ internal sealed class SurveyAdminController(
     [HttpGet("Preview/{id:guid}/Page")]
     public async Task<IActionResult> PreviewPage(Guid id, string? culture, int? page, CancellationToken ct)
     {
-        var detail = await surveyService.GetForEditAsync(id, ct);
-        if (detail is null) return NotFound();
-        var auth = await authorizationService.AuthorizeAsync(
-            User, detail, new SurveyOperationRequirement(SurveyOperation.Preview));
-        if (!auth.Succeeded) return Forbid();
+        var access = await RequirePreviewAsync(id, ct);
+        if (access.Error is not null) return access.Error;
 
+        var detail = access.Detail!;
         var editable = detail.Editable;
         var pages = SurveyWizardFlow.OrderedPages(editable.Questions);
         if (pages.Count == 0)
@@ -249,12 +254,10 @@ internal sealed class SurveyAdminController(
     [HttpGet("Preview/{id:guid}/ThankYou")]
     public async Task<IActionResult> PreviewThankYou(Guid id, string? culture, CancellationToken ct)
     {
-        var detail = await surveyService.GetForEditAsync(id, ct);
-        if (detail is null) return NotFound();
-        var auth = await authorizationService.AuthorizeAsync(
-            User, detail, new SurveyOperationRequirement(SurveyOperation.Preview));
-        if (!auth.Succeeded) return Forbid();
+        var access = await RequirePreviewAsync(id, ct);
+        if (access.Error is not null) return access.Error;
 
+        var detail = access.Detail!;
         var editable = detail.Editable;
         var resolvedCulture = SurveyPageViewModelFactory.ResolveCulture(culture, editable.DefaultCulture);
         var thankYou = editable.ThankYou.Resolve(resolvedCulture, editable.DefaultCulture);
@@ -278,11 +281,8 @@ internal sealed class SurveyAdminController(
         var actorId = GetCurrentUserId();
         if (actorId is null) return Forbid();
 
-        var detail = await surveyService.GetForEditAsync(id, ct);
-        if (detail is null) return NotFound();
-        var auth = await authorizationService.AuthorizeAsync(
-            User, detail, new SurveyOperationRequirement(SurveyOperation.Preview));
-        if (!auth.Succeeded) return Forbid();
+        var access = await RequirePreviewAsync(id, ct);
+        if (access.Error is not null) return access.Error;
 
         try
         {
@@ -314,11 +314,8 @@ internal sealed class SurveyAdminController(
         var actorId = GetCurrentUserId();
         if (actorId is null) return Forbid();
 
-        var detail = await surveyService.GetForEditAsync(id, ct);
-        if (detail is null) return NotFound();
-        var auth = await authorizationService.AuthorizeAsync(
-            User, detail, new SurveyOperationRequirement(SurveyOperation.Preview));
-        if (!auth.Succeeded) return Forbid();
+        var access = await RequirePreviewAsync(id, ct);
+        if (access.Error is not null) return access.Error;
 
         try
         {
