@@ -238,6 +238,8 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 
 ## Invariants
 
+- Browse-page phase filters accept only defined Build/Event/Strike values, case-insensitively and without duplicates. Invalid values, including undefined numbers, are ignored; an empty multi-phase selection may use the valid single-phase fallback.
+
 - The shift-profile wizard serializes translated step labels, titles and subtitles as HTML-safe JSON so quotes, backslashes, line breaks and script delimiters cannot break navigation.
 
 - Section-owned resource keys use `Shifts_` in all six cultures, including dynamically selected wizard skill, time-preference and quirk labels; reflection-resolved `Enum_` keys retain their type-based names.
