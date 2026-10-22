@@ -24,7 +24,7 @@ internal sealed class PreapprovalsEmailPreviews(PreapprovalsEmails emails) : IEm
                 $"preapproval-{Kebab(kind)}",
                 $"Pre-approval — {kind}",
                 emails.Notice(new PreapprovalNoticeRequest(
-                    persona.Email, persona.Name, kind, "2026 Creativity", "Fire Lotus", 1500m,
+                    Guid.Empty, persona.Email, persona.Name, kind, "2026 Creativity", "Fire Lotus", 1500m,
                     new LocalDate(2026, 11, 30), "/Preapprovals",
                     Details.GetValueOrDefault(kind), persona.Culture)))),
         ];

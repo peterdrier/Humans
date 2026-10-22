@@ -16,7 +16,7 @@ public sealed class OnboardingEmailsTests
     [HumansFact]
     public void SignupRejected_StampsSystem()
     {
-        var msg = Create().SignupRejected("a@x.com", "Alice", "nope", "en");
+        var msg = Create().SignupRejected(Guid.NewGuid(), "a@x.com", "Alice", "nope", "en");
 
         msg.RecipientEmail.Should().Be("a@x.com");
         msg.RecipientName.Should().Be("Alice");
@@ -28,8 +28,8 @@ public sealed class OnboardingEmailsTests
     [HumansFact]
     public void SignupRejected_OmitsTheReasonLineWhenThereIsNoReason()
     {
-        var withReason = Create().SignupRejected("a@x.com", "Alice", "duplicate", "en");
-        var without = Create().SignupRejected("a@x.com", "Alice", null, "en");
+        var withReason = Create().SignupRejected(Guid.NewGuid(), "a@x.com", "Alice", "duplicate", "en");
+        var without = Create().SignupRejected(Guid.NewGuid(), "a@x.com", "Alice", null, "en");
 
         withReason.HtmlBody.Should().Contain("<strong>Reason:</strong> duplicate");
         without.HtmlBody.Should().NotContain("Reason:");
@@ -74,6 +74,7 @@ public sealed class OnboardingEmailsTests
     private static object SampleArgument(ParameterInfo parameter)
     {
         var type = parameter.ParameterType;
+        if (type == typeof(Guid)) return Guid.NewGuid();
         if (type == typeof(string)) return string.Equals(parameter.Name, "culture", StringComparison.Ordinal) ? "en" : "sample";
         throw new NotSupportedException(
             $"OnboardingEmails.{parameter.Member.Name} takes a {type.Name}; teach this test how to sample one.");

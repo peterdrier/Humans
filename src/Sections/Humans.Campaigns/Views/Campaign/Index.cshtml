@@ -20,22 +20,10 @@
         {
             Func<CampaignListSummary, IHtmlContent> titleCell =
                 @<text><a asp-action="Detail" asp-route-id="@item.Id">@item.Title</a></text>;
-            Func<CampaignListSummary, IHtmlContent> failedCell = @<text>
-                @if (item.FailedCount > 0)
-                {
-                    <span class="text-danger">@item.FailedCount</span>
-                }
-                else
-                {
-                    @item.FailedCount
-                }
-            </text>;
             var table = TableModel.For(Model.OrderByDescending(c => c.CreatedAt).ToList())
                 .Template("Title", titleCell)
                 .Column("Status", r => r.Status, c => c.EnumBadge())
                 .Column("Codes", r => $"{r.AssignedCodes} / {r.TotalCodes}")
-                .Column("Sent", r => r.SentCount)
-                .Template("Failed", failedCell)
                 .Column("Created", r => r.CreatedAt, c => c.Date())
                 .Build();
             <partial name="_Table" model="table" />

@@ -43,7 +43,7 @@ internal sealed partial class GrantService
                 return;
             }
             await email.SendAsync(emailFactory.Notice(new GrantNoticeRequest(
-                address, person?.BurnerName, kind, program.Name, program.Entitles, expiresOn, ProfileUrl,
+                person?.Id ?? grant.UserId, address, person?.BurnerName, kind, program.Name, program.Entitles, expiresOn, ProfileUrl,
                 grant.RevokeReason, culture)), ct);
         }, ct);
     }

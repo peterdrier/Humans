@@ -40,9 +40,9 @@ A "send wave" assigns ungranted codes to eligible humans and queues the email de
    - Humans already granted a code for this campaign
 4. Remaining eligible humans are matched to available codes (one each). (`CampaignCodes` is an always-on message category — there is no opt-out to exclude on; `CampaignService` does not call `ICommunicationPreferenceService`.)
 5. A `CampaignGrant` record is created per assignment.
-6. An `EmailOutboxMessage` is queued per grant, referencing `CampaignGrantId`.
+6. An `EmailOutboxMessage` is queued per grant, carrying the `CampaignId` for the Feedback-ID header.
 
-Commits are per-grant: if the enqueue throws for one human, only that grant flips to Failed and the wave keeps going, so Resend / Retry All Failed can pick it up later. The wave aborts up front if there are fewer available codes than eligible humans.
+Commits are per-grant: if the enqueue throws for one human, that failure is logged and the wave keeps going; an admin can Resend that grant. The wave aborts up front if there are fewer available codes than eligible humans.
 
 ## Admin UI
 
@@ -50,11 +50,11 @@ Route: `/Campaigns/Admin` — Admin role, except the detail page and API code ge
 
 Pages:
 - Campaign list with status and code/grant counts
-- Campaign detail: stats (total codes, assigned, sent, failed), grant table
+- Campaign detail: stats (total codes, available), redemption rate, grant table
 - Create / Edit campaign form (title, description, email subject, email body template, optional reply-to address). Server validation enforces trimmed text storage limits and Reply-To email syntax; invalid edits leave the campaign unchanged.
 - Import codes (CSV upload) or generate codes via the ticket vendor API
 - Activate / Send Wave / Complete actions
-- Per-grant Resend and campaign-wide Retry All Failed for failed email deliveries. A failed single-grant resend restores Failed status (including recipient lookup and message preparation failures) and propagates the error; it remains eligible for Retry All Failed.
+- Per-grant Resend. A resend that fails (recipient lookup, message preparation or enqueue) propagates the error to the admin. Grants track no email delivery status, so there is no Sent/Failed count and no bulk retry (nobodies-collective/Humans#1243).
 
 ## Unsubscribe
 
@@ -83,8 +83,9 @@ CampaignCode 1──1 CampaignGrant (once assigned)
 CampaignGrant n──1 User (bare FK, no nav)
 ```
 
-Email outbox rows reference the grant by bare FK inside the Email section; the
-grant carries only the denormalized `LatestEmailStatus`/`LatestEmailAt` pair.
+Email outbox rows carry the campaign id (for Feedback-ID) but not the grant. The
+grant's `LatestEmailStatus`/`LatestEmailAt` columns are unwritten since
+nobodies-collective/Humans#1243 and stay until their drop is approved.
 
 ## Ticket Vendor Integration
 

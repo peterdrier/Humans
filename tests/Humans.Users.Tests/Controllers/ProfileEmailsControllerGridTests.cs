@@ -549,7 +549,7 @@ public class ProfileEmailsControllerGridTests
         // come from the target user, not the admin.
         // The builder is sealed with no interface, so the sent message is the assertion surface.
         await _emailService.Received(1).SendAsync(
-            Arg.Is<EmailMessage>(m => m.TemplateName == TimeSensitiveTemplates.EmailVerification
+            Arg.Is<EmailMessage>(m => m.TemplateName == UsersEmails.EmailVerificationTemplate
                 && m.RecipientEmail == newEmail && m.RecipientName == "Target User"
                 && m.UserId == targetUserId
                 && m.HtmlBody.Contains(token, StringComparison.Ordinal)
@@ -587,7 +587,7 @@ public class ProfileEmailsControllerGridTests
         var result = await _controller.AddEmail(new EmailsViewModel { NewEmail = newEmail });
 
         await _emailService.Received(1).SendAsync(
-            Arg.Is<EmailMessage>(m => m.TemplateName == TimeSensitiveTemplates.EmailVerification
+            Arg.Is<EmailMessage>(m => m.TemplateName == UsersEmails.EmailVerificationTemplate
                 && m.RecipientEmail == newEmail
                 && m.UserId == _userId
                 && m.HtmlBody.Contains(token, StringComparison.Ordinal)

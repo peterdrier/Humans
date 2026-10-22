@@ -93,9 +93,8 @@ No repository. Polled gauge service: reads
 
 No repository. Pure builder — reads `AuthResource` (via
 `IStringLocalizer<AuthResource>`), writes nothing. Returns `EmailMessage` values for `MagicLinkService` to pass to
-`IEmailService.SendAsync`. Both templates keep their
-`TimeSensitiveTemplates` names so the outbox still drains a sign-in link
-immediately. No DB access, no cache.
+`IEmailService.SendAsync`. Both set `EmailMessage.Urgent` so the outbox
+drains a sign-in link immediately. No DB access, no cache.
 
 ### AuthEmailPreviews (Scoped)
 

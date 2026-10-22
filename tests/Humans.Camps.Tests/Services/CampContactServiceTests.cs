@@ -66,6 +66,7 @@ public class CampContactServiceTests : IDisposable
         result.RateLimited.Should().BeFalse();
 
         _emailMessages.Received(1).FacilitatedMessage(
+            null,
             "camp@example.com",
             "Cool Camp",
             "Alice",
@@ -190,6 +191,7 @@ public class CampContactServiceTests : IDisposable
 
         // Email only sent once
         _emailMessages.Received(1).FacilitatedMessage(
+            null,
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<string>());
     }
@@ -249,6 +251,7 @@ public class CampContactServiceTests : IDisposable
             "/Barrios/camp");
 
         _emailMessages.Received(1).FacilitatedMessage(
+            null,
             "camp@example.com",
             "Camp",
             "Alice",

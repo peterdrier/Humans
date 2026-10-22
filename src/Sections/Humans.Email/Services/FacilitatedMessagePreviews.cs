@@ -15,9 +15,9 @@ internal sealed class FacilitatedMessagePreviews(IEmailMessageFactory messages) 
         return
         [
             new EmailPreviewSample("facilitated-message", "Facilitated Message (with contact info)",
-                messages.FacilitatedMessage(email, name, "Alex Firestone", SampleText, true, "alex@example.com", culture)),
+                messages.FacilitatedMessage(Guid.Empty, email, name, "Alex Firestone", SampleText, true, "alex@example.com", culture)),
             new EmailPreviewSample("facilitated-message-anon", "Facilitated Message (without contact info)",
-                messages.FacilitatedMessage(email, name, "Alex Firestone", SampleText, false, null, culture)),
+                messages.FacilitatedMessage(Guid.Empty, email, name, "Alex Firestone", SampleText, false, null, culture)),
         ];
     }
 }

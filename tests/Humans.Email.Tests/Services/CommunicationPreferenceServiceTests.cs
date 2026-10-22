@@ -5,7 +5,6 @@ using Humans.Email.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Domain;
 using Humans.Email.Services;
-using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
@@ -24,7 +23,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 1, 12, 0));
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
-    private readonly ITicketService _tickets = Substitute.For<ITicketService>();
+    private readonly ICommunicationPreferenceLock _lock = Substitute.For<ICommunicationPreferenceLock>();
     private readonly Dictionary<Guid, List<LegacyCommunicationPreferenceInfo>> _legacy = [];
     private readonly Dictionary<Guid, Guid> _mergedTo = [];
     private readonly IDataProtectionProvider _dataProtection = DataProtectionProvider.Create("TestApp");
@@ -49,13 +48,16 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
         _users.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyCollection<UserInfo>>([.. _legacy.Keys.Select(Info)]));
 
+        _lock.GetLockedCategoriesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<MessageCategory>>([]));
+
         var tokenProvider = new UnsubscribeTokenProvider(
             _dataProtection, Options.Create(new EmailSettings { BaseUrl = "https://test.example.com" }),
             NullLogger<UnsubscribeTokenProvider>.Instance);
 
         _service = new CommunicationPreferenceService(
             new CommunicationPreferenceRepository(new TestDbContextFactory<EmailDbContext>(options)),
-            _users, tokenProvider, _tickets, _clock, _audit, NullLogger<CommunicationPreferenceService>.Instance);
+            _users, tokenProvider, [_lock], _clock, _audit, NullLogger<CommunicationPreferenceService>.Instance);
     }
 
     public void Dispose() => _db.Dispose();
@@ -183,32 +185,33 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task MemberToggle_TicketingIsRefusedWhileTheMemberHoldsATicket(bool holdsTicket)
+    public async Task MemberToggle_ALockedCategoryIsRefused(bool locked)
     {
         var userId = Guid.NewGuid();
-        _tickets.GetUserTicketHoldingsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new UserTicketHoldings(holdsTicket ? 1 : 0, []));
+        LockTicketing(userId, locked);
 
         var applied = await _service.UpdatePreferenceAsync(userId, MessageCategory.Ticketing,
             optedOut: true, inboxEnabled: false, source: "Guest", actorUserId: userId, cancellationToken: Ct);
 
-        applied.Should().Be(!holdsTicket);
-        (await RowsAsync(userId)).Should().HaveCount(holdsTicket ? 0 : 1);
-        _audit.ReceivedCalls().Should().HaveCount(holdsTicket ? 0 : 1);
+        applied.Should().Be(!locked);
+        (await RowsAsync(userId)).Should().HaveCount(locked ? 0 : 1);
+        _audit.ReceivedCalls().Should().HaveCount(locked ? 0 : 1);
     }
 
     [HumansFact]
-    public async Task MemberToggle_OtherCategoriesIgnoreTheTicketLock()
+    public async Task MemberToggle_OtherCategoriesIgnoreTheLock()
     {
         var userId = Guid.NewGuid();
-        _tickets.GetUserTicketHoldingsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new UserTicketHoldings(1, []));
+        LockTicketing(userId, locked: true);
 
         (await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing,
             optedOut: true, inboxEnabled: false, source: "Guest", actorUserId: userId, cancellationToken: Ct))
             .Should().BeTrue();
-        await _tickets.DidNotReceive().GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
+
+    private void LockTicketing(Guid userId, bool locked) =>
+        _lock.GetLockedCategoriesAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<MessageCategory>>(locked ? [MessageCategory.Ticketing] : []));
 
     [HumansFact]
     public async Task AcceptsFacilitatedMessages_DefaultsOn_AndFollowsAnOptOut()

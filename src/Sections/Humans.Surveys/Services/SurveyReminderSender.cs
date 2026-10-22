@@ -86,7 +86,7 @@ internal sealed class SurveyReminderSender(
                 var name = user?.BurnerName ?? string.Empty;
                 var token = tokenProvider.Create(inv.Id);
                 var title = meta.Title.Resolve(culture, meta.DefaultCulture);
-                var msg = emailMessages.SurveyReminder(email, name, title, token, culture);
+                var msg = emailMessages.SurveyReminder(inv.UserId, email, name, title, token, culture);
 
                 await emailService.SendAsync(msg, ct);
                 await repo.SetReminderSentAsync(inv.Id, now, ct);

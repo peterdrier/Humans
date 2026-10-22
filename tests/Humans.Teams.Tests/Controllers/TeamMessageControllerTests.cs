@@ -65,10 +65,10 @@ public sealed class TeamMessageControllerTests
         _teamOptions.GetOptionsAsync(_viewerId, Arg.Any<CancellationToken>())
             .Returns([new TeamMessageOption(_teamId, "Infrastructure", "infra@nobodies.team")]);
         _emailMessages.FacilitatedMessage(
-                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid?>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>())
-            .Returns(ci => new EmailMessage("target@example.com", "Target", "Subject", "Body", "facilitated_message",
-                ReplyTo: ci.ArgAt<string?>(7)));
+            .Returns(ci => new EmailMessage("target@example.com", "Target", ci.ArgAt<Guid?>(0), "Subject", "Body",
+                "facilitated_message", ReplyTo: ci.ArgAt<string?>(8)));
     }
 
     private static UserInfo Info(Guid id, string name, string email, string language = "en") =>
@@ -193,10 +193,10 @@ public sealed class TeamMessageControllerTests
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("ViewProfile");
         _emailMessages.Received(1).FacilitatedMessage(
-            "target@example.com", "Target", "Coordinator", "Hello", true, "coordinator@example.com",
+            _targetId, "target@example.com", "Target", "Coordinator", "Hello", true, "coordinator@example.com",
             expectedCulture, "infra@nobodies.team");
         await _emailService.Received(1).SendAsync(
-            Arg.Is<EmailMessage>(m => m.ReplyTo == "infra@nobodies.team"), Arg.Any<CancellationToken>());
+            Arg.Is<EmailMessage>(m => m.ReplyTo == "infra@nobodies.team" && m.UserId == _targetId), Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
             AuditAction.FacilitatedMessageSent, "User", _targetId,
             Arg.Is<string>(d => d.Contains("from team Infrastructure", StringComparison.Ordinal)

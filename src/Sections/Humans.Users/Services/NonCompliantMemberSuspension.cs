@@ -75,6 +75,7 @@ internal sealed class NonCompliantMemberSuspension(
                 try
                 {
                     await emailService.SendAsync(emailMessages.AccessSuspended(
+                        user.Id,
                         effectiveEmail,
                         user.BurnerName,
                         NoticeResources.GetString("Users_Notification_ConsentSuspensionReason", culture)!,

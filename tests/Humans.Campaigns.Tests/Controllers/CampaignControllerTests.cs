@@ -50,7 +50,6 @@ public class CampaignControllerTests
         AssertActionPolicy(nameof(CampaignController.SendWave), PolicyNames.AdminOnly, typeof(HttpGetAttribute));
         AssertActionPolicy(nameof(CampaignController.SendWave), PolicyNames.AdminOnly, typeof(HttpPostAttribute));
         AssertActionPolicy(nameof(CampaignController.Resend), PolicyNames.AdminOnly, typeof(HttpPostAttribute));
-        AssertActionPolicy(nameof(CampaignController.RetryAllFailed), PolicyNames.AdminOnly, typeof(HttpPostAttribute));
     }
 
     [HumansFact]
@@ -64,7 +63,6 @@ public class CampaignControllerTests
         AssertActionHasValidateAntiForgery(nameof(CampaignController.Complete), typeof(HttpPostAttribute));
         AssertActionHasValidateAntiForgery(nameof(CampaignController.SendWave), typeof(HttpPostAttribute));
         AssertActionHasValidateAntiForgery(nameof(CampaignController.Resend), typeof(HttpPostAttribute));
-        AssertActionHasValidateAntiForgery(nameof(CampaignController.RetryAllFailed), typeof(HttpPostAttribute));
     }
 
     [HumansFact]

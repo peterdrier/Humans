@@ -87,6 +87,7 @@ internal sealed class ApplicationDecisionService(
             application,
             "approval",
             (recipientEmail, user, language) => emailMessages.ApplicationApproved(
+                user.Id,
                 recipientEmail,
                 user.BurnerName,
                 application.MembershipTier,
@@ -135,6 +136,7 @@ internal sealed class ApplicationDecisionService(
             application,
             "rejection",
             (recipientEmail, user, language) => emailMessages.ApplicationRejected(
+                user.Id,
                 recipientEmail,
                 user.BurnerName,
                 application.MembershipTier,

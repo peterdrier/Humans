@@ -102,6 +102,7 @@ internal sealed class FacilitatedMessageController(
         }
 
         var message = emailMessages.FacilitatedMessage(
+            targetUser.Id,
             request.RecipientEmail,
             request.RecipientDisplayName,
             request.SenderDisplayName,

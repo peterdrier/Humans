@@ -118,6 +118,7 @@ internal sealed class TeamMessageController(
         }
 
         await emailService.SendAsync(emailMessages.FacilitatedMessage(
+            targetUser.Id,
             targetUser.Email,
             targetUser.BurnerName,
             sender.BurnerName,

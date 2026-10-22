@@ -15,6 +15,7 @@ public sealed class EmailTests
     public void Issued_RendersInRecipientCulture_WithExpiryAndLink(string culture, string subjectStart)
     {
         var message = TestGrantsEmails.CreateReal().Notice(new GrantNoticeRequest(
+            Guid.NewGuid(),
             "a@example.org", "Ana", GrantNoticeKind.Issued, "Build crew 2027", "a <cheap> ticket",
             new LocalDate(2027, 5, 1), GrantService.ProfileUrl, Culture: culture));
 
@@ -29,6 +30,7 @@ public sealed class EmailTests
     public void Revoked_CarriesTheReason()
     {
         var message = TestGrantsEmails.CreateReal().Notice(new GrantNoticeRequest(
+            Guid.NewGuid(),
             "a@example.org", null, GrantNoticeKind.Revoked, "Build crew 2027", "a ticket", null,
             GrantService.ProfileUrl, "You left the crew.", "en"));
 

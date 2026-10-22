@@ -42,9 +42,7 @@ Repository: `IEmailOutboxRepository`.
 Drains the outbox queue (the G5 playbook, step 6b): claims a processing batch,
 sends via the section-internal `IEmailTransport`, and records each outcome.
 Checks the pause flag through `IEmailOutboxManagement.IsEmailPausedAsync` before
-each run. Cross-section calls via `ICampaignWrite` (mirrors campaign-grant
-email status after send) and `IHumansMetrics` /
-`IMeters`, plus `IClock`. No `IMemoryCache`.
+each run. Cross-section calls via `IHumansMetrics` / `IMeters`, plus `IClock`. No `IMemoryCache`.
 
 ### OutboxEmailService (Scoped)
 
@@ -55,9 +53,10 @@ Repository: `IEmailOutboxRepository`.
 | EmailOutboxMessages | R/W |
 
 Implements `IEmailService` — the single `SendAsync(EmailMessage)` send
-path (the interface collapsed to one method). Cross-section calls via
-`IUserEmailService`, `IImmediateOutboxProcessor`, `IHumansMetrics`,
-plus `IClock`; `IEmailBodyComposer` and `ICommunicationPreferenceManagement`
+path (the interface collapsed to one method). The row's `UserId` is the one the
+sender named; no address lookup. Cross-section calls via
+`IHumansMetrics`, plus `IClock`; `IImmediateOutboxProcessor`, `IEmailBodyComposer` and
+`ICommunicationPreferenceManagement`
 (opt-out checks, `List-Unsubscribe` headers) are section-internal. No
 `IMemoryCache`.
 
@@ -72,7 +71,7 @@ Repository: `ICommunicationPreferenceRepository` (Singleton, `IDbContextFactory<
 
 Implements `ICommunicationPreferenceService`, `ICommunicationPreferenceWrite`,
 the internal `ICommunicationPreferenceManagement`, `IUserDataContributor` and
-`IUserMerge`. Cross-section calls via `IUserService`, `ITicketService` (ticket-holding lookup that locks
+`IUserMerge`. Cross-section calls via `IUserService`, every registered `ICommunicationPreferenceLock` (Tickets locks
 the Ticketing preference for ticket holders), `IAuditLogService`;
 `IUnsubscribeTokenProvider` is section-internal. No cache.
 
@@ -96,7 +95,7 @@ cache.
 ### FacilitatedMessagePreviews (Scoped)
 
 No repository. Read-only gallery contributor (`IEmailPreviewContributor`,
-`Section.cs:52`) — builds the two facilitated-message samples via
+`Section.cs:41`) — builds the two facilitated-message samples via
 `IEmailMessageFactory` for `/Email/EmailPreview`. No DB access, no cache.
 
 ### EmailPreviewService (Singleton)

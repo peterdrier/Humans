@@ -22,12 +22,12 @@ internal sealed class ShiftsEmailPreviews(ShiftsEmails emails) : IEmailPreviewCo
         [
             new EmailPreviewSample("coordinator-rota-message", "Coordinator Rota Message",
                 emails.CoordinatorRotaMessage(new CoordinatorRotaMessageRequest(
-                    email, name, SampleSender, SampleSenderEmail,
+                    Guid.Empty, email, name, SampleSender, SampleSenderEmail,
                     "Saturday Bar", SampleMessage,
                     ["Saturday 10:00-14:00", "Saturday 18:00-22:00"], Culture: culture))),
             new EmailPreviewSample("coordinator-team-rotas-message", "Coordinator Team Rotas Message",
                 emails.CoordinatorTeamRotasMessage(new CoordinatorTeamRotasMessageRequest(
-                    email, name, SampleSender, SampleSenderEmail,
+                    Guid.Empty, email, name, SampleSender, SampleSenderEmail,
                     "Bar Team", SampleMessage,
                     [
                         new CoordinatorRotaShiftGroup("Saturday Bar", ["Saturday 10:00-14:00"]),

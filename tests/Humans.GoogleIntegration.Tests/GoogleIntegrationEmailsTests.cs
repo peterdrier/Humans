@@ -17,12 +17,12 @@ public sealed class GoogleIntegrationEmailsTests
     [HumansFact]
     public void WorkspaceCredentials_IsAlwaysSend_AndTimeSensitive()
     {
-        var msg = Create().WorkspaceCredentials("recovery@x.com", "Alice", "alice@nobodies.team", "hunter2", "en");
+        var msg = Create().WorkspaceCredentials(Guid.NewGuid(), "recovery@x.com", "Alice", "alice@nobodies.team", "hunter2", "en");
 
         msg.RecipientEmail.Should().Be("recovery@x.com");
         msg.RecipientName.Should().Be("Alice");
-        msg.TemplateName.Should().Be(TimeSensitiveTemplates.WorkspaceCredentials);
-        TimeSensitiveTemplates.Names.Should().Contain(msg.TemplateName);
+        msg.TemplateName.Should().Be(GoogleIntegrationEmails.WorkspaceCredentialsTemplate);
+        msg.Urgent.Should().BeTrue();
         msg.Category.Should().BeNull();
         msg.HtmlBody.Should().Contain("alice@nobodies.team").And.Contain("hunter2");
     }
@@ -32,15 +32,15 @@ public sealed class GoogleIntegrationEmailsTests
     {
         var emails = Create();
 
-        var group = emails.GoogleGroupRemovalLossOfAccess("a@x.com", "Alice", "Art", "art@nobodies.team", "en");
+        var group = emails.GoogleGroupRemovalLossOfAccess(Guid.NewGuid(), "a@x.com", "Alice", "Art", "art@nobodies.team", "en");
         group.TemplateName.Should().Be("google_group_removal_loss_of_access");
         group.Category.Should().Be(MessageCategory.System);
 
-        var drive = emails.GoogleDriveRemovalLossOfAccess("a@x.com", "Alice", "Shared Drive", "en");
+        var drive = emails.GoogleDriveRemovalLossOfAccess(Guid.NewGuid(), "a@x.com", "Alice", "Shared Drive", "en");
         drive.TemplateName.Should().Be("google_drive_removal_loss_of_access");
         drive.Category.Should().Be(MessageCategory.System);
 
-        var cleanup = emails.GoogleAccessRemovalSecondaryCleanup("old@x.com", "Alice", "new@x.com", "en");
+        var cleanup = emails.GoogleAccessRemovalSecondaryCleanup(Guid.NewGuid(), "old@x.com", "Alice", "new@x.com", "en");
         cleanup.TemplateName.Should().Be("google_access_removal_secondary_cleanup");
         cleanup.Category.Should().Be(MessageCategory.System);
         cleanup.RecipientEmail.Should().Be("old@x.com");
@@ -49,7 +49,7 @@ public sealed class GoogleIntegrationEmailsTests
     [HumansFact]
     public void RendersInTheRecipientsCulture_AndEncodesTheResourceName()
     {
-        var msg = Create().GoogleDriveRemovalLossOfAccess("a@x.com", "Alice", "Lights & sound", "es");
+        var msg = Create().GoogleDriveRemovalLossOfAccess(Guid.NewGuid(), "a@x.com", "Alice", "Lights & sound", "es");
 
         msg.Subject.Should().EndWith("#es");
         msg.HtmlBody.Should().Contain("Lights &amp; sound");
@@ -68,9 +68,9 @@ public sealed class GoogleIntegrationEmailsTests
             ["GoogleIntegration_Email_GoogleAccessRemoval_SecondaryCleanup_Body"] = "<p>{0}</p><p>{1}</p><p>{2}</p>"
         });
 
-        var group = emails.GoogleGroupRemovalLossOfAccess("a@x.com", "Alice", "Art", "art & design@nobodies.team", "en");
-        var drive = emails.GoogleDriveRemovalLossOfAccess("a@x.com", "Alice", "Lights & sound", "en");
-        var cleanup = emails.GoogleAccessRemovalSecondaryCleanup("old & new@x.com", "Alice", "new@x.com", "en");
+        var group = emails.GoogleGroupRemovalLossOfAccess(Guid.NewGuid(), "a@x.com", "Alice", "Art", "art & design@nobodies.team", "en");
+        var drive = emails.GoogleDriveRemovalLossOfAccess(Guid.NewGuid(), "a@x.com", "Alice", "Lights & sound", "en");
+        var cleanup = emails.GoogleAccessRemovalSecondaryCleanup(Guid.NewGuid(), "old & new@x.com", "Alice", "new@x.com", "en");
 
         group.Subject.Should().Be("Removed from art & design@nobodies.team");
         group.HtmlBody.Should().Contain("art &amp; design@nobodies.team");
@@ -119,6 +119,7 @@ public sealed class GoogleIntegrationEmailsTests
     private static object SampleArgument(ParameterInfo parameter)
     {
         var type = parameter.ParameterType;
+        if (type == typeof(Guid)) return Guid.NewGuid();
         if (type == typeof(string)) return string.Equals(parameter.Name, "culture", StringComparison.Ordinal) ? "en" : "sample";
         throw new NotSupportedException(
             $"GoogleIntegrationEmails.{parameter.Member.Name} takes a {type.Name}; teach this test how to sample one.");

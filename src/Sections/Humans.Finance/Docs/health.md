@@ -159,12 +159,12 @@ What the shapes say about the inside:
   (`src/Sections/Humans.Finance/Services/SepaPaymentFileBuilder.cs:107`,
   `src/Sections/Humans.Finance/Services/Service.cs:1180`).
 - A transfer books at most once: the row's `BookedAt` refuses a second booking, and every booking on
-  the server runs one at a time (`src/Sections/Humans.Finance/Services/Service.cs:1695`,
-  `src/Sections/Humans.Finance/Services/Service.cs:1550`).
+  the server runs one at a time (`src/Sections/Humans.Finance/Services/Service.cs:1697`,
+  `src/Sections/Humans.Finance/Services/Service.cs:1552`).
 - Booking re-pairs the bank line itself and refuses a binding that no longer names the transfer's
-  account or contact (`src/Sections/Humans.Finance/Services/Service.cs:1708`,
-  `src/Sections/Humans.Finance/Services/Service.cs:1719`,
-  `src/Sections/Humans.Finance/Services/Service.cs:1753`).
+  account or contact (`src/Sections/Humans.Finance/Services/Service.cs:1710`,
+  `src/Sections/Humans.Finance/Services/Service.cs:1721`,
+  `src/Sections/Humans.Finance/Services/Service.cs:1755`).
 - Booking writes two kinds of entry into the books and nothing else: a payment against an approved
   purchase document, and one journal entry for the remainder against the configured treasury ledger
   account (`src/Sections/Humans.Finance/Services/Service.cs:1849`,
@@ -172,7 +172,7 @@ What the shapes say about the inside:
 - A booking is saved before the bank line is reconciled
   (`src/Sections/Humans.Finance/Services/Service.cs:1904`).
 - The sweep books a transfer only against a line that names exactly one transfer; a whole-file line
-  is booked only by a person (`src/Sections/Humans.Finance/Services/Service.cs:1524`).
+  is booked only by a person (`src/Sections/Humans.Finance/Services/Service.cs:1526`).
 - A raw IBAN lives in the bank file, the transfer row and the contact create that hands it to Holded;
   audit entries and cross-section rows carry it masked
   (`src/Sections/Humans.Finance/Services/Service.cs:1139`,

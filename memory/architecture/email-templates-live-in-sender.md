@@ -10,7 +10,7 @@ returning a ready `EmailMessage`, its `<Section>_Email_*` keys in that section's
 six cultures, its tests in `tests/Humans.<Section>.Tests`, and an `IEmailPreviewContributor`
 registered from `Section.Register` so the template shows in `/Email/EmailPreview`. Email keeps
 the mechanics only — `EmailMessage`, `IEmailService.SendAsync`, the outbox, transport, branded
-wrapper, unsubscribe, `CultureScope`, and `TimeSensitiveTemplates`.
+wrapper, unsubscribe, `CultureScope`, and the `EmailMessage.Urgent` flag.
 
 **Why:** Email is a crosscut, so it must carry no section-specific logic
 ([`crosscut-purity`](crosscut-purity.md)). Hosting every section's copy made
@@ -26,8 +26,9 @@ contracts — the direction the rule forbids (peterdrier/Humans#1651, design sig
   substitutions with `WebUtility.HtmlEncode`, and add a sample to that section's
   `IEmailPreviewContributor`. Never add a method to `IEmailMessageFactory`, and never add an
   `Email_*` key to `EmailResource.*.resx`.
-- Time-sensitive mail: name the constant on `TimeSensitiveTemplates`; that one list drives both
-  the immediate drain and the outbox batch priority. There is no per-message immediate flag.
+- Mail a human is waiting on: set `Urgent: true` on the `EmailMessage`; that one flag drives both
+  the immediate drain and the outbox batch priority. Email keeps no list of urgent templates
+  (nobodies-collective/Humans#1247).
 - The gallery is a fan-out: Email never lists which sections contribute
   ([`fanout-spokes-name-themselves`](fanout-spokes-name-themselves.md)).
 - `FacilitatedMessage` is the one template that stays in Email — a generic person-to-person

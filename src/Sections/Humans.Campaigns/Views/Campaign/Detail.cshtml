@@ -6,8 +6,6 @@
     ViewData["Title"] = Model.Campaign.Title;
     var totalCodes = Model.Stats.TotalCodes;
     var availableCodes = Model.Stats.AvailableCodes;
-    var sentCount = Model.Stats.SentCount;
-    var failedCount = Model.Stats.FailedCount;
     var codesRedeemed = Model.Stats.CodesRedeemed;
     var totalGrants = Model.Stats.TotalGrants;
     var redemptionPct = totalGrants > 0 ? (int)Math.Round(100.0 * codesRedeemed / totalGrants) : 0;
@@ -94,20 +92,10 @@
             </button>
         </form>
     }
-
-    @if (isAdmin && failedCount > 0)
-    {
-        <form asp-action="RetryAllFailed" asp-route-id="@Model.Campaign.Id" method="post" class="d-inline">
-            @Html.AntiForgeryToken()
-            <button type="submit" class="btn btn-warning btn-sm">
-                <i class="fa-solid fa-rotate-right me-1"></i>Retry All Failed
-            </button>
-        </form>
-    }
 </div>
 
 <div class="row mb-4">
-    <div class="col-md-3">
+    <div class="col-md-6">
         <div class="card text-center">
             <div class="card-body">
                 <h3 class="mb-0">@totalCodes</h3>
@@ -115,27 +103,11 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-6">
         <div class="card text-center">
             <div class="card-body">
                 <h3 class="mb-0">@availableCodes</h3>
                 <small class="text-muted">Available</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h3 class="mb-0 text-success">@sentCount</h3>
-                <small class="text-muted">Sent</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h3 class="mb-0 @(failedCount > 0 ? "text-danger" : "")">@failedCount</h3>
-                <small class="text-muted">Failed</small>
             </div>
         </div>
     </div>
@@ -173,20 +145,6 @@
                     <span class="text-muted">&mdash;</span>
                 }
             </text>;
-            Func<CampaignGrantSummary, IHtmlContent> emailStatusCell = @<text>
-                @if (item.LatestEmailStatus.HasValue)
-                {
-                    <span class="badge @EnumBadgeMap.For(item.LatestEmailStatus.Value)">@item.LatestEmailStatus</span>
-                    @if (item.LatestEmailAt.HasValue)
-                    {
-                        <small class="text-muted ms-1">@item.LatestEmailAt.Value.ToDateTime()</small>
-                    }
-                }
-                else
-                {
-                    <span class="text-muted">-</span>
-                }
-            </text>;
             Func<CampaignGrantSummary, IHtmlContent> resendCell =
                 @<text>
                     <form asp-action="Resend" asp-route-grantId="@item.Id" method="post" class="d-inline">
@@ -200,8 +158,7 @@
                 .Template("Human", humanCell)
                 .Template("Code", codeCell)
                 .Column("Assigned", r => r.AssignedAt, c => c.DateTime())
-                .Template("Redeemed", redeemedCell)
-                .Template("Email Status", emailStatusCell);
+                .Template("Redeemed", redeemedCell);
             if (isAdmin)
             {
                 // Resend POSTs are AdminOnly; don't show TicketAdmin a button that 403s.

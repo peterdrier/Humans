@@ -72,7 +72,7 @@ public class CommunicationPreferenceAccessibilityTests
             [
                 new() { Category = MessageCategory.Marketing, EmailEnabled = false, AlertEnabled = false, EmailEditable = true, AlertEditable = true },
                 new() { Category = MessageCategory.System, EmailEditable = false, AlertEditable = false },
-                new() { Category = MessageCategory.Ticketing, EmailEditable = false, AlertEditable = false, IsTicketingLocked = true },
+                new() { Category = MessageCategory.Ticketing, EmailEditable = false, AlertEditable = false, IsLocked = true },
             ],
         };
         var engine = services.GetRequiredService<IRazorViewEngine>();

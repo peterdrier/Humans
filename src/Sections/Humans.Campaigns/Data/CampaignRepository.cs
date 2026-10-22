@@ -70,8 +70,7 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
                 g.Id,
                 g.UserId,
                 g.Code.Code,
-                g.RedeemedAt,
-                g.LatestEmailStatus))
+                g.RedeemedAt))
             .ToListAsync(ct);
     }
 
@@ -164,25 +163,6 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<IReadOnlyList<GrantWithSendContext>> GetFailedGrantsForRetryAsync(
-        Guid campaignId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.CampaignGrants
-            .AsNoTracking()
-            .Where(g => g.CampaignId == campaignId
-                && g.LatestEmailStatus == EmailOutboxStatus.Failed)
-            .Select(g => new GrantWithSendContext(
-                g.Id,
-                g.UserId,
-                g.CampaignId,
-                g.Code.Code,
-                g.Campaign.EmailSubject,
-                g.Campaign.EmailBodyTemplate,
-                g.Campaign.ReplyToAddress))
-            .ToListAsync(ct);
-    }
-
     public async Task<Guid?> GetCampaignIdForGrantAsync(
         Guid grantId, CancellationToken ct = default)
     {
@@ -212,23 +192,6 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.CampaignGrants.Add(grant);
         await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task<bool> UpdateGrantStatusAsync(
-        Guid grantId,
-        EmailOutboxStatus? status,
-        Instant latestEmailAt,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var grant = await ctx.CampaignGrants.FirstOrDefaultAsync(g => g.Id == grantId, ct);
-        if (grant is null)
-            return false;
-
-        grant.LatestEmailStatus = status;
-        grant.LatestEmailAt = latestEmailAt;
-        await ctx.SaveChangesAsync(ct);
-        return true;
     }
 
     public async Task<int> MarkGrantsRedeemedAsync(

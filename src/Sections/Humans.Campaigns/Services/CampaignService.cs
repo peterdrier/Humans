@@ -106,8 +106,6 @@ internal sealed class CampaignService(
             grant.Code.Code,
             grant.UserId,
             grant.AssignedAt,
-            grant.LatestEmailStatus,
-            grant.LatestEmailAt,
             grant.RedeemedAt);
 
     private static CampaignAdminSummary ToAdminSummary(Campaign campaign) =>
@@ -182,8 +180,6 @@ internal sealed class CampaignService(
             campaign.Status,
             campaign.Codes.Count,
             assignedCodes,
-            campaign.Grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Sent),
-            campaign.Grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Failed),
             campaign.CreatedAt);
     }
 
@@ -196,8 +192,6 @@ internal sealed class CampaignService(
         var totalCodes = campaign.Codes.Count;
         var assignedCodeIds = campaign.Grants.Select(g => g.CampaignCodeId).ToHashSet();
         var availableCodes = totalCodes - assignedCodeIds.Count;
-        var sentCount = campaign.Grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Sent);
-        var failedCount = campaign.Grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Failed);
         var codesRedeemed = campaign.Grants.Count(g => g.RedeemedAt is not null);
         var totalGrants = campaign.Grants.Count;
 
@@ -206,8 +200,6 @@ internal sealed class CampaignService(
             new CampaignDetailStatsDto(
                 totalCodes,
                 availableCodes,
-                sentCount,
-                failedCount,
                 codesRedeemed,
                 totalGrants));
     }
@@ -430,8 +422,8 @@ internal sealed class CampaignService(
         var failedCount = 0;
         var grantedUserIds = new List<Guid>(eligibleUserIds.Count);
 
-        // Per-grant commit: an enqueue throw flips just that grant to Failed, so later grants still process and
-        // RetryAllFailedAsync picks it up.
+        // Per-grant commit: an enqueue throw is logged for just that grant, so later grants still process and an
+        // admin can resend it.
         for (var i = 0; i < eligibleUserIds.Count; i++)
         {
             var userId = eligibleUserIds[i];
@@ -459,9 +451,7 @@ internal sealed class CampaignService(
                 CampaignId = campaignId,
                 CampaignCodeId = code.Id,
                 UserId = userId,
-                AssignedAt = now,
-                LatestEmailStatus = EmailOutboxStatus.Queued,
-                LatestEmailAt = now
+                AssignedAt = now
             };
             await repository.AddGrantAndSaveAsync(grant, ct);
             await audit.LogAsync(AuditAction.CampaignWaveSent, "Campaign", campaignId,
@@ -472,7 +462,7 @@ internal sealed class CampaignService(
             try
             {
                 await emailService.SendAsync(emailMessages.CampaignCode(
-                    BuildCampaignCodeRequest(campaign, user, recipientEmail, code.Code, grant.Id)),
+                    BuildCampaignCodeRequest(campaign, user, recipientEmail, code.Code)),
                     ct);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -484,7 +474,6 @@ internal sealed class CampaignService(
                 logger.LogError(ex,
                     "Failed to enqueue campaign code email for user {UserId} grant {GrantId} in campaign {CampaignId}",
                     userId, grant.Id, campaignId);
-                await repository.UpdateGrantStatusAsync(grant.Id, EmailOutboxStatus.Failed, now, ct);
                 failedCount++;
             }
         }
@@ -538,13 +527,9 @@ internal sealed class CampaignService(
         var grant = await repository.GetGrantForResendAsync(grantId, ct)
             ?? throw new InvalidOperationException($"Grant {grantId} not found.");
 
-        var now = clock.GetCurrentInstant();
-        if (await repository.UpdateGrantStatusAsync(grantId, EmailOutboxStatus.Queued, now, ct))
-        {
-            await audit.LogAsync(AuditAction.CampaignGrantResent, "CampaignGrant", grantId,
-                $"Started resend for campaign {grant.CampaignId}.", actorUserId,
-                relatedEntityId: grant.UserId, relatedEntityType: "User");
-        }
+        await audit.LogAsync(AuditAction.CampaignGrantResent, "CampaignGrant", grantId,
+            $"Started resend for campaign {grant.CampaignId}.", actorUserId,
+            relatedEntityId: grant.UserId, relatedEntityType: "User");
 
         try
         {
@@ -560,7 +545,7 @@ internal sealed class CampaignService(
                     grant.CampaignEmailSubject,
                     grant.CampaignEmailBodyTemplate,
                     grant.CampaignReplyToAddress,
-                    user, recipientEmail, grant.CodeString, grant.GrantId, grant.CampaignId)),
+                    user, recipientEmail, grant.CodeString, grant.CampaignId)),
                 ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -570,7 +555,6 @@ internal sealed class CampaignService(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to resend campaign code email for grant {GrantId}", grantId);
-            await repository.UpdateGrantStatusAsync(grantId, EmailOutboxStatus.Failed, now, ct);
             throw;
         }
 
@@ -608,8 +592,7 @@ internal sealed class CampaignService(
                 UserId: row.UserId,
                 RecipientName: recipientName,
                 Code: row.Code,
-                RedeemedAt: row.RedeemedAt,
-                LatestEmailStatus: row.LatestEmailStatus?.ToString()));
+                RedeemedAt: row.RedeemedAt));
         }
 
         var grantsByCampaign = grantRowsRaw
@@ -631,79 +614,6 @@ internal sealed class CampaignService(
         return new CampaignCodeTrackingData(summaries, grantRows);
     }
 
-    public async Task RetryAllFailedAsync(Guid actorUserId, Guid campaignId, CancellationToken ct = default)
-    {
-        var failedGrants = await repository.GetFailedGrantsForRetryAsync(campaignId, ct);
-        if (failedGrants.Count == 0)
-            return;
-
-        var userIds = failedGrants.Select(g => g.UserId).Distinct().ToList();
-        var users = await userService.GetUserInfosAsync(userIds, ct);
-        var emails = await userEmailService.GetNotificationTargetEmailsAsync(userIds, ct);
-
-        var now = clock.GetCurrentInstant();
-        var stillFailedCount = 0;
-
-        // Per-grant flip-and-enqueue: a batch flip to Queued would lose grants whose enqueue throws, leaving them
-        // un-retriable.
-        foreach (var grant in failedGrants)
-        {
-            if (await repository.UpdateGrantStatusAsync(grant.GrantId, EmailOutboxStatus.Queued, now, ct))
-            {
-                await audit.LogAsync(AuditAction.CampaignGrantResent, "CampaignGrant", grant.GrantId,
-                    $"Started retry for campaign {campaignId}.", actorUserId,
-                    relatedEntityId: grant.UserId, relatedEntityType: "User");
-            }
-
-            if (!users.TryGetValue(grant.UserId, out var user))
-            {
-                logger.LogWarning(
-                    "User {UserId} missing when retrying grant {GrantId}; marking failed",
-                    grant.UserId, grant.GrantId);
-                await repository.UpdateGrantStatusAsync(grant.GrantId, EmailOutboxStatus.Failed, now, ct);
-                stillFailedCount++;
-                continue;
-            }
-
-            if (!emails.TryGetValue(grant.UserId, out var recipientEmail))
-            {
-                logger.LogWarning(
-                    "No notification email for user {UserId} when retrying grant {GrantId}; marking failed",
-                    grant.UserId, grant.GrantId);
-                await repository.UpdateGrantStatusAsync(grant.GrantId, EmailOutboxStatus.Failed, now, ct);
-                stillFailedCount++;
-                continue;
-            }
-
-            try
-            {
-                await emailService.SendAsync(emailMessages.CampaignCode(
-                    BuildCampaignCodeRequest(
-                        grant.CampaignEmailSubject,
-                        grant.CampaignEmailBodyTemplate,
-                        grant.CampaignReplyToAddress,
-                        user, recipientEmail, grant.CodeString, grant.GrantId, campaignId)),
-                    ct);
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex,
-                    "Retry failed to re-enqueue campaign code email for grant {GrantId} in campaign {CampaignId}",
-                    grant.GrantId, campaignId);
-                await repository.UpdateGrantStatusAsync(grant.GrantId, EmailOutboxStatus.Failed, now, ct);
-                stillFailedCount++;
-            }
-        }
-
-        logger.LogInformation(
-            "Campaign {CampaignId}: retried {Count} failed grants, {StillFailedCount} still failed",
-            campaignId, failedGrants.Count, stillFailedCount);
-    }
-
     private async Task<List<Guid>> GetActiveTeamUserIdsAsync(Guid teamId, CancellationToken ct)
     {
         var team = await teamService.GetTeamAsync(teamId, ct);
@@ -711,18 +621,17 @@ internal sealed class CampaignService(
     }
 
     private static CampaignCodeEmailRequest BuildCampaignCodeRequest(
-        Campaign campaign, UserInfo user, string recipientEmail, string code, Guid grantId)
+        Campaign campaign, UserInfo user, string recipientEmail, string code)
         => BuildCampaignCodeRequest(
             campaign.EmailSubject, campaign.EmailBodyTemplate, campaign.ReplyToAddress,
-            user, recipientEmail, code, grantId, campaign.Id);
+            user, recipientEmail, code, campaign.Id);
 
     private static CampaignCodeEmailRequest BuildCampaignCodeRequest(
         string emailSubject, string emailBody, string? replyToAddress,
-        UserInfo user, string recipientEmail, string code, Guid grantId, Guid campaignId)
+        UserInfo user, string recipientEmail, string code, Guid campaignId)
     {
         return new CampaignCodeEmailRequest(
             UserId: user.Id,
-            CampaignGrantId: grantId,
             CampaignId: campaignId,
             RecipientEmail: recipientEmail,
             RecipientName: user.BurnerName,
@@ -760,13 +669,6 @@ internal sealed class CampaignService(
     /// <summary>A grant is a user-to-code link and nothing else, so it is hard-deleted.</summary>
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         repository.DeleteGrantsForUserAsync(userId, ct);
-
-    public Task<bool> UpdateGrantEmailStatusAsync(
-        Guid grantId,
-        EmailOutboxStatus status,
-        Instant latestEmailAt,
-        CancellationToken ct = default) =>
-        repository.UpdateGrantStatusAsync(grantId, status, latestEmailAt, ct);
 
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct) =>

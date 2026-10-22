@@ -15,9 +15,18 @@ internal sealed class EmailOutboxMessage
     public string? PlainTextBody { get; set; }
     public string TemplateName { get; set; } = string.Empty;
     public Guid? UserId { get; set; }
+
+    /// <summary>
+    /// Set only on rows queued before nobodies-collective/Humans#1243; nothing reads or writes it now. The
+    /// column stays until its drop is approved.
+    /// </summary>
     public Guid? CampaignGrantId { get; set; }
+
     public string? ReplyTo { get; set; }
     public string? ExtraHeaders { get; set; }
+
+    /// <summary>Null on rows queued before the column existed; null and false both mean not urgent.</summary>
+    public bool? Urgent { get; set; }
     public EmailOutboxStatus Status { get; set; }
     public Instant CreatedAt { get; set; }
     public Instant? SentAt { get; set; }

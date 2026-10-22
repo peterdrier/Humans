@@ -26,7 +26,7 @@ A campaign bundles three things: the **codes** (imported in bulk or generated th
 
 - **My codes** — a section on your profile (`/Profile/Me`) listing every campaign grant assigned to you
 - **Campaigns list** (`/Campaigns/Admin`) — every campaign with its status and code and grant counts
-- **Campaign detail** (`/Campaigns/Admin/{id}`) — stats (total codes, available, sent, failed, redeemed) and the grant table; entry point for Import Codes, Generate Codes (vendor), Activate, Send Wave, Complete, Resend, and Retry All Failed
+- **Campaign detail** (`/Campaigns/Admin/{id}`) — stats (total codes, available, redeemed) and the grant table; entry point for Import Codes, Generate Codes (vendor), Activate, Send Wave, Complete and Resend
 - **Create campaign** (`/Campaigns/Admin/Create`) — form for title, description, email subject, email body template (markdown, supports `{{Code}}` and `{{Name}}`), and optional Reply-To address
 - **Edit campaign** (`/Campaigns/Admin/Edit/{id}`) — the same fields as Create, editable at any status
 - **Import codes** — CSV upload for code values, available on Draft and Active campaigns
@@ -71,9 +71,9 @@ Once at least one code is loaded, activate the campaign. It moves from **Draft**
 
 On an Active campaign, choose Send Wave and pick a target [team](Glossary.md#team). Picking a team shows a **Preview** first — eligible humans, how many were excluded as already granted, codes available, and codes left after the send — and the confirm button only appears when there is at least one eligible human and enough codes to cover them all. Confirming collects everyone currently on that team, excludes anyone already granted a code on this campaign, and matches the rest one-to-one with free codes ordered by import order so the batch is reproducible. Each match creates a grant and queues a delivery through the email outbox; recipients also receive an in-app `Campaign received` notification. Run multiple waves as more humans become eligible.
 
-### Watch delivery and redemption
+### Watch redemption
 
-The campaign detail page shows how many codes are imported, available, sent, failed, and — for campaigns tied to ticket purchases — redeemed. Redemption is updated by the ticket sync job when it sees a granted code used in a purchase. From the grants table you can **Resend** a single grant's email, and a **Retry All Failed** button appears whenever any grant's most recent send is in `Failed` state.
+The campaign detail page shows how many codes are imported, available, and — for campaigns tied to ticket purchases — redeemed. Redemption is updated by the ticket sync job when it sees a granted code used in a purchase. Campaigns does not track whether each email was delivered; the email outbox does. From the grants table you can **Resend** a single grant's email.
 
 ### Complete
 

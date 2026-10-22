@@ -84,7 +84,7 @@ internal sealed class WorkgroupsEmails(
                     $"WorkgroupNotice does not support kind {request.Kind}")
             };
 
-            return new EmailMessage(request.RecipientEmail, request.RecipientName, subject, body,
+            return new EmailMessage(request.RecipientEmail, request.RecipientName, request.RecipientUserId, subject, body,
                 templateName, MessageCategory.Governance, Culture: CultureInfo.CurrentUICulture.Name);
         }
     }

@@ -2,24 +2,10 @@
 @{
     Func<CampaignGrantSummary, IHtmlContent> codeCell =
         @<text><code>@item.Code</code></text>;
-    Func<CampaignGrantSummary, IHtmlContent> statusCell = @<text>
-        @if (item.LatestEmailStatus.HasValue)
-        {
-            var badgeClass = item.LatestEmailStatus switch
-            {
-                EmailOutboxStatus.Sent => "bg-success",
-                EmailOutboxStatus.Failed => "bg-danger",
-                EmailOutboxStatus.Queued => "bg-warning",
-                _ => "bg-secondary"
-            };
-            <span class="badge @badgeClass">@item.LatestEmailStatus</span>
-        }
-    </text>;
     var campaignCodesTable = TableModel.For(Model.OrderByDescending(g => g.AssignedAt).ToList())
         .Column("Campaign", g => g.CampaignTitle)
         .Template("Code", codeCell)
         .Column("Assigned", g => g.AssignedAt, c => c.Date())
-        .Template("Status", statusCell)
         .Build();
 }
 <div class="card mb-4">

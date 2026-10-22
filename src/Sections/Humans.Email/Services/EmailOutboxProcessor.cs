@@ -2,8 +2,6 @@ using System.Text.Json;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Metering;
 using Humans.Base.Metering;
-using Humans.Campaigns.Contracts;
-using Humans.Base.Enums;
 using Humans.Email.Data;
 using Humans.Email.Domain;
 using Humans.Base.Configuration;
@@ -15,7 +13,6 @@ namespace Humans.Email.Services;
 internal sealed class EmailOutboxProcessor(
     IEmailOutboxRepository outboxRepo,
     IEmailOutboxManagement emailOutboxService,
-    ICampaignWrite campaignService,
     IEmailTransport transport,
     IHumansMetrics metrics,
     IMeters meters,
@@ -92,14 +89,6 @@ internal sealed class EmailOutboxProcessor(
                 metrics.RecordEmailFailed(message.TemplateName);
                 await TryIncrementDailySendCountAsync(message, failedAt, succeeded: false, cancellationToken);
 
-                // Same bookkeeping, same guard as the success path: a failure here is
-                // already inside the catch, so left uncaught it escapes the loop.
-                if (message.CampaignGrantId.HasValue)
-                {
-                    await TryUpdateGrantEmailStatusAsync(
-                        message.CampaignGrantId.Value, EmailOutboxStatus.Failed, failedAt, message.Id, cancellationToken);
-                }
-
                 logger.LogError(
                     ex,
                     "Failed sending email outbox message {MessageId} ({TemplateName}) attempt {Attempt}",
@@ -116,38 +105,12 @@ internal sealed class EmailOutboxProcessor(
             metrics.RecordEmailSent(message.TemplateName);
             await TryIncrementDailySendCountAsync(message, sentAt, succeeded: true, cancellationToken);
 
-            if (message.CampaignGrantId.HasValue)
-            {
-                await TryUpdateGrantEmailStatusAsync(
-                    message.CampaignGrantId.Value, EmailOutboxStatus.Sent, sentAt, message.Id, cancellationToken);
-            }
-
             // Stays under the SMTP relay's rate limit.
             await ThrottleDelayAsync(TimeSpan.FromSeconds(1), cancellationToken);
         }
 
         var pendingCount = await outboxRepo.GetPendingCountAsync(_settings.OutboxMaxRetries, cancellationToken);
         _outboxPendingMeter.Set(pendingCount);
-    }
-
-    /// <summary>
-    /// Grant mirroring is bookkeeping, not delivery state: log and continue, or the rest of the picked-up batch
-    /// waits for the stale window.
-    /// </summary>
-    private async Task TryUpdateGrantEmailStatusAsync(
-        Guid campaignGrantId, EmailOutboxStatus status, Instant now, Guid messageId, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await campaignService.UpdateGrantEmailStatusAsync(campaignGrantId, status, now, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(
-                ex,
-                "Failed updating campaign grant {CampaignGrantId} email status to {Status} for message {MessageId}",
-                campaignGrantId, status, messageId);
-        }
     }
 
     /// <summary>Analytics, not delivery state: a failed write is logged and changes nothing else.</summary>
