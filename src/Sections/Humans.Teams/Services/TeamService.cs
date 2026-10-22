@@ -552,6 +552,17 @@ internal sealed class TeamService(
             : new TeamJoinResult(ErrorKey: directResult.ErrorKey);
     }
 
+    private static string? SelfJoinRefusal(Team team, bool requiresApproval)
+    {
+        if (!team.IsActive)
+            return "Teams_NotFound";
+        if (team.IsSystemTeam)
+            return "Teams_Team_CannotJoinSystem";
+        if (team.IsHidden)
+            return "Teams_CannotJoinHidden";
+        return team.RequiresApproval != requiresApproval ? "Teams_JoinPolicyChanged" : null;
+    }
+
     public async Task<TeamJoinRequestResult> RequestToJoinTeamAsync(
         Guid teamId,
         Guid userId,
@@ -562,17 +573,8 @@ internal sealed class TeamService(
         if (team is null)
             return new TeamJoinRequestResult(ErrorKey: "Teams_NotFound");
 
-        if (!team.IsActive)
-            return new TeamJoinRequestResult(ErrorKey: "Teams_NotFound");
-
-        if (team.IsSystemTeam)
-            return new TeamJoinRequestResult(ErrorKey: "Teams_Team_CannotJoinSystem");
-
-        if (team.IsHidden)
-            return new TeamJoinRequestResult(ErrorKey: "Teams_CannotJoinHidden");
-
-        if (!team.RequiresApproval)
-            return new TeamJoinRequestResult(ErrorKey: "Teams_JoinPolicyChanged");
+        if (SelfJoinRefusal(team, requiresApproval: true) is { } errorKey)
+            return new TeamJoinRequestResult(ErrorKey: errorKey);
 
         using var joinRequest = await JoinRequestLock.AcquireAsync(logger, cancellationToken);
         var existingRequest = await repo.FindUserPendingRequestAsync(teamId, userId, cancellationToken);
@@ -611,17 +613,8 @@ internal sealed class TeamService(
         if (team is null)
             return new TeamDirectJoinResult(ErrorKey: "Teams_NotFound");
 
-        if (!team.IsActive)
-            return new TeamDirectJoinResult(ErrorKey: "Teams_NotFound");
-
-        if (team.IsSystemTeam)
-            return new TeamDirectJoinResult(ErrorKey: "Teams_Team_CannotJoinSystem");
-
-        if (team.IsHidden)
-            return new TeamDirectJoinResult(ErrorKey: "Teams_CannotJoinHidden");
-
-        if (team.RequiresApproval)
-            return new TeamDirectJoinResult(ErrorKey: "Teams_JoinPolicyChanged");
+        if (SelfJoinRefusal(team, requiresApproval: false) is { } errorKey)
+            return new TeamDirectJoinResult(ErrorKey: errorKey);
 
         var existingMember = await repo.IsActiveMemberAsync(teamId, userId, cancellationToken);
         if (existingMember)
