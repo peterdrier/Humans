@@ -83,7 +83,7 @@
                 @foreach (var l in Model.Lines)
                 {
                     <tr>
-                        <td class="text-nowrap">@l.Date.InZone(madrid).ToDateTimeUnspecified().ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)</td>
+                        <td class="text-nowrap">@l.Date.ToDate(madrid)</td>
                         <td class="text-nowrap text-muted small">
                             <a asp-action="Entry" asp-route-number="@l.EntryNumber">@l.EntryNumber/@l.Line</a>
                         </td>

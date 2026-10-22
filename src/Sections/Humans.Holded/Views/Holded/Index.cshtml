@@ -8,7 +8,7 @@
 
     string Stamp(Instant? at) => at is null
         ? "never"
-        : at.Value.InZone(madrid).ToDateTimeUnspecified().ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture);
+        : at.Value.ToDateTime(madrid);
 
     string StatusBadge(string status) => status switch
     {
@@ -164,7 +164,7 @@
                     @foreach (var m in o.CallsByMonth)
                     {
                         <tr>
-                            <td class="text-nowrap">@(new DateTime(m.Year, m.Month, 1).ToString("MMM yyyy", CultureInfo.InvariantCulture))</td>
+                            <td class="text-nowrap">@(new DateTime(m.Year, m.Month, 1).ToMonthYear())</td>
                             <td class="text-end">@m.Total</td>
                             <td class="small text-muted">
                                 @string.Join(", ", m.ByEndpoint.OrderByDescending(e => e.Value).Select(e => $"{e.Key} {e.Value}"))
