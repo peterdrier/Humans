@@ -1057,8 +1057,8 @@ public class ServiceTests
         await _repo.AddProductAsync(Arg.Do<Product>(p => captured = p), Arg.Any<CancellationToken>());
 
         var draft = new ProductDto(
-            Guid.Empty, 2026, "Tent", "Big tent", 50m, 21m, 100m,
-            new LocalDate(2026, 8, 1), IsActive: true);
+            Guid.Empty, 2026, "  Tent  ", "Big tent", 50m, 21m, 100m,
+            new LocalDate(2026, 8, 1), IsActive: true, HoldedRevenueAccountNum: 75900002);
 
         var result = await _service.CreateProductAsync(draft, actor, TestContext.Current.CancellationToken);
         result.Succeeded.Should().BeTrue();
@@ -1067,6 +1067,7 @@ public class ServiceTests
         var newId = captured!.Id;
         captured.Year.Should().Be(2026);
         captured.Name.Should().Be("Tent");
+        captured.HoldedRevenueAccountNum.Should().Be(75900002);
         captured.Description.Should().Be("Big tent");
         captured.UnitPriceEur.Should().Be(50m);
         captured.VatRatePercent.Should().Be(21m);
@@ -1134,14 +1135,15 @@ public class ServiceTests
 
         var actor = Guid.NewGuid();
         var draft = new ProductDto(
-            existing.Id, 2026, "New", "New desc", 99m, 10m, 25m,
-            new LocalDate(2026, 9, 1), IsActive: true);
+            existing.Id, 2026, "  New  ", "New desc", 99m, 10m, 25m,
+            new LocalDate(2026, 9, 1), IsActive: true, HoldedRevenueAccountNum: 75900002);
 
         await _service.UpdateProductAsync(draft, actor, TestContext.Current.CancellationToken);
 
         captured.Should().NotBeNull();
         captured!.Id.Should().Be(existing.Id);
         captured.Name.Should().Be("New");
+        captured.HoldedRevenueAccountNum.Should().Be(75900002);
         captured.Description.Should().Be("New desc");
         captured.UnitPriceEur.Should().Be(99m);
         captured.VatRatePercent.Should().Be(10m);

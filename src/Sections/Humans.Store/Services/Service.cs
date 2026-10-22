@@ -187,18 +187,10 @@ internal sealed class Service(
         var product = new Product
         {
             Id = Guid.NewGuid(),
-            Year = draft.Year,
-            Name = draft.Name.Trim(),
-            Description = draft.Description,
-            UnitPriceEur = draft.UnitPriceEur,
-            VatRatePercent = draft.VatRatePercent,
-            DepositAmountEur = draft.DepositAmountEur,
-            HoldedRevenueAccountNum = draft.HoldedRevenueAccountNum,
-            OrderableUntil = draft.OrderableUntil,
-            IsActive = draft.IsActive,
             CreatedAt = now,
             UpdatedAt = now
         };
+        ApplyProductFields(product, draft);
         await repo.AddProductAsync(product, ct);
         await audit.LogAsync(
             AuditAction.StoreProductCreated, AuditEntityTypes.Product, product.Id,
@@ -219,15 +211,7 @@ internal sealed class Service(
 
         var oldPrice = product.UnitPriceEur;
 
-        product.Year = draft.Year;
-        product.Name = draft.Name.Trim();
-        product.Description = draft.Description;
-        product.UnitPriceEur = draft.UnitPriceEur;
-        product.VatRatePercent = draft.VatRatePercent;
-        product.DepositAmountEur = draft.DepositAmountEur;
-        product.HoldedRevenueAccountNum = draft.HoldedRevenueAccountNum;
-        product.OrderableUntil = draft.OrderableUntil;
-        product.IsActive = draft.IsActive;
+        ApplyProductFields(product, draft);
         product.UpdatedAt = clock.GetCurrentInstant();
 
         await repo.UpdateProductAsync(product, ct);
@@ -305,6 +289,19 @@ internal sealed class Service(
         logger.LogWarning("Store catalog mutation rejected for product {ProductId}, actor {ActorId}: {Reason}",
             productId, actorUserId, reason);
         return AdminMutationResult.Refused(reason);
+    }
+
+    private static void ApplyProductFields(Product product, ProductDto draft)
+    {
+        product.Year = draft.Year;
+        product.Name = draft.Name.Trim();
+        product.Description = draft.Description;
+        product.UnitPriceEur = draft.UnitPriceEur;
+        product.VatRatePercent = draft.VatRatePercent;
+        product.DepositAmountEur = draft.DepositAmountEur;
+        product.HoldedRevenueAccountNum = draft.HoldedRevenueAccountNum;
+        product.OrderableUntil = draft.OrderableUntil;
+        product.IsActive = draft.IsActive;
     }
 
     private static string? GetProductDraftRefusal(ProductDto draft)
