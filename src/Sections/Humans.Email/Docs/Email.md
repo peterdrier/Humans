@@ -8,7 +8,13 @@
 
 # Email — Section Invariants
 
-Transactional email outbox: queue, render, deliver, retry, pause/resume. Backs campaign sends, onboarding mail, shift notifications, feedback replies. Also owns each human's per-category communication preferences and the unsubscribe surface (Users decomposition commit 14).
+**Purpose.** Email is Humans' gateway between members' inboxes and the rest of the system. Mail is full of complications — relay rate limits, retries, deduplication, branding that survives mail clients, unsubscribe law, per-category consent, bounces, GDPR — and no other section should have to handle them.
+
+**Intention.** Sections hand Email finished content and a category (the member-to-member relay is the one message Email writes itself); Email owns everything after: queue, wrap, deliver, retry, pause, and what comes back from the recipient's mail server. Member choices are honoured before anything is sent, and every send is visible to admins.
+
+**Vision.** A reliable, resilient, low-effort module that just works: mail goes out when and where it's needed, only to people who want or must get it, without tripping spam or "promotional" classification.
+
+**Known gap: bounces.** Bounce handling is in scope — no other section can do it — but not built. `Sent` means only that the SMTP server accepted the message. How to receive and record delivery outcomes is an open design question (nobodies-collective/Humans#110).
 
 ## Concepts
 
@@ -184,7 +190,7 @@ The communication-preference routes moved from Users in decomposition commit 14 
 - While `IsEmailSendingPaused = "true"`, the job returns immediately — no rows are picked up.
 - **Time-sensitive mail jumps the queue.** `GetProcessingBatchAsync` orders rows whose `TemplateName` is one of `email_verification`, `magic_link_login`, `magic_link_signup`, `workspace_credentials` (`TimeSensitiveTemplates.Names`) ahead of every other row, then by `CreatedAt` within each of the two classes. Without this, a magic-link login lands behind whatever bulk mail is already queued and drains at the 1 send/second throttle — the user is locked out until the backlog clears (nobodies-collective/Humans#1122). No column and no schema change back this: it is ordering only, computed DB-side as a `CASE` in the `ORDER BY`. The immediate drain reads the same list, so the two cannot disagree.
 - On success the row becomes `Status = Sent`, `SentAt = now`, `PickedUpAt = null`. On failure the row becomes `Status = Failed`, `RetryCount += 1`, `LastError = ex.Message` (bounded to 4000 UTF-16 code units without splitting a Unicode surrogate pair), `NextRetryAt = now + 2^(RetryCount+1) minutes`, `PickedUpAt = null`. Failed rows with `RetryCount >= OutboxMaxRetries` stop being picked up by future scans (they remain `Status = Failed` forever unless an admin retries or discards them). The job does not distinguish hard vs soft transport failures — preparation/transport exceptions increment the retry counter. Sent-state persistence and throttle failures propagate out of the batch without recording a failed delivery; a committed Sent row stays Sent even if its save acknowledgement fails.
-- `Status = Sent` / `SentAt` records SMTP-server acceptance, **not** inbox delivery. Bounce processing is out of scope — a message marked `Sent` may still bounce silently at the recipient's mail server. Admins watching the outbox dashboard see SMTP outcomes, not inbox outcomes.
+- `Status = Sent` / `SentAt` records SMTP-server acceptance, **not** inbox delivery. Bounce processing is not built yet (the known gap above) — a message marked `Sent` may still bounce silently at the recipient's mail server. Admins watching the outbox dashboard see SMTP outcomes, not inbox outcomes.
 - Admin retry resets a row to `Status = Queued`, `RetryCount = 0`, `LastError = null`, `NextRetryAt = null`, `PickedUpAt = null`.
 - Recipient addresses ending in `@localhost` or `@ticketstub.local` are short-circuit-marked `Sent` without contacting the transport (test addresses; sending real mail to them would damage sender reputation). `EmailTestAddress` is the single definition used by both the processor and daily-count backfill, so neither path can accidentally include a test delivery.
 - `IEmailBodyComposer` is a section-internal abstraction so `OutboxEmailService` stays free of `IHostEnvironment`/configuration dependencies; the implementation (`BrandedEmailBodyComposer`) is section-internal too. `IImmediateOutboxProcessor` (`HangfireImmediateOutboxProcessor`) lives in `Humans.Email/Contracts/`.
