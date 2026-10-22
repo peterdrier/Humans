@@ -109,7 +109,6 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<IEmailPreviewContributor, UsersEmailPreviews>();
 
         services.AddScoped<IEmailProblemsService, EmailProblemsService>();
-        services.AddScoped<IUserNameSyncService, UserNameSyncService>();
         services.AddScoped<IProfileEditorService, ProfileEditorService>();
         services.AddScoped<IAccountProvisioningService, AccountProvisioningService>();
 

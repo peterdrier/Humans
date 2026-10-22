@@ -10,14 +10,13 @@ using NSubstitute;
 namespace Humans.Users.Tests.Contributions;
 
 /// <summary>
-/// Users' data migrations on <c>/Debug/DataMigrations</c>: the four retired Temp screens.
+/// Users' data migrations on <c>/Debug/DataMigrations</c>: the remaining retired Temp screens.
 /// Each status must list exactly what its apply will fix (or <c>done</c> never arrives), and each
 /// apply must carry the acting admin and be a no-op once nothing is pending.
 /// </summary>
 public class SectionDataMigrationsTests
 {
     private readonly IUserManagement _users = Substitute.For<IUserManagement>();
-    private readonly IUserNameSyncService _nameSync = Substitute.For<IUserNameSyncService>();
     private readonly IProfilePictureService _pictures = Substitute.For<IProfilePictureService>();
     private readonly IEmailProblemsService _emailProblems = Substitute.For<IEmailProblemsService>();
     private readonly Guid _actorId = Guid.NewGuid();
@@ -28,7 +27,6 @@ public class SectionDataMigrationsTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton(_users);
-        services.AddSingleton(_nameSync);
         services.AddSingleton(_pictures);
         services.AddSingleton(_emailProblems);
         _services = services.BuildServiceProvider();
@@ -47,7 +45,6 @@ public class SectionDataMigrationsTests
         migrations.Select(m => m.Key).Should().BeEquivalentTo(
         [
             SectionDataMigrations.StubProfilesKey,
-            SectionDataMigrations.NamesOntoUserKey,
             SectionDataMigrations.PicturesToFilesystemKey,
             SectionDataMigrations.LegacyIdentityEmailsKey,
         ]);
@@ -92,25 +89,6 @@ public class SectionDataMigrationsTests
         (await migration.Status(_services, Ct)).Done.Should().BeTrue();
         (await migration.Apply(_services, _actorId, Ct)).Should().Be(0);
         await _users.DidNotReceiveWithAnyArgs().EnsureStubProfileAsync(default);
-    }
-
-    [HumansFact]
-    public async Task Names_onto_user_lists_unsynced_rows_and_applies_with_the_actor()
-    {
-        var userId = Guid.NewGuid();
-        _nameSync.GetUnsyncedAsync(Arg.Any<CancellationToken>()).Returns(
-        [
-            new UnsyncedNameRow(userId, "a@x.com", UserState.Active, "Sparkle", "Ada Lovelace", true, false),
-        ]);
-        _nameSync.SyncAllAsync(_actorId, Arg.Any<CancellationToken>()).Returns(1);
-        var migration = Migration(SectionDataMigrations.NamesOntoUserKey);
-
-        var status = await migration.Status(_services, Ct);
-        status.PendingRows.Should().ContainSingle()
-            .Which.Should().Equal(userId.ToString(), "a@x.com", "Active", "Sparkle", "Ada Lovelace", "burner");
-
-        (await migration.Apply(_services, _actorId, Ct)).Should().Be(1);
-        await _nameSync.Received(1).SyncAllAsync(_actorId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

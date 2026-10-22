@@ -9,16 +9,15 @@ namespace Humans.Users;
 /// <summary>
 /// Users' data migrations, run from <c>/Debug/DataMigrations</c>. Each one resolves Users' own
 /// services, so the copy stays inside the section; the Debug host only lists, applies and
-/// audits the run. The first four replace the Temp screens that used to live at
-/// <c>/Profile/Admin/Backfill</c>, <c>/Profile/Admin/NameBackfill</c>,
-/// <c>/Profile/Admin/PictureMigration</c> and <c>/Profile/Admin/EmailProblems/BackfillLegacyEmails</c>.
+/// audits the run. These replace the Temp screens that used to live at
+/// <c>/Profile/Admin/Backfill</c>, <c>/Profile/Admin/PictureMigration</c> and
+/// <c>/Profile/Admin/EmailProblems/BackfillLegacyEmails</c>.
 /// </summary>
 internal sealed class SectionDataMigrations : ISectionDataMigrations
 {
     private const string Section = "Users";
 
     internal const string StubProfilesKey = "users.stub-profiles";
-    internal const string NamesOntoUserKey = "users.names-onto-user";
     internal const string PicturesToFilesystemKey = "users.profile-pictures-to-filesystem";
     internal const string LegacyIdentityEmailsKey = "users.legacy-identity-emails";
 
@@ -28,10 +27,6 @@ internal sealed class SectionDataMigrations : ISectionDataMigrations
             "Materialize a Stub Profile for every live user without one (nobodies-collective/Humans#635)",
             "The profile-less fallback branch of GET /Profile/{id}/Popover",
             StubProfilesStatusAsync, ApplyStubProfilesAsync),
-        new(NamesOntoUserKey, Section,
-            "Copy BurnerName and legal name from Profile onto the User row (nobodies-collective/Humans#1097)",
-            "Profile.BurnerName/FirstName/LastName as name sources (nobodies-collective/Humans#1098)",
-            NamesOntoUserStatusAsync, ApplyNamesOntoUserAsync),
         new(PicturesToFilesystemKey, Section,
             "Move DB-recorded custom profile pictures onto the filesystem (nobodies-collective/Humans#702)",
             "Profile.ProfilePictureContentType as a migrate-on-read trigger",
@@ -72,25 +67,6 @@ internal sealed class SectionDataMigrations : ISectionDataMigrations
         }
         return created;
     }
-
-    // --- users.names-onto-user ---
-
-    private static async Task<DataMigrationStatus> NamesOntoUserStatusAsync(IServiceProvider sp, CancellationToken ct) =>
-        new(["User", "Email", "Status", "Burner name", "Legal name", "Missing"],
-            [.. (await sp.GetRequiredService<IUserNameSyncService>().GetUnsyncedAsync(ct)).Select(r => (IReadOnlyList<string>)
-            [
-                r.UserId.ToString(), r.Email, r.State.ToString(), r.ProfileBurnerName, r.ProfileLegalName,
-                (r.BurnerNameMissing, r.LegalNameMissing) switch
-                {
-                    (true, true) => "burner + legal",
-                    (true, false) => "burner",
-                    _ => "legal",
-                },
-            ])]);
-
-    private static Task<int> ApplyNamesOntoUserAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
-        // Audits UserNamesBackfilled per saved member.
-        sp.GetRequiredService<IUserNameSyncService>().SyncAllAsync(actorUserId, ct);
 
     // --- users.profile-pictures-to-filesystem ---
 
