@@ -179,11 +179,27 @@
 </style>
 <script>
 (function() {
-    const STEPS = [
-        { label: '@Html.Raw(string.Format(Localizer["Shifts_ShiftInfo_StepOf"].Value, 1, 3))', title: '@Html.Raw(Localizer["Shifts_ShiftInfo_SkillsTitle"].Value.Replace("'", "\\'"))', subtitle: '@Html.Raw(Localizer["Shifts_ShiftInfo_SkillsSubtitle"].Value.Replace("'", "\\'"))' },
-        { label: '@Html.Raw(string.Format(Localizer["Shifts_ShiftInfo_StepOf"].Value, 2, 3))', title: '@Html.Raw(Localizer["Shifts_ShiftInfo_WorkStyleTitle"].Value.Replace("'", "\\'"))', subtitle: '@Html.Raw(Localizer["Shifts_ShiftInfo_WorkStyleSubtitle"].Value.Replace("'", "\\'"))' },
-        { label: '@Html.Raw(string.Format(Localizer["Shifts_ShiftInfo_StepOf"].Value, 3, 3))', title: '@Html.Raw(Localizer["Shifts_ShiftInfo_LanguagesTitle"].Value.Replace("'", "\\'"))', subtitle: '@Html.Raw(Localizer["Shifts_ShiftInfo_LanguagesSubtitle"].Value.Replace("'", "\\'"))' }
-    ];
+    const STEPS = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new[]
+    {
+        new
+        {
+            label = string.Format(Localizer["Shifts_ShiftInfo_StepOf"].Value, 1, 3),
+            title = Localizer["Shifts_ShiftInfo_SkillsTitle"].Value,
+            subtitle = Localizer["Shifts_ShiftInfo_SkillsSubtitle"].Value,
+        },
+        new
+        {
+            label = string.Format(Localizer["Shifts_ShiftInfo_StepOf"].Value, 2, 3),
+            title = Localizer["Shifts_ShiftInfo_WorkStyleTitle"].Value,
+            subtitle = Localizer["Shifts_ShiftInfo_WorkStyleSubtitle"].Value,
+        },
+        new
+        {
+            label = string.Format(Localizer["Shifts_ShiftInfo_StepOf"].Value, 3, 3),
+            title = Localizer["Shifts_ShiftInfo_LanguagesTitle"].Value,
+            subtitle = Localizer["Shifts_ShiftInfo_LanguagesSubtitle"].Value,
+        },
+    }));
 
     let current = 0;
     const stepLabel = document.getElementById('stepLabel');

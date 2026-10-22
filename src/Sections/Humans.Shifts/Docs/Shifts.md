@@ -238,6 +238,8 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 
 ## Invariants
 
+- The shift-profile wizard serializes translated step labels, titles and subtitles as HTML-safe JSON so quotes, backslashes, line breaks and script delimiters cannot break navigation.
+
 - Section-owned resource keys use `Shifts_` in all six cultures, including dynamically selected wizard skill, time-preference and quirk labels; reflection-resolved `Enum_` keys retain their type-based names.
 
 - Coordinator single-day availability add/remove routes share event/viewer resolution, bound-input validation and mutation dispatch; each route retains its VolunteerTrackingWrite policy and operation-specific success feedback.
