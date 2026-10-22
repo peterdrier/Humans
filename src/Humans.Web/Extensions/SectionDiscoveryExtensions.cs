@@ -5,17 +5,11 @@ using Microsoft.Extensions.DependencyModel;
 namespace Humans.Web.Extensions;
 
 /// <summary>
-/// Finds every <see cref="ISection"/> in the dependency graph and registers it, so a
-/// section that moves into its own project (nobodies-collective/Humans#866, G5) costs
-/// Shell no edit — the roll-call in <c>AddHumansInfrastructure</c> drains one line per
-/// section instead of growing one.
+/// Finds every <see cref="ISection"/> in the dependency graph and registers it, so a new section costs Shell no edit.
 /// </summary>
 /// <remarks>
-/// Every section assembly ships; whether this deployment runs one is
-/// <see cref="ISection.IsActive"/>, which defaults to true
-/// (nobodies-collective/Humans#1081). Everything below composes from the active set, so a
-/// deactivated section contributes no registration, no controller, no job and no nav
-/// without any of them naming it.
+/// Whether this deployment runs a section is <see cref="ISection.IsActive"/>. Everything below composes from the
+/// active set, so a deactivated section contributes no registration, controller, job or nav.
 /// </remarks>
 public static class SectionDiscoveryExtensions
 {
@@ -48,9 +42,8 @@ public static class SectionDiscoveryExtensions
 
         var contributions = RegisterContributions(services);
 
-        // The section list, published for anything that would otherwise hand-maintain its own
-        // copy (nobodies-collective/Humans#1509). Built from AllSections, not the active set:
-        // a deactivated section is exactly what you want the diagnostics page to show.
+        // Built from AllSections, not the active set: a deactivated section is exactly what the diagnostics page
+        // should show.
         services.AddSingleton(SectionCatalogBuilder.Build(
             AllSections.Value,
             [.. contributions.OfType<ISectionAnnotations>()]));
@@ -140,8 +133,6 @@ public static class SectionDiscoveryExtensions
                         Assembly: a,
                         Section: (ISection)Activator.CreateInstance(t)!)))
                 // Assembly-enumeration order is not stable; sort so registration order is.
-                // Nothing depends on it today — no section baseline carries a
-                // cross-section FK, so the contexts migrate independently.
                 .OrderBy(s => s.Name, StringComparer.Ordinal)]);
 
     /// <summary>

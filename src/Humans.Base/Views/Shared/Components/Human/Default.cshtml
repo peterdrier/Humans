@@ -24,10 +24,8 @@
     }
     else if (Model.ShowPopoverPublic)
     {
-        // Anonymous viewers on public team pages — popoverPublic bypasses the
-        // link != HumanLink.None constraint so the popover fires on the public
-        // coordinator card (which renders with link="None" because the click
-        // target is the auth-gated ViewProfile). See issue #771.
+        // Anonymous viewers on public team pages: popoverPublic bypasses the link != HumanLink.None constraint, so
+        // the popover fires on the public coordinator card (link="None", since its click target is auth-gated).
         popoverAttrs = $" data-human-popover-public=\"true\" data-user-id=\"{Model.UserId}\"";
     }
     else

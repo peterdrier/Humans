@@ -70,7 +70,6 @@ public partial class QueryMonitoringInterceptor(QueryStatistics statistics) : Db
 
         var trimmed = commandText.TrimStart();
 
-        // Determine operation from the first SQL keyword
         string? operation = null;
         if (trimmed.StartsWith("SELECT", StringComparison.OrdinalIgnoreCase))
             operation = "SELECT";
@@ -84,7 +83,6 @@ public partial class QueryMonitoringInterceptor(QueryStatistics statistics) : Db
         if (operation is null)
             return (null, null);
 
-        // Extract table name based on operation
         var table = operation switch
         {
             "SELECT" => ExtractFromClause(trimmed),
@@ -102,7 +100,6 @@ public partial class QueryMonitoringInterceptor(QueryStatistics statistics) : Db
         if (dotIndex >= 0 && dotIndex < table.Length - 1)
             table = table[(dotIndex + 1)..];
 
-        // Remove surrounding quotes
         table = table.Trim('"');
 
         return (operation, table);

@@ -7,11 +7,6 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace Humans.Settings.Models;
 
-/// <summary>
-/// The app-wide event settings form. Only the values Settings owns after
-/// nobodies-collective/Humans#1104 — the Shifts knobs (browsing switch, volunteer
-/// cap, reminder lead time) stay on the Shifts screen.
-/// </summary>
 internal sealed class EventSettingsViewModel : IValidatableObject
 {
     [BindRequired]
@@ -37,7 +32,6 @@ internal sealed class EventSettingsViewModel : IValidatableObject
     [BindRequired]
     public int StrikeEndOffset { get; set; } = 9;
 
-    // Build sub-period boundaries — defaults match the entity defaults set by EF config.
     [Range(int.MinValue, -1, ErrorMessage = "First crew start must be a negative offset relative to gate-opening day.")]
     [BindRequired]
     public int FirstCrewStartOffset { get; set; } = -25;
@@ -62,19 +56,13 @@ internal sealed class EventSettingsViewModel : IValidatableObject
     [BindRequired]
     public string? EarlyEntryClose { get; set; }
 
-    /// <summary>Negative day offset from <see cref="GateOpeningDate"/>; null until configured.</summary>
     [BindRequired]
     public int? EarlyEntryStartOffset { get; set; }
 
-    /// <summary>The cycle is wrapped: the member dashboard hides its in-season cards.</summary>
     [BindRequired]
     public bool IsOffSeason { get; set; }
 
-    /// <summary>
-    /// The form's view of <see cref="EventSettingsStatus"/>: the checkbox maps to
-    /// Active/Inactive and never reaches <see cref="EventSettingsStatus.Deleted"/> —
-    /// withdrawing a cycle is not something this form does.
-    /// </summary>
+    /// <summary>Maps to Active/Inactive only; this form never withdraws a cycle.</summary>
     [BindRequired]
     public bool IsActive { get; set; }
 
@@ -131,10 +119,7 @@ internal sealed record EventSettingsParseResult(
     public bool Success => Settings is not null && Errors.Count == 0;
 }
 
-/// <summary>
-/// Form ↔ <see cref="EventSettingsInfo"/>. The controller never touches the EF
-/// entity — the DTO is the section's own write surface too.
-/// </summary>
+/// <summary>The controller never touches the EF entity: the DTO is the section's own write surface too.</summary>
 internal static class EventSettingsFormMapper
 {
     internal static EventSettingsViewModel ToViewModel(EventSettingsInfo src) => new()
@@ -196,12 +181,11 @@ internal static class EventSettingsFormMapper
 
         var gateOpening = parsedDate.Value;
 
-        // A new cycle mints its own id — Settings owns event ids (nobodies-collective/Humans#1631).
+        // A new cycle mints its own id: Settings owns event ids.
         return new EventSettingsParseResult(
             new EventSettingsInfo(
                 Id: model.Id ?? Guid.NewGuid(),
                 EventName: model.EventName,
-                // Year is the gate-opening year, never edited on its own.
                 Year: gateOpening.Year,
                 TimeZoneId: model.TimeZoneId,
                 GateOpeningDate: gateOpening,

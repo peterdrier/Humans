@@ -1,9 +1,8 @@
 namespace Humans.Base.Interfaces;
 
 /// <summary>
-/// The per-section facts a section publishes into <see cref="ISectionCatalog"/> — the seam that
-/// answers "does section X have a guide page / an agent doc key / an issue queue" without any
-/// section reaching into another (nobodies-collective/Humans#1509).
+/// The per-section facts a section publishes into <see cref="ISectionCatalog"/>: the seam that answers "does section
+/// X have a guide page / an agent doc key / an issue queue" without any section reaching into another.
 /// </summary>
 /// <remarks>
 /// Ownership stays where it belongs: Guide knows which sections have a guide page, Agent knows

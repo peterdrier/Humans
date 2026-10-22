@@ -3,20 +3,12 @@ using NodaTime;
 namespace Humans.Settings.Contracts;
 
 /// <summary>
-/// The event's calendar shape — the read-only fields needed to resolve a
-/// <c>DayOffset</c> into absolute instants and to classify it into a period or
-/// build sub-period. Implemented by the Settings-owned EF entity
-/// (<c>Humans.Settings.Domain.EventSettings</c>) and by its cross-section read
-/// DTO (<see cref="EventSettingsInfo"/>), so domain helpers that only need the
-/// calendar can accept either without the entity leaking across the section
-/// boundary.
+/// The calendar shape, implemented by both the Settings entity and <see cref="EventSettingsInfo"/>, so calendar
+/// helpers accept either without the entity leaving the section. Members use BCL and NodaTime types only.
 /// </summary>
-/// <remarks>
-/// Lives in the section's <c>Contracts/</c> folder so any section can name it. Members are restricted to BCL and NodaTime types.
-/// </remarks>
 public interface IEventSettingsInfo
 {
-    /// <summary>IANA timezone ID (e.g. "Europe/Madrid").</summary>
+    /// <summary>IANA timezone ID.</summary>
     string TimeZoneId { get; }
 
     /// <summary>The date gates open — DayOffset 0.</summary>
@@ -41,24 +33,18 @@ public interface IEventSettingsInfo
     Instant? EarlyEntryClose { get; }
 
     /// <summary>
-    /// True once <see cref="EarlyEntryClose"/> has passed (<paramref name="now"/> ≥ close).
-    /// Call sites AND this with the viewer's privilege and the shift's
-    /// <c>Shift.IsEarlyEntry</c>.
+    /// True once <paramref name="now"/> ≥ <see cref="EarlyEntryClose"/>. Callers AND this with the viewer's privilege
+    /// and <c>Shift.IsEarlyEntry</c>.
     /// </summary>
     /// <remarks>
-    /// <c>sealed</c> (non-virtual) on purpose: implementers must not be able to
-    /// override the clock rule, and it lets <c>EventSettingsInfo</c> forward its
-    /// same-named public method here without the call dispatching back into
-    /// itself.
+    /// <c>sealed</c> so implementers cannot override the clock rule, and so <c>EventSettingsInfo</c>'s same-named method
+    /// can forward here without dispatching back into itself.
     /// </remarks>
     public sealed bool IsEarlyEntryClosed(Instant now) =>
         EarlyEntryClose.HasValue && now >= EarlyEntryClose.Value;
 
     /// <summary>
-    /// True when early-entry (build) sign-ups are closed for a viewer with the given
-    /// privilege at <paramref name="now"/> — the close has passed and the viewer is
-    /// not privileged. Page-level eligibility, combined per-shift with
-    /// <c>Shift.IsEarlyEntry</c> by the caller; per-team server gates compose
+    /// Page-level eligibility: the close has passed and the viewer is not privileged. Per-team server gates compose
     /// <see cref="IsEarlyEntryClosed"/> with privilege directly instead.
     /// </summary>
     /// <remarks><c>sealed</c> for the same reason as <see cref="IsEarlyEntryClosed"/>.</remarks>

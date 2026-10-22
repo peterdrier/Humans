@@ -12,12 +12,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Feedback.Controllers;
 
-/// <summary>
-/// Read-and-triage surface for the retired Feedback section
-/// (nobodies-collective/Humans#977). Feedback no longer accepts new reports —
-/// Issues superseded it — so every remaining action is full-Admin only. There is
-/// deliberately no reporter-facing view and no creation route.
-/// </summary>
+/// <summary>Admin-only, with no reporter view and no creation route: Feedback is closed to new reports.</summary>
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Feedback")]
 internal sealed class FeedbackController(
@@ -26,12 +21,7 @@ internal sealed class FeedbackController(
     IUserService userService,
     ILogger<FeedbackController> logger) : HumansControllerBase(userService)
 {
-    /// <summary>
-    /// Resolves active humans into <see cref="AssigneeOption"/> rows for the
-    /// assignee dropdowns. Population query, not text search — it reads the
-    /// UserInfo snapshot via <c>GetAllUserInfosAsync</c>, never
-    /// <c>SearchUsersAsync</c>.
-    /// </summary>
+    /// <summary>A population query: reads the UserInfo snapshot, never <c>SearchUsersAsync</c>.</summary>
     private async Task<List<AssigneeOption>> GetActiveAssigneeOptionsAsync(CancellationToken ct = default)
     {
         var options = (await UserService.GetAllUserInfosAsync(ct).ConfigureAwait(false))

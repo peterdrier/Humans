@@ -4,9 +4,8 @@ using Humans.Base.Configuration;
 namespace Humans.Guide.Services;
 
 /// <summary>
-/// Rewrites &lt;a href&gt; and &lt;img src&gt; attributes in rendered guide HTML so sibling
-/// .md links become in-app routes, external/parent-relative links open in a new tab,
-/// and image references resolve to raw.githubusercontent.com.
+/// Sibling .md links become in-app routes, external and parent-relative links open in a new tab, and images resolve
+/// to raw.githubusercontent.com.
 /// </summary>
 internal sealed class GuideHtmlPostprocessor
 {

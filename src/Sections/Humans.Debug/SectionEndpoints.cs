@@ -7,10 +7,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Debug;
 
 /// <summary>
-/// Debug's endpoint contribution: <c>GET /api/data-migrations</c>, the anonymous status of every
-/// registered data migration, polled by development sessions to learn whether production has
-/// finished a copy before its retirement PR. Keys, pending counts and a done flag only — never
-/// row data (Docs/Debug.md, "Data migrations").
+/// Anonymous: development sessions poll it to learn whether production finished a copy before its retirement PR. Keys,
+/// pending counts and done flags only, never row data.
 /// </summary>
 internal sealed class SectionEndpoints : ISectionEndpoints
 {
@@ -39,8 +37,6 @@ internal sealed class SectionEndpoints : ISectionEndpoints
     }
 }
 
-/// <summary>The <c>/api/data-migrations</c> body.</summary>
 internal sealed record DataMigrationsStatusResponse(string Version, IReadOnlyList<DataMigrationProgress> Migrations);
 
-/// <summary>One migration's published progress. Counts only — never row data.</summary>
 internal sealed record DataMigrationProgress(string Key, int Pending, bool Done);

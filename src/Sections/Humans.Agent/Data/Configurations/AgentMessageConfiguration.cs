@@ -29,15 +29,11 @@ internal sealed class AgentMessageConfiguration : IEntityTypeConfiguration<Agent
                     v => v.Aggregate(0, (h, e) => HashCode.Combine(h, StringComparer.Ordinal.GetHashCode(e))),
                     v => v.ToArray()));
 
-        // Same-section FK only: agent_messages → agent_conversations.
         builder.HasOne(m => m.Conversation)
             .WithMany(c => c.Messages)
             .HasForeignKey(m => m.ConversationId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // No cross-section FK to FeedbackReport. HandedOffToFeedbackId is a
-        // plain nullable Guid column. Feedback handoff lookup goes through
-        // IFeedbackService when display data is needed.
         builder.HasIndex(m => m.ConversationId);
         builder.HasIndex(m => m.CreatedAt);
         builder.HasIndex(m => m.RefusalReason);

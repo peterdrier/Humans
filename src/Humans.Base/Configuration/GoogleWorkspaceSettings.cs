@@ -1,51 +1,25 @@
 namespace Humans.Base.Configuration;
 
-/// <summary>
-/// Configuration for Google Workspace API integration.
-/// </summary>
 public class GoogleWorkspaceSettings
 {
-    /// <summary>
-    /// Configuration section name.
-    /// </summary>
     public const string SectionName = "GoogleWorkspace";
 
-    /// <summary>
-    /// Path to the service account credentials JSON file.
-    /// </summary>
     public string ServiceAccountKeyPath { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Service account credentials JSON content (alternative to file path).
-    /// Use this for environments where file access is restricted.
-    /// </summary>
+    /// <summary>Credentials JSON content, the alternative to a key file where file access is restricted.</summary>
     public string? ServiceAccountKeyJson { get; set; }
 
-    /// <summary>
-    /// The Google Workspace domain (e.g., nobodies.team).
-    /// </summary>
     public string Domain { get; set; } = "nobodies.team";
 
-    /// <summary>
-    /// Google Workspace customer ID (e.g., C024frgt7).
-    /// Required by Cloud Identity Groups API as the parent for group operations.
-    /// </summary>
+    /// <summary>Customer ID (e.g. C024frgt7): the parent the Cloud Identity Groups API requires for group operations.</summary>
     public string CustomerId { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Whether to use Shared Drives instead of regular folders.
-    /// </summary>
     public bool UseSharedDrives { get; set; } = false;
 
-    /// <summary>
-    /// Default group settings.
-    /// </summary>
     public GroupSettings Groups { get; set; } = new();
 }
 
-/// <summary>
-/// Default settings for Google Groups created by the system.
-/// </summary>
+/// <summary>Defaults for Google Groups the system creates.</summary>
 public class GroupSettings
 {
     public string WhoCanJoin { get; set; } = "INVITED_CAN_JOIN";

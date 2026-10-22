@@ -26,7 +26,6 @@ internal sealed class FeedbackReplyDelivery(
 {
     private static readonly TrackedLock ReplyDeliveryLock = new("Feedback.ReplyDelivery");
 
-    /// <summary>Retries durable replies whose Email handoff has not yet been acknowledged.</summary>
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         var pending = await repository.GetPendingReplyEmailsAsync(cancellationToken);

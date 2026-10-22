@@ -19,28 +19,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Agent;
 
 /// <summary>
-/// Agent's DI entry point, at the project root by convention. Discovered by Shell — nothing
-/// names it, so it needs no section prefix.
+/// The Anthropic connector lives here, not in Base: <c>IAnthropicClient</c> streams the section's own
+/// <c>AgentTurnToken</c>.
 /// </summary>
-/// <remarks>
-/// <para>
-/// <c>AgentConversationRetentionJob</c> (<c>Jobs/</c>) drives
-/// <see cref="IAgentConversationRetention"/>; its registration and schedule are contributed
-/// via <c>SectionJobs.cs</c>.
-/// </para>
-/// <para>
-/// The two warm-up hosted services <em>are</em> registered here. Nothing outside the section
-/// names them — <c>AddHostedService&lt;T&gt;</c> resolves T at the registration site — so
-/// moving them in is what keeps <c>IAgentPreloadCorpusBuilder</c> and
-/// <c>IAgentSettingsService</c> off the contracts leaf.
-/// </para>
-/// <para>
-/// <c>GitHubCommunityKbContentSource</c> stays in <c>Humans.Infrastructure</c>: it is a
-/// GitHub content connector implementing a Base interface. The <em>Anthropic</em> connector
-/// must live here — <c>IAnthropicClient</c> streams the section's own
-/// <c>AgentTurnToken</c>, and keeping it in Base would mean promoting that type downward.
-/// </para>
-/// </remarks>
 public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
@@ -63,9 +44,7 @@ public sealed class Section : ISection
 
         services.AddScoped<IAgentAnthropicBalanceProvider, AnthropicBalanceProvider>();
 
-        // Singletons: stateless readers that own a per-stem MemoryCache slot via the shared
-        // IMemoryCache. IGuideContentSource is registered as a singleton by
-        // InfrastructureServiceCollectionExtensions, so capturing it here is safe.
+        // Stateless readers over the shared IMemoryCache; IGuideContentSource is a singleton, so capturing it is safe.
         services.AddSingleton<AgentSectionDocReader>();
         services.AddSingleton<AgentFeatureSpecReader>();
         services.AddSingleton<GitHubCommunityKbContentSource>();

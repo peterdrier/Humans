@@ -7,16 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Backdoor.Controllers;
 
-/// <summary>
-/// Read-only Store accounting export for the agent doing the books (peterdrier/Humans#1719):
-/// order lines with their effective price / VAT / revenue account, and settled payments with
-/// their Stripe payment intent ids, one event year at a time.
-/// </summary>
-/// <remarks>
-/// Every endpoint reuses an <see cref="IStoreAccountingRead"/> method; the controller only
-/// parses the year, sorts and formats (hard rule). No paging — a season is a few hundred rows.
-/// Any active key may read; there is no role scoping.
-/// </remarks>
+/// <summary>Any active key may read; there is no role scoping. No paging: a season is a few hundred rows.</summary>
 [ApiController]
 [Route("api/backdoor/store")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]

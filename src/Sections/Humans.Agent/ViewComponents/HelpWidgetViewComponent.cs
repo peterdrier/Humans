@@ -3,16 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Agent.ViewComponents;
 
-/// <summary>
-/// Single floating "Help" widget: one menu with two items, "Talk with the
-/// Assistant" (primary) and "Create issue" (secondary).
-/// Authenticated users see the bubble; the agent option is
-/// shown whenever the agent feature is enabled. The Assistant panel
-/// links to the AI Terms (<c>/Legal/agent-chat</c>) below the composer
-/// instead of gating use behind explicit consent. Contributed into
-/// Shell's <c>body-end</c> chrome slot (nobodies-collective/Humans#1091) —
-/// the chrome slot invokes unconditionally, so the auth gate lives here.
-/// </summary>
+/// <summary>The chrome slot invokes it unconditionally, so the sign-in gate lives here.</summary>
 internal sealed class HelpWidgetViewComponent(IAgentAvailability agent) : ViewComponent
 {
     public IViewComponentResult Invoke()

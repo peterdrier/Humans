@@ -2,12 +2,7 @@ using NodaTime;
 
 namespace Humans.Feedback.Contracts;
 
-/// <summary>
-/// A feedback report with its thread, and the cross-section display data
-/// (reporter, resolver, assignee, team) already stitched in by the service.
-/// On the public surface for <see cref="IFeedbackTriage"/>, which the Backdoor
-/// machine API reads (nobodies-collective/Humans#1128).
-/// </summary>
+/// <summary>Cross-section display data (reporter, resolver, assignee, team) is already stitched in.</summary>
 public sealed record FeedbackReportInfo(
     Guid Id,
     Guid UserId,

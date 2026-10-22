@@ -7,8 +7,7 @@ using Humans.Base.Extensions;
 namespace Humans.Guide.Health;
 
 /// <summary>
-/// Validates GitHub API connectivity for <see cref="GitHubSettings"/>, the legal-documents
-/// repo (<c>nobodies-collective/legal</c>) — not the guide's source, which is <c>GuideSettings</c>.
+/// Checks <see cref="GitHubSettings"/>, the legal-documents repo, not the guide's source (<c>GuideSettings</c>).
 /// </summary>
 internal sealed class GitHubHealthCheck(IOptions<GitHubSettings> settings, ILogger<GitHubHealthCheck> logger) : IHealthCheck
 {
@@ -18,7 +17,6 @@ internal sealed class GitHubHealthCheck(IOptions<GitHubSettings> settings, ILogg
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
-        // Skip detailed check if no repository is configured
         if (string.IsNullOrEmpty(_settings.Owner) || string.IsNullOrEmpty(_settings.Repository))
         {
             return HealthCheckResult.Degraded("GitHub repository not configured");
@@ -34,10 +32,8 @@ internal sealed class GitHubHealthCheck(IOptions<GitHubSettings> settings, ILogg
                 client.Credentials = new Credentials(_settings.AccessToken);
             }
 
-            // Verify we can access the repository
             await client.Repository.Get(_settings.Owner, _settings.Repository).WaitAsync(cancellationToken);
 
-            // Check rate limit status
             var rateLimit = client.GetLastApiInfo()?.RateLimit;
             var data = new Dictionary<string, object>(StringComparer.Ordinal)
             {
@@ -51,7 +47,6 @@ internal sealed class GitHubHealthCheck(IOptions<GitHubSettings> settings, ILogg
                 data["rateLimitRemaining"] = rateLimit.Remaining;
             }
 
-            // Warn if rate limit is low
             if (rateLimit?.Remaining < 10)
             {
                 return HealthCheckResult.Degraded(

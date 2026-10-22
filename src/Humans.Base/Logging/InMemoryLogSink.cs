@@ -12,12 +12,8 @@ namespace Humans.Base.Logging;
 /// without needing to query Docker logs.
 /// </summary>
 /// <remarks>
-/// Lives in Base rather than in the Debug section: it is a Serilog sink registered from
-/// <c>Program.cs</c>'s logger configuration and read by two callers on opposite sides of the
-/// section boundary — <c>Humans.Debug</c>'s <c>/Debug/Logs</c> page and <c>Humans.Backdoor</c>'s
-/// <c>/api/backdoor/logs</c>. It names no section vocabulary at all, so it takes the same
-/// disposition as <c>HumanLookupSearchResult</c> did (G5-SECTION-TEMPLATE.md step 6), one layer
-/// further down because the sink is infrastructure rather than presentation.
+/// In Base, not Debug: <c>Program.cs</c> registers it, and both Humans.Debug's <c>/Debug/Logs</c> and
+/// Humans.Backdoor's <c>/api/backdoor/logs</c> read it.
 /// </remarks>
 public sealed class InMemoryLogSink(int warningCapacity = 1000, int errorCapacity = 1000) : ILogEventSink
 {

@@ -7,17 +7,9 @@ using Microsoft.AspNetCore.Mvc.Filters;
 namespace Humans.Backdoor.Filters;
 
 /// <summary>
-/// The one <c>X-Api-Key</c> gate on <c>/api/backdoor/*</c>. Resolves the presented key to
-/// the human it was issued to and installs that human as the request principal — id and
-/// active roles — so every read is scoped to what that person may see and every write
-/// records a real actor instead of <c>null</c>.
+/// Installs the key's owner (id and active roles) as the request principal. A missing header and an unknown or revoked
+/// key are both 401, deliberately indistinguishable.
 /// </summary>
-/// <remarks>
-/// 401 covers both a missing header and an unknown or revoked key — deliberately
-/// indistinguishable to the caller. There is no 503 "not configured" case any more: keys are
-/// rows an admin allocates, not an environment variable a deploy might forget, so an empty
-/// table is an unauthorized caller rather than a misconfigured server.
-/// </remarks>
 internal sealed class BackdoorApiKeyAuthFilter(
     IBackdoorApiKeyService keys) : IAsyncAuthorizationFilter
 {
@@ -40,11 +32,8 @@ internal sealed class BackdoorApiKeyAuthFilter(
             return;
         }
 
-        // NameIdentifier is what ApiControllerBase.GetCurrentUserId() and the Serilog
-        // CurrentUserEnricher both read, so attribution and log enrichment come for free.
-        // The owner's active roles ride along under the default role claim type, so
-        // User.IsInRole and User.FindAll(ClaimTypes.Role) behave here exactly as they do
-        // for a cookie-authed browser request — a key never reads past its owner.
+        // GetCurrentUserId() and the Serilog enricher read NameIdentifier. The role claims make IsInRole behave as for
+        // a cookie-authed request, so a key never reads past its owner.
         Claim[] claims =
         [
             new Claim(ClaimTypes.NameIdentifier, owner.UserId.ToString()),

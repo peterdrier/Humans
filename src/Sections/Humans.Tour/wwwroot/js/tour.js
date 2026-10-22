@@ -1,10 +1,7 @@
-// Tour landing page — hero slideshow, scroll-triggered fade-ups, and the dust
-// canvas. Patterns lifted from nobodies.team so the two pages feel like siblings.
-// Plain JS, no dependencies; everything degrades to a static page without it.
+// Patterns follow nobodies.team so the two pages feel like siblings. Everything degrades to a static page without JS.
 (function () {
     'use strict';
 
-    // Hero slideshow — lazy-loads each image just before it's shown.
     function initSlideshow() {
         if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
@@ -32,7 +29,6 @@
         setInterval(advance, 5000);
     }
 
-    // Scroll fade-ups.
     function initScrollAnimations() {
         var animEls = document.querySelectorAll('.anim');
         if (!animEls.length || !('IntersectionObserver' in window)) {
@@ -52,7 +48,6 @@
         animEls.forEach(function (el) { observer.observe(el); });
     }
 
-    // Dust particles — low-opacity warm motes drifting upward over the hero.
     function initHeroDust() {
         var canvas = document.getElementById('tour-dust-canvas');
         if (!canvas) return;

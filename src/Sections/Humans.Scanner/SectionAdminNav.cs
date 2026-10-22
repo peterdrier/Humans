@@ -3,7 +3,6 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Scanner;
 
-/// <summary>Scanner's admin sidebar group.</summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>

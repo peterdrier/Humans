@@ -7,13 +7,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Settings.ViewComponents;
 
 /// <summary>
-/// The /Settings#event tab (peterdrier/Humans#1628): wraps the section's own
-/// <c>_EventSettingsForm</c> partial. <see cref="SectionSettings"/> contributes the tab
-/// with no policy, so every authenticated member reaches it; this component decides
-/// editable vs read-only per viewer against <see cref="PolicyNames.AdminOnly"/>.
-/// An admin viewer may also name a specific row via <c>?event={id}</c> — the save
-/// redirect carries the id so the row just saved stays the one displayed.
-/// A non-admin always gets the active row regardless of the query string.
+/// Editable for <see cref="PolicyNames.AdminOnly"/>, read-only otherwise. An admin may name a row via
+/// <c>?event={id}</c>, which the save redirect carries; a non-admin always gets the active row.
 /// </summary>
 internal sealed class EventSettingsTabViewComponent(
     ISettingsService settingsService,
@@ -30,9 +25,8 @@ internal sealed class EventSettingsTabViewComponent(
 
         settings ??= await settingsService.GetActiveEventSettingsAsync(HttpContext.RequestAborted);
 
-        // An admin with no active (or named) row yet may start a new cycle — Settings
-        // mints event ids now (nobodies-collective/Humans#1631) — so hand them a blank
-        // form instead of the "nothing configured" message.
+        // An admin with no active (or named) row may start a new cycle, so they get a blank form, not "nothing
+        // configured".
         EventSettingsViewModel? viewModel = settings is not null
             ? EventSettingsFormMapper.ToViewModel(settings)
             : canEdit ? new EventSettingsViewModel() : null;
@@ -41,9 +35,5 @@ internal sealed class EventSettingsTabViewComponent(
     }
 }
 
-/// <summary>
-/// What the tab's view needs: the active event's values (already mapped onto the
-/// same form model <c>/Settings/Admin</c> binds on POST, so <c>_EventSettingsForm</c>
-/// renders unchanged), and whether this viewer may edit them.
-/// </summary>
+/// <summary><see cref="Settings"/> uses the same form model <c>/Settings/Admin</c> binds on POST.</summary>
 internal sealed record EventSettingsTabViewModel(EventSettingsViewModel? Settings, bool CanEdit);

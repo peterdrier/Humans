@@ -3,14 +3,9 @@ using System.Text.RegularExpressions;
 namespace Humans.Guide.Services;
 
 /// <summary>
-/// Splits a guide file into role-scoped segments. A "## As a …" heading opens a segment that
-/// runs to the next <c>##</c> heading or EOF; everything else is an unscoped segment visible to
-/// everyone.
+/// A "## As a …" heading opens a segment that runs to the next <c>##</c> heading or EOF; everything else is an
+/// unscoped segment everyone sees.
 /// </summary>
-/// <remarks>
-/// Static, like <see cref="GuideFilter"/> and <see cref="GuideRolePrivilegeMap"/>: no state, no
-/// dependency, nothing that wants a seam.
-/// </remarks>
 internal static class GuideSegmenter
 {
     // Internal so the guard test can hold guide content to the exact heading grammar the
@@ -81,8 +76,6 @@ internal static class GuideSegmenter
                     openFence = delimiter;
                     continue;
                 }
-
-                // Not a fence. Fall through and treat the line as ordinary content.
             }
 
             if (openFence is not null)

@@ -1,6 +1,6 @@
 @* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
    here ships broken markup with a green build and no runtime error.
-   Guarded by DevelopmentPageRenderTests (step 12). *@
+   Guarded by DevelopmentPageRenderTests. *@
 @using Humans.Development
 @using Humans.Development.Controllers
 @using Humans.Development.Services
@@ -9,11 +9,7 @@
 @using Humans.Base.Models.Tables
 @using Microsoft.AspNetCore.Html
 @using System.Text.Encodings.Web
-@* Development carries no resource set of its own — every string on the dev sign-in page, the
-   user chooser and the seed page is English developer copy, and there is no Development_* key
-   anywhere. Unlike Debug, no type here binds a localizer at all (Docs/Development.md, Negative
-   Access Rules; deliberately not pinned by a test). *@
+@* No resource set: every string in this section is English developer copy. *@
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
-@* A section can only addTagHelper against Humans.UI — a Shell-resident component renders
-   as inert literal markup (step 6). *@
+@* A section can only addTagHelper against Humans.Base: a Shell-resident component renders as inert literal markup. *@
 @addTagHelper *, Humans.Base

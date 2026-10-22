@@ -3,12 +3,8 @@ using Microsoft.AspNetCore.Diagnostics;
 namespace Humans.Web.ExceptionHandlers;
 
 /// <summary>
-/// Catch-all logger for unhandled exceptions. Logs with method/path/controller/action
-/// context, then returns <c>false</c> so the rest of the pipeline (in particular
-/// <c>UseExceptionHandler("/Home/Error")</c>) still gets to render the error page.
-///
-/// Registered AFTER <see cref="CancellationExceptionHandler"/> so client-cancelled
-/// requests are already handled and do not get logged at Error level.
+/// Logs unhandled exceptions with request context, then returns <c>false</c> so
+/// <c>UseExceptionHandler("/Home/Error")</c> still renders the error page.
 /// </summary>
 public sealed class GlobalLoggingExceptionHandler(ILogger<GlobalLoggingExceptionHandler> logger) : IExceptionHandler
 {
@@ -29,8 +25,6 @@ public sealed class GlobalLoggingExceptionHandler(ILogger<GlobalLoggingException
             controller,
             action);
 
-        // Return false so UseExceptionHandler("/Home/Error") still runs and renders
-        // the error page to the user.
         return ValueTask.FromResult(false);
     }
 }

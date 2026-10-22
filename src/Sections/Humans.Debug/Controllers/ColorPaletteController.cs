@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Debug.Controllers;
 
-/// <summary>Anonymous design reference page (palette, controls, typography). Linked from the admin sidebar "Design" group.</summary>
+/// <summary>Anonymous on purpose: static design reference markup only.</summary>
 [AllowAnonymous]
 [Route("ColorPalette")]
 internal sealed class ColorPaletteController : Controller

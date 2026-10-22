@@ -6,12 +6,9 @@ using Microsoft.AspNetCore.Mvc.Controllers;
 namespace Humans.Web.Hosting;
 
 /// <summary>
-/// Lets a section project's controllers be <c>internal</c>
-/// (nobodies-collective/Humans#866). MVC's default
-/// <see cref="ControllerFeatureProvider"/> requires <c>IsPublic</c>, so an internal
-/// controller is not discovered — and nothing says so: the build is green with zero
-/// warnings and the route simply 404s. The same silent-failure class as a missing
-/// section <c>_ViewImports.cshtml</c>, and measured the same way.
+/// Lets a section project's controllers be <c>internal</c>. MVC's default <see cref="ControllerFeatureProvider"/>
+/// requires <c>IsPublic</c>, and an internal controller is then silently not discovered: the build is green and the
+/// route 404s.
 /// </summary>
 /// <remarks>
 /// A section's rule is "public means <c>Section</c> or <c>Contracts/</c>",
@@ -27,8 +24,8 @@ internal sealed class SectionControllerFeatureProvider : ControllerFeatureProvid
 
     protected override bool IsController(TypeInfo typeInfo)
     {
-        // A deactivated section routes nothing, public or not — the base provider would
-        // otherwise still take its public controllers (#1081).
+        // A deactivated section routes nothing, public or not: the base provider would otherwise still take its
+        // public controllers.
         if (SectionDiscoveryExtensions.IsInactiveSection(typeInfo.Assembly))
             return false;
 

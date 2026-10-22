@@ -7,10 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Monitor;
 
-/// <summary>
-/// Monitor's DI entry point. Discovered by Shell — nothing names it, so it needs no section
-/// prefix.
-/// </summary>
 public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)

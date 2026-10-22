@@ -3,18 +3,13 @@ using System.Collections.Concurrent;
 namespace Humans.Base.Configuration;
 
 /// <summary>
-/// Singleton registry that collects metadata about every configuration setting the app touches.
-/// Entries are registered automatically when code uses the IConfiguration extension methods
-/// (GetRequiredSetting / GetOptionalSetting). The Admin Configuration page reads from this
-/// registry instead of a hardcoded list.
+/// Every configuration setting the app touches, registered by the IConfiguration extension methods; the admin
+/// Configuration page reads it.
 /// </summary>
 public sealed class ConfigurationRegistry
 {
     private readonly ConcurrentDictionary<string, ConfigurationEntry> _entries = new(StringComparer.Ordinal);
 
-    /// <summary>
-    /// Register or update a configuration entry.
-    /// </summary>
     public void Register(ConfigurationEntry entry)
     {
         _entries.AddOrUpdate(
@@ -22,16 +17,14 @@ public sealed class ConfigurationRegistry
             entry,
             (_, existing) =>
             {
-                // Update runtime state (value may change on reload)
+                // The value may change on reload.
                 existing.IsSet = entry.IsSet;
                 existing.Value = entry.Value;
                 return existing;
             });
     }
 
-    /// <summary>
-    /// Get all registered entries, ordered by section then key.
-    /// </summary>
+    /// <summary>Ordered by section, then key.</summary>
     public IReadOnlyList<ConfigurationEntry> GetAll()
     {
         return _entries.Values

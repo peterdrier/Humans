@@ -4,9 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Base.Interfaces;
 
 /// <summary>
-/// A section's single DI entry point. Shell discovers implementations by walking the
-/// entry assembly's dependency graph rather than naming them, so a section that moves
-/// into its own project (nobodies-collective/Humans#866, G5) costs Shell no edit.
+/// A section's single DI entry point. Shell discovers implementations by walking the entry assembly's dependency
+/// graph rather than naming them, so a new section costs Shell no edit.
 /// </summary>
 /// <remarks>
 /// The one <c>public</c> type a section exposes outside <c>Contracts/</c>. Implementations
@@ -17,18 +16,15 @@ namespace Humans.Base.Interfaces;
 public interface ISection
 {
     /// <summary>
-    /// Whether this deployment runs the section. Every section assembly ships; a section
-    /// opts itself out by overriding this (nobodies-collective/Humans#1081), and Shell then
-    /// composes nothing it contributes — no registration, no route, no job, no nav, no
-    /// migration. Deactivating one another section consumes fails startup naming both.
+    /// Whether this deployment runs the section. Every section assembly ships; a section opts out by overriding this,
+    /// and Shell then composes nothing it contributes: no registration, route, job, nav or migration. Deactivating
+    /// one that another active section consumes fails startup naming both.
     /// </summary>
     bool IsActive => true;
 
     /// <summary>
-    /// Registers the section's repositories, services, jobs, options and section-owned
-    /// authorization handlers. Section-specific authorization <em>policies</em> are
-    /// registered separately via <see cref="ISectionPolicies"/> (nobodies-collective/Humans#1076);
-    /// only genuinely cross-section policies stay in Shell.
+    /// Registers the section's repositories, services, jobs, options and authorization handlers. Its authorization
+    /// <em>policies</em> register through <see cref="ISectionPolicies"/>; only cross-section policies stay in Shell.
     /// </summary>
     void Register(IServiceCollection services, IConfiguration configuration);
 }

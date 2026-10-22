@@ -1,9 +1,7 @@
 namespace Humans.Agent.Domain;
 
 /// <summary>
-/// Which preload bundle to include in the cacheable prompt prefix.
-/// Tier1 is safe on Anthropic Tier-1 ITPM; Tier2 expands to the full
-/// section-invariants corpus once the org has been promoted.
+/// Tier1 fits Anthropic's Tier-1 ITPM limit; Tier2 adds the full section-invariants corpus once the org is promoted.
 /// </summary>
 internal enum AgentPreloadConfig
 {

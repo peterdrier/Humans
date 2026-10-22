@@ -131,7 +131,6 @@
                     const matchesMissing = !onlyMissing || row.dataset.locMissing === '1';
                     row.classList.toggle('d-none', !(matchesText && matchesMissing));
                 }
-                // Hide a group's heading and table when every row in it is filtered out.
                 for (const table of document.querySelectorAll('.loc-table')) {
                     const wrapper = table.closest('.table-responsive');
                     const heading = wrapper.previousElementSibling;

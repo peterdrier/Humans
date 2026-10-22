@@ -5,17 +5,8 @@ namespace Humans.Analyzers.Internal;
 internal static class InterfaceMethodMatcher
 {
     /// <summary>
-    /// Returns true when <paramref name="method"/> is the interface method
-    /// <c><paramref name="interfaceFullName"/>.<paramref name="methodName"/></c>
-    /// OR when it is a concrete implementation of that interface method on
-    /// any class.
-    ///
-    /// <para>
-    /// Without this, an analyzer that pins a call site on its interface name
-    /// (e.g. <c>IUserEmailService.UpdateEmailAsync</c>) misses callers that
-    /// hold the concrete implementation type — DI rebinding the same service
-    /// to its concrete class would silently bypass the rule.
-    /// </para>
+    /// True for the interface method <c><paramref name="interfaceFullName"/>.<paramref name="methodName"/></c> or any
+    /// concrete implementation of it, so DI rebinding a service to its concrete class can't bypass a rule.
     /// </summary>
     public static bool Targets(
         IMethodSymbol method,
@@ -29,7 +20,6 @@ internal static class InterfaceMethodMatcher
         if (containingType is null)
             return false;
 
-        // Direct interface call.
         if (string.Equals(containingType.ToDisplayString(), interfaceFullName, StringComparison.Ordinal))
             return true;
 

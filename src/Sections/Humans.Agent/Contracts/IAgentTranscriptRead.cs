@@ -4,18 +4,9 @@ using NodaTime;
 
 namespace Humans.Agent.Contracts;
 
-/// <summary>
-/// Agent's read-only transcript surface for the machine API — the admin listing and
-/// single-conversation fetch behind <c>/api/backdoor/agent</c>
-/// (nobodies-collective/Humans#1128). Everything else <c>IAgentService</c> does (asking a
-/// turn, the user-facing viewer, the prompt preview) stays internal.
-/// </summary>
 public interface IAgentTranscriptRead : IApplicationService
 {
-    /// <summary>
-    /// Every conversation across users, messages eagerly loaded so the caller can compute
-    /// per-conversation aggregates without N+1 round trips.
-    /// </summary>
+    /// <summary>Messages eagerly loaded, so per-conversation aggregates need no N+1 round trips.</summary>
     Task<IReadOnlyList<AgentConversationTranscriptSnapshot>> ListAllConversationsForAdminWithMessagesAsync(
         bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
         CancellationToken cancellationToken);
@@ -25,7 +16,6 @@ public interface IAgentTranscriptRead : IApplicationService
         Guid id, CancellationToken cancellationToken);
 }
 
-/// <summary>A conversation and its full ordered message list.</summary>
 public sealed record AgentConversationTranscriptSnapshot(
     Guid Id,
     Guid UserId,
@@ -35,7 +25,6 @@ public sealed record AgentConversationTranscriptSnapshot(
     int MessageCount,
     IReadOnlyList<AgentMessageSnapshot> Messages);
 
-/// <summary>One message in a transcript.</summary>
 public sealed record AgentMessageSnapshot(
     Guid Id,
     Guid ConversationId,
@@ -52,10 +41,8 @@ public sealed record AgentMessageSnapshot(
     Guid? HandedOffToFeedbackId)
 {
     /// <summary>
-    /// Handoff = legacy server-side FeedbackReport link, or a successful <c>route_to_issue</c>
-    /// recorded in <see cref="FetchedDocs"/> at save time. Computed here so the tool-name
-    /// vocabulary stays inside the section; mirrors the <c>handoffsOnly</c> filter in
-    /// <c>AgentRepository</c>.
+    /// A legacy FeedbackReport link, or a successful <c>route_to_issue</c> recorded in <see cref="FetchedDocs"/>.
+    /// Mirrors the <c>handoffsOnly</c> filter in <c>AgentRepository</c>.
     /// </summary>
     public bool IsHandoff =>
         HandedOffToFeedbackId is not null

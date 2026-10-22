@@ -1,16 +1,11 @@
 namespace Humans.Debug.Models;
 
-/// <summary>
-/// View model for the <c>/Debug/HttpErrors</c> screen: the rolling buffer of
-/// recent error responses (newest first) plus lifetime per-code counts that
-/// survive buffer eviction.
-/// </summary>
+/// <summary>Per-code counts are lifetime totals that survive buffer eviction.</summary>
 internal sealed record HttpErrorsViewModel(
     long TotalErrors,
     IReadOnlyList<HttpErrorCountRow> LifetimeCounts,
     IReadOnlyList<HttpErrorRow> Entries);
 
-/// <summary>Lifetime count for one status code since process start.</summary>
 internal sealed record HttpErrorCountRow(int StatusCode, long Count);
 
 /// <summary>One buffered error response. <paramref name="ClientLabel"/> is the

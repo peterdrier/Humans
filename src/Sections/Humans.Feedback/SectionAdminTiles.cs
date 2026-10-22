@@ -6,10 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Feedback;
 
-/// <summary>
-/// The admin dashboard's open-feedback tile. AdminOnly (nobodies-collective/Humans#977) —
-/// other admin-shaped roles reach /Admin but must not see feedback counts.
-/// </summary>
+/// <summary>AdminOnly: other admin-shaped roles reach /Admin but must not see feedback counts.</summary>
 internal sealed class SectionAdminTiles : ISectionAdminTiles
 {
     public IEnumerable<AdminTile> Tiles() =>

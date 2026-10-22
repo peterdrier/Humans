@@ -1,9 +1,6 @@
 namespace Humans.Settings.Services;
 
-/// <summary>
-/// Entity-type strings this section writes into the audit log. Pinned as constants
-/// because the value is persisted (memory/code/type-name-as-persisted-string.md).
-/// </summary>
+/// <summary>Persisted strings: never derive them from <c>nameof</c>.</summary>
 internal static class AuditEntityTypes
 {
     public const string EventSettings = "EventSettings";

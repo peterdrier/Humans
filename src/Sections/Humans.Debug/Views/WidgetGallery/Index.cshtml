@@ -4,13 +4,8 @@
 @using Humans.Shifts.Contracts
 @using Humans.Tickets.Contracts
 @using Humans.Base.Enums
-@* The section tag-helper assemblies this catalog renders are opened in Views/_ViewImports.cshtml.
-   AdminBreadcrumb, ChromeSlot, SectionNav and ThingsToDo live in Humans.Base (every section's
-   _ViewImports opens it), so they render as ordinary <vc:> tag helpers here. Widgets owned by a
-   section this page has no reason to reference otherwise (Governance, GoogleIntegration,
-   Notifications) — plus Users' and Shifts' own samples — render through one shared
-   <c>ChromeSlots.WidgetGallery</c> chrome slot instead: each section contributes its sample card(s)
-   through its existing SectionChrome (ISectionChrome), same mechanism as any other chrome slot. *@
+@* Widgets of sections this page doesn't otherwise reference render through the ChromeSlots.WidgetGallery chrome
+   slot: each section contributes its sample cards through its SectionChrome. *@
 @{
     ViewData["Title"] = "Widget Gallery";
 }

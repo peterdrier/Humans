@@ -2,11 +2,7 @@ using Humans.Base.Constants;
 
 namespace Humans.Guide.Services;
 
-/// <summary>
-/// Drops the role-scoped segments the current user can't see and returns the markdown that
-/// remains. Runs before rendering: the reader's Markdig pass only ever sees content they are
-/// allowed to read.
-/// </summary>
+/// <summary>Runs before rendering, so Markdig only ever sees content the reader may read.</summary>
 internal static class GuideFilter
 {
     public static string Apply(GuideDocument document, GuideRoleContext context)
@@ -30,8 +26,6 @@ internal static class GuideFilter
         GuideRoleContext context,
         bool fileSeesBoardAdmin)
     {
-        // Unscoped text — the prologue and anything past the next plain ## heading — is
-        // everyone's.
         if (segment.Role is null)
         {
             return true;

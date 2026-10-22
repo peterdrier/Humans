@@ -7,23 +7,10 @@ using Microsoft.AspNetCore.Razor.TagHelpers;
 namespace Humans.Base.TagHelpers;
 
 /// <summary>
-/// Renders a <c>&lt;textarea&gt;</c> upgraded with the EasyMDE WYSIWYG-ish Markdown
-/// editor (toolbar, side-by-side preview, syntax help).
-///
-/// Usage:
-///   <c>&lt;markdown-editor asp-for="BlurbLong" rows="6" /&gt;</c>
-///   <c>&lt;markdown-editor name="emailBodyTemplate" value="@ViewBag.EmailBodyTemplate" rows="10" required="true" /&gt;</c>
-///
-/// Server-side Markdown rendering is unchanged: the textarea posts raw Markdown
-/// to the controller exactly as before, and <c>HtmlHelperExtensions.SanitizedMarkdown</c>
-/// still owns rendering. This tag helper is a pure client-side editing upgrade.
-///
-/// Graceful degradation: if EasyMDE JS fails to load, the bare textarea still
-/// submits Markdown as plain text.
-///
-/// Loads EasyMDE assets from jsDelivr with SRI integrity on first use per request,
-/// and auto-emits the shared <c>_MarkdownHelp</c> modal so the toolbar "?" button
-/// always has something to open — callers do not need to include the partial.
+/// Renders a <c>&lt;textarea&gt;</c> upgraded with the EasyMDE Markdown editor. A pure client-side upgrade: the
+/// textarea posts raw Markdown and <c>HtmlHelperExtensions.SanitizedMarkdown</c> owns rendering, so if EasyMDE fails
+/// to load the bare textarea still submits. Emits the EasyMDE assets (jsDelivr, with SRI) and the
+/// <c>_MarkdownHelp</c> modal once per request, so callers include neither.
 /// </summary>
 [HtmlTargetElement("markdown-editor", Attributes = "asp-for", TagStructure = TagStructure.WithoutEndTag)]
 [HtmlTargetElement("markdown-editor", Attributes = "name", TagStructure = TagStructure.WithoutEndTag)]
@@ -177,7 +164,6 @@ public class MarkdownEditorTagHelper(
             textarea.Attributes["placeholder"] = Placeholder;
         }
 
-        // Write the textarea.
         using (var writer = new StringWriter(CultureInfo.InvariantCulture))
         {
             textarea.WriteTo(writer, HtmlEncoder.Default);

@@ -3,9 +3,6 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Debug;
 
-/// <summary>
-/// Debug's admin sidebar group: the diagnostics pages, then the design galleries.
-/// </summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>

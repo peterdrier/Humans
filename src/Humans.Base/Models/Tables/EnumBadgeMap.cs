@@ -13,21 +13,14 @@ namespace Humans.Base.Models.Tables;
 /// Unmapped values render as bg-secondary.
 /// </summary>
 /// <remarks>
-/// The literal rows below are the sections that have not yet moved into their own projects
-/// (nobodies-collective/Humans#866, G5), whose enums all still sit in
-/// <c>Humans.Base.Enums</c>. A section that has moved owns its rows and pushes them in from
-/// <c>Section.Register</c> via <see cref="Register"/> — Base cannot name a moved section's enum,
-/// and referencing the section's contracts leaf to get it back would end with
-/// <c>Humans.Base</c> holding a reference to every section (Peter, 2026-08-09;
-/// <c>memory/architecture/base-ui-registries-are-section-populated.md</c>). Each G5 move
-/// therefore deletes its rows from here and adds one call there, and the literal ends empty.
+/// A section owns its enums' rows and pushes them in from <c>Section.Register</c> via <see cref="Register"/>: Base
+/// cannot name a section's enum, and referencing the contracts leaves would make Base reference every section
+/// (<c>memory/architecture/base-ui-registries-are-section-populated.md</c>). The literal rows are enums still in Base.
 /// </remarks>
 public static class EnumBadgeMap
 {
-    // ConcurrentDictionary, not Dictionary: parallel integration-test classes each compose
-    // their own host (per-test isolation, nobodies-collective/Humans#983), so Section.Register
-    // calls race against this shared static — and a host mid-composition writes while another
-    // host's requests read.
+    // ConcurrentDictionary: parallel integration-test classes each compose their own host, so Section.Register calls
+    // race against this shared static, writing while another host's requests read.
     private static readonly ConcurrentDictionary<Enum, string> Map = new()
     {
         [EmailOutboxStatus.Queued] = "bg-warning text-dark",
@@ -35,9 +28,8 @@ public static class EnumBadgeMap
         [EmailOutboxStatus.Failed] = "bg-danger",
     };
 
-    // Static class, no DI (issue #1065): resolved per call so warnings reach the app's
-    // fully-configured Serilog pipeline once the host has built it, instead of capturing
-    // whatever Log.Logger held at static-init time. Test-settable only.
+    // Static class, no DI: resolved per call so warnings reach the app's fully configured Serilog pipeline, not
+    // whatever Log.Logger held at static init. Test-settable only.
     private static ILogger? LoggerOverride;
 
     private static ILogger Logger => LoggerOverride ?? Log.ForContext(typeof(EnumBadgeMap));

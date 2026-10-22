@@ -3,15 +3,12 @@ using Microsoft.Extensions.Configuration;
 namespace Humans.Base.Configuration;
 
 /// <summary>
-/// Extension methods on IConfiguration that auto-register accessed keys in the ConfigurationRegistry.
-/// All config consumers should use these instead of raw configuration[] / GetValue calls.
+/// IConfiguration reads that register each key in the ConfigurationRegistry. Use these instead of raw
+/// <c>configuration[]</c> / <c>GetValue</c> calls, or the key never reaches the admin Configuration page.
 /// </summary>
 public static class ConfigurationExtensions
 {
-    /// <summary>
-    /// Get a required configuration setting. Registers the key in the ConfigurationRegistry.
-    /// Returns the value or null if not set.
-    /// </summary>
+    /// <summary>Registers the key as required. Null if not set.</summary>
     public static string? GetRequiredSetting(
         this IConfiguration configuration,
         ConfigurationRegistry registry,
@@ -22,10 +19,7 @@ public static class ConfigurationExtensions
         return GetSetting(configuration, registry, key, section, isSensitive, ConfigurationImportance.Critical);
     }
 
-    /// <summary>
-    /// Get an optional configuration setting. Registers the key in the ConfigurationRegistry.
-    /// Returns the value or null if not set.
-    /// </summary>
+    /// <summary>Registers the key as optional. Null if not set.</summary>
     public static string? GetOptionalSetting(
         this IConfiguration configuration,
         ConfigurationRegistry registry,
@@ -37,9 +31,7 @@ public static class ConfigurationExtensions
         return GetSetting(configuration, registry, key, section, isSensitive, importance);
     }
 
-    /// <summary>
-    /// Get a configuration setting with a typed default value. Registers the key in the ConfigurationRegistry.
-    /// </summary>
+    /// <summary>Registers the key and returns its typed value, or the default.</summary>
     public static T GetSettingValue<T>(
         this IConfiguration configuration,
         ConfigurationRegistry registry,
@@ -66,10 +58,7 @@ public static class ConfigurationExtensions
         return value!;
     }
 
-    /// <summary>
-    /// Register an environment variable in the ConfigurationRegistry.
-    /// Use for settings read via Environment.GetEnvironmentVariable() rather than IConfiguration.
-    /// </summary>
+    /// <summary>For settings read through <c>Environment.GetEnvironmentVariable()</c> rather than IConfiguration.</summary>
     public static string? RegisterEnvironmentVariable(
         this ConfigurationRegistry registry,
         string envVarName,

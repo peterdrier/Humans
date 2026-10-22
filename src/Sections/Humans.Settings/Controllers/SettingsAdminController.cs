@@ -9,16 +9,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Settings.Controllers;
 
 /// <summary>
-/// The app-wide event settings POST endpoint (nobodies-collective/Humans#1104).
-/// Lives at <c>/Settings/Admin</c>,
-/// not <c>/Admin/Settings</c> — top-level <c>/Admin/*</c> is frozen
-/// (memory/architecture/no-admin-url-section.md).
+/// At <c>/Settings/Admin</c>, not <c>/Admin/Settings</c>: top-level <c>/Admin/*</c> is frozen. Takes
+/// <see cref="ISettingsWriteService"/> because the event-settings write is off the cross-section contract.
 /// </summary>
-/// <remarks>
-/// Takes <see cref="ISettingsWriteService"/>, not <c>ISettingsService</c>: the
-/// event-settings write is deliberately off the cross-section contract, so the
-/// only callers that can reach it are the section's own screens.
-/// </remarks>
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Settings/Admin")]
 internal sealed class SettingsAdminController(
@@ -47,9 +40,7 @@ internal sealed class SettingsAdminController(
         }
         catch (InvalidOperationException ex)
         {
-            // The service's own invariant — activating while another cycle is Active. A
-            // conflict an operator can act on, so it belongs on the form it came from,
-            // not in a 500.
+            // An operator can act on this conflict, so it goes back to the form, not to a 500.
             return BackToTab(model.Id, ex.Message);
         }
 
@@ -59,10 +50,7 @@ internal sealed class SettingsAdminController(
         return Redirect($"/Settings?event={parsed.Settings!.Id}#event");
     }
 
-    /// <summary>
-    /// Post-redirect-get back to the Event tab, the way every other settings tab's POST
-    /// ends. There is no GET here to re-render, so the failing rule travels as a flash.
-    /// </summary>
+    /// <summary>There is no GET here to re-render, so the failing rule travels as a flash.</summary>
     private IActionResult BackToTab(Guid? id, string message)
     {
         SetError(message);

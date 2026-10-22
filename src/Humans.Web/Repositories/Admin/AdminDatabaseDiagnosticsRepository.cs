@@ -17,14 +17,8 @@ internal sealed class AdminDatabaseDiagnosticsRepository(
         var applied = (await db.Database.GetAppliedMigrationsAsync(ct)).ToList();
         var pending = await db.Database.GetPendingMigrationsAsync(ct);
 
-        // Section contexts are scoped (registered via AddSectionDbContext), so
-        // resolve them through a scope — same pattern as DatabaseMigrationHostedService.
-        // Every one of them is listed, Users included: UsersDbContext held the top-level
-        // "main pile" slot only because HumansDbContext's deletion (#858) left it there, and
-        // it stopped being reachable from Base at all when the section moved into
-        // Humans.Users (#866, G5 lane 2). The top-level fields now report SystemDbContext,
-        // which is Base's own context and the one this repository already opens for the
-        // Hangfire lock statement.
+        // Section contexts are scoped, so resolve them through a scope, as DatabaseMigrationHostedService does.
+        // The top-level fields report SystemDbContext, which this repository already opens for the Hangfire lock.
         var sections = new List<SectionMigrationStatus>();
         using var scope = scopeFactory.CreateScope();
         foreach (var section in sectionContexts)

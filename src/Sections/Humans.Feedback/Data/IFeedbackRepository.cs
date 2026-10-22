@@ -5,27 +5,9 @@ using NodaTime;
 
 namespace Humans.Feedback.Data;
 
-/// <summary>
-/// Repository for the Feedback section's tables: <c>feedback_reports</c> and
-/// <c>feedback_messages</c>. The only non-test file that writes to these DbSets.
-/// </summary>
-/// <remarks>
-/// Feedback is admin-review-only and low-traffic. The repository uses the
-/// Singleton + <c>IDbContextFactory</c> pattern so each method owns its own
-/// <c>FeedbackDbContext</c> lifetime.
-/// </remarks>
 internal interface IFeedbackRepository : IRepository
 {
-    // ==========================================================================
-    // Reads
-    // ==========================================================================
-
-    /// <summary>
-    /// Loads a single feedback report by id, including its aggregate-local
-    /// <c>Messages</c> collection ordered by <c>CreatedAt</c>. Read-only
-    /// (AsNoTracking). Cross-domain navs are NOT populated. Returns null if
-    /// the report does not exist.
-    /// </summary>
+    /// <summary>Messages ordered by <c>CreatedAt</c>, no tracking. Null when absent.</summary>
     Task<FeedbackReport?> GetByIdAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>Loads replies still awaiting durable Email handoff; historical null flags are excluded.</summary>
@@ -35,18 +17,12 @@ internal interface IFeedbackRepository : IRepository
     Task<bool> CompleteReplyEmailAsync(Guid messageId, CancellationToken ct = default);
 
     /// <summary>
-    /// Loads a feedback report by id (no navigation included) for mutation
-    /// via <see cref="SaveTrackedReportAsync"/> or
-    /// <see cref="AddMessageAndSaveReportAsync"/>. Returns null if not found.
+    /// No navigations; for <see cref="SaveTrackedReportAsync"/> or <see cref="AddMessageAndSaveReportAsync"/>. Null when
+    /// absent.
     /// </summary>
     Task<FeedbackReport?> FindForMutationAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>
-    /// Filtered, newest-first list of feedback reports, capped by
-    /// <paramref name="limit"/>, with their aggregate-local <c>Messages</c>
-    /// collection (callers use <c>Messages.Count</c> only). This is a
-    /// bounded admin-history read, so the ordering/window stay DB-side.
-    /// </summary>
+    /// <summary>Newest first, capped by <paramref name="limit"/>. Callers use <c>Messages.Count</c> only.</summary>
     Task<IReadOnlyList<FeedbackReport>> GetListAsync(
         FeedbackStatus? status,
         FeedbackCategory? category,
@@ -58,67 +34,37 @@ internal interface IFeedbackRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Counts reports that are "actionable" — open with no admin reply, or
-    /// with a reporter message more recent than the last admin message —
-    /// excluding Resolved and WontFix.
+    /// Open with no admin reply, or with a reporter message newer than the last admin message. Excludes Resolved and
+    /// WontFix.
     /// </summary>
     Task<int> GetActionableCountAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns one entry per distinct reporter user with their report count.
-    /// Ordering by display name is the service's responsibility since it
-    /// resolves display names from <c>IUserService</c>.
-    /// </summary>
+    /// <summary>Unordered: the service sorts by display name.</summary>
     Task<IReadOnlyList<(Guid UserId, int Count)>> GetReporterCountsAsync(
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns reports filed by the user or containing their replies, with aggregate-local
-    /// messages included. The export service filters other people's reports to the user's own
-    /// replies and orders the results. Read-only (AsNoTracking).
+    /// Reports filed by the user or containing their replies, with messages, unordered. The export service trims other
+    /// people's reports to the user's own replies.
     /// </summary>
     Task<IReadOnlyList<FeedbackReport>> GetForUserExportAsync(
         Guid userId, CancellationToken ct = default);
 
-    // ==========================================================================
-    // Writes
-    // ==========================================================================
-
-    /// <summary>
-    /// Persists a detached report (from <see cref="FindForMutationAsync"/>)
-    /// by attaching it as Modified.
-    /// </summary>
+    /// <summary>Attaches the report as Modified.</summary>
     Task SaveTrackedReportAsync(FeedbackReport report, CancellationToken ct = default);
 
-    /// <summary>
-    /// Stages a new message and commits it together with the detached
-    /// <paramref name="report"/> that the caller has mutated
-    /// (last-message timestamps, <c>UpdatedAt</c>) in a single transaction.
-    /// </summary>
+    /// <summary>Commits the new message and the caller-mutated <paramref name="report"/> in one SaveChanges.</summary>
     Task AddMessageAndSaveReportAsync(
         FeedbackMessage message, FeedbackReport report, CancellationToken ct = default);
 
-    // ==========================================================================
-    // GDPR erasure and account-merge fold
-    // ==========================================================================
-
     /// <summary>
-    /// GDPR Art. 17: hard-deletes the reports the user filed (their messages
-    /// cascade) and detaches the user from messages and triage fields on
-    /// reports filed by other people, whose text is not theirs to erase.
-    /// Returns the storage keys of the deleted reports' screenshots so the
-    /// caller can drop the files behind them.
+    /// GDPR Art. 17: hard-deletes the user's own reports (messages cascade) and detaches them from messages and triage
+    /// fields on other people's reports, whose text is not theirs to erase. Returns the deleted reports' screenshot
+    /// storage keys so the caller can drop the files.
     /// </summary>
     Task<IReadOnlyList<string>> EraseForUserAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Bulk-moves feedback authorship from <paramref name="sourceUserId"/> to
-    /// <paramref name="targetUserId"/> across both Feedback-owned tables in a
-    /// single transaction: <c>feedback_reports.UserId</c> (re-FK + stamp
-    /// <c>UpdatedAt</c>) and <c>feedback_messages.SenderUserId</c> (re-FK only —
-    /// no <c>UpdatedAt</c> column). Plain re-FK — reports and messages are
-    /// unique events, no dedup.
-    /// </summary>
+    /// <summary>One transaction. Plain re-FK: reports and messages are unique events, no dedup.</summary>
     Task ReassignToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,

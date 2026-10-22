@@ -13,12 +13,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Feedback.Services;
 
-/// <summary>
-/// The Feedback section's service. Admin triage over the historical rows —
-/// Feedback stopped accepting new reports in nobodies-collective/Humans#977, so
-/// there is deliberately no create path.
-/// Owns the nav-badge actionable count and evicts it after every write that can move it.
-/// </summary>
+/// <summary>Evicts the nav-badge count after every write that can move it.</summary>
 internal sealed class FeedbackService(
     IFeedbackRepository repository,
     IUserService userService,
@@ -418,7 +413,6 @@ internal sealed class FeedbackService(
             teamNames);
     }
 
-    // Display/user-facing identity via UserInfo (memory/architecture/burnername-is-the-display-name.md).
     private async Task<IReadOnlyDictionary<Guid, DisplayUser>> BuildDisplayUsersAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken ct)

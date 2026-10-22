@@ -3,8 +3,8 @@ using System.Reflection;
 namespace Humans.Web.Extensions;
 
 /// <summary>
-/// The dependency guard behind <c>ISection.IsActive</c>: a section this deployment does not
-/// run must be one nothing running consumes (nobodies-collective/Humans#1081).
+/// The dependency guard behind <c>ISection.IsActive</c>: a section this deployment does not run must be one nothing
+/// running consumes.
 /// </summary>
 /// <remarks>
 /// No section name is written down anywhere in Shell. The graph is derived from real
@@ -14,10 +14,9 @@ namespace Humans.Web.Extensions;
 internal static class SectionActivation
 {
     /// <summary>
-    /// Section name to the sections it consumes. Derived from real assembly references
-    /// (G5 decision #9 — derived, never declared): a section reaches another only through
-    /// that section's <c>.Contracts</c> assembly, which is a separate assembly, so a
-    /// referenced <c>Humans.X.Contracts</c> maps back to section <c>X</c> by name.
+    /// Section name to the sections it consumes, derived from real assembly references, never declared: a section
+    /// reaches another only through its separate <c>.Contracts</c> assembly, so <c>Humans.X.Contracts</c> maps to
+    /// section <c>X</c> by name.
     /// </summary>
     internal static IReadOnlyDictionary<string, IReadOnlyList<string>> DependencyGraph(
         IReadOnlyList<Assembly> discovered)

@@ -3,9 +3,8 @@ using Humans.Base.Interfaces;
 namespace Humans.Search;
 
 /// <summary>
-/// The icon-only magnifying-glass link in the member top-nav. Gated on plain
-/// authentication, not <see cref="Humans.Base.Authorization.PolicyNames.AppAccess"/> —
-/// search is available before a human has an active profile, unlike most nav items.
+/// Gated on sign-in, not <see cref="Humans.Base.Authorization.PolicyNames.AppAccess"/>: search works before a member
+/// has an active profile.
 /// </summary>
 internal sealed class SectionNav : ISectionNav
 {

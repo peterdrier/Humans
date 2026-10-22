@@ -3,10 +3,8 @@ using System.Diagnostics.CodeAnalysis;
 namespace Humans.Base.Extensions;
 
 /// <summary>
-/// Pure-string search predicates and the shared name-match rubric. In <c>Humans.Base</c>
-/// rather than Shell because <c>Humans.Teams</c>' admin controller filters its member list
-/// with them and a section cannot reference <c>Humans.Web</c>; they name no section
-/// vocabulary, which is the test.
+/// Pure-string search predicates and the shared name-match rubric. In Base because <c>Humans.Teams</c>' admin
+/// controller filters its member list with them and a section cannot reference <c>Humans.Web</c>.
 /// </summary>
 public static class StringSearchExtensions
 {
@@ -31,9 +29,8 @@ public static class StringSearchExtensions
     }
 
     /// <summary>
-    /// Name-match strength for global search: exact &gt; prefix &gt; contains, 0 for no match.
-    /// Each searchable section scores its own hits with this so the buckets stay comparable
-    /// (nobodies-collective/Humans#1062).
+    /// Name-match strength for global search: exact &gt; prefix &gt; contains, 0 for no match. Every searchable section
+    /// scores its own hits with this so the buckets stay comparable.
     /// </summary>
     public static int NameMatchScore(this string? name, string query)
     {

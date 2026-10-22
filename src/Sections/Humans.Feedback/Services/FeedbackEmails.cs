@@ -6,15 +6,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Humans.Feedback.Services;
 
-/// <summary>
-/// Feedback's own email templates: one method per template, each returning a ready
-/// <see cref="EmailMessage"/> (content plus the routing policy Feedback chooses —
-/// template name and opt-out category) for the single
-/// <see cref="IEmailService.SendAsync"/> path. Copy lives in Feedback's own resx set
-/// and is rendered in the recipient's culture inside a <see cref="CultureScope"/>
-/// (memory/architecture/email-templates-live-in-sender.md, peterdrier/Humans#1651).
-/// Pure — no I/O, no persistence.
-/// </summary>
+/// <summary>Pure: no I/O, no persistence.</summary>
 internal sealed class FeedbackEmails(
     IStringLocalizer<FeedbackResource> localizer,
     ILogger<FeedbackEmails> logger)

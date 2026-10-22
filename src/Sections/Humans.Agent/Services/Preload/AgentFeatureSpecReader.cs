@@ -6,14 +6,8 @@ using Octokit;
 namespace Humans.Agent.Services.Preload;
 
 /// <summary>
-/// Reads one feature spec from the Humans repo on GitHub at runtime via the shared
-/// <see cref="IGuideContentSource"/>. Specs live in the owning section's own
-/// <c>src/Sections/Humans.&lt;Section&gt;/Docs/features/</c> folder, plus
-/// <c>docs/features/global/</c> for the cross-section ones, so the stem the tool is given is
-/// resolved through an index derived from the repository tree rather than a fixed folder.
-/// Held in memory with no expiration (loaded once at startup or first call, refreshed only
-/// on restart).
-/// Returns <c>null</c> on miss (unknown stem, GitHub 404, or transient failure).
+/// Stems resolve through an index of the repository tree, since specs live in each section's <c>Docs/features/</c>
+/// plus <c>docs/features/global/</c>. Held in memory with no expiration: restart refreshes. Null on any miss.
 /// </summary>
 internal sealed partial class AgentFeatureSpecReader(
     IGuideContentSource source,
@@ -27,20 +21,13 @@ internal sealed partial class AgentFeatureSpecReader(
     private static readonly MemoryCacheEntryOptions HoldForever =
         new() { Priority = CacheItemPriority.NeverRemove };
 
-    /// <summary>A section project's spec folder: <c>src/Sections/Humans.{Section}/Docs/features/{file}.md</c>.</summary>
     [GeneratedRegex(@"^src/Sections/Humans\.[^/]+/Docs/features/[^/]+\.md$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
     private static partial Regex SectionSpecPath();
 
     /// <summary>
-    /// True for a repo path that is a feature spec: a file in a section's <c>Docs/features/</c>,
-    /// or one directly under <c>docs/features/global/</c> for the cross-section specs. The
-    /// folder is the whole rule — a section's invariants doc, its generated companions
-    /// (<c>authorization.md</c>, <c>data-access.md</c>, <c>health.md</c>) and its dated design
-    /// records stay directly in <c>Docs/</c> and are excluded by living outside the folder,
-    /// with nothing to keep in sync as those file sets change.
-    /// Internal so the stem-collision test can apply the real rule to the real tree; reading
-    /// the built index back cannot detect a collision, having already dropped the loser.
+    /// The folder is the whole rule: invariants docs and their companions live directly in <c>Docs/</c>. Internal so
+    /// the stem-collision test can apply the real rule to the real tree.
     /// </summary>
     internal static bool IsSpecPath(string path) =>
         SectionSpecPath().IsMatch(path)
@@ -48,9 +35,8 @@ internal sealed partial class AgentFeatureSpecReader(
             && path.LastIndexOf('/') == GlobalFolderPath.Length);
 
     /// <summary>
-    /// Stem → containing folder for every spec in the repo, derived from one recursive tree
-    /// listing. An unreachable tree yields an empty index, never an exception — the caller then
-    /// falls back to the bare miss message rather than advertising an empty key set.
+    /// An unreachable tree yields an empty index, never an exception, so the caller falls back to the bare miss
+    /// message rather than advertising an empty key set.
     /// </summary>
     private async Task<IReadOnlyDictionary<string, string>> IndexAsync(CancellationToken cancellationToken)
     {
@@ -65,9 +51,7 @@ internal sealed partial class AgentFeatureSpecReader(
             {
                 var slash = path.LastIndexOf('/');
                 var stem = path[(slash + 1)..^".md".Length];
-                // Stems are unique across sections today; the tool takes a bare stem, so if two
-                // ever collide it can only serve one — say which rather than let the loser
-                // vanish silently (memory/code/always-log-problems.md).
+                // The tool takes a bare stem, so two colliding stems can only serve one: say which.
                 if (!index.TryAdd(stem, path[..slash]))
                 {
                     logger.LogWarning(
@@ -95,24 +79,19 @@ internal sealed partial class AgentFeatureSpecReader(
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            // Log per memory/code/always-log-problems.md — an index that keeps failing is why
-            // the agent's miss messages stop naming any valid stems.
+            // An index that keeps failing is why the agent's miss messages stop naming any stems.
             logger.LogWarning(ex, "Failed to index agent feature specs; returning an empty index");
             return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
     }
 
-    /// <summary>
-    /// Lists the spec stems available so a miss can tell the agent what it may ask for instead
-    /// of dead-ending on "not found" (nobodies-collective/Humans#949).
-    /// </summary>
+    /// <summary>Lets a miss tell the agent what it may ask for.</summary>
     public async Task<IReadOnlyList<string>> KnownStemsAsync(CancellationToken cancellationToken) =>
         [.. (await IndexAsync(cancellationToken)).Keys];
 
     public async Task<string?> ReadAsync(string stem, CancellationToken cancellationToken)
     {
-        // Hard input validation — feature stems are filename-safe identifiers only.
-        // Prevents arbitrary-path traversal via a crafted stem (e.g. "../secrets").
+        // Filename-safe stems only: blocks path traversal via a crafted stem.
         if (string.IsNullOrWhiteSpace(stem) ||
             stem.Any(c => !(char.IsLetterOrDigit(c) || c == '-' || c == '_')))
             return null;
@@ -124,9 +103,7 @@ internal sealed partial class AgentFeatureSpecReader(
         var index = await IndexAsync(cancellationToken);
         if (!index.TryGetValue(stem, out var folderPath))
         {
-            // Not in the repo tree. Log per memory/code/always-log-problems.md so a spec the
-            // model keeps asking for is visible in the prod log viewer rather than silently
-            // returning an empty preload entry.
+            // Logged so a spec the model keeps asking for is visible in the prod log viewer.
             logger.LogWarning("Agent feature spec {Stem} is not in the repository's spec index", stem);
             return null;
         }

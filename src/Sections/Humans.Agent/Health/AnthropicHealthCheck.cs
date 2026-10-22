@@ -3,10 +3,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Humans.Agent.Health;
 
-/// <summary>
-/// Health check that probes DNS reachability for the Anthropic API.
-/// Skipped (returns Healthy) when the agent feature is disabled.
-/// </summary>
+/// <summary>DNS reachability only. Healthy without probing when the agent is disabled.</summary>
 internal sealed class AnthropicHealthCheck(IAgentAvailability agent) : IHealthCheck
 {
     public async Task<HealthCheckResult> CheckHealthAsync(

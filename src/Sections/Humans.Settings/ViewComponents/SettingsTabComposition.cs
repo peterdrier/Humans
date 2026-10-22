@@ -4,12 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Settings.ViewComponents;
 
-/// <summary>
-/// The /Settings tab strip as rendered: every section's <see cref="ISectionSettings"/>
-/// contribution, ordered and policy-filtered. Unlike Shell's <c>AdminNavComposition</c> there
-/// are no groups to merge — one section cannot claim a <see cref="SettingsTab.Key"/> another
-/// already holds, so a duplicate is dropped rather than merged.
-/// </summary>
+/// <summary>A duplicate <see cref="SettingsTab.Key"/> is dropped, not merged.</summary>
 internal static class SettingsTabComposition
 {
     public static async Task<IReadOnlyList<SettingsTab>> ComposeAsync(

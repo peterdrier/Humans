@@ -7,15 +7,10 @@ using Microsoft.Extensions.Hosting;
 namespace Humans.Base.Hosting;
 
 /// <summary>
-/// Applies pending EF migrations in <c>StartingAsync</c>, before cache warmup
-/// and other hosted services read tables that may not exist yet.
-/// Each per-section context registered via <c>AddSectionDbContext</c> runs
-/// through <see cref="SectionMigrationRunner"/> in registration order
-/// (nobodies-collective/Humans#858).
-/// Immediately before the first schema change of the boot — whichever context
-/// causes it — a <see cref="PreMigrationSnapshot"/> is taken, so no deploy can
-/// change the schema without leaving a recoverable point behind
-/// (nobodies-collective/Humans#845).
+/// Applies pending EF migrations in <c>StartingAsync</c>, before cache warmup and other hosted services read tables
+/// that may not exist yet, running each context through <see cref="SectionMigrationRunner"/> in registration order.
+/// A <see cref="PreMigrationSnapshot"/> is taken immediately before the boot's first schema change, so no deploy can
+/// change the schema without leaving a recoverable point behind.
 /// </summary>
 internal sealed class DatabaseMigrationHostedService(
     IServiceScopeFactory scopeFactory,
@@ -43,9 +38,8 @@ internal sealed class DatabaseMigrationHostedService(
         }
         else
         {
-            // Collected once, before any context has applied anything, so the marker records the
-            // frontier the whole deploy needs to clear - not just whichever context happens to
-            // trigger the dump (nobodies-collective/Humans#989).
+            // Collected once, before any context applies anything, so the marker records the frontier the whole deploy
+            // must clear, not just the context that happens to trigger the dump.
             var pendingFrontier = await CollectPendingFrontierAsync(
                 sectionContextInstances.Select(instance => instance.Context), cancellationToken);
             beforeSchemaChange = ct => snapshot.EnsureCapturedAsync(pendingFrontier, ct);
@@ -63,10 +57,8 @@ internal sealed class DatabaseMigrationHostedService(
     }
 
     /// <summary>
-    /// Every migration pending across every section context, qualified by context type so
-    /// identically-timestamped IDs from different contexts can never collide. A dry read via
-    /// <c>GetPendingMigrationsAsync</c> per context - nothing here applies anything
-    /// (nobodies-collective/Humans#989).
+    /// Every migration pending across every section context, qualified by context type so identically-timestamped IDs
+    /// from different contexts never collide. A dry read: nothing here applies anything.
     /// </summary>
     internal static async Task<List<string>> CollectPendingFrontierAsync(
         IEnumerable<DbContext> sectionContexts, CancellationToken cancellationToken)
@@ -76,11 +68,8 @@ internal sealed class DatabaseMigrationHostedService(
         {
             var contextName = context.GetType().Name;
 
-            // GetPendingMigrationsAsync issues a SELECT against the section's history table and
-            // logs it as an Error if that table doesn't exist yet - true on the first boot after
-            // a section is peeled, before SectionMigrationRunner has created it
-            // (nobodies-collective/Humans#1022). When it's absent, every migration the context
-            // knows about is pending by definition, so skip the failing read.
+            // GetPendingMigrationsAsync logs an Error when the history table doesn't exist yet (a new section's first
+            // boot); then every migration the context knows is pending by definition, so skip the read.
             var historyTable = SectionMigrationsHistory.TableFor(context.GetType());
             var pending = await SectionMigrationRunner.TableExistsAsync(context, historyTable, cancellationToken)
                 ? await context.Database.GetPendingMigrationsAsync(cancellationToken)

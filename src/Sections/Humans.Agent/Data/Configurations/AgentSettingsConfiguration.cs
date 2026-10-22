@@ -9,9 +9,7 @@ internal sealed class AgentSettingsConfiguration : IEntityTypeConfiguration<Agen
 {
     public void Configure(EntityTypeBuilder<AgentSettings> builder)
     {
-        // Singleton: CHECK ("Id" = 1) declared here so EF generates
-        // CreateCheckConstraint/DropCheckConstraint in the migration — no raw
-        // migrationBuilder.Sql() (per memory/architecture/no-hand-edited-migrations.md).
+        // CHECK ("Id" = 1) is declared here so EF generates it in the migration, with no raw Sql().
         builder.ToTable("agent_settings", t =>
             t.HasCheckConstraint("ck_agent_settings_singleton", "\"Id\" = 1"));
 

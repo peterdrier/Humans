@@ -1,11 +1,8 @@
 namespace Humans.Agent.Models;
 
 /// <summary>
-/// Admin-only diagnostic snapshot of what would be sent to Anthropic for a
-/// given conversation if a new turn started right now. Regenerated on demand
-/// — never stored — so the preview reflects the *current* preload corpus,
-/// system prompt, and user snapshot, not what was sent at the time of any
-/// historical turn.
+/// Regenerated on demand, never stored: it shows the current corpus, prompt and user snapshot, not what any past turn
+/// sent.
 /// </summary>
 internal sealed record AgentPromptPreview(
     string Model,

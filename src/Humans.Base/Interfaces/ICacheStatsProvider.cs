@@ -14,9 +14,8 @@ public interface ICacheStatsProvider
 
     /// <summary>Live entry count per cache key type (prefix).</summary>
     /// <remarks>
-    /// On the interface since G5 lane 5b-6 (nobodies-collective/Humans#866): /Debug/CacheStats
-    /// used to downcast to TrackingMemoryCache for it, and that class now lives in Humans.Web,
-    /// which a section may not reference.
+    /// On the interface because the implementing <c>TrackingMemoryCache</c> lives in Humans.Web, which a section may
+    /// not reference.
     /// </remarks>
     IReadOnlyDictionary<string, int> GetActiveEntryCounts();
 }

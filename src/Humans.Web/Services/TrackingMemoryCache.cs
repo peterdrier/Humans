@@ -5,10 +5,8 @@ using Microsoft.Extensions.Caching.Memory;
 namespace Humans.Web.Services;
 
 /// <summary>
-/// Decorator around <see cref="IMemoryCache"/> that tracks hit/miss statistics
-/// per cache key type and active entry counts. Registered as the primary
-/// IMemoryCache in DI so all existing consumers get automatic tracking with
-/// no code changes. Stats are in-memory only — reset on application restart.
+/// Decorates <see cref="IMemoryCache"/> with per-key-type hit/miss stats; registered as the primary IMemoryCache so
+/// every consumer is tracked. Stats are in-memory only.
 /// </summary>
 public sealed class TrackingMemoryCache(IMemoryCache inner) : IMemoryCache, ICacheStatsProvider
 {
@@ -65,8 +63,6 @@ public sealed class TrackingMemoryCache(IMemoryCache inner) : IMemoryCache, ICac
         inner.Dispose();
     }
 
-    // ICacheStatsProvider
-
     public IReadOnlyList<CacheStatEntry> GetSnapshot()
     {
         return _stats.Values
@@ -99,11 +95,7 @@ public sealed class TrackingMemoryCache(IMemoryCache inner) : IMemoryCache, ICac
         return counts;
     }
 
-    /// <summary>
-    /// Derive a human-readable "type" from the cache key.
-    /// Keys follow the pattern "Prefix:id" — we extract the prefix.
-    /// Simple keys without a colon use the full key as the type.
-    /// </summary>
+    /// <summary>The prefix of a <c>"Prefix:id"</c> key, or the whole key when it has no colon.</summary>
     private static string DeriveKeyType(object key)
     {
         var keyStr = key.ToString() ?? "(null)";

@@ -4,15 +4,13 @@ using Humans.Base.Constants;
 namespace Humans.Guide.Services;
 
 /// <summary>
-/// Maps display names that appear in guide-heading parentheticals (e.g. "Camp Admin",
-/// "Consent Coordinator") to the privilege token the filter matches — a system role
-/// constant from <see cref="RoleNames"/> for every entry but <see cref="CampLead"/>.
+/// Maps the display names in guide-heading parentheticals ("Camp Admin") to privilege tokens: a
+/// <see cref="RoleNames"/> constant for every entry but <see cref="CampLead"/>.
 /// </summary>
 internal static class GuideRolePrivilegeMap
 {
     /// <summary>
-    /// Privilege token for the per-camp lead relationship — a role on a camp season, never a
-    /// claim. <c>GuideRoleResolver</c> sets it from <c>ICampLeadDirectory</c>.
+    /// A role on a camp season, never a claim. <c>GuideRoleResolver</c> sets it from <c>ICampLeadDirectory</c>.
     /// </summary>
     public const string CampLead = "CampLead";
 
@@ -37,9 +35,8 @@ internal static class GuideRolePrivilegeMap
         };
 
     /// <summary>
-    /// Every system role a parenthetical can name. <see cref="GuideRoleResolver"/> probes
-    /// exactly these against the user's claims; deriving the set here is what keeps the two
-    /// from drifting apart. <see cref="CampLead"/> is excluded — no claim carries it.
+    /// The roles <see cref="GuideRoleResolver"/> probes against claims; deriving them here keeps the two from drifting.
+    /// Excludes <see cref="CampLead"/>: no claim carries it.
     /// </summary>
     public static readonly IReadOnlyList<string> MappedRoles =
         DisplayToRole.Values
@@ -58,10 +55,7 @@ internal static class GuideRolePrivilegeMap
         return DisplayToRole.TryGetValue(displayName.Trim(), out systemRole);
     }
 
-    /// <summary>
-    /// Parses a guide-heading parenthetical like "Camp Admin, Finance Admin" into the
-    /// matching privilege tokens. Unknown tokens are skipped (not thrown).
-    /// </summary>
+    /// <summary>Unknown tokens are skipped, not thrown.</summary>
     public static IReadOnlyList<string> ParseParenthetical(string? paren)
     {
         if (string.IsNullOrWhiteSpace(paren))

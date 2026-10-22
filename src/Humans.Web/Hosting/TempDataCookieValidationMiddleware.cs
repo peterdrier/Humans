@@ -10,16 +10,10 @@ using Microsoft.Extensions.Options;
 namespace Humans.Web.Hosting;
 
 /// <summary>
-/// Runs before MVC and validates the <see cref="CookieTempDataProvider"/> request cookie
-/// before the framework gets to it. On .NET 9+, <c>CookieTempDataProvider.LoadTempData</c>
-/// Base64Url-decodes the cookie and, on a malformed value, throws a context-free
-/// <see cref="FormatException"/> with no request path, user-agent, or cookie length in the
-/// log — see nobodies-collective/Humans#1038. This middleware performs the same decode
-/// check first: a malformed cookie is logged once at Warning with full context (this is
-/// deliberately still visible, not a silencing fix), stripped from the request so
-/// <see cref="CookieTempDataProvider"/> never sees it, and deleted from the response so a
-/// repeat request from the same client stops looping. A valid cookie — chunked or not — is
-/// left completely untouched, so TempData keeps round-tripping normally.
+/// Validates the <see cref="CookieTempDataProvider"/> request cookie before MVC does. The framework throws a
+/// context-free <see cref="FormatException"/> on a malformed value; here it is logged once at Warning with full
+/// context (deliberately still visible), stripped from the request, and deleted from the response so the client
+/// stops looping. A valid cookie, chunked or not, is left untouched.
 /// </summary>
 /// <remarks>
 /// <see cref="CookieTempDataProvider"/> reassembles a large TempData value from chunk
@@ -47,8 +41,8 @@ public sealed class TempDataCookieValidationMiddleware(
         {
             // The marker cookie is the one CookieTempDataProvider looks up; siblings that outlive
             // it are weight it can never reassemble, re-sent on every request until they expire.
-            // Swept without logging: with no main cookie there is no decode and so no #1038
-            // FormatException, and this must not add noise to the stream that issue is read from.
+            // Swept without logging: with no main cookie there is no decode and so no FormatException, and this must
+            // not add noise to that log stream.
             var orphans = ChunkNames(CollectChunkSiblings(requestCookies, cookieName));
             if (orphans.Count > 0)
             {

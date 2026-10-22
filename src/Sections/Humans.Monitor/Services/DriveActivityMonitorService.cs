@@ -331,10 +331,8 @@ internal sealed class DriveActivityMonitorService(
     }
 
     /// <summary>
-    /// Turns a Drive Activity <c>people/{id}</c> name into something a human reads:
-    /// cache → Admin Directory → the Users read-model → the raw id. One instance per scan —
-    /// the resolved names, the Users index and the "index unavailable" latch are all per-run
-    /// state, so a failed lookup is logged once and not retried for the rest of the run.
+    /// Resolves <c>people/{id}</c>: cache, Admin Directory, Users read-model, raw id. One instance per scan, so a
+    /// failed lookup is logged once and not retried for the rest of the run.
     /// </summary>
     private sealed class PersonNameResolver(
         IGoogleDriveActivityClient driveActivityClient,

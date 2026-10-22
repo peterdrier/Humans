@@ -81,14 +81,7 @@ builder.Services.AddSingleton(configRegistry);
 
 builder.Services.AddSingleton<IClock>(SystemClock.Instance);
 
-// The three dev fixture seeders moved into src/Sections/Humans.Development at G5
-// (nobodies-collective/Humans#866) and are internal there, so Shell can no longer name them.
-// Their non-Production gate moved with them into that section's Section.Register, which reads
-// HostDefaults.EnvironmentKey off the configuration passed to it and fails closed.
-
 // All environments: the per-source-IP sign-in failure throttle for /Account/GateLogin.
-// Shell's: the /Account/GateLogin page belongs to Auth. The gate-terminal account seeder
-// moved to Humans.Tickets with /Tickets/Admin/Gate (nobodies-collective/Humans#1091).
 builder.Services.AddSingleton<GateLoginThrottle>();
 
 // Since-startup sign-in tally by method, shown on the /Admin dashboard. In-memory only.
@@ -124,7 +117,6 @@ builder.Services.AddSingleton<TrackingMemoryCache>(_ =>
 builder.Services.AddSingleton<IMemoryCache>(sp => sp.GetRequiredService<TrackingMemoryCache>());
 builder.Services.AddSingleton<ICacheStatsProvider>(sp => sp.GetRequiredService<TrackingMemoryCache>());
 
-// EF/factory/migrations wired in Infrastructure so the section DbContexts stay internal — see #750.
 builder.Services.AddHumansPersistence();
 
 // Persist DataProtection keys to DB so auth cookies survive container restarts.
@@ -142,19 +134,15 @@ builder.Services.AddIdentity<User, IdentityRole<Guid>>(options =>
     .AddDefaultTokenProviders()
     .AddClaimsPrincipalFactory<HumansUserClaimsPrincipalFactory>();
 
-// Magic link tokens use DataProtection (15-min lifetime), not Identity token providers.
-
 // TLS terminated by Coolify/reverse proxy.
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.HttpOnly = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     options.Cookie.SameSite = SameSiteMode.Lax;
-    // 14-day sliding window — any visit inside it extends it, 14 days away requires re-login.
-    // Paired with isPersistent: true at every sign-in site, without which the cookie has no
-    // Expires and dies on browser close. Revocation stays per-request regardless of cookie age:
-    // MembershipRequiredFilter re-checks UserState, the claims transform re-derives roles, and
-    // Identity's security stamp invalidates server-side — see nobodies-collective#925.
+    // 14-day sliding window. Pairs with isPersistent: true at every sign-in site, without which the cookie dies on
+    // browser close. Revocation stays per-request regardless of cookie age: MembershipRequiredFilter re-checks
+    // UserState, the claims transform re-derives roles, and the security stamp invalidates server-side.
     options.ExpireTimeSpan = TimeSpan.FromDays(14);
     options.SlidingExpiration = true;
     options.LoginPath = "/Account/Login";
@@ -173,7 +161,7 @@ builder.Services.AddAuthentication()
         options.Scope.Add("profile");
         options.Scope.Add("email");
         options.SaveTokens = false;
-        // MapJsonKey surfaces Google's email_verified as a claim — see #697.
+        // MapJsonKey surfaces Google's email_verified as a claim.
         Microsoft.AspNetCore.Authentication.ClaimActionCollectionMapExtensions
             .MapJsonKey(options.ClaimActions, "email_verified", "email_verified", "boolean");
         options.Events = new Microsoft.AspNetCore.Authentication.OAuth.OAuthEvents
@@ -190,7 +178,7 @@ builder.Services.AddAuthentication()
 
                 var clientIp = context.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-                // Warning + client IP so /Debug/Logs traces user-reported sign-in issues — see #483.
+                // Warning + client IP so /Debug/Logs traces user-reported sign-in issues.
                 if (isAccessDenied)
                 {
                     logger.LogWarning(
@@ -203,7 +191,7 @@ builder.Services.AddAuthentication()
                 }
                 else if (context.Failure is OperationCanceledException)
                 {
-                    // User closed tab / network dropped mid-callback — see #728.
+                    // User closed tab / network dropped mid-callback.
                 }
                 else
                 {
@@ -218,18 +206,13 @@ builder.Services.AddAuthentication()
         };
     });
 
-// Canonical policies — see docs/authorization-inventory.md.
 builder.Services.AddHumansAuthorizationPolicies();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<Microsoft.AspNetCore.Authentication.IClaimsTransformation, RoleAssignmentClaimsTransformation>();
 
-// Skip Hangfire entirely in Testing — AddHangfire registers IBackgroundJobClient
-// with a factory that reads JobStorage.Current at resolution time. Without storage
-// configured, every DI-graph build that transitively touches IBackgroundJobClient
-// (e.g. HangfireImmediateOutboxProcessor → IImmediateOutboxProcessor →
-// OutboxEmailService) throws InvalidOperationException, failing every integration
-// test. HumansWebApplicationFactory binds a substitute IBackgroundJobClient in
-// Testing — see docs/testing/test-system-reliability.md (P0/#762).
+// Skip Hangfire entirely in Testing: AddHangfire registers IBackgroundJobClient with a factory reading
+// JobStorage.Current at resolution, so without storage every DI graph touching it throws.
+// HumansWebApplicationFactory binds a substitute instead.
 if (!builder.Environment.IsEnvironment("Testing"))
 {
     builder.Services.AddHangfire((sp, config) =>
@@ -465,16 +448,13 @@ builder.Services.AddCors(options =>
 
 var mvcBuilder = builder.Services.AddControllersWithViews(options =>
     {
-        // Name-gate runs before the membership gate: a freshly-created OAuth /
-        // imported account with a blank BurnerName must be sent to the name form
-        // before MembershipRequiredFilter bounces it to Guest/Home. See #812.
+        // Name-gate runs before the membership gate: a fresh OAuth or imported account with a blank BurnerName goes
+        // to the name form before MembershipRequiredFilter bounces it to Guest/Home.
         options.Filters.Add<NameRequiredFilter>();
         options.Filters.Add<MembershipRequiredFilter>();
         options.Filters.Add<Humans.Web.Filters.AuthorizationPillFilter>();
 
-        // datetime-local inputs post without seconds; NodaTime's LocalDateTime
-        // TypeConverter requires them. See LocalDateTimeModelBinder
-        // (nobodies-collective/Humans#932).
+        // datetime-local inputs post without seconds; NodaTime's LocalDateTime TypeConverter requires them.
         options.ModelBinderProviders.Insert(0, new LocalDateTimeModelBinderProvider());
     })
     .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix)
@@ -488,8 +468,8 @@ var mvcBuilder = builder.Services.AddControllersWithViews(options =>
         options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(Humans.Base.SharedResource));
     });
 
-// A section project's controllers are internal (nobodies-collective/Humans#866); MVC's
-// default provider only discovers public ones, and says nothing when it doesn't.
+// A section project's controllers are internal; MVC's default provider only discovers public ones, and says nothing
+// when it doesn't.
 mvcBuilder.ConfigureApplicationPartManager(apm =>
     apm.FeatureProviders.Add(new SectionControllerFeatureProvider()));
 
@@ -510,7 +490,6 @@ if (builder.Environment.IsProduction())
 builder.Services.AddRazorPages();
 builder.Services.AddSignalR();
 
-// In Developement, compile Razor pages each time they are loaded
 if (builder.Environment.IsDevelopment())
 {
     mvcBuilder.AddRazorRuntimeCompilation();
@@ -544,9 +523,7 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
         return null;
     }));
 
-    // Wrap every provider (the preference-based one above, plus the default query
-    // string/cookie/Accept-Language providers) so the parsing culture is always "en"
-    // regardless of which one wins — see UiCultureOnlyRequestCultureProvider (#1067).
+    // Wrap every provider so the parsing culture is always "en" whichever one wins.
     options.RequestCultureProviders = options.RequestCultureProviders
         .Select(provider => (IRequestCultureProvider)new UiCultureOnlyRequestCultureProvider(provider))
         .ToList();
@@ -559,9 +536,6 @@ DateTimeDisplayExtensions.Initialize(app.Services.GetRequiredService<IHttpContex
 
 // Post-Build so the parameterless enricher activator can read ambient HttpContext per log emission.
 CurrentUserEnricher.StaticAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
-
-// HumansMetricsService is registered AddHostedService — its gauge-refresh timer is armed in
-// StartAsync (after the migration barrier), so no eager pre-Run() resolve is needed here.
 
 // Localization diagnostic check
 {
@@ -579,13 +553,11 @@ CurrentUserEnricher.StaticAccessor = app.Services.GetRequiredService<IHttpContex
         app.Logger.LogError("Resource type: {TypeName}, Assembly: {Assembly}",
             resourceType.FullName, resourceType.Assembly.GetName().Name);
 
-        // List embedded resources for debugging
         var assembly = resourceType.Assembly;
         var resourceNames = assembly.GetManifestResourceNames();
         app.Logger.LogError("Embedded resources in {Assembly}: {Resources}",
             assembly.GetName().Name, string.Join(", ", resourceNames));
 
-        // Check satellite assemblies
         foreach (var culture in supportedCultures)
         {
             try
@@ -607,12 +579,8 @@ CurrentUserEnricher.StaticAccessor = app.Services.GetRequiredService<IHttpContex
     }
 }
 
-// Same check for every section's own resource set (nobodies-collective/Humans#866).
-// A section's .resx manifest name derives from the adjacent .cs file's
-// namespace, not its folder path, and getting that wrong is silent — every string in
-// the set renders as its raw key. Checking that the manifest the localizer will look
-// for is actually embedded needs no key-name convention and no culture, so a new
-// section adds nothing here.
+// Same check for every section's own resource set: a .resx manifest name derives from the adjacent .cs file's
+// namespace, and getting it wrong is silent (every string renders as its key).
 foreach (var resourceType in SectionDiscoveryExtensions.SectionResourceTypes())
 {
     var expected = resourceType.FullName + ".resources";
@@ -632,10 +600,8 @@ foreach (var resourceType in SectionDiscoveryExtensions.SectionResourceTypes())
     }
 }
 
-// Authorization-policy diagnostic check (nobodies-collective/Humans#1076): every
-// PolicyNames constant must resolve to a policy actually registered — by Shell or by a
-// section's ISectionPolicies. A section that stops registering its policy (e.g. turned
-// off) must fail loud here, not 403 mysteriously wherever the policy is used.
+// Every PolicyNames constant must resolve to a registered policy, by Shell or a section's ISectionPolicies: a section
+// that stops registering one must fail loud here, not 403 wherever the policy is used.
 {
     using var scope = app.Services.CreateScope();
     var policyProvider = scope.ServiceProvider.GetRequiredService<IAuthorizationPolicyProvider>();
@@ -660,7 +626,7 @@ foreach (var resourceType in SectionDiscoveryExtensions.SectionResourceTypes())
 // Must be first (reverse proxy).
 app.UseForwardedHeaders();
 
-// Must wrap UseExceptionHandler so handlers swap status before Serilog records — see #728.
+// Must wrap UseExceptionHandler so handlers swap status before Serilog records.
 app.UseSerilogRequestLogging();
 
 if (app.Environment.IsDevelopment())
@@ -741,7 +707,7 @@ app.UseMiddleware<UserActivityTrackingMiddleware>();
 // after the response is produced; only text/html responses are counted.
 app.UseMiddleware<ClientStatsMiddleware>();
 
-// Dev-loop guard, not a runtime safety net — never Production/Testing. See #1055.
+// Dev-loop guard, not a runtime safety net — never Production/Testing.
 if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
 {
     app.UseMiddleware<ViewComponentTagSurvivalMiddleware>();
@@ -749,9 +715,8 @@ if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
 
 app.UseAuthorization();
 
-// Before MVC runs: a malformed TempData cookie throws an unloggable-context
-// FormatException deep in CookieTempDataProvider — see #1038. Catch it here where
-// Path/UserAgent are still available, and strip the cookie so MVC never sees it.
+// Before MVC runs: a malformed TempData cookie throws a context-free FormatException deep in CookieTempDataProvider.
+// Catch it here, where Path/UserAgent are still available, and strip the cookie.
 app.UseMiddleware<TempDataCookieValidationMiddleware>();
 
 app.UseSession();
@@ -853,13 +818,9 @@ foreach (var contributor in SectionDiscoveryExtensions.DiscoverImplementations<I
 
 // DB migrations run via DatabaseMigrationHostedService during StartAsync, before Hangfire takes locks.
 
-// Widened to also cover the Hangfire block below (nobodies-collective/Humans#1060): a preview
-// env whose database doesn't exist yet fails here first — every recurring-job registration
-// throws the same connection error, but each is caught and logged as a WARNING by
-// UseHumansRecurringJobs (a legitimate concern there: a stale distributed lock must not stop
-// the app booting). That warning is loud but incidental; the real fatal cause is whichever of
-// this block or DatabaseMigrationHostedService.StartingAsync (run inside RunAsync) throws
-// first, and previously only the RunAsync half was caught here.
+// Covers the Hangfire block too: a preview env without its database fails here first. Each recurring-job
+// registration then logs a loud but incidental WARNING; the fatal cause is whichever of this block or
+// DatabaseMigrationHostedService.StartingAsync throws first.
 try
 {
     if (!app.Environment.IsEnvironment("Testing"))
@@ -877,8 +838,7 @@ catch (Exception ex)
     throw;
 }
 
-// One clear FATAL line for a startup crash, naming the database for Postgres connectivity
-// failures (nobodies-collective/Humans#1060), with a generic message for other causes.
+// One clear FATAL line for a startup crash, naming the database for Postgres connectivity failures.
 static void LogStartupFailure(Exception ex, IConfiguration configuration, Microsoft.Extensions.Logging.ILogger logger)
 {
     var pgEx = FindException<NpgsqlException>(ex);
