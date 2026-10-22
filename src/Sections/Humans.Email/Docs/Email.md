@@ -166,6 +166,8 @@ The communication-preference routes moved from Users in decomposition commit 14 
 
 ## Invariants
 
+- Missing or empty unsubscribe tokens are invalid before Data Protection or user reads, including the new-category validator and legacy fallback. The anonymous one-click path refuses a missing token rather than surfacing a token-decoding exception.
+
 - An absent, empty or whitespace-only `Email:SmtpHost` selects the logging stub outside production. Production refuses startup and names `Email:SmtpHost` in the diagnostic; a nonblank host selects SMTP.
 
 - Guest unsubscribe success copy is HTML-encoded and JSON-serialized before insertion into the scripted banner, preserving translated text and markup without raw JavaScript delimiters.

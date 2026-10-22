@@ -297,8 +297,12 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     [HumansTheory]
     [InlineData("this-is-not-a-valid-token")]
     [InlineData("aGVsbG8gd29ybGQ=")]
-    public void UnsubscribeToken_Tampered_IsInvalid(string token) =>
-        _service.ValidateUnsubscribeToken(token).Should().Be((TokenValidationStatus.Invalid, Guid.Empty, default(MessageCategory)));
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("%")]
+    [InlineData("a")]
+    public void UnsubscribeToken_Tampered_IsInvalid(string? token) =>
+        _service.ValidateUnsubscribeToken(token!).Should().Be((TokenValidationStatus.Invalid, Guid.Empty, default(MessageCategory)));
 
     [HumansFact]
     public void UnsubscribeHeaders_KeepTheUnsubscribeUrls()

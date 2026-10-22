@@ -13,6 +13,8 @@ internal sealed class UnsubscribeService(
 {
     public async Task<UnsubscribeTokenResult> ValidateTokenAsync(string token, CancellationToken ct = default)
     {
+        if (string.IsNullOrEmpty(token)) return UnsubscribeTokenResult.Invalid();
+
         var result = preferenceService.ValidateUnsubscribeToken(token);
         if (result.Status == TokenValidationStatus.Valid)
         {
