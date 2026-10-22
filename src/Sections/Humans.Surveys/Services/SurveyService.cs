@@ -216,26 +216,11 @@ internal sealed class SurveyService(
         var survey = new Survey
         {
             Id = surveyId,
-            Title = input.Title,
-            Intro = input.Intro,
-            ThankYou = input.ThankYou,
-            InvitationEmailSubject = invitationEmailSubject,
-            InvitationEmailMessage = invitationEmailMessage,
-            DefaultCulture = input.DefaultCulture,
-            AllowAnonymous = input.AllowAnonymous,
-            IsAsociadoVote = input.IsAsociadoVote,
             Status = SurveyStatus.Draft,
-            OpensAt = input.OpensAt,
-            ClosesAt = input.ClosesAt,
-            AudienceType = input.AudienceType,
-            AudienceTeamId = input.AudienceTeamId,
-            AudienceLoggedInSince = input.AudienceLoggedInSince,
-            PublicSlug = publicSlug,
             CreatedByUserId = actorUserId,
             CreatedAt = now,
-            UpdatedAt = now,
-            Questions = questions,
         };
+        ApplyEditableFields(survey, input, questions, invitationEmailSubject, invitationEmailMessage, publicSlug, now);
 
         try
         {
@@ -334,26 +319,8 @@ internal sealed class SurveyService(
             throw;
         }
 
-        var survey = new Survey
-        {
-            Id = surveyId,
-            Title = input.Title,
-            Intro = input.Intro,
-            ThankYou = input.ThankYou,
-            InvitationEmailSubject = invitationEmailSubject,
-            InvitationEmailMessage = invitationEmailMessage,
-            DefaultCulture = input.DefaultCulture,
-            AllowAnonymous = input.AllowAnonymous,
-            IsAsociadoVote = input.IsAsociadoVote,
-            OpensAt = input.OpensAt,
-            ClosesAt = input.ClosesAt,
-            AudienceType = input.AudienceType,
-            AudienceTeamId = input.AudienceTeamId,
-            AudienceLoggedInSince = input.AudienceLoggedInSince,
-            PublicSlug = publicSlug,
-            UpdatedAt = now,
-            Questions = questions,
-        };
+        var survey = new Survey { Id = surveyId };
+        ApplyEditableFields(survey, input, questions, invitationEmailSubject, invitationEmailMessage, publicSlug, now);
 
         // Diffed against the no-tracking snapshot so the audit trail names what changed.
         var changeSummary = DescribeSurveyChanges(existing, survey);
@@ -368,6 +335,28 @@ internal sealed class SurveyService(
         }
         await auditLog.LogAsync(AuditAction.SurveyUpdated, AuditEntityTypes.Survey, surveyId, changeSummary, actorUserId);
         return new(surveyId);
+    }
+
+    private static void ApplyEditableFields(
+        Survey survey, SurveyEditInput input, List<SurveyQuestion> questions,
+        LocalizedText invitationEmailSubject, LocalizedText invitationEmailMessage, string? publicSlug, Instant now)
+    {
+        survey.Title = input.Title;
+        survey.Intro = input.Intro;
+        survey.ThankYou = input.ThankYou;
+        survey.InvitationEmailSubject = invitationEmailSubject;
+        survey.InvitationEmailMessage = invitationEmailMessage;
+        survey.DefaultCulture = input.DefaultCulture;
+        survey.AllowAnonymous = input.AllowAnonymous;
+        survey.IsAsociadoVote = input.IsAsociadoVote;
+        survey.OpensAt = input.OpensAt;
+        survey.ClosesAt = input.ClosesAt;
+        survey.AudienceType = input.AudienceType;
+        survey.AudienceTeamId = input.AudienceTeamId;
+        survey.AudienceLoggedInSince = input.AudienceLoggedInSince;
+        survey.PublicSlug = publicSlug;
+        survey.UpdatedAt = now;
+        survey.Questions = questions;
     }
 
     /// <summary>

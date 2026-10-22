@@ -180,6 +180,8 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 ## Invariants
 
+- Survey create and update share the editable-field mapping, including normalized invitation copy, prepared questions and public slug. Creation identity/status/timestamps and each path’s validation and upload lifecycle remain owned by that path.
+
 - Invitation send/reminder timestamps on the operator send page use the shared display formatter in Europe/Madrid time, with date ordering and month names following the UI culture; missing stamps remain an em dash.
 
 - **Anonymity encoding** is the load-bearing privacy contract:
