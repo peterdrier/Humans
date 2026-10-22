@@ -1500,9 +1500,8 @@ internal sealed class TeamService(
                     assignment.TeamMember?.UserId))
                 .ToList());
 
-    public async Task<TeamRoleAssignment> AssignToRoleAsync(
-        Guid roleDefinitionId, Guid targetUserId, Guid actorUserId,
-        CancellationToken cancellationToken = default)
+    private async Task<(TeamRoleDefinition Definition, Team Team)> RequireRoleAssignmentManagementAsync(
+        Guid roleDefinitionId, Guid actorUserId, CancellationToken cancellationToken)
     {
         var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken)
             ?? throw new InvalidOperationException($"Role definition {roleDefinitionId} not found");
@@ -1511,6 +1510,16 @@ internal sealed class TeamService(
         var canManage = await CanUserApproveRequestsForTeamAsync(definition.TeamId, actorUserId, cancellationToken);
         if (!canManage)
             throw new InvalidOperationException("User does not have permission to manage role assignments for this team");
+
+        return (definition, team);
+    }
+
+    public async Task<TeamRoleAssignment> AssignToRoleAsync(
+        Guid roleDefinitionId, Guid targetUserId, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var (definition, team) = await RequireRoleAssignmentManagementAsync(
+            roleDefinitionId, actorUserId, cancellationToken);
 
         targetUserId = await ResolveMembershipTargetAsync(targetUserId, cancellationToken);
         var existingMember = await repo.FindActiveMemberForMutationAsync(definition.TeamId, targetUserId, cancellationToken);
@@ -1573,13 +1582,8 @@ internal sealed class TeamService(
         Guid roleDefinitionId, Guid teamMemberId, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken)
-            ?? throw new InvalidOperationException($"Role definition {roleDefinitionId} not found");
-        var team = await GetRoleDefinitionTeamAsync(definition, cancellationToken);
-
-        var canManage = await CanUserApproveRequestsForTeamAsync(definition.TeamId, actorUserId, cancellationToken);
-        if (!canManage)
-            throw new InvalidOperationException("User does not have permission to manage role assignments for this team");
+        var (definition, team) = await RequireRoleAssignmentManagementAsync(
+            roleDefinitionId, actorUserId, cancellationToken);
 
         var (_, targetUserId) = await repo.UnassignFromRoleAsync(
             roleDefinitionId, teamMemberId, cancellationToken);
