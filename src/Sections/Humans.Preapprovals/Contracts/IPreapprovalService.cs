@@ -12,4 +12,10 @@ public interface IPreapprovalService : IApplicationService
 
     /// <summary>Any state; null when it does not exist.</summary>
     Task<GrantOption?> GetGrantAsync(Guid grantId, CancellationToken ct);
+
+    /// <summary>
+    /// Every grant, in any state, of the programs the person is a named manager of under any id they have held. Admin,
+    /// Board and FinanceAdmin reach every program by role, which this does not count.
+    /// </summary>
+    Task<IReadOnlySet<Guid>> ListManagedGrantIdsAsync(Guid userId, CancellationToken ct);
 }

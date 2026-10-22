@@ -222,9 +222,12 @@ Builds on Phase 2's `ExpenseReport.HoldedAccountNumber` / nullable category.
   day after is not. **The deadline gates the first submit only.** A report that already holds
   the grant (rejected, back in `Draft`) may resubmit after `ClaimBy`: it was filed in time and
   the rejection is Finance's to finish, not a second filing. It gets a fresh stamp.
-- **Endorsement skipped:** a pre-approved report goes `Submitted → Finance review`. The grant is
-  the endorsement; the program's managers already decided. (Matches Phase 2's rule for unmapped
-  accounts.)
+- **First review by the program's managers:** a pre-approved report has no budget category, so no
+  coordinator; a named manager of the grant's program takes the coordinator's place. They see it on
+  `/Expenses/Review` and their `/Expenses` queue, and while it is `Submitted` may endorse, reject it
+  back to `Draft` (the grant stays `Claimed`) or decline a line. Their endorse cap obeys the approve
+  rule below: never above the grant's current `MaxAmount`, blank keeps it. As with coordinators,
+  Finance may still approve straight from `Submitted`.
 - **Approve:** Finance may lower the cap, never raise it above the grant's **current** `MaxAmount`
   (re-read at approve, so a grant raised after submit lets Finance pay the new figure). A blank
   cap field on a pre-approved report means the grant's current `MaxAmount`, never "no cap":
@@ -403,7 +406,7 @@ Steps 2 and 3 can be built in parallel once Phase 2 is on QA; 3 merges after 2.
   audited.
 - **Expenses**: draft stores the program's account at creation; stamp written at submit from
   the program's current account, overwriting it; resubmit after reject restamps; submit after `ClaimBy` refused;
-  submit on a non-claimable grant refused; endorsement skipped; approve cannot raise the cap above the grant's current amount or
+  submit on a non-claimable grant refused; only the program's managers endorse, capped at the grant; approve cannot raise the cap above the grant's current amount or
   change the account, and a blank cap keeps the grant's current amount; reject leaves the grant `Claimed`; withdraw before approval releases;
   withdraw after approval is refused; approve consumes in the same transaction as the
   push enqueue; on-behalf filing restricted to the member's own grants.

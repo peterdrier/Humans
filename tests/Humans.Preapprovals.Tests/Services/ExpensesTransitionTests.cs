@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Preapprovals.Contracts;
+using Humans.Preapprovals.Domain;
 using Humans.Preapprovals.Services;
 using Humans.Preapprovals.Tests.Infrastructure;
 using NSubstitute;
@@ -16,6 +17,21 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
 {
     private static readonly Guid Report = Guid.NewGuid();
     private static readonly Guid OtherReport = Guid.NewGuid();
+
+    [HumansFact]
+    public async Task ListManagedGrantIds_EveryGrantOfTheirPrograms_UnderAnyIdTheyHeld()
+    {
+        var archivedId = Guid.NewGuid();
+        var manager = SeedUser("Manager", mergedIds: [archivedId]);
+        var mine = await SeedProgramAsync(status: ProgramStatus.Closed, managers: archivedId);
+        var other = await SeedProgramAsync(managers: SeedUser("Other manager"));
+        var open = await SeedGrantAsync(mine);
+        var consumed = await SeedGrantAsync(mine, status: GrantStatus.Consumed, expenseReportId: Report);
+        await SeedGrantAsync(other);
+
+        (await NewService().ListManagedGrantIdsAsync(manager, Ct)).Should().BeEquivalentTo([open.Id, consumed.Id]);
+        (await NewService().ListManagedGrantIdsAsync(SeedUser("Nobody"), Ct)).Should().BeEmpty();
+    }
 
     [HumansFact]
     public async Task Claim_Open_StampsAndHolds_ResolvesFileBy_Audits()

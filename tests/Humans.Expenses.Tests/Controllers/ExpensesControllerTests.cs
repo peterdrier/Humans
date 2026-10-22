@@ -218,7 +218,8 @@ public sealed class ExpensesControllerTests
         reports.GetAsync(reportId).Returns(report);
         reports.WithdrawWithResultAsync(reportId, actorId).Returns(ExpenseMutationResult.Success);
         var handler = new ExpenseReportAuthorizationHandler(
-            Substitute.For<IBudgetService>(), Substitute.For<Humans.Teams.Contracts.ITeamService>(), users);
+            Substitute.For<IBudgetService>(), Substitute.For<Humans.Teams.Contracts.ITeamService>(), users,
+            Substitute.For<IPreapprovalService>());
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), report,
                 Arg.Any<IEnumerable<IAuthorizationRequirement>>())

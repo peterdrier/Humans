@@ -7,6 +7,7 @@ using Humans.Users.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Expenses.Authorization;
+using Humans.Preapprovals.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using NSubstitute;
 using NodaTime;
@@ -18,6 +19,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     private readonly IBudgetService _budgetService = Substitute.For<IBudgetService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
+    private readonly IPreapprovalService _preapprovals = Substitute.For<IPreapprovalService>();
     private readonly ExpenseReportAuthorizationHandler _handler;
 
     private static readonly Guid SubmitterId = Guid.NewGuid();
@@ -30,7 +32,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
 
     public ExpenseReportAuthorizationHandlerTests()
     {
-        _handler = new ExpenseReportAuthorizationHandler(_budgetService, _teamService, _users);
+        _handler = new ExpenseReportAuthorizationHandler(_budgetService, _teamService, _users, _preapprovals);
 
         // Category is linked to TeamId
         _budgetService.GetCategoryByIdAsync(CategoryId)
@@ -453,6 +455,41 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     {
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted);
         (await EvaluateAsync(CreateUser(RandomUserId), report, ExpenseReportOperation.DeclineLine)).Should().BeFalse();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("View", ExpenseReportStatus.Approved, true)]
+    [Xunit.InlineData("Endorse", ExpenseReportStatus.Submitted, true)]
+    [Xunit.InlineData("CoordinatorReject", ExpenseReportStatus.Submitted, true)]
+    [Xunit.InlineData("DeclineLine", ExpenseReportStatus.Submitted, true)]
+    [Xunit.InlineData("Endorse", ExpenseReportStatus.CoordinatorEndorsed, false)]
+    [Xunit.InlineData("DeclineLine", ExpenseReportStatus.CoordinatorEndorsed, false)]
+    [Xunit.InlineData("Approve", ExpenseReportStatus.Submitted, false)]
+    [Xunit.InlineData("Edit", ExpenseReportStatus.Submitted, false)]
+    public async Task PreapprovalManager_IsTheFirstReviewer_OfReportsAgainstTheirProgramsGrants(
+        string operationName, ExpenseReportStatus status, bool expected)
+    {
+        var operation = Enum.Parse<ExpenseReportOperation>(operationName);
+        var grantId = Guid.NewGuid();
+        var manager = Guid.NewGuid();
+        _preapprovals.ListManagedGrantIdsAsync(manager, Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid> { grantId });
+        var report = MakeReport(SubmitterId, status) with { BudgetCategoryId = null, BudgetYearId = null, PreapprovalGrantId = grantId };
+
+        (await EvaluateAsync(CreateUser(manager), report, operation)).Should().Be(expected);
+    }
+
+    [HumansFact]
+    public async Task PreapprovalManager_OfAnotherProgram_And_TheCategoryCoordinator_CannotReviewAPreapprovedReport()
+    {
+        var otherManager = Guid.NewGuid();
+        _preapprovals.ListManagedGrantIdsAsync(otherManager, Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid> { Guid.NewGuid() });
+        var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted) with { PreapprovalGrantId = Guid.NewGuid() };
+
+        (await EvaluateAsync(CreateUser(otherManager), report, ExpenseReportOperation.View)).Should().BeFalse();
+        (await EvaluateAsync(CreateUser(otherManager), report, ExpenseReportOperation.Endorse)).Should().BeFalse();
+        (await EvaluateAsync(CreateUser(CoordinatorId), report, ExpenseReportOperation.Endorse)).Should().BeFalse();
     }
 
     private async Task<bool> EvaluateAsync(
