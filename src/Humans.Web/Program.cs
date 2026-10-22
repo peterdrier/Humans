@@ -817,6 +817,11 @@ foreach (var contributor in SectionDiscoveryExtensions.DiscoverImplementations<I
     contributor.MapEndpoints(app);
 }
 
+// The fallback authorization policy also covers requests that match no endpoint, which would send a signed-out
+// visitor with a mistyped URL to the login page. This terminal endpoint keeps an unknown URL a public 404, which
+// UseStatusCodePagesWithReExecute then renders at /Home/Error/404.
+app.MapFallback(() => Results.NotFound()).AllowAnonymous();
+
 // DB migrations run via DatabaseMigrationHostedService during StartAsync, before Hangfire takes locks.
 
 // Covers the Hangfire block too: a preview env without its database fails here first. Each recurring-job
