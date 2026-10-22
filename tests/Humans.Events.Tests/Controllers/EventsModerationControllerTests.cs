@@ -26,6 +26,36 @@ public sealed class EventsModerationControllerTests
     private readonly ICampService _camps = Substitute.For<ICampService>();
 
     [HumansTheory]
+    [Xunit.InlineData(nameof(EventsModerationController.Approve))]
+    [Xunit.InlineData(nameof(EventsModerationController.Reject))]
+    [Xunit.InlineData(nameof(EventsModerationController.RequestEdit))]
+    [Xunit.InlineData(nameof(EventsModerationController.Withdraw))]
+    public async Task MalformedModerationForm_IsRejectedBeforeEventReadsOrWrites(string action)
+    {
+        var moderatorId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        _users.GetUserInfoAsync(moderatorId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfoFor(moderatorId)));
+        var controller = BuildController(moderatorId, eventId);
+        var form = new ModerationActionFormModel { EventId = eventId, Reason = new string('x', 501) };
+        controller.ModelState.AddModelError(nameof(form.Reason), "Reason exceeds 500 characters.");
+
+        var result = action switch
+        {
+            nameof(EventsModerationController.Approve) => await controller.Approve(form),
+            nameof(EventsModerationController.Reject) => await controller.Reject(form),
+            nameof(EventsModerationController.RequestEdit) => await controller.RequestEdit(form),
+            _ => await controller.Withdraw(form),
+        };
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _guide.DidNotReceive().GetEventForModerationAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _guide.DidNotReceive().ApplyModerationAsync(Arg.Any<Guid>(), Arg.Any<Guid>(),
+            Arg.Any<EventModerationActionType>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _guide.DidNotReceive().ModeratorWithdrawAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
     public async Task Update_RejectsRecurrenceOutsideTheConfiguredEvent(bool isCampEvent)

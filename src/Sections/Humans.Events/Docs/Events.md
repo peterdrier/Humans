@@ -178,6 +178,8 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 
 ## Invariants
 
+- Approve, reject, request-edit and moderator-withdraw forms reject invalid model binding or validation with HTTP 400 after resolving the moderator, before event reads or writes. This includes the moderation reason’s 500-character limit.
+
 - Individual-event edit GET and POST share the event lookup, individual-route ownership check and editable-status refusal. Missing/camp events return 404 before ownership denial; non-owners require EventsAdmin/Admin, and non-editable events redirect with the existing message.
 
 - Guide settings and event forms share the section’s local-time conversion helper: configured zones use lenient DST resolution, and an unavailable zone treats local values as UTC. NodaTime inputs retain their sub-tick precision.
