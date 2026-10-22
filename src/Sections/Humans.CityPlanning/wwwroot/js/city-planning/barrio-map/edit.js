@@ -215,6 +215,8 @@ export function updateSaveButton() {
     }
 }
 
+// --- History ---
+
 let historyVersion = 0;
 let restoreInProgress = false;
 const historyPanel = document.getElementById('history-panel');
