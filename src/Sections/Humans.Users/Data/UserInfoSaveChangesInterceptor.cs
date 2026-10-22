@@ -152,10 +152,7 @@ internal sealed class UserInfoSaveChangesInterceptor(
         {
             Id = user.Id,
             State = user.State,
-            DisplayName = user.DisplayName,
             BurnerName = user.BurnerName,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
             PreferredLanguage = user.PreferredLanguage,
             ProfilePictureUrl = user.ProfilePictureUrl,
             CreatedAt = user.CreatedAt,

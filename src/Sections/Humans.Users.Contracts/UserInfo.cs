@@ -247,18 +247,14 @@ public sealed record UserInfo(
     public bool IsMerged => MergedAt is not null;
 
     /// <summary>
-    /// Sentinel value written to the legacy User.DisplayName column by
-    /// <c>IUserRepository.ApplyExpiredDeletionAnonymizationAsync</c>
-    /// to mark GDPR-deleted users. Read into <see cref="IsGdprAnonymized"/>
-    /// at creation time so the legacy name never becomes a public UserInfo field.
+    /// Burner name written by <c>IUserRepository.ApplyExpiredDeletionAnonymizationAsync</c>
+    /// for GDPR-deleted users. Erasure recognition uses the minted email, never this name.
     /// </summary>
     public const string GdprAnonymizedBurnerName = UserStateClassifier.GdprAnonymizedDisplayName;
 
     /// <summary>
     /// True when the user row is a tombstone — a merge-source
-    /// (<see cref="MergedAt"/> set), a GDPR-anonymized record (legacy User.DisplayName
-    /// resolved into <see cref="BurnerName"/> as <see cref="GdprAnonymizedBurnerName"/> by
-    /// <c>IUserRepository.ApplyExpiredDeletionAnonymizationAsync</c>),
+    /// (<see cref="MergedAt"/> set), a GDPR-anonymized record (minted tombstone email),
     /// or a legacy tombstone whose <see cref="Email"/> still ends in the
     /// sentinel <c>.local</c> suffix (pre-<c>MergedAt</c>-column merges and
     /// historic purges wrote <c>@merged.local</c> / <c>@deleted.local</c>
@@ -374,8 +370,7 @@ public sealed record UserInfo(
             .OrderBy(c => c.Category)
             .ToList();
 
-        var legacyDisplayName = user.DisplayName;
-        var burnerName = ResolveBurnerName(user.BurnerName, legacyDisplayName);
+        var burnerName = string.IsNullOrWhiteSpace(user.BurnerName) ? string.Empty : user.BurnerName;
         var isGdprAnonymized = IsGdprTombstone(user);
 
         var info = new UserInfo(
@@ -407,14 +402,6 @@ public sealed record UserInfo(
     }
 
     /// <summary>
-    /// nobodies-collective/Humans#1098: <c>User.BurnerName</c> is the sole source — the
-    /// <c>Profile.BurnerName</c> / legacy <c>DisplayName</c> fallback chain is gone.
-    /// The one exception is narrow tombstone recognition: a row anonymized before #1098 has
-    /// a blank <c>BurnerName</c> with the erasure sentinel still sitting in <c>DisplayName</c>
-    /// (the old #1097 erasure path only nulled <c>BurnerName</c>). This is NOT a general
-    /// fallback — it retires once the #1102 migration drops the <c>DisplayName</c> column.
-    /// </summary>
-    /// <summary>
     /// A row erased via GDPR Article 17. Keyed on the <c>deleted-&lt;id&gt;@deleted.local</c>
     /// address <c>IUserRepository.ApplyExpiredDeletionAnonymizationAsync</c>
     /// mints, never on a name a member can type (nobodies-collective/Humans#1742: a member whose
@@ -430,24 +417,6 @@ public sealed record UserInfo(
     /// csproj), so the rule is stated twice rather than exported. Change both together.
     /// </summary>
     private static bool IsGdprTombstone(User user) =>
-        (user.IdentityEmailColumn is { } email
-            && email.EndsWith("@deleted.local", StringComparison.OrdinalIgnoreCase))
-        // Legacy-only: rows anonymized before the email scrub existed carry the name tombstone
-        // instead. The blank BurnerName is what a member cannot reproduce — erasure clears it and
-        // only wrote the sentinel there from #1098 on, while a member who types these names carries
-        // their burner name in every column. A guard, not the shape; see the twin's remarks.
-        || (string.IsNullOrWhiteSpace(user.BurnerName)
-            && string.Equals(user.DisplayName, GdprAnonymizedBurnerName, StringComparison.Ordinal)
-            && string.Equals(user.FirstName, "Deleted", StringComparison.Ordinal)
-            && string.Equals(user.LastName, "User", StringComparison.Ordinal));
-
-    private static string ResolveBurnerName(string? userBurnerName, string legacyDisplayName)
-    {
-        if (!string.IsNullOrWhiteSpace(userBurnerName))
-            return userBurnerName;
-
-        return string.Equals(legacyDisplayName, GdprAnonymizedBurnerName, StringComparison.Ordinal)
-            ? GdprAnonymizedBurnerName
-            : string.Empty;
-    }
+        user.IdentityEmailColumn is { } email
+        && email.EndsWith("@deleted.local", StringComparison.OrdinalIgnoreCase);
 }

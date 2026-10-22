@@ -61,20 +61,17 @@ themes:
     title: User.DisplayName reads (HUM_USER_DISPLAYNAME)
     detect: "build:HUM_USER_DISPLAYNAME"
     review: light
-    last_swept: 2026-10-21
-    remaining: 8
+    last_swept: 2026-10-22
+    remaining: 3
     notes: >-
-      Swept 2026-10-21 (clean rebuild, 17 -> 8): creation-time and profile-save
-      writes are gone (new rows hold ""), and the deletion email greets by
-      BurnerName. Left, all retired by one PR: the legacy GDPR tombstone arm
-      (UserInfo x2, UserStateEvaluator, UserInfoSaveChangesInterceptor x2 for its
-      clone) and the scrubs and export that exist only while the column does
-      (UserRepository merge + erasure, UserService GDPR export). Path to 0:
-      apply users.legacy-gdpr-tombstones on production; once
-      /api/data-migrations reports it done, delete the legacy arms and drop the
-      users.DisplayName column (nobodies-collective/Humans#1102, #1742), which
-      also clears the 108 test files that seed it and the WarningsNotAsErrors
-      entry.
+      Production reported users.legacy-gdpr-tombstones pending: 0, done: true
+      on 2026-10-22. Retired its data-migration registration, name-shape
+      recognition and BurnerName sentinel fallback; UserInfo and the cache
+      interceptor no longer read DisplayName. The remaining reads are legacy
+      column scrubs (merge and erasure) and GDPR export. These stay until the
+      separate approved users.DisplayName column drop
+      (nobodies-collective/Humans#1102, nobodies-collective/Humans#1742), which
+      also clears the test seed assignments and WarningsNotAsErrors entry.
   - id: cs0618-pragma-nav-reads
     title: CS0618 pragma sites
     detect: "grep -rl --include='*.cs' 'pragma warning disable CS0618' src | wc -l"

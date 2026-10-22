@@ -1,8 +1,6 @@
-using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
-using Humans.Users.Domain;
 using Humans.Users.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -23,7 +21,6 @@ internal sealed class SectionDataMigrations : ISectionDataMigrations
     internal const string NamesOntoUserKey = "users.names-onto-user";
     internal const string PicturesToFilesystemKey = "users.profile-pictures-to-filesystem";
     internal const string LegacyIdentityEmailsKey = "users.legacy-identity-emails";
-    internal const string LegacyGdprTombstonesKey = "users.legacy-gdpr-tombstones";
 
     public IEnumerable<DataMigration> Migrations() =>
     [
@@ -43,10 +40,6 @@ internal sealed class SectionDataMigrations : ISectionDataMigrations
             "Create a verified UserEmail row from the legacy User.Email Identity column",
             "The legacy-column fallback in User.Email / UserInfo.Email",
             LegacyEmailsStatusAsync, ApplyLegacyEmailsAsync),
-        new(LegacyGdprTombstonesKey, Section,
-            "Re-run erasure on accounts erased before the tombstone email existed (nobodies-collective/Humans#1742)",
-            "The legacy name-shape arms of UserInfo.IsGdprTombstone and UserStateEvaluator.IsLegacyGdprTombstone, the last User.DisplayName readers before the nobodies-collective/Humans#1102 column drop",
-            LegacyTombstonesStatusAsync, ApplyLegacyTombstonesAsync),
     ];
 
     // --- users.stub-profiles ---
@@ -148,42 +141,4 @@ internal sealed class SectionDataMigrations : ISectionDataMigrations
     private static async Task<int> ApplyLegacyEmailsAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
         // Audits LegacyIdentityEmailBackfilled per created row.
         (await sp.GetRequiredService<IEmailProblemsService>().BackfillLegacyIdentityEmailsAsync(actorUserId, ct)).Count;
-
-    // --- users.legacy-gdpr-tombstones ---
-
-    // Erased, but recognised only by the pre-#1098 name shape: the minted tombstone email that
-    // erasure writes today is missing.
-    private static async Task<IReadOnlyList<UserInfo>> LegacyTombstonesAsync(IServiceProvider sp, CancellationToken ct) =>
-        [.. (await sp.GetRequiredService<IUserManagement>().GetAllUserInfosAsync(ct))
-            .Where(u => u.IsGdprAnonymized
-                && u.IdentityEmailColumn?.EndsWith(UserStateEvaluator.DeletedEmailSuffix, StringComparison.OrdinalIgnoreCase) != true)
-            .OrderBy(u => u.CreatedAt)];
-
-    // No name or address columns: these rows belong to people who asked to be erased.
-    private static async Task<DataMigrationStatus> LegacyTombstonesStatusAsync(IServiceProvider sp, CancellationToken ct) =>
-        new(["User", "Created", "Identity email still set"],
-            [.. (await LegacyTombstonesAsync(sp, ct)).Select(u => (IReadOnlyList<string>)
-            [
-                u.Id.ToString(), u.CreatedAt.ToInvariantTimestamp(),
-                u.IdentityEmailColumn is null ? "no" : "yes",
-            ])]);
-
-    private static async Task<int> ApplyLegacyTombstonesAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct)
-    {
-        var deletion = sp.GetRequiredService<IAccountDeletionService>();
-        var audit = sp.GetRequiredService<IAuditLogService>();
-        var erased = 0;
-        foreach (var user in await LegacyTombstonesAsync(sp, ct))
-        {
-            // The current erasure, end to end: every section's contributor, then Users' own write,
-            // which mints the tombstone email and stamps the sentinel BurnerName. No email is sent.
-            if (await deletion.AnonymizeExpiredAccountAsync(user.Id, ct) is null)
-                continue;
-            await audit.LogAsync(
-                AuditAction.AccountAnonymized, nameof(User), user.Id,
-                $"Legacy tombstone re-erased ({LegacyGdprTombstonesKey})", actorUserId);
-            erased++;
-        }
-        return erased;
-    }
 }

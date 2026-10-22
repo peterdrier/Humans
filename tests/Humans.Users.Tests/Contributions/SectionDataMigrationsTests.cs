@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
 using Humans.Users.Services;
@@ -11,8 +10,7 @@ using NSubstitute;
 namespace Humans.Users.Tests.Contributions;
 
 /// <summary>
-/// Users' data migrations on <c>/Debug/DataMigrations</c>: the four retired Temp screens, plus the
-/// legacy GDPR tombstone re-erasure.
+/// Users' data migrations on <c>/Debug/DataMigrations</c>: the four retired Temp screens.
 /// Each status must list exactly what its apply will fix (or <c>done</c> never arrives), and each
 /// apply must carry the acting admin and be a no-op once nothing is pending.
 /// </summary>
@@ -22,8 +20,6 @@ public class SectionDataMigrationsTests
     private readonly IUserNameSyncService _nameSync = Substitute.For<IUserNameSyncService>();
     private readonly IProfilePictureService _pictures = Substitute.For<IProfilePictureService>();
     private readonly IEmailProblemsService _emailProblems = Substitute.For<IEmailProblemsService>();
-    private readonly IAccountDeletionService _deletion = Substitute.For<IAccountDeletionService>();
-    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly Guid _actorId = Guid.NewGuid();
     private readonly IServiceProvider _services;
 
@@ -35,8 +31,6 @@ public class SectionDataMigrationsTests
         services.AddSingleton(_nameSync);
         services.AddSingleton(_pictures);
         services.AddSingleton(_emailProblems);
-        services.AddSingleton(_deletion);
-        services.AddSingleton(_audit);
         _services = services.BuildServiceProvider();
     }
 
@@ -56,7 +50,6 @@ public class SectionDataMigrationsTests
             SectionDataMigrations.NamesOntoUserKey,
             SectionDataMigrations.PicturesToFilesystemKey,
             SectionDataMigrations.LegacyIdentityEmailsKey,
-            SectionDataMigrations.LegacyGdprTombstonesKey,
         ]);
         migrations.Should().OnlyContain(m => string.Equals(m.Section, "Users", StringComparison.Ordinal) && m.Key.StartsWith("users.", StringComparison.Ordinal));
         migrations.Should().OnlyContain(m => !string.IsNullOrWhiteSpace(m.Title) && !string.IsNullOrWhiteSpace(m.Retires));
@@ -163,60 +156,6 @@ public class SectionDataMigrationsTests
         (await migration.Apply(_services, _actorId, Ct)).Should().Be(1);
         await _emailProblems.Received(1).BackfillLegacyIdentityEmailsAsync(_actorId, Arg.Any<CancellationToken>());
     }
-
-    [HumansFact]
-    public async Task Legacy_tombstones_lists_only_erased_rows_without_the_minted_email()
-    {
-        var legacy = Guid.NewGuid();
-        var modern = Guid.NewGuid();
-        StubUsers(LegacyTombstone(legacy), ModernTombstone(modern), Info(Guid.NewGuid()));
-
-        var status = await Migration(SectionDataMigrations.LegacyGdprTombstonesKey).Status(_services, Ct);
-
-        status.PendingRows.Should().ContainSingle()
-            .Which.Should().Equal(legacy.ToString(), "2026-01-01 00:00:00", "yes");
-        status.Columns.Should().HaveCount(3);
-    }
-
-    [HumansFact]
-    public async Task Legacy_tombstones_apply_re_erases_and_audits_each_row_for_the_actor()
-    {
-        var legacy = Guid.NewGuid();
-        StubUsers(LegacyTombstone(legacy));
-        _deletion.AnonymizeExpiredAccountAsync(legacy, Arg.Any<CancellationToken>())
-            .Returns(new AnonymizedAccountSummary(null, string.Empty, "en"));
-
-        (await Migration(SectionDataMigrations.LegacyGdprTombstonesKey).Apply(_services, _actorId, Ct)).Should().Be(1);
-
-        await _deletion.Received(1).AnonymizeExpiredAccountAsync(legacy, Arg.Any<CancellationToken>());
-        await _audit.Received(1).LogAsync(
-            AuditAction.AccountAnonymized, nameof(User), legacy, Arg.Any<string>(), _actorId);
-    }
-
-    // Erased before the email scrub existed: the pre-#1098 name shape, real address still set.
-    private static UserInfo LegacyTombstone(Guid userId) =>
-        new User
-        {
-            Id = userId,
-            Email = "erased@example.com",
-            DisplayName = UserInfo.GdprAnonymizedBurnerName,
-            FirstName = "Deleted",
-            LastName = "User",
-            PreferredLanguage = "en",
-            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        }.ToUserInfo([], null);
-
-    private static UserInfo ModernTombstone(Guid userId) =>
-        new User
-        {
-            Id = userId,
-            Email = $"deleted-{userId:N}@deleted.local",
-            BurnerName = UserInfo.GdprAnonymizedBurnerName,
-            FirstName = "Deleted",
-            LastName = "User",
-            PreferredLanguage = "en",
-            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        }.ToUserInfo([], null);
 
     private void StubUsers(params UserInfo[] infos) =>
         _users.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
