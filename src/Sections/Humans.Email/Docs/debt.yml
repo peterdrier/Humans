@@ -1,5 +1,21 @@
 # Section debt ledger for Humans.Email. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 9
-inbox: []
+next_id: 13
+inbox:
+  - added: 2026-10-22
+    id: EMAIL-9
+    what: "The erased-account refusal for unsubscribe tokens is decided twice: GuestAccountController.ResolveUserIdOrTokenAsync checks IsGdprAnonymized itself after ValidateUnsubscribeToken, and UnsubscribeService.ValidateTokenAsync checks it again for the unsubscribe pages. Fold the rule into one token-validation path both callers use. Found by section-doctor's controller-intent thread."
+    review: panel
+  - added: 2026-10-22
+    id: EMAIL-10
+    what: "No test in tests/Humans.Email.Tests pins the one-row-per-person-and-category unique index in CommunicationPreferenceConfiguration (health.md invariant). Found by section-doctor's tests thread."
+    review: light
+  - added: 2026-10-22
+    id: EMAIL-11
+    what: "No test pins that BrandedEmailTemplate.Wrap is the single place the branded wrapper and inline styling are applied, so preview and send cannot differ (health.md invariant); EmailInlineStylerTests covers only the styler. Found by section-doctor's tests thread."
+    review: panel
+  - added: 2026-10-22
+    id: EMAIL-12
+    what: "Views/FacilitatedMessage/SendMessage.cshtml labels its first breadcrumb with SharedLocalizer Teams_Title and links it to Team/Index, on the personal relay page reached from a profile card. Found by section-doctor's prose-surface thread."
+    review: light
