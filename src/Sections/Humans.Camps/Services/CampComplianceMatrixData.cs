@@ -1,11 +1,6 @@
 namespace Humans.Camps.Services;
 
-/// <summary>
-/// Service-layer DTO returned by <see cref="Humans.Camps.Contracts.ICampRoleService.BuildComplianceMatrixAsync"/>.
-/// One column per active role definition (canonical SortOrder ordering), one row per
-/// Active/Full camp season in the year, with assignees joined by
-/// <c>CampRoleDefinitionId</c> — never by role name.
-/// </summary>
+/// <summary>Assignees join by <c>CampRoleDefinitionId</c>, never by role name.</summary>
 internal sealed record CampComplianceMatrixData(
     int Year,
     IReadOnlyList<CampRoleDefinitionInfo> Roles,

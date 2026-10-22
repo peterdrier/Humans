@@ -1,10 +1,8 @@
 namespace Humans.Surveys.Contracts;
 
 /// <summary>
-/// Survey lifecycle. Authored in <see cref="Draft"/>; a self-service author submits it for
-/// <see cref="PendingApproval"/>; Board/Admin approve (opens and sends invitations in one step) or
-/// reject (back to <see cref="Draft"/>, with a note); accepts responses while <see cref="Open"/>;
-/// no longer accepts responses once <see cref="Closed"/>.
+/// Approval opens the survey and sends invitations in one step; rejection returns it to <see cref="Draft"/> with a
+/// note. Responses are accepted only while <see cref="Open"/>.
 /// </summary>
 public enum SurveyStatus
 {

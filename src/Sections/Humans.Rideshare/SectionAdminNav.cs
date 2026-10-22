@@ -3,7 +3,6 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Rideshare;
 
-/// <summary>Rideshare's admin sidebar group: the year's settings + stats, and the day roster.</summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>

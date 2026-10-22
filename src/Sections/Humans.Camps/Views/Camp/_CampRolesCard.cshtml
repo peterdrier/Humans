@@ -1,8 +1,8 @@
 @model Humans.Camps.Models.CampDetailViewModel
 @{
     if (Model.RolesPanel is null) { return; }
-    // Non-member viewers see only the Camp Lead row, and only its filled assignees
-    // (matches the prior "Leads" card). Members/CampAdmin see every active role + open slots.
+    // Non-member viewers see only the Camp Lead row, and only its filled assignees. Members/CampAdmin see every
+    // active role plus open slots.
     var rows = Model.CanSeeFullCamp
         ? Model.RolesPanel.Rows
         : Model.RolesPanel.Rows.Where(r => r.IsLeadRole && r.FilledSlots.Count > 0).ToList();

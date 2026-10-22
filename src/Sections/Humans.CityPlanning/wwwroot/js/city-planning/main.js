@@ -27,10 +27,8 @@ async function init() {
 
     const state = await fetch('/api/city-planning/state').then(r => r.json());
 
-    // ── Official zones (always visible) ──────────────────────────────────────
     addOfficialZonesLayers(map, state.officialZonesGeoJson);
 
-    // ── Camps (always visible) ────────────────────────────────────────────────
     const campFeatures = (state.campPolygons ?? [])
         .filter(p => p.geoJson)
         .map(p => {
@@ -56,7 +54,7 @@ async function init() {
         paint: { 'text-color': '#000000', 'text-halo-color': '#ffffff', 'text-halo-width': 2 },
     });
 
-    // ── Camp limits (togglable, off by default) ───────────────────────────────
+    // Togglable, off by default.
     if (state.limitZoneGeoJson) {
         let limitData = JSON.parse(state.limitZoneGeoJson);
         if (limitData.type === 'Feature') limitData = { type: 'FeatureCollection', features: [limitData] };
@@ -66,7 +64,7 @@ async function init() {
         LAYER_GROUPS.campLimits = ['limit-zone-fill', 'limit-zone-line'];
     }
 
-    // ── Containers (togglable, off by default) ────────────────────────────────
+    // Togglable, off by default.
     const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
     const containerColor = css('--container-fill') || '#8b7355';
 
@@ -89,7 +87,6 @@ async function init() {
         paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1 },
     });
 
-    // ── Toggle buttons ────────────────────────────────────────────────────────
     wireToggle('toggle-containers',  LAYER_GROUPS.containers,  map);
     wireToggle('toggle-camp-limits', LAYER_GROUPS.campLimits,  map);
 

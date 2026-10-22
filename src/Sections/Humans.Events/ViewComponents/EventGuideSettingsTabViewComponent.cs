@@ -5,13 +5,7 @@ using static Humans.Events.Helpers.EventsTimeHelpers;
 
 namespace Humans.Events.ViewComponents;
 
-/// <summary>
-/// The /Settings#event-guide tab (peterdrier/Humans#1634): submission window, publish
-/// time, print slots. <see cref="SectionSettings"/> gates it on
-/// <c>PolicyNames.EventsAdminOrAdmin</c> — the same policy the old
-/// <c>Events/Admin/Settings</c> page used, so every viewer who reaches this component
-/// may edit. Mirrors <c>EventsAdminController.Settings</c>'s former data assembly.
-/// </summary>
+/// <summary>Every viewer who reaches this tab may edit: it is gated on <c>EventsAdminOrAdmin</c>.</summary>
 internal sealed class EventGuideSettingsTabViewComponent(IEventManagement guide) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()

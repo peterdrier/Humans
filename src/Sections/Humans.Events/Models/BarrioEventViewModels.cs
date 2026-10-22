@@ -82,14 +82,11 @@ internal sealed class CampEventFormViewModel
     [Display(Name = "Priority Rank")]
     public int? PriorityRank { get; set; }
 
-    // Dropdown data
     public List<CategoryOptionViewModel> Categories { get; set; } = [];
     public List<EventDayOptionViewModel> EventDays { get; set; } = [];
     public string? TimeZoneId { get; set; }
 
-    /// <summary>
-    /// Whether this is a resubmission of a rejected/resubmit-requested event.
-    /// </summary>
+    /// <summary>Resubmitting a rejected or resubmit-requested event.</summary>
     public bool IsResubmit { get; set; }
 }
 

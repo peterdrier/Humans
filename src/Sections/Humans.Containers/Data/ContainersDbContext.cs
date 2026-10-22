@@ -4,15 +4,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Containers.Data;
 
-/// <summary>
-/// Maps only <c>containers</c>, <c>container_images</c> and <c>container_placements</c>,
-/// with its own <c>__EFMigrationsHistory_Containers</c> table and migrations under
-/// <c>Data/Migrations/</c>.
-/// </summary>
-/// <remarks>
-/// Internal-sealed: repositories are the only consumers. Configurations are applied
-/// explicitly (not by assembly scanning) so this model can never accrete another section's tables.
-/// </remarks>
 internal sealed class ContainersDbContext(DbContextOptions<ContainersDbContext> options)
     : DbContext(options)
 {

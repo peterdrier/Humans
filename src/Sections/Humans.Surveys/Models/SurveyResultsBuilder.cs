@@ -6,10 +6,7 @@ using NodaTime;
 
 namespace Humans.Surveys.Models;
 
-/// <summary>
-/// Assembles the dumb <see cref="SurveyResultsViewModel"/> from the service's <see cref="SurveyResultsView"/>.
-/// Formatting only (percent rounding, date display, rating-average rounding) — no business logic.
-/// </summary>
+/// <summary>Formatting only (percent, date and rating-average rounding): no business logic.</summary>
 internal static class SurveyResultsBuilder
 {
     private static readonly DateTimeZone Zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
@@ -64,7 +61,6 @@ internal static class SurveyResultsBuilder
         instant is null ? "—" : instant.Value.ToDateTime(Zone);
 }
 
-/// <summary>Admin results page: response-rate header, funnel, per-question aggregates, and the Identified drill-down.</summary>
 internal sealed class SurveyResultsViewModel
 {
     public Guid SurveyId { get; init; }
@@ -102,7 +98,6 @@ internal sealed class SurveyResultsQuestionViewModel
     public int RatingMaxCount => RatingDistribution.Count == 0 ? 0 : RatingDistribution.Max(b => b.Count);
 }
 
-/// <summary>One Identified respondent's drill-down row (name + formatted submit time + their answers).</summary>
 internal sealed class SurveyResultsRespondentViewModel
 {
     public Guid UserId { get; init; }
@@ -111,7 +106,7 @@ internal sealed class SurveyResultsRespondentViewModel
     public IReadOnlyList<RespondentAnswer> Answers { get; init; } = [];
 }
 
-/// <summary>One Asociado ballot shown after close, deliberately without identity or timestamp.</summary>
+/// <summary>Deliberately without identity or timestamp.</summary>
 internal sealed class SurveyResultsBallotViewModel
 {
     public IReadOnlyList<RespondentAnswer> Answers { get; init; } = [];

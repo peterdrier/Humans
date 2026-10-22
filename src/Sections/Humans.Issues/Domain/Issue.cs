@@ -10,8 +10,7 @@ internal sealed class Issue
     public Guid ReporterUserId { get; init; }
 
     /// <summary>
-    /// Section the issue is about (drives routing). Null = unknown → Admin queue.
-    /// One of the <c>IssueSectionRouting</c> known values; stored as string.
+    /// Drives routing; stored as a free string. Null or an unclaimed key goes to the Admin queue.
     /// </summary>
     public string? Section { get; set; }
 

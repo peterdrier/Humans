@@ -3,11 +3,7 @@ namespace Humans.Camps.Models;
 internal sealed class CampRoleDrillDownViewModel
 {
     public required string Slug { get; init; }
-    /// <summary>
-    /// The value used in the <c>{slug}</c> route segment for the form back-postback —
-    /// the slug if non-empty, otherwise the role definition id. Per
-    /// memory/architecture/slug-routes-fallback-to-guid.md, the route accepts either.
-    /// </summary>
+    /// <summary>The slug if non-empty, otherwise the definition id: the route accepts either.</summary>
     public required string RouteKey { get; init; }
     public required string RoleName { get; init; }
     public string? Description { get; init; }

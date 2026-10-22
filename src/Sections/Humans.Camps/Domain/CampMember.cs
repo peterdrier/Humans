@@ -3,12 +3,8 @@ using NodaTime;
 namespace Humans.Camps.Domain;
 
 /// <summary>
-/// A human's membership in a camp for a given season. This is a post-hoc record —
-/// humans join a camp through the camp's own process (website, spreadsheet, WhatsApp) first,
-/// then create a CampMember so Humans knows about the relationship. The foundation for
-/// per-season camp roles (e.g. LNT lead) and Early Entry allocations.
-///
-/// Per-season, not per-camp. Privacy: never rendered on anonymous or public views.
+/// A post-hoc record: humans join through the camp's own process (website, spreadsheet, WhatsApp) first, then are
+/// recorded here. Per-season, not per-camp. Privacy: never rendered on anonymous or public views.
 /// </summary>
 internal sealed class CampMember
 {
@@ -29,10 +25,6 @@ internal sealed class CampMember
     public Instant? RemovedAt { get; set; }
     public Guid? RemovedByUserId { get; set; }
 
-    /// <summary>
-    /// True when this member holds an Early Entry grant for the season's camp.
-    /// Granted by camp leads / CampAdmin; cleared on member removal. Never rendered
-    /// on anonymous/public views.
-    /// </summary>
+    /// <summary>Cleared on member removal. Never rendered on anonymous or public views.</summary>
     public bool HasEarlyEntry { get; set; }
 }

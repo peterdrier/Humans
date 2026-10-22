@@ -3,16 +3,11 @@ using Humans.Base.Models;
 
 namespace Humans.CityPlanning;
 
-/// <summary>
-/// Section-help Guide and Glossary content for the city map overview, the barrio placement
-/// map and the container placement map. The markdown itself lives beside this
-/// section's other docs in <c>Docs/help/</c> and is embedded into this assembly.
-/// </summary>
+/// <summary>The markdown lives in <c>Docs/help/</c> and is embedded into this assembly.</summary>
 internal sealed class SectionHelp : ISectionHelp
 {
     public IReadOnlyList<SectionHelpEntry> HelpEntries => Entries;
 
-    // Read once per process: the markdown ships inside this assembly and never changes at runtime.
     private static readonly IReadOnlyList<SectionHelpEntry> Entries =
     [
         SectionHelpEntry.FromEmbeddedMarkdown(typeof(SectionHelp).Assembly, "ContainerMap", 100),

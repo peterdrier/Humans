@@ -1,25 +1,20 @@
 namespace Humans.Events.Contracts;
 
-/// <summary>
-/// Status of an event guide submission through the moderation workflow.
-/// </summary>
 public enum EventStatus
 {
-    /// <summary>Saved but not yet submitted for review.</summary>
+    /// <summary>Saved but not submitted.</summary>
     Draft = 0,
 
-    /// <summary>Submitted and awaiting moderation.</summary>
     Pending = 1,
 
-    /// <summary>Approved by a moderator — visible in the published guide.</summary>
+    /// <summary>Visible in the published guide.</summary>
     Approved = 2,
 
-    /// <summary>Rejected by a moderator — submitter notified with reason.</summary>
+    /// <summary>The submitter is notified with the reason.</summary>
     Rejected = 3,
 
-    /// <summary>Moderator requested edits before approval.</summary>
     ResubmitRequested = 4,
 
-    /// <summary>Withdrawn by the submitter or a moderator — hidden from published guide.</summary>
+    /// <summary>By the submitter or a moderator; hidden from the published guide.</summary>
     Withdrawn = 5
 }

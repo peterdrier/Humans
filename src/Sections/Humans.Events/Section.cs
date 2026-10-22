@@ -17,15 +17,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Events;
 
-/// <summary>
-/// Events' DI entry point, at the project root by convention. Discovered by Shell —
-/// nothing names it, so it needs no section prefix.
-/// </summary>
 public sealed class Section : ISection, IUserPart, ICampPart
 {
     IEnumerable<UserPart> IUserPart.Parts() => [new(UserPartSlots.Profile, typeof(EventsCardViewComponent))];
 
-    // The camp detail page's hosted-events card (peterdrier/Humans#1815).
     IEnumerable<CampPart> ICampPart.Parts() => [new(typeof(EventsCardViewComponent))];
 
     public void Register(IServiceCollection services, IConfiguration configuration)
@@ -33,43 +28,22 @@ public sealed class Section : ISection, IUserPart, ICampPart
         services.AddSectionDbContext<EventGuideDbContext>(sentinelTable: "events");
 
         services.AddScoped<EventsFeatureFilter>();
-        // Singleton + IDbContextFactory pattern (§15b): repo owns context lifetime.
         services.AddSingleton<IEventRepository, EventRepository>();
 
-        // CachingEventService Singleton decorator + warmup. The base
-        // Service is registered keyed under "event-inner"; unkeyed
-        // IEventManagement resolves to the decorator. The decorator handles its
-        // own invalidation inline after each delegated write (no
-        // SaveChangesInterceptor — all event_* writes flow through
-        // IEventManagement by design).
-
-        // Events owns its email copy and its gallery samples; Email keeps the mechanics
-        // (memory/architecture/email-templates-live-in-sender.md).
         services.AddScoped<EventsEmails>();
         services.AddScoped<IEmailPreviewContributor, EventsEmailPreviews>();
 
-        // Inner Service — Scoped + keyed. Single keyed registration is the
-        // concrete Service instance, exposed as IEventManagement (keyed) for the
-        // decorator.
         services.AddKeyedScoped<IEventManagement, EventService>(CachingEventService.InnerServiceKey);
         services.AddScoped<EventService>(sp =>
             (EventService)sp.GetRequiredKeyedService<IEventManagement>(CachingEventService.InnerServiceKey));
         services.AddScoped<ICalendarFeedContributor>(sp => sp.GetRequiredService<EventService>());
 
-        // CachingEventService — Singleton so the cache persists across
-        // requests. Resolves IEventRepository directly (Singleton via
-        // IDbContextFactory); resolves the Scoped inner via
-        // IServiceScopeFactory per-call.
         services.AddSingleton<CachingEventService>();
         services.AddSingleton<IEventManagement>(sp => sp.GetRequiredService<CachingEventService>());
 
-        // Public contract — forwards to the same caching Singleton so
-        // reads served to other sections (e.g. the camp detail events card) hit
-        // the existing approved-events cache. Interface segregation only; no new cache layer.
         services.AddSingleton<IEventService>(sp => sp.GetRequiredService<CachingEventService>());
 
-        // The guide settings projection carries the Settings-owned TimeZoneId, so a
-        // Settings-side event-settings save has to refresh it (peterdrier/Humans#1627).
+        // The guide settings projection carries Settings' TimeZoneId, so a Settings-side save must refresh it.
         services.AddSingleton<IEventSettingsChangeListener>(sp =>
             sp.GetRequiredService<CachingEventService>());
 
@@ -81,12 +55,9 @@ public sealed class Section : ISection, IUserPart, ICampPart
         // of cached approved events.
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CachingEventService>());
 
-        // Surface Events cache diagnostics on /Debug/CacheStats.
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingEventService>().EventCacheStats);
 
-        // CachingEventService is itself the IHostedService — its StartAsync
-        // drives WarmAllAsync over all four projections. Failures are logged
-        // and swallowed; lazy population via EnsureLoadedAsync still works.
+        // Also the hosted service that warms all four projections. Failures are logged; lazy loading still works.
         services.AddHostedService(sp => sp.GetRequiredService<CachingEventService>());
     }
 }

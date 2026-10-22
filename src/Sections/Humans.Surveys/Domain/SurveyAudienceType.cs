@@ -1,9 +1,5 @@
 namespace Humans.Surveys.Domain;
 
-/// <summary>
-/// Target-predicate kinds an admin can resolve into an invitation set. The resolver lives in the
-/// service and reads cross-section membership via I&lt;Section&gt;Service contracts.
-/// </summary>
 internal enum SurveyAudienceType
 {
     Team = 0,

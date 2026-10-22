@@ -7,10 +7,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Humans.Surveys.Data.Configurations;
 
-/// <summary>
-/// Shared jsonb plumbing for the Survey section. One cached <see cref="JsonSerializerOptions"/>
-/// (CA1869) and a reusable <see cref="LocalizedText"/> property converter.
-/// </summary>
+/// <summary>One cached <see cref="JsonSerializerOptions"/> (CA1869).</summary>
 internal static class SurveyJson
 {
     public static readonly JsonSerializerOptions Options = new();
@@ -24,7 +21,6 @@ internal static class SurveyJson
         Dictionary<string, string> Label,
         Dictionary<string, string> AltText);
 
-    /// <summary>Maps a <see cref="LocalizedText"/> property to a jsonb column (culture→text dictionary).</summary>
     public static void LocalizedText<TEntity>(
         EntityTypeBuilder<TEntity> b,
         Expression<Func<TEntity, LocalizedText>> prop) where TEntity : class
@@ -41,9 +37,8 @@ internal static class SurveyJson
                     v => v));
 
     /// <summary>
-    /// Serializes Grid rows through a persistence-only shape because <see cref="LocalizedText"/>
-    /// deliberately exposes a read-only dictionary and is not directly deserializable by
-    /// <see cref="JsonSerializer"/>.
+    /// Through a persistence-only shape: <see cref="LocalizedText"/> exposes a read-only dictionary that
+    /// <see cref="JsonSerializer"/> cannot deserialize.
     /// </summary>
     public static string? SerializeGridRows(List<SurveyGridRow>? rows)
         => rows is null

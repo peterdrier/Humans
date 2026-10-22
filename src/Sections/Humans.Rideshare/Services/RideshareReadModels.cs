@@ -3,11 +3,6 @@ using NodaTime;
 
 namespace Humans.Rideshare.Services;
 
-// Read models cross the section's service boundary; EF entities never do.
-// Everything derived (seats remaining, matched, joinable, stats) is computed here from
-// the snapshot, never stored.
-
-/// <summary>An ordered via on a trip, in travel order.</summary>
 internal sealed record Waypoint(string Label, double Latitude, double Longitude);
 
 internal sealed record TripView(
@@ -89,7 +84,7 @@ internal sealed record SettingsView(
 /// <summary>Season aggregates for the admin "is this working?" view. Fill rate is the caller's: SeatsFilled / SeatsOffered.</summary>
 internal sealed record SeasonStats(int OffersPosted, int RequestsPosted, int SeatsOffered, int SeatsFilled, int RidersStillLooking);
 
-/// <summary>One burn year's rideshare state; the cached unit. Filters run in memory over it.</summary>
+/// <summary>One burn year's state; the cached unit.</summary>
 internal sealed record RideshareSnapshot(
     int Year,
     SettingsView? Settings,
@@ -121,7 +116,6 @@ internal sealed record RideshareSnapshot(
     }
 }
 
-// ── Commands ──────────────────────────────────────────────────────────────
 // Null coordinates mean "geocode the label"; waypoints arrive as labels and are geocoded.
 
 internal sealed record TripSave(

@@ -18,8 +18,6 @@ namespace Humans.Events.Controllers;
 internal sealed class EventsAdminController(IEventManagement guide, ILogger<EventsAdminController> logger, IUserService userService)
     : HumansControllerBase(userService)
 {
-    // ─── Settings ────────────────────────────────────────────
-
     [HttpPost("Settings")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveSettings(GuideSettingsViewModel model)
@@ -56,8 +54,6 @@ internal sealed class EventsAdminController(IEventManagement guide, ILogger<Even
         SetSuccess("Guide settings saved.");
         return Redirect("/Settings#event-guide");
     }
-
-    // ─── Event Categories ─────────────────────────────────────────
 
     [HttpGet("Categories")]
     public async Task<IActionResult> Categories(CancellationToken ct = default)
@@ -204,8 +200,6 @@ internal sealed class EventsAdminController(IEventManagement guide, ILogger<Even
         return RedirectToAction(nameof(Categories));
     }
 
-    // ─── Guide Shared Venues ──────────────────────────────────────
-
     [HttpGet("Venues")]
     public async Task<IActionResult> Venues(CancellationToken ct = default)
     {
@@ -336,8 +330,6 @@ internal sealed class EventsAdminController(IEventManagement guide, ILogger<Even
         await guide.MoveVenueAsync(id, +1);
         return RedirectToAction(nameof(Venues));
     }
-
-    // ─── Helpers ──────────────────────────────────────────────────
 
     private async Task<List<EventSettingsOptionViewModel>> BuildEventSettingsOptionsAsync()
     {

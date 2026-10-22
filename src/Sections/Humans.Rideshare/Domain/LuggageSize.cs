@@ -1,9 +1,6 @@
 namespace Humans.Rideshare.Domain;
 
-/// <summary>
-/// The coarse "stuff" axis, shared by offers (capacity) and requests (load):
-/// a bag or two, a few bags, a trunkful, a van-load.
-/// </summary>
+/// <summary>Shared by offers (capacity) and requests (load).</summary>
 internal enum LuggageSize
 {
     Minimal,

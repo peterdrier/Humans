@@ -8,18 +8,11 @@ using NodaTime;
 namespace Humans.Events.ViewComponents;
 
 /// <summary>
-/// Renders a compact card of approved events with the Browse-style per-row
-/// favourite toggle. Scoped to exactly one of: a camp (the camp detail page's
-/// events card, contributed through <c>ICampPart</c>) or a user's personal (non-camp)
-/// submitted events — their profile page, contributed through <c>IUserPart</c>; camp events
-/// they submitted live on the camp's page. Invoked with ids only — no Event types cross into
-/// the host section's views. The favourite heart toggles in place via the JSON favourites
-/// API (no page reload). Auth-gated at the call site (logged-in Humans users); returns empty
-/// content when the Events feature is disabled or there are no approved events in scope so
-/// the card auto-hides.
+/// Scoped to one camp (its detail page) or one user's personal, non-camp submissions (their profile). Invoked with
+/// ids only, so no Event types cross into the host's views. Renders nothing when the feature is off or nothing is in
+/// scope, so the card hides itself.
 /// </summary>
-// Public, not internal: Razor's build-time tag-helper discovery only sees public view
-// components, so an internal one renders <vc:events-card> as inert markup.
+// Public: Razor's tag-helper discovery only sees public view components; an internal one renders as inert markup.
 public sealed class EventsCardViewComponent(
     IEventService events,
     IConfiguration configuration,
@@ -30,8 +23,7 @@ public sealed class EventsCardViewComponent(
         var ct = HttpContext.RequestAborted;
         try
         {
-            // Mirror EventsFeatureFilter: when the Event Guide is off, the Events
-            // routes 404 — so the card (and its favourite API target) must vanish too.
+            // The Events routes 404 when the guide is off, so the card and its favourite API target must vanish too.
             if (!configuration.GetValue<bool>("Features:Events"))
                 return Content(string.Empty);
 

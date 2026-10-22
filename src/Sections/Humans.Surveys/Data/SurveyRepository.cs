@@ -6,7 +6,6 @@ using NodaTime;
 
 namespace Humans.Surveys.Data;
 
-/// <summary>EF-backed <see cref="ISurveyRepository"/>.</summary>
 internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> factory) : ISurveyRepository
 {
     public async Task<Survey?> GetByIdAsync(Guid id, CancellationToken ct = default)
@@ -43,7 +42,6 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
             .FirstOrDefaultAsync(s => s.Id == survey.Id, ct);
         if (existing is null) return;
 
-        // Scalars
         existing.Title = survey.Title;
         existing.Intro = survey.Intro;
         existing.ThankYou = survey.ThankYou;
@@ -230,7 +228,7 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
 
     public async Task<IReadOnlyList<SurveyInvitation>> GetInvitationsDueForReminderAsync(Instant cutoff, CancellationToken ct = default)
     {
-        // Uses the (SurveyId, Completed, SentAt) index. Joins to the survey's status (repo owns both tables).
+        // Joins the survey's status; the repository owns both tables.
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.SurveyInvitations
             .AsNoTracking()
@@ -476,8 +474,7 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
         Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Questions are included because the GDPR export reports a question count off this
-        // graph; without it AsNoTracking hands back surveys whose Questions are empty.
+        // Questions are included because the GDPR export reports a question count off this graph.
         return await ctx.Surveys
             .AsNoTracking()
             .Include(s => s.Questions)
@@ -492,8 +489,7 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
         var surveys = await ctx.Surveys.Where(s => s.CreatedByUserId == userId).ToListAsync(ct);
         foreach (var survey in surveys)
         {
-            // CreatedByUserId is init-only and non-nullable — Guid.Empty is this section's
-            // "nobody", the same value an unattributed survey carries.
+            // CreatedByUserId is init-only and non-nullable; Guid.Empty is this section's "nobody".
             ctx.Entry(survey).Property(nameof(Survey.CreatedByUserId)).CurrentValue = Guid.Empty;
             survey.RejectionNote = null;
         }
@@ -509,8 +505,6 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
         var surveys = await ctx.Surveys.Where(s => s.CreatedByUserId == fromUserId).ToListAsync(ct);
         foreach (var survey in surveys)
         {
-            // Same init-only property as the erasure, set the same way — here to the survivor
-            // rather than to Guid.Empty.
             ctx.Entry(survey).Property(nameof(Survey.CreatedByUserId)).CurrentValue = toUserId;
             survey.UpdatedAt = now;
         }
@@ -518,7 +512,7 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
         return await ctx.SaveChangesAsync(ct);
     }
 
-    /// <summary>Reconciles the persisted question/option graph against the incoming survey by id — removes dropped, updates kept, inserts new.</summary>
+    /// <summary>Removes dropped, updates kept, inserts new.</summary>
     private static void ReconcileQuestions(SurveysDbContext ctx, Survey existing, Survey incoming)
     {
         var incomingQuestionIds = incoming.Questions.Select(q => q.Id).ToHashSet();
@@ -533,14 +527,9 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
             var keptQuestion = existing.Questions.FirstOrDefault(q => q.Id == incomingQuestion.Id);
             if (keptQuestion is null)
             {
-                // Builder questions carry client-generated ids so newly authored questions can
-                // participate in branching before their first save. With a non-default key, adding
-                // through a tracked collection makes EF assume the entity already exists and issue
-                // an UPDATE, which then affects zero rows because there is no row yet — EF reports
-                // that as DbUpdateConcurrencyException even though nothing here carries a
-                // concurrency token (memory/architecture/no-concurrency-tokens.md).
-                // The id comparison above is the source of truth for persistence, so explicitly
-                // classify an unmatched question (and its option graph) as new.
+                // Builder questions carry client-generated ids, so EF would treat a tracked-collection add as an
+                // UPDATE that hits zero rows and reports DbUpdateConcurrencyException. The id match above decides
+                // persistence, so add unmatched questions explicitly.
                 ctx.SurveyQuestions.Add(incomingQuestion);
                 continue;
             }
@@ -580,8 +569,7 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
             var keptOption = existing.Options.FirstOrDefault(o => o.Id == incomingOption.Id);
             if (keptOption is null)
             {
-                // Options also receive client-generated ids in the builder. An unmatched id is a
-                // new row even though its key is already populated.
+                // Options also carry client-generated ids: an unmatched id is a new row.
                 ctx.SurveyQuestionOptions.Add(incomingOption);
                 continue;
             }

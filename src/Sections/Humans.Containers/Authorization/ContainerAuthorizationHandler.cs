@@ -7,13 +7,6 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Containers.Authorization;
 
-/// <summary>
-/// - Admin / CampAdmin: allow any container
-/// - City Planning team member: allow any container
-/// - Camp lead: allow only containers belonging to their camp; for
-///   <see cref="ContainerOperation.Place"/> the placement phase must also be open in the target year
-/// - Everyone else: deny
-/// </summary>
 internal sealed class ContainerAuthorizationHandler(ICampService campService, ICityPlanningService cityPlanningService)
     : AuthorizationHandler<ContainerOperationRequirement, ContainerAuthorizationTarget>
 {

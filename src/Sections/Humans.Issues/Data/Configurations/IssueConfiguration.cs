@@ -29,12 +29,6 @@ internal sealed class IssueConfiguration : IEntityTypeConfiguration<Issue>
         b.Property(x => x.CreatedAt).IsRequired();
         b.Property(x => x.UpdatedAt).IsRequired();
 
-        // ReporterUserId / AssigneeUserId / ResolvedByUserId are bare cross-section
-        // Guid columns — no FK constraint, no nav (memory/architecture/no-cross-section-ef-joins.md).
-        // Resolve display data via IUserService; repositories must not .Include()
-        // across sections. Account deletion anonymises the User row in place
-        // (IAccountDeletionService), so these ids stay resolvable.
-
         b.HasMany(x => x.Comments).WithOne(c => c.Issue).HasForeignKey(c => c.IssueId)
             .OnDelete(DeleteBehavior.Cascade);
 

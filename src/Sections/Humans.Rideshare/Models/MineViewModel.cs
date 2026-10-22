@@ -12,7 +12,6 @@ internal sealed record MineOfferRow(TripView Trip, IReadOnlyList<MineInterestRow
 
 internal sealed record MineRequestRow(RequestView Request, IReadOnlyList<MineInterestRow> Received);
 
-/// <summary>My offers (with interests received), my requests (with drivers who can take me), interests I sent.</summary>
 internal sealed record MineViewModel(
     int Year,
     IReadOnlyList<MineOfferRow> Offers,

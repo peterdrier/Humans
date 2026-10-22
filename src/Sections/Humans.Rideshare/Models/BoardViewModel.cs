@@ -7,7 +7,6 @@ namespace Humans.Rideshare.Models;
 /// <summary>One of the current human's offers that could take a rider off this board: active, same direction, travelling on the date.</summary>
 internal sealed record MyOfferOption(Guid Id, string PlaceLabel, LocalDate DepartureDate, int SeatsRemaining);
 
-/// <summary>The board for one date + direction: the map's config plus the accessible list under it.</summary>
 internal sealed record BoardViewModel(
     int Year,
     LocalDate Date,

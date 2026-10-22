@@ -1,34 +1,21 @@
 namespace Humans.Events.Domain;
 
-/// <summary>
-/// Lookup table for event guide categories (e.g. Workshop, Music, Adult).
-/// Sensitive categories trigger the opt-out UI for attendees.
-/// </summary>
+/// <summary>Sensitive categories trigger the attendee opt-out UI.</summary>
 internal sealed class EventCategory
 {
     public Guid Id { get; init; }
 
-    /// <summary>
-    /// Display name (e.g. "Workshop", "Adult").
-    /// </summary>
     public string Name { get; set; } = string.Empty;
 
-    /// <summary>
-    /// URL-safe identifier, unique (e.g. "workshop", "adult").
-    /// </summary>
+    /// <summary>URL-safe, unique.</summary>
     public string Slug { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Whether this category triggers the opt-out UI (Adult, Spiritual, etc.).
-    /// </summary>
+    /// <summary>Triggers the opt-out UI (Adult, Spiritual, etc.).</summary>
     public bool IsSensitive { get; set; }
     public int DisplayOrder { get; set; }
 
-    /// <summary>
-    /// Whether this category is active. Inactive categories are hidden from submission forms.
-    /// </summary>
+    /// <summary>Inactive categories are hidden from submission forms.</summary>
     public bool IsActive { get; set; } = true;
 
-    // Navigation properties
     public ICollection<Event> Events { get; } = new List<Event>();
 }

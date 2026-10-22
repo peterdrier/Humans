@@ -6,10 +6,7 @@ using Humans.Surveys.Contracts;
 
 namespace Humans.Surveys.Models;
 
-/// <summary>
-/// Builds the compact JSON download: question metadata appears once in <c>Questions</c>, while
-/// response answers carry only stable values that join back to that schema.
-/// </summary>
+/// <summary>Question metadata appears once; answers carry only stable values that join back to it.</summary>
 internal static class SurveyJsonExportBuilder
 {
     private static readonly JsonSerializerOptions Options = new()

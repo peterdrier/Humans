@@ -1,7 +1,5 @@
-// Rideshare board: joinable offers as route lines, requests as pins, the destination as a
-// marker. Config and every user-facing string arrive as data-* on #map (no inline scripts).
-// Clicking a line or pin opens a popup whose button fills and shows the matching modal;
-// the modal is a normal POST form, so no fetch/antiforgery plumbing lives here.
+// Config and every user-facing string arrive as data-* on #map (no inline scripts). Modals are normal POST forms,
+// so no fetch/antiforgery plumbing lives here.
 
 const OSM_TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const COLOR_MINE = '#0d6efd';

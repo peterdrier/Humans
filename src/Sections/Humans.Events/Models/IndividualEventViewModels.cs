@@ -120,7 +120,6 @@ internal sealed class IndividualEventFormViewModel
     [Display(Name = "Recurrence Days")]
     public string? RecurrenceDays { get; set; }
 
-    // Dropdown data
     public List<CategoryOptionViewModel> Categories { get; set; } = [];
     public List<VenueOptionViewModel> Venues { get; set; } = [];
     public List<EventDayOptionViewModel> EventDays { get; set; } = [];
@@ -155,7 +154,7 @@ internal sealed class ScheduleItemViewModel
     public string DayLabel { get; set; } = string.Empty;
     public NodaTime.Instant StartInstant { get; set; }
 
-    /// <summary>The backing favourite row's day offset; null = whole-event favourite.</summary>
+    /// <summary>Null = whole-event favourite.</summary>
     public int? FavouriteDayOffset { get; set; }
     public bool HasConflict { get; set; }
 }
@@ -174,7 +173,7 @@ internal sealed class BrowseViewModel
     public List<VenueOptionViewModel> Venues { get; set; } = [];
     public List<EventDayOptionViewModel> Days { get; set; } = [];
 
-    // Active filters (round-tripped via query string)
+    // Round-tripped via the query string.
     public HashSet<int> FilterDays { get; set; } = [];
     public Guid? FilterCategoryId { get; set; }
     public Guid? FilterVenueId { get; set; }
@@ -202,7 +201,7 @@ internal sealed class BrowseEventItem
     public int DurationMinutes { get; set; }
     public int DayOffset { get; set; }
 
-    /// <summary>Day offset the heart toggles: this card's day for recurring events, null (whole event) otherwise.</summary>
+    /// <summary>This card's day for recurring events, else null (whole event).</summary>
     public int? FavouriteDayOffset { get; set; }
     public bool IsFavourited { get; set; }
     public string? SubmitterName { get; set; }

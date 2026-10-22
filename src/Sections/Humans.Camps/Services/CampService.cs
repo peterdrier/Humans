@@ -17,7 +17,6 @@ using Humans.Teams.Contracts;
 
 namespace Humans.Camps.Services;
 
-/// <summary>Application-layer <see cref="ICampManagement"/>; cache-unaware (decorator owns §15 caching).</summary>
 internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMerge
 {
     /// <summary>GDPR export JSON key for this contributor's data.</summary>
@@ -305,9 +304,8 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         return activeEvent?.Year > 0 ? activeEvent.Year : _clock.GetCurrentInstant().InUtc().Year;
     }
 
-    // Camp search is served from the cached CampInfo snapshot in CachingCampService — it must
-    // never hit the DB. Reaching the inner service means a DI mistake. Mirrors
-    // UserService.SearchUsersAsync (search is cache-only; there is no repository search).
+    // Served from the cached snapshot in CachingCampService: search must never hit the DB, so reaching the inner
+    // service means a DI mistake.
     public Task<IReadOnlyList<CampSearchHit>> SearchAsync(
         string query, int max,
         CancellationToken cancellationToken = default) =>
@@ -890,13 +888,9 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         var camp = await _repo.GetByIdAsync(campId, cancellationToken)
             ?? throw new InvalidOperationException("Camp not found.");
 
-        // CityPlanning keys polygon history on CampSeasonId; clear through its service before deleting.
-        //
-        // Both writes share one ambient transaction (the TeamService.TryAddMemberWithOutboxAsync
-        // shape) so a failure in either does not leave a live camp with its polygon history
-        // already deleted. It does not close the concurrent-insert window — a SaveCampPolygonAsync
-        // landing between the cleanup and the commit still orphans a row — which is the narrowed
-        // trade recorded in docs/plans/2026-08-07-fk-cut-inventory.md.
+        // CityPlanning keys polygon history on CampSeasonId; clear it through its service before deleting. Both writes
+        // share one ambient transaction so a failure in either can't leave a live camp with its polygon history gone.
+        // A SaveCampPolygonAsync landing between cleanup and commit still orphans a row: an accepted trade.
         var seasonIds = camp.Seasons.Select(s => s.Id).ToList();
         IReadOnlyList<string>? deletedImagePaths;
 
@@ -1512,8 +1506,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
         var targetYear = year ?? await GetActiveYearAsync(cancellationToken);
         var camp = await _repo.GetByIdAsync(campId, cancellationToken);
-        // Full is informational only (Peter, 2026-08-20) — it must not block camp
-        // management, so a Full season is still usable here.
+        // Full is informational only: it must not block camp management.
         var openSeason = camp?.Seasons.FirstOrDefault(s => s.Year == targetYear
             && s.Status is CampSeasonStatus.Active or CampSeasonStatus.Full);
         if (openSeason is null)
@@ -1529,8 +1522,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     {
         var targetYear = year ?? await GetActiveYearAsync(cancellationToken);
         var camp = await _repo.GetByIdAsync(campId, cancellationToken);
-        // Full is informational only (Peter, 2026-08-20) — it must not block camp
-        // management, so a Full season is still usable here.
+        // Full is informational only: it must not block camp management.
         var openSeason = camp?.Seasons.FirstOrDefault(s => s.Year == targetYear
             && s.Status is CampSeasonStatus.Active or CampSeasonStatus.Full);
         if (openSeason is null)
@@ -1591,8 +1583,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         CancellationToken ct)
     {
         // Called from AccountMergeService.MergeAsync's ordered fan-out; must stay idempotent.
-        // Folds the source's CampMember rows onto the survivor and carries their
-        // CampRoleAssignments along — leads move too.
         await _repo.ReassignMembershipsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 
         // Lead moves change Barrio Leads team membership for both users.
@@ -1715,16 +1705,10 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         return SetEarlyEntryOutcome.Success;
     }
 
-    /// <summary>
-    /// True when the user has an Attended participation row for the season's
-    /// year (gate check-in via ticket sync). Cross-section read through
-    /// <see cref="ITicketService"/> per the I{Section}Service read pattern.
-    /// </summary>
+    /// <summary>An Attended participation row for the season's year (gate check-in via ticket sync).</summary>
     private async ValueTask<bool> HasEnteredEventAsync(Guid userId, int year, CancellationToken ct) =>
         (await _tickets.GetParticipationsAsync(userId, ct)).Any(p =>
             p.Year == year && p.Status == ParticipationStatus.Attended);
-
-    // ICampLeadDirectory — see Humans.Camps.Contracts.ICampLeadDirectory.
 
     /// <inheritdoc />
     public Task<IReadOnlyList<Guid>> GetActiveLeadUserIdsAsync(CancellationToken cancellationToken = default) =>

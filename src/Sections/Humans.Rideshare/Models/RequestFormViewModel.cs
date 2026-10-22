@@ -8,7 +8,7 @@ using NodaTime;
 
 namespace Humans.Rideshare.Models;
 
-/// <summary>Create/edit form for a ride request. Date travels as an ISO string.</summary>
+/// <summary>The date travels as an ISO string.</summary>
 internal sealed class RequestFormViewModel
 {
     public Guid? Id { get; set; }

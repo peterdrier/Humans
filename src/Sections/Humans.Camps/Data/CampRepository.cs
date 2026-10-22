@@ -3,7 +3,6 @@ using NodaTime;
 
 namespace Humans.Camps.Data;
 
-/// <summary>EF-backed <see cref="ICampRepository"/>.</summary>
 internal sealed partial class CampRepository : ICampRepository
 {
     private readonly IDbContextFactory<CampsDbContext> _factory;
@@ -12,8 +11,6 @@ internal sealed partial class CampRepository : ICampRepository
     {
         _factory = factory;
     }
-
-    // Reads — Camp
 
     public async Task<Camp?> GetBySlugAsync(string slug, CancellationToken ct = default)
     {
@@ -68,8 +65,6 @@ internal sealed partial class CampRepository : ICampRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Camps.AnyAsync(b => b.Slug == slug, ct);
     }
-
-    // Writes — Camp (aggregate)
 
     public async Task CreateCampAsync(
         Camp camp,
@@ -154,8 +149,6 @@ internal sealed partial class CampRepository : ICampRepository
         await ctx.SaveChangesAsync(ct);
         return images;
     }
-
-    // Writes — Season
 
     public async Task<bool> UpdateSeasonAsync(
         Guid seasonId,
@@ -275,8 +268,6 @@ internal sealed partial class CampRepository : ICampRepository
         return rows.ToDictionary(r => r.Year, r => r.LockDate);
     }
 
-    // Cross-service queries
-
     public async Task<CampSeason?> GetSeasonByIdAsync(
         Guid campSeasonId, CancellationToken ct = default)
     {
@@ -287,14 +278,10 @@ internal sealed partial class CampRepository : ICampRepository
             .FirstOrDefaultAsync(s => s.Id == campSeasonId, ct);
     }
 
-    // Leads (role-backed team-sync reads)
-
     public async Task<IReadOnlyList<Guid>> GetActiveLeadUserIdsAsync(
         CancellationToken ct = default)
     {
-        // No year filter: the Barrio Leads team is year-agnostic. Cross-aggregate
-        // read of camp_role_definitions/camp_role_assignments — both tables are
-        // Camps-owned, so this stays within the section boundary.
+        // No year filter: the Barrio Leads team is year-agnostic.
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampRoleAssignments
             .AsNoTracking()
@@ -314,8 +301,6 @@ internal sealed partial class CampRepository : ICampRepository
                 && a.Definition.SpecialRole == CampSpecialRole.Lead
                 && a.Definition.DeactivatedAt == null, ct);
     }
-
-    // Historical names
 
     public async Task AddHistoricalNameAsync(
         CampHistoricalName historicalName, CancellationToken ct = default)
@@ -339,8 +324,6 @@ internal sealed partial class CampRepository : ICampRepository
         await ctx.SaveChangesAsync(ct);
         return true;
     }
-
-    // Images
 
     public async Task<int> CountImagesAsync(Guid campId, CancellationToken ct = default)
     {
@@ -414,8 +397,6 @@ internal sealed partial class CampRepository : ICampRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-    // Settings
-
     public async Task<CampSettings?> GetSettingsReadOnlyAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -451,8 +432,6 @@ internal sealed partial class CampRepository : ICampRepository
         await ctx.SaveChangesAsync(ct);
         return true;
     }
-
-    // Membership (camp_members)
 
     public async Task<CampMemberInsertResult> RequestMembershipAsync(
         Guid campSeasonId, Guid userId, Instant requestedAt, CancellationToken ct = default)
@@ -618,8 +597,6 @@ internal sealed partial class CampRepository : ICampRepository
             .FirstOrDefaultAsync(ct);
         return row is null ? null : (row.CampSeasonId, row.UserId, row.Status);
     }
-
-    // Early Entry
 
     public async Task<int> GetGrantedCountForSeasonAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default)

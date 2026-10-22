@@ -8,7 +8,6 @@ using NodaTime;
 
 namespace Humans.Events.Services;
 
-/// <summary>Validates the whole CSV before applying changed rows to a barrio's events.</summary>
 internal sealed class EventBulkImporter(
     IEventRepository repo,
     IClock clock,
@@ -49,9 +48,8 @@ internal sealed class EventBulkImporter(
             var recurrenceChanged = true;
             if (row.Id.HasValue)
             {
-                // Compare recurrence by day-name set, not the raw offset string, so a
-                // lossless round-trip ("0" ⇄ "Mon") isn't mistaken for an edit and the
-                // event isn't needlessly re-queued for moderation.
+                // Compare recurrence by day-name set, so a lossless round-trip ("0" ⇄ "Mon") isn't mistaken for an
+                // edit and re-queued for moderation.
                 var existingDays = target.IsRecurring && !string.IsNullOrEmpty(target.RecurrenceDays)
                     ? EventRecurrenceDays.OffsetsToDisplayDays(target.RecurrenceDays, gateOpeningDate)
                     : string.Empty;

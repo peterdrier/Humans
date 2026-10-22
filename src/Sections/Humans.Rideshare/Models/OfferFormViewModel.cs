@@ -8,7 +8,7 @@ using NodaTime;
 
 namespace Humans.Rideshare.Models;
 
-/// <summary>Create/edit form for a ride offer. Dates travel as ISO strings (no NodaTime model binder).</summary>
+/// <summary>Dates travel as ISO strings: there is no NodaTime model binder.</summary>
 internal sealed class OfferFormViewModel
 {
     public Guid? Id { get; set; }

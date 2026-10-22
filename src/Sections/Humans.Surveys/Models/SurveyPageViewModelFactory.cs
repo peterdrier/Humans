@@ -3,10 +3,7 @@ using Humans.Surveys.Services;
 
 namespace Humans.Surveys.Models;
 
-/// <summary>
-/// Shared projection from an authored survey plus wizard state to the respondent page model.
-/// Both live answering and read-only admin preview use this so question rendering cannot drift.
-/// </summary>
+/// <summary>Shared by live answering and admin preview so question rendering cannot drift.</summary>
 internal static class SurveyPageViewModelFactory
 {
     public static string ResolveCulture(string? requested, string surveyDefault)

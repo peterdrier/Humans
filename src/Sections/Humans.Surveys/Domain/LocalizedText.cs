@@ -1,6 +1,6 @@
 namespace Humans.Surveys.Domain;
 
-/// <summary>Per-culture authored content (culture code → text). Persisted as a single jsonb column.</summary>
+/// <summary>Culture code → text, persisted as a single jsonb column.</summary>
 internal sealed class LocalizedText : IEquatable<LocalizedText>
 {
     private readonly Dictionary<string, string> _values;

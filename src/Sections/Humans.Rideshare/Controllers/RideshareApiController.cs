@@ -11,7 +11,6 @@ using NodaTime;
 
 namespace Humans.Rideshare.Controllers;
 
-/// <summary>The board's GeoJSON feed for MapLibre. Mirrors <c>CityPlanningApiController</c>.</summary>
 [ApiController]
 [Authorize(Policy = PolicyNames.AppAccess)]
 [Route("api/rideshare")]

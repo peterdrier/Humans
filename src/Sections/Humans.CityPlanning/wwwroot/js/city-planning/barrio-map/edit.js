@@ -27,8 +27,6 @@ function escHtml(s) {
     return d.innerHTML;
 }
 
-// --- Popup ---
-
 export function onCampPolygonClick(e) {
     if (appState.activeCampSeasonId || isMeasuring()) return;
     const props = e.features[0].properties;
@@ -66,8 +64,6 @@ export function onCampPolygonClick(e) {
         .addEventListener('click', () => loadHistory(campSeasonId, canEdit));
 }
 
-// --- Edit mode lifecycle ---
-
 export function startEditing(campSeasonId) {
     if (appState.currentPopup) { appState.currentPopup.remove(); appState.currentPopup = null; }
 
@@ -98,8 +94,6 @@ export function exitEditMode() {
     setEditingControlsVisible(false);
 }
 
-// --- Draw event handlers ---
-
 export function onDrawChange() {
     lastRenderedPolyKey = null; // force the next render-pass to run
     updateSaveButton();
@@ -128,8 +122,6 @@ export function onDrawDelete() {
     setEditingControlsVisible(false);
 }
 
-// --- Toolbar state ---
-
 export function setEditingControlsVisible(visible) {
     const toolbar = document.getElementById('main-toolbar');
     if (!toolbar) return;
@@ -157,8 +149,6 @@ export function updateAddMyBarrioVisibility() {
         document.getElementById('main-toolbar')?.classList.remove('d-none');
     }
 }
-
-// --- Draw label ---
 
 export function clearDrawLabel() {
     const { map } = appState;
@@ -224,8 +214,6 @@ export function updateSaveButton() {
         clearDrawLabel();
     }
 }
-
-// --- History ---
 
 let historyVersion = 0;
 let restoreInProgress = false;

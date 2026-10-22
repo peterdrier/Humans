@@ -1,7 +1,5 @@
-// Coarse point picker for the offer/request forms: click the map to set the latitude and
-// longitude inputs named by data-lat-input / data-lng-input; editing the inputs moves the marker.
-// Retyping the place label (data-place-input) clears the pin so the server geocodes the new label
-// instead of keeping stale coordinates.
+// Retyping the place label (data-place-input) clears the pin so the server geocodes the new label instead of keeping
+// stale coordinates.
 
 const OSM_TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 

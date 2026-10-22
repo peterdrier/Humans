@@ -1,10 +1,6 @@
 namespace Humans.Events.Models;
 
-/// <summary>
-/// Compact list of approved events rendered by <c>EventsCardViewComponent</c> —
-/// a camp's events on the camp detail page, or a user's submitted events on
-/// their profile. Auth-gated; approved events only.
-/// </summary>
+/// <summary>A camp's events on its detail page, or a user's on their profile. Approved events only.</summary>
 internal sealed class EventsCardViewModel
 {
     public List<EventsCardRow> Rows { get; set; } = [];
@@ -17,7 +13,7 @@ internal sealed class EventsCardRow
     public string CategoryName { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
 
-    /// <summary>Start time already converted to the guide's local zone.</summary>
+    /// <summary>Already in the guide's local zone.</summary>
     public DateTime StartAt { get; set; }
     public int DurationMinutes { get; set; }
 

@@ -8,22 +8,16 @@ using Humans.Gdpr.Contracts;
 
 namespace Humans.Events.Services;
 
-/// <summary>
-/// Service for the Events section (camp-event guide).
-/// </summary>
 internal interface IEventManagement : IApplicationService, IEventService
 {
-    // ── Settings ─────────────────────────────────────────────────────────
-    // GetGuideSettingsAsync is declared on IEventService (public contract).
     Task<IReadOnlyList<EventSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default);
     Task<EventSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
-    /// <summary>Returns false if the selected event edition no longer exists; dependency failures propagate.</summary>
+    /// <summary>False when the selected event edition no longer exists; dependency failures propagate.</summary>
     Task<bool> SaveGuideSettingsAsync(
         Guid? existingId, Guid eventSettingsId,
         LocalDateTime submissionOpenAt, LocalDateTime submissionCloseAt, LocalDateTime guidePublishAt,
         int maxPrintSlots, CancellationToken ct = default);
 
-    // ── Categories ────────────────────────────────────────────────────────
     Task<IReadOnlyList<EventCategoryView>> GetActiveCategoriesAsync(CancellationToken ct = default);
     Task<IReadOnlyList<EventCategoryManageInfo>> GetAllCategoriesAsync(CancellationToken ct = default);
     Task<EventCategoryView?> GetCategoryAsync(Guid id, CancellationToken ct = default);
@@ -31,68 +25,47 @@ internal interface IEventManagement : IApplicationService, IEventService
     Task<int> GetNextCategoryOrderAsync(CancellationToken ct = default);
     Task CreateCategoryAsync(EventCategory category, CancellationToken ct = default);
     Task UpdateCategoryAsync(EventCategory category, CancellationToken ct = default);
-    /// <summary>
-    /// Deletes a category when no guide events reference it.
-    /// </summary>
-    /// <returns>null if not found; (false, count) if has linked events; (true, 0) on success.</returns>
+    /// <summary>Only when no events reference it. Returns (false, count) when linked, (false, -1) when not found.</summary>
     Task<(bool deleted, int linkedCount)> DeleteCategoryAsync(Guid id, CancellationToken ct = default);
     Task MoveCategoryAsync(Guid id, int direction, CancellationToken ct = default);
 
-    // ── Venues ────────────────────────────────────────────────────────────
     Task<IReadOnlyList<EventVenueView>> GetActiveVenuesAsync(CancellationToken ct = default);
     Task<IReadOnlyList<EventVenueManageInfo>> GetAllVenuesAsync(CancellationToken ct = default);
     Task<EventVenueView?> GetVenueAsync(Guid id, CancellationToken ct = default);
     Task<int> GetNextVenueOrderAsync(CancellationToken ct = default);
     Task CreateVenueAsync(EventVenue venue, CancellationToken ct = default);
     Task UpdateVenueAsync(EventVenue venue, CancellationToken ct = default);
-    /// <summary>
-    /// Deletes a shared venue when no guide events reference it.
-    /// </summary>
-    /// <returns>(false, count) if has linked events; (true, 0) on success.</returns>
+    /// <summary>Only when no events reference it. Returns (false, count) when linked, (false, -1) when not found.</summary>
     Task<(bool deleted, int linkedCount)> DeleteVenueAsync(Guid id, CancellationToken ct = default);
     Task MoveVenueAsync(Guid id, int direction, CancellationToken ct = default);
 
-    // ── Submissions ───────────────────────────────────────────────────────
     Task<IReadOnlyList<EventInfo>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default);
     Task<EventInfo?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default);
     Task<IReadOnlyList<EventInfo>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default);
     Task<EventInfo?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default);
-    // Status-bucketed + sorted view of a camp's submissions for the submitter's
-    // "My Submissions" barrio block.
     Task<CampSubmissionsSummary> GetCampSubmissionsSummaryAsync(Guid campId, CancellationToken ct = default);
-    // Persists a new submission and emails the submitter their confirmation (part of
-    // the submit workflow). Null lifecycleActionUrl opts out (bulk import).
+    // Also emails the submitter a confirmation; a null lifecycleActionUrl opts out (bulk import).
     Task SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default);
-    /// <summary>
-    /// Submitter edit: applies <paramref name="edit"/> (camp or individual field set,
-    /// chosen by the event's own <c>CampId</c>) and re-queues for moderation.
-    /// </summary>
+    /// <summary>Re-queues for moderation; the event's own <c>CampId</c> picks the field set.</summary>
     Task UpdateAndResubmitAsync(Guid eventId, EventEdit edit, CancellationToken ct = default);
     Task WithdrawEventAsync(Guid eventId, CancellationToken ct = default);
 
     /// <summary>
-    /// Moderator withdrawal: withdraws the event and appends a
-    /// <see cref="EventModerationActionType.Withdrawn"/> history row naming the moderator.
-    /// Allowed whenever the submitter could withdraw (<c>Event.CanBeWithdrawnBySubmitter</c>);
-    /// otherwise returns <c>false</c> and writes nothing.
+    /// Allowed whenever the submitter could withdraw; otherwise returns false and writes nothing. Appends a
+    /// <see cref="EventModerationActionType.Withdrawn"/> row naming the moderator.
     /// </summary>
     Task<bool> ModeratorWithdrawAsync(Guid eventId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Admin / moderator in-place edit. Applies <paramref name="edit"/> (camp or
-    /// individual field set, chosen by the event's own <c>CampId</c>) and bumps <see cref="Event.LastUpdatedAt"/> but leaves
-    /// <see cref="Event.Status"/> untouched (an Approved event stays Approved /
-    /// published — no re-queue), appending an <see cref="EventModerationActionType.Edited"/>
-    /// history record by <paramref name="actorUserId"/> with the optional
-    /// <paramref name="note"/> as its reason. The authoritative "edit in a pinch"
-    /// path; distinct from <see cref="UpdateAndResubmitAsync"/>, which re-queues to Pending.
+    /// Leaves <see cref="Event.Status"/> untouched (an Approved event stays published), unlike
+    /// <see cref="UpdateAndResubmitAsync"/>. Appends an <see cref="EventModerationActionType.Edited"/> row with
+    /// <paramref name="note"/> as its reason.
     /// </summary>
     Task AdminUpdateAsync(Guid eventId, EventEdit edit, Guid actorUserId, string? note, CancellationToken ct = default);
 
     /// <summary>
-    /// All-or-nothing barrio bulk import: validates every parsed row first and,
-    /// if all pass, creates new events (empty Id) and re-queues edited existing
-    /// ones. Returns per-row errors with nothing written when validation fails.
+    /// All or nothing: creates new events (empty Id) and re-queues edited ones only when every row passes; otherwise
+    /// returns per-row errors with nothing written.
     /// </summary>
     Task<BulkImportResult> BulkImportAsync(
         Guid campId, Guid submitterUserId, IReadOnlyList<BulkCsvRow> rows,
@@ -100,54 +73,35 @@ internal interface IEventManagement : IApplicationService, IEventService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Builds the CSV bulk-upload template for a camp: existing non-withdrawn
-    /// submissions (or one example row when there are none), plus the
-    /// instructional banner comments — ready to write as the download body.
-    /// <paramref name="campName"/> is the caller's resolved display name
-    /// (Camps-section concern; Events has no visibility into camp identity).
+    /// Existing non-withdrawn submissions, or one example row when there are none, plus the instructional banner.
+    /// Events cannot see camp identity, so the caller resolves <paramref name="campName"/>.
     /// </summary>
     Task<byte[]> BuildBulkUploadTemplateAsync(Guid campId, string campName, CancellationToken ct = default);
 
-    // ── Browse / API ──────────────────────────────────────────────────────
-    // GetApprovedEventsAsync and GetApprovedEventByIdAsync are declared on IEventService
-    // (public contract).
-
-    // ── Favourites ────────────────────────────────────────────────────────
-    // GetFavouriteEventIdsAsync is declared on IEventService (public contract).
     Task<IReadOnlyList<EventFavouriteInfo>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default);
-    // dayOffset selects one occurrence of a recurring event; null means the whole event.
+    // Null dayOffset means the whole event.
     Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default);
     Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default);
 
-    // ── Preferences ───────────────────────────────────────────────────────
     Task<List<string>> GetExcludedCategorySlugsAsync(Guid userId, CancellationToken ct = default);
     Task SavePreferenceAsync(Guid userId, List<string> slugs, CancellationToken ct = default);
 
-    // ── Moderation ────────────────────────────────────────────────────────
     Task<Dictionary<EventStatus, int>> GetEventStatusCountsAsync(CancellationToken ct = default);
     Task<IReadOnlyList<EventInfo>> GetEventsByStatusAsync(EventStatus status, CancellationToken ct = default);
     Task<EventInfo?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default);
     Task<IReadOnlyList<CampEventOverlap>> GetCampEventsForOverlapAsync(CancellationToken ct = default);
-    // Applies the decision, records history, and emails the submitter the outcome
-    // (part of the moderation workflow). submitterEditUrl is the caller's routing
-    // concern; null opts out of the notification. Returns the refusal when a
-    // reason is missing or the event is not pending.
+    // Also emails the submitter the outcome; a null submitterEditUrl opts out. Refuses when a reason is missing or
+    // the event is not pending.
     Task<ModerationOutcome> ApplyModerationAsync(Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason, string? submitterEditUrl = null, CancellationToken ct = default);
 
-    // ── GDPR ──────────────────────────────────────────────────────────────
-    // IUserDataContributor is carried by CachingEventService (erasure edits cached
-    // rows); these two are how it reaches the inner service, so they sit here rather
-    // than only on the concrete type.
+    // On the interface so the caching decorator, which carries these (erasure edits cached rows), reaches the inner
+    // service.
     Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct);
     Task EraseForUserAsync(Guid userId, CancellationToken ct);
 
-    // ── Account merge ─────────────────────────────────────────────────────
-    // IUserMerge is carried by CachingEventService (the fold re-points cached
-    // submitter ids); this is how it reaches the inner service.
     Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct);
 
-    // ── Dashboard / Export ────────────────────────────────────────────────
     Task<IReadOnlyList<EventInfo>> GetAllEventsForDashboardAsync(CancellationToken ct = default);
-    /// <summary>Builds the approved-event CSV and audits its expanded row count and recipient.</summary>
+    /// <summary>Audits the expanded row count and recipient.</summary>
     Task<byte[]> GetApprovedEventsForExportAsync(Guid actorUserId, CancellationToken ct = default);
 }

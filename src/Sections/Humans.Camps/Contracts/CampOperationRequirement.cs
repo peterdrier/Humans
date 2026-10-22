@@ -3,19 +3,13 @@ using Microsoft.AspNetCore.Authorization;
 namespace Humans.Camps.Contracts;
 
 /// <summary>
-/// Resource-based authorization requirement for camp operations.
-/// Used with IAuthorizationService.AuthorizeAsync(User, resource, requirement)
-/// where the resource is a <see cref="Humans.Camps.Contracts.CampInfo"/>,
-/// the section's internal <c>Camp</c> entity, or a camp ID (<see cref="System.Guid"/>).
+/// The resource is a <see cref="Humans.Camps.Contracts.CampInfo"/>, the internal <c>Camp</c> entity, or a camp id.
 /// </summary>
 public sealed class CampOperationRequirement : IAuthorizationRequirement
 {
     public static readonly CampOperationRequirement Manage = new(nameof(Manage));
 
-    /// <summary>
-    /// Authorizes camp-event submission (<c>EventsController</c>): Lead OR
-    /// Workshop role holder, plus CampAdmin / Admin.
-    /// </summary>
+    /// <summary>Lead or Workshop role holder, plus CampAdmin / Admin.</summary>
     public static readonly CampOperationRequirement SubmitEvent = new(nameof(SubmitEvent));
 
     public string OperationName { get; }

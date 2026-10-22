@@ -4,23 +4,9 @@ using NodaTime;
 namespace Humans.Events.Contracts;
 
 /// <summary>
-/// Cached projection of a single approved <c>Event</c> row,
-/// flattened with its <c>EventCategory</c> and <c>EventVenue</c>
-/// fields so the public guide / API can render without joining at read time.
+/// One approved event, flattened with its category and venue at cache warm time. Only Approved events are projected;
+/// the moderation dashboard reads the database for its live pending count.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Held in a <see cref="System.Collections.Concurrent.ConcurrentDictionary{TKey,TValue}"/>
-/// keyed by <see cref="Id"/> inside <c>CachingEventService</c>. Only events in
-/// <c>EventStatus.Approved</c> are projected — the moderation dashboard
-/// (which needs the live pending count) reads direct DB via
-/// <c>GetAllEventsForDashboardAsync</c>.
-/// </para>
-/// <para>
-/// Category and venue fields are pre-stitched at warm/refresh time from the
-/// in-memory category + venue tables.
-/// </para>
-/// </remarks>
 public sealed record ApprovedEventView(
     Guid Id,
     Guid? CampId,
@@ -43,9 +29,6 @@ public sealed record ApprovedEventView(
     Instant SubmittedAt,
     Instant LastUpdatedAt)
 {
-    /// <summary>
-    /// Expands this approved event into concrete occurrence instants.
-    /// </summary>
     public IReadOnlyList<Instant> GetOccurrenceInstants(LocalDate gateOpeningDate, DateTimeZone timeZone) =>
         EventRecurrenceDays.GetOccurrenceInstants(
             StartAt, IsRecurring, RecurrenceDays, gateOpeningDate, timeZone);

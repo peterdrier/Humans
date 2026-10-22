@@ -6,16 +6,13 @@ using NodaTime.Text;
 namespace Humans.Surveys.Models;
 
 /// <summary>
-/// Builds the per-response CSV download from a <see cref="SurveyResponseExport"/>. One row per response;
-/// leading identity columns then one column per question (header = resolved prompt, disambiguated with
-/// the short question id when prompts collide). Choice cells use the stable option <b>values</b>
-/// (<c>value|value</c>) — not labels — so the export joins cleanly against the question schema for
-/// analysis. Quoting, injection escaping, and invariant formatting come from the shared
-/// <see cref="HumansCsv"/> conventions.
+/// One row per response. Headers are resolved prompts, suffixed with the short question id only when prompts collide.
+/// Choice cells use stable option <b>values</b> (<c>value|value</c>), not labels, so the export joins against the
+/// question schema.
 /// </summary>
 internal static class SurveyCsvExportBuilder
 {
-    private static readonly InstantPattern SubmittedPattern = InstantPattern.General; // ISO-8601 UTC, invariant.
+    private static readonly InstantPattern SubmittedPattern = InstantPattern.General;
 
     public static byte[] Build(SurveyResponseExport export)
     {
@@ -51,7 +48,6 @@ internal static class SurveyCsvExportBuilder
         });
     }
 
-    /// <summary>Resolved prompt, suffixed with the short question id only when another question shares the same prompt.</summary>
     private static string QuestionHeader(SurveyExportQuestion question, IReadOnlyList<SurveyExportQuestion> all)
     {
         var duplicate = all.Count(q => string.Equals(q.Prompt, question.Prompt, StringComparison.Ordinal)) > 1;

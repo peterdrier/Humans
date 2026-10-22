@@ -2,45 +2,24 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Events.Contracts;
 
-/// <summary>
-/// Public contract of the Events section. Exposes only the
-/// approved-event reads other sections need (e.g. the camp detail page's
-/// events card) without granting access to submission, moderation, or
-/// settings writes. Implemented by the same service that backs
-/// <c>IEventManagement</c>; registered as a forward to the caching
-/// singleton so reads are served from the approved-events cache.
-/// </summary>
+/// <summary>Approved-event reads only, served from the approved-events cache.</summary>
 public interface IEventService : IApplicationService
 {
-    /// <summary>
-    /// Approved events, optionally filtered by camp / venue / category / free text,
-    /// minus the caller's excluded category slugs. Served from the approved-only cache.
-    /// </summary>
+    /// <summary>Minus the caller's excluded category slugs.</summary>
     Task<IReadOnlyList<ApprovedEventView>> GetApprovedEventsAsync(
         Guid? campId, Guid? venueId, Guid? categoryId, string? q,
         IReadOnlyList<string> excludedSlugs, CancellationToken ct = default);
 
-    /// <summary>
-    /// One approved event by id, or null. An O(1) hit on the approved-only cache — the key
-    /// <c>&lt;vc:events-search-result&gt;</c> is invoked with.
-    /// </summary>
     Task<ApprovedEventView?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>
-    /// The guide settings singleton (or null). Carries <c>TimeZoneId</c> so
-    /// consumers can render <c>Instant</c> start times in the burn's local zone.
-    /// </summary>
+    /// <summary>Carries <c>TimeZoneId</c> for rendering start times in the burn's local zone.</summary>
     Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default);
 
-    /// <summary>The event ids the given user has favourited.</summary>
     Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Approved events whose Title or Description contains <paramref name="query"/>
-    /// (case-insensitive), each scored by this section — see <see cref="EventSearchHit"/>
-    /// for the tiering. Capped at <paramref name="max"/>; returned in unspecified order —
-    /// the global search orchestrator ranks. Served from the approved-only cache. Used by
-    /// the global /Search page (<c>SearchService</c>); nobodies-collective/Humans#1062.
+    /// Case-insensitive Title or Description match, scored per <see cref="EventSearchHit"/>. Capped at
+    /// <paramref name="max"/>, in unspecified order: the caller ranks.
     /// </summary>
     Task<IReadOnlyList<EventSearchHit>> SearchAsync(
         string query, int max, CancellationToken ct = default);

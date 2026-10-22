@@ -2,15 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Camps.ViewComponents;
 
-/// <summary>
-/// Renders every active section's <see cref="ICampPart"/> descriptors for the camp detail
-/// page, ordered by weight, each invoked as its declared component <see cref="Type"/> with a
-/// <see cref="CampPartArgs"/>. Mirrors Base's <c>UserPartsViewComponent</c>
-/// (nobodies-collective/Humans#1815). A contributor that throws is logged and skipped so one
-/// section cannot break the page.
-/// </summary>
-// Public, not internal: Razor's build-time tag-helper discovery only sees public view
-// components, so an internal one renders <vc:camp-parts> as inert markup.
+/// <summary>A contributor that throws is logged and skipped, so one section cannot break the page.</summary>
+// Public: Razor's tag-helper discovery only sees public view components; an internal one renders as inert markup.
 public sealed class CampPartsViewComponent(
     IEnumerable<ICampPart> contributors,
     ILogger<CampPartsViewComponent> logger) : ViewComponent

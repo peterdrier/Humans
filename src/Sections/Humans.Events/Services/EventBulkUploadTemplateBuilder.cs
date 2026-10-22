@@ -8,7 +8,6 @@ using NodaTime;
 
 namespace Humans.Events.Services;
 
-/// <summary>Renders the downloadable barrio bulk-upload CSV from already-loaded event data.</summary>
 internal static class EventBulkUploadTemplateBuilder
 {
     public static byte[] Build(
@@ -104,9 +103,8 @@ internal static class EventBulkUploadTemplateBuilder
                 }
                 csv.WriteRecords(records);
             },
-            // Round-trip data file, not a spreadsheet report: injection escaping
-            // would prepend apostrophes that come back as data on re-upload,
-            // dirtying rows the user never touched.
+            // A round-trip data file: injection escaping would prepend apostrophes that come back as data on
+            // re-upload, dirtying untouched rows.
             config => config.InjectionOptions = InjectionOptions.None);
     }
 

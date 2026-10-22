@@ -2,20 +2,15 @@ using NodaTime;
 
 namespace Humans.Surveys.Contracts;
 
-/// <summary>A survey and its participation counts — the machine API's list row and the admin index.</summary>
 /// <summary>
-/// One survey as cross-section readers see it. <c>CreatedByUserId</c> is the author, and is
-/// <see cref="Guid.Empty"/> for an unattributed survey or one whose author was erased.
+/// <c>CreatedByUserId</c> is <see cref="Guid.Empty"/> for an unattributed survey or one whose author was erased.
 /// </summary>
 public sealed record SurveySummary(
     Guid Id, string Title, SurveyStatus Status, int InvitedCount, int ResponseCount, Guid CreatedByUserId);
 
-// ── Results DTOs (co-located) ───────────────────────────────────────────────
-
 /// <summary>
-/// The admin results read model. <see cref="ResponseRate"/> is completed sent invitations ÷
-/// <see cref="InvitedCount"/> (0 when no one was invited); Anonymous responses and unsent public
-/// participation do not count. All prompts/labels are resolved in the survey's default culture.
+/// <see cref="ResponseRate"/> is completed sent invitations ÷ <see cref="InvitedCount"/> (0 when no one was invited);
+/// Anonymous responses and unsent public participation do not count. Labels are in the default culture.
 /// </summary>
 public sealed record SurveyResultsView(
     Guid SurveyId,
@@ -29,17 +24,15 @@ public sealed record SurveyResultsView(
     IReadOnlyList<RespondentDetail> IdentifiedRespondents);
 
 /// <summary>
-/// Participation funnel split by entry path: the user-specific link path (per-invitation
-/// <c>Started</c> flag vs submitted link responses) and the public slug path (the survey's
-/// <c>PublicStartedCount</c> vs submitted slug responses).
+/// Link path: per-invitation <c>Started</c> flags vs submitted link responses. Slug path: the survey's
+/// <c>PublicStartedCount</c> vs submitted slug responses.
 /// </summary>
 public sealed record SurveyFunnel(int LinkStarted, int LinkFinished, int SlugStarted, int SlugFinished);
 
 /// <summary>
-/// One question's aggregate over submitted responses. The populated collection depends on the
-/// question type: <see cref="OptionCounts"/> for choice questions, <see cref="RatingDistribution"/>
-/// plus <see cref="RatingAverage"/> for rating questions, <see cref="FreeTextAnswers"/> for text
-/// questions, and <see cref="Grid"/> for Grid questions. The others are empty/null.
+/// Over submitted responses. Populated by type: <see cref="OptionCounts"/> for choice, <see cref="RatingDistribution"/>
+/// and <see cref="RatingAverage"/> for rating, <see cref="FreeTextAnswers"/> for text, <see cref="Grid"/> for Grid.
+/// The others are empty or null.
 /// </summary>
 public sealed record QuestionAggregate(
     Guid QuestionId,
@@ -51,28 +44,26 @@ public sealed record QuestionAggregate(
     IReadOnlyList<string> FreeTextAnswers,
     GridAggregate? Grid = null);
 
-/// <summary>One choice option's tally. <see cref="Percent"/> is the share of responses to that question (0 when none).</summary>
+/// <summary><see cref="Percent"/> is the share of responses to that question (0 when none).</summary>
 public sealed record OptionCount(string Value, string Label, int Count, double Percent);
 
-/// <summary>One rating value's tally; empty buckets are included across the question's range.</summary>
+/// <summary>Empty buckets are included across the question's range.</summary>
 public sealed record RatingBucket(int Value, int Count);
 
-/// <summary>A Grid question's resolved column schema and per-row cell counts.</summary>
 public sealed record GridAggregate(
     GridSelectionMode Mode,
     IReadOnlyList<SurveyExportOption> Columns,
     IReadOnlyList<GridAggregateRow> Rows);
 
-/// <summary>One resolved Grid row and its cells.</summary>
 public sealed record GridAggregateRow(string Value, string Label, IReadOnlyList<GridCellCount> Cells);
 
-/// <summary>One Grid cell tally. Percent is based on respondents who answered the row.</summary>
+/// <summary>Percent is based on respondents who answered the row.</summary>
 public sealed record GridCellCount(string ColumnValue, string ColumnLabel, int Count, double Percent);
 
-/// <summary>One Identified respondent's drill-down row: stitched display name + their answers.</summary>
+/// <summary>Identified respondents only.</summary>
 public sealed record RespondentDetail(Guid UserId, string Name, Instant? SubmittedAt, IReadOnlyList<RespondentAnswer> Answers);
 
-/// <summary>One answer in an Identified respondent's drill-down, with choice labels resolved in the default culture.</summary>
+/// <summary>Choice labels resolved in the default culture.</summary>
 public sealed record RespondentAnswer(
     Guid QuestionId,
     string Prompt,
@@ -82,23 +73,18 @@ public sealed record RespondentAnswer(
     IReadOnlyList<ResolvedGridSelection>? GridSelections = null,
     ResolvedRankedBallot? RankedBallot = null);
 
-/// <summary>One resolved Grid row selection for display/export.</summary>
 public sealed record ResolvedGridSelection(
     string RowValue,
     string RowLabel,
     IReadOnlyList<string> ColumnValues,
     IReadOnlyList<string> ColumnLabels);
 
-/// <summary>A ranked ballot with candidate labels resolved for human-readable drill-down.</summary>
 public sealed record ResolvedRankedBallot(
     IReadOnlyList<IReadOnlyList<string>> RankGroups,
     IReadOnlyList<string> Rejected);
 
-// ── Export DTOs (co-located; raw per-response, shared by CSV/JSON download and the analysis API) ──
-
 /// <summary>
-/// The raw export of a survey's submitted responses: the question schema (ordered by page then order)
-/// plus one row per response (ordered by submission time). Prompts/labels are resolved in
+/// Questions ordered by page then order; one row per response, by submission time. Labels resolved in
 /// <see cref="DefaultCulture"/>.
 /// </summary>
 public sealed record SurveyResponseExport(
@@ -108,7 +94,7 @@ public sealed record SurveyResponseExport(
     IReadOnlyList<SurveyExportQuestion> Questions,
     IReadOnlyList<SurveyExportRow> Rows);
 
-/// <summary>One question in the export schema. <see cref="Options"/> is empty for non-choice questions.</summary>
+/// <summary><see cref="Options"/> is empty for non-choice questions.</summary>
 public sealed record SurveyExportQuestion(
     Guid QuestionId,
     string Prompt,
@@ -119,19 +105,17 @@ public sealed record SurveyExportQuestion(
     SurveyRankedSettings? RankedSettings = null,
     IReadOnlyList<string>? RankedUnavailableOptionValues = null);
 
-/// <summary>One choice option in the export schema: the stable machine <see cref="Value"/> + its resolved <see cref="Label"/>.</summary>
+/// <summary><see cref="Value"/> is the stable machine key.</summary>
 public sealed record SurveyExportOption(string Value, string Label);
 
-/// <summary>One Grid row in the export schema.</summary>
 public sealed record SurveyExportGridRow(string Value, string Label);
 
-/// <summary>Public, stable settings for a ranked-choice question.</summary>
 public sealed record SurveyRankedSettings(
     bool AllowEqualRanks,
     bool AllowReject,
     string OfficialMethod);
 
-/// <summary>A raw ranked ballot using stable option values.</summary>
+/// <summary>Uses stable option values.</summary>
 public sealed record SurveyRankedBallot(
     IReadOnlyList<IReadOnlyList<string>> RankGroups,
     IReadOnlyList<string> Rejected);
@@ -151,10 +135,7 @@ public sealed record SurveyExportRow(
     string? UserName,
     IReadOnlyList<SurveyExportAnswer> Answers);
 
-/// <summary>
-/// One answer in an exported response: raw stable keys plus best-effort resolved labels,
-/// free text, or a rating.
-/// </summary>
+/// <summary>Raw stable keys plus best-effort resolved labels, free text, or a rating.</summary>
 public sealed record SurveyExportAnswer(
     Guid QuestionId,
     IReadOnlyList<string> SelectedValues,

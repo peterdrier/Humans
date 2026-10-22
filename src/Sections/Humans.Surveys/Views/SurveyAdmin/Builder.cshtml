@@ -298,7 +298,6 @@
                     });
             }
 
-            // ── culture switcher ─────────────────────────────────────────────
             let activeCulture = defaultCulture.value;
 
             function applyCulture(scope) {
@@ -349,7 +348,6 @@
                 updateMissingBadges();
             }));
 
-            // ── audience cutoff visibility ───────────────────────────────────
             const audienceType = document.querySelector('select[name="AudienceType"]');
             const audienceTeamField = document.getElementById('audience-team-field');
             const loggedInSinceField = document.getElementById('logged-in-since-field');
@@ -384,7 +382,6 @@
             asociadoVote.addEventListener('change', applyVoteMode);
             applyVoteMode();
 
-            // ── question cards ───────────────────────────────────────────────
             function applyTypeVisibility(card) {
                 const type = card.querySelector('.question-type')?.value;
                 const ratings = card.querySelector('.rating-section');
@@ -488,7 +485,6 @@
                 updateMoveButtons(list, itemSelector, classPrefix);
             }
 
-            // ── show-if clause editor ────────────────────────────────────────
             function questionCards() { return Array.from(container.querySelectorAll('.question-card')); }
 
             function questionPage(card) {
@@ -631,7 +627,6 @@
                 updateInformationImageLimit(card);
             }
 
-            // ── events ───────────────────────────────────────────────────────
             document.getElementById('add-question')?.addEventListener('click', function () {
                 addQuestion(null);
             });

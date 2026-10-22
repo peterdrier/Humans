@@ -529,10 +529,6 @@ internal sealed class CampRoleService(
         return new CampRoleDrillDownData(info, year, groupEmail, rows);
     }
 
-    // ==========================================================================
-    // IGoogleGroupMembershipSource
-    // ==========================================================================
-
     /// <inheritdoc />
     public async Task<Dictionary<string, Guid[]>> GetExpectedAsync(
         string? groupKey = null,
@@ -611,10 +607,6 @@ internal sealed class CampRoleService(
         return result;
     }
 
-    /// <summary>
-    /// Builds the deterministic group key for a (role-definition slug, season year) pair:
-    /// <c>barrios-{year}-{slug}@{domain}</c>.
-    /// </summary>
     public string BuildGroupKey(int year, string slug) =>
         $"barrios-{year}-{slug}@{_googleOptions.Domain}";
 
@@ -622,10 +614,7 @@ internal sealed class CampRoleService(
         IEnumerable<CampRoleDefinition> definitions) =>
         definitions.OrderBy(d => d.SortOrder).ThenBy(d => d.Name, StringComparer.OrdinalIgnoreCase);
 
-    // ==========================================================================
-    // Leaf carve: the camp-role verbs Humans.Development's dev seeders drive.
-    // See Humans.Camps.Contracts.ICampRoleSeeding for why they are not the full interface.
-    // ==========================================================================
+    // Leaf carve: the camp-role verbs the dev seeders drive (see ICampRoleSeeding).
 
     /// <inheritdoc />
     async Task<IReadOnlyList<CampRoleDefinitionSeedInfo>> ICampRoleSeeding.ListDefinitionsForSeedAsync(

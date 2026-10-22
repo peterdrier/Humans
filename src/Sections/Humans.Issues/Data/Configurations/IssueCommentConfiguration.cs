@@ -14,9 +14,6 @@ internal sealed class IssueCommentConfiguration : IEntityTypeConfiguration<Issue
         b.Property(x => x.Content).HasMaxLength(5000).IsRequired();
         b.Property(x => x.CreatedAt).IsRequired();
 
-        // SenderUserId is a bare cross-section Guid column — no FK constraint, no nav
-        // (memory/architecture/no-cross-section-ef-joins.md).
-
         b.HasIndex(x => x.IssueId);
         b.HasIndex(x => x.CreatedAt);
     }
