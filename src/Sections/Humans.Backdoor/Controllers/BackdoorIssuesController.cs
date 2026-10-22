@@ -8,12 +8,14 @@ using Humans.Issues.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Backdoor.Controllers;
 
 [ApiController]
 [Route("api/backdoor/issues")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
+[AllowAnonymous]
 internal sealed class BackdoorIssuesController(
     IIssueTriage issues,
     IUserService users,

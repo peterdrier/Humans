@@ -37,7 +37,7 @@ public class DebugArchitectureTests
 
         foreach (var controller in adminControllers)
         {
-            var authorize = controller.GetCustomAttribute<AuthorizeAttribute>();
+            var authorize = controller.GetCustomAttribute<AuthorizeAttribute>(inherit: false);
             authorize.Should().NotBeNull(because: $"{controller.Name} is admin-only");
             authorize.Policy.Should().Be(PolicyNames.AdminOnly, because: $"{controller.Name} is admin-only");
         }

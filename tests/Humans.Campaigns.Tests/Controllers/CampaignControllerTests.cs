@@ -12,7 +12,7 @@ public class CampaignControllerTests
     [HumansFact]
     public void Class_IsProtected()
     {
-        var classAttr = typeof(CampaignController).GetCustomAttribute<AuthorizeAttribute>();
+        var classAttr = typeof(CampaignController).GetCustomAttribute<AuthorizeAttribute>(inherit: false);
         classAttr.Should().NotBeNull("class-level [Authorize] must protect all campaign actions");
     }
 
@@ -93,7 +93,7 @@ public class CampaignControllerTests
     private static void AssertActionPolicy(string actionName, string policy, Type httpMethodAttributeType)
     {
         var method = GetAction(actionName, httpMethodAttributeType);
-        var auth = method.GetCustomAttribute<AuthorizeAttribute>();
+        var auth = method.GetCustomAttribute<AuthorizeAttribute>(inherit: false);
         auth.Should().NotBeNull($"{actionName} ({httpMethodAttributeType.Name}) requires [Authorize]");
         auth.Policy.Should().Be(policy,
             because: $"{actionName} ({httpMethodAttributeType.Name}) must use {policy}");

@@ -6,6 +6,7 @@ using Humans.Development.Services;
 using Humans.Base.Constants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Development.Controllers;
 
@@ -13,6 +14,7 @@ internal sealed record DevPersonaInfo(string Slug, string DisplayName);
 
 // Dev/preview sign-in. Gated by DevAuth:Enabled=true AND non-Production env. Personas from RoleNames.
 [Route("dev/login")]
+[AllowAnonymous]
 internal sealed class DevLoginController(
     UserManager<User> userManager,
     SignInManager<User> signInManager,

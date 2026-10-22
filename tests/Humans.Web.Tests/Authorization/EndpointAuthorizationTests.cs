@@ -16,12 +16,13 @@ public class EndpointAuthorizationTests
     /// Found by the runtime's own section discovery: <c>GetReferencedAssemblies()</c> returns no sections, since Shell
     /// names no type in them. <see cref="AssertNonEmpty"/> because a sweep over nothing passes silently.
     /// </summary>
-    private static IReadOnlyList<Type> AllControllerTypes()
+    private static IReadOnlyList<Type> AllControllerTypes(bool includeApiControllers = false)
     {
+        var baseType = includeApiControllers ? typeof(ControllerBase) : typeof(Controller);
         var controllers = new[] { typeof(HomeController).Assembly }
             .Concat(SectionDiscoveryExtensions.SectionAssemblies())
             .SelectMany(a => a.GetTypes())
-            .Where(t => typeof(Controller).IsAssignableFrom(t) && !t.IsAbstract)
+            .Where(t => baseType.IsAssignableFrom(t) && !t.IsAbstract)
             .ToList();
 
         AssertNonEmpty(controllers);
@@ -212,29 +213,17 @@ public class EndpointAuthorizationTests
             string.Join(", ", violations));
     }
 
+    // The fallback policy already denies anonymous requests at runtime; this keeps the choice visible in source.
     [HumansFact]
     public void AllControllerActions_HaveAuthorizeOrAllowAnonymous()
     {
-        var anonymousControllers = new HashSet<string>(StringComparer.Ordinal)
-        {
-            "HomeController",
-            "AccountController",
-            "DevLoginController",
-            "ApiController",
-            "VersionController",
-            "AboutController",
-            "LanguageController",
-            "UnsubscribeController"
-        };
-
-        var controllerTypes = AllControllerTypes()
-            .Where(t => !anonymousControllers.Contains(t.Name));
+        var controllerTypes = AllControllerTypes(includeApiControllers: true);
 
         var violations = new List<string>();
 
         foreach (var controller in controllerTypes)
         {
-            var hasControllerAuth = controller.GetCustomAttribute<AuthorizeAttribute>() != null;
+            var hasControllerAuth = controller.IsDefined(typeof(AuthorizeAttribute), inherit: true);
             var hasControllerAllowAnon = controller.GetCustomAttribute<AllowAnonymousAttribute>() != null;
 
             if (hasControllerAuth || hasControllerAllowAnon)
@@ -249,7 +238,7 @@ public class EndpointAuthorizationTests
 
             foreach (var action in actions)
             {
-                var hasActionAuth = action.GetCustomAttribute<AuthorizeAttribute>() != null;
+                var hasActionAuth = action.GetCustomAttribute<AuthorizeAttribute>(inherit: false) != null;
                 var hasActionAllowAnon = action.GetCustomAttribute<AllowAnonymousAttribute>() != null;
 
                 if (!hasActionAuth && !hasActionAllowAnon)
@@ -260,28 +249,82 @@ public class EndpointAuthorizationTests
         }
 
         violations.Should().BeEmpty(
-            "all controller actions (except intentionally anonymous ones) should have [Authorize] or [AllowAnonymous]. " +
+            "every controller action must carry [Authorize] or [AllowAnonymous], itself or on its class. " +
             "Unprotected: " + string.Join(", ", violations));
     }
 
+    // The whole anonymous surface, in one place: a new public page or API is a deliberate addition here.
     [HumansFact]
-    public void AllowAnonymousOnAuthorizedControllers_IsExplicitlyAllowlisted()
+    public void AnonymousControllers_AreExplicitlyAllowlisted()
     {
         var allowlist = new HashSet<string>(StringComparer.Ordinal)
         {
+            "AccountController",
+            "LanguageController",
+            "TimezoneApiController",
+            "DevLoginController",
+            "UnsubscribeController",
+            "TourController",
+            "WelcomeController",
+            "LegalController",
+            "SurveyController",
+            "StoreStripeWebhookController",
+            "CampApiController",
+            "ColorPaletteController",
+            // API-key authenticated by BackdoorApiKeyAuthFilter, which runs after endpoint authorization.
+            "BackdoorAgentController",
+            "BackdoorFeedbackController",
+            "BackdoorFinanceController",
+            "BackdoorIssuesController",
+            "BackdoorLogsController",
+            "BackdoorNotificationsController",
+            "BackdoorStoreController",
+            "BackdoorSurveysController",
+        };
+
+        var anonymous = AllControllerTypes(includeApiControllers: true)
+            .Where(t => t.GetCustomAttribute<AllowAnonymousAttribute>() != null)
+            .Select(t => t.Name)
+            .ToList();
+
+        anonymous.Should().BeSubsetOf(allowlist,
+            "a class-level [AllowAnonymous] opens every action on the controller; list it here on purpose");
+        allowlist.Should().BeSubsetOf(anonymous, "drop controllers from this list when they stop being anonymous");
+    }
+
+    [HumansFact]
+    public void AnonymousActions_AreExplicitlyAllowlisted()
+    {
+        var allowlist = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "HomeController.Index",
+            "HomeController.Privacy",
+            "HomeController.Error",
+            "AboutController.Index",
             "GuestAccountController.CommunicationPreferences",
             "GuestAccountController.UpdatePreference",
             "TeamController.Index",
             "TeamController.Details",
             "TeamController.Tree",
+            "CampController.Index",
+            "CampController.Details",
+            "CampController.SeasonDetails",
             "DebugController.DbVersion",
+            "GuideController.Index",
+            "GuideController.Document",
             "ProfileEmailsController.VerifyEmail",
             "ProfileViewController.Picture",
             "ProfileViewController.PublicPopover",
+            "EventsApiController.GetEvents",
+            "EventsApiController.GetEvent",
+            "EventsApiController.GetBarrios",
+            "EventsApiController.GetBarrio",
+            "EventsApiController.GetCategories",
+            "ICalFeedApiController.GetFeed",
         };
 
-        var controllerTypes = AllControllerTypes()
-            .Where(t => t.GetCustomAttribute<AuthorizeAttribute>() != null);
+        var controllerTypes = AllControllerTypes(includeApiControllers: true)
+            .Where(t => t.GetCustomAttribute<AllowAnonymousAttribute>() == null);
 
         var violations = new List<string>();
 
@@ -301,7 +344,7 @@ public class EndpointAuthorizationTests
         }
 
         violations.Should().BeEmpty(
-            "[AllowAnonymous] on an [Authorize] controller must be explicitly allowlisted in this test. " +
+            "an action-level [AllowAnonymous] must be allowlisted in this test. " +
             "New anonymous endpoints: " + string.Join(", ", violations));
     }
 
@@ -311,7 +354,7 @@ public class EndpointAuthorizationTests
 
         if (actionName is null)
         {
-            attr = controllerType.GetCustomAttribute<AuthorizeAttribute>();
+            attr = controllerType.GetCustomAttribute<AuthorizeAttribute>(inherit: false);
         }
         else
         {
@@ -322,10 +365,10 @@ public class EndpointAuthorizationTests
             methods.Should().NotBeEmpty($"action '{actionName}' should exist on {controllerType.Name}");
 
             attr = methods
-                .Select(m => m.GetCustomAttribute<AuthorizeAttribute>())
+                .Select(m => m.GetCustomAttribute<AuthorizeAttribute>(inherit: false))
                 .FirstOrDefault(a => a is not null);
 
-            attr ??= controllerType.GetCustomAttribute<AuthorizeAttribute>();
+            attr ??= controllerType.GetCustomAttribute<AuthorizeAttribute>(inherit: false);
         }
 
         attr.Should().NotBeNull(

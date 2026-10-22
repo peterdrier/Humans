@@ -40,7 +40,7 @@ public class EarlyEntryArchitectureTests
     [HumansFact]
     public void RosterRequiresShiftDashboardAccess()
     {
-        var authorize = typeof(EarlyEntryRosterController).GetCustomAttribute<AuthorizeAttribute>();
+        var authorize = typeof(EarlyEntryRosterController).GetCustomAttribute<AuthorizeAttribute>(inherit: false);
 
         authorize.Should().NotBeNull();
         authorize.Policy.Should().Be(PolicyNames.ShiftDashboardAccess);

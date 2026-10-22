@@ -3,6 +3,7 @@ using Humans.Backdoor.Filters;
 using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Backdoor.Controllers;
 
@@ -10,6 +11,7 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/agent")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
+[AllowAnonymous]
 internal sealed class BackdoorAgentController(IAgentTranscriptRead agent, IUserService users)
     : ControllerBase
 {

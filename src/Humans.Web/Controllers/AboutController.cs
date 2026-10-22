@@ -17,6 +17,7 @@ public class AboutController(
 {
     private readonly IUserService _userService = userService;
 
+    [AllowAnonymous]
     [HttpGet("")]
     public IActionResult Index([FromServices] IWebHostEnvironment env)
     {

@@ -749,24 +749,25 @@ app.Use(async (context, next) =>
 
 app.UseRequestLocalization();
 
+// Probed and scraped by infrastructure that holds no cookie.
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
     ResponseWriter = WriteDetailedHealthResponseAsync
-});
+}).AllowAnonymous();
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
     Predicate = _ => false // Liveness check - just confirms the app is running
-});
+}).AllowAnonymous();
 
 app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     // Readiness check - confirms our own stack (DB, config, Hangfire) is available.
     // Third-party reachability (HealthCheckTags.External) is diagnostic-only on /health.
     Predicate = r => !r.Tags.Contains(HealthCheckTags.External)
-});
+}).AllowAnonymous();
 
-app.MapPrometheusScrapingEndpoint("/metrics");
+app.MapPrometheusScrapingEndpoint("/metrics").AllowAnonymous();
 
 // Anonymous beacon: browsers report their screen resolution (the one client stat
 // not available from request headers) for /Admin/ClientStats. Fire-and-forget.

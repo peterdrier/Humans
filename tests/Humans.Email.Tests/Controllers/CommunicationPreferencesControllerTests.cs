@@ -64,7 +64,7 @@ public class CommunicationPreferencesControllerTests
     public void Routes_AreEmailUrls_AndRequireSignIn()
     {
         var type = typeof(CommunicationPreferencesController);
-        type.GetCustomAttribute<AuthorizeAttribute>().Should().NotBeNull();
+        type.GetCustomAttribute<AuthorizeAttribute>(inherit: false).Should().NotBeNull();
         type.GetCustomAttribute<RouteAttribute>()!.Template.Should().Be("Email");
         type.GetMethod(nameof(CommunicationPreferencesController.Index))!
             .GetCustomAttribute<HttpGetAttribute>()!.Template.Should().Be("CommunicationPreferences");

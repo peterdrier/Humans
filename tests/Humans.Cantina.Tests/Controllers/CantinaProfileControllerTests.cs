@@ -65,7 +65,7 @@ public class CantinaProfileControllerTests
     [HumansFact]
     public void Controller_requires_sign_in_and_every_post_requires_antiforgery()
     {
-        typeof(CantinaProfileController).GetCustomAttributes(typeof(AuthorizeAttribute), inherit: true)
+        typeof(CantinaProfileController).GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false)
             .Should().ContainSingle("the page is the signed-in member's own, never anonymous");
         typeof(CantinaProfileController).GetMethods()
             .Where(m => m.GetCustomAttributes(typeof(HttpPostAttribute), inherit: true).Length > 0)
