@@ -142,7 +142,7 @@ public sealed class SurveyAdminControllerTests
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Which;
         redirect.ActionName.Should().Be(nameof(SurveyAdminController.Edit));
         redirect.RouteValues!["id"].Should().Be(id);
-        sut.TempData[TempDataKeys.ErrorMessage].Should().Be(localizer["Survey_Admin_Builder_Saved_TranslationFailed"].Value);
+        sut.TempData[TempDataKeys.ErrorMessage].Should().Be(localizer["Surveys_Admin_Builder_Saved_TranslationFailed"].Value);
         sut.ModelState.IsValid.Should().BeTrue();
         await surveys.Received(1).CreateAsync(Arg.Any<SurveyEditInput>(), actor, Arg.Any<CancellationToken>());
     }

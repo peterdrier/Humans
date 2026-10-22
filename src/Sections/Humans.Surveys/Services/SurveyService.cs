@@ -2387,9 +2387,9 @@ internal sealed class SurveyService(
         if (!Enum.IsDefined(type.Value))
             return new("Surveys_Validation_AudienceUnsupported", "The selected survey audience is not supported.");
         if (type == SurveyAudienceType.Team && teamId is null)
-            return new("Survey_Admin_Builder_Error_TeamRequired", "A team is required for the Team audience.");
+            return new("Surveys_Admin_Builder_Error_TeamRequired", "A team is required for the Team audience.");
         if (type == SurveyAudienceType.LoggedInSince && loggedInSince is null)
-            return new("Survey_Admin_Builder_Error_LoggedInSinceRequired", "A cutoff date is required for the Logged in since audience.");
+            return new("Surveys_Admin_Builder_Error_LoggedInSinceRequired", "A cutoff date is required for the Logged in since audience.");
         return null;
     }
 

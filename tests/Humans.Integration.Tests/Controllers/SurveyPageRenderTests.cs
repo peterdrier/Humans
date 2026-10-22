@@ -30,8 +30,8 @@ namespace Humans.Integration.Tests.Controllers;
 /// </description></item>
 /// </list>
 /// <para>
-/// Each case therefore asserts on resolved <c>Survey_*</c> copy and on the absence of any raw
-/// <c>Survey_</c> key in the response body, which catches both at once. A one-off pre/post HTML
+/// Each case therefore asserts on resolved <c>Surveys_*</c> copy and on the absence of any raw
+/// <c>Surveys_</c> key in the response body, which catches both at once. A one-off pre/post HTML
 /// diff would too, but only for the person running it; this runs on every build.
 /// </para>
 /// </remarks>
@@ -55,7 +55,7 @@ public class SurveyPageRenderTests(HumansTestDatabase database) : IntegrationTes
         html.Should().Contain("name=\"Anonymity\"");
         html.Should().Contain("value=\"Anonymous\"");
         html.Should().NotContain("id=\"anonIdentified\"");
-        html.Should().NotContain("Survey_",
+        html.Should().NotContain("Surveys_",
             because: "an unresolved key renders as its own literal name and survives an English-only "
                    + "eyeball check of the page");
     }
@@ -113,7 +113,7 @@ public class SurveyPageRenderTests(HumansTestDatabase database) : IntegrationTes
         var html = await response.Content.ReadAsStringAsync(ct);
 
         html.Should().Contain("This survey is closed");
-        html.Should().NotContain("Survey_");
+        html.Should().NotContain("Surveys_");
     }
 
     [HumansFact(Timeout = 60000)]
@@ -137,8 +137,8 @@ public class SurveyPageRenderTests(HumansTestDatabase database) : IntegrationTes
 
         // Razor's default HtmlEncoder escapes non-ASCII to numeric entities ("está" renders as
         // "est&#xE1;"), so the assertions stay on ASCII-only runs of the Spanish strings.
-        html.Should().Contain("Encuesta no disponible");   // Survey_Closed_Title
-        html.Should().Contain("Esta encuesta est");        // Survey_Closed_Heading
+        html.Should().Contain("Encuesta no disponible");   // Surveys_Closed_Title
+        html.Should().Contain("Esta encuesta est");        // Surveys_Closed_Heading
         html.Should().NotContain("This survey is closed");
     }
 
@@ -157,7 +157,7 @@ public class SurveyPageRenderTests(HumansTestDatabase database) : IntegrationTes
             response.StatusCode.Should().Be(HttpStatusCode.OK, $"GET {url} must render");
 
             var html = await response.Content.ReadAsStringAsync(ct);
-            html.Should().NotContain("Survey_", $"GET {url} rendered a raw resource key");
+            html.Should().NotContain("Surveys_", $"GET {url} rendered a raw resource key");
         }
     }
 

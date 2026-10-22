@@ -75,7 +75,7 @@ internal sealed class SurveyAdminController(
         {
             var viewer = new SurveyViewer(actorId.Value, RoleChecks.IsAdminOrBoard(User));
             var result = await surveyService.ApproveAndSendAsync(id, viewer, ct);
-            SetSuccess(localizer["Survey_Admin_Queue_Approved", result.EmailsQueued, result.Failed]);
+            SetSuccess(localizer["Surveys_Admin_Queue_Approved", result.EmailsQueued, result.Failed]);
         }
         catch (InvalidOperationException ex)
         {
@@ -97,7 +97,7 @@ internal sealed class SurveyAdminController(
         {
             var viewer = new SurveyViewer(actorId.Value, RoleChecks.IsAdminOrBoard(User));
             await surveyService.RejectAsync(id, viewer, note, ct);
-            SetSuccess(localizer["Survey_Admin_Queue_Rejected"]);
+            SetSuccess(localizer["Surveys_Admin_Queue_Rejected"]);
         }
         catch (InvalidOperationException ex)
         {
@@ -126,7 +126,7 @@ internal sealed class SurveyAdminController(
         {
             var result = await surveyService.SubmitForApprovalAsync(id, actorId.Value, ct);
             if (result.Succeeded)
-                SetSuccess(localizer["Survey_Admin_Index_Submitted"]);
+                SetSuccess(localizer["Surveys_Admin_Index_Submitted"]);
             else
                 SetError(localizer[result.ErrorKey ?? "Surveys_SubmitFailed"]);
         }
@@ -422,13 +422,13 @@ internal sealed class SurveyAdminController(
         if (model.AudienceType == SurveyAudienceType.Team && model.AudienceTeamId is null)
         {
             ModelState.AddModelError(nameof(model.AudienceTeamId),
-                localizer["Survey_Admin_Builder_Error_TeamRequired"]);
+                localizer["Surveys_Admin_Builder_Error_TeamRequired"]);
         }
 
         if (model.AudienceType == SurveyAudienceType.LoggedInSince && model.AudienceLoggedInSince is null)
         {
             ModelState.AddModelError(nameof(model.AudienceLoggedInSince),
-                localizer["Survey_Admin_Builder_Error_LoggedInSinceRequired"]);
+                localizer["Surveys_Admin_Builder_Error_LoggedInSinceRequired"]);
         }
     }
 
@@ -445,13 +445,13 @@ internal sealed class SurveyAdminController(
             SetSuccess(filled > 0
                 ? string.Format(
                     CultureInfo.CurrentCulture,
-                    localizer["Survey_Admin_Builder_Saved_TranslationsFilled"].Value, filled)
-                : localizer["Survey_Admin_Builder_Saved_NoTranslationsNeeded"].Value);
+                    localizer["Surveys_Admin_Builder_Saved_TranslationsFilled"].Value, filled)
+                : localizer["Surveys_Admin_Builder_Saved_NoTranslationsNeeded"].Value);
         }
         catch (InvalidOperationException ex)
         {
             logger.LogWarning("Survey translation failed for {SurveyId}: {Reason}", id, ex.Message);
-            SetError(localizer["Survey_Admin_Builder_Saved_TranslationFailed"]);
+            SetError(localizer["Surveys_Admin_Builder_Saved_TranslationFailed"]);
         }
     }
 

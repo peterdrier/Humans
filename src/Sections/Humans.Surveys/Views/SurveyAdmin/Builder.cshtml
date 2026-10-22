@@ -2,27 +2,27 @@
 
 @{
     ViewData["Title"] = Model.IsNew
-        ? Localizer["Survey_Admin_Builder_TitleNew"].Value
-        : Localizer["Survey_Admin_Builder_TitleEdit"].Value;
+        ? Localizer["Surveys_Admin_Builder_TitleNew"].Value
+        : Localizer["Surveys_Admin_Builder_TitleEdit"].Value;
     // The culture the localized-field partials render visible initially (see _SurveyLocalizedField).
     ViewData["SurveyActiveCulture"] = Model.DefaultCulture;
 
     string AudienceLabel(SurveyAudienceType audience) => audience switch
     {
-        SurveyAudienceType.Team => Localizer["Survey_Admin_Builder_Audience_Team"],
-        SurveyAudienceType.AllActiveMembers => Localizer["Survey_Admin_Builder_Audience_AllActiveMembers"],
-        SurveyAudienceType.TicketHolders => Localizer["Survey_Admin_Builder_Audience_TicketHolders"],
-        SurveyAudienceType.ShiftParticipants => Localizer["Survey_Admin_Builder_Audience_ShiftParticipants"],
-        SurveyAudienceType.LoggedInSince => Localizer["Survey_Admin_Builder_Audience_LoggedInSince"],
-        SurveyAudienceType.Asociados => Localizer["Survey_Admin_Builder_Audience_Asociados"],
+        SurveyAudienceType.Team => Localizer["Surveys_Admin_Builder_Audience_Team"],
+        SurveyAudienceType.AllActiveMembers => Localizer["Surveys_Admin_Builder_Audience_AllActiveMembers"],
+        SurveyAudienceType.TicketHolders => Localizer["Surveys_Admin_Builder_Audience_TicketHolders"],
+        SurveyAudienceType.ShiftParticipants => Localizer["Surveys_Admin_Builder_Audience_ShiftParticipants"],
+        SurveyAudienceType.LoggedInSince => Localizer["Surveys_Admin_Builder_Audience_LoggedInSince"],
+        SurveyAudienceType.Asociados => Localizer["Surveys_Admin_Builder_Audience_Asociados"],
         _ => audience.ToString(),
     };
 }
 
 <nav aria-label="@Localizer["Surveys_BreadcrumbNavigation"]">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item" authorize-policy="@Humans.Base.Authorization.PolicyNames.BoardOrAdmin"><a asp-controller="Admin" asp-action="Index">@Localizer["Survey_Admin_Common_AdminBreadcrumb"]</a></li>
-        <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Index">@Localizer["Survey_Admin_Index_Title"]</a></li>
+        <li class="breadcrumb-item" authorize-policy="@Humans.Base.Authorization.PolicyNames.BoardOrAdmin"><a asp-controller="Admin" asp-action="Index">@Localizer["Surveys_Admin_Common_AdminBreadcrumb"]</a></li>
+        <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Index">@Localizer["Surveys_Admin_Index_Title"]</a></li>
         <li class="breadcrumb-item active" aria-current="page">@ViewData["Title"]</li>
     </ol>
 </nav>
@@ -40,7 +40,7 @@
             {
                 <form asp-controller="SurveyAdmin" asp-action="Submit" asp-route-id="@Model.Id" method="post" class="d-inline">
                     @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-outline-success btn-sm">@Localizer["Survey_Admin_Index_SubmitForApproval"]</button>
+                    <button type="submit" class="btn btn-outline-success btn-sm">@Localizer["Surveys_Admin_Index_SubmitForApproval"]</button>
                 </form>
             }
             @if (Model.IsBoardOrAdmin
@@ -51,15 +51,15 @@
                     @Html.AntiForgeryToken()
                     <button type="submit" class="btn btn-success btn-sm"
                             data-confirm="@(Model.IsAsociadoVote
-                                ? Localizer["Survey_Admin_Builder_ConfirmOpenVote"].Value
-                                : Localizer["Survey_Admin_Builder_ConfirmOpenSurvey"].Value)">@Localizer["Survey_Admin_Builder_Open"]</button>
+                                ? Localizer["Surveys_Admin_Builder_ConfirmOpenVote"].Value
+                                : Localizer["Surveys_Admin_Builder_ConfirmOpenSurvey"].Value)">@Localizer["Surveys_Admin_Builder_Open"]</button>
                 </form>
             }
             @if (Model.IsBoardOrAdmin && Model.Status == SurveyStatus.Open)
             {
                 <form asp-controller="SurveyAdmin" asp-action="Close" asp-route-id="@Model.Id" method="post" class="d-inline">
                     @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-outline-secondary btn-sm" data-confirm="@Localizer["Survey_Admin_Builder_ConfirmClose"]">@Localizer["Survey_Admin_Builder_Close"]</button>
+                    <button type="submit" class="btn btn-outline-secondary btn-sm" data-confirm="@Localizer["Surveys_Admin_Builder_ConfirmClose"]">@Localizer["Surveys_Admin_Builder_Close"]</button>
                 </form>
             }
         </div>
@@ -69,7 +69,7 @@
 @if (Model.Status == SurveyStatus.Draft && !string.IsNullOrWhiteSpace(Model.RejectionNote))
 {
     <div class="alert alert-danger" role="alert">
-        @string.Format(Localizer["Survey_Admin_Index_RejectionNote"].Value, Model.RejectionNote)
+        @string.Format(Localizer["Surveys_Admin_Index_RejectionNote"].Value, Model.RejectionNote)
     </div>
 }
 
@@ -78,8 +78,8 @@
 @if (Model.IsDefinitionLocked)
 {
     <div class="alert alert-warning" role="alert">
-        <strong>@Localizer["Survey_Admin_Builder_LockedTitle"]</strong>
-        @Localizer["Survey_Admin_Builder_LockedBody"]
+        <strong>@Localizer["Surveys_Admin_Builder_LockedTitle"]</strong>
+        @Localizer["Surveys_Admin_Builder_LockedBody"]
     </div>
 }
 
@@ -95,7 +95,7 @@
 
     @* One culture is edited at a time; the badge counts fields still missing vs the default language. *@
     <div class="d-flex flex-wrap align-items-center gap-1 mb-2" id="culture-tabs">
-        <span class="small text-muted me-1">@Localizer["Survey_Admin_Builder_EditingLanguage"]</span>
+        <span class="small text-muted me-1">@Localizer["Surveys_Admin_Builder_EditingLanguage"]</span>
         @foreach (var c in CultureCatalog.SupportedCultureCodes)
         {
             <button type="button" data-culture="@c"
@@ -107,15 +107,15 @@
     </div>
 
     <div class="card mb-3">
-        <div class="card-header py-2"><strong>@Localizer["Survey_Admin_Builder_SurveySectionHeader"]</strong></div>
+        <div class="card-header py-2"><strong>@Localizer["Surveys_Admin_Builder_SurveySectionHeader"]</strong></div>
         <div class="card-body">
-            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel(nameof(Model.Title), Localizer["Survey_Admin_Builder_Field_Title"], Model.Title))" />
-            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel(nameof(Model.Intro), Localizer["Survey_Admin_Builder_Field_Intro"], Model.Intro, Multiline: true, Markdown: true))" />
-            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel(nameof(Model.ThankYou), Localizer["Survey_Admin_Builder_Field_ThankYou"], Model.ThankYou, Multiline: true))" />
+            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel(nameof(Model.Title), Localizer["Surveys_Admin_Builder_Field_Title"], Model.Title))" />
+            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel(nameof(Model.Intro), Localizer["Surveys_Admin_Builder_Field_Intro"], Model.Intro, Multiline: true, Markdown: true))" />
+            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel(nameof(Model.ThankYou), Localizer["Surveys_Admin_Builder_Field_ThankYou"], Model.ThankYou, Multiline: true))" />
 
             <div class="row g-3 mt-1">
                 <div class="col-md-3">
-                    <label class="form-label small">@Localizer["Survey_Admin_Builder_DefaultLanguage"]</label>
+                    <label class="form-label small">@Localizer["Surveys_Admin_Builder_DefaultLanguage"]</label>
                     <select asp-for="DefaultCulture" class="form-select form-select-sm">
                         @* asp-for selects the matching option — no manual selected attribute. *@
                         @foreach (var c in CultureCatalog.SupportedCultureCodes)
@@ -125,26 +125,26 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label small">@Localizer["Survey_Admin_Builder_OpensAt"]</label>
+                    <label class="form-label small">@Localizer["Surveys_Admin_Builder_OpensAt"]</label>
                     <input type="datetime-local" name="OpensAt" value="@Model.OpensAtInput" class="form-control form-control-sm" />
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label small">@Localizer["Survey_Admin_Builder_ClosesAt"]</label>
+                    <label class="form-label small">@Localizer["Surveys_Admin_Builder_ClosesAt"]</label>
                     <input type="datetime-local" name="ClosesAt" value="@Model.ClosesAtInput" class="form-control form-control-sm" />
                 </div>
                 <div class="col-md-3 align-self-end">
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="allowAnon" asp-for="AllowAnonymous" />
-                        <label class="form-check-label small" for="allowAnon">@Localizer["Survey_Admin_Builder_AllowAnonymous"]</label>
+                        <label class="form-check-label small" for="allowAnon">@Localizer["Surveys_Admin_Builder_AllowAnonymous"]</label>
                     </div>
                 </div>
             </div>
 
             <section class="border border-warning rounded p-3 mt-3" aria-labelledby="asociado-vote-heading">
-                <h2 class="h6" id="asociado-vote-heading">@Localizer["Survey_Admin_Builder_AsociadoVoteHeading"]</h2>
+                <h2 class="h6" id="asociado-vote-heading">@Localizer["Surveys_Admin_Builder_AsociadoVoteHeading"]</h2>
                 <div class="alert alert-warning small" role="note">
                     <i class="fa-solid fa-circle-info me-1"></i>
-                    @Localizer["Survey_Admin_Builder_AsociadoVoteWarning"]
+                    @Localizer["Surveys_Admin_Builder_AsociadoVoteWarning"]
                 </div>
                 <div class="form-check">
                     @if (!Model.IsNew && Model.Status != SurveyStatus.Draft)
@@ -157,29 +157,29 @@
                     {
                         <input type="checkbox" class="form-check-input" id="asociadoVote" asp-for="IsAsociadoVote" />
                     }
-                    <label class="form-check-label fw-semibold" for="asociadoVote">@Localizer["Survey_Admin_Builder_IsAsociadoVoteLabel"]</label>
+                    <label class="form-check-label fw-semibold" for="asociadoVote">@Localizer["Surveys_Admin_Builder_IsAsociadoVoteLabel"]</label>
                     <div class="form-text">
-                        @Localizer["Survey_Admin_Builder_IsAsociadoVoteHelp"]
+                        @Localizer["Surveys_Admin_Builder_IsAsociadoVoteHelp"]
                     </div>
                 </div>
             </section>
 
             <div class="row g-3 mt-1">
                 <div class="col-md-3">
-                    <label class="form-label small">@Localizer["Survey_Admin_Builder_AudienceLabel"]</label>
+                    <label class="form-label small">@Localizer["Surveys_Admin_Builder_AudienceLabel"]</label>
                     <select asp-for="AudienceType" class="form-select form-select-sm">
-                        <option value="">@Localizer["Survey_Admin_Builder_NoAudienceSelected"]</option>
+                        <option value="">@Localizer["Surveys_Admin_Builder_NoAudienceSelected"]</option>
                         @foreach (var a in Enum.GetValues<SurveyAudienceType>())
                         {
                             <option value="@a">@AudienceLabel(a)</option>
                         }
                     </select>
-                    <div class="form-text">@Localizer["Survey_Admin_Builder_AudienceHelp"]</div>
+                    <div class="form-text">@Localizer["Surveys_Admin_Builder_AudienceHelp"]</div>
                 </div>
                 <div class="col-md-3" id="audience-team-field" style="@(Model.AudienceType == SurveyAudienceType.Team ? "" : "display:none")">
-                    <label class="form-label small">@Localizer["Survey_Admin_Builder_TeamLabel"]</label>
+                    <label class="form-label small">@Localizer["Surveys_Admin_Builder_TeamLabel"]</label>
                     <select asp-for="AudienceTeamId" class="form-select form-select-sm">
-                        <option value="">@Localizer["Survey_Admin_Builder_ChooseTeam"]</option>
+                        <option value="">@Localizer["Surveys_Admin_Builder_ChooseTeam"]</option>
                         @foreach (var t in Model.Teams)
                         {
                             <option value="@t.Id">@t.Name</option>
@@ -188,15 +188,15 @@
                     <span asp-validation-for="AudienceTeamId" class="text-danger small"></span>
                 </div>
                 <div class="col-md-2" id="logged-in-since-field" style="@(Model.AudienceType == SurveyAudienceType.LoggedInSince ? "" : "display:none")">
-                    <label class="form-label small">@Localizer["Survey_Admin_Builder_LoggedInSinceLabel"]</label>
+                    <label class="form-label small">@Localizer["Surveys_Admin_Builder_LoggedInSinceLabel"]</label>
                     <input type="date" name="AudienceLoggedInSince" value="@Model.AudienceLoggedInSinceInput" class="form-control form-control-sm" />
                     <span asp-validation-for="AudienceLoggedInSince" class="text-danger small"></span>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label small">@Localizer["Survey_Admin_Builder_SlugLabel"]</label>
-                    <input type="text" asp-for="PublicSlug" class="form-control form-control-sm" placeholder="@Localizer["Survey_Admin_Builder_SlugPlaceholder"]" />
+                    <label class="form-label small">@Localizer["Surveys_Admin_Builder_SlugLabel"]</label>
+                    <input type="text" asp-for="PublicSlug" class="form-control form-control-sm" placeholder="@Localizer["Surveys_Admin_Builder_SlugPlaceholder"]" />
                     <div class="form-text">
-                        @Localizer["Survey_Admin_Builder_SlugHelp"]
+                        @Localizer["Surveys_Admin_Builder_SlugHelp"]
                     </div>
                 </div>
             </div>
@@ -204,18 +204,18 @@
     </div>
 
     <div class="card mb-3">
-        <div class="card-header py-2"><strong>@Localizer["Survey_Admin_Builder_InvitationEmailHeader"]</strong></div>
+        <div class="card-header py-2"><strong>@Localizer["Surveys_Admin_Builder_InvitationEmailHeader"]</strong></div>
         <div class="card-body">
             <p class="small text-muted mb-2">
-                @Localizer["Survey_Admin_Builder_InvitationEmailIntro"]
+                @Localizer["Surveys_Admin_Builder_InvitationEmailIntro"]
             </p>
             <partial name="_SurveyLocalizedField"
-                     model="@(new SurveyLocalizedFieldModel(nameof(Model.InvitationEmailSubject), Localizer["Survey_Admin_Builder_Field_EmailSubject"], Model.InvitationEmailSubject, MaxLength: 200))" />
+                     model="@(new SurveyLocalizedFieldModel(nameof(Model.InvitationEmailSubject), Localizer["Surveys_Admin_Builder_Field_EmailSubject"], Model.InvitationEmailSubject, MaxLength: 200))" />
             @{
                 var invitationActiveCulture = ViewData["SurveyActiveCulture"] as string ?? CultureCatalog.DefaultCultureCode;
             }
             <div class="mb-2 survey-localized-field">
-                <label class="form-label small fw-semibold mb-1">@Localizer["Survey_Admin_Builder_Field_EmailMessage"]</label>
+                <label class="form-label small fw-semibold mb-1">@Localizer["Surveys_Admin_Builder_Field_EmailMessage"]</label>
                 @foreach (var culture in CultureCatalog.SupportedCultureCodes)
                 {
                     Model.InvitationEmailMessage.TryGetValue(culture, out var invitationMessageValue);
@@ -225,7 +225,7 @@
                         @await Html.PartialAsync("_EmailComposer", new Humans.Base.Models.EmailComposerViewModel
                         {
                             BodyName = $"{nameof(Model.InvitationEmailMessage)}[{culture}]",
-                            BodyLabel = Localizer["Survey_Admin_Builder_Field_EmailMessage"].Value,
+                            BodyLabel = Localizer["Surveys_Admin_Builder_Field_EmailMessage"].Value,
                             BodyLabelVisuallyHidden = true,
                             BodyValue = invitationMessageValue,
                             BodyRows = 4,
@@ -234,7 +234,7 @@
                             PreviewSubjectName = $"{nameof(Model.InvitationEmailSubject)}[{culture}]",
                             PreviewModalId = $"emailPreviewModal-{culture}",
                             Category = nameof(Humans.Email.Contracts.MessageCategory.System),
-                            RecipientSummary = Localizer["Survey_Admin_Builder_InvitationRecipients"].Value,
+                            RecipientSummary = Localizer["Surveys_Admin_Builder_InvitationRecipients"].Value,
                         })
                     </div>
                 }
@@ -242,13 +242,13 @@
         </div>
     </div>
 
-    <h2 class="h5">@Localizer["Survey_Admin_Builder_QuestionsHeader"]</h2>
+    <h2 class="h5">@Localizer["Surveys_Admin_Builder_QuestionsHeader"]</h2>
     <div id="questions-container"
-         data-columns-label="@Localizer["Survey_Admin_Builder_JS_Columns"]"
-         data-options-label="@Localizer["Survey_Admin_Builder_JS_Options"]"
-         data-question-label="@Localizer["Survey_Admin_Builder_QuestionLabel"]"
-         data-choose-question="@Localizer["Survey_Admin_Builder_JS_ChooseQuestion"]"
-         data-untitled="@Localizer["Survey_Admin_Builder_JS_Untitled"]">
+         data-columns-label="@Localizer["Surveys_Admin_Builder_JS_Columns"]"
+         data-options-label="@Localizer["Surveys_Admin_Builder_JS_Options"]"
+         data-question-label="@Localizer["Surveys_Admin_Builder_QuestionLabel"]"
+         data-choose-question="@Localizer["Surveys_Admin_Builder_JS_ChooseQuestion"]"
+         data-untitled="@Localizer["Surveys_Admin_Builder_JS_Untitled"]">
         @foreach (var (q, i) in Model.Questions.Select((q, i) => (q, i)))
         {
             <partial name="_SurveyQuestionCard" model="@(new SurveyQuestionCardModel(i.ToString(), q, Model.HasSavedAnswers))" />
@@ -263,19 +263,19 @@
     @if (!Model.IsDefinitionLocked)
     {
     <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mt-3">
-        <button type="button" class="btn btn-outline-secondary btn-sm" id="add-question">@Localizer["Survey_Admin_Builder_AddQuestion"]</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="add-question">@Localizer["Surveys_Admin_Builder_AddQuestion"]</button>
         <div class="d-flex flex-column flex-sm-row flex-wrap gap-2">
             <button type="submit" name="submitAction" value="save-translate" class="btn btn-outline-primary"
-                    title="@Localizer["Survey_Admin_Builder_SaveTranslateTitle"]">
-                @Localizer["Survey_Admin_Builder_SaveTranslate"]
+                    title="@Localizer["Surveys_Admin_Builder_SaveTranslateTitle"]">
+                @Localizer["Surveys_Admin_Builder_SaveTranslate"]
             </button>
             @if (Model.IsBoardOrAdmin)
             {
                 <button type="submit" name="submitAction" value="save-review" class="btn btn-outline-primary">
-                    @Localizer["Survey_Admin_Builder_SaveReview"]
+                    @Localizer["Surveys_Admin_Builder_SaveReview"]
                 </button>
             }
-            <button type="submit" class="btn btn-primary">@Localizer["Survey_Admin_Builder_SaveSurvey"]</button>
+            <button type="submit" class="btn btn-primary">@Localizer["Surveys_Admin_Builder_SaveSurvey"]</button>
         </div>
     </div>
     }

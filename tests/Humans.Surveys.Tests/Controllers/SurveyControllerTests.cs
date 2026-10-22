@@ -555,8 +555,8 @@ public sealed class SurveyControllerTests
         Guid? userId = null)
     {
         var localizer = Substitute.For<IStringLocalizer<SurveysResource>>();
-        localizer["Survey_ThankYouFallback"]
-            .Returns(new LocalizedString("Survey_ThankYouFallback", "Thanks!"));
+        localizer["Surveys_ThankYouFallback"]
+            .Returns(new LocalizedString("Surveys_ThankYouFallback", "Thanks!"));
         session = new InMemorySession();
         var httpContext = new DefaultHttpContext { Session = session };
         if (userId is not null)

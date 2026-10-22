@@ -553,11 +553,11 @@ internal sealed class SurveyController(
             case SurveyWizardOutcome.ValidationFailed:
                 foreach (var id in result.MissingRequired)
                 {
-                    ModelState.AddModelError(id.ToString(), localizer["Survey_QuestionRequired"]);
+                    ModelState.AddModelError(id.ToString(), localizer["Surveys_QuestionRequired"]);
                 }
                 foreach (var id in result.InvalidAnswers ?? [])
                 {
-                    ModelState.AddModelError(id.ToString(), localizer["Survey_AnswerInvalid"]);
+                    ModelState.AddModelError(id.ToString(), localizer["Surveys_AnswerInvalid"]);
                 }
 
                 route.Save(HttpContext.Session, state);
@@ -631,7 +631,7 @@ internal sealed class SurveyController(
     {
         if (definition is null)
         {
-            return new SurveyThankYouViewModel { ThankYou = localizer["Survey_ThankYouFallback"] };
+            return new SurveyThankYouViewModel { ThankYou = localizer["Surveys_ThankYouFallback"] };
         }
 
         var editable = definition.Editable;
@@ -641,7 +641,7 @@ internal sealed class SurveyController(
         return new SurveyThankYouViewModel
         {
             Title = editable.Title.Resolve(culture, editable.DefaultCulture),
-            ThankYou = string.IsNullOrWhiteSpace(thankYou) ? localizer["Survey_ThankYouFallback"] : thankYou,
+            ThankYou = string.IsNullOrWhiteSpace(thankYou) ? localizer["Surveys_ThankYouFallback"] : thankYou,
         };
     }
 

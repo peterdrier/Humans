@@ -11,22 +11,22 @@
     <div class="d-flex gap-2 align-items-start">
         <div class="flex-grow-1">
             <div class="input-group input-group-sm mb-2">
-                <span class="input-group-text">@Localizer["Survey_Admin_Builder_ValueLabel"]</span>
+                <span class="input-group-text">@Localizer["Surveys_Admin_Builder_ValueLabel"]</span>
                 <input type="text" name="@(prefix).Value" class="form-control" value="@Model.Option.Value" maxlength="100"
-                       placeholder="@Localizer["Survey_Admin_Builder_ValuePlaceholder_Option"]" />
+                       placeholder="@Localizer["Surveys_Admin_Builder_ValuePlaceholder_Option"]" />
             </div>
-            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.Label", Localizer["Survey_Admin_Builder_Field_OptionLabel"], Model.Option.Label))" />
+            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.Label", Localizer["Surveys_Admin_Builder_Field_OptionLabel"], Model.Option.Label))" />
         </div>
-        <div class="btn-group btn-group-sm" role="group" aria-label="@Localizer["Survey_Admin_Builder_OptionActionsAriaLabel"]">
-            <button type="button" class="btn btn-outline-secondary move-option-up" title="@Localizer["Survey_Admin_Builder_MoveOptionUp"]">
+        <div class="btn-group btn-group-sm" role="group" aria-label="@Localizer["Surveys_Admin_Builder_OptionActionsAriaLabel"]">
+            <button type="button" class="btn btn-outline-secondary move-option-up" title="@Localizer["Surveys_Admin_Builder_MoveOptionUp"]">
                 <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
-                <span class="visually-hidden">@Localizer["Survey_Admin_Builder_MoveOptionUp"]</span>
+                <span class="visually-hidden">@Localizer["Surveys_Admin_Builder_MoveOptionUp"]</span>
             </button>
-            <button type="button" class="btn btn-outline-secondary move-option-down" title="@Localizer["Survey_Admin_Builder_MoveOptionDown"]">
+            <button type="button" class="btn btn-outline-secondary move-option-down" title="@Localizer["Surveys_Admin_Builder_MoveOptionDown"]">
                 <i class="fa-solid fa-arrow-down" aria-hidden="true"></i>
-                <span class="visually-hidden">@Localizer["Survey_Admin_Builder_MoveOptionDown"]</span>
+                <span class="visually-hidden">@Localizer["Surveys_Admin_Builder_MoveOptionDown"]</span>
             </button>
-            <button type="button" class="btn btn-outline-danger remove-option" title="@Localizer["Survey_Admin_Builder_RemoveOption"]">&times;</button>
+            <button type="button" class="btn btn-outline-danger remove-option" title="@Localizer["Surveys_Admin_Builder_RemoveOption"]">&times;</button>
         </div>
     </div>
 </div>

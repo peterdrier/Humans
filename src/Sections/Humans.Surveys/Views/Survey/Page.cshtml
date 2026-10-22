@@ -1,7 +1,7 @@
 @model Humans.Surveys.Models.SurveyPageViewModel
 
 @{
-    ViewData["Title"] = string.IsNullOrWhiteSpace(Model.Title) ? Localizer["Survey_TitleFallback"].Value : Model.Title;
+    ViewData["Title"] = string.IsNullOrWhiteSpace(Model.Title) ? Localizer["Surveys_TitleFallback"].Value : Model.Title;
 }
 
 <div class="row justify-content-center">
@@ -9,10 +9,10 @@
         <div class="card mt-4">
             <div class="card-body p-4">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h1 class="h4 mb-0">@(string.IsNullOrWhiteSpace(Model.Title) ? Localizer["Survey_TitleFallback"].Value : Model.Title)</h1>
+                    <h1 class="h4 mb-0">@(string.IsNullOrWhiteSpace(Model.Title) ? Localizer["Surveys_TitleFallback"].Value : Model.Title)</h1>
                     @if (Model.TotalSteps > 0)
                     {
-                        <span class="badge text-bg-secondary">@Localizer["Survey_PageOf", Model.StepNumber, Model.TotalSteps]</span>
+                        <span class="badge text-bg-secondary">@Localizer["Surveys_PageOf", Model.StepNumber, Model.TotalSteps]</span>
                     }
                 </div>
 
@@ -28,15 +28,15 @@
                 {
                     <div class="alert alert-warning small" role="note">
                         <i class="fa-solid fa-scale-balanced me-1"></i>
-                        <strong>@Localizer["Survey_AsociadoVote_Heading"]</strong>
-                        @Localizer["Survey_AsociadoVote_PageReminder"]
+                        <strong>@Localizer["Surveys_AsociadoVote_Heading"]</strong>
+                        @Localizer["Surveys_AsociadoVote_PageReminder"]
                     </div>
                 }
 
                 @if (!ViewData.ModelState.IsValid)
                 {
                     <div class="alert alert-danger" role="alert">
-                        @Localizer["Survey_ValidationAlert"]
+                        @Localizer["Surveys_ValidationAlert"]
                     </div>
                 }
 
@@ -84,13 +84,13 @@
                                asp-route-culture="@Model.PreviewCulture"
                                asp-route-page="@Model.PreviousPreviewPage"
                                class="btn btn-outline-secondary">
-                                <i class="fa-solid fa-arrow-left me-1"></i>@Localizer["Survey_Back"]
+                                <i class="fa-solid fa-arrow-left me-1"></i>@Localizer["Surveys_Back"]
                             </a>
                         }
                         else if (Model.CanGoBack)
                         {
                             <button type="submit" name="Back" value="true" class="btn btn-outline-secondary" formnovalidate>
-                                <i class="fa-solid fa-arrow-left me-1"></i>@Localizer["Survey_Back"]
+                                <i class="fa-solid fa-arrow-left me-1"></i>@Localizer["Surveys_Back"]
                             </button>
                         }
                         else
@@ -105,7 +105,7 @@
                                asp-route-culture="@Model.PreviewCulture"
                                asp-route-page="@Model.NextPreviewPage"
                                class="btn btn-primary">
-                                @Localizer["Survey_Next"]<i class="fa-solid fa-arrow-right ms-1"></i>
+                                @Localizer["Surveys_Next"]<i class="fa-solid fa-arrow-right ms-1"></i>
                             </a>
                         }
                         else if (Model.IsPreview)
@@ -118,7 +118,7 @@
                                     @Localizer["Surveys_PreviewThankYou"]
                                 </a>
                                 <button type="button" class="btn btn-primary" disabled aria-disabled="true">
-                                    @Localizer["Survey_Submit"]<i class="fa-solid fa-paper-plane ms-1"></i>
+                                    @Localizer["Surveys_Submit"]<i class="fa-solid fa-paper-plane ms-1"></i>
                                 </button>
                             </div>
                         }
@@ -127,11 +127,11 @@
                             <button type="submit" class="btn btn-primary">
                                 @if (Model.IsLastStep)
                                 {
-                                    <span>@Localizer["Survey_Submit"]<i class="fa-solid fa-paper-plane ms-1"></i></span>
+                                    <span>@Localizer["Surveys_Submit"]<i class="fa-solid fa-paper-plane ms-1"></i></span>
                                 }
                                 else
                                 {
-                                    <span>@Localizer["Survey_Next"]<i class="fa-solid fa-arrow-right ms-1"></i></span>
+                                    <span>@Localizer["Surveys_Next"]<i class="fa-solid fa-arrow-right ms-1"></i></span>
                                 }
                             </button>
                         }

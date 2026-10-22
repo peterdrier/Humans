@@ -1,24 +1,24 @@
 @model SurveyPendingApprovalViewModel
 
 @{
-    ViewData["Title"] = Localizer["Survey_Admin_Queue_Title"].Value;
+    ViewData["Title"] = Localizer["Surveys_Admin_Queue_Title"].Value;
     var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 }
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
-        <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Index">@Localizer["Survey_Admin_Index_Title"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["Survey_Admin_Queue_Title"]</li>
+        <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Index">@Localizer["Surveys_Admin_Index_Title"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Surveys_Admin_Queue_Title"]</li>
     </ol>
 </nav>
 
-<h1 class="mb-3">@Localizer["Survey_Admin_Queue_Title"]</h1>
+<h1 class="mb-3">@Localizer["Surveys_Admin_Queue_Title"]</h1>
 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
 @if (Model.Items.Count == 0)
 {
-    <p class="text-muted">@Localizer["Survey_Admin_Queue_Empty"]</p>
+    <p class="text-muted">@Localizer["Surveys_Admin_Queue_Empty"]</p>
 }
 else
 {
@@ -27,9 +27,9 @@ else
             <table class="table table-hover mb-0 align-middle">
                 <thead>
                     <tr>
-                        <th>@Localizer["Survey_Admin_Index_ColumnTitle"]</th>
-                        <th>@Localizer["Survey_Admin_Queue_Author"]</th>
-                        <th>@Localizer["Survey_Admin_Queue_Submitted"]</th>
+                        <th>@Localizer["Surveys_Admin_Index_ColumnTitle"]</th>
+                        <th>@Localizer["Surveys_Admin_Queue_Author"]</th>
+                        <th>@Localizer["Surveys_Admin_Queue_Submitted"]</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -37,16 +37,16 @@ else
                     @foreach (var item in Model.Items)
                     {
                         <tr>
-                            <td>@(string.IsNullOrWhiteSpace(item.Title) ? Localizer["Survey_Admin_Index_Untitled"].Value : item.Title)</td>
+                            <td>@(string.IsNullOrWhiteSpace(item.Title) ? Localizer["Surveys_Admin_Index_Untitled"].Value : item.Title)</td>
                             <td>@item.CreatedByName</td>
                             <td class="small text-muted">@(item.SubmittedAt is { } at ? at.ToDateTime(zone) : "—")</td>
                             <td class="text-end">
                                 <form asp-controller="SurveyAdmin" asp-action="Approve" asp-route-id="@item.Id" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-success btn-sm">@Localizer["Survey_Admin_Queue_ApproveAndSend"]</button>
+                                    <button type="submit" class="btn btn-success btn-sm">@Localizer["Surveys_Admin_Queue_ApproveAndSend"]</button>
                                 </form>
                                 <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rejectModal-@item.Id">
-                                    @Localizer["Survey_Admin_Queue_Reject"]
+                                    @Localizer["Surveys_Admin_Queue_Reject"]
                                 </button>
                             </td>
                         </tr>
@@ -66,16 +66,16 @@ else
                     <form asp-controller="SurveyAdmin" asp-action="Reject" asp-route-id="@item.Id" method="post">
                         @Html.AntiForgeryToken()
                         <div class="modal-header">
-                            <h5 class="modal-title">@Localizer["Survey_Admin_Queue_Reject"]</h5>
+                            <h5 class="modal-title">@Localizer["Surveys_Admin_Queue_Reject"]</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
-                            <label class="form-label" for="note-@item.Id">@Localizer["Survey_Admin_Queue_RejectNoteLabel"]</label>
+                            <label class="form-label" for="note-@item.Id">@Localizer["Surveys_Admin_Queue_RejectNoteLabel"]</label>
                             <textarea class="form-control" id="note-@item.Id" name="note" rows="3" required maxlength="4000">@(ViewData[$"RejectionNote:{item.Id}"])</textarea>
-                            <div class="form-text text-danger">@Localizer["Survey_Admin_Queue_RejectNoteRequired"]</div>
+                            <div class="form-text text-danger">@Localizer["Surveys_Admin_Queue_RejectNoteRequired"]</div>
                         </div>
                         <div class="modal-footer">
-                            <button type="submit" class="btn btn-danger">@Localizer["Survey_Admin_Queue_Reject"]</button>
+                            <button type="submit" class="btn btn-danger">@Localizer["Surveys_Admin_Queue_Reject"]</button>
                         </div>
                     </form>
                 </div>

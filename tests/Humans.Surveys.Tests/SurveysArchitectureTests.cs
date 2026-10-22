@@ -58,7 +58,7 @@ public class SurveysArchitectureTests
             .ToList();
 
         offenders.Should().BeEmpty(
-            because: "every Survey_* key lives in SurveysResource; resolving one through another "
+            because: "every Surveys_* key lives in SurveysResource; resolving one through another "
                    + "set renders the key itself and no error");
     }
 }

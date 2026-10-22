@@ -991,7 +991,7 @@ public class SurveyServiceTests
         result.Succeeded.Should().BeFalse();
         result.SurveyId.Should().BeNull();
         result.Error.Should().NotBeNull();
-        result.Error!.Key.Should().Be("Survey_Admin_Builder_Error_TeamRequired");
+        result.Error!.Key.Should().Be("Surveys_Admin_Builder_Error_TeamRequired");
         await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
@@ -1006,7 +1006,7 @@ public class SurveyServiceTests
         result.Succeeded.Should().BeFalse();
         result.SurveyId.Should().BeNull();
         result.Error.Should().NotBeNull();
-        result.Error!.Key.Should().Be("Survey_Admin_Builder_Error_LoggedInSinceRequired");
+        result.Error!.Key.Should().Be("Surveys_Admin_Builder_Error_LoggedInSinceRequired");
         await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
