@@ -166,6 +166,8 @@ The communication-preference routes moved from Users in decomposition commit 14 
 
 ## Invariants
 
+- Preference labels and descriptions come from the localized Email resources; `ActiveCategories` is the UI roster. Retired enum names remain for stored preference and token compatibility, without separate unused display or deprecation helpers.
+
 - Guest and shared-panel preference rows use one section-internal projection for category defaults, channel values and editability. The panel adds update attribution; guest token highlighting and authorization remain controller-owned.
 
 - The template gallery requests samples for `CultureCatalog.SupportedCultureCodes`; it owns sample personas, not a second supported-language roster.
