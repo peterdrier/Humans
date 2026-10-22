@@ -270,9 +270,6 @@ internal sealed class CommunicationPreferenceService(
 
     // ─── Tokens ──────────────────────────────────────────────────────────────────
 
-    public string GenerateUnsubscribeToken(Guid userId, MessageCategory category) =>
-        tokenProvider.GenerateToken(userId, category);
-
     public (TokenValidationStatus Status, Guid UserId, MessageCategory Category) ValidateUnsubscribeToken(string token) =>
         tokenProvider.ValidateToken(token);
 

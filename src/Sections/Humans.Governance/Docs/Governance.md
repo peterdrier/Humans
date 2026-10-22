@@ -267,6 +267,8 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 
 ## Invariants
 
+- Consent deadline audiences use `GetUsersRequiringStatusUpdateAsync`: a zero horizon selects active-role holders already due, while reminder callers supply their look-ahead horizon. Both use the same deadline calculation.
+
 - Membership snapshots and required-team reads resolve merged IDs to the survivor before querying
   memberships or consent requirements. Snapshot memoization uses that same resolved identity.
 

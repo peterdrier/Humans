@@ -21,9 +21,6 @@ internal interface ICommunicationPreferenceManagement
         Guid userId, MessageCategory category, bool optedOut, bool inboxEnabled, string source,
         Guid? actorUserId = null, CancellationToken cancellationToken = default);
 
-    /// <summary>Generates a time-limited (~90 days) unsubscribe token encoding userId + category.</summary>
-    string GenerateUnsubscribeToken(Guid userId, MessageCategory category);
-
     /// <summary>Validates and decodes an unsubscribe token.</summary>
     (TokenValidationStatus Status, Guid UserId, MessageCategory Category) ValidateUnsubscribeToken(string token);
 

@@ -276,7 +276,8 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     public void UnsubscribeToken_RoundTrips()
     {
         var userId = Guid.NewGuid();
-        var token = _service.GenerateUnsubscribeToken(userId, MessageCategory.TeamUpdates);
+        var url = _service.GenerateBrowserUnsubscribeUrl(userId, MessageCategory.TeamUpdates);
+        var token = new Uri(url).Segments[^1];
 
         _service.ValidateUnsubscribeToken(token).Should().Be((TokenValidationStatus.Valid, userId, MessageCategory.TeamUpdates));
     }

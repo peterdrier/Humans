@@ -42,7 +42,8 @@ public class UnsubscribeFlowTests(HumansTestDatabase database) : IntegrationTest
         await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var commPrefService = scope.ServiceProvider.GetRequiredService<Humans.Email.Services.ICommunicationPreferenceManagement>();
-            token = commPrefService.GenerateUnsubscribeToken(userId, MessageCategory.VolunteerUpdates);
+            var url = commPrefService.GenerateBrowserUnsubscribeUrl(userId, MessageCategory.VolunteerUpdates);
+            token = new Uri(url).Segments[^1];
         }
 
         // Use the per-test-class anonymous client (no session cookie). The GET with
