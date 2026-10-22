@@ -7,7 +7,7 @@ description: HARD RULE. Only `User.BurnerName` renders the name (via `<vc:human>
 
 Canonical resolved accessors:
 
-- **`UserInfo.BurnerName`** — the going-forward accessor. Reads `User.BurnerName` only. The legacy GDPR-erasure sentinel fallback retired after production reported `users.legacy-gdpr-tombstones` done on 2026-10-22. Blank `BurnerName` resolves to blank.
+- **`UserInfo.BurnerName`** — the going-forward accessor. Reads `User.BurnerName` only. The legacy GDPR-erasure sentinel fallback retired after production reported `users.legacy-gdpr-tombstones` done on 2026-10-22. Blank `BurnerName` resolves to the erasure sentinel on a GDPR tombstone (minted email), else blank.
 - **`FullProfile.DisplayName`** — same semantics on the older `FullProfile` projection; will drain as callers migrate to `UserInfo` (see [`iuserservice-onestop-userinfo`](iuserservice-onestop-userinfo.md)).
 
 **Why:** Peter's hard rule (issue #691 review): "if the user has a profile, then BurnerName is the only thing we ever show for them." Mixing the two in the rendering path leaks the legacy field into public surfaces (search results, member lists, etc.).
@@ -15,7 +15,7 @@ Canonical resolved accessors:
 **How to apply:**
 
 - Render via `<vc:human>` (text/avatar/avatar-name/card), `<vc:profile-card>`, or `<vc:human-summary>`. These three are the only sanctioned UI paths — they call `IUserService.GetUserInfoAsync(userId)` through the cache and resolve BurnerName correctly. Anything else (raw `@x.DisplayName` in a `.cshtml`, hand-built `<a href="/Profile/ViewProfile/{id}">{name}</a>`, avatar `<div>` + name `<span>` flex containers) is a violation.
-- `UserInfo.BurnerName` reads `User.BurnerName` when non-blank, else blank. Never restore a `DisplayName` fallback.
+- `UserInfo.BurnerName` reads `User.BurnerName` when non-blank, else the erasure sentinel when `IsGdprAnonymized`, else blank. Never restore a `DisplayName` fallback.
 - Don't read `UserInfo.DisplayName` directly for rendering — it's the raw legacy column mirror. The only legitimate consumers of the raw `UserInfo.DisplayName` / `user.DisplayName` field are: (1) GDPR export while the legacy column exists, (2) debug screens (`/Debug/Users`), (3) infrastructure mutations (merge / purge / delete labels in `UserRepository`).
 - Search-results, team rosters, audit-log labels, etc., must NOT pass an explicit `display-name`/override — let the VC fetch.
 

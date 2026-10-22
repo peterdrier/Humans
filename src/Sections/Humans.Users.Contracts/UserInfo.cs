@@ -370,8 +370,11 @@ public sealed record UserInfo(
             .OrderBy(c => c.Category)
             .ToList();
 
-        var burnerName = string.IsNullOrWhiteSpace(user.BurnerName) ? string.Empty : user.BurnerName;
         var isGdprAnonymized = IsGdprTombstone(user);
+        // Erasures between the tombstone email and #1098 minted the email but left BurnerName blank.
+        var burnerName = !string.IsNullOrWhiteSpace(user.BurnerName) ? user.BurnerName
+            : isGdprAnonymized ? GdprAnonymizedBurnerName
+            : string.Empty;
 
         var info = new UserInfo(
             Id: user.Id,

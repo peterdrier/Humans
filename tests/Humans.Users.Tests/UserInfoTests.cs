@@ -209,6 +209,7 @@ public class UserInfoTests
 
         info.IsGdprAnonymized.Should().BeTrue();
         info.IsTombstone.Should().BeTrue();
+        info.BurnerName.Should().Be(UserInfo.GdprAnonymizedBurnerName);
     }
 
     [HumansFact]

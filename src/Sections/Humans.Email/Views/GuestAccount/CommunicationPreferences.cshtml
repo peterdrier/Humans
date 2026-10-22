@@ -205,7 +205,7 @@
                 if (emailCb) emailCb.checked = false;
                 banner.classList.remove('alert-warning');
                 banner.classList.add('alert-success');
-                banner.innerHTML = @Html.Raw(System.Text.Json.JsonSerializer.Serialize("<strong>" + Html.Encode(Localizer["Email_CommPrefs_OneClick_Done"].Value) + "</strong>"));
+                banner.innerHTML = '<strong>@Html.Raw(Html.Encode(Localizer["Email_CommPrefs_OneClick_Done"].Value))</strong>';
             }).catch(function () {
                 banner.classList.remove('alert-warning');
                 banner.classList.add('alert-danger');

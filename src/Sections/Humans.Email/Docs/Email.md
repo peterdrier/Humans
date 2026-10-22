@@ -170,8 +170,6 @@ The communication-preference routes moved from Users in decomposition commit 14 
 
 - An absent, empty or whitespace-only `Email:SmtpHost` selects the logging stub outside production. Production always selects SMTP and still boots: a missing host fails at send time with an `Email:SmtpHost` diagnostic, so persisted messages follow normal outbox failure/retry handling rather than being marked sent by the stub. The health check reports SMTP as unconfigured. A nonblank host selects SMTP in every environment.
 
-- Guest unsubscribe success copy is HTML-encoded and JSON-serialized before insertion into the scripted banner, preserving translated text and markup without raw JavaScript delimiters.
-
 - Communication preferences expose unsubscribe headers, browser links and token validation; raw token generation stays in the token provider used by those live paths.
 
 - Preference labels and descriptions come from the localized Email resources; `ActiveCategories` is the UI roster. Retired enum names remain for stored preference and token compatibility, without separate unused display or deprecation helpers.
