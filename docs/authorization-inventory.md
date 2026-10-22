@@ -320,8 +320,8 @@ Each policy maps from the current authorization dialect(s) to a single canonical
 | `CampAdminOrAdmin` | CampAdmin, Admin | `PolicyNames.CampAdminOrAdmin`, `RoleChecks.IsCampAdmin` |
 | `CampComplianceAccess` | CampAdmin, Admin OR any team/sub-team coordinator | `PolicyNames.CampComplianceAccess` (composite — `CampComplianceAccessHandler`) |
 | `CityPlanningMapAdmin` | CampAdmin, Admin OR any city-planning team member | `PolicyNames.CityPlanningMapAdmin` (composite — `CityPlanningMapAdminHandler`; gates the `/Settings#city-planning` tab) |
-| `TicketAdminBoardOrAdmin` | TicketAdmin, Admin, Board | `PolicyNames.TicketAdminBoardOrAdmin`, `RoleChecks.CanAccessTickets` |
-| `TicketAdminOrAdmin` | TicketAdmin, Admin | `PolicyNames.TicketAdminOrAdmin`, `RoleChecks.CanManageTickets` |
+| `TicketAdminBoardOrAdmin` | TicketAdmin, Admin, Board | `PolicyNames.TicketAdminBoardOrAdmin` |
+| `TicketAdminOrAdmin` | TicketAdmin, Admin | `PolicyNames.TicketAdminOrAdmin` |
 | `ScannerAccess` | TicketAdmin, Admin, Board OR `SystemUserIds.GateTerminal` (by NameIdentifier claim) | `PolicyNames.ScannerAccess` (composite assertion — gate-terminal account admitted by id, not by role) |
 | `GateAdmit` | TicketAdmin, Admin, Board OR `SystemUserIds.GateTerminal` (by NameIdentifier claim) | `PolicyNames.GateAdmit` (composite assertion — gate write actions; same principals as `ScannerAccess` today, kept separate so the write path never rides the read-only Scanner gate and the two can diverge) |
 | `FinanceAdminOrAdmin` | FinanceAdmin, Admin | `PolicyNames.FinanceAdminOrAdmin`, `RoleChecks.IsFinanceAdmin`, `RoleChecks.CanAccessFinance` |
@@ -329,9 +329,9 @@ Each policy maps from the current authorization dialect(s) to a single canonical
 | `CantinaAdminOrAdmin` | CantinaAdmin, Admin | `PolicyNames.CantinaAdminOrAdmin` (Cantina coordinator surface) |
 | `RideshareAdminOrAdmin` | RideshareAdmin, Admin | `PolicyNames.RideshareAdminOrAdmin` (Rideshare admin surface: settings, stats, day roster) |
 | `StoreCatalogAdmin` | StoreAdmin, FinanceAdmin, Admin | `PolicyNames.StoreCatalogAdmin`, `RoleChecks.CanAdministerStore` |
-| `ReviewQueueAccess` | ConsentCoordinator, VolunteerCoordinator, Board, Admin | `PolicyNames.ReviewQueueAccess`, `RoleChecks.CanAccessReviewQueue` |
+| `ReviewQueueAccess` | ConsentCoordinator, VolunteerCoordinator, Board, Admin | `PolicyNames.ReviewQueueAccess` |
 | `ConsentCoordinatorBoardOrAdmin` | ConsentCoordinator, Board, Admin | `PolicyNames.ConsentCoordinatorBoardOrAdmin` |
-| `ShiftDashboardAccess` | Admin, NoInfoAdmin, VolunteerCoordinator | `PolicyNames.ShiftDashboardAccess`, `ShiftRoleChecks.CanAccessDashboard` |
+| `ShiftDashboardAccess` | Admin, NoInfoAdmin, VolunteerCoordinator | `PolicyNames.ShiftDashboardAccess` |
 | `ShiftDepartmentManager` | Admin, NoInfoAdmin, VolunteerCoordinator OR any team manager/coordinator | `PolicyNames.ShiftDepartmentManager` (composite — `IsAnyTeamManagerOrCoordinatorHandler`) |
 | `VolunteerTrackingWrite` | Admin, VolunteerCoordinator | `PolicyNames.VolunteerTrackingWrite` |
 | `PrivilegedSignupApprover` | Admin, NoInfoAdmin | `PolicyNames.PrivilegedSignupApprover`, `ShiftRoleChecks.IsPrivilegedSignupApprover` |
@@ -463,20 +463,17 @@ The only authorization files left in `src/Humans.Web/` are `Authorization/Author
 |---|---|
 | `IsActiveMember` | `AppAccess` (same `UserState == Active` check) |
 | `IsAdmin` | `AdminOnly` |
-| `IsBoard` | (no standalone policy — used in `GetAssignableRoles` / `CanManageRole`) |
+| `IsBoard` | (no standalone policy — used in `GetAssignableRoles`) |
 | `IsAdminOrBoard` | `BoardOrAdmin` |
 | `IsTeamsAdmin` | (no standalone policy — used in TeamAdminController toggle-management check) |
 | `IsTeamsAdminBoardOrAdmin` | `TeamsAdminBoardOrAdmin` |
 | `IsCampAdmin` | `CampAdminOrAdmin` |
-| `CanAccessReviewQueue` | `ReviewQueueAccess` |
-| `CanAccessTickets` | `TicketAdminBoardOrAdmin` |
-| `CanManageTickets` | `TicketAdminOrAdmin` |
 | `IsHumanAdminBoardOrAdmin` | `HumanAdminBoardOrAdmin` |
 | `IsHumanAdmin` | `HumanAdminOnly` (composite, when negated against Board/Admin) |
 | `IsFinanceAdmin` / `CanAccessFinance` | `FinanceAdminOrAdmin` |
 | `CanAdministerStore` | `StoreCatalogAdmin` |
 | `IsVolunteerManager` | `VolunteerManager` |
-| `GetAssignableRoles` / `CanManageRole` | `RoleAssignmentOperationRequirement.Manage` (resource-based, see §6) |
+| `GetAssignableRoles` | `RoleAssignmentOperationRequirement.Manage` (resource-based, see §6) |
 
 ### ShiftRoleChecks Methods → Canonical Policy Mapping
 
@@ -484,5 +481,4 @@ The only authorization files left in `src/Humans.Web/` are `Authorization/Author
 |---|---|
 | `IsPrivilegedSignupApprover` | `PrivilegedSignupApprover` |
 | `CanManageDepartment` | `ShiftDepartmentManager` (role-list portion; composite extends with team-manager OR) |
-| `CanAccessDashboard` | `ShiftDashboardAccess` |
 | `CanViewMedical` | `MedicalDataViewer` |
