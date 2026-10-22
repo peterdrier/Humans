@@ -42,9 +42,7 @@ Repository: `IEmailOutboxRepository`.
 Drains the outbox queue (the G5 playbook, step 6b): claims a processing batch,
 sends via the section-internal `IEmailTransport`, and records each outcome.
 Checks the pause flag through `IEmailOutboxManagement.IsEmailPausedAsync` before
-each run. Cross-section calls via `ICampaignWrite` (mirrors campaign-grant
-email status after send) and `IHumansMetrics` /
-`IMeters`, plus `IClock`. No `IMemoryCache`.
+each run. Cross-section calls via `IHumansMetrics` / `IMeters`, plus `IClock`. No `IMemoryCache`.
 
 ### OutboxEmailService (Scoped)
 

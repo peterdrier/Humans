@@ -22,10 +22,10 @@ per campaign. Grants are personal data: exported for GDPR, hard-deleted on erasu
 |---|---|
 | Campaign CRUD + lifecycle (admin pages) | Create, Edit, Index, Detail, Activate, Complete |
 | Getting codes in | ImportCodes (CSV), GenerateCodes (vendor, Draft-only) |
-| Sending | SendWave (preview + confirm), Resend (one grant), RetryAllFailed |
+| Sending | SendWave (preview + confirm), Resend (one grant) |
 | Copy it owns | the campaign-code email (`CampaignsEmails`, gallery sample via `CampaignsEmailPreviews`), the localized `CampaignReceived` notice (`CampaignsResource`) |
 | Reads other assemblies render | `GetActiveOrCompletedGrantsForUserAsync` (profile), `GetAllGrantsForUserAsync` (admin user detail), `GetCodeTrackingAsync` (Tickets dashboard) |
-| Writes other assemblies drive | `MarkGrantsRedeemedAsync` (ticket sync), `UpdateGrantEmailStatusAsync` (email outbox) |
+| Writes other assemblies drive | `MarkGrantsRedeemedAsync` (ticket sync) |
 | Platform obligations | GDPR export/erasure (`IUserDataContributor`), account-merge fold (`IUserMerge`) |
 
 The CRUD/lifecycle, code-loading and sending shapes are the internal admin app; the
@@ -57,26 +57,26 @@ leaf folded in and the notice copy gained a resx set.
 ## Invariants
 
 - Lifecycle is one-way: Draft → Active → Completed. Activate requires Draft and a code
-  (`CampaignService.cs:337`, `:340`); Complete requires Active (`:364`); SendWave requires
-  Active (`:404`); vendor generation requires Draft (`:310`).
+  (`CampaignService.cs:329`, `:332`); Complete requires Active (`:356`); SendWave requires
+  Active (`:396`); vendor generation requires Draft (`:302`).
 - A code is unique within its campaign (`CampaignCodeConfiguration.cs:16`) and granted at most
   once (`CampaignGrantConfiguration.cs:25`).
 - A person holds at most one grant per campaign (`CampaignGrantConfiguration.cs:24`); the merge
-  fold keeps the target's grant on collision (`CampaignRepository.cs:348`).
-- Wave allocation takes free codes in `ImportOrder` (`CampaignRepository.cs:117`).
-- SendWave aborts up front when eligible members outnumber free codes (`CampaignService.cs:423`).
-- A wave persists and enqueues one grant at a time; an enqueue failure flips only that grant
-  to Failed (`CampaignService.cs:486`), which RetryAllFailed picks up
-  (`CampaignRepository.cs:181`).
+  fold keeps the target's grant on collision (`CampaignRepository.cs:311`).
+- Wave allocation takes free codes in `ImportOrder` (`CampaignRepository.cs:116`).
+- SendWave aborts up front when eligible members outnumber free codes (`CampaignService.cs:415`).
+- A wave persists and enqueues one grant at a time; an enqueue failure is logged for that grant
+  and the wave goes on (`CampaignService.cs:476`). Delivery is the outbox's business: a grant
+  records no email status (nobodies-collective/Humans#1243).
 - Template substitution HTML-encodes `{{Code}}` and `{{Name}}` in the body
   (`CampaignsEmails.cs:24`); the subject substitutes both unencoded (`CampaignsEmails.cs:32`).
 - Campaign-code mail is always-on: `MessageCategory.CampaignCodes` is in the always-on set
-  (`MessageCategory.cs:73`), so the outbox stamps no unsubscribe (`OutboxEmailService.cs:51`).
+  (`src/Sections/Humans.Email/Services/MessageCategoryExtensions.cs:7`), so the outbox stamps no unsubscribe (`src/Sections/Humans.Email/Services/OutboxEmailService.cs:30`).
 - Every admin mutation writes an audit entry attributed to the acting admin after its save
-  (`CampaignService.cs:66`, `:168`, `:288`, `:351`, `:370`, `:466`, `:548`, `:657`).
+  (`CampaignService.cs:61`, `:161`, `:283`, `:345`, `:364`, `:457`, `:530`).
 - Admin holds every page and mutation except Detail and vendor generation, which are
   `TicketAdminOrAdmin` (`CampaignController.cs:126`, `:179`).
-- Grants are exported per user and hard-deleted on erasure (`CampaignService.cs:739`, `:764`).
+- Grants are exported per user and hard-deleted on erasure (`CampaignService.cs:644`, `:670`).
 
 ## Seams
 
@@ -99,15 +99,18 @@ none
   point; an architecture test pins it.
 - The section's own controller injects the concrete `CampaignService`, not the interface: the
   contract carries only the members other assemblies call; the rest stay internal.
-- `EmailOutboxStatus` on the contract DTOs is Base vocabulary re-exported, not owned.
 - `CampaignStatus` is stored as a string — renaming a member needs a data migration; a local
   enum-stability test pins the names (the central one can't see an internal enum).
 - Tickets is reached through `ITicketDiscountCodes` (Tickets' contracts leaf), never the Base
   vendor port directly; the leaf edge keeps the Tickets↔Campaigns pair acyclic.
 - The wave-send preview is a GET with `teamId` (no state), so the POST re-derives eligibility
   rather than trusting the preview.
-- A single-grant resend that cannot resolve its recipient marks the grant Failed and rethrows to
-  the admin — it never leaves a Queued grant with no outbox row.
+- A single-grant resend that cannot resolve its recipient rethrows to the admin, so a send that
+  queued nothing never reports success.
+- `LatestEmailStatus` and `LatestEmailAt` stay mapped on `campaign_grants` although nothing
+  writes them: dropping the columns needs its own approved migration
+  (`memory/architecture/no-drops-until-prod-verified.md`). The GDPR export still hands over the
+  status old grants hold.
 
 ## History
 

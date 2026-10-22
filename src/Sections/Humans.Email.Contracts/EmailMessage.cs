@@ -23,7 +23,6 @@ public sealed record EmailMessage(
     string TemplateName,
     MessageCategory? Category = null,
     string? ReplyTo = null,
-    Guid? CampaignGrantId = null,
     Guid? CampaignId = null,
     bool DoNotPersist = false,
     string? Culture = null,

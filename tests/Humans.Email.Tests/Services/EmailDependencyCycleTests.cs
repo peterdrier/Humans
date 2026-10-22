@@ -94,7 +94,7 @@ public sealed class EmailDependencyCycleTests
     public void Email_ReferencesOnlyItsCurrentSectionContracts() =>
         ProjectReferencesOf("Humans.Email").Should().BeSubsetOf(
             [
-                "Humans.AuditLog", "Humans.Base", "Humans.Campaigns", "Humans.Email.Contracts",
+                "Humans.AuditLog", "Humans.Base", "Humans.Email.Contracts",
                 "Humans.Gdpr", "Humans.Settings", "Humans.Users.Contracts"
             ],
             because: "Email is a crosscut: it may lose section references, never gain one");

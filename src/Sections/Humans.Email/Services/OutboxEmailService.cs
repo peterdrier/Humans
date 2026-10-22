@@ -93,7 +93,6 @@ internal sealed class OutboxEmailService(
             PlainTextBody = plainText,
             TemplateName = message.TemplateName,
             UserId = userId,
-            CampaignGrantId = message.CampaignGrantId,
             ReplyTo = message.ReplyTo,
             ExtraHeaders = extraHeadersJson,
             Urgent = message.Urgent,

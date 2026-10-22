@@ -68,7 +68,7 @@ surviving account on a merge.
 | **Account lifecycle** | `IUserDataContributor`, `IUserMerge` | Export, erasure and merge for both the send log and the preferences. |
 
 Inside, a send runs **send service** (opt-out, headers, wrap, log row) → **processor**
-(transport, retry, tally, grant mirror). The **body composer** (wrapper plus inline-style
+(transport, retry, tally). The **body composer** (wrapper plus inline-style
 pass), the **transport** (SMTP or a logging stub) and the **relay factory** hang off it.
 The preference lane is **preference service** (rows here, legacy fallback, the locks other sections report)
 → **token provider**, with the **unsubscribe service** reading tokens on its behalf.
@@ -110,20 +110,19 @@ no-login page adds the inbox column and the highlighted row.
   headers and a footer link (`src/Sections/Humans.Email/Services/OutboxEmailService.cs:44`,
   `src/Sections/Humans.Email/Services/OutboxEmailService.cs:48`).
 - The pause flag stops the drain and nothing else
-  (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:37`).
+  (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:34`).
 - Urgent messages are picked up first, FIFO within each class
   (`src/Sections/Humans.Email/Data/EmailOutboxRepository.cs:128`), and the same flag starts
-  an immediate drain (`src/Sections/Humans.Email/Services/OutboxEmailService.cs:110`).
+  an immediate drain (`src/Sections/Humans.Email/Services/OutboxEmailService.cs:109`).
 - A failed message is retried with exponential backoff
-  (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:90`) until a fixed attempt
+  (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:87`) until a fixed attempt
   count, then waits for an admin (`src/Sections/Humans.Email/Data/EmailOutboxRepository.cs:123`).
 - Delivery is at-least-once: a row picked up and not marked is re-claimed after the stale
-  window (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:44`).
+  window (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:41`).
 - A test-domain address is marked sent without a transport call
-  (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:60`).
-- Bookkeeping never rewrites delivery state: neither the grant mirror
-  (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:137`) nor the tally
-  (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:154`) can throw out of the batch.
+  (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:57`).
+- Bookkeeping never rewrites delivery state: the tally
+  (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:117`) cannot throw out of the batch.
 - The tally outlives the send log: retention deletes only old sent rows
   (`src/Sections/Humans.Email/Data/EmailOutboxRepository.cs:196`), and the backfill inserts
   only day/template keys with no row yet

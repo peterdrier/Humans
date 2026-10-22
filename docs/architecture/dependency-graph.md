@@ -555,7 +555,6 @@ graph LR
     Email --> Metrics
     EmailOutbox --> SettingsSvc
     EmailOutbox --> Audit
-    EmailOutboxProc --> Campaign
     EmailOutboxProc --> Metrics
     ComposerSelfSend --> UEmail
     ComposerSelfSend --> User

@@ -1,10 +1,8 @@
-using Humans.Base.Enums;
 using Humans.Base.Interfaces;
-using NodaTime;
 
 namespace Humans.Campaigns.Contracts;
 
-/// <summary>Cross-section writes: Tickets marking codes redeemed and Email recording delivery state.</summary>
+/// <summary>Cross-section writes: Tickets marking codes redeemed.</summary>
 public interface ICampaignWrite : IApplicationService
 {
     /// <summary>
@@ -13,12 +11,5 @@ public interface ICampaignWrite : IApplicationService
     /// </summary>
     Task<int> MarkGrantsRedeemedAsync(
         IReadOnlyCollection<DiscountCodeRedemption> redemptions,
-        CancellationToken ct = default);
-
-    /// <summary>Sets <c>LatestEmailStatus</c> and <c>LatestEmailAt</c>. False when the grant does not exist.</summary>
-    Task<bool> UpdateGrantEmailStatusAsync(
-        Guid grantId,
-        EmailOutboxStatus status,
-        Instant latestEmailAt,
         CancellationToken ct = default);
 }

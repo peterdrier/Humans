@@ -281,7 +281,7 @@ internal sealed class TicketQueryService(
                 RecipientName = g.RecipientName,
                 RecipientUserId = g.UserId,
                 CampaignTitle = g.CampaignTitle,
-                Status = g.RedeemedAt is not null ? "Redeemed" : (g.LatestEmailStatus ?? "Pending"),
+                Status = g.RedeemedAt is not null ? "Redeemed" : "Pending",
                 RedeemedAt = g.RedeemedAt,
                 RedeemedByName = matchedOrder?.BuyerName,
                 RedeemedByEmail = matchedOrder?.BuyerEmail,

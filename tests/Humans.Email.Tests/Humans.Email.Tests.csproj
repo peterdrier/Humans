@@ -7,7 +7,6 @@
     <ProjectReference Include="..\..\src\Sections\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Events\Humans.Events.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.Campaigns\Humans.Campaigns.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />

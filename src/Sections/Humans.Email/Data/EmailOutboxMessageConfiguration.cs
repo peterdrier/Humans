@@ -28,7 +28,7 @@ internal sealed class EmailOutboxMessageConfiguration : IEntityTypeConfiguration
         builder.HasIndex(e => new { e.SentAt, e.RetryCount, e.NextRetryAt, e.PickedUpAt });
         // User email history
         builder.HasIndex(e => e.UserId);
-        // Campaign grant tracking
+        // Kept with its unwritten column until the drop is approved (nobodies-collective/Humans#1243).
         builder.HasIndex(e => e.CampaignGrantId);
 
         // UserId and CampaignGrantId have no FK: a stale id is an accepted orphan in this append-only,

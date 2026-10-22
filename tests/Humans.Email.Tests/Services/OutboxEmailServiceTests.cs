@@ -88,11 +88,10 @@ public sealed class OutboxEmailServiceTests : IDisposable
         MessageCategory? category = null,
         string? replyTo = null,
         Guid? userId = null,
-        Guid? campaignGrantId = null,
         Guid? campaignId = null,
         bool doNotPersist = false) =>
         new(recipient, name, userId, subject, html, template, category, replyTo,
-            campaignGrantId, campaignId, doNotPersist);
+            campaignId, doNotPersist);
 
     [HumansTheory]
     [InlineData("a")]
@@ -379,11 +378,9 @@ public sealed class OutboxEmailServiceTests : IDisposable
     [HumansFact]
     public async Task SendAsync_StampsFeedbackIdWithTemplateCategoryAndCampaign()
     {
-        var grantId = Guid.NewGuid();
         var campaignId = Guid.NewGuid();
         await _service.SendAsync(Message(
-            template: "campaign_code", category: MessageCategory.CampaignCodes,
-            campaignGrantId: grantId, campaignId: campaignId),
+            template: "campaign_code", category: MessageCategory.CampaignCodes, campaignId: campaignId),
             TestContext.Current.CancellationToken);
 
         var msg = await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken);
@@ -394,9 +391,8 @@ public sealed class OutboxEmailServiceTests : IDisposable
     [HumansFact]
     public async Task SendAsync_StampsFeedbackIdWithNoneWhenCampaignIdMissing()
     {
-        var grantId = Guid.NewGuid();
         await _service.SendAsync(Message(
-            template: "campaign_code", category: MessageCategory.CampaignCodes, campaignGrantId: grantId),
+            template: "campaign_code", category: MessageCategory.CampaignCodes),
             TestContext.Current.CancellationToken);
 
         var msg = await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken);
@@ -458,10 +454,9 @@ public sealed class OutboxEmailServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendAsync_PersistsTheSendersUserAndGrant()
+    public async Task SendAsync_PersistsTheSendersUser()
     {
         var userId = Guid.NewGuid();
-        var grantId = Guid.NewGuid();
         _commPrefService.GenerateUnsubscribeHeaders(userId, MessageCategory.Governance)
             .Returns(new Dictionary<string, string>(StringComparer.Ordinal) { ["List-Unsubscribe"] = "<mailto:x>" });
         _commPrefService.GenerateBrowserUnsubscribeUrl(userId, MessageCategory.Governance)
@@ -470,11 +465,11 @@ public sealed class OutboxEmailServiceTests : IDisposable
         await _service.SendAsync(Message(
             recipient: "zoe@example.com", name: "Zoe",
             template: "application_approved", category: MessageCategory.Governance,
-            replyTo: "reply@example.com", userId: userId, campaignGrantId: grantId), TestContext.Current.CancellationToken);
+            replyTo: "reply@example.com", userId: userId), TestContext.Current.CancellationToken);
 
         var msg = await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken);
         msg.UserId.Should().Be(userId);
-        msg.CampaignGrantId.Should().Be(grantId);
+        msg.CampaignGrantId.Should().BeNull();
         msg.ReplyTo.Should().Be("reply@example.com");
         msg.ExtraHeaders.Should().NotBeNull();
     }

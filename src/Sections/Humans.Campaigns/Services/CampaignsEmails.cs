@@ -38,7 +38,7 @@ internal sealed class CampaignsEmails
             request.RecipientEmail, request.RecipientName, request.UserId,
             subject, html,
             "campaign_code", MessageCategory.CampaignCodes,
-            ReplyTo: request.ReplyTo, CampaignGrantId: request.CampaignGrantId,
+            ReplyTo: request.ReplyTo,
             CampaignId: request.CampaignId);
     }
 

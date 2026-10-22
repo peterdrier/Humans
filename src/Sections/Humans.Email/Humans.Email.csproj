@@ -29,12 +29,9 @@
     <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
-      The outbox drain mirrors a campaign grant's delivery status, and the pause flag is a
-      system_settings row. Both reference the other section's project, and the graph stays
-      acyclic: Humans.Campaigns references only Humans.Email.Contracts back, and
-      Humans.Email.Contracts names no Campaigns or Settings type.
+      The pause flag is a system_settings row. The graph stays acyclic: Humans.Settings
+      does not reference Humans.Email, and Humans.Email.Contracts names no Settings type.
     -->
-    <ProjectReference Include="..\Humans.Campaigns\Humans.Campaigns.csproj" />
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
   </ItemGroup>
 

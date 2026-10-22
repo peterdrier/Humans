@@ -19,5 +19,4 @@ public record CampaignCodeTrackingGrant(
     Guid UserId,
     string RecipientName,
     string? Code,
-    Instant? RedeemedAt,
-    string? LatestEmailStatus);
+    Instant? RedeemedAt);

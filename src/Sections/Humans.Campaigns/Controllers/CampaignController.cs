@@ -355,17 +355,4 @@ internal sealed class CampaignController(
         SetSuccess("Resend queued.");
         return RedirectToAction(nameof(Detail), new { id = campaignId.Value });
     }
-
-    [HttpPost("{id:guid}/RetryAllFailed")]
-    [ValidateAntiForgeryToken]
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    public async Task<IActionResult> RetryAllFailed(Guid id)
-    {
-        var currentUser = await GetCurrentUserInfoAsync();
-        if (currentUser is null) return Unauthorized();
-
-        await campaignService.RetryAllFailedAsync(currentUser.Id, id);
-        SetSuccess("Retrying all failed sends.");
-        return RedirectToAction(nameof(Detail), new { id });
-    }
 }
