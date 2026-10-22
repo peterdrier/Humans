@@ -17,23 +17,17 @@ namespace Humans.Holded.Services;
 
 internal sealed class HoldedClient : IHoldedClient
 {
-    /// <summary>Stands in for a payment id Holded never gave back. See
-    /// <see cref="PayPurchaseDocumentAsync"/>.</summary>
     private const string UnconfirmedPaymentRefPrefix = "unconfirmed:";
 
     private const int DefaultRetryAfterSeconds = 5;
     private const int MaxRetryAfterSeconds = 60;
 
-    /// <summary>Every outbound payload omits its null members instead of sending them. Holded applies
-    /// each key a POST/PUT carries, so <c>"code":null</c> on a contact update blanks the tax id
-    /// already stored against that contact — and a creditor update supplies only the handful of
-    /// fields it means to change. Omission is "leave it alone", which is what every caller means;
-    /// nothing here ever clears a Holded field on purpose.</summary>
+    /// <summary>Holded applies every key a POST/PUT carries, so <c>"code":null</c> would blank a stored tax id.
+    /// Omitting nulls means "leave it alone"; nothing here clears a Holded field on purpose.</summary>
     private static readonly JsonSerializerOptions OmitNulls =
         new() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
 
-    // v2 ledger-entries dates arrive as DD/MM/YYYY, filtered on the *accounting* date; parsed to
-    // Madrid midnight for a stable Instant.
+    // v2 ledger-entries dates arrive as DD/MM/YYYY and filter on the accounting date; parsed to Madrid midnight.
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
     private readonly HttpClient _http;
@@ -71,9 +65,7 @@ internal sealed class HoldedClient : IHoldedClient
             date = LocalDatePattern.Iso.Format(input.Date.InZone(MadridZone).Date),
             description = input.Description,
             notes = input.Notes,
-            // Tags are dead on the write side (Peter, 2026-08-10): they were a v1 workaround from
-            // before double-entry was understood. items[].account books the doc to the right
-            // department directly, so no tag/retag round-trip is ever needed.
+            // No tags on the write side: items[].account books the doc to the right department directly.
             items = input.Lines.Select(l => new
             {
                 name = l.Description,
@@ -155,20 +147,16 @@ internal sealed class HoldedClient : IHoldedClient
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException or UnparsableValueException)
         {
-            // Same normalization as GetContactAsync: a value of an unexpected type belongs to the
-            // stored document, not to this request, so retrying cannot help. UnparsableValueException
-            // covers ParseApprovedAt's NodaTime .Value on a non-empty but malformed timestamp.
+            // A value of an unexpected type belongs to the stored document, so retrying can't help.
+            // UnparsableValueException covers ParseApprovedAt on a malformed timestamp.
             throw new HoldedPermanentException(
                 $"Holded purchase document {documentId} could not be read.", ex);
         }
     }
 
-    /// <summary><c>payments_detail[]</c> as the single-GET reports it (live shape, 2026-10-18):
-    /// <c>{"id","amount":"17.00","date":"2026-10-16","bank_id"}</c>. Absent or not an array reads as
-    /// no payments. An entry without an id, or whose amount or date cannot be read, is dropped
-    /// rather than failing the document read: most callers never look at this list, and the one
-    /// that does (<see cref="PayPurchaseDocumentAsync"/>) only needs the entries that can match —
-    /// a dropped entry cannot, so the result is the <c>unconfirmed:</c> sentinel, as intended.</summary>
+    /// <summary>Shape: <c>{"id","amount":"17.00","date":"2026-10-16","bank_id"}</c>. Absent or non-array reads as no
+    /// payments. An unreadable entry is dropped rather than failing the document: it could never match in
+    /// <see cref="PayPurchaseDocumentAsync"/>, which then returns the <c>unconfirmed:</c> sentinel, as intended.</summary>
     private static IReadOnlyList<HoldedPaymentDetailDto> ReadPaymentsDetail(JsonNode? node)
     {
         if (node is not JsonArray arr) return [];
@@ -196,9 +184,7 @@ internal sealed class HoldedClient : IHoldedClient
 
     public async Task ApprovePurchaseDocumentAsync(string documentId, CancellationToken ct = default)
     {
-        // POST with no body 411s through Holded's proxy without an explicit Content-Length — an
-        // empty content sets one, where leaving Content null (as ApproveSalesDocumentAsync does)
-        // does not.
+        // A bodyless POST 411s through Holded's proxy without an explicit Content-Length; empty content sets one.
         using var req = new HttpRequestMessage(
             HttpMethod.Post, $"/api/v2/purchases/{documentId}/approve")
         { Content = new ByteArrayContent([]) };
@@ -207,9 +193,8 @@ internal sealed class HoldedClient : IHoldedClient
         {
             using var resp = await SendAsync(req, ct);
         }
-        // The goal state already holds. A retried push re-approves the docs an earlier attempt
-        // approved, and the single-GET's approved_at did not stop it in production — without this
-        // the retry writes the whole push off.
+        // Already approved. A retried push re-approves what an earlier attempt approved; without this the retry
+        // writes the whole push off.
         catch (HoldedPermanentException ex) when (ex.StatusCode == 400
             && ex.ResponseBody?.Contains("Document already approved", StringComparison.Ordinal) == true)
         {
@@ -228,10 +213,8 @@ internal sealed class HoldedClient : IHoldedClient
         string documentId, decimal amount, string? treasuryId, LocalDate date, string? description,
         CancellationToken ct = default)
     {
-        // The POST answers {"status":"paid"} and nothing else, so the payment's id has to be read
-        // off the document: payments_detail before, POST, payments_detail after, and the one new
-        // entry that matches is the payment. A before-read that fails throws before anything is
-        // posted. GET /payments is not used for this — it stamps a payment dated D as (D-1)T22:00Z.
+        // The POST returns no payment id, so diff payments_detail before and after; a failed before-read throws
+        // with nothing posted. Not GET /payments: it stamps a payment dated D as (D-1)T22:00Z.
         var before = (await GetPurchaseDocumentAsync(documentId, ct)).Payments;
 
         // v2 takes the amount as a decimal *string*; a JSON number is rejected.
@@ -250,9 +233,8 @@ internal sealed class HoldedClient : IHoldedClient
 
         using var resp = await SendAsync(req, ct);
 
-        // SendAsync accepted the response, so from here the payment IS posted — throwing would lose
-        // it, and the caller would read it as "not paid" and pay again. The sentinel keeps the
-        // allocation going and names the document a human has to eyeball in Holded.
+        // From here the payment IS posted: throwing would read as "not paid" and the caller would pay again. The
+        // sentinel names the document a human has to check.
         IReadOnlyList<HoldedPaymentDetailDto> after;
         try
         {
@@ -290,9 +272,8 @@ internal sealed class HoldedClient : IHoldedClient
         LocalDate date, int debitAccount, int creditAccount, decimal amount, string description,
         CancellationToken ct = default)
     {
-        // Same wire rule as payments: amounts are decimal strings, accounts are ledger numbers.
-        // The date goes out ISO — DD/MM/YYYY is only how ledger-entries *reads* come back. Verified
-        // live 2026-09: entries POSTed as 2026-03-31 read back as 31/03/2026.
+        // Amounts are decimal strings and accounts are ledger numbers, as for payments. The date goes out ISO;
+        // DD/MM/YYYY is only how ledger-entries reads come back.
         var money = amount.ToString("F2", CultureInfo.InvariantCulture);
         var payload = new
         {
@@ -392,24 +373,18 @@ internal sealed class HoldedClient : IHoldedClient
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException)
         {
-            // Same normalization as GetContactAsync: a value of an unexpected type belongs to the
-            // stored document, not to this request, so retrying cannot help. Raw parse throws would
-            // escape past IHoldedClient's two typed exceptions and leak an Infrastructure detail into
-            // the Application layer. Unlike the per-contact skip in ListContactsAsync this fails the
-            // whole list rather than dropping the doc — these totals become budget-category actuals,
-            // and a silently short list is wrong money rather than a missing name.
+            // The bad value belongs to the stored document, so retrying can't help, and a raw parse throw would
+            // escape the client's typed exceptions. Fails the whole list rather than skipping the doc: these totals
+            // become budget actuals, and a short list is wrong money.
             throw new HoldedPermanentException("Holded purchase documents could not be read.", ex);
         }
     }
 
     public async Task<string> UpsertContactAsync(HoldedContactInput input, CancellationToken ct = default)
     {
-        // Create only. There is deliberately no update path: v2's contact PUT is a full replacement that
-        // resets every omitted field, supplier_record included, so a partial PUT mints the contact a
-        // second creditor account (memory/code/holded-contact-put-is-full-replacement.md).
-        // v2 contacts POST has no `custom_id` field (see HoldedContactInput.CustomId) — not sent.
-        // bill_address stays null when we hold no address parts, and OmitNulls then drops the key
-        // rather than sending an object of nulls.
+        // Create only: v2's contact PUT is a full replacement that resets supplier_record, so a partial PUT mints a
+        // second creditor account. custom_id isn't sent (v2 has none). With no address parts bill_address stays
+        // null, and OmitNulls drops the key.
         object? billAddress =
             string.IsNullOrWhiteSpace(input.Address) && string.IsNullOrWhiteSpace(input.CountryCode)
                 ? null
@@ -446,8 +421,6 @@ internal sealed class HoldedClient : IHoldedClient
         }
     }
 
-    /// <summary>The v2 path segment for a sales-document kind. Both kinds share the same payload
-    /// shape and the same create/approve/read pipeline; only this segment differs.</summary>
     private static string SalesSegment(HoldedSalesDocumentKind kind) => kind switch
     {
         HoldedSalesDocumentKind.Invoice => "invoices",
@@ -510,8 +483,7 @@ internal sealed class HoldedClient : IHoldedClient
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException)
         {
-            // Same normalization as ListPurchaseDocumentsAsync: the value that failed to parse
-            // belongs to the stored document, not to this request, so a retry cannot help.
+            // The bad value belongs to the stored document, so a retry can't help.
             throw new HoldedPermanentException(
                 $"Holded {SalesSegment(kind)} documents could not be searched.", ex);
         }
@@ -544,9 +516,7 @@ internal sealed class HoldedClient : IHoldedClient
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException)
         {
-            // The doc is already created and approved at this point, so a retry would duplicate it.
-            // Permanent is the honest classification: the value that failed to parse belongs to the
-            // stored document, not to this request.
+            // The doc is already created and approved, so a retry would duplicate it: permanent.
             throw new HoldedPermanentException(
                 $"Holded {SalesSegment(kind)} document {documentId} could not be read.", ex);
         }
@@ -587,12 +557,8 @@ internal sealed class HoldedClient : IHoldedClient
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException)
         {
-            // The single-contact sibling of the per-contact skip in ListContactsAsync. A value of an
-            // unexpected type is a property of the stored contact, not of this request, so retrying
-            // cannot help — surface it as permanent so callers that already handle the client's typed
-            // exceptions degrade instead of letting a raw parse failure escape the client. The only
-            // caller (ExpenseHoldedPublisher.PublishAsync) would otherwise abort the whole
-            // outbox batch and leave its own event neither processed nor failed.
+            // The bad value belongs to the stored contact, so retrying can't help. Permanent, so callers that handle
+            // the typed exceptions degrade; a raw parse failure would abort ExpenseHoldedPublisher's whole outbox batch.
             throw new HoldedPermanentException(
                 $"Holded contact {contactId} could not be read.", ex);
         }
@@ -629,9 +595,7 @@ internal sealed class HoldedClient : IHoldedClient
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException)
         {
-            // The page envelope itself (not a per-contact value) was unreadable — that's not the
-            // per-contact skip-and-log below (#994), which only covers one bad item in an otherwise
-            // good page.
+            // The page envelope was unreadable; the skip-and-log below covers only one bad item in a good page.
             throw new HoldedPermanentException("Holded contacts could not be read.", ex);
         }
 
@@ -646,11 +610,9 @@ internal sealed class HoldedClient : IHoldedClient
             catch (Exception ex) when (ex is JsonException or InvalidOperationException
                 or FormatException or OverflowException)
             {
-                // One contact carrying an unexpected value must not cost every other contact its name.
-                // This list is the sole source of creditor account names on /Finance/Creditors and the
-                // bind dropdown, and its caller degrades a throw to *all* names blank — which is how a
-                // single contact silently emptied the whole card (nobodies-collective/Humans#994).
-                // Detail on the first one only; the rest are counted, so a bad page cannot flood the log.
+                // One bad contact must not cost the others their names: this list is the only source of creditor
+                // names on /Finance/Creditors, and its caller turns a throw into all names blank. Detail is logged
+                // for the first only, so a bad page can't flood the log.
                 if (skipped == 0)
                     _logger.LogWarning(ex, "Unreadable Holded contact; skipping it.");
                 skipped++;
@@ -690,12 +652,10 @@ internal sealed class HoldedClient : IHoldedClient
                 catch (Exception ex) when (ex is HoldedPermanentException or InvalidOperationException
                     or FormatException)
                 {
-                    // A line with no readable date cannot be placed in the from/to window. Leaving it out is
-                    // safe only if it can never be a SEPA candidate: Finance's rival checks count every
-                    // pending outgoing line, so dropping one of those would hide a rival and let an
-                    // ambiguous booking through. Those still fail the page, unless the caller named
-                    // the line as one it has already surfaced and accepts losing as a rival
-                    // (peterdrier/Humans#1946); the rest are skipped.
+                    // A line with no readable date can't be placed in the window. Skipping is safe only if it can
+                    // never be a SEPA candidate: Finance's rival checks count every pending outgoing line, so dropping
+                    // one would let an ambiguous booking through. Those fail the page unless the caller named the line
+                    // as already surfaced.
                     if (ReadRequiredDecimalV2(Prop(n, "amount"), "amount") < 0m
                         && string.Equals(ReadRequiredString(Prop(n, "status"), "status"), "pending",
                             StringComparison.OrdinalIgnoreCase))
@@ -726,11 +686,8 @@ internal sealed class HoldedClient : IHoldedClient
                     Date = date,
                     Amount = ReadRequiredDecimalV2(Prop(n, "amount"), "amount"),
                     Description = Prop(n, "description")?.GetValue<string>(),
-                    // Never defaulted: "pending" is the one status the SEPA sweep reads as "nothing is
-                    // tied to this line yet, it may be booked", so manufacturing it for an absent field
-                    // would let a response shape change turn an already-settled line into a bookable
-                    // one. Absent means unreadable, like 'id' above. An unknown *present*
-                    // value needs no guard — anything but "pending" already fails closed.
+                    // Never defaulted: "pending" is the one status the SEPA sweep reads as bookable, so inventing it
+                    // could turn a settled line bookable. Any other present value already fails closed.
                     Status = ReadRequiredString(Prop(n, "status"), "status").ToLowerInvariant(),
                     Origin = Prop(n, "origin")?.GetValue<string>(),
                 });
@@ -745,8 +702,8 @@ internal sealed class HoldedClient : IHoldedClient
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException or UnparsableValueException)
         {
-            // Same rule as ledger lines for every other field: a *manufactured* line would book
-            // against a movement that does not exist, so an unreadable id/amount/status fails the page.
+            // A manufactured line would book against a movement that doesn't exist, so an unreadable
+            // id/amount/status fails the page.
             throw new HoldedPermanentException(
                 $"Holded bank-movements {from}..{to} for account {treasuryAccountId} could not be read.",
                 ex);
@@ -776,14 +733,10 @@ internal sealed class HoldedClient : IHoldedClient
         using var resp = await SendAsync(req, ct);
     }
 
-    /// <summary>A bank-movement line carries no <c>date</c> key (verified against the live v2 feed,
-    /// 2026-10-17): its dates are <c>booking_date</c> and <c>value_date</c>, ISO 8601 with an offset
-    /// (<c>2026-10-16T00:00:00+00:00</c> on a Sabadell line, a real time on a Stripe one). Booking is
-    /// what Holded stamps on the payment leg and the ledger entry when the line is reconciled, so it
-    /// is the date; value is the fallback when booking is absent or blank. The date part is taken as
-    /// given, never shifted to Europe/Madrid: a midnight-UTC Sabadell line would otherwise move a
-    /// day. Throws <c>HoldedPermanentException</c> when neither parses, which the caller skips a
-    /// non-candidate line on.</summary>
+    /// <summary>A bank line has no <c>date</c> key, only <c>booking_date</c> and <c>value_date</c> (ISO 8601 with an
+    /// offset). Booking is what Holded stamps on the reconciled payment and entry, so it is the date; value is the
+    /// fallback. The date part is taken as given, never shifted to Madrid: a midnight-UTC Sabadell line would move
+    /// a day. Throws <c>HoldedPermanentException</c> when neither parses.</summary>
     private static LocalDate ParseBankMovementDate(JsonNode line)
     {
         var s = Prop(line, "booking_date")?.GetValue<string>();
@@ -795,9 +748,8 @@ internal sealed class HoldedClient : IHoldedClient
         throw new HoldedPermanentException($"Holded bank movement date '{s}' could not be parsed.");
     }
 
-    /// <summary>Projects one Holded contact. Holded sends an absent sub-record as an empty array rather
-    /// than null, and <see cref="JsonNode"/>'s string indexer throws on anything but a JsonObject — so
-    /// every nested read goes through <see cref="Prop"/>, never the raw indexer.</summary>
+    /// <summary>Holded sends an absent sub-record as an empty array, and the string indexer throws on anything but an
+    /// object, so every nested read goes through <see cref="Prop"/>.</summary>
     private static HoldedContactDto ParseContact(JsonNode node, string? fallbackId = null) => new()
     {
         Id = Prop(node, "id")?.GetValue<string>() ?? fallbackId ?? "",
@@ -812,9 +764,7 @@ internal sealed class HoldedClient : IHoldedClient
         Address = FormatAddress(Prop(node, "bill_address")),
     };
 
-    /// <summary>One display string joined from bill_address's non-empty parts, or null when the
-    /// address is absent/empty. Holded sends an absent bill_address as null (not an empty array like
-    /// supplierRecord), but <see cref="Prop"/> is still the safe read for the same reason as elsewhere.</summary>
+    /// <summary>Null when the address is absent or empty.</summary>
     private static string? FormatAddress(JsonNode? billAddress)
     {
         var parts = new[] { "address", "postal_code", "city", "province", "country" }
@@ -824,15 +774,13 @@ internal sealed class HoldedClient : IHoldedClient
         return joined.Length == 0 ? null : joined;
     }
 
-    /// <summary>A property of <paramref name="node"/>, or null when it is not an object. The raw
-    /// <c>node["x"]</c> indexer throws InvalidOperationException on a non-object, which for a list read
-    /// costs the whole page rather than the one field.</summary>
+    /// <summary>Null when <paramref name="node"/> is not an object. The raw indexer throws there, which on a list
+    /// read costs the whole page rather than one field.</summary>
     private static JsonNode? Prop(JsonNode? node, string name) =>
         node is JsonObject obj ? obj[name] : null;
 
-    /// <summary>The array at <paramref name="node"/>, or empty when it is absent or of another kind.
-    /// <see cref="JsonNode.AsArray"/> throws on a non-array for the same reason the string indexer
-    /// throws on a non-object, and Holded is equally happy to send an absent collection as a scalar.</summary>
+    /// <summary>Empty when absent or not an array: <see cref="JsonNode.AsArray"/> throws on a non-array, and Holded
+    /// will send an absent collection as a scalar.</summary>
     private static JsonArray Arr(JsonNode? node) => node as JsonArray ?? [];
 
     public async Task<IReadOnlyList<HoldedLedgerLineDto>> ListLedgerEntriesAsync(
@@ -851,8 +799,7 @@ internal sealed class HoldedClient : IHoldedClient
         {
             return items.Select(n => new HoldedLedgerLineDto
             {
-                // Identity fields must be present — a manufactured 0 key would survive into
-                // ReplaceLedgerWindowAsync and evict the real cached row it fails to match.
+                // A manufactured 0 key would survive into ReplaceLedgerWindowAsync and evict the real row.
                 EntryNumber = ReadRequiredInt(Prop(n, "entry_number"), "entry_number"),
                 Line = ReadRequiredInt(Prop(n, "line"), "line"),
                 Date = ParseLedgerDate(Prop(n, "date")?.GetValue<string>() ?? ""),
@@ -866,9 +813,8 @@ internal sealed class HoldedClient : IHoldedClient
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException or UnparsableValueException)
         {
-            // As in ListPurchaseDocumentsAsync — permanent, and the whole page fails rather
-            // than skipping the line. Creditor and account balances are summed from these debits
-            // and credits, so a quietly dropped line reads as a settled entry that never happened.
+            // Fails the whole page rather than skipping the line: balances are summed from these, so a dropped
+            // line reads as a settled entry that never happened.
             throw new HoldedPermanentException(
                 $"Holded ledger-entries {from}..{to} could not be read.", ex);
         }
@@ -884,10 +830,8 @@ internal sealed class HoldedClient : IHoldedClient
             return items.Select(n => new HoldedAccountDto
             {
                 Id = ReadRequiredString(Prop(n, "id"), "id"),
-                // Required, like the ledger line's `account`: the number IS the account's identity
-                // here — it keys the mirror, picks the PGC group and drives the POV flip. A
-                // manufactured 0 would enter the chart as an "Unclassified" account with a
-                // sign-flipped balance and be reconciled against Holded every night.
+                // Required: the number keys the mirror, picks the PGC group and drives the POV flip. A manufactured 0
+                // would become an "Unclassified" account with a sign-flipped balance, reconciled every night.
                 Number = ReadRequiredInt(Prop(n, "number"), "number"),
                 Name = Prop(n, "name")?.GetValue<string>() ?? "",
                 Group = Prop(n, "group")?.GetValue<string>(),
@@ -935,10 +879,8 @@ internal sealed class HoldedClient : IHoldedClient
         }
     }
 
-    /// <summary>Walks a v2 cursor-paginated collection: follows `cursor` while `has_more`, collecting
-    /// `items` elements. Throws when pageSafetyCap is hit rather than returning a truncated result —
-    /// these lists feed replace-semantics reconciliation downstream, so a silently short fetch would
-    /// drive deletion of rows that still exist in Holded (lossy becomes destructive).</summary>
+    /// <summary>Throws at pageSafetyCap rather than returning a truncated list: these feed replace-semantics
+    /// reconciliation, so a short fetch would delete rows that still exist in Holded.</summary>
     private async Task<List<JsonNode>> GetPagedAsync(
         string pathAndQuery, int pageSafetyCap, CancellationToken ct,
         [CallerMemberName] string caller = "")
@@ -955,17 +897,13 @@ internal sealed class HoldedClient : IHoldedClient
                     : $"{pathAndQuery}&cursor={Uri.EscapeDataString(cursor)}";
                 using var req = new HttpRequestMessage(HttpMethod.Get, url);
                 AttachAuth(req);
-                // Forward the real caller (ListLedgerEntriesAsync, ListContactsAsync, …) — SendAsync's own
-                // [CallerMemberName] would otherwise record every paginated endpoint as "GetPagedAsync",
-                // collapsing the call log's per-endpoint breakdown the admin overview renders.
+                // Pass the real caller, or the call log records every paged endpoint as "GetPagedAsync".
                 using var resp = await SendAsync(req, ct, caller);
                 await using var stream = await resp.Content.ReadAsStreamAsync(ct);
                 var root = await JsonNode.ParseAsync(stream, cancellationToken: ct);
 
-                // Strict envelope validation, not the forgiving Prop/Arr fallbacks: a 200 carrying
-                // Holded's {"status":0,...} error object — or any body without an `items` array —
-                // would otherwise read as a successfully-empty page, and list results feed
-                // replace-semantics windows where a false empty deletes every cached row in range.
+                // Strict, not Prop/Arr: a 200 carrying Holded's {"status":0,...} error, or any body without items,
+                // would read as an empty page, and a false empty deletes every cached row in the window.
                 if (Prop(root, "items") is not JsonArray itemsArr)
                 {
                     var preview = root?.ToJsonString() ?? "null";
@@ -981,10 +919,8 @@ internal sealed class HoldedClient : IHoldedClient
                     items.Add(n);
                 }
 
-                // Absent has_more is a legitimate final page — the live accounting-accounts
-                // response carries items only, no pagination metadata. But has_more:true without
-                // a cursor cannot be followed, and returning the prefix would feed replace
-                // semantics a truncated list.
+                // Absent has_more is a legitimate final page (accounting-accounts sends no pagination metadata). But
+                // has_more:true without a cursor can't be followed, and the prefix would feed replace semantics.
                 var hasMore = Prop(root, "has_more")?.GetValue<bool>() ?? false;
                 cursor = Prop(root, "cursor")?.GetValue<string>();
                 if (!hasMore) return items;
@@ -999,11 +935,9 @@ internal sealed class HoldedClient : IHoldedClient
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException)
         {
-            // A malformed *successful* body would otherwise leave the client as a raw JsonException:
-            // every caller handles only the typed Holded exceptions, so /Finance/Sepa would fail the
-            // request instead of showing its bank-feed warning, and the SEPA sweep would abort. The
-            // deliberate envelope throws above are already typed, so this filter never sees them.
-            // Normalized here, at the one place every paged endpoint shares, rather than per method.
+            // A malformed successful body would escape as a raw JsonException, which no caller handles: /Finance/Sepa
+            // would fail instead of warning and the SEPA sweep would abort. Normalized here, where every paged
+            // endpoint shares it.
             throw new HoldedPermanentException(
                 $"Holded page for {pathAndQuery.Split('?', 2)[0]} could not be read.", ex);
         }
@@ -1020,15 +954,13 @@ internal sealed class HoldedClient : IHoldedClient
     private static Instant ParseIsoDate(string s) =>
         LocalDatePattern.Iso.Parse(s).Value.AtStartOfDayInZone(MadridZone).ToInstant();
 
-    /// <summary>`approved_at` arrives as an offset-less ISO date-time (e.g. "2024-01-15T13:00:00");
-    /// treated as Madrid local time, consistent with every other Holded date/time on this client.</summary>
+    /// <summary>Offset-less ISO (e.g. "2024-01-15T13:00:00"), read as Madrid local time like every other Holded
+    /// date-time.</summary>
     private static Instant? ParseApprovedAt(string? s) =>
         string.IsNullOrEmpty(s)
             ? null
             : LocalDateTimePattern.GeneralIso.Parse(s).Value.InZoneLeniently(MadridZone).ToInstant();
 
-    /// <summary>Projects one purchase document. Every container read goes through <see cref="Prop"/> /
-    /// <see cref="Arr"/> rather than the raw indexer, for the reason spelled out on those two.</summary>
     private static HoldedPurchaseDocListItemDto ParsePurchaseDoc(JsonNode? n) => new()
     {
         Id = ReadRequiredString(Prop(n, "id"), "id"),
@@ -1097,11 +1029,8 @@ internal sealed class HoldedClient : IHoldedClient
             if ((int)resp.StatusCode >= 500)
                 throw new HoldedTransientException(
                     $"Holded {(int)resp.StatusCode} {resp.ReasonPhrase}");
-            // The message is the diagnostic that reaches logs, the outbox row's LastError, the audit
-            // trail and the finance-admin UI. A 4xx on a contact upsert can echo the IBAN we just
-            // sent straight back in the body, so mask before it leaves the client
-            // (memory/code/iban-mask-in-logs.md). ResponseBody keeps the untouched body for any
-            // caller that deliberately needs it.
+            // This message reaches logs, LastError, the audit trail and the finance UI, and a 4xx on a contact
+            // upsert can echo the IBAN back: mask it here. ResponseBody keeps the raw body.
             throw new HoldedPermanentException((int)resp.StatusCode, body,
                 $"Holded {(int)resp.StatusCode} {resp.ReasonPhrase}: {IbanFormatter.MaskAllIn(body)}");
         }
@@ -1153,8 +1082,7 @@ internal sealed class HoldedClient : IHoldedClient
         return null;
     }
 
-    /// <summary>A GET <see cref="HttpRequestMessage"/> can only be sent once through <see cref="HttpClient"/>;
-    /// the 429 retry needs a fresh instance carrying the same method, URI, and headers (including auth).</summary>
+    /// <summary>A request can be sent only once; the 429 retry needs a fresh copy with the same headers (auth too).</summary>
     private static HttpRequestMessage CloneForRetry(HttpRequestMessage req)
     {
         var clone = new HttpRequestMessage(req.Method, req.RequestUri);
@@ -1182,17 +1110,16 @@ internal sealed class HoldedClient : IHoldedClient
         ReadInt(node) ?? throw new HoldedPermanentException(
             $"Holded item is missing required field '{field}' — refusing the page.");
 
-    /// <summary>Null, absent and blank/whitespace all mean the same thing here — Holded has been seen
-    /// sending <c>""</c> for a field it usually populates — and any of them must fail the page, not
-    /// pass a value nothing downstream can use.</summary>
+    /// <summary>Null, absent and blank all fail the page: Holded has been seen sending <c>""</c> for a field it
+    /// usually fills.</summary>
     private static string ReadRequiredString(JsonNode? node, string field) =>
         node?.GetValue<string>() is { Length: > 0 } s && !string.IsNullOrWhiteSpace(s)
             ? s
             : throw new HoldedPermanentException(
                 $"Holded item is missing required field '{field}' — refusing the page.");
 
-    /// <summary>An absent amount must fail the page, not read as 0.00 — replace semantics would
-    /// overwrite the cached line's real amount and still report the sync as a success.</summary>
+    /// <summary>An absent amount must fail the page, not read as 0.00: replace semantics would overwrite the real
+    /// amount and still report success.</summary>
     private static decimal ReadRequiredDecimalV2(JsonNode? node, string field) =>
         node is null
             ? throw new HoldedPermanentException(

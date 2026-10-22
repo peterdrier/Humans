@@ -2,9 +2,6 @@ using NodaTime;
 
 namespace Humans.GoogleIntegration.Contracts;
 
-/// <summary>
-/// Outbox message representing a deferred Google sync membership operation.
-/// </summary>
 public class GoogleSyncOutboxEvent
 {
     public Guid Id { get; init; }
@@ -17,9 +14,6 @@ public class GoogleSyncOutboxEvent
     public string DeduplicationKey { get; set; } = string.Empty;
     public string? LastError { get; set; }
 
-    /// <summary>
-    /// Whether this event failed with a permanent error (HTTP 400/403/404).
-    /// When true, ProcessedAt is set and the event is not retried.
-    /// </summary>
+    /// <summary>A permanent error (400/403/404): ProcessedAt is set and the event is never retried.</summary>
     public bool FailedPermanently { get; set; }
 }

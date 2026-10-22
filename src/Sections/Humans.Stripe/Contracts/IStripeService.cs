@@ -4,10 +4,6 @@ using NodaTime;
 
 namespace Humans.Stripe.Contracts;
 
-/// <summary>
-/// Stripe connector. Fee/PI reads (Tickets account) and Checkout Session creation (Store account).
-/// SDK types do not cross this seam — see <c>StripeConnectorArchitectureTests</c>.
-/// </summary>
 public interface IStripeService : IApplicationService
 {
     /// <summary>True when the Tickets-account key is set (fee enrichment available).</summary>
@@ -20,29 +16,17 @@ public interface IStripeService : IApplicationService
     bool IsStoreWebhookConfigured { get; }
 
     /// <summary>
-    /// Look up a PaymentIntent and return its EUR fee breakdown and payment method details.
-    /// The balance transaction and each fee must declare EUR currency; unsupported or missing
-    /// currency throws rather than projecting foreign amounts as EUR.
-    /// Returns <c>null</c> for the cases this section checks: the Tickets key is unset, the key
-    /// lacks the scope (Stripe <c>permission_error</c>), or Stripe answered and the PaymentIntent
-    /// has no charge or its asynchronous capture has not produced a balance transaction yet.
-    /// All are logged internally. Any other Stripe failure — an authentication
-    /// error, a rate limit, a transport failure, cancellation — propagates.
+    /// EUR fees and payment method for a PaymentIntent; missing or non-EUR currency throws. Null only when the
+    /// Tickets key is unset or lacks the scope, or the intent has no charge or balance transaction yet. Every
+    /// other Stripe failure propagates.
     /// </summary>
     Task<StripePaymentDetails?> GetPaymentDetailsAsync(string paymentIntentId, CancellationToken ct = default);
 
     /// <summary>
-    /// Create a Stripe Checkout Session for a Store order payment and return the hosted-checkout URL.
-    /// Sets metadata <c>humans_store_order_id</c> so the webhook can resolve back to the order.
-    /// Throws on Stripe API failure (caller surfaces a friendly error to the user).
+    /// Returns the hosted-checkout URL. <paramref name="storeOrderId"/> round-trips in the
+    /// <c>humans_store_order_id</c> metadata. Throws on Stripe failure; a null <paramref name="customerEmail"/>
+    /// lets Stripe collect it.
     /// </summary>
-    /// <param name="storeOrderId">Identifies the StoreOrder; round-trips via session metadata.</param>
-    /// <param name="amountEur">Amount to charge in EUR. Must be > 0.</param>
-    /// <param name="successUrl">Absolute URL Stripe redirects to on payment success.</param>
-    /// <param name="cancelUrl">Absolute URL Stripe redirects to if the user cancels checkout.</param>
-    /// <param name="customerEmail">Optional pre-fill for the Stripe-collected email; pass null to let Stripe collect it.</param>
-    /// <param name="lineItemDescription">Human-readable description shown on the Stripe-hosted page and receipt.</param>
-    /// <param name="ct">Token for cancelling the Stripe request.</param>
     [ExternalWrite]
     Task<string> CreateCheckoutSessionAsync(
         Guid storeOrderId,
@@ -54,40 +38,25 @@ public interface IStripeService : IApplicationService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Verifies a Stripe webhook signature against <c>STRIPE_STORE_WEBHOOK_SECRET</c> and parses
-    /// the payload into an Application-layer DTO so the Web layer never imports Stripe SDK types
-    /// (design-rules §15i — connector pattern). Returns <c>null</c> when the signing secret is unset,
-    /// the signature is invalid, or a session lacks explicit EUR currency; logs the reason internally.
+    /// <paramref name="body"/> must be the raw request body. Null when the signing secret is unset, the signature
+    /// is invalid, or a session lacks EUR currency; never throws.
     /// </summary>
-    /// <param name="body">Raw request body as received from Stripe.</param>
-    /// <param name="signature">Value of the <c>Stripe-Signature</c> header.</param>
     StoreCheckoutWebhookEvent? ParseStoreCheckoutEvent(string body, string signature);
 
     /// <summary>
-    /// Lists every Checkout Session on the Store account (Stripe returns them newest-first),
-    /// each projected to <see cref="StoreCheckoutSessionData"/>. Used by Store payment
-    /// reconciliation to diff Stripe (source of truth) against recorded payments. Reads with
-    /// the existing Store key (checkout_session Write ⊇ Read).
-    /// Returns <c>null</c> for the cases this section checks — the Store key is unset, or it
-    /// lacks the read scope (Stripe <c>permission_error</c>), both logged internally. Callers must
-    /// treat that as "unknown", not "no sessions", so they don't false-flag recorded payments as
-    /// orphans. An empty (non-null) list means Stripe was queried successfully and returned no
-    /// sessions. A session without explicit EUR currency rejects the whole list. Any other Stripe
-    /// failure propagates, as on <see cref="GetPaymentDetailsAsync"/>.
+    /// Every Store-account session, newest first. Null means unknown, not "none": the Store key is unset or
+    /// lacks the read scope. A session without EUR currency rejects the whole list; other Stripe failures propagate.
     /// </summary>
     Task<IReadOnlyList<StoreCheckoutSessionData>?> ListStoreCheckoutSessionsAsync(CancellationToken ct = default);
 }
 
-/// <summary>
-/// EUR fee amounts and payment method data extracted from a Stripe PaymentIntent's charge,
-/// one per Stripe balance-transaction fee bucket.
-/// </summary>
-/// <param name="PaymentMethod">Stripe payment method type (e.g. "card").</param>
-/// <param name="PaymentMethodDetail">Card brand for cards; otherwise null.</param>
-/// <param name="StripeFee">Processing cost: <c>stripe_fee</c> plus <c>payment_method_passthrough_fee</c>.</param>
-/// <param name="ApplicationFee">The platform's (Ticket Tailor's) <c>application_fee</c>.</param>
-/// <param name="FeeTax">Stripe's <c>tax</c> bucket: VAT Stripe charged on its fees.</param>
-/// <param name="WithheldTax">Stripe's <c>withheld_tax</c> bucket: tax withheld from the payout.</param>
+/// <summary>One amount per Stripe balance-transaction fee bucket, in EUR.</summary>
+/// <remarks>
+/// <paramref name="PaymentMethodDetail"/> is the card brand for cards, else null. <paramref name="StripeFee"/> is
+/// <c>stripe_fee</c> plus <c>payment_method_passthrough_fee</c>. <paramref name="ApplicationFee"/> is Ticket Tailor's
+/// <c>application_fee</c>. <paramref name="FeeTax"/> is VAT Stripe charged on its fees; <paramref name="WithheldTax"/>
+/// is tax withheld from the payout.
+/// </remarks>
 public record StripePaymentDetails(
     string PaymentMethod,
     string? PaymentMethodDetail,
@@ -96,43 +65,28 @@ public record StripePaymentDetails(
     decimal FeeTax,
     decimal WithheldTax);
 
-/// <summary>Categorized Stripe Checkout webhook event the Store cares about.</summary>
 public enum StoreCheckoutEventKind
 {
-    /// <summary>An event we are subscribed to but do not categorize (forward-compatibility).</summary>
+    /// <summary>Subscribed but not categorized.</summary>
     Other,
-    /// <summary>checkout.session.completed — sync settlement (card) or mandate captured (async).</summary>
+    /// <summary>Card payments settle here; async methods only capture the mandate.</summary>
     CheckoutSessionCompleted,
-    /// <summary>checkout.session.async_payment_succeeded — async settlement cleared.</summary>
     CheckoutSessionAsyncPaymentSucceeded,
-    /// <summary>checkout.session.async_payment_failed — async settlement bounced.</summary>
     CheckoutSessionAsyncPaymentFailed,
-    /// <summary>checkout.session.expired — session timed out without payment.</summary>
     CheckoutSessionExpired,
 }
 
-/// <summary>
-/// Application-layer projection of a Stripe Checkout webhook event. Carries only the fields
-/// the Store webhook needs; SDK types are extracted on the Infrastructure side of the seam.
-/// </summary>
-/// <param name="EventId">Stripe event id (<c>evt_*</c>) for log correlation.</param>
-/// <param name="Kind">Categorized event type — controller routes on this.</param>
-/// <param name="Session">Session payload, when the event carries one. Null for events without a session.</param>
+/// <summary><paramref name="Session"/> is null for events that carry no session.</summary>
 public sealed record StoreCheckoutWebhookEvent(
     string EventId,
     StoreCheckoutEventKind Kind,
     StoreCheckoutSessionData? Session);
 
 /// <summary>
-/// Per-session fields from a <c>checkout.session.*</c> event. Optional fields are null when
-/// Stripe didn't send them or they couldn't be parsed; the caller decides which are required.
+/// Optional fields are null when Stripe omitted them or they failed to parse; the caller decides which it needs.
+/// <paramref name="OrderId"/> comes from the <c>humans_store_order_id</c> metadata. <paramref name="AmountEur"/> is
+/// already converted from minor units.
 /// </summary>
-/// <param name="SessionId">Stripe session id (<c>cs_*</c>) for log correlation.</param>
-/// <param name="OrderId">Round-tripped via <c>session.metadata['humans_store_order_id']</c>; null if missing or malformed.</param>
-/// <param name="PaymentIntentId">Stripe PaymentIntent id; null if Stripe didn't include one.</param>
-/// <param name="AmountEur">Total amount in EUR (already converted from EUR minor units); null if Stripe didn't send a total. Reads reject sessions without explicit EUR currency.</param>
-/// <param name="PaymentStatus">Stripe <c>payment_status</c> (<c>paid</c> / <c>unpaid</c> / <c>no_payment_required</c>); null if absent. Reconciliation acts only on <c>paid</c>.</param>
-/// <param name="CreatedAt">When Stripe created the session; null if absent. Used to order the reconciliation view.</param>
 public sealed record StoreCheckoutSessionData(
     string SessionId,
     Guid? OrderId,

@@ -2,14 +2,10 @@ using NodaTime;
 
 namespace Humans.Holded.Domain;
 
-/// <summary>
-/// One chart-of-accounts entry as Holded reports it, including Holded's own running totals.
-/// Those totals are the reconciliation target: an account whose Holded balance disagrees with
-/// the mirrored lines' Σdebit − Σcredit gets a targeted re-pull.
-/// </summary>
+/// <summary>Holded's own running totals are the reconciliation target: an account whose balance disagrees with the
+/// mirrored Σdebit − Σcredit gets a targeted re-pull.</summary>
 internal sealed class HoldedAccount
 {
-    /// <summary>PK — the literal chart number, e.g. 40000004.</summary>
     public int Number { get; init; }
 
     public string HoldedId { get; set; } = "";

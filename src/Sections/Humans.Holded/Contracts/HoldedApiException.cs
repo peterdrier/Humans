@@ -7,9 +7,7 @@ public abstract class HoldedApiException : Exception
     protected HoldedApiException(string message, Exception inner) : base(message, inner) { }
 }
 
-/// <summary>
-/// Transient — eligible for retry (5xx, network, timeout).
-/// </summary>
+/// <summary>5xx, network or timeout: may be retried.</summary>
 public sealed class HoldedTransientException : HoldedApiException
 {
     public HoldedTransientException() { }
@@ -17,16 +15,14 @@ public sealed class HoldedTransientException : HoldedApiException
     public HoldedTransientException(string message, Exception inner) : base(message, inner) { }
 }
 
-/// <summary>
-/// Permanent — 4xx; do not retry.
-/// </summary>
+/// <summary>4xx: never retry.</summary>
 public sealed class HoldedPermanentException : HoldedApiException
 {
     public int StatusCode { get; }
     public string? ResponseBody { get; }
 
-    /// <summary>The Holded bank movement that made the read fail closed, when it is one line — so a
-    /// caller can tell a persistently stuck line from a fresh failure (peterdrier/Humans#1946).</summary>
+    /// <summary>The one bank movement a read failed closed on, so a caller can tell a persistently stuck line
+    /// from a fresh failure.</summary>
     public string? BankMovementId { get; }
 
     public HoldedPermanentException() { }

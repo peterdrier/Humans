@@ -4,10 +4,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace Humans.MailerLite;
 
-/// <summary>
-/// MailerLite's own settings. The env var is the production path (Coolify can't set dotted
-/// keys); the dotted key is the dev/user-secrets path.
-/// </summary>
+/// <summary>The env var is the production path (Coolify can't set dotted keys); the dotted key is for dev.</summary>
 internal sealed class SectionConfiguration : ISectionConfiguration
 {
     public void DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)

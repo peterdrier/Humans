@@ -8,15 +8,11 @@ public sealed record HoldedContactInput
     public required string Name { get; init; }
     /// <summary>Burner/display name. Only ever set alongside a legal <see cref="Name"/>.</summary>
     public string? TradeName { get; init; }
-    /// <summary>Our stable handle — the Humans UserId. Not sent to Holded: v2's contacts POST
-    /// has no `custom_id` field (it is read-only on GET). Kept on the DTO for now since nothing
-    /// reads it back for lookup; no functional loss.</summary>
+    /// <summary>The Humans UserId. Not sent: v2's contacts POST has no <c>custom_id</c> (read-only on GET).</summary>
     public string? CustomId { get; init; }
-    /// <summary>Holded contact type, which decides the account series Holded mints on create:
-    /// <c>creditor</c> (acreedor) a 41000000+ account, <c>supplier</c> (proveedor) a 40000000+ one,
-    /// <c>client</c>/<c>debtor</c> a 43000000+ one. Expense-report members are created as creditors
-    /// so their reimbursement accounts sit in the 410 series, apart from the 400 proveedores paid by
-    /// ordinary invoice; Store's factura counterparties are clients.</summary>
+    /// <summary>Decides the account series Holded mints: <c>creditor</c> 410xxxxx, <c>supplier</c> 400xxxxx,
+    /// <c>client</c>/<c>debtor</c> 430xxxxx. Expense-report members are creditors, apart from the 400 proveedores
+    /// paid by invoice; Store's factura counterparties are clients.</summary>
     public string Type { get; init; } = "creditor";
     public string? Iban { get; init; }
     /// <summary>Tax identification number — v2 `code`. NIF/CIF for Spanish counterparties; a
@@ -29,7 +25,6 @@ public sealed record HoldedContactInput
     public string? CountryCode { get; init; }
 }
 
-/// <summary>A Holded contact as returned by GET contacts/{id}.</summary>
 public sealed record HoldedContactDto
 {
     public required string Id { get; init; }
@@ -37,13 +32,12 @@ public sealed record HoldedContactDto
     /// <summary>supplier_record.num — the 400000xx supplier account number, or null if not yet assigned.</summary>
     public int? SupplierAccountNum { get; init; }
 
-    // Contact-info fields for the creditor-statement header.
     public string? TradeName { get; init; }
     public string? Email { get; init; }
     public string? Phone { get; init; }
     public string? Mobile { get; init; }
     public string? Iban { get; init; }
-    /// <summary>Tax identification number — v2 `code`.</summary>
+    /// <summary>v2 <c>code</c>.</summary>
     public string? TaxCode { get; init; }
     /// <summary>One display string assembled from bill_address's non-empty parts (address, postal
     /// code, city, province, country), or null when bill_address is absent/empty.</summary>

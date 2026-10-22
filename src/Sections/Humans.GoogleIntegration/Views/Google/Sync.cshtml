@@ -41,8 +41,7 @@
 
     var antiForgeryToken = getRequestVerificationToken('#antiForgeryForm input[name="__RequestVerificationToken"]');
 
-    // Resource type mapping: tab data-resource-type values to API enum values
-    // DriveFolder = 0, Group = 2
+    // Tab data-resource-type values to API enum values.
     var resourceTypeMap = { 'DriveFolder': 0, 'Group': 2 };
     var previewVersions = new WeakMap();
 

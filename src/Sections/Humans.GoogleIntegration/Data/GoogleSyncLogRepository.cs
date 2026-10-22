@@ -6,14 +6,9 @@ using NodaTime;
 
 namespace Humans.GoogleIntegration.Data;
 
-/// <summary>
-/// EF-backed <see cref="IGoogleSyncLogRepository"/>. Singleton over
-/// <see cref="IDbContextFactory{TContext}"/> per design-rules §15b.
-/// </summary>
 internal sealed class GoogleSyncLogRepository(IDbContextFactory<GoogleIntegrationDbContext> factory)
     : IGoogleSyncLogRepository
 {
-    /// <summary>Cap on rows returned.</summary>
     private const int MaxRows = 200;
 
     public async Task AddAsync(GoogleSyncLogEntry entry, CancellationToken ct = default)

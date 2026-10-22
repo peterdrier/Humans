@@ -1,13 +1,4 @@
-@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line here
-   ships broken markup with a green build and no runtime error. The
-   @addTagHelper lines matter as much as the @using ones: an unbound tag helper survives into
-   the response as its own start tag rather than throwing (G5-SECTION-TEMPLATE.md step 12),
-   and Humans.Web cannot be named from a section, so every <vc:> the section's views render
-   must resolve from Humans.UI or be invoked by name. Guarded by
-   GoogleIntegrationPageRenderTests.
-
-   Localizer binds the section's resources for account pages and the member-dashboard
-   Google resources card. *@
+@* A section RCL doesn't inherit the host's _ViewImports: a missing line here ships broken markup with a green build. *@
 @using Humans.Base.Extensions
 @using Humans.Users.Contracts
 @using Humans.Base.Enums

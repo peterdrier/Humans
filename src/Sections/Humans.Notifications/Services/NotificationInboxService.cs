@@ -10,13 +10,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Notifications.Services;
 
-/// <summary>
-/// Application-layer implementation of <see cref="INotificationInboxService"/>.
-/// Builds read models for the inbox and popup, handles resolve/dismiss/
-/// mark-read actions, and invalidates nav-badge cache entries after writes.
-/// Cross-domain display names are stitched via <c>IUserService.GetUserInfosAsync</c>
-/// (design-rules §6).
-/// </summary>
 internal sealed class NotificationInboxService(
     INotificationRepository repo,
     IUserService userService,
@@ -194,11 +187,7 @@ internal sealed class NotificationInboxService(
                 return await repo.GetUnreadBadgeCountsAsync(userId, ct);
             });
 
-    /// <summary>
-    /// Sources replaced by live work-queue meters. No new rows are emitted, but legacy
-    /// Actionable rows have no resolution path and would linger in "Needs your attention"
-    /// forever — so they are purged outright.
-    /// </summary>
+    /// <summary>Replaced by meters. Their old actionable rows have no resolution path, so they are purged outright.</summary>
     private static readonly NotificationSource[] RetiredSources =
         [NotificationSource.ApplicationSubmitted, NotificationSource.ConsentReviewNeeded];
 
@@ -262,8 +251,7 @@ internal sealed class NotificationInboxService(
             _ => NotificationInboxFilter.All,
         };
 
-        // Resolved filter is incompatible with unread tab — resolved items are
-        // never unread; flip tab to All in that case.
+        // Resolved items are never unread, so the Resolved filter forces the All tab.
         var parsedTab = parsedFilter == NotificationInboxFilter.Resolved
             ? NotificationInboxTab.All
             : tab?.ToLowerInvariant() switch

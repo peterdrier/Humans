@@ -1,117 +1,91 @@
 namespace Humans.Notifications.Contracts;
 
-/// <summary>
-/// Source system that generated a notification.
-/// Each source maps to a MessageCategory for preference checks.
-/// </summary>
+/// <summary>Stored by name: never rename a value. Each maps to a <c>MessageCategory</c> for preference checks.</summary>
 public enum NotificationSource
 {
-    /// <summary>Team member was added to a team.</summary>
     TeamMemberAdded = 0,
 
-    /// <summary>Shift coverage gap detected.</summary>
     ShiftCoverageGap = 1,
 
-    /// <summary>Shift signup change (confirm, bail, cancel).</summary>
+    /// <summary>Confirm, bail or cancel.</summary>
     ShiftSignupChange = 2,
 
-    /// <summary>Consent review needed for a new human.</summary>
     ConsentReviewNeeded = 3,
 
-    /// <summary>Tier application submitted for Board review.</summary>
     ApplicationSubmitted = 4,
 
     /// <summary>Google sync or resource provisioning error.</summary>
     SyncError = 5,
 
-    /// <summary>Term renewal reminder for Colaborador/Asociado.</summary>
     TermRenewalReminder = 6,
 
-    /// <summary>Tier application approved by the Board.</summary>
     ApplicationApproved = 7,
 
-    /// <summary>Tier application rejected by the Board.</summary>
     ApplicationRejected = 8,
 
-    /// <summary>Volunteer approved (profile cleared for membership).</summary>
     VolunteerApproved = 9,
 
-    /// <summary>Profile/signup rejected during onboarding review.</summary>
     ProfileRejected = 10,
 
-    /// <summary>Member access suspended for non-compliance.</summary>
     AccessSuspended = 11,
 
-    /// <summary>New document version requires re-consent.</summary>
     ReConsentRequired = 12,
 
-    /// <summary>Team join request submitted (notifies coordinators).</summary>
+    /// <summary>Notifies the team's coordinators.</summary>
     TeamJoinRequestSubmitted = 13,
 
-    /// <summary>Team join request approved or rejected (notifies requester).</summary>
+    /// <summary>Notifies the requester.</summary>
     TeamJoinRequestDecided = 14,
 
-    /// <summary>Admin responded to a feedback report.</summary>
     FeedbackResponse = 15,
 
-    /// <summary>Workspace (@nobodies.team) credentials are ready.</summary>
     WorkspaceCredentialsReady = 16,
 
-    /// <summary>A governance role was assigned or ended for a user.</summary>
     RoleAssignmentChanged = 18,
 
-    /// <summary>Campaign code was granted to a user (in-app echo).</summary>
+    /// <summary>In-app echo of a campaign code grant.</summary>
     CampaignReceived = 19,
 
-    /// <summary>User was removed from a team.</summary>
     TeamMemberRemoved = 20,
 
-    /// <summary>User was enrolled (voluntold) for a shift by a coordinator.</summary>
+    /// <summary>Enrolled (voluntold) by a coordinator.</summary>
     ShiftAssigned = 21,
 
     /// <summary>Google reconciliation detected and fixed drift.</summary>
     GoogleDriftDetected = 22,
 
-    /// <summary>Facilitated message was sent (in-app pointer to check email).</summary>
+    /// <summary>In-app pointer to the email.</summary>
     FacilitatedMessageReceived = 23,
 
-    /// <summary>A new legal document version was published.</summary>
     LegalDocumentPublished = 24,
 
-    /// <summary>A camp lead approved a human's request to join the camp.</summary>
     CampMembershipApproved = 25,
 
-    /// <summary>A camp lead rejected a human's request to join the camp.</summary>
     CampMembershipRejected = 26,
 
     /// <summary>The season the human had requested to join was withdrawn or rejected.</summary>
     CampMembershipSeasonClosed = 27,
 
-    /// <summary>A camp role was assigned to a human (in-app + email if subscribed).</summary>
     CampRoleAssigned = 28,
 
-    /// <summary>A new comment was posted on an issue the user is involved in.</summary>
     IssueComment = 29,
 
-    /// <summary>An issue's status changed (notifies reporter + assignee).</summary>
+    /// <summary>Notifies the reporter and assignee.</summary>
     IssueStatusChanged = 30,
 
-    /// <summary>An issue was assigned to a user (notifies the new assignee).</summary>
     IssueAssigned = 31,
 
-    /// <summary>A new issue was submitted (notifies admins + section role-holders).</summary>
+    /// <summary>Notifies admins and the section's role-holders.</summary>
     IssueSubmitted = 32,
 
     /// <summary>Someone expressed interest in a ride offer, or a driver answered a ride request.</summary>
     RideshareInterestReceived = 33,
 
-    /// <summary>The posting owner accepted a rideshare interest.</summary>
     RideshareInterestAccepted = 34,
 
     /// <summary>The posting owner declined a rideshare interest (neutral wording, no reason).</summary>
     RideshareInterestDeclined = 35,
 
-    /// <summary>An assembly vote opened and the roster was notified.</summary>
     AssemblyVoteOpened = 36,
 
     /// <summary>A working group applied, was referred, or the Board owes it a decision.</summary>
@@ -147,6 +121,5 @@ public enum NotificationSource
     /// <summary>A grant entitles the person to something: issued, or the notice resent.</summary>
     GrantReceived = 47,
 
-    /// <summary>A grant the person held was revoked.</summary>
     GrantRevoked = 48,
 }

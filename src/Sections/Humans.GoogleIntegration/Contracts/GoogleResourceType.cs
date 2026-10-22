@@ -1,27 +1,15 @@
 namespace Humans.GoogleIntegration.Contracts;
 
-/// <summary>
-/// Types of Google resources that can be provisioned for members.
-/// </summary>
 public enum GoogleResourceType
 {
-    /// <summary>
-    /// Folder within a Shared Drive.
-    /// </summary>
+    /// <summary>A folder in a Shared Drive.</summary>
     DriveFolder = 0,
 
-    /// <summary>
-    /// Shared Drive (reserved for future use).
-    /// </summary>
+    /// <summary>Reserved for future use.</summary>
     SharedDrive = 1,
 
-    /// <summary>
-    /// Google Group for email distribution.
-    /// </summary>
     Group = 2,
 
-    /// <summary>
-    /// Individual file within a Shared Drive (Google Sheets, Docs, etc.).
-    /// </summary>
+    /// <summary>A single file in a Shared Drive (Sheets, Docs, ...).</summary>
     DriveFile = 3
 }

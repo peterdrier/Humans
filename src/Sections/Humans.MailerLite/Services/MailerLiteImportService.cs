@@ -45,22 +45,15 @@ internal sealed class MailerLiteImportService(
         return new DriftReport(HumansOptedOutMlActive: humansOutMlIn, HumansOptedInMlAbsent: null);
     }
 
-    // The erroneous import pulled the whole MailerLite account; it must only ever
-    // ingest the "Website" group. Resolved by name at runtime (group ids aren't
-    // stable across environments). Reads of this group bypass the client's
-    // "Humans - " write-guard — it's a source, never written to.
+    // Only ever the Website group (the erroneous import pulled the whole account). Resolved by name, since ids
+    // differ per environment. Read-only, so the "Humans - " write guard doesn't apply.
     private const string WebsiteGroupName = "Website";
 
-    // UpdateSource the import stamps on Marketing prefs it writes.
     private const string SyncSource = "MailerLiteSync";
 
-    // Source label recorded on the audit entry when a flag is reset to null.
     private const string ResetSource = "MailerLiteSyncReset";
 
-    // Marketing opt-ins written by the erroneous whole-account import carry no
-    // genuine prior consent. A Marketing pref whose SubscribedAt predates this
-    // instant was opted-in before the bad import and is preserved (≤5 known
-    // cases). Hardcoded — one-time GDPR remediation cutoff.
+    // An opt-in with SubscribedAt before this predates the bad import and is kept. One-time GDPR remediation cutoff.
     private static readonly Instant BadImportCutoff = Instant.FromUtc(2026, 5, 19, 0, 1, 1);
 
     public async Task<ImportPlan> BuildPlanAsync(CancellationToken ct = default)
@@ -84,7 +77,7 @@ internal sealed class MailerLiteImportService(
                 continue;
             }
 
-            // 2. Verified match — count distinct owners so uniqueness drift surfaces as Ambiguous.
+            // 2. Verified match. Count distinct owners so uniqueness drift surfaces as Ambiguous.
             var verifiedUserIds = (await userEmails.FindByAddressAsync(s.Email, aliased: true, verifiedOnly: true, ct))
                 .Select(r => r.UserId).Distinct().ToList();
             if (verifiedUserIds.Count > 1)
@@ -137,10 +130,8 @@ internal sealed class MailerLiteImportService(
                 decisions[v.Index] = decisions[v.Index] with { Outcome = outcome };
         }
 
-        // GDPR remediation: revert Marketing opt-ins the erroneous whole-account
-        // import set on people who aren't in the Website group at all. Discovered
-        // from the Humans side — these users have no Website subscriber row, so they
-        // never appear in the subscriber loop above.
+        // GDPR remediation: revert Marketing opt-ins the erroneous import set on people outside the Website group.
+        // They have no Website subscriber row, so the loop above never sees them.
         var websiteEmails = WebsiteSubscriberEmails(subs);
         var marketingPrefs = await prefs.GetPreferencesForCategoryAsync(MessageCategory.Marketing, ct);
         foreach (var u in await users.GetAllUserInfosAsync(ct))
@@ -152,11 +143,7 @@ internal sealed class MailerLiteImportService(
         return new ImportPlan(decisions, subs.Count);
     }
 
-    /// <summary>
-    /// Maps a verified-match subscriber + existing Marketing pref to a bucket.
-    /// Re-evaluated at apply time in <see cref="ApplyMarketingDeltaAsync"/>; the
-    /// plan bucket is for preview/UI only.
-    /// </summary>
+    /// <summary>For the preview only: apply re-evaluates in <see cref="ApplyMarketingDeltaAsync"/>.</summary>
     private static SubscriberOutcome ClassifyVerifiedMatch(
         MailerLiteSubscriber ml, CommunicationPreferenceSnapshot? existingMarketing)
     {
@@ -177,8 +164,7 @@ internal sealed class MailerLiteImportService(
         if (existingMarketing is not null && existingMarketing.OptedOut == mlOptedOut)
             return SubscriberOutcome.VerifiedPrefsAlreadyMatch;
 
-        // No pref row + ML opt-out: Marketing defaults to opted-out (see
-        // MessageCategoryExtensions.DefaultOptedOut), so already in sync.
+        // No row + ML opt-out: Marketing defaults to opted out, so already in sync.
         if (existingMarketing is null && mlOptedOut)
             return SubscriberOutcome.VerifiedPrefsAlreadyMatch;
 
@@ -197,7 +183,7 @@ internal sealed class MailerLiteImportService(
 
         var websiteGroupId = await ResolveWebsiteGroupIdAsync(ct);
 
-        // Re-pull ML so plan/apply are stateless. Website group only.
+        // Re-pull ML so plan and apply stay stateless. Website group only.
         var subsByEmail = new Dictionary<string, MailerLiteSubscriber>(StringComparer.OrdinalIgnoreCase);
         var websiteSubs = new List<MailerLiteSubscriber>();
         await foreach (var s in ml.ListSubscribersAsync(ct))
@@ -211,8 +197,7 @@ internal sealed class MailerLiteImportService(
 
         var (toProcess, throttled) = ApplyThrottle(plan.Decisions, maxPerOutcome);
 
-        // Each human's verified Website addresses, from the whole plan (not just the
-        // throttled slice) so a held-back opt-out still governs (MAILERLITE-3).
+        // From the whole plan, not just the throttled slice, so a held-back opt-out still governs (MAILERLITE-3).
         var verifiedEmailsByUser = plan.Decisions
             .Where(d => IsVerifiedMatch(d.Outcome) && d.TargetUserId is not null)
             .GroupBy(d => d.TargetUserId!.Value)
@@ -263,9 +248,8 @@ internal sealed class MailerLiteImportService(
 
                     case SubscriberOutcome.ReplaceUnverifiedEmail:
                         {
-                            // Not grouped with TargetUserId's verified addresses: replacement deletes
-                            // that user's unverified row and provisions a separate contact (provUserId),
-                            // whose Marketing pref this write targets.
+                            // Not grouped with TargetUserId's addresses: replacement provisions a separate contact
+                            // (provUserId), whose preference this write targets.
                             var (provUserId, provCreated) = await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
                                 d.TargetUserId!.Value, d.UnverifiedEmailIdToDelete!.Value,
                                 subscriber.Email, displayName: null, ContactSource.MailerLite, ct);
@@ -329,10 +313,7 @@ internal sealed class MailerLiteImportService(
         return result;
     }
 
-    /// <summary>
-    /// Splits decisions into the first <paramref name="maxPerOutcome"/> per outcome bucket
-    /// (preserving input order) and the throttled count. Null/non-positive processes all.
-    /// </summary>
+    /// <summary>Keeps input order. Null or non-positive processes everything.</summary>
     private static (IReadOnlyList<SubscriberDecision> ToProcess, int Throttled) ApplyThrottle(
         IReadOnlyList<SubscriberDecision> decisions, int? maxPerOutcome)
     {
@@ -374,11 +355,9 @@ internal sealed class MailerLiteImportService(
         or SubscriberOutcome.VerifiedKeepHumansPref;
 
     /// <summary>
-    /// The subscriber that decides a human's single Marketing preference when several of
-    /// their verified addresses sit in the Website group. Any opt-out beats active (an
-    /// active address never overrides an explicit opt-out); bounce/junk beat unsubscribed
-    /// (delivery facts skip the Humans-wins rule); then the most recent ML action; then
-    /// email and id, so the result never depends on enumeration order.
+    /// Decides a member's one Marketing preference when several of their addresses are in the Website group. Any
+    /// opt-out beats active; bounce/junk beat unsubscribed (delivery facts skip the Humans-wins rule); then the latest
+    /// ML action; then email and id, so the result never depends on enumeration order.
     /// </summary>
     private static MailerLiteSubscriber GoverningSubscriber(IEnumerable<MailerLiteSubscriber> subs) =>
         subs.OrderBy(s => string.Equals(s.Status, "active", StringComparison.OrdinalIgnoreCase) ? 1 : 0)
@@ -428,15 +407,9 @@ internal sealed class MailerLiteImportService(
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// A user is a reset candidate when their Marketing pref was opted-in by the
-    /// erroneous import (<see cref="SyncSource"/>), they have no genuine prior
-    /// consent (a <c>SubscribedAt</c> predating <see cref="BadImportCutoff"/>),
-    /// and they are not a member of the Website group at all (by any of their
-    /// emails). Website members — active or not — are owned by the import loop
-    /// (active → opt-in, unsubscribed/bounced → opt-out), so opt-ins survive only
-    /// for active members and an explicit unsubscribe stays opt-out rather than
-    /// being nulled here. Non-members are pure collateral: the row is deleted to
-    /// revert to "no preference" (null).
+    /// Opted in by the erroneous import, no consent before <see cref="BadImportCutoff"/>, and in the Website group
+    /// under none of their addresses. Website members belong to the import loop (active means opt-in, unsubscribed
+    /// stays opt-out); non-members are collateral, so the row is deleted (back to null).
     /// </summary>
     private static bool IsResetCandidate(
         UserInfo user, CommunicationPreferenceSnapshot? marketing, HashSet<string> websiteEmails)
@@ -447,8 +420,7 @@ internal sealed class MailerLiteImportService(
         return !user.UserEmails.Any(e => websiteEmails.Contains(e.Email));
     }
 
-    // Re-checks the predicate against current cache state so a pref the user set
-    // between preview and commit isn't clobbered, then deletes the row (→ null).
+    // Re-checks against current state so a preference the member set between preview and commit isn't clobbered.
     private async Task<bool> TryResetMarketingFlagAsync(
         Guid userId, HashSet<string> websiteEmails, CancellationToken ct)
     {

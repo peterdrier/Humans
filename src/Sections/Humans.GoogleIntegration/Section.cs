@@ -16,23 +16,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.GoogleIntegration;
 
-/// <summary>
-/// GoogleIntegration's DI entry point, at the project root by convention. Discovered by
-/// Shell — nothing names it, so it needs no section prefix.
-/// </summary>
-/// <remarks>
-/// <para>
-/// <c>Configure&lt;GoogleWorkspaceSettings&gt;</c> is configured here; nothing outside this
-/// section reads it. <c>Configure&lt;GoogleWorkspaceOptions&gt;</c> is configured in
-/// Shell's <c>GoogleWorkspaceInfrastructureExtensions</c> — Camps' <c>CampRoleService</c>
-/// and Users' <c>ProfileEmailsController</c> still read it directly (Governance's rule: the section
-/// that owns the file is not always the section that owns the line).
-/// </para>
-/// <para>
-/// The two recurring jobs live in this project's <c>Jobs/</c> folder; their registration
-/// and schedule are contributed via <c>SectionJobs.cs</c>.
-/// </para>
-/// </remarks>
+/// <summary><c>GoogleWorkspaceOptions</c> is bound in Shell, not here: Camps and Users read it too.</summary>
 public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
@@ -51,8 +35,6 @@ public sealed class Section : ISection
         services.AddSingleton<IGoogleSyncLogRepository, GoogleSyncLogRepository>();
         services.AddSingleton<IWorkspaceIdentityRepository, WorkspaceIdentityRepository>();
 
-        // google_workspace_identities (Users decomposition commit 15): reads, the Users seam,
-        // the Article 15/17 slice and the account-merge fold.
         services.AddScoped<WorkspaceIdentityService>();
         services.AddScoped<IWorkspaceIdentityManagement>(sp => sp.GetRequiredService<WorkspaceIdentityService>());
         services.AddScoped<IGoogleIntegrationService>(sp => sp.GetRequiredService<WorkspaceIdentityService>());
@@ -63,14 +45,11 @@ public sealed class Section : ISection
         services.AddScoped<GoogleSyncLogService>();
         services.AddScoped<IGoogleSyncLogService>(sp => sp.GetRequiredService<GoogleSyncLogService>());
         services.AddScoped<IGoogleSyncLogViewer>(sp => sp.GetRequiredService<GoogleSyncLogService>());
-        // google_sync_log holds per-user rows → GDPR export contributor (design-rules §8a).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<GoogleSyncLogService>());
-        // Temporary: backs /Google/Admin/SyncHistoryMigration, and comes out with the six
-        // Google columns on audit_log (nobodies-collective/Humans#1083).
+        // Temporary: backs /Google/Admin/SyncHistoryMigration; remove with the six Google columns on audit_log.
         services.AddScoped<IGoogleSyncHistoryMigrationService, GoogleSyncHistoryMigrationService>();
         services.AddScoped<ISyncSettingsService, SyncSettingsService>();
-        // GoogleIntegration owns its email copy and its gallery samples; Email keeps the
-        // mechanics (memory/architecture/email-templates-live-in-sender.md).
+        // This section owns its email copy and gallery samples; Email keeps the mechanics.
         services.AddScoped<GoogleIntegrationEmails>();
         services.AddScoped<IEmailPreviewContributor, GoogleIntegrationEmailPreviews>();
 
@@ -88,7 +67,6 @@ public sealed class Section : ISection
 
         services.AddScoped<ITeamResourceManagement, TeamResourceService>();
         services.AddScoped<ITeamResourceService>(sp => sp.GetRequiredService<ITeamResourceManagement>());
-        // The per-team gate on TeamResourcesController (/Google/Teams/{slug}/Resources).
         services.AddScoped<IAuthorizationHandler, TeamResourceAuthorizationHandler>();
 
         // Real Google clients when a service-account key is configured, stubs otherwise.

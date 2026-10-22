@@ -6,48 +6,35 @@ using NodaTime;
 
 namespace Humans.GoogleIntegration.Data;
 
-/// <summary>
-/// Repository for the section's <c>google_sync_log</c> table. Append-only —
-/// no update or delete path is exposed.
-/// </summary>
+/// <summary>Append-only: no update or delete path.</summary>
 internal interface IGoogleSyncLogRepository : IRepository
 {
     Task AddAsync(GoogleSyncLogEntry entry, CancellationToken ct = default);
 
-    /// <summary>
-    /// Appends a batch in one save. Used by the one-time history migration, which
-    /// carries the source audit row's id onto the entry so a re-run is a no-op.
-    /// </summary>
+    /// <summary>The history migration keeps each audit row's id here, so a re-run adds nothing.</summary>
     Task AddRangeAsync(IReadOnlyCollection<GoogleSyncLogEntry> entries, CancellationToken ct = default);
 
-    /// <summary>Which of <paramref name="ids"/> are already rows here.</summary>
     Task<IReadOnlySet<Guid>> GetExistingIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default);
 
-    /// <summary>Most recent entries for one Google resource.</summary>
     Task<IReadOnlyList<GoogleSyncLogEntry>> GetByResourceAsync(Guid resourceId, CancellationToken ct = default);
 
     /// <summary>
-    /// Newest-first entries across all resources, at most <paramref name="limit"/>. A null filter
-    /// matches everything; <paramref name="from"/> is inclusive, <paramref name="to"/> exclusive.
-    /// A non-null <paramref name="unlinkedDescriptionContains"/> widens the resource filter: rows with no
-    /// resource (<see cref="Guid.Empty"/>) whose description contains it (case-insensitive) match too.
+    /// Newest first, at most <paramref name="limit"/>. Null filters match all; <paramref name="from"/> is inclusive,
+    /// <paramref name="to"/> exclusive. <paramref name="unlinkedDescriptionContains"/> also matches unlinked rows by description.
     /// </summary>
     Task<IReadOnlyList<GoogleSyncLogEntry>> GetRecentAsync(
         Instant? from, Instant? to, GoogleSyncLogAction? action, GoogleSyncSource? source, bool? success,
         IReadOnlyCollection<Guid>? resourceIds, int limit, CancellationToken ct = default,
         string? unlinkedDescriptionContains = null);
 
-    /// <summary>Every distinct resource id the log references.</summary>
     Task<IReadOnlyList<Guid>> GetResourceIdsAsync(CancellationToken ct = default);
 
-    /// <summary>Most recent entries attributed to any of <paramref name="userIds"/>.</summary>
     Task<IReadOnlyList<GoogleSyncLogEntry>> GetByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
-    /// <summary>Every entry for the GDPR export — uncapped, unlike the display reads.</summary>
-    /// <summary>GDPR Art. 17: removes every sync-log row attributed to the given users.</summary>
     Task<int> DeleteByUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
+    /// <summary>For the GDPR export: uncapped, unlike the display reads.</summary>
     Task<IReadOnlyList<GoogleSyncLogEntry>> GetAllByUserIdsContributorAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 }

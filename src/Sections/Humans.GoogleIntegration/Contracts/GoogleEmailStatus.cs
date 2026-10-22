@@ -7,10 +7,8 @@ namespace Humans.GoogleIntegration.Contracts;
 /// </summary>
 public enum GoogleEmailStatus
 {
-    /// <summary>Not yet validated against Google APIs.</summary>
     Unknown = 0,
 
-    /// <summary>Successfully used with Google APIs.</summary>
     Valid = 1,
 
     /// <summary>

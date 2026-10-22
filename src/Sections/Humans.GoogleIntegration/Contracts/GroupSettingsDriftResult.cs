@@ -1,13 +1,7 @@
 namespace Humans.GoogleIntegration.Contracts;
 
-/// <summary>
-/// A single setting that differs from the expected value.
-/// </summary>
 public record GroupSettingDrift(string SettingName, string ExpectedValue, string ActualValue);
 
-/// <summary>
-/// Drift report for a single Google Group's settings.
-/// </summary>
 public class GroupSettingsDriftReport
 {
     public string GroupEmail { get; init; } = string.Empty;
@@ -22,9 +16,6 @@ public class GroupSettingsDriftReport
     public bool IsOk => !HasDrift && !HasError;
 }
 
-/// <summary>
-/// Aggregated result of checking group settings across all groups.
-/// </summary>
 public class GroupSettingsDriftResult
 {
     public List<GroupSettingsDriftReport> Reports { get; init; } = [];

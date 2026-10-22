@@ -2,35 +2,22 @@ using Humans.GoogleIntegration.Contracts;
 
 namespace Humans.GoogleIntegration.Services;
 
-/// <summary>
-/// GoogleIntegration-internal surface over <c>google_workspace_identities</c>: designating the
-/// identity, recording sync verdicts, and the legacy copy behind <c>google.workspace-identities</c>.
-/// </summary>
 internal interface IWorkspaceIdentityManagement : IGoogleIntegrationService, IGoogleIntegrationWrite
 {
     /// <summary>
-    /// Designates <paramref name="email"/> (one of the member's verified addresses) as their
-    /// Workspace identity, audited as <c>UserEmailGoogleSet</c>. Re-asserting the current address
-    /// clears a <see cref="GoogleEmailStatus.Rejected"/> verdict so sync retries it. False when the
-    /// address is not a verified address of the member, or the member has a verified
-    /// <c>@nobodies.team</c> address and this is not one (that address always wins).
+    /// Audited as <c>UserEmailGoogleSet</c>; re-asserting the current address clears a Rejected verdict. False when the
+    /// address isn't one of the member's verified ones, or they have a verified <c>@nobodies.team</c> address (it always wins).
     /// </summary>
     Task<bool> SetAsync(Guid userId, string email, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Records Google's verdict on <paramref name="attemptedEmail"/>, the identity address a sync
-    /// call targeted. Dropped (false) when the member's identity has since moved to another
-    /// address, when nothing changes, or when it would turn <see cref="GoogleEmailStatus.Rejected"/>
-    /// back into <see cref="GoogleEmailStatus.Valid"/> (a rejection is terminal for its address).
+    /// False (dropped) when the identity has moved to another address, nothing changes, or it would turn
+    /// <see cref="GoogleEmailStatus.Rejected"/> back into Valid: a rejection is terminal for its address.
     /// </summary>
     Task<bool> SetStatusFromSyncAsync(
         Guid userId, string attemptedEmail, GoogleEmailStatus status, CancellationToken ct = default);
 
-    /// <summary>
-    /// Records <paramref name="driveEmail"/> as the address Drive grants for the member in place of
-    /// <paramref name="attemptedEmail"/>, their identity address (peterdrier/Humans#2037). Dropped
-    /// (false) when the identity has since moved to another address or nothing changes.
-    /// </summary>
+    /// <summary>False (dropped) when the identity has moved to another address or nothing changes.</summary>
     Task<bool> SetDriveEmailFromSyncAsync(
         Guid userId, string attemptedEmail, string driveEmail, CancellationToken ct = default);
 

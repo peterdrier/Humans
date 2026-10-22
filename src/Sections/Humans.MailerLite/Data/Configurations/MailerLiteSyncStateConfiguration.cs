@@ -10,9 +10,7 @@ internal sealed class MailerLiteSyncStateConfiguration : IEntityTypeConfiguratio
     {
         b.ToTable("mailerlite_sync_states");
 
-        // Id-keyed, not Key-keyed: the audit row for a sync points at this Id, and identity
-        // rests on ids only (memory/architecture/unique-constraints-ids-only.md). Key stays a
-        // plain column — the repository is the contract that keeps it one row per key.
+        // Keyed on Id: the sync's audit row points at it. The repository keeps Key to one row per key.
         b.HasKey(x => x.Id);
         b.Property(x => x.Key).HasMaxLength(64);
         b.Property(x => x.Summary).HasMaxLength(1000);

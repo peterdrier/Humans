@@ -4,115 +4,57 @@ using Humans.Base.Interfaces.Repositories;
 
 namespace Humans.GoogleIntegration.Data;
 
-/// <summary>
-/// Repository for the <c>google_resources</c> table. The only non-test file
-/// that may read or write that DbSet.
-/// </summary>
-/// <remarks>
-/// Reads are <c>AsNoTracking</c>. Mutating methods load tracked entities and
-/// save changes atomically inside a single
-/// <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{GoogleIntegrationDbContext}"/>-owned
-/// context so callers never reason about EF context lifetime. No cross-domain
-/// <c>Include</c>s: <c>TeamMembers</c>/<c>Teams</c> joins that the pre-migration
-/// <c>TeamResourceService.GetUserTeamResourcesAsync</c> used are resolved at
-/// the service layer via <see cref="Humans.Teams.Contracts.ITeamService"/>
-/// per design-rules §2c/§6.
-/// </remarks>
+/// <summary>Reads are <c>AsNoTracking</c>; each mutation loads, changes and saves in its own context.</summary>
 internal interface IGoogleResourceRepository : IRepository
 {
-    /// <summary>
-    /// Loads a single <see cref="GoogleResource"/> by id. Read-only (AsNoTracking).
-    /// Returns null if not found.
-    /// </summary>
     Task<GoogleResource?> GetByIdAsync(Guid resourceId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns all active resources for a team. Read-only.
-    /// </summary>
     Task<IReadOnlyList<GoogleResource>> GetActiveByTeamIdAsync(Guid teamId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns active resources grouped by team id, for a set of team ids.
-    /// Missing team ids map to an empty list in the returned dictionary.
-    /// Read-only.
-    /// </summary>
+    /// <summary>Team ids with no active resources map to an empty list.</summary>
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<GoogleResource>>> GetActiveByTeamIdsAsync(
         IReadOnlyCollection<Guid> teamIds,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the display name for each resource id in <paramref name="resourceIds"/>.
-    /// Missing ids are absent from the dictionary. Read-only.
-    /// </summary>
+    /// <summary>Missing ids are absent from the result.</summary>
     Task<IReadOnlyDictionary<Guid, string>> GetNamesByIdsAsync(
         IReadOnlyCollection<Guid> resourceIds,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the total active-resource count for every team that currently has
-    /// at least one active resource. Read-only.
-    /// </summary>
     Task<IReadOnlyDictionary<Guid, int>> GetActiveResourceCountsByTeamAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns every active resource of type <see cref="GoogleResourceType.DriveFolder"/>
-    /// across all teams. Read-only.
-    /// </summary>
     Task<IReadOnlyList<GoogleResource>> GetActiveDriveFoldersAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns every active resource matching the exact <paramref name="resourceType"/>
-    /// across all teams. Read-only.
-    /// </summary>
-    /// <remarks>
-    /// Fetches by the exact type asked for; <see cref="GetActiveDriveFoldersAsync"/> is
-    /// <see cref="GoogleResourceType.DriveFolder"/>-only.
-    /// </remarks>
     Task<IReadOnlyList<GoogleResource>> GetActiveByResourceTypeAsync(
         GoogleResourceType resourceType,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the total number of resource rows (including inactive). Used by
-    /// the observable metrics gauge. Read-only.
-    /// </summary>
+    /// <summary>Includes inactive rows.</summary>
     Task<int> GetCountAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Finds an existing active resource matching the given
-    /// (team, Google id, type) tuple, for duplicate-link prevention. Read-only.
-    /// </summary>
+    /// <summary>For duplicate-link prevention.</summary>
     Task<GoogleResource?> FindActiveByGoogleIdAsync(
         Guid teamId,
         string googleId,
         GoogleResourceType type,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Finds an existing inactive resource for reactivation during a link
-    /// operation (Drive folders/files match on exact Google id). Read-only.
-    /// </summary>
+    /// <summary>For reactivation on link. Drive resources match on the exact Google id.</summary>
     Task<GoogleResource?> FindInactiveByGoogleIdAsync(
         Guid teamId,
         string googleId,
         GoogleResourceType type,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Finds an existing active Google-Group resource for a team by group email
-    /// (case-insensitive match on <see cref="GoogleResource.GoogleId"/>).
-    /// Read-only.
-    /// </summary>
+    /// <summary>Case-insensitive match on <see cref="GoogleResource.GoogleId"/>.</summary>
     Task<GoogleResource?> FindActiveGroupByEmailAsync(
         Guid teamId,
         string normalizedGroupEmail,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Finds an existing inactive Google-Group resource for reactivation. The
-    /// stored <see cref="GoogleResource.GoogleId"/> may contain either the raw
-    /// numeric id or the original email (legacy rows), so callers pass both
-    /// candidates. Case-insensitive email match. Read-only.
+    /// Legacy rows hold the group email instead of the numeric id in <see cref="GoogleResource.GoogleId"/>, so
+    /// callers pass both candidates.
     /// </summary>
     Task<GoogleResource?> FindInactiveGroupByCandidatesAsync(
         Guid teamId,
@@ -120,18 +62,9 @@ internal interface IGoogleResourceRepository : IRepository
         string normalizedGroupEmail,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Inserts a new <see cref="GoogleResource"/> row.
-    /// </summary>
     Task AddAsync(GoogleResource resource, CancellationToken ct = default);
 
-    /// <summary>
-    /// Applies a reactivation update to an existing (inactive) row: sets
-    /// <c>Name</c>, <c>Url</c>, <c>LastSyncedAt</c>, clears <c>ErrorMessage</c>,
-    /// sets <c>IsActive = true</c>, and optionally updates
-    /// <c>GoogleId</c>/<c>DrivePermissionLevel</c>. No-op if the row is missing.
-    /// Returns the reactivated entity (fresh read-only snapshot) or null.
-    /// </summary>
+    /// <summary>Reactivates an inactive row and clears its error. Null if the row is missing.</summary>
     Task<GoogleResource?> ReactivateAsync(
         Guid resourceId,
         string name,
@@ -141,40 +74,21 @@ internal interface IGoogleResourceRepository : IRepository
         DrivePermissionLevel? newPermissionLevel,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Sets <see cref="GoogleResource.IsActive"/> to false on a single row.
-    /// No-op if the row is missing.
-    /// </summary>
     Task UnlinkAsync(Guid resourceId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Applies a new <see cref="DrivePermissionLevel"/> to a single row.
-    /// No-op if the row is missing.
-    /// </summary>
-    /// <returns>True if the row existed and was updated; false otherwise.</returns>
+    /// <summary>False if the row is missing.</summary>
     Task<bool> UpdatePermissionLevelAsync(
         Guid resourceId,
         DrivePermissionLevel level,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Applies a new <see cref="GoogleResource.RestrictInheritedAccess"/> flag
-    /// to a single row. Returns the row's state after mutation (type check and
-    /// Google-side enforcement are the service's responsibility), or null if
-    /// the row did not exist.
-    /// </summary>
+    /// <summary>Type checks and the Google-side change are the service's job. Null if the row is missing.</summary>
     Task<GoogleResource?> SetRestrictInheritedAccessAsync(
         Guid resourceId,
         bool restrict,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Load-and-deactivate helper for bulk soft-delete flows. Flips
-    /// <c>IsActive = false</c> on every active resource matching
-    /// <paramref name="teamId"/> (and optional <paramref name="resourceType"/>
-    /// filter) and persists atomically. Returns the entities that were
-    /// deactivated so callers can feed audit logs.
-    /// </summary>
+    /// <summary>Returns the deactivated rows so callers can audit them.</summary>
     Task<IReadOnlyList<GoogleResource>> DeactivateByTeamAsync(
         Guid teamId,
         GoogleResourceType? resourceType,
@@ -183,49 +97,22 @@ internal interface IGoogleResourceRepository : IRepository
     // Narrow per-column mutations for GoogleWorkspaceSyncService: it holds no
     // tracked-entity graph, so the repo exposes an atomic update per field.
 
-    /// <summary>
-    /// Stamps <see cref="GoogleResource.LastSyncedAt"/> and clears
-    /// <see cref="GoogleResource.ErrorMessage"/> on a single row. Used by
-    /// <c>GoogleWorkspaceSyncService</c> after a successful per-resource
-    /// reconciliation pass. No-op if the row is missing.
-    /// </summary>
+    /// <summary>Also clears <see cref="GoogleResource.ErrorMessage"/>.</summary>
     Task MarkSyncedAsync(Guid resourceId, Instant now, CancellationToken ct = default);
 
-    /// <summary>
-    /// Stamps <see cref="GoogleResource.LastSyncedAt"/> and clears
-    /// <see cref="GoogleResource.ErrorMessage"/> on every row whose id is in
-    /// <paramref name="resourceIds"/>. Used after reconciling a group of
-    /// Drive resources that share the same <c>GoogleId</c> (each team's
-    /// resource row gets the same sync stamp).
-    /// </summary>
+    /// <summary>Also clears <see cref="GoogleResource.ErrorMessage"/>. For Drive rows that share one Google id.</summary>
     Task MarkSyncedManyAsync(
         IReadOnlyCollection<Guid> resourceIds,
         Instant now,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Writes <paramref name="errorMessage"/> into
-    /// <see cref="GoogleResource.ErrorMessage"/> on every row whose id is in
-    /// <paramref name="resourceIds"/>. Used when a per-resource reconciliation
-    /// fails (e.g. 404 from Google on a Group lookup) so the next tick can
-    /// surface the last error and the admin UI can show it.
-    /// </summary>
     Task SetErrorMessageManyAsync(
         IReadOnlyCollection<Guid> resourceIds,
         string errorMessage,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Updates <see cref="GoogleResource.Name"/> on a single row. Used by the
-    /// drive-folder path-refresh pass so callers can rewrite the cached path
-    /// without loading a tracked entity graph. No-op if the row is missing.
-    /// </summary>
     Task UpdateNameAsync(Guid resourceId, string name, CancellationToken ct = default);
 
-    /// <summary>
-    /// Sets <see cref="GoogleResource.IsActive"/> to false on a single row
-    /// without emitting any audit entry — the caller is expected to write
-    /// the audit entry separately. No-op if the row is missing.
-    /// </summary>
+    /// <summary>Writes no audit entry; the caller does.</summary>
     Task DeactivateAsync(Guid resourceId, CancellationToken ct = default);
 }

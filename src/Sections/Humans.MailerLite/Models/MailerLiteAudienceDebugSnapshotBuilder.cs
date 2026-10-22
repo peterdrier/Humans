@@ -5,18 +5,6 @@ using NodaTime;
 
 namespace Humans.MailerLite.Models;
 
-/// <summary>
-/// Builds the unpaged debug snapshot for a single audience by combining:
-/// the audience's computed user-id set, the cached <see cref="UserInfo"/>
-/// snapshot, and the live MailerLite subscriber/group state.
-/// </summary>
-/// <remarks>
-/// All Humans-side reads route through cached interfaces — the audience compute
-/// uses <c>IShiftView</c> + <c>ITicketService</c> (decorated by their
-/// caching layers), and name/email rendering reads <see cref="UserInfo"/>
-/// from <c>IUserService.GetAllUserInfosAsync</c>. The MailerLite read is
-/// intentional (we're diffing against the remote we don't own).
-/// </remarks>
 internal static class MailerLiteAudienceDebugSnapshotBuilder
 {
     public static async Task<DebugSnapshot> BuildAsync(
@@ -28,8 +16,7 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
     {
         var expectedIds = await audience.ComputeMemberUserIdsAsync(ct);
 
-        // Pull subscribers + groups once; any failure surfaces as MlError and
-        // the page renders Humans-side data only.
+        // Any failure surfaces as MlError and the page renders Humans-side data only.
         List<MailerLiteSubscriber>? subscribers;
         MailerLiteGroup? group = null;
         bool groupExists = false;
@@ -45,8 +32,7 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
             var fetched = new List<MailerLiteSubscriber>();
             await foreach (var s in ml.ListSubscribersAsync(ct))
                 fetched.Add(s);
-            // Only assign on successful completion — a partial fetch must not
-            // back §2/§3/§4 computation.
+            // A partial fetch must not feed §2/§3/§4.
             subscribers = fetched;
         }
         catch (HttpRequestException ex)
@@ -62,14 +48,10 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
             subscribers = null;
         }
 
-        // Cached UserInfo — covers expected users plus every user we need to
-        // resolve from a subscriber email in §2/§5.
         var allUserInfos = await users.GetAllUserInfosAsync(ct);
         var byUserId = allUserInfos.ToDictionary(u => u.Id);
 
-        // verified email (case-insensitive) → first user found. UserInfo cache
-        // ordering is stable per record construction, so picking First is
-        // deterministic per snapshot.
+        // Picking the first match is deterministic: UserInfo ordering is stable per snapshot.
         var emailToUser = new Dictionary<string, UserInfo>(StringComparer.OrdinalIgnoreCase);
         foreach (var u in allUserInfos)
         {
@@ -80,7 +62,6 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
             }
         }
 
-        // §1 Expected — resolve a notification-target email from cached UserInfo.
         var expected = new List<DebugExpectedRow>(expectedIds.Count);
         foreach (var uid in expectedIds)
         {
@@ -90,8 +71,7 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
             expected.Add(new DebugExpectedRow(uid, u.BurnerName, email));
         }
 
-        // §2 Currently in ML — every subscriber whose GroupIds include our group,
-        // suppressed ones too: they are really on the list, and Sync unassigns them.
+        // §2 includes suppressed subscribers: they really are on the list, and Sync unassigns them.
         var currentlyInMl = new List<DebugMlRow>();
         var suppressedEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (subscribers is not null)
@@ -115,9 +95,8 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
             }
         }
 
-        // §3/§4 set-diff by normalized email, mirroring MailerLiteAudienceSyncService: a
-        // suppressed subscriber (MailerLiteSubscriber.IsSuppressed) is never added, and a
-        // suppressed group member is removed even when expected.
+        // §3/§4 mirror MailerLiteAudienceSyncService: a suppressed subscriber is never added, and a suppressed
+        // group member is removed even when expected.
         var expectedByEmail = expected
             .GroupBy(r => MailerLiteEmailNormalization.Normalize(r.Email), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
@@ -134,8 +113,7 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
                 || suppressedEmails.Contains(MailerLiteEmailNormalization.Normalize(r.Email)))
             .ToList();
 
-        // §5 Non-primary — subscriber matches a verified UserEmail but the
-        // matched user's primary is a different email.
+        // §5: the subscriber matches a verified email, but the user's primary is a different one.
         var nonPrimary = new List<DebugNonPrimaryRow>();
         foreach (var row in currentlyInMl)
         {
@@ -219,7 +197,7 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
             .Select(e => e.Email)
             .FirstOrDefault();
         if (primary is not null) return primary;
-        // Fallback to identity column — matches IUserEmailService.GetNotificationTargetEmailsAsync semantics.
+        // Same fallback as IUserEmailService.GetNotificationTargetEmailsAsync.
         return u.IdentityEmailColumn;
     }
 

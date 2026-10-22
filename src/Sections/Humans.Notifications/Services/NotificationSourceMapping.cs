@@ -3,9 +3,6 @@ using Humans.Notifications.Contracts;
 
 namespace Humans.Notifications.Services;
 
-/// <summary>
-/// Maps NotificationSource to MessageCategory for preference checks.
-/// </summary>
 internal static class NotificationSourceMapping
 {
     public static MessageCategory ToMessageCategory(this NotificationSource source) => source switch

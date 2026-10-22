@@ -91,7 +91,6 @@
     var np = Model.NonPrimary;
 }
 
-@* §1 Should be on list *@
 <section class="card mb-4">
     <header class="card-header d-flex align-items-center justify-content-between">
         <div>
@@ -128,7 +127,6 @@
     @await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugPager.cshtml", new DebugPagerModel(expected.State, expected.Total, Model.Options, UrlFor))
 </section>
 
-@* §2 Currently in ML *@
 <section class="card mb-4">
     <header class="card-header d-flex align-items-center justify-content-between">
         <div>
@@ -176,7 +174,6 @@
     @await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugPager.cshtml", new DebugPagerModel(inMl.State, inMl.Total, Model.Options, UrlFor))
 </section>
 
-@* §3 To add *@
 <section class="card mb-4 border-success">
     <header class="card-header d-flex align-items-center justify-content-between">
         <div>
@@ -213,7 +210,6 @@
     @await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugPager.cshtml", new DebugPagerModel(toAdd.State, toAdd.Total, Model.Options, UrlFor))
 </section>
 
-@* §4 To remove *@
 <section class="card mb-4 border-danger">
     <header class="card-header d-flex align-items-center justify-content-between">
         <div>
@@ -259,7 +255,6 @@
     @await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugPager.cshtml", new DebugPagerModel(toRemove.State, toRemove.Total, Model.Options, UrlFor))
 </section>
 
-@* §5 Non-primary diagnostic *@
 <section class="card mb-4 border-warning">
     <header class="card-header d-flex align-items-center justify-content-between">
         <div>
@@ -298,7 +293,6 @@
     @await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugPager.cshtml", new DebugPagerModel(np.State, np.Total, Model.Options, UrlFor))
 </section>
 
-@* Apply button — posts to the Sync action *@
 <div class="d-flex justify-content-end my-4">
     <form method="post"
           action="/MailerLite/Admin/Audiences/@Model.SelectedKey/Sync"

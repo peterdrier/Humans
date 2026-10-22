@@ -3,23 +3,10 @@ using Humans.Base.Configuration;
 
 namespace Humans.GoogleIntegration.Services.Workspace;
 
-/// <summary>
-/// Shared helper for loading service-account credentials from the configured
-/// <see cref="GoogleWorkspaceSettings"/> inline JSON blob or on-disk key file.
-/// Used by all real Google-backed bridge clients in
-/// <c>Humans.GoogleIntegration.Services.Workspace</c>. Authenticates as
-/// the service account itself — no domain-wide delegation / impersonation.
-/// </summary>
+/// <summary>Authenticates as the service account itself: no domain-wide delegation.</summary>
 internal static class GoogleCredentialLoader
 {
-    /// <summary>
-    /// Loads a <see cref="GoogleCredential"/> from the configured service-
-    /// account key (<see cref="GoogleWorkspaceSettings.ServiceAccountKeyJson"/>
-    /// wins over <see cref="GoogleWorkspaceSettings.ServiceAccountKeyPath"/>)
-    /// and restricts it to the requested <paramref name="scopes"/>. Throws
-    /// <see cref="InvalidOperationException"/> when neither key source is
-    /// configured.
-    /// </summary>
+    /// <summary><see cref="GoogleWorkspaceSettings.ServiceAccountKeyJson"/> wins over the key path; throws when neither is set.</summary>
     public static async Task<GoogleCredential> LoadScopedAsync(
         GoogleWorkspaceSettings settings,
         CancellationToken ct,

@@ -5,12 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.GoogleIntegration.ViewComponents;
 
-/// <summary>
-/// The /Settings#google-sync tab (peterdrier/Humans#1634): wraps the sync settings form.
-/// <see cref="SectionSettings"/> contributes this tab
-/// with <c>PolicyNames.AdminOnly</c>, so composition already keeps a non-admin from
-/// seeing it — no further check needed here.
-/// </summary>
+/// <summary>No role check here: <see cref="SectionSettings"/> contributes the tab as AdminOnly.</summary>
 internal sealed class GoogleSyncSettingsTabViewComponent(
     ISyncSettingsService syncSettingsService,
     IUserService userService) : ViewComponent
@@ -19,13 +14,10 @@ internal sealed class GoogleSyncSettingsTabViewComponent(
     {
         var ct = ViewComponentContext.ViewContext?.HttpContext?.RequestAborted ?? default;
         var settings = (await syncSettingsService.GetAllAsync(ct))
-            // Sort by the enum's string name to match the prior EF ordering
-            // (ServiceType is stored via .HasConversion<string>()).
+            // By name, not enum value: ServiceType is stored as a string.
             .OrderBy(s => s.ServiceType.ToString(), StringComparer.Ordinal)
             .ToList();
 
-        // In-memory join: resolve UpdatedByUser display names via IUserService
-        // rather than an EF .Include across the section boundary (design-rules §6).
         var updatedByUserIds = settings
             .Select(s => s.UpdatedByUserId)
             .OfType<Guid>()

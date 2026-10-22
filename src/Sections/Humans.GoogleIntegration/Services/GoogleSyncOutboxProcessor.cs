@@ -8,14 +8,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.GoogleIntegration.Services;
 
-/// <summary>
-/// The Google sync outbox drain. <c>ProcessGoogleSyncOutboxJob</c> is the Hangfire shim around
-/// it and owns the job-level metric.
-/// </summary>
-/// <remarks>
-/// SyncSettings enforcement is handled by the gateway methods in
-/// <c>GoogleWorkspaceSyncService</c>, not here.
-/// </remarks>
+/// <summary>SyncSettings enforcement lives in the <c>GoogleWorkspaceSyncService</c> gateway methods, not here.</summary>
 internal sealed class GoogleSyncOutboxProcessor(
     IGoogleSyncOutboxRepository outboxRepository,
     IUserService userService,
@@ -31,11 +24,8 @@ internal sealed class GoogleSyncOutboxProcessor(
     private const int MaxRetryCount = 10;
 
     /// <summary>
-    /// Admin-initiated reruns carry one of two dedup-key shapes: the per-human rerun
-    /// (<c>admin-resync:{userId}:{teamId}:{ticks}</c>, <c>EnqueueUserSyncAsync</c>) and the
-    /// account-link resync (<c>{teamMemberId}:AddUserToTeamResources:resync:{instant}</c>,
-    /// <c>ITeamWrite.EnqueueGoogleResyncForUserTeamsAsync</c>). Ordinary joins are
-    /// <c>{teamMemberId}:{eventType}</c>.
+    /// Manual reruns use <c>admin-resync:{userId}:{teamId}:{ticks}</c> or
+    /// <c>{teamMemberId}:AddUserToTeamResources:resync:{instant}</c>; ordinary joins use <c>{teamMemberId}:{eventType}</c>.
     /// </summary>
     internal static bool IsManualResync(string deduplicationKey)
         => deduplicationKey.StartsWith("admin-resync:", StringComparison.Ordinal)
@@ -141,12 +131,8 @@ internal sealed class GoogleSyncOutboxProcessor(
                     teamName,
                     ex.Error?.Code);
 
-                // An escaping exception supplies no attempted email row. Record the failed
-                // event without rejecting a guessed current address.
-
-                // Failure stays visible via the "Failed Google sync events" meter and
-                // the /Google/SyncOutbox admin page (with per-event Retry) — no per-event
-                // notification (removed: the alert was non-actionable noise).
+                // An escaping exception supplies no attempted email row, so no guessed address is rejected.
+                // Failures show on the "Failed Google sync events" meter and /Google/SyncOutbox.
             }
             catch (Exception ex)
             {
@@ -172,9 +158,7 @@ internal sealed class GoogleSyncOutboxProcessor(
                     retryCount,
                     MaxRetryCount);
 
-                // Dead-lettered events (IncrementRetryAsync marks FailedPermanently on
-                // exhaustion) surface via the "Failed Google sync events" meter and the
-                // /Google/SyncOutbox admin page with Retry — no per-event notification.
+                // Dead-lettered events show on the meter and /Google/SyncOutbox; no per-event notification.
             }
         }
     }

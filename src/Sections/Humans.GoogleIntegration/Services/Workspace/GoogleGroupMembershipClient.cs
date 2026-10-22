@@ -8,25 +8,10 @@ using Microsoft.Extensions.Options;
 namespace Humans.GoogleIntegration.Services.Workspace;
 
 /// <summary>
-/// Real Google-backed implementation of <see cref="IGoogleGroupMembershipClient"/>.
-/// Talks to the Google Workspace Admin SDK <b>Directory</b> Members API using the
-/// configured service account. The Directory API (unlike the Cloud Identity Groups
-/// API) can add members whose email is <i>not</i> a Google account — external
-/// addresses such as <c>someone@hotmail.fr</c> — directly as group members
-/// ("a member can be a user or another group ... inside or outside of your
-/// account's domains"). The Cloud Identity <c>memberships.create</c> call requires
-/// the member key to resolve to an existing Google identity and returns a 403
-/// (Error 2028, "Permission denied for resource groups/… (or it may not exist)")
-/// for unresolvable external emails, which is why membership operations run
-/// through Directory here.
+/// Directory, not Cloud Identity: Directory adds external addresses (e.g. hotmail) as members, while Cloud Identity's
+/// <c>memberships.create</c> returns 403 (Error 2028) for an email that is not a Google identity.
 /// </summary>
-/// <remarks>
-/// The membership "resource name" exchanged with callers keeps the
-/// <c>groups/{groupId}/memberships/{memberId}</c> shape (matching
-/// <see cref="StubGoogleGroupMembershipClient"/>) so the sync service's
-/// list-then-delete round-trip is unchanged. It is never persisted — it lives
-/// only for the duration of a single reconciliation pass.
-/// </remarks>
+/// <remarks>The membership name keeps the <c>groups/{groupId}/memberships/{memberId}</c> shape; it is never persisted.</remarks>
 internal sealed class GoogleGroupMembershipClient(
     IOptions<GoogleWorkspaceSettings> settings,
     ILogger<GoogleGroupMembershipClient> logger) : IGoogleGroupMembershipClient

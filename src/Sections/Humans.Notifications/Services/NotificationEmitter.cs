@@ -10,14 +10,7 @@ using Humans.Teams.Contracts;
 
 namespace Humans.Notifications.Services;
 
-/// <summary>
-/// Persists a notification to a pre-resolved list of recipient user IDs. Injects
-/// neither <see cref="ITeamService"/> nor <see cref="IRoleAssignmentService"/>, so
-/// those two can inject this without closing a DI cycle through
-/// <see cref="INotificationService"/>, which injects
-/// <see cref="IRoleAssignmentService"/> itself.
-/// <see cref="NotificationService"/> delegates here so dispatch logic lives in one place.
-/// </summary>
+/// <summary>Must not inject ITeamService or IRoleAssignmentService: both inject this.</summary>
 internal sealed class NotificationEmitter(
     INotificationRepository repo,
     ICommunicationPreferenceService preferenceService,

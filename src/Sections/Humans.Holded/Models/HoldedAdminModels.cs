@@ -4,19 +4,12 @@ using NodaTime;
 
 namespace Humans.Holded.Models;
 
-/// <summary>The /Holded page: this section's overview plus the two things only Finance knows —
-/// how its purchase-doc sync is doing and how many creditor bindings exist.</summary>
-/// <param name="Overview">The Holded section's cached and live overview data.</param>
-/// <param name="DocSync">Finance's purchase-document sync status.</param>
-/// <param name="CreditorBindings">Repo-backed count from Finance — no live Holded read.</param>
+/// <summary><paramref name="CreditorBindings"/> is a repository count from Finance, not a live Holded read.</summary>
 internal sealed record HoldedOverviewVm(
     HoldedAdminOverview Overview, HoldedDocSyncInfo DocSync, int? CreditorBindings);
 
-/// <summary>
-/// Everything the /Holded screen shows about the mirror itself. Assembled from the cache plus
-/// one live call (GET /usage); Finance's doc-sync row and creditor-binding count are joined on
-/// by the controller, because the Holded section never references Finance.
-/// </summary>
+/// <summary>The cache plus one live call (GET /usage). The controller joins Finance's parts on, since this section
+/// never references Finance.</summary>
 internal sealed record HoldedAdminOverview(
     bool ApiReachable,
     HoldedUsageDto? Usage,
@@ -26,62 +19,40 @@ internal sealed record HoldedAdminOverview(
     IReadOnlyList<HoldedAccountRow> Accounts,
     int LedgerLineCount);
 
-/// <summary>Metered API calls for one Madrid-zone month.</summary>
 internal sealed record HoldedMonthlyCalls(
     int Year, int Month, int Total, IReadOnlyDictionary<string, int> ByEndpoint);
 
 internal sealed record HoldedSyncStateRow(
     string Kind, string Status, Instant? LastSyncAt, string? LastError, int LastCount);
 
-/// <summary>One chart account on the /Holded reconciliation table.</summary>
-/// <param name="Group">The PGC group's English name, derived from the account number's leading
-/// digit — not Holded's own <c>group</c> string, which is Spanish ("Existencias", "Activo no
-/// corriente"). The number is the authority: it is what the group means.</param>
-/// <param name="LocalBalance">Null when the mirror holds no line for the account — distinct
-/// from a cached zero, which reconciles a zero Holded balance.</param>
-/// <param name="HoldedHasPostings">Holded's own debit or credit total is non-zero. Not derivable
-/// from <paramref name="HoldedBalance"/>: an account with equal debits and credits — a clearing
-/// account, a bank drained to nothing — nets to zero while having been posted to all year.</param>
-/// <param name="Number">The chart-of-accounts number.</param>
-/// <param name="Name">The chart account's name.</param>
-/// <param name="HoldedBalance">The account's balance in Holded.</param>
-/// <param name="LocalLineCount">The number of cached local ledger lines for this account.</param>
-/// <param name="Reconciled">Whether the local balance matches Holded's balance.</param>
+/// <summary>
+/// <paramref name="Group"/> comes from the number's leading digit, not Holded's Spanish <c>group</c> string.
+/// A null <paramref name="LocalBalance"/> means no cached line, unlike a cached zero. <paramref name="HoldedHasPostings"/>
+/// isn't derivable from <paramref name="HoldedBalance"/>: a clearing account nets to zero after a year of postings.
+/// </summary>
 internal sealed record HoldedAccountRow(
     int Number, string Name, string? Group,
     decimal HoldedBalance, decimal? LocalBalance, int LocalLineCount, bool Reconciled,
     bool HoldedHasPostings);
 
 /// <summary>
-/// One general-ledger account and every cached line on it, in the association's own point of
-/// view: + means its money went up, − means it went down (see <see cref="HoldedStatementLine"/>).
-/// Finance inverts to the user's POV for its own pages; this one never does.
+/// In the association's point of view (+ its money went up); Finance flips to the member's for its own pages.
+/// <paramref name="Lines"/> are date first, then entry/line: daybook order.
 /// </summary>
-/// <param name="Account">The account whose cached statement lines are included.</param>
-/// <param name="Lines">Date first, then entry/line — the order the daybook was written in.</param>
 internal sealed record HoldedAccountStatement(
     HoldedAccountRow Account, IReadOnlyList<HoldedStatementLine> Lines);
 
-/// <summary>The opposing leg(s) of a ledger entry, resolved for display next to a statement
-/// line. When more than one opposing account exists (a purchase invoice: expense + VAT +
-/// creditor), <see cref="AccountNum"/>/<see cref="AccountName"/> name the largest by absolute
-/// amount and <see cref="TotalOpposingLines"/> lets the view render "+N more" and link to the
-/// entry page instead of the single account page.</summary>
+/// <summary>When there are several opposing accounts (expense + VAT + creditor), names the largest by absolute amount;
+/// <see cref="TotalOpposingLines"/> lets the view render "+N more" linking to the entry page.</summary>
 internal sealed record HoldedCounterparty(int AccountNum, string? AccountName, int TotalOpposingLines);
 
-/// <summary>One line on an account statement: the cached line's date/type/description, the
-/// signed <see cref="Amount"/> in the association's own point of view (+ money in, − money
-/// out), and the resolved <see cref="Counterparty"/>. Internal — this is a presentation shape
-/// over <see cref="HoldedLedgerLineInfo"/>, never the cross-section contract itself.</summary>
+/// <summary><see cref="Amount"/> is in the association's point of view (+ money in, − money out).</summary>
 internal sealed record HoldedStatementLine(
     int EntryNumber, int Line, Instant Date, string? Type, string? Description,
     decimal Amount, HoldedCounterparty? Counterparty);
 
-/// <summary>One leg of a ledger entry on the /Holded/Entries/{number} page: account number/name,
-/// type, description, and the signed Amount in the association's point of view. No balancing
-/// total — see the route's doc comment.</summary>
+/// <summary>Amount is in the association's point of view. No balancing total.</summary>
 internal sealed record HoldedEntryLine(
     int AccountNum, string? AccountName, string? Type, string? Description, decimal Amount);
 
-/// <summary>Every leg of one Holded journal entry — /Holded/Entries/{number}.</summary>
 internal sealed record HoldedEntry(int EntryNumber, IReadOnlyList<HoldedEntryLine> Lines);

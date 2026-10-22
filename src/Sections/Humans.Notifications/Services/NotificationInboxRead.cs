@@ -3,12 +3,6 @@ using Humans.Notifications.Contracts;
 
 namespace Humans.Notifications.Services;
 
-/// <summary>
-/// Adapter behind <see cref="INotificationInboxRead"/>: composes the unread tab of
-/// <see cref="INotificationInboxService"/> with <see cref="NotificationMeterProvider"/>
-/// into the one snapshot the machine API serves. Same-section composition only; it owns
-/// nothing and touches no repository.
-/// </summary>
 internal sealed class NotificationInboxRead(
     INotificationInboxService inbox,
     NotificationMeterProvider meterProvider) : INotificationInboxRead

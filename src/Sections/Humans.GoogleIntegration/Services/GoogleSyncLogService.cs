@@ -141,19 +141,16 @@ internal sealed class GoogleSyncLogService(
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
     /// <summary>
-    /// GDPR Article 17: suspends the human's @nobodies.team Workspace account —
-    /// the external processor holds their mail — then drops every sync-log row
-    /// that names them. The suspend runs first because it needs the address the
-    /// Users section is about to drop.
+    /// GDPR Article 17. Suspends the Workspace account first (the processor holds their mail), because that needs the
+    /// address Users is about to drop; then drops every sync-log row naming them.
     /// </summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
         var workspaceEmail = await userEmailService.GetNobodiesTeamEmailAsync(userId, ct);
         if (workspaceEmail is not null)
         {
-            // Resolved here, not injected: GoogleAdminService -> IGoogleSyncManagement ->
-            // IGoogleSyncLogService closes a constructor cycle back onto this class.
-            // Same lazy-resolve the section already uses in GoogleWorkspaceSyncService.
+            // Resolved here, not injected: GoogleAdminService -> IGoogleSyncManagement -> IGoogleSyncLogService
+            // closes a constructor cycle back onto this class.
             var googleAdminService = serviceProvider.GetRequiredService<IGoogleAdminService>();
 
             // actorUserId = the human being erased: the deletion job acts on their request.
@@ -174,10 +171,8 @@ internal sealed class GoogleSyncLogService(
             }
         }
 
-        // This id only, unlike the export above. #1704: erasure is driven per id by
-        // AccountDeletionService, which walks the merge chain raw and calls every contributor
-        // once per archived id, so fanning out here would resolve a tombstone forward and take
-        // the living survivor's trail with it on a direct purge of that tombstone.
+        // This id only, unlike the export: AccountDeletionService calls every contributor once per archived id, so
+        // fanning out would resolve a tombstone forward and purge the living survivor's trail.
         await repo.DeleteByUserIdsAsync([userId], ct);
     }
 

@@ -7,21 +7,14 @@ using NodaTime;
 namespace Humans.GoogleIntegration.Services;
 
 /// <summary>
-/// One-time copy of the Google-sync history still parked on <c>audit_log</c> into this
-/// section's <c>google_sync_log</c> (nobodies-collective/Humans#1083). Operator-driven from
-/// <c>/Google/Admin/SyncHistoryMigration</c>; the source rows are never touched.
+/// One-time copy of Google-sync history from <c>audit_log</c> into <c>google_sync_log</c>; source rows are never
+/// touched. Idempotent: a copy keeps the audit row's id. Goes when the six audit columns do.
 /// </summary>
-/// <remarks>
-/// Idempotent: a copied row keeps the source audit row's id, so a second run recognises it
-/// and moves nothing. Section-internal — the screen is the only caller, and both go when the
-/// six audit columns do.
-/// </remarks>
 internal interface IGoogleSyncHistoryMigrationService : IApplicationService
 {
     /// <summary>What a run would do. Writes nothing.</summary>
     Task<GoogleSyncHistoryMigrationReport> PreviewAsync(CancellationToken ct = default);
 
-    /// <summary>Copies every movable row forward and reports what happened.</summary>
     Task<GoogleSyncHistoryMigrationReport> MigrateAsync(CancellationToken ct = default);
 }
 

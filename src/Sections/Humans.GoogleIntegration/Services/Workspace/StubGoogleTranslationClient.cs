@@ -1,11 +1,6 @@
 namespace Humans.GoogleIntegration.Services.Workspace;
 
-/// <summary>
-/// Dev/test <see cref="IGoogleTranslationClient"/> used when no Google credentials are configured;
-/// the real service runs against it — there is no separate stub service. Returns the input
-/// prefixed with the target language so the translate flow is
-/// exercisable end-to-end and the fake output is unmistakable.
-/// </summary>
+/// <summary>Prefixes the input with the target language, so fake output is unmistakable.</summary>
 internal sealed class StubGoogleTranslationClient(ILogger<StubGoogleTranslationClient> logger) : IGoogleTranslationClient
 {
     public Task<IReadOnlyList<string>> TranslateAsync(

@@ -4,10 +4,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.MailerLite.Services.Audiences;
 
-/// <summary>
-/// "Humans - Has Ticket" — humans holding a ticket to the active vendor event, as
-/// defined by <see cref="CurrentEventTicketHolders.ForCurrentEventAsync"/>.
-/// </summary>
 internal sealed class HasTicketAudience(
     ITicketService tickets,
     IUserService users,

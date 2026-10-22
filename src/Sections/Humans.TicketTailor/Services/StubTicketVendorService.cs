@@ -4,10 +4,7 @@ using NodaTime;
 
 namespace Humans.TicketTailor.Services;
 
-/// <summary>
-/// Non-Production stand-in: a deterministic sample event so every other environment runs
-/// the real sync, transfer and gate code without a vendor account.
-/// </summary>
+/// <summary>Non-Production stand-in: a deterministic sample event so every environment runs the real sync code.</summary>
 internal sealed class StubTicketVendorService : ITicketVendorService
 {
     private static readonly (string Name, decimal Price, int Count)[] TicketMix =
@@ -30,8 +27,7 @@ internal sealed class StubTicketVendorService : ITicketVendorService
         "Sala", "Vidal", "Roig", "Pons", "Santos", "Prats", "Valle", "Luna", "Guasch", "Casals"
     ];
 
-    // Order #0 is hard-coded to peter@nobodies.team so dev / preview environments
-    // always have a recognizable user with attendee rows for ticket-transfer testing.
+    // A recognizable dev/preview user with attendee rows, for ticket-transfer testing.
     private const string TestUserEmail = "peter@nobodies.team";
     private const string TestUserName = "Peter Drier";
 
@@ -54,8 +50,7 @@ internal sealed class StubTicketVendorService : ITicketVendorService
     public Task<IReadOnlyList<VendorTicketDto>> GetIssuedTicketsAsync(
         Instant? since, string eventId, CancellationToken ct = default)
     {
-        // Tickets don't have their own timestamp, so return all on first sync
-        // and none on incremental (the sync service uses order timestamps).
+        // Tickets have no timestamp of their own: all on the first sync, none on incremental.
         IReadOnlyList<VendorTicketDto> tickets = since.HasValue
             ? []
             : _tickets.ToList();
@@ -66,8 +61,7 @@ internal sealed class StubTicketVendorService : ITicketVendorService
     public Task<IReadOnlyList<VendorCheckInDto>> GetCheckInsAsync(
         Instant? since, string eventId, CancellationToken ct = default)
     {
-        // Fixtures all "arrive" on the first full sync (the real client pages by
-        // record creation time); none on incremental.
+        // As with tickets: all on the first full sync, none on incremental.
         IReadOnlyList<VendorCheckInDto> checkIns = since.HasValue
             ? []
             : _checkIns.ToList();
@@ -78,8 +72,7 @@ internal sealed class StubTicketVendorService : ITicketVendorService
     public Task<VendorEventSummaryDto> GetEventSummaryAsync(
         string eventId, CancellationToken ct = default)
     {
-        // Checked-in tickets stay "valid" (check-in is a separate resource), so a
-        // single "valid" count covers all admitted tickets.
+        // Check-in is a separate resource; checked-in tickets stay "valid".
         var ticketsSold = _tickets.Count(t =>
             string.Equals(t.Status, "valid", StringComparison.Ordinal));
 
@@ -216,8 +209,7 @@ internal sealed class StubTicketVendorService : ITicketVendorService
 
                 tickets.Add(ticketDto);
 
-                // The first ticket of every paid order is scanned, recorded as its own
-                // check-in resource (the ticket stays "valid"), spread across the gate day.
+                // The first ticket of each paid order is checked in.
                 if (t == 0)
                 {
                     var gateDay = new LocalDate(2026, 7, 8);
@@ -286,7 +278,6 @@ internal sealed class StubTicketVendorService : ITicketVendorService
 
     private static Instant BuildPurchaseInstant(LocalDate saleStart, int orderIndex, int totalOrders)
     {
-        // Spread orders across ~3 weeks, front-loaded.
         var daysSpan = 22;
         var progress = (double)orderIndex / totalOrders;
         var day = (int)(Math.Pow(progress, 0.6) * daysSpan);

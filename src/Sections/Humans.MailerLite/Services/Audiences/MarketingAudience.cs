@@ -3,11 +3,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.MailerLite.Services.Audiences;
 
-/// <summary>
-/// "Humans - Marketing" — humans who have explicitly opted in to the Marketing
-/// communication category (a Marketing preference with <c>OptedOut</c> false).
-/// Users with no Marketing preference row (default-off) are excluded.
-/// </summary>
+/// <summary>Explicit opt-ins only: no Marketing row (default off) is excluded.</summary>
 internal sealed class MarketingAudience(IUserService users, ICommunicationPreferenceService prefs)
     : MailerLiteAudienceBase(users, prefs)
 {

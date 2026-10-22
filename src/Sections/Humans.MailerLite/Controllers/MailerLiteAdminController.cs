@@ -161,10 +161,7 @@ internal sealed class MailerLiteAdminController(
         try
         {
             var actor = await GetCurrentUserInfoAsync();
-            // Deliberately not passing a request-scoped token: the sync pushes
-            // subscriber and group writes to MailerLite, and an admin closing the
-            // tab must not leave the audience half-pushed
-            // (nobodies-collective/Humans#950).
+            // Not the request token: an admin closing the tab must not leave the audience half-pushed.
             var result = await audienceSync.SyncAsync(audience, actor?.Id, CancellationToken.None);
             TempData["Banner"] = $"{audience.DisplayName}: {result.FormatSummary()}";
         }
@@ -175,8 +172,7 @@ internal sealed class MailerLiteAdminController(
         }
         catch (TaskCanceledException)
         {
-            // No caller token is passed, so this can only be an
-            // HttpClient timeout.
+            // No caller token, so this can only be an HttpClient timeout.
             logger.LogWarning("Audience sync timed out for {Audience}", key);
             TempData["Banner"] = $"{audience.DisplayName}: sync timed out. Try again shortly.";
         }
@@ -190,8 +186,7 @@ internal sealed class MailerLiteAdminController(
         try
         {
             var actor = await GetCurrentUserInfoAsync();
-            // Deliberately not passing a request-scoped token — see SyncAudience
-            // above (nobodies-collective/Humans#950).
+            // Not the request token; see SyncAudience.
             var results = await audienceSync.SyncAllAsync(actor?.Id, CancellationToken.None);
 
             var created = results.Sum(r => r.Created);
@@ -207,8 +202,7 @@ internal sealed class MailerLiteAdminController(
         }
         catch (TaskCanceledException)
         {
-            // No caller token is passed, so this can only be an
-            // HttpClient timeout.
+            // No caller token, so this can only be an HttpClient timeout.
             logger.LogWarning("Push All timed out");
             TempData["Banner"] = "Push All timed out. Some audiences may have synced; try again shortly.";
         }
@@ -272,9 +266,8 @@ internal sealed class MailerLiteAdminController(
             }
         }
 
-        // The plan build above is a read and may be abandoned; applying it
-        // creates/assigns MailerLite subscribers, so it must not be torn in half
-        // by the admin navigating away (nobodies-collective/Humans#950).
+        // The plan build may be abandoned; the apply writes to MailerLite and must not be torn in half by the
+        // admin navigating away.
         var result = await import.ApplyAsync(fresh, actorUserId.Value, maxPerOutcome, CancellationToken.None);
         TempData["Banner"] = result.FormatSummary();
         return RedirectToAction(nameof(Index));

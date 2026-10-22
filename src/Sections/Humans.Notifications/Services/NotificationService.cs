@@ -10,12 +10,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Notifications.Services;
 
-/// <summary>
-/// Application-layer implementation of <see cref="INotificationService"/>.
-/// Dispatches in-app notifications, materializes recipients, checks
-/// preferences, and delegates persistence to <see cref="INotificationRepository"/>.
-/// Invalidates per-user nav-badge cache keys after every successful send.
-/// </summary>
 internal sealed class NotificationService(
     INotificationEmitter emitter,
     INotificationRepository repo,

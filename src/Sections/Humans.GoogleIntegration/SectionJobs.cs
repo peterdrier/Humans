@@ -3,7 +3,6 @@ using Humans.GoogleIntegration.Jobs;
 
 namespace Humans.GoogleIntegration;
 
-/// <summary>GoogleIntegration's recurring jobs. Discovered by Shell — nothing names it, so it needs no section prefix.</summary>
 internal sealed class SectionJobs : ISectionJobs
 {
     public IEnumerable<RecurringJobDescriptor> Jobs(IServiceProvider services)

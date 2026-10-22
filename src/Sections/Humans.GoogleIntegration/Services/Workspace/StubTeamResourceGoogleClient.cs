@@ -1,11 +1,5 @@
 namespace Humans.GoogleIntegration.Services.Workspace;
 
-/// <summary>
-/// Dev/test <see cref="ITeamResourceGoogleClient"/> that returns synthetic
-/// responses without talking to Google. A linked Drive resource's <c>Name</c>
-/// becomes the id, the <c>Url</c> is echoed back, and every call succeeds
-/// (no network round-trip, no 404/403 handling).
-/// </summary>
 internal sealed class StubTeamResourceGoogleClient(ILogger<StubTeamResourceGoogleClient> logger)
     : ITeamResourceGoogleClient
 {
@@ -17,13 +11,8 @@ internal sealed class StubTeamResourceGoogleClient(ILogger<StubTeamResourceGoogl
         logger.LogInformation("[STUB] Would look up Drive item {ItemId} (expectFolder={ExpectFolder})",
             itemId, expectFolder);
 
-        // Without Google, the stub cannot discover the real MIME type. Fabricate a
-        // response whose type matches the caller's intent — the service's MIME
-        // check then passes and the original dev-time linking flow succeeds
-        // without a round-trip. Synthesize a plausible WebViewLink so the
-        // persisted GoogleResource.Url is clickable in dev/QA (the user-submitted
-        // URL isn't available here, so build one that matches real Drive URL
-        // shape for the caller's expected item kind).
+        // The stub can't discover the MIME type, so it fabricates one matching the caller's intent, with a
+        // WebViewLink shaped like a real Drive URL so the stored Url is clickable in dev/QA.
         var webViewLink = expectFolder
             ? $"https://drive.google.com/drive/folders/{itemId}"
             : $"https://drive.google.com/file/d/{itemId}/view";

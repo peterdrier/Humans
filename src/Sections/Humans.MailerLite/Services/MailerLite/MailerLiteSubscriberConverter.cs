@@ -7,10 +7,8 @@ using NodaTime;
 namespace Humans.MailerLite.Services.MailerLite;
 
 /// <summary>
-/// Maps a v2 MailerLite subscriber JSON object onto our positional record.
-/// FirstName and LastName are nested under <c>fields.name</c> and
-/// <c>fields.last_name</c> in v2 — not top-level — so positional record
-/// auto-binding alone leaves them null.
+/// v2 nests the names under <c>fields.name</c> and <c>fields.last_name</c>, so positional binding alone leaves
+/// them null.
 /// </summary>
 internal sealed class MailerLiteSubscriberConverter : JsonConverter<MailerLiteSubscriber>
 {

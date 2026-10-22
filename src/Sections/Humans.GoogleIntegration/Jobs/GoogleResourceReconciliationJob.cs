@@ -9,16 +9,9 @@ using Humans.Notifications.Contracts;
 namespace Humans.GoogleIntegration.Jobs;
 
 /// <summary>
-/// Scheduled job that reconciles Google resources.
-/// Add/remove behavior is controlled by SyncSettings, enforced by the service gateway methods.
-/// Each top-level phase runs in isolation: a failure in one phase does not abort the others.
-/// A summary Admin alert fires via SyncError if any phase fails.
+/// Each phase runs in isolation, so one failing does not abort the others; any failure raises one summary alert.
+/// Public because Section.cs and SectionJobs.cs name it (HUM0034 allows public job types).
 /// </summary>
-/// <remarks>
-/// Public because the concrete type is named at two sites (<c>AddScoped</c> in
-/// <c>Section.cs</c>, the descriptor in <c>SectionJobs.cs</c>); HUM0034 allows a section's
-/// public job types.
-/// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 internal sealed class GoogleResourceReconciliationJob(
     IGoogleSyncManagement googleSyncService,
@@ -32,9 +25,8 @@ internal sealed class GoogleResourceReconciliationJob(
 {
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        // Without credentials every client is an in-memory stub that reports success, so a
-        // reconcile pass would log synced rows while Workspace is untouched. Same signal and
-        // outcome as ProcessGoogleSyncOutboxJob.
+        // Without credentials every client is a stub that reports success, so a reconcile would
+        // log synced rows while Workspace is untouched.
         if (!googleClient.IsConfigured)
         {
             logger.LogInformation("Skipping Google resource reconciliation because Google Workspace is not configured");
@@ -66,9 +58,7 @@ internal sealed class GoogleResourceReconciliationJob(
             phaseFailures.Add("Drive access source reconcile");
         }
 
-        // Provisioning of missing Google Groups is handled inside ReconcileAllAsync — when a
-        // claim references a group that doesn't yet exist in Google, the reconcile path creates
-        // it inline (best-effort) before reconciling membership.
+        // ReconcileAllAsync also creates, best effort, any missing group a claim references.
         try
         {
             await googleGroupSync.ReconcileAllAsync(SyncAction.Execute, cancellationToken);
@@ -166,8 +156,7 @@ internal sealed class GoogleResourceReconciliationJob(
             }
         }
 
-        // Emit a single summary alert if any phase failed; do not re-throw (Hangfire must not
-        // mark the whole run as failed when only some phases encountered errors).
+        // One summary alert and no rethrow: Hangfire must not fail the whole run when only some phases failed.
         if (phaseFailures.Count > 0)
         {
             var failedPhaseList = string.Join(", ", phaseFailures);

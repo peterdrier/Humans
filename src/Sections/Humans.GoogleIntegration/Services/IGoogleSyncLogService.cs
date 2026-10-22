@@ -5,17 +5,7 @@ using NodaTime;
 
 namespace Humans.GoogleIntegration.Services;
 
-/// <summary>
-/// Write side of the section's own record of what its syncs did to Google, plus the
-/// cross-resource read behind <c>/Google/ActivityLog</c>.
-/// Section-internal: every writer lives in <c>Humans.GoogleIntegration</c>, so
-/// nothing about it reaches the audit log's cross-section contract
-/// (nobodies-collective/Humans#1083).
-/// </summary>
-/// <remarks>
-/// Best-effort — a failure to record is logged and swallowed so it never breaks
-/// the sync it describes, matching the audit path this replaced.
-/// </remarks>
+/// <summary>Best-effort: a failure to record is logged and swallowed, so it never breaks the sync it describes.</summary>
 internal interface IGoogleSyncLogService : IApplicationService
 {
     Task LogAsync(

@@ -1,41 +1,29 @@
 namespace Humans.MailerLite.Services.Dtos;
 
-/// <summary>
-/// The classification of one ML subscriber after the matching ladder and the
-/// marketing-pref matrix evaluation. Each verified-match decision is bucketed
-/// at plan time so the preview shows the actual write that will happen.
-/// </summary>
+/// <summary>Bucketed at plan time so the preview shows the write that will happen.</summary>
 internal enum SubscriberOutcome
 {
     UnconfirmedSkipped,
-    /// <summary>Multiple verified owners or multiple unverified matching rows — skip.</summary>
+    /// <summary>Several verified owners or several unverified matching rows: skipped.</summary>
     AmbiguousEmailMatches,
 
-    /// <summary>No Humans match — create a new human from the ML subscriber.</summary>
     CreateNewHuman,
 
-    /// <summary>Humans has the email but unverified — delete that row and create a fresh user.</summary>
+    /// <summary>Delete the unverified email row and create a fresh user.</summary>
     ReplaceUnverifiedEmail,
 
-    /// <summary>Verified human match, Marketing pref already matches ML — no-op.</summary>
     VerifiedPrefsAlreadyMatch,
 
-    /// <summary>Verified human match, ML opt-in differs from Humans — flip to opt-in.</summary>
     VerifiedFlipToOptIn,
 
-    /// <summary>Verified human match, ML opt-out differs from Humans — flip to opt-out.</summary>
     VerifiedFlipToOptOut,
 
-    /// <summary>Verified human match, user touched Humans' pref more recently than ML — keep Humans' state.</summary>
+    /// <summary>The member changed the preference in Humans more recently than in MailerLite.</summary>
     VerifiedKeepHumansPref,
 
     /// <summary>
-    /// Existing human, opted-in to Marketing by the erroneous whole-account
-    /// MailerLite import (<c>UpdateSource = "MailerLiteSync"</c>), who is not an
-    /// active member of the Website group and has no genuine prior consent —
-    /// delete the Marketing pref row to revert to "no preference recorded"
-    /// (null), not opt-out. GDPR remediation; discovered from the Humans side,
-    /// not from an ML subscriber.
+    /// GDPR remediation: an opt-in set by the erroneous whole-account import, on someone outside the Website group
+    /// with no prior consent. The row is deleted (back to null, not opt-out). Found from the Humans side.
     /// </summary>
     ResetMarketingFlag,
 }

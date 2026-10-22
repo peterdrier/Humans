@@ -1,25 +1,16 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-// See the note in StripeService.cs: `Stripe` binds to the section from inside
-// `Humans.Stripe.Services`, so never qualify SDK types inline in this project.
+// `Stripe` would bind to this section inside its namespaces; see StripeService.cs.
 using Stripe;
 using Stripe.Checkout;
 
 namespace Humans.Stripe.Services;
 
 /// <summary>
-/// Boot-time smoke probe: for each configured Stripe account key, makes a single low-risk read
-/// to surface obvious misconfiguration (missing key, wrong key for environment, missing scope)
-/// before the first real request hits the integration. Never blocks or fails startup; results
-/// land in the structured log.
+/// One low-risk read per configured key at boot; never blocks or fails startup. Stripe cannot introspect a
+/// restricted key's scopes, so this proves the scopes used are present, not that no extra ones are.
 /// </summary>
-/// <remarks>
-/// Stripe does not expose a REST endpoint that introspects a Restricted Key's scopes
-/// (verified against docs.stripe.com/keys/restricted-api-keys, 2026-05-03). The probe can confirm
-/// that the scopes the integration uses ARE present — it cannot prove that no extra scopes are
-/// granted.
-/// </remarks>
 internal sealed class StripeStartupSmokeService(IOptions<StripeSettings> settings, ILogger<StripeStartupSmokeService> logger)
     : IHostedService
 {
@@ -29,7 +20,7 @@ internal sealed class StripeStartupSmokeService(IOptions<StripeSettings> setting
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        // Fire-and-forget: probe in the background so a slow Stripe doesn't delay app boot.
+        // Fire-and-forget so a slow Stripe doesn't delay boot.
         _ = Task.Run(() => RunProbesAsync(cancellationToken), cancellationToken);
         return Task.CompletedTask;
     }
@@ -55,8 +46,7 @@ internal sealed class StripeStartupSmokeService(IOptions<StripeSettings> setting
         if (!_settings.IsStoreWebhookConfigured)
             logger.LogWarning("Stripe Store webhook secret not set — Store webhook will reject all requests.");
 
-        // Each probe catches comprehensively (StripeException, OperationCanceledException,
-        // Exception) and logs its own outcome, so WhenAll cannot observe an unhandled fault.
+        // Each probe catches and logs everything itself, so WhenAll never sees a fault.
         await Task.WhenAll(probes);
     }
 

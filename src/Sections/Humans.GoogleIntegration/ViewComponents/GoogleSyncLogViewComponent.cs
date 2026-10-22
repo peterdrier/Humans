@@ -3,11 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.GoogleIntegration.ViewComponents;
 
-/// <summary>
-/// <c>&lt;vc:google-sync-log&gt;</c> — renders the Google sync trail for one resource or one
-/// human. The host views live in this section so Razor discovers the component in the same
-/// application part.
-/// </summary>
+/// <summary>The host views live in this section so Razor finds the component in the same application part.</summary>
 public sealed class GoogleSyncLogViewComponent(
     IGoogleSyncLogViewer syncLog,
     ILogger<GoogleSyncLogViewComponent> logger) : ViewComponent

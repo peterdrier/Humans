@@ -4,10 +4,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.MailerLite.Services.Audiences;
 
-/// <summary>
-/// "Humans - Has Shift - Strike" — humans with at least one Pending/Confirmed
-/// signup on a Strike-period shift (after the event ends) in the active event.
-/// </summary>
 internal sealed class HasShiftStrikeAudience(
     IShiftView shiftView,
     IUserService users,

@@ -3,19 +3,16 @@ using Humans.GoogleIntegration.Services.Workspace;
 namespace Humans.GoogleIntegration.Services;
 
 /// <summary>
-/// Resolves a Drive folder's full path ("Shared Drive / Folder / Sub") by walking its parent
-/// chain. Shared by the registered-resource path refresh and the access sync, so a folder
-/// no section registered (a Workgroup's) is named the same way in emails and the sync log.
+/// Shared by the resource path refresh and the access sync, so an unregistered folder (a Workgroup's) is named the
+/// same way in emails and the sync log.
 /// </summary>
 internal static class DriveFolderPath
 {
     public const string Separator = " / ";
 
     /// <summary>
-    /// Null when any read fails or the walk never reaches a root, so a caller never shows a suffix as the path.
-    /// A Shared Drive's root is the drive itself: its id is the drive id, Drive reports it as an anonymous
-    /// folder (named "Drive", no parents) and the real name lives only on <c>drives.get</c>. That name is
-    /// never guessed from the folder read — a failed <c>drives.get</c> is a failed walk.
+    /// Null when any read fails or the walk never reaches a root, so a suffix is never shown as the path. A Shared
+    /// Drive root reads as an anonymous "Drive" folder: its name comes only from <c>drives.get</c>, never a guess.
     /// </summary>
     public static async Task<string?> ResolveAsync(
         IGoogleDrivePermissionsClient drivePermissions, string fileId, ILogger logger, CancellationToken ct)
