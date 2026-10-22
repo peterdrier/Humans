@@ -125,10 +125,10 @@
     <value>Te has dado de baja. Puedes volver a activar cualquier categoría abajo.</value>
   </data>
   <data name="Email_CommPrefs_UpdateSource" xml:space="preserve">
-    <value>Source</value>
+    <value>Origen del cambio</value>
   </data>
   <data name="Email_CommPrefs_UpdatedAt" xml:space="preserve">
-    <value>Updated</value>
+    <value>Actualizado el</value>
   </data>
   <data name="Email_CommPrefs_AlwaysOn" xml:space="preserve"><value>Siempre activo</value></data>
   <data name="Email_Unsubscribe_Title" xml:space="preserve">

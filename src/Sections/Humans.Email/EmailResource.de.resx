@@ -125,10 +125,10 @@
     <value>Abgemeldet. Du kannst jede Kategorie unten wieder aktivieren.</value>
   </data>
   <data name="Email_CommPrefs_UpdateSource" xml:space="preserve">
-    <value>Source</value>
+    <value>Änderungsquelle</value>
   </data>
   <data name="Email_CommPrefs_UpdatedAt" xml:space="preserve">
-    <value>Updated</value>
+    <value>Aktualisiert am</value>
   </data>
   <data name="Email_CommPrefs_AlwaysOn" xml:space="preserve"><value>Immer aktiv</value></data>
   <data name="Email_Unsubscribe_Title" xml:space="preserve">
