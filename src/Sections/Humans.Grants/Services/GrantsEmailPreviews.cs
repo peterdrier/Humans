@@ -3,10 +3,6 @@ using NodaTime;
 
 namespace Humans.Grants.Services;
 
-/// <summary>
-/// Grants' contribution to the template gallery at <c>/Email/EmailPreview</c>: one sample per
-/// notice kind, built through the same builder the real send path uses. Sample data only.
-/// </summary>
 internal sealed class GrantsEmailPreviews(GrantsEmails emails) : IEmailPreviewContributor
 {
     public IReadOnlyList<EmailPreviewSample> Samples(EmailPreviewPersona persona)

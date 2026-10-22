@@ -21,9 +21,8 @@ internal sealed class CashFlowPeriodRow
     public decimal RunningNet { get; init; }
 
     /// <summary>
-    /// True when cumulative expenses (ignoring income) have exceeded gross ticket revenue.
-    /// Used for the "Funds Exhausted" pill — marks the first period where the expense-only
-    /// runway runs out.
+    /// Cumulative expenses (ignoring income) have exceeded gross ticket revenue: the first period where the
+    /// expense-only runway runs out.
     /// </summary>
     public bool FundsExhausted { get; init; }
 

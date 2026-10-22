@@ -11,11 +11,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Governance.Controllers;
 
 /// <summary>
-/// Board/Admin assembly-vote administration: drafting and the lifecycle (open, stop, extend,
-/// cancel, peek, post-close ballots list). Drafting is <see cref="PolicyNames.BoardOrAdmin"/>;
-/// every lifecycle action that changes what the electorate sees or reads the embargoed tally is
-/// <see cref="PolicyNames.AdminOnly"/> for the first votes (Docs/features/assembly-votes.md,
-/// "Decisions" #1) — Board gets read access to everything, including post-close ballots.
+/// Drafting is <see cref="PolicyNames.BoardOrAdmin"/>; every lifecycle action that changes what
+/// the electorate sees or reads the embargoed tally is <see cref="PolicyNames.AdminOnly"/>.
 /// Admin routes are localization-exempt, so flash and validation text here is plain English.
 /// </summary>
 [Authorize(Policy = PolicyNames.BoardOrAdmin)]
@@ -209,9 +206,8 @@ internal sealed class GovernanceVotesAdminController(
                 "Results", "GovernanceVotes", new { voteId });
         }
 
-        // The counting result is keyed by option key; the member-facing read supplies the
-        // labels so the rounds table is readable out loud at the assembly. It carries no
-        // tally of its own, so it adds nothing to what the peek already disclosed.
+        // The member read supplies the option labels; it carries no tally of its own, so it
+        // discloses nothing beyond the peek.
         var vote = await voteService.GetVoteForMemberAsync(voteId, adminId, ct);
 
         return View("~/Views/Governance/Votes/Admin/Peek.cshtml", new AssemblyVotePeekViewModel

@@ -5,10 +5,8 @@ using NodaTime;
 namespace Humans.Governance.Services;
 
 /// <summary>
-/// Governance's contribution to the template gallery at <c>/Email/EmailPreview</c>: one
-/// sample per template <see cref="GovernanceEmails"/> can send, built through the same
-/// builder the real send path uses, so the gallery cannot drift from what members receive
-/// (peterdrier/Humans#1651). Sample data only — no recipient is real and nothing is sent.
+/// Built through the same builder the real send path uses, so the gallery cannot drift from
+/// what members receive.
 /// </summary>
 internal sealed class GovernanceEmailPreviews(GovernanceEmails emails) : IEmailPreviewContributor
 {

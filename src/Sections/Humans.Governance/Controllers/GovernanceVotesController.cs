@@ -14,11 +14,8 @@ using Microsoft.Extensions.Localization;
 namespace Humans.Governance.Controllers;
 
 /// <summary>
-/// Member-facing assembly-vote pages: list, ballot page, cast/change, and closed results. Every
-/// logged-in member sees every vote; only roster members can cast (Docs/features/assembly-votes.md
-/// "Actors &amp; roles"). The embargo on tally content while a vote is Open is enforced by
-/// <see cref="IAssemblyVoteService"/>, not here — this controller never reaches for a shortcut
-/// around it.
+/// The embargo on tally content while a vote is Open is enforced by
+/// <see cref="IAssemblyVoteService"/>, not here.
 /// </summary>
 [Authorize]
 [Route("Governance/Votes")]
@@ -57,9 +54,8 @@ internal sealed class GovernanceVotesController(
     }
 
     /// <summary>
-    /// Casts or changes the caller's ballot. The embargo means this action never learns whether
-    /// the ballot it just recorded changed the tally — it only reports whether the submission
-    /// itself was accepted.
+    /// The embargo means this never learns whether the ballot changed the tally — it reports
+    /// only whether the submission was accepted.
     /// </summary>
     [HttpPost("{voteId:guid}/Ballot")]
     [ValidateAntiForgeryToken]
@@ -126,12 +122,11 @@ internal sealed class GovernanceVotesController(
         return View("~/Views/Governance/Votes/Results.cshtml", new AssemblyVoteResultsViewModel { Results = results });
     }
 
-    /// <summary>The same stored tally as <see cref="Results"/>, as a CSV of the YesNo counts or IRV rounds — the export named in US-V7.</summary>
+    /// <summary>The same stored tally as <see cref="Results"/>, as a CSV of the YesNo counts or IRV rounds.</summary>
     /// <remarks>
-    /// Asks for the results as a plain member even when the caller is Board or Admin: the CSV
-    /// writes tallies and rounds only, so requesting disclosure would load every individual
+    /// Asks as a plain member even for Board or Admin: requesting disclosure would load every
     /// ballot and write an <c>AssemblyBallotsViewed</c> audit entry for a download that shows
-    /// nobody's ballot. The numbers below are identical either way.
+    /// nobody's ballot.
     /// </remarks>
     [HttpGet("{voteId:guid}/Results.csv")]
     public async Task<IActionResult> ResultsCsv(Guid voteId, CancellationToken ct)
@@ -148,10 +143,8 @@ internal sealed class GovernanceVotesController(
     private bool IsViewerBoardOrAdmin() => RoleChecks.IsAdminOrBoard(User);
 
     /// <summary>
-    /// Re-renders the vote page carrying the ranks that were actually posted, rather than
-    /// redirecting to a GET that rebuilds the form from the stored ballot (or from nothing, on
-    /// a first ballot). A voter correcting one duplicated rank should not have to re-enter the
-    /// whole order.
+    /// Re-renders with the ranks actually posted rather than redirecting to a GET that rebuilds
+    /// from the stored ballot, so a voter fixing one duplicated rank keeps the rest of the order.
     /// </summary>
     private async Task<IActionResult> RedisplayBallotAsync(
         Guid voteId, Guid userId, AssemblyBallotFormViewModel model, CancellationToken ct)
@@ -211,11 +204,7 @@ internal sealed class GovernanceVotesController(
             .ToList();
     }
 
-    /// <summary>
-    /// The results CSV, in the downloader's culture. It is a member-facing export of the same
-    /// numbers the results page shows, so every label goes through the section's resources and
-    /// option columns carry the authored labels rather than the storage keys.
-    /// </summary>
+    /// <summary>In the downloader's culture, with authored option labels rather than storage keys.</summary>
     private byte[] WriteResultsCsv(AssemblyVoteResultsView results)
     {
         var optionLabels = results.Vote.Options.ToDictionary(
@@ -274,10 +263,8 @@ internal sealed class GovernanceVotesController(
             Text("Governance_Votes_WinnerHeader")]);
         foreach (var round in audience.Rounds)
         {
-            // Blank, not zero, for an option already eliminated: a round counts only the
-            // options still standing, so a missing key means "not in this round", which a
-            // zero would turn into a recorded count of nobody ranking it. The results page
-            // leaves the same cell empty, and the CSV has to agree with it.
+            // Blank, not zero, for an eliminated option: zero would record nobody ranking it.
+            // The results page leaves the same cell empty, and the CSV has to agree.
             var counts = optionKeys.Select(k => (object?)(round.Counts.TryGetValue(k, out var c) ? c : null));
             csv.WriteRow([
                 round.Number, .. counts, round.Exhausted,

@@ -29,20 +29,16 @@ internal sealed class ExpenseHoldedPublisher(
         Instant now,
         CancellationToken ct)
     {
-        // 1. Ensure the member's Holded creditor contact + binding (Finance owns creditor identity).
-        //    Reuses the binding — including an admin's manual bind — or lazy-seeds from a cached
-        //    contact id; never mints a duplicate. Legal name -> name; burner -> tradeName.
-        //    The creditor is the member as they are now: a report submitted under a since-merged
-        //    id binds (and seeds from) the survivor, so one human keeps one Holded contact.
+        // 1. Ensure the member's Holded creditor contact and binding (Finance owns creditor identity). Reuses the
+        //    binding, including an admin's manual bind, or seeds from a cached contact id; never mints a duplicate.
+        //    The creditor is the member as they are now: a since-merged id binds the survivor.
         var submitter = await userService.GetUserInfoAsync(report.SubmitterUserId, ct);
         var creditorUserId = submitter?.Id ?? report.SubmitterUserId;
         var burnerName = string.IsNullOrWhiteSpace(report.PayeeName) ? null : submitter?.BurnerName;
 
-        // This report carries a contact id only on a re-drain. Seeding from it alone misses a member
-        // whose contact predates holded_creditor_contacts (that migration creates the table and
-        // backfills nothing), leaving them with a contact on older reports and no binding row — and a
-        // null seed makes Finance POST a *second* Holded contact, splitting their payables across two.
-        // Lazy-seed from their most recent linked report instead; the push then writes the binding.
+        // This report carries a contact id only on a re-drain. A member whose contact predates
+        // holded_creditor_contacts has no binding row, and a null seed makes Finance POST a second Holded contact,
+        // splitting their payables. So seed from their most recent linked report.
         var seedContactId = report.HoldedContactId;
         var seedAccountNum = report.HoldedSupplierAccountNum;
         if (string.IsNullOrEmpty(seedContactId))
@@ -62,21 +58,18 @@ internal sealed class ExpenseHoldedPublisher(
             creditorUserId, report.PayeeName, burnerName, report.PayeeIban,
             seedContactId, seedAccountNum, ExpenseReportBackgroundProcessor.OutboxJobName, ct);
 
-        // Mirror the contact id onto the report (creditor-timeline reads need it) before the
-        // retryable doc-create + attachment steps; the supplier-account number is set in step 5.
+        // Mirror the contact id onto the report (the creditor timeline reads it) before the retryable steps.
         await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, null, now, ct);
 
-        // Books items[].account directly at doc creation to the account chosen on the report.
-        // Reports that predate the account column still resolve through their category's mapping;
-        // null when there is none, and the doc still creates, just unbooked.
+        // Reports that predate the account column resolve through their category's mapping; null when there is none,
+        // and the doc still creates, just unbooked.
         var holdedAccountId = report.HoldedAccountId
             ?? (report.BudgetCategoryId is { } categoryId
                 ? await holdedFinance.GetHoldedAccountIdForCategoryAsync(categoryId, ct)
                 : null);
 
-        // 2–4. One purchase doc per bookable line, each carrying its one receipt. A report pushed
-        // before per-line docs carries a report-level doc id instead: that push resumes onto its
-        // single doc rather than minting per-line duplicates next to it.
+        // 2–4. One purchase doc per bookable line. A report pushed before per-line docs resumes onto its single doc
+        // rather than minting per-line duplicates next to it.
         string pushedSummary;
         if (!string.IsNullOrEmpty(report.HoldedDocId))
         {
@@ -89,13 +82,9 @@ internal sealed class ExpenseHoldedPublisher(
                 report, holdedContactId, holdedAccountId, now, ct);
         }
 
-        // 5. Resolve supplierRecord.num (now that a payable exists) and persist the contact link.
-        // Best-effort: the doc is already created, so a failure here must NOT fail the outbox event
-        // (that would strand a created doc as permanently-failed). There is no automatic retry — a null
-        // num stays null until an admin runs POST /Finance/Creditors/Bind, or a later report for this
-        // same member resolves it (nobodies-collective/Humans#972). ListCreditorAccountsAsync returns
-        // such bindings in its Unresolved half, which is what makes the gap visible on
-        // /Finance/Creditors so that manual step is discoverable.
+        // 5. Resolve supplierRecord.num now that a payable exists. Best-effort: failing the event here would strand a
+        // created doc as permanently failed. Nothing retries; a null num stays until an admin binds it on
+        // /Finance/Creditors (where ListCreditorAccountsAsync's Unresolved half shows it) or a later report resolves it.
         int? supplierAccountNum = null;
         try
         {
@@ -131,13 +120,9 @@ internal sealed class ExpenseHoldedPublisher(
     }
 
     /// <summary>
-    /// One purchase doc per bookable line, in <c>SortOrder</c>: create (idempotent on the line's
-    /// <c>HoldedDocId</c>), upload its one receipt (idempotent on <c>HoldedUploadedAt</c>), approve
-    /// (idempotent on the doc's <c>ApprovedAt</c> — POST /purchases only creates a draft, and an
-    /// unapproved doc never books to the ledger). A line the cap trims books its receipt at face
-    /// value plus a negative adjustment line on the same account; a line the cap zeroed out gets no
-    /// doc and no upload — the skip is named in the returned audit summary, since Holded then holds
-    /// no record of that receipt at all.
+    /// Each step is idempotent: create on the line's <c>HoldedDocId</c>, upload on <c>HoldedUploadedAt</c>, approve on
+    /// the doc's <c>ApprovedAt</c> (POST /purchases only creates a draft, and an unapproved doc never books). A line the
+    /// cap zeroed out gets no doc, so the audit summary names the skip: Holded has no record of that receipt.
     /// </summary>
     private async Task<string> PushPerLineDocsAsync(
         ExpenseReportDto report,
@@ -191,18 +176,16 @@ internal sealed class ExpenseHoldedPublisher(
                         ContactId = holdedContactId,
                         ContactName = string.IsNullOrWhiteSpace(report.PayeeName) ? "Unknown" : report.PayeeName,
                         Date = report.SubmittedAt ?? report.CreatedAt,
-                        // The report's Note stays in Humans — the doc's breadcrumb back to its
-                        // report is what the accountant needs, not member↔reviewer context. It
-                        // goes in Notes so the ledger description (Holded-rendered) stays readable.
+                        // The report's Note stays in Humans: the accountant needs the breadcrumb to the report, which
+                        // goes in Notes so the Holded-rendered ledger description stays readable.
                         Description = $"ER: {line.Description}",
                         Notes = $"Expense report {report.Id}",
                         Lines = docLines,
                     }, ct);
                 if (!await repo.SetLineHoldedDocIdAsync(line.Id, holdedDocId, now, ct))
                 {
-                    // Lost a race: another push already recorded a document for this line. The one
-                    // we just created is an orphan; carry on with the stored one and name the orphan
-                    // in the audit summary so it gets removed in Holded by hand.
+                    // Lost a race: another push already recorded a document for this line. Carry on with the stored
+                    // one and name ours in the audit summary so it gets removed in Holded by hand.
                     var created = holdedDocId;
                     var stored = (await repo.GetByIdAsync(report.Id, ct))
                         ?.Lines.FirstOrDefault(l => l.Id == line.Id)?.HoldedDocId;
@@ -251,9 +234,8 @@ internal sealed class ExpenseHoldedPublisher(
     }
 
     /// <summary>
-    /// Finishes a push that started before per-line docs: the report-level doc already exists in
-    /// Holded (possibly with some receipts on it), so upload what is still missing and approve —
-    /// never create a second payable next to it.
+    /// For a push that started before per-line docs: upload what is still missing to the existing doc and approve.
+    /// Never create a second payable next to it.
     /// </summary>
     private async Task ResumeLegacySingleDocPushAsync(
         ExpenseReportDto report, string holdedDocId, Instant now, CancellationToken ct)
@@ -270,11 +252,7 @@ internal sealed class ExpenseHoldedPublisher(
             await holdedClient.ApprovePurchaseDocumentAsync(holdedDocId, ct);
     }
 
-    /// <summary>
-    /// Uploads the line's receipt to the given doc. Each upload is recorded so a re-run — after a
-    /// failure partway through the push, or after a finance admin requeues the event — resumes
-    /// instead of adding a second copy of every earlier file.
-    /// </summary>
+    /// <summary>Each upload is recorded so a re-run resumes instead of adding a second copy of earlier files.</summary>
     private async Task UploadLineAttachmentAsync(
         ExpenseLineDto line, string holdedDocId, Instant now, CancellationToken ct)
     {

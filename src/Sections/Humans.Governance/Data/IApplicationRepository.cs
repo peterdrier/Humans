@@ -6,15 +6,6 @@ using MemberApplication = Humans.Governance.Domain.Application;
 
 namespace Humans.Governance.Data;
 
-/// <summary>
-/// Repository for the Governance aggregate (<c>applications</c>,
-/// <c>application_state_history</c>, <c>board_votes</c>). The only non-test
-/// file that may touch those DbSets.
-/// </summary>
-/// <remarks>
-/// Aggregate-local navs only (<c>StateHistory</c>, <c>BoardVotes</c>), eagerly
-/// loaded where the caller needs them; never cross-domain navs.
-/// </remarks>
 internal interface IApplicationRepository : IRepository
 {
     Task<MemberApplication?> GetByIdAsync(Guid applicationId, CancellationToken ct = default);
@@ -32,10 +23,7 @@ internal interface IApplicationRepository : IRepository
     Task<int> CountByStatusAsync(ApplicationStatus status, CancellationToken ct = default);
 
     /// <summary>
-    /// Paginated filtered list of applications for the admin
-    /// <c>Views/Governance/Applications/Admin.cshtml</c> view. Default <paramref name="status"/>
-    /// (null) maps to <see cref="ApplicationStatus.Submitted"/>, preserving
-    /// pre-migration behavior.
+    /// Null <paramref name="status"/> means <see cref="ApplicationStatus.Submitted"/>.
     /// </summary>
     Task<(IReadOnlyList<MemberApplication> Items, int TotalCount)> GetFilteredAsync(
         ApplicationStatus? status,
@@ -53,20 +41,13 @@ internal interface IApplicationRepository : IRepository
     Task UpdateAsync(MemberApplication application, CancellationToken ct = default);
 
     /// <summary>
-    /// Atomic finalize for approve/reject/withdraw: persists the already-mutated
-    /// <paramref name="application"/> (state, history row, term expiry,
-    /// decision note) AND bulk-deletes every <c>BoardVote</c> row for this
-    /// application, all in one <c>SaveChangesAsync</c>. Call
-    /// <see cref="GetVoterIdsForApplicationAsync"/> BEFORE this if the
-    /// caller needs voter ids for post-write cache invalidation.
+    /// Persists the mutated application and deletes every <c>BoardVote</c> row for it in one
+    /// <c>SaveChangesAsync</c>. Read <see cref="GetVoterIdsForApplicationAsync"/> first if the
+    /// caller needs voter ids for cache invalidation.
     /// </summary>
     Task FinalizeAsync(MemberApplication application, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the distinct user ids of every Board member who has cast a
-    /// vote on this application, so the per-voter voting badges can be
-    /// invalidated after a successful finalize.
-    /// </summary>
+    /// <summary>Distinct voters on this application, for badge invalidation after finalize.</summary>
     Task<IReadOnlyList<Guid>> GetVoterIdsForApplicationAsync(Guid applicationId, CancellationToken ct = default);
 
     Task<IReadOnlySet<Guid>> GetUserIdsWithSubmittedAsync(
@@ -110,11 +91,7 @@ internal interface IApplicationRepository : IRepository
     Task<IReadOnlyList<MemberApplication>> GetExpiringApplicationsNeedingReminderAsync(
         LocalDate today, LocalDate reminderThreshold, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the distinct <c>(UserId, MembershipTier)</c> pairs across
-    /// every Submitted application. Used by the term renewal reminder
-    /// to suppress renewals for users who already have a pending application.
-    /// </summary>
+    /// <summary>Distinct <c>(UserId, MembershipTier)</c> pairs across every Submitted application.</summary>
     Task<IReadOnlySet<(Guid UserId, MembershipTier Tier)>> GetPendingApplicationUserTiersAsync(
         CancellationToken ct = default);
 

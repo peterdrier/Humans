@@ -5,10 +5,7 @@ using NodaTime;
 
 namespace Humans.Governance.ViewComponents;
 
-/// <summary>
-/// The member dashboard's term card for a Colaborador/Asociado: expired, expiring within
-/// 90 days, renewal pending, or active. Renders nothing for a plain Volunteer.
-/// </summary>
+/// <summary>Renders nothing for a plain Volunteer.</summary>
 public sealed class MemberTermStatusViewComponent(
     IMembershipCalculator membershipCalculator,
     IGovernanceService applicationService,

@@ -2,10 +2,7 @@ using NodaTime;
 
 namespace Humans.Finance.Domain;
 
-/// <summary>
-/// Status of the purchase-document sync only (the ledger mirror's sync state is the Holded
-/// section's). Singleton, lazy-created on first sync — no seed.
-/// </summary>
+/// <summary>The ledger mirror's sync state is the Holded section's. Singleton, lazy-created on first sync.</summary>
 internal sealed class HoldedDocSyncState
 {
     public int Id { get; init; } = 1;

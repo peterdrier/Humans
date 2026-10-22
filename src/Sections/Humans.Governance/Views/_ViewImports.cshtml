@@ -1,6 +1,5 @@
 @* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
-   here ships broken markup with a green build and no runtime error.
-   Guarded by GovernancePageRenderTests (step 12). *@
+   here ships broken markup with a green build and no runtime error. *@
 @using Humans.Base.Extensions
 @using Humans.Base.Enums
 @using Humans.Users.Contracts
@@ -20,13 +19,11 @@
 @inject IStringLocalizer<GovernanceResource> Localizer
 @* Application_*, ApplicationStatus_*, AdminApp_Applicant and the Profile / OnboardingReview
    singles stay in SharedResource: ProfileController renders the same tier-application form
-   during profile setup and the Onboarding review queue renders the rest (§15.3b). *@
+   during profile setup and the Onboarding review queue renders the rest. *@
 @inject IStringLocalizer<SharedResource> SharedLocalizer
-@* The statutes tabs' empty-state string is Consent vocabulary; its whole set moved
-   to ConsentResource at Consent's G5, so this view binds the section marker (§15.3b). *@
+@* The statutes tabs' empty-state string is Consent vocabulary. *@
 @inject IStringLocalizer<ConsentResource> ConsentLocalizer
-@* Four OnboardingReview_* applicant-summary labels came home with Onboarding's G5;
-   this page renders the same four over a tier application. *@
+@* Four OnboardingReview_* applicant-summary labels, rendered here over a tier application. *@
 @inject IStringLocalizer<OnboardingResource> OnboardingLocalizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @addTagHelper *, Humans.Base

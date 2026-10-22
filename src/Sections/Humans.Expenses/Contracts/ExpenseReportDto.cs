@@ -6,25 +6,24 @@ public sealed record ExpenseReportDto
 {
     public required Guid Id { get; init; }
     public required Guid SubmitterUserId { get; init; }
-    /// <summary>Holded expense account the report books to; 0 on rows created before accounts were
-    /// chosen on the report (those book via their category).</summary>
+    /// <summary>0 on rows created before accounts were chosen on the report; those book via their category.</summary>
     public required int HoldedAccountNumber { get; init; }
     public string? HoldedAccountId { get; init; }
-    /// <summary>Null when the account has no budget-category mapping (no coordinator route).</summary>
+    /// <summary>Null when the account has no budget-category mapping, so there is no coordinator route.</summary>
     public required Guid? BudgetCategoryId { get; init; }
     public required Guid? BudgetYearId { get; init; }
-    /// <summary>Pre-approval grant the report files against, or null. A pre-approved report books
-    /// to the grant's account with no budget category (no coordinator route).</summary>
+    /// <summary>A pre-approved report books to the grant's account with no budget category, so no coordinator
+    /// route.</summary>
     public Guid? PreapprovalGrantId { get; init; }
     public required ExpenseReportStatus Status { get; init; }
     public string? Note { get; init; }
     public required string PayeeName { get; init; }
     public required string PayeeIban { get; init; }
-    /// <summary>The accepted total: top-level line amounts, declined lines excluded.</summary>
+    /// <summary>Top-level line amounts, declined lines excluded.</summary>
     public required decimal Total { get; init; }
-    /// <summary>Cap the deciders authorized, or null for no cap.</summary>
+    /// <summary>Null for no cap.</summary>
     public decimal? MaxAmount { get; init; }
-    /// <summary>What is actually reimbursed: the accepted total, capped. The only amount payment math may use.</summary>
+    /// <summary>The accepted total, capped. The only amount payment math may use.</summary>
     public decimal Payable => MaxAmount is { } cap && cap < Total ? cap : Total;
     public Instant? SubmittedAt { get; init; }
     public Guid? CoordinatorEndorsedByUserId { get; init; }
@@ -34,11 +33,11 @@ public sealed record ExpenseReportDto
     public string? LastRejectionReason { get; init; }
     public Guid? LastRejectedByUserId { get; init; }
     public Instant? LastRejectedAt { get; init; }
-    /// <summary>Legacy single-doc pushes only (pre per-line docs); new pushes set
-    /// <see cref="ExpenseLineDto.HoldedDocId"/> per line. Read via <see cref="HoldedDocIds"/>.</summary>
+    /// <summary>Legacy single-doc pushes only; new pushes set <see cref="ExpenseLineDto.HoldedDocId"/> per line. Read
+    /// <see cref="HoldedDocIds"/> instead.</summary>
     public string? HoldedDocId { get; init; }
-    /// <summary>Every Holded purchase document this report booked to: the legacy report-level doc
-    /// when present, else the per-line docs in line order. Empty means not (yet) in Holded.</summary>
+    /// <summary>The legacy report-level doc when present, else the per-line docs in line order. Empty means not (yet)
+    /// in Holded.</summary>
     public IReadOnlyList<string> HoldedDocIds => HoldedDocId is not null
         ? [HoldedDocId]
         : Lines.Where(l => l.HoldedDocId is not null)

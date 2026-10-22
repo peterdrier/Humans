@@ -4,48 +4,33 @@ using Humans.Holded.Contracts;
 namespace Humans.Finance.Services;
 
 /// <summary>
-/// Finds Holded purchase documents the expense push created twice (the outbox race of
-/// 2026-10-18). Line-to-document: for each expense line that links to a document, every other
-/// document on the member's contacts that carries the same description and the line's booked total
-/// is a candidate duplicate of it. Notes are not part of this rule: the v2 purchase list never
-/// returns them (verified live 2026-10-21), so the page and the apply confirm each candidate's
-/// notes with a single GET before it can be deleted. Two lines with identical values legitimately
-/// produce two documents, each the kept document of its own line, so a document some line links to
-/// is never anyone's duplicate, and an extra document matching several identical lines is the
-/// duplicate of the first of them only, so it is counted and deleted once. Pure, so the nightly
-/// check, the payout gate, the page and the apply all run the same rule.
+/// Same description and booked total on another document of the member's contacts. Notes are not in this rule: the
+/// v2 purchase list never returns them, so a delete confirms them with a GET first. A document some line links to is
+/// never a duplicate, and an extra document matching several identical lines counts once.
 /// </summary>
 internal static class HoldedDuplicateMatcher
 {
-    /// <summary>One linked line with the documents that duplicate it.</summary>
     internal sealed record Match(
         ExpenseHoldedBooking Booking,
         HoldedPurchaseDocListItemDto Kept,
         IReadOnlyList<HoldedPurchaseDocListItemDto> Duplicates);
 
-    /// <summary>Whether <paramref name="doc"/> carries what the list shows of the push's write for
-    /// <paramref name="booking"/>: description and total. A false positive here only refuses a
-    /// payout; a delete needs the notes confirmed by the single GET first.</summary>
+    /// <summary>The list-level rule. A false positive only refuses a payout; a delete needs the notes confirmed
+    /// first.</summary>
     internal static bool Matches(ExpenseHoldedBooking booking, HoldedPurchaseDocListItemDto doc) =>
         string.Equals(doc.Description, booking.Description, StringComparison.Ordinal)
         && doc.Total == booking.BookedAmount;
 
-    /// <summary>Every line with at least one duplicate under the list-level rule
-    /// (<see cref="Matches"/>). <paramref name="contactsByUser"/> widens the search from the
-    /// line's own contact to every contact the member holds (the race also created a second
-    /// contact for three members); a member with no entry is searched on the contacts their
-    /// bookings name. Lines whose kept document is not in <paramref name="docs"/> are skipped:
-    /// with nothing to keep, nothing can be called a duplicate.</summary>
+    /// <summary><paramref name="contactsByUser"/> widens the search to every contact the member holds. Lines whose
+    /// kept document is not in <paramref name="docs"/> are skipped: nothing to keep, nothing duplicated.</summary>
     internal static IReadOnlyList<Match> Find(
         IReadOnlyList<ExpenseHoldedBooking> bookings,
         IReadOnlyList<HoldedPurchaseDocListItemDto> docs,
         IReadOnlyDictionary<Guid, IReadOnlySet<string>> contactsByUser) =>
         Find(bookings, docs, contactsByUser, Matches);
 
-    /// <summary><see cref="Find(IReadOnlyList{ExpenseHoldedBooking}, IReadOnlyList{HoldedPurchaseDocListItemDto}, IReadOnlyDictionary{Guid, IReadOnlySet{string}})"/>
-    /// under <paramref name="isDuplicate"/> instead of the list-level rule: once notes are known from
-    /// the single GET, a candidate must go to the line whose notes it carries, not to the first
-    /// line with the same description and total.</summary>
+    /// <summary>With <paramref name="isDuplicate"/> in place of the list-level rule: once notes are known, a candidate
+    /// goes to the line whose notes it carries, not the first line with the same description and total.</summary>
     internal static IReadOnlyList<Match> Find(
         IReadOnlyList<ExpenseHoldedBooking> bookings,
         IReadOnlyList<HoldedPurchaseDocListItemDto> docs,

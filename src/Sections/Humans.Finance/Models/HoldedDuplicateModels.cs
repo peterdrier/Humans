@@ -1,17 +1,13 @@
 namespace Humans.Finance.Models;
 
-/// <summary>One Holded document the page would not delete, and why: Holded refuses to delete a
-/// document that carries a payment, and a draft reports no <c>payments_pending</c> to judge by.</summary>
+/// <summary>Holded refuses to delete a document that carries a payment, and a draft reports no
+/// <c>payments_pending</c> to judge by.</summary>
 internal sealed record HoldedDuplicateRefusal(string DocId, decimal Total, string Reason);
 
-/// <summary>One expense line and the documents that duplicate it.</summary>
-/// <param name="ExpenseReportId">The report the line belongs to.</param>
-/// <param name="LineId">The expense line.</param>
-/// <param name="Description">The line's description, as the document carries it.</param>
-/// <param name="Amount">What the line booked — every duplicate's total.</param>
-/// <param name="KeptDocId">The document the line links to; never deleted.</param>
-/// <param name="DeletableDocIds">Duplicates Apply will delete, oldest id first.</param>
-/// <param name="Refused">Duplicates a human has to settle in Holded.</param>
+/// <summary>
+/// <paramref name="KeptDocId"/> is the one the line links to and is never deleted. <paramref name="DeletableDocIds"/>
+/// are oldest id first; <paramref name="Refused"/> ones a human settles in Holded.
+/// </summary>
 internal sealed record HoldedDuplicateLine(
     Guid ExpenseReportId,
     Guid LineId,
@@ -24,15 +20,10 @@ internal sealed record HoldedDuplicateLine(
     public decimal DeletableTotal => DeletableDocIds.Count * Amount;
 }
 
-/// <summary>One member's share of the plan.</summary>
-/// <param name="UserId">The member.</param>
-/// <param name="BoundContactId">The Holded contact the member's creditor binding names, if bound.</param>
-/// <param name="SupplierAccountNum">The member's creditor account.</param>
-/// <param name="Lines">The member's lines with duplicates.</param>
-/// <param name="ContactName">The Holded name of the contact the member is bound to (or the one
-/// their documents sit on), for the screen and the audit lines.</param>
-/// <param name="OrphanContactIds">Contacts the race created beside the bound one, every document of
-/// which is a duplicate above: deleted once those documents are gone. Never the bound contact.</param>
+/// <summary>
+/// <paramref name="OrphanContactIds"/> are contacts the race created beside the bound one, holding only duplicates;
+/// deleted once those documents are gone. Never the bound contact.
+/// </summary>
 internal sealed record HoldedDuplicateMember(
     Guid UserId,
     string ContactName,
@@ -48,13 +39,11 @@ internal sealed record HoldedDuplicateMember(
     public int RefusedCount => Lines.Sum(l => l.Refused.Count);
 }
 
-/// <summary>The /Finance/HoldedDuplicates dry run: what Apply would delete, computed live from
-/// Holded's purchase list and Expenses' line bookings.</summary>
-/// <param name="Members">Every member with at least one duplicated line.</param>
-/// <param name="EmptyUnboundContactIds">Creditor-range Holded contacts bound to nobody with no
-/// purchase document at all (the race also left one of these). Holded has no archive call, so they
-/// are listed for a human rather than touched.</param>
-/// <param name="Error">Why the plan could not be computed (Holded unreachable); the lists are then empty.</param>
+/// <summary>Computed live from Holded's purchase list and Expenses' line bookings.</summary>
+/// <remarks>
+/// <paramref name="EmptyUnboundContactIds"/> are creditor-range contacts bound to nobody with no documents. Holded has
+/// no archive call, so they are listed for a human. When <paramref name="Error"/> is set the lists are empty.
+/// </remarks>
 internal sealed record HoldedDuplicatesVm(
     IReadOnlyList<HoldedDuplicateMember> Members,
     IReadOnlyList<string> EmptyUnboundContactIds,
@@ -73,8 +62,7 @@ internal sealed record HoldedDuplicatesVm(
     public bool HasWork => DocumentCount > 0 || ContactCount > 0;
 }
 
-/// <summary>What Apply did for one member: the creditor balance before and after (live reads,
-/// Holded's own sign), what was deleted and what Holded refused.</summary>
+/// <summary>The creditor balance before and after is read live, in Holded's own sign.</summary>
 internal sealed record HoldedDuplicateMemberResult(
     Guid UserId,
     string ContactName,
@@ -85,10 +73,10 @@ internal sealed record HoldedDuplicateMemberResult(
     IReadOnlyList<string> DeletedContactIds,
     IReadOnlyList<string> Failures);
 
-/// <summary>The outcome of one Apply.</summary>
-/// <param name="Members">What was done per member.</param>
-/// <param name="Error">Why nothing was deleted at all.</param>
-/// <param name="SyncError">Set when the closing ledger sync failed; the deletions still stand.</param>
+/// <summary>
+/// <paramref name="Error"/>: nothing was deleted at all. <paramref name="SyncError"/>: the closing ledger sync failed,
+/// but the deletions stand.
+/// </summary>
 internal sealed record HoldedDuplicateApplyResult(
     IReadOnlyList<HoldedDuplicateMemberResult> Members,
     string? Error,

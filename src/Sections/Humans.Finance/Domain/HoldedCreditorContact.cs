@@ -3,22 +3,18 @@ using NodaTime;
 
 namespace Humans.Finance.Domain;
 
-/// <summary>
-/// Binds a Humans member to their Holded creditor contact (the 400000xx supplier account).
-/// One binding per member. Created automatically on the member's first expense-report push, or
-/// set manually by a finance admin (e.g. to point at a pre-existing Holded contact) before any push.
-/// </summary>
+/// <summary>One per member: created on the first expense push, or set by a finance admin before any push.</summary>
 internal sealed class HoldedCreditorContact
 {
     public Guid Id { get; init; }
 
-    /// <summary>The Humans member this binding belongs to. Bare FK (no nav); unique.</summary>
+    /// <summary>Unique.</summary>
     public Guid UserId { get; set; }
 
-    /// <summary>Holded contact id (the stable key used for every push and ledger/payment lookup).</summary>
+    /// <summary>The stable key for every push and ledger or payment lookup.</summary>
     public string HoldedContactId { get; set; } = "";
 
-    /// <summary>Resolved 400000xx supplier-account number (supplierRecord.num). Null until Holded assigns it.</summary>
+    /// <summary>supplierRecord.num. Null until Holded assigns it.</summary>
     public int? SupplierAccountNum { get; set; }
 
     public CreditorContactSource Source { get; set; }

@@ -8,9 +8,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.LowIncome.Controllers;
 
 /// <summary>
-/// The stub admin page: Admin picks a person and grants or removes their Low Income grant.
-/// Grants does the work (row, audit, the person's notice) under the open program whose source
-/// key is <see cref="Section.SourceKey"/>. Admin only; localization-exempt.
+/// Grants does the work (row, audit, the person's notice) under the open program whose source key is
+/// <see cref="Section.SourceKey"/>.
 /// </summary>
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("LowIncome/Admin")]

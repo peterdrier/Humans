@@ -3,7 +3,6 @@ using Humans.Governance.Jobs;
 
 namespace Humans.Governance;
 
-/// <summary>Governance's recurring jobs. Discovered by Shell.</summary>
 internal sealed class SectionJobs : ISectionJobs
 {
     public IEnumerable<RecurringJobDescriptor> Jobs(IServiceProvider services)

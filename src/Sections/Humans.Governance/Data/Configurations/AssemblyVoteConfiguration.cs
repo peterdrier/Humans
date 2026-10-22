@@ -41,9 +41,6 @@ internal sealed class AssemblyVoteConfiguration : IEntityTypeConfiguration<Assem
         builder.Property(v => v.CreatedAt).IsRequired();
         builder.Property(v => v.UpdatedAt).IsRequired();
 
-        // OpenedByUserId / ClosedByUserId / CreatedByUserId are bare cross-section Guid
-        // columns — no FK constraint, no nav (design-rules §6).
-
         builder.HasIndex(v => v.Status);
 
         // Drives the hourly lapse-and-reminder sweep.

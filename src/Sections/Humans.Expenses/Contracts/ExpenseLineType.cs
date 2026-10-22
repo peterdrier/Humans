@@ -1,11 +1,9 @@
 namespace Humans.Expenses.Contracts;
 
 /// <summary>
-/// Kind of expense line. <see cref="Receipt"/> lines require an attachment at submit time;
-/// travel lines (<see cref="Mileage"/> / <see cref="PerDiem"/>) are justified by the trip, not a receipt.
-/// <see cref="Invoice"/> is a supplier invoice (ZZP / autónomo payee) — it requires the invoice file
-/// attached and can carry proof rows (Receipt lines with <c>ParentLineId</c> set) that back it up
-/// for review but are never booked or pushed to Holded.
+/// <see cref="Receipt"/> and <see cref="Invoice"/> lines need an attachment at submit; travel lines are justified by
+/// the trip. An Invoice can carry proof rows (Receipt lines with <c>ParentLineId</c>) that are reviewed but never
+/// booked.
 /// </summary>
 public enum ExpenseLineType
 {

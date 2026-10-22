@@ -8,12 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.Grants.Services;
 
-/// <summary>
-/// Grants' own email template: one method returning a ready <see cref="EmailMessage"/> for the
-/// single <see cref="IEmailService.SendAsync"/> path. Copy lives in the section's resx set and
-/// is rendered in the recipient's culture inside a <see cref="CultureScope"/>
-/// (memory/architecture/email-templates-live-in-sender.md). Pure — no I/O, no persistence.
-/// </summary>
+/// <summary>Pure: no I/O, no persistence.</summary>
 internal sealed class GrantsEmails(
     IOptions<EmailSettings> settings,
     IStringLocalizer<GrantsResource> localizer,

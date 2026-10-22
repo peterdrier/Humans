@@ -8,7 +8,6 @@ internal sealed class CampaignDetailViewModel
     public required CampaignDetailStatsDto Stats { get; init; }
 }
 
-/// <summary>Field values for the shared Create/Edit form partial (_CampaignFormFields).</summary>
 internal sealed record CampaignFormValues(
     string? Title,
     string? Description,

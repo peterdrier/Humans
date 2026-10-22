@@ -3,10 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Governance.ViewComponents;
 
-/// <summary>
-/// The member's tier badge beside their name on the dashboard. Renders nothing for a plain
-/// Volunteer, which is nearly everyone.
-/// </summary>
+/// <summary>Renders nothing for a plain Volunteer, which is nearly everyone.</summary>
 public sealed class MembershipTierBadgeViewComponent(IGovernanceService governanceService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)

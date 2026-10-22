@@ -3,10 +3,6 @@ using Humans.Budget.Contracts;
 
 namespace Humans.Budget.Domain;
 
-/// <summary>
-/// Third-level budget container within a group (e.g., "Cantina", "Sound").
-/// Holds the allocated budget amount.
-/// </summary>
 internal sealed class BudgetCategory
 {
     public Guid Id { get; init; }

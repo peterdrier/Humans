@@ -8,15 +8,7 @@ using NodaTime;
 
 namespace Humans.Grants.Services;
 
-/// <summary>
-/// The grant rules: programs and their managers, issuing, revoking and resending, a source
-/// section filling its program, and the GDPR surface. Every change is a person's act, audited
-/// with the actor; nothing runs on a timer, and expiry is a date compared when read.
-/// </summary>
-/// <remarks>
-/// EF-free: the repository hands over detached entities and takes them back. "Today" is the
-/// Europe/Madrid date, the zone the association works in.
-/// </remarks>
+/// <summary>Nothing runs on a timer: expiry is a date compared when read.</summary>
 internal sealed partial class GrantService(
     IGrantRepository repository,
     IUserService users,
@@ -32,8 +24,6 @@ internal sealed partial class GrantService(
 
     public LocalDate Today => clock.GetCurrentInstant().InZone(MadridZone).Date;
 
-    // ── Reads ─────────────────────────────────────────────────────────────
-
     public async Task<IReadOnlyList<ProgramInfo>> GetProgramsAsync(CancellationToken ct = default) =>
         (await repository.GetProgramsAsync(ct)).Select(ToInfo).ToList();
 
@@ -48,8 +38,6 @@ internal sealed partial class GrantService(
 
     public async Task<bool> ManagesAnyProgramAsync(Guid userId, CancellationToken ct = default) =>
         await repository.ManagesAnyProgramAsync(await AllIdsAsync(userId, ct), ct);
-
-    // ── Mapping ───────────────────────────────────────────────────────────
 
     private static ProgramInfo ToInfo(GrantProgram p) => new(
         p.Id, p.Name, p.Entitles, p.Description, p.Year, p.IssuedBy, p.SourceKey, p.GrantsExpireOn,

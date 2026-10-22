@@ -1,4 +1,4 @@
 namespace Humans.Campaigns;
 
-/// <summary>Campaigns' six-culture notification resources; public for localization discovery.</summary>
+/// <summary>Public because the boot localization check finds markers through <c>GetExportedTypes()</c>.</summary>
 public class CampaignsResource;

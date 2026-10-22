@@ -5,16 +5,10 @@ using NodaTime;
 
 namespace Humans.Grants.Services;
 
-/// <summary>
-/// Issuing, revoking and resending, as managers drive them and as a source section does
-/// through <c>IGrantWrite</c>. Every change is audited; every issue and revoke tells the person.
-/// </summary>
 internal sealed partial class GrantService
 {
     private const int ReasonMax = 500;
     private const int SourceRefMax = 128;
-
-    // ── Managers ──────────────────────────────────────────────────────────
 
     public async Task<GrantMutationResult<IReadOnlyList<Guid>>> IssueToAsync(
         Guid programId, IReadOnlyList<Guid> userIds, LocalDate? expiresOn, Guid actorUserId,
@@ -76,8 +70,6 @@ internal sealed partial class GrantService
         return GrantMutationResult.Ok;
     }
 
-    // ── IGrantWrite: a source section ─────────────────────────────────────
-
     public async Task<Guid> IssueAsync(
         string sourceKey, Guid userId, string? sourceRef, Guid actorUserId, CancellationToken ct = default)
     {
@@ -113,7 +105,6 @@ internal sealed partial class GrantService
         return true;
     }
 
-    /// <summary>The one open program filled by <paramref name="sourceKey"/>, or a refusal.</summary>
     private async Task<GrantProgram> SourceProgramAsync(string sourceKey, CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceKey);
@@ -124,8 +115,6 @@ internal sealed partial class GrantService
     private static bool IsOpenSource(GrantProgram program, string sourceKey) =>
         program.IssuedBy == GrantIssuer.Source && program.Status == GrantProgramStatus.Open
         && string.Equals(program.SourceKey, sourceKey, StringComparison.Ordinal);
-
-    // ── Helpers ───────────────────────────────────────────────────────────
 
     private async Task RevokeCoreAsync(Grant grant, string? reason, Guid actorUserId, CancellationToken ct)
     {

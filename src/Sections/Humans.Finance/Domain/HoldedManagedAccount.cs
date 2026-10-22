@@ -3,11 +3,8 @@ using NodaTime;
 namespace Humans.Finance.Domain;
 
 /// <summary>
-/// An expense account Finance created or linked outside the budget category map — for a
-/// caller that needs "an account to book to" without a BudgetCategory behind it. Finance
-/// records only the account: which caller wanted it is that caller's business. The registry
-/// is what keeps these accounts' purchase docs off the Unmatched queue, and what lets a
-/// retired account drop out of the pickers.
+/// Created or linked outside the budget map. Which caller wanted it is that caller's business. The registry keeps these
+/// accounts' docs off the Unmatched queue and lets a retired account drop out of the pickers.
 /// </summary>
 internal sealed class HoldedManagedAccount
 {

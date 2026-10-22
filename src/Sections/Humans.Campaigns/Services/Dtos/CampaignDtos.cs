@@ -52,8 +52,7 @@ internal sealed record CampaignSendWavePageDto(
     Guid? SelectedTeamId,
     WaveSendPreview? Preview)
 {
-    /// <summary>Waves go out only while the campaign is Active — the rule <c>SendWaveAsync</c>
-    /// refuses with <c>NotActive</c>.</summary>
+    /// <summary>Mirrors <c>SendWaveAsync</c>'s <c>NotActive</c> refusal.</summary>
     public bool CanSendWave => Campaign.Status == CampaignStatus.Active;
 }
 

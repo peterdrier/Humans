@@ -5,11 +5,8 @@ using NodaTime;
 namespace Humans.Finance.Models;
 
 /// <summary>
-/// The <c>/Finance/Holded</c> read model: the Finance-owned half of the Holded connector
-/// (nobodies-collective/Humans#1000). Cache reads only — no Holded HTTP call is
-/// made building it, so the page never inherits the live-contacts latency <c>/Finance/Creditors</c>
-/// carries. The mirror's own health (API budget, ledger sweeps, chart of accounts) stays on
-/// <c>/Holded</c>; this page links there rather than restating it.
+/// Cache reads only, so the page never inherits <c>/Finance/Creditors</c>' live-contacts latency. The mirror's own
+/// health stays on <c>/Holded</c>.
 /// </summary>
 internal sealed record HoldedConnectorVm(
     HoldedDocSyncVm DocSync,
@@ -25,25 +22,19 @@ internal sealed record HoldedConnectorVm(
 }
 
 /// <summary>
-/// Finance's purchase-doc sync singleton, with its age resolved so the page can say "stale"
-/// instead of leaving a reader to subtract two timestamps. Every figure on
-/// <c>/Finance/HoldedUnmatched</c> and the budget actuals derives from this sync, so a stalled one
-/// makes those pages quietly wrong.
+/// The unmatched queue and the budget actuals all derive from this sync, so a stalled one makes them quietly wrong.
 /// </summary>
-/// <param name="LastSyncAt">Last <b>successful</b> completion, not last attempt: a failed run sets
-/// <paramref name="StatusChangedAt"/> and deliberately leaves this pointing at the older success.
-/// Labelling it "last run" would make an erroring connector read as an idle one.</param>
-/// <param name="StatusChangedAt">When the connector last entered <paramref name="Status"/> — for an
-/// Error row, when the failing attempt happened. Without it a week-old error and a five-minute-old
-/// one render identically.</param>
-/// <param name="SinceLastSync">Age of <paramref name="LastSyncAt"/>; null when it has never
-/// succeeded. Staleness keys on this and not on the attempt, because the question the page answers
-/// is how old the cached data is — a run that failed refreshed nothing.</param>
-/// <param name="IsStale">True when the sync has not completed inside <see cref="StaleAfter"/> —
-/// never having run counts as stale.</param>
-/// <param name="Status">The sync's current status.</param>
-/// <param name="LastError">The most recent sync error, if one occurred.</param>
-/// <param name="LastSyncedDocCount">The number of documents processed by the last successful sync.</param>
+/// <remarks>
+/// <list type="bullet">
+/// <item><paramref name="LastSyncAt"/> is the last <b>successful</b> run: a failed run sets
+/// <paramref name="StatusChangedAt"/> and leaves this on the older success. Calling it "last run" would make an
+/// erroring connector look idle.</item>
+/// <item><paramref name="StatusChangedAt"/> tells a week-old error from a five-minute-old one.</item>
+/// <item><paramref name="SinceLastSync"/> is null when it never succeeded. Staleness keys on it, not on the attempt:
+/// a failed run refreshed nothing.</item>
+/// <item><paramref name="IsStale"/>: no completion inside <see cref="StaleAfter"/>; never having run counts.</item>
+/// </list>
+/// </remarks>
 internal sealed record HoldedDocSyncVm(
     Instant? LastSyncAt,
     string Status,
@@ -57,13 +48,11 @@ internal sealed record HoldedDocSyncVm(
     public static readonly Duration StaleAfter = Duration.FromHours(36);
 }
 
-/// <summary>One Finance-managed expense account (created outside the budget map) as the connector
-/// index lists it.</summary>
+/// <summary>Created outside the budget map.</summary>
 internal sealed record HoldedManagedAccountVm(int AccountNumber, string AccountId, string Label, bool IsActive, Instant CreatedAt);
 
-/// <summary>One pulled purchase doc, matched or not. <c>/Finance/HoldedUnmatched</c> shows only the
-/// unmatched subset, so this is the only place "why did this doc land on that category" can be
-/// answered — hence <paramref name="MatchSource"/> and the raw <paramref name="TagsJson"/>.</summary>
+/// <summary>Matched or not: the only place "why did this doc land on that category" can be answered, hence
+/// <paramref name="MatchSource"/> and the raw <paramref name="TagsJson"/>.</summary>
 internal sealed record HoldedDocVm(
     string HoldedDocId,
     string DocNumber,
@@ -80,7 +69,6 @@ internal sealed record HoldedDocVm(
     string TagsJson,
     Instant LastSyncedAt);
 
-/// <summary>One budget category on the <c>/Finance/HoldedAccounts</c> plan.</summary>
 internal sealed record HoldedProvisioningRow(
     Guid BudgetCategoryId, string CategoryName, string GroupName,
     int? ExistingAccountNum, int? ProposedAccountNum, string Tag, string State); // Mapped|ToAdd|Orphan

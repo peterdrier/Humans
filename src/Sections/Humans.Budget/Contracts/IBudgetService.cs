@@ -3,55 +3,28 @@ using NodaTime;
 
 namespace Humans.Budget.Contracts;
 
-/// <summary>
-/// Public contract of the Budget section. Other sections inject this interface; it exposes the active year's projection, one
-/// category lookup, the coordinator's team set and the summary computation — DTOs only,
-/// no EF entities.
-/// </summary>
-/// <remarks>
-/// The section's own controllers take the internal <c>IBudgetManagement</c>, so the
-/// other members of the internal <c>IBudgetManagement</c> — year/group/category/line-item
-/// CRUD, the audit log, the VAT projections, the ticketing projection
-/// parameters — are not public at all.
-/// </remarks>
+/// <summary>Cross-section budget reads. DTOs only.</summary>
 public interface IBudgetService : IApplicationService
 {
-    /// <summary>
-    /// The active budget year with its full group → category → line item projection,
-    /// or null when no year is active.
-    /// </summary>
+    /// <summary>The full group, category and line-item projection; null when no year is active.</summary>
     Task<BudgetYearDetail?> GetActiveYearAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// One budget year by id, same projection as <see cref="GetActiveYearAsync"/>. Expenses
-    /// reads this to offer the categories of the year a pending report is already booked to,
-    /// which is not always the active one.
+    /// Same projection as <see cref="GetActiveYearAsync"/>, for any year: a pending expense report may be booked to a
+    /// year that is no longer active.
     /// </summary>
     Task<BudgetYearDetail?> GetYearByIdAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>
-    /// One budget category with its group, year and line items. Expenses reads this to
-    /// resolve the category an expense report is booked against.
-    /// </summary>
+    /// <summary>With its group, year and line items.</summary>
     Task<BudgetCategorySnapshot?> GetCategoryByIdAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>
-    /// The team ids the user coordinates a budget for, including teams inherited through
-    /// the team hierarchy.
-    /// </summary>
+    /// <summary>Includes teams inherited through the team hierarchy.</summary>
     Task<HashSet<Guid>> GetEffectiveCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Income/expense totals and categorical breakdowns for an already-loaded set of
-    /// groups. Pure computation over the argument — no I/O.
-    /// </summary>
+    /// <summary>Pure computation over <paramref name="groups"/>; no I/O.</summary>
     BudgetSummaryResult ComputeBudgetSummary(IReadOnlyList<BudgetGroupDetail> groups);
 }
 
-/// <summary>
-/// Full budget-year projection (year → groups → categories → line items) used by the
-/// Budget, Expenses, Finance and Tickets presentation flows.
-/// </summary>
 public sealed record BudgetYearDetail(
     Guid Id,
     string Year,
@@ -149,16 +122,12 @@ public sealed record BudgetCategoryLineItemSnapshot(
     bool IsCashflowOnly,
     int SortOrder);
 
-/// <summary>
-/// Computed budget summary with income/expense totals and categorical breakdowns.
-/// Produced by <see cref="IBudgetService.ComputeBudgetSummary"/> from in-memory group data.
-/// </summary>
 public sealed class BudgetSummaryResult
 {
     public decimal TotalIncome { get; init; }
     public decimal TotalExpenses { get; init; }
     public decimal NetBalance { get; init; }
-    /// <summary>Signed sum of every budget line item, cashflow-only items excluded.</summary>
+    /// <summary>Signed; cashflow-only items excluded.</summary>
     public decimal TotalLineItems { get; init; }
     public required IReadOnlyList<BudgetSliceResult> IncomeSlices { get; init; }
     public required IReadOnlyList<BudgetSliceResult> ExpenseSlices { get; init; }

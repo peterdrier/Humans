@@ -8,17 +8,14 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Finance.Controllers;
 
-/// <summary>
-/// The admin action behind the Payment Details card Finance contributes to the admin human-detail
-/// page (<c>/Users/Admin/{id}</c>). Admin only, as the card is: Board and FinanceAdmin see neither.
-/// </summary>
+/// <summary>Admin only, as the card is: Board and FinanceAdmin see neither.</summary>
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Finance/Admin/Members")]
 internal sealed class PaymentDetailsAdminController(
     IUserService userService,
     IPaymentDetailsManagement paymentDetails) : HumansControllerBase(userService)
 {
-    /// <summary>Hands the unmasked IBAN to the next render of the card through TempData, audited.</summary>
+    /// <summary>Hands the unmasked IBAN to the card's next render through TempData, audited.</summary>
     [HttpPost("{id:guid}/RevealIban")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RevealIban(Guid id, CancellationToken ct)

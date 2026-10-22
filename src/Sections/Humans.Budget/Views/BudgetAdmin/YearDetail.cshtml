@@ -374,8 +374,8 @@
                         var isExpenseBudget = catBudget < 0;
                         var displayBudget = Math.Abs(catBudget);
                         var displayActual = Math.Abs(catActual);
-                        // For expense budgets: remaining = |budget| - |actual| (positive = under budget)
-                        // For income budgets: remaining = actual - budget (positive = over target)
+                        // Positive is good either way: expense remaining = |budget| - |actual| (under budget);
+                        // income remaining = actual - budget (over target).
                         var displayRemaining = isExpenseBudget
                             ? Math.Abs(catBudget) - Math.Abs(catActual)
                             : catActual - catBudget;

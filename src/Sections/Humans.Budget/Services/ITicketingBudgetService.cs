@@ -2,23 +2,12 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Budget.Services;
 
-/// <summary>
-/// Seam for <c>TicketingBudgetSyncJob</c> to call <c>TicketingBudgetService</c> in tests.
-/// Internal (ruling 43) — the interface's only consumer, the sync job, is section-internal too.
-/// </summary>
-/// <remarks>
-/// Projection refresh and the projection-parameter write are driven only from Budget's own
-/// admin pages, so they live on the concrete
-/// <c>TicketingBudgetService</c> rather than here — <c>BudgetAdminController</c>
-/// deliberately injects the concrete class.
-/// </remarks>
+/// <summary>The sync job's test seam. Projection actions are admin-only, so the admin controller uses the concrete class.</summary>
 internal interface ITicketingBudgetService : IOrchestrator
 {
     /// <summary>
-    /// Sync completed weeks of ticket sales into budget line items from TicketTailor/Stripe data,
-    /// then refresh projections for future weeks. Returns the number of line items touched.
-    /// A null <paramref name="actorUserId"/> means the nightly job; the sync audit entry then
-    /// records the actor as automation.
+    /// Syncs completed weeks, then refreshes projections. Returns line items touched. A null <paramref name="actorUserId"/> is
+    /// the nightly job, audited as automation.
     /// </summary>
     Task<int> SyncActualsAsync(Guid budgetYearId, Guid? actorUserId, CancellationToken ct = default);
 }

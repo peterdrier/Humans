@@ -41,7 +41,6 @@ internal sealed class GrantProgramManagerConfiguration : IEntityTypeConfiguratio
         b.ToTable("grant_program_managers");
         b.HasKey(m => new { m.ProgramId, m.UserId });
 
-        // UserId is a bare cross-section reference: indexed for the per-user reads, no FK.
         b.Property(m => m.UserId).IsRequired();
         b.Property(m => m.AddedByUserId).IsRequired();
         b.Property(m => m.AddedAt).IsRequired();
@@ -58,7 +57,6 @@ internal sealed class GrantConfiguration : IEntityTypeConfiguration<Grant>
         b.HasKey(g => g.Id);
 
         b.Property(g => g.ProgramId).IsRequired();
-        // UserId and the actor ids are bare cross-section references, no FK.
         b.Property(g => g.UserId).IsRequired();
         b.Property(g => g.SourceRef).HasMaxLength(128);
         b.Property(g => g.IssuedAt).IsRequired();
@@ -66,7 +64,7 @@ internal sealed class GrantConfiguration : IEntityTypeConfiguration<Grant>
         b.Property(g => g.RevokeReason).HasMaxLength(500);
 
         b.HasIndex(g => g.UserId);
-        // One live grant per person per program; revoked rows stay as the record.
+        // Revoked rows stay as the record, so the uniqueness is over live grants only.
         b.HasIndex(g => new { g.ProgramId, g.UserId })
             .IsUnique()
             .HasFilter("\"RevokedAt\" IS NULL");

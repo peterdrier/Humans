@@ -4,11 +4,6 @@ using NodaTime;
 
 namespace Humans.Governance.Services;
 
-/// <summary>
-/// Full Governance tier-application service surface. Other sections depend on
-/// <see cref="IGovernanceService"/> for reads; this adds the tier term expiry, the
-/// renewal-reminder members and admin reads used inside the section.
-/// </summary>
 internal interface IGovernanceManagement : IGovernanceService, IApplicationService
 {
     /// <summary>
@@ -21,12 +16,8 @@ internal interface IGovernanceManagement : IGovernanceService, IApplicationServi
         MembershipTier tier, LocalDate today, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the latest <see cref="ApplicationStatus.Approved"/> application per user and tier
-    /// when its <c>TermExpiresAt</c> falls between <paramref name="today"/>
-    /// (inclusive) and <paramref name="reminderThreshold"/> (inclusive) and
-    /// whose <c>RenewalReminderSentAt</c> is still null. Used by the term
-    /// renewal reminder job so it can enumerate candidates without reading
-    /// <c>applications</c> directly (design-rules §2c).
+    /// The latest Approved application per user and tier whose term ends between
+    /// <paramref name="today"/> and <paramref name="reminderThreshold"/> (inclusive), not yet reminded.
     /// </summary>
     Task<IReadOnlyList<ApplicationRenewalReminderCandidate>> GetExpiringApplicationsNeedingReminderAsync(
         LocalDate today, LocalDate reminderThreshold, CancellationToken ct = default);
@@ -45,9 +36,6 @@ internal interface IGovernanceManagement : IGovernanceService, IApplicationServi
 
     Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the count of pending (Submitted) applications. Used by the
-    /// admin dashboard.
-    /// </summary>
+    /// <summary>Count of Submitted applications.</summary>
     Task<int> GetPendingApplicationCountAsync(CancellationToken ct = default);
 }

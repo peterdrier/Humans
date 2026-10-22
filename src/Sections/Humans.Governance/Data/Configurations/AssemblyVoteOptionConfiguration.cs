@@ -25,9 +25,7 @@ internal sealed class AssemblyVoteOptionConfiguration : IEntityTypeConfiguration
             .HasForeignKey(o => o.VoteId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // No unique index on Key: it is Board-editable display-adjacent text, and
-        // memory/architecture/unique-constraints-ids-only.md puts row identity on Id columns
-        // only. Duplicate keys within a vote are rejected by IsDraftValid, which is where a
-        // duplicate becomes a validation message instead of a constraint violation.
+        // No unique index on Key: it is Board-editable text, and row identity lives on Id columns
+        // only. Duplicate keys are rejected by IsDraftValid as a validation message instead.
     }
 }

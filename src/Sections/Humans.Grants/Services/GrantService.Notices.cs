@@ -6,16 +6,11 @@ using Humans.Users.Contracts;
 
 namespace Humans.Grants.Services;
 
-/// <summary>
-/// Telling the person: an in-app notice and an email, both in their language from the
-/// section's resx. Failures never fail the write: the row and the audit entry are the record,
-/// and a manager can resend.
-/// </summary>
+/// <summary>Failures never fail the write: the row and the audit entry are the record, and a manager can resend.</summary>
 internal sealed partial class GrantService
 {
     private static readonly System.Resources.ResourceManager NoticeResources = new(typeof(GrantsResource));
 
-    /// <summary>The member's own profile, where the "My grants" card lives.</summary>
     internal const string ProfileUrl = "/Profile/Me";
 
     private Task AnnounceIssuedAsync(Grant grant, GrantProgram program, CancellationToken ct) =>

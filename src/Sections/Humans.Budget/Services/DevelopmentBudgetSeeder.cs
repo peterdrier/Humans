@@ -178,8 +178,7 @@ internal sealed class DevelopmentBudgetSeeder(
             budgetYearId = budgetYearSummary.Id;
             if (budgetYearSummary.IsDeleted)
             {
-                // An archived demo year is a deliberate operator state — leave it
-                // archived rather than resurrecting it.
+                // An archived demo year is a deliberate operator state: don't resurrect it.
                 return $"Budget demo year '{budgetYearSummary.Name}' is archived; skipped budget seeding.";
             }
         }
@@ -232,7 +231,6 @@ internal sealed class DevelopmentBudgetSeeder(
         var categoriesCreated = 0;
         var lineItemsCreated = 0;
 
-        // Re-load after group changes for accurate category lookups
         currentYear = await budgetService.GetYearByIdAsync(budgetYearId)
             ?? throw new InvalidOperationException($"Budget year {budgetYearId} not found");
 
@@ -338,9 +336,8 @@ internal sealed class DevelopmentBudgetSeeder(
             return;
         }
 
-        // isSensitive carries the team's current value, never a literal: TeamService.UpdateTeamAsync
-        // requires a global Admin to *change* the flag, and /dev/seed/budget is FinanceAdminOrAdmin.
-        // Passing false would abort a FinanceAdmin's reseed of a team someone had marked sensitive.
+        // Pass the team's current isSensitive, never a literal: changing it requires a global Admin, and a FinanceAdmin
+        // may run this seed, so a literal false would abort their reseed of a team marked sensitive.
         await teamSeeding.UpdateTeamAsync(
             existing.Id, seed.Name, seed.Description, existing.RequiresApproval, isActive: true,
             hasBudget: true, isHidden: false, isSensitive: existing.IsSensitive, cancellationToken: cancellationToken);

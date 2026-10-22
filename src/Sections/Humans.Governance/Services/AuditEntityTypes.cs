@@ -1,27 +1,18 @@
 namespace Humans.Governance.Services;
 
 /// <summary>
-/// Audit-log entity discriminators for Governance's own entities, as literals.
+/// Persisted audit discriminators, as literals so a CLR rename is not a silent schema change.
 /// </summary>
-/// <remarks>
-/// The audit log stores the entity type as a string, so <c>nameof(Application)</c> would make
-/// a CLR rename a silent schema change — and the entity is now <c>internal</c> to this
-/// assembly, so nothing outside can name it anyway. Declaring the discriminators here is what
-/// makes the rename schema-inert (memory/code/type-name-as-persisted-string.md; Store's
-/// <c>Services/AuditEntityTypes.cs</c> is the shape).
-/// </remarks>
 internal static class AuditEntityTypes
 {
     /// <summary>Matches the historical <c>nameof(Humans.Domain.Entities.Application)</c>.</summary>
     internal const string Application = "Application";
 
-    /// <summary>An assembly vote. Pinned as a literal, like every discriminator here.</summary>
     internal const string AssemblyVote = "AssemblyVote";
 
     /// <summary>
-    /// A member's ballot on an assembly vote. The audit entry names the voter and the vote
-    /// and never the choice, so the ballot's own id is the entity and the content stays in
-    /// the ballot tables.
+    /// Not written: ballot audit entries are keyed to the vote, never the ballot, so erasure
+    /// leaves no join from a person to their choice.
     /// </summary>
     internal const string AssemblyBallot = "AssemblyBallot";
 }

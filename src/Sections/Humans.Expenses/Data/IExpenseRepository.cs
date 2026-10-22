@@ -7,8 +7,7 @@ namespace Humans.Expenses.Data;
 
 internal interface IExpenseRepository : IRepository
 {
-    // Reads — all return fully-populated DTOs (Lines + Attachment metadata always included).
-    // EF entities stay inside the repository; callers see only DTOs.
+    // Reads return DTOs with lines and attachment metadata.
     Task<ExpenseReportDto?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
         Guid submitterUserId, CancellationToken ct = default);
@@ -17,19 +16,11 @@ internal interface IExpenseRepository : IRepository
         ExpenseReportStatus status,
         CancellationToken ct = default);
     Task<IReadOnlyList<ExpenseReportDto>> GetForReviewQueueAsync(CancellationToken ct = default);
-    /// <summary>
-    /// Returns every expense report regardless of status. Dashboard/aggregate reads only
-    /// (small dataset — no pagination, sum client-side).
-    /// </summary>
     Task<IReadOnlyList<ExpenseReportDto>> GetAllAsync(CancellationToken ct = default);
-    /// <summary>
-    /// Resolves the report id that owns the given attachment via the line that
-    /// references it. Returns null if no line currently points at the attachment
-    /// (orphan attachment or unknown id).
-    /// </summary>
+    /// <summary>Null when no line points at the attachment.</summary>
     Task<Guid?> GetReportIdByAttachmentIdAsync(Guid attachmentId, CancellationToken ct = default);
 
-    // Writes — atomic per-method, all inside one short-lived DbContext.
+    // Each write is atomic in its own context.
     Task AddDraftAsync(ExpenseReport report, CancellationToken ct = default);
     Task UpdateDraftAsync(ExpenseReport report, CancellationToken ct = default);
     Task<bool> AddLineAsync(
@@ -37,40 +28,31 @@ internal interface IExpenseRepository : IRepository
     Task<bool> UpdateLineAsync(
         Guid reportId, ExpenseLine line, CancellationToken ct = default);
     /// <summary>
-    /// Removes the line, any proof rows under it, and every attachment row they reference, in one
-    /// atomic save — a proof added concurrently makes the whole removal fail rather than leaving
-    /// half the rows gone. Returns the removed attachments so the caller can delete their files
-    /// (after the commit), or null when the report or line does not exist.
+    /// Removes the line, its proof rows and their attachment rows in one save: a proof added concurrently fails the
+    /// whole removal. Returns the removed attachments for post-commit file deletion; null when report or line is missing.
     /// </summary>
     Task<IReadOnlyList<ExpenseAttachment>?> RemoveLineAsync(
         Guid reportId, Guid lineId, CancellationToken ct = default);
-    /// <summary>Atomically replaces (or clears) a report line's attachment and removes superseded metadata.
-    /// Returns whether the line exists and its removed attachment for post-commit file cleanup.</summary>
+    /// <summary>Atomic. Returns whether the line exists and the replaced attachment for post-commit file cleanup.</summary>
     Task<(bool Found, ExpenseAttachment? Replaced)> ReplaceLineAttachmentAsync(
         Guid reportId, Guid lineId, ExpenseAttachment? attachment, CancellationToken ct = default);
     /// <summary>
-    /// Marks the line declined (with reason and reviewer) or clears the decline, moving the
-    /// report's stored <c>Total</c> by the line's amount. Who may decline is the service's call.
-    /// Returns false when the report or line does not exist.
+    /// Moves the stored <c>Total</c> by the line's amount. Who may decline is the service's call. False when the report
+    /// or line does not exist.
     /// </summary>
     Task<bool> SetLineDeclinedAsync(
         Guid reportId, Guid lineId, bool declined, string? reason, Guid? byUserId,
         NodaTime.Instant now, CancellationToken ct = default);
-    /// <summary>Unlinks a report's line and deletes its attachment metadata in one save; returns the removed row for post-commit file cleanup.</summary>
+    /// <summary>One save; returns the removed row for post-commit file cleanup.</summary>
     Task<ExpenseAttachment?> RemoveLineAttachmentAsync(Guid reportId, Guid lineId, CancellationToken ct = default);
 
 
-    /// <summary>
-    /// Rewrites the payee IBAN snapshot on an already-submitted report. Which statuses may be
-    /// refreshed is the service's call, as with <c>UpdateDraftAsync</c>; this only writes.
-    /// Returns false when the report does not exist.
-    /// </summary>
+    /// <summary>Which statuses may be refreshed is the service's call; this only writes. False when missing.</summary>
     Task<bool> UpdatePayeeIbanAsync(
         Guid reportId, string payeeIban, NodaTime.Instant updatedAt, CancellationToken ct = default);
 
-    /// <summary>A non-null <paramref name="grantStamp"/> rebooks the report to its pre-approval's
-    /// account (no category, no year) and writes <paramref name="grantMaxAmount"/> as the cap, both
-    /// read from the grant at submit; null leaves the booking and cap as they are.</summary>
+    /// <summary>A non-null <paramref name="grantStamp"/> rebooks to the pre-approval's account (no category or year)
+    /// with <paramref name="grantMaxAmount"/> as the cap; null leaves booking and cap alone.</summary>
     Task<bool> SubmitAsync(
         Guid reportId,
         string payeeName, string payeeIban,
@@ -82,7 +64,7 @@ internal interface IExpenseRepository : IRepository
     Task<bool> WithdrawAsync(
         Guid reportId, NodaTime.Instant updatedAt, CancellationToken ct = default);
 
-    /// <summary>Writes <paramref name="maxAmount"/> as the authorized cap; null clears it (a blanked form field).</summary>
+    /// <summary>Null clears the cap (a blanked form field).</summary>
     Task<bool> CoordinatorEndorseAsync(
         Guid reportId, Guid actorUserId, decimal? maxAmount,
         NodaTime.Instant endorsedAt, CancellationToken ct = default);
@@ -91,8 +73,8 @@ internal interface IExpenseRepository : IRepository
         Guid reportId, Guid actorUserId,
         string reason, NodaTime.Instant rejectedAt, CancellationToken ct = default);
 
-    /// <summary>Writes <paramref name="maxAmount"/> over any cap set at endorsement; null clears it (a blanked form field).
-    /// A non-null <paramref name="overrideBooking"/> rebooks the report (account, category and year together).</summary>
+    /// <summary>Writes over any endorsement cap; null clears it. A non-null <paramref name="overrideBooking"/> rebooks
+    /// account, category and year together.</summary>
     Task<bool> ApproveAsync(
         Guid reportId, Guid actorUserId,
         ExpenseBooking? overrideBooking,
@@ -105,57 +87,35 @@ internal interface IExpenseRepository : IRepository
         Guid reportId, Guid actorUserId,
         string reason, NodaTime.Instant rejectedAt, CancellationToken ct = default);
 
-    // Outbox
-    /// <summary>
-    /// The drain batch: unprocessed, not written off, and past its backoff. Events still inside
-    /// their <c>NextRetryAt</c> window are held back rather than re-hitting Holded every minute.
-    /// </summary>
+    /// <summary>Unprocessed, not written off, and past its backoff.</summary>
     Task<IReadOnlyList<HoldedExpenseOutboxEvent>> GetUnprocessedOutboxAsync(
         NodaTime.Instant now, int limit, CancellationToken ct = default);
-    /// <summary>
-    /// The report's most recent outbox event, or null if a push was never queued. Drives the
-    /// Holded sync card on <c>/Expenses/{id}</c>.
-    /// </summary>
+    /// <summary>Null if a push was never queued.</summary>
     Task<HoldedExpenseOutboxEvent?> GetLatestOutboxForReportAsync(
         Guid reportId, CancellationToken ct = default);
-    /// <summary>Reports with a written-off push — the <c>/Expenses/Review</c> banner and flags.</summary>
     Task<IReadOnlyList<Guid>> GetFailedOutboxReportIdsAsync(CancellationToken ct = default);
     /// <summary>
-    /// Puts the report's failed or backing-off events back at the front of the drain: clears the
-    /// write-off, the error, the backoff, and the retry budget. Returns false when the report has
-    /// no event in either state. Idempotent — a healthy or already-pushed report is a no-op.
+    /// Clears the write-off, error, backoff and retry budget. False when the report has no failed or backing-off event;
+    /// a healthy report is a no-op.
     /// </summary>
     Task<bool> RequeueOutboxForReportAsync(Guid reportId, CancellationToken ct = default);
-    /// <summary>
-    /// Records that the file reached the report's Holded document, so a later re-run skips it
-    /// instead of uploading a second copy to the same doc.
-    /// </summary>
+    /// <summary>So a re-run skips the file instead of uploading a second copy.</summary>
     Task MarkAttachmentPushedAsync(
         Guid attachmentId, NodaTime.Instant pushedAt, CancellationToken ct = default);
     /// <summary>
-    /// Persists the freshly-issued Holded document id on the line. Caller invokes
-    /// this immediately after <c>IHoldedClient.CreatePurchaseDocumentAsync</c>
-    /// returns for that line — that way a transient failure later in the push
-    /// (attachment upload, the next line's doc) does not cause the outbox event to
-    /// retry the create call and produce a duplicate Holded document. Marking the
-    /// outbox event processed is a separate <see cref="MarkOutboxProcessedAsync"/>
-    /// call that runs only after every line's create + upload + approve succeeds.
-    /// The write is conditional: it only lands while the line has no doc id. Returns false
-    /// (leaving the stored id and the report's <c>UpdatedAt</c> untouched) when another push
-    /// already recorded one — the caller then owns an orphan document that needs manual removal in Holded.
+    /// Call immediately after the line's doc is created, so a later failure in the push does not retry the create and
+    /// duplicate the doc. Lands only while the line has no doc id: false (nothing touched) when another push already
+    /// recorded one, and the caller then owns an orphan document to remove in Holded by hand.
     /// </summary>
     Task<bool> SetLineHoldedDocIdAsync(
         Guid lineId, string holdedDocId, NodaTime.Instant updatedAt,
         CancellationToken ct = default);
-    /// <summary>
-    /// Persists the Holded contact id and (optionally) the resolved 400000xx supplier-account
-    /// number on the report. A null <paramref name="supplierAccountNum"/> leaves any existing
-    /// number untouched (it is resolved post-doc-creation and may not exist on the first call).
-    /// </summary>
+    /// <summary>A null <paramref name="supplierAccountNum"/> keeps any existing number: it is resolved after doc
+    /// creation.</summary>
     Task SetHoldedContactLinkAsync(
         Guid reportId, string holdedContactId, int? supplierAccountNum,
         NodaTime.Instant updatedAt, CancellationToken ct = default);
-    /// <summary>Records a transient failure and holds the event until <paramref name="nextRetryAt"/>.</summary>
+    /// <summary>Holds the event until <paramref name="nextRetryAt"/>.</summary>
     Task IncrementOutboxRetryAsync(
         Guid outboxEventId, string error, NodaTime.Instant nextRetryAt,
         CancellationToken ct = default);

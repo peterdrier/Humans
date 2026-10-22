@@ -3,15 +3,14 @@ using NodaTime;
 
 namespace Humans.Finance.Models;
 
-/// <summary>The organisation's side of the transfer — every field configuration-bound.</summary>
+/// <summary>Every field is configuration-bound.</summary>
 internal sealed record SepaDebtor(string Name, string Iban, string? Bic, string PresenterId);
 
-/// <summary>One recipient. <paramref name="SupplierAccountNum"/> is the 400000xx every id field and
-/// the remittance text are prefixed with, so the treasurer can tie a bank line to a creditor
-/// account without opening the file.</summary>
+/// <summary><paramref name="SupplierAccountNum"/> prefixes every id field and the remittance text, so a bank line ties
+/// to a creditor account without opening the file.</summary>
 internal sealed record SepaTransfer(string CreditorName, string Iban, decimal Amount, int SupplierAccountNum);
 
-/// <summary>Everything the file is built from. Pure data — the builder does no IO.</summary>
+/// <summary>Pure data: the builder does no IO.</summary>
 internal sealed record SepaPaymentFileRequest(
     string MsgId,
     Instant CreatedAt,
@@ -20,17 +19,16 @@ internal sealed record SepaPaymentFileRequest(
     decimal MaxAmountPerTransfer,
     IReadOnlyList<SepaTransfer> Transfers)
 {
-    /// <summary>The local zone used for the SEPA creation timestamp.</summary>
+    /// <summary>For the SEPA creation timestamp.</summary>
     public DateTimeZone CreationTimeZone { get; init; } =
         DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 }
 
-/// <summary>One row of the payout the admin ticked, as posted from /Finance/Creditors.</summary>
 internal sealed record SepaPayoutSelection(int SupplierAccountNum, decimal Amount);
 
 /// <summary>
-/// The generated file, or the reason there is none. All-or-nothing: one bad row refuses the whole
-/// generation, because a partially-sent batch is far harder to reconcile than a re-run.
+/// All-or-nothing: one bad row refuses the whole generation, because a partly-sent batch is far harder to reconcile
+/// than a re-run.
 /// </summary>
 internal sealed record SepaPayoutResult(string? FileName, string? Xml, string? ErrorMessage)
 {
@@ -39,16 +37,13 @@ internal sealed record SepaPayoutResult(string? FileName, string? Xml, string? E
     public bool Succeeded => ErrorMessage is null;
 }
 
-/// <summary>Whether SEPA generation is available at all, and the ceiling it enforces.</summary>
-/// <param name="UnavailableReason">Null when configured; otherwise what the admin must set.</param>
-/// <param name="MaxPerTransfer">The maximum permitted amount for an individual transfer.</param>
+/// <summary><paramref name="UnavailableReason"/> is null when configured, otherwise what the admin must set.</summary>
 internal sealed record SepaPayoutSettings(decimal MaxPerTransfer, string? UnavailableReason)
 {
     public bool IsAvailable => UnavailableReason is null;
 }
 
-/// <summary>An outgoing Sabadell line the sweep could not book, with why — the page's
-/// "a human has to look at this" list (nobodies-collective/Humans#1185).</summary>
+/// <summary>An outgoing Sabadell line the sweep could not book: the page's "needs a human" list.</summary>
 internal sealed record SepaBankMovementVm(
     string MovementId,
     LocalDate Date,
@@ -58,18 +53,11 @@ internal sealed record SepaBankMovementVm(
     string Status,
     string Reason);
 
-/// <summary>One transfer on <c>/Finance/Sepa</c>, with the two user ids on it resolved to names.</summary>
 internal sealed record SepaTransferVm(
     SepaPayoutTransferRow Row, string MemberName, string? BookedByName, string? WithdrawnByName = null);
 
-/// <summary>One generated file and its transfers, as the screen groups them.</summary>
-/// <param name="BatchLine">The single bank line that debited this whole file, when there is one to
-/// process.</param>
-/// <param name="FileId">The generated payout file's identifier.</param>
-/// <param name="FileName">The generated file's name.</param>
-/// <param name="GeneratedAt">When the payout file was generated.</param>
-/// <param name="GeneratedByName">The display name of the user who generated the file.</param>
-/// <param name="Transfers">The transfers included in the file.</param>
+/// <summary><paramref name="BatchLine"/> is the single bank line that debited the whole file, when there is
+/// one.</summary>
 internal sealed record SepaPayoutFileVm(
     Guid FileId,
     string FileName,
@@ -78,16 +66,15 @@ internal sealed record SepaPayoutFileVm(
     IReadOnlyList<SepaTransferVm> Transfers,
     SepaBatchLineVm? BatchLine);
 
-/// <summary>The /Finance/Sepa page model.</summary>
-/// <param name="UnavailableReason">Set when booking is off for every row (missing configuration);
-/// the page says so once instead of repeating it on each row.</param>
-/// <param name="UnmatchedMovements">Bank lines the live feed returned that matched no unbooked
-/// transfer, or matched ambiguously — the "needs a human" panel.</param>
-/// <param name="BankFeedError">Set when the live bank-feed call failed; every row then falls back to
-/// "waiting for the Sabadell line" and the page renders a warning banner instead of failing.</param>
-/// <param name="Files">Generated payout files and their transfers.</param>
-/// <param name="ToleranceDays">How many days from its file's date a bank line may be dated and
-/// still be paired — the page's editable matching window, posted back with every booking.</param>
+/// <summary>
+/// <list type="bullet">
+/// <item><paramref name="UnavailableReason"/> is set when missing configuration turns booking off for every row; the
+/// page says so once.</item>
+/// <item><paramref name="BankFeedError"/> is set when the live feed failed: every row falls back to "waiting for the
+/// Sabadell line" and the page shows a banner instead of failing.</item>
+/// <item><paramref name="ToleranceDays"/> is the page's editable matching window, posted back with every booking.</item>
+/// </list>
+/// </summary>
 internal sealed record SepaPayoutsPageVm(
     IReadOnlyList<SepaPayoutFileVm> Files,
     string? UnavailableReason,
@@ -95,14 +82,11 @@ internal sealed record SepaPayoutsPageVm(
     string? BankFeedError,
     int ToleranceDays);
 
-/// <summary>The outcome of one booking attempt. <paramref name="Message"/> is admin-facing either
-/// way — on failure it is the reason, on success what was posted.</summary>
+/// <summary><paramref name="Message"/> is admin-facing: the reason on failure, what was posted on success.</summary>
 internal sealed record SepaBookingResult(bool Succeeded, string Message);
 
 /// <summary>
-/// One credit transfer made to the member, flattened with the file it belongs to, for their GDPR
-/// Article 15 export. Carries the masked IBAN only — the unmasked one stays in the payout row and
-/// the file, which is the whole point of storing both.
+/// For the member's Article 15 export. Masked IBAN only: the unmasked one stays in the payout row and the file.
 /// </summary>
 internal sealed record SepaPayoutExportRow(
     Instant GeneratedAt,

@@ -13,13 +13,10 @@ namespace Humans.Governance.Domain;
 /// </remarks>
 internal sealed class AssemblyBallot
 {
-    /// <summary>Unique identifier for the ballot.</summary>
     public Guid Id { get; init; }
 
-    /// <summary>Owning vote.</summary>
     public Guid VoteId { get; init; }
 
-    /// <summary>Navigation to the owning vote.</summary>
     public AssemblyVote Vote { get; set; } = null!;
 
     /// <summary>
@@ -29,7 +26,6 @@ internal sealed class AssemblyBallot
     /// </summary>
     public Guid RosterId { get; init; }
 
-    /// <summary>Navigation to the roster row.</summary>
     public AssemblyVoteRoster Roster { get; set; } = null!;
 
     /// <summary>
@@ -47,7 +43,6 @@ internal sealed class AssemblyBallot
     /// <summary>1 on the first cast, incremented on every change.</summary>
     public int Revision { get; set; }
 
-    /// <summary>When the member first cast a ballot on this vote.</summary>
     public Instant CastAt { get; init; }
 
     /// <summary>When the member last changed it; equals <see cref="CastAt"/> at revision 1.</summary>

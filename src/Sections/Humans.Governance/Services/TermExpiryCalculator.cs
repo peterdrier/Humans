@@ -2,10 +2,6 @@ using NodaTime;
 
 namespace Humans.Governance.Services;
 
-/// <summary>
-/// Computes term expiry dates for Colaborador/Asociado membership.
-/// Terms are 2-year synchronized cycles expiring Dec 31 of odd years.
-/// </summary>
 internal static class TermExpiryCalculator
 {
     /// <summary>

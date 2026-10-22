@@ -8,12 +8,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Grants.ViewComponents;
 
 /// <summary>
-/// The "Grants" card, contributed to <c>UserPartSlots.AdminDetail</c>. Admin audience only:
-/// renders for <see cref="ProfileCardViewMode.Admin"/> when the viewer passes the same
-/// <see cref="PolicyNames.HumanAdminBoardOrAdmin"/> policy as the host page, and nothing for
-/// anyone else. Shows every grant of the person, whatever its state. A program name links to its
-/// admin page only when the viewer passes that page's own checks (<see cref="GrantsPolicies.Manage"/>
-/// and <see cref="ProgramOperationRequirement.Manage"/> on the program); otherwise it is plain text.
+/// Renders only for <see cref="ProfileCardViewMode.Admin"/> to a viewer passing the host page's
+/// <see cref="PolicyNames.HumanAdminBoardOrAdmin"/>. A program name links only when the viewer passes that page's own
+/// checks; otherwise it is plain text.
 /// </summary>
 internal sealed class UserGrantsViewComponent(
     IGrantManagement grants,
@@ -46,8 +43,4 @@ internal sealed class UserGrantsViewComponent(
     }
 }
 
-/// <summary>
-/// The grants a card shows, the date their state is read against, and the programs whose admin
-/// page the viewer may open.
-/// </summary>
 internal sealed record GrantsCardViewModel(IReadOnlyList<GrantInfo> Grants, NodaTime.LocalDate Today, IReadOnlySet<Guid> LinkablePrograms);

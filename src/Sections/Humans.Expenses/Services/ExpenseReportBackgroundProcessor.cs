@@ -10,7 +10,6 @@ using NodaTime;
 
 namespace Humans.Expenses.Services;
 
-/// <summary>Drains the expense outbox, preserving retries and permanent-failure audits.</summary>
 internal sealed class ExpenseReportBackgroundProcessor(
     IExpenseRepository repo,
     IFileStorage fileStorage,
@@ -26,20 +25,17 @@ internal sealed class ExpenseReportBackgroundProcessor(
         repo, fileStorage, userService, holdedClient, holdedFinance, holdedFinanceWrite, auditLogService, logger);
 
     /// <summary>
-    /// Attempts a Holded push gets before it is written off. With the 2^n-minute backoff below,
-    /// ten attempts span roughly 17 hours — long enough to ride out a Holded outage, short enough
-    /// that a genuinely broken push surfaces on /Expenses/Review the same day.
+    /// With the 2^n-minute backoff, ten attempts span roughly 17 hours: long enough to ride out a Holded outage, short
+    /// enough that a broken push surfaces on /Expenses/Review the same day.
     /// </summary>
     internal const int MaxOutboxRetries = 10;
 
-    /// <summary>Audit actor for pushes, which run unattended. Matches the Hangfire job's type name.</summary>
+    /// <summary>Audit actor for these unattended pushes; matches the Hangfire job's type name.</summary>
     internal const string OutboxJobName = "HoldedExpenseOutboxJob";
 
     /// <summary>
-    /// One Holded drain at a time. Humans is one process on one server, so this is the
-    /// one-at-a-time guarantee for the Holded push; Hangfire's <c>[DisableConcurrentExecution]</c>
-    /// on <c>HoldedExpenseOutboxJob</c> stays as the outer guard. Static because the processor
-    /// is registered Scoped.
+    /// One drain at a time; one process on one server makes this enough. The job's
+    /// <c>[DisableConcurrentExecution]</c> stays as the outer guard. Static because the processor is Scoped.
     /// </summary>
     private static readonly SemaphoreSlim DrainGate = new(1, 1);
 
@@ -54,9 +50,8 @@ internal sealed class ExpenseReportBackgroundProcessor(
 
         try
         {
-            // No Holded API key (PR-preview / local dev envs) → don't drain. A 401 here is a permanent
-            // error that would write off every queued event. Debug-level: this job runs every few minutes.
-            // The same flag is what makes /Expenses/{id} report NotConfigured instead of Queued.
+            // No API key (PR previews, local dev): don't drain, or every 401 would write off a queued event. The
+            // same flag makes /Expenses/{id} show NotConfigured instead of Queued.
             if (!holdedClient.IsConfigured)
             {
                 logger.LogDebug(
@@ -99,12 +94,9 @@ internal sealed class ExpenseReportBackgroundProcessor(
                             break;
 
                         case HoldedExpenseOutboxEventType.UpdateIncomingDocTag:
-                            // v2 has no tag/doc-update endpoint (PUT /purchases/{id} is a full-replacement
-                            // update with no tags field, and no separate tag-assignment endpoint exists).
-                            // Recategorize-after-push is now done by reclassifying the line inside Holded
-                            // directly; the ledger mirror + reconciliation pull the correction back. The
-                            // enum member stays so any queued rows from before this change still drain
-                            // instead of poisoning the outbox.
+                            // v2 has no tag or doc-update endpoint (PUT /purchases/{id} replaces the doc and has no
+                            // tags), so recategorizing happens inside Holded. The enum member stays so old queued rows
+                            // drain instead of poisoning the outbox.
                             logger.LogInformation(
                                 "Skipping UpdateIncomingDocTag outbox event {OutboxEventId} for report " +
                                 "{ReportId} — Holded v2 has no tag/doc-update endpoint; recategorize is " +
@@ -163,10 +155,8 @@ internal sealed class ExpenseReportBackgroundProcessor(
     }
 
     /// <summary>
-    /// Writes an outbox event off and records why in the audit log. The outbox columns alone are
-    /// not readable outside the database and do not survive row cleanup; the audit entry is what
-    /// keeps "this push failed, here is the error" on the report's history
-    /// (nobodies-collective/Humans#1045).
+    /// The outbox columns are unreadable outside the database and do not survive cleanup; the audit entry keeps the
+    /// failure on the report's history.
     /// </summary>
     private async Task WriteOffOutboxEventAsync(
         HoldedExpenseOutboxEvent outboxEvent, string error, CancellationToken ct)

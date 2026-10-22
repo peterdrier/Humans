@@ -13,11 +13,9 @@ internal sealed class CampaignGrant
     public EmailOutboxStatus? LatestEmailStatus { get; set; }
     public Instant? LatestEmailAt { get; set; }
 
-    /// <summary>When the grant's discount code was redeemed (used in a ticket purchase). Null if unused.</summary>
+    /// <summary>Used in a ticket purchase. Null if unused.</summary>
     public Instant? RedeemedAt { get; set; }
 
-    // Navigation (same-section only — Email's outbox rows reference this grant
-    // by bare FK and are resolved through the Email section's services).
     public Campaign Campaign { get; set; } = null!;
     public CampaignCode Code { get; set; } = null!;
 }

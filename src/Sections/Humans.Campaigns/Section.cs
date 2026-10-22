@@ -13,21 +13,14 @@ using Humans.Users.Contracts;
 
 namespace Humans.Campaigns;
 
-/// <summary>
-/// Campaigns' DI entry point, at the project root by convention. Discovered by Shell —
-/// nothing names it, so it needs no section prefix. Plain Scoped service — no caching
-/// decorator; the admin pages are the only readers and they are not hot.
-/// </summary>
+/// <summary>No caching decorator: the admin pages are the only readers and they are not hot.</summary>
 public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSectionDbContext<CampaignsDbContext>(sentinelTable: "campaigns");
 
-        // Singleton + IDbContextFactory so the repository owns context lifetime.
         services.AddSingleton<ICampaignRepository, CampaignRepository>();
-        // Campaigns owns its email copy and its gallery samples; Email keeps the mechanics
-        // (memory/architecture/email-templates-live-in-sender.md).
         services.AddScoped<CampaignsEmails>();
         services.AddScoped<IEmailPreviewContributor, CampaignsEmailPreviews>();
 
@@ -35,13 +28,10 @@ public sealed class Section : ISection
         services.AddScoped<ICampaignManagement>(sp => sp.GetRequiredService<CampaignService>());
         services.AddScoped<ICampaignService>(sp => sp.GetRequiredService<CampaignService>());
         services.AddScoped<ICampaignWrite>(sp => sp.GetRequiredService<CampaignService>());
-        // Owns the user-scoped campaign_grants table → GDPR export contributor and
-        // account-merge fold participant.
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampaignService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CampaignService>());
 
-        // Section-owned badge colours: Base cannot name an internal CampaignStatus
-        // (memory/architecture/base-ui-registries-are-section-populated.md).
+        // Base cannot name an internal CampaignStatus, so the section registers its badge colours.
         EnumBadgeMap.Register(new Dictionary<Enum, string>
         {
             [CampaignStatus.Draft] = "bg-secondary",

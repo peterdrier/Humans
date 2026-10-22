@@ -2,63 +2,45 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Finance.Contracts;
 
-/// <summary>
-/// Read-only cross-section surface for Holded finance integration.
-/// External sections use this interface for creditor status and account
-/// lookup queries; the few writes they make go through
-/// <see cref="IHoldedFinanceWrite"/>.
-/// </summary>
+/// <summary>Cross-section Holded reads; writes are on <see cref="IHoldedFinanceWrite"/>.</summary>
 public interface IHoldedFinanceService : IApplicationService
 {
-    /// <summary>State of the last purchase-doc sync. Read-only; lazy-creates the state row.</summary>
+    /// <summary>Lazy-creates the state row.</summary>
     Task<HoldedDocSyncInfo> GetDocSyncInfoAsync(CancellationToken ct = default);
 
     Task<IReadOnlyList<HoldedActualRow>> GetActualsForYearAsync(int calendarYear, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedUnmatchedRow>> GetUnmatchedAsync(CancellationToken ct = default);
 
-    /// <summary>The active Holded expense-account id mapped to this budget category
-    /// (holded_category_map), or null when no active mapping exists. Used to book a purchase
-    /// line's `items[].account` directly at doc creation.</summary>
+    /// <summary>The active Holded expense-account id mapped to this budget category, or null when there is none.</summary>
     Task<string?> GetHoldedAccountIdForCategoryAsync(Guid budgetCategoryId, CancellationToken ct = default);
 
-    /// <summary>Every expense account a report or a workgroup may book to — the category map's
-    /// accounts plus Finance's managed registry. <paramref name="activeOnly"/> drops retired managed
-    /// accounts and orphaned category accounts (map rows whose category is not in the active budget
-    /// year); with it off they are listed as inactive, so old reports still get a label. Cache
-    /// reads only.</summary>
+    /// <summary>The category map's accounts plus Finance's managed registry. <paramref name="activeOnly"/> drops retired
+    /// managed accounts and orphaned category accounts; without it they are listed as inactive, so old reports still get
+    /// a label. Cache reads only.</summary>
     Task<IReadOnlyList<HoldedExpenseAccountOption>> ListExpenseAccountsAsync(
         bool activeOnly, CancellationToken ct = default);
 
-    /// <summary>Derives cached creditor status (balance, owed, payments) for a member's 400000xx account
-    /// from the cached daybook lines. Returns null when no lines are cached for the account.</summary>
+    /// <summary>Derived from the cached daybook lines. Null when none are cached for the account.</summary>
     Task<HoldedCreditorStatus?> GetCreditorStatusAsync(
         int? supplierAccountNum, CancellationToken ct = default);
 
-    /// <summary>Admin overview: every 400000xx creditor account — cached balances, member bindings and
-    /// the Holded contacts carrying the account names. Names are blank when Holded is unreachable.</summary>
-    /// <returns>Two halves of one partition. <c>Unresolved</c> is the bindings with no 400000xx at all,
-    /// which no account row can carry; nothing retries the resolution, so returning them here is what
-    /// keeps them bindable (nobodies-collective/Humans#972).</returns>
+    /// <summary>Every 400000xx creditor account. Names are blank when Holded is unreachable.</summary>
+    /// <returns><c>Unresolved</c> is the bindings with no 400000xx, which no account row can carry. Nothing retries
+    /// their resolution, so returning them here is what keeps them bindable.</returns>
     Task<(IReadOnlyList<HoldedCreditorAccountRow> Accounts, IReadOnlyList<CreditorContactBinding> Unresolved)>
         ListCreditorAccountsAsync(CancellationToken ct = default);
 
-    /// <summary>The member's creditor-account binding, if any.</summary>
     Task<CreditorContactBinding?> GetCreditorContactByUserAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>Per-account statement: balance plus every journal line the Holded mirror holds for the
-    /// account — no window of its own, so the span is whatever the last sync swept. Null when none.</summary>
+    /// <summary>Every journal line the Holded mirror holds for the account, with no window of its own. Null when
+    /// none.</summary>
     Task<HoldedCreditorLedger?> GetCreditorLedgerAsync(int supplierAccountNum, CancellationToken ct = default);
 
-    /// <summary>Every live <c>holded_category_map</c> row, active and archived — what each budget
-    /// category is actually booked to today. Same projection <c>/Finance/Holded</c> renders
-    /// (peterdrier/Humans#1838).</summary>
+    /// <summary>Active and archived rows: what each budget category is actually booked to today.</summary>
     Task<IReadOnlyList<HoldedCategoryMapRow>> GetCategoryMapAsync(CancellationToken ct = default);
 
-    /// <summary>Every generated SEPA transfer with its current booking state and the reason it
-    /// cannot be booked, plus the one reason booking is off for the whole screen (missing
-    /// configuration) — the same rows <c>/Finance/Sepa</c> renders; only the candidate-line/
-    /// unmatched-movements halves that drive that page's own "book this" button, which need a live
-    /// bank-feed read, are dropped (peterdrier/Humans#1838).</summary>
+    /// <summary>The rows <c>/Finance/Sepa</c> renders, without the candidate-line halves that need a live bank-feed
+    /// read. <c>UnavailableReason</c> is set when missing configuration turns booking off for the whole screen.</summary>
     Task<(IReadOnlyList<SepaPayoutTransferRow> Transfers, string? UnavailableReason)>
         GetSepaTransfersAsync(CancellationToken ct = default);
 }

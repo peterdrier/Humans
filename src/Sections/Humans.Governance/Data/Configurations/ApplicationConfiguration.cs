@@ -42,9 +42,6 @@ internal sealed class ApplicationConfiguration : IEntityTypeConfiguration<Member
         builder.Property(a => a.UpdatedAt)
             .IsRequired();
 
-        // UserId / ReviewedByUserId are bare cross-section Guid columns — no FK
-        // constraint, no nav (memory/architecture/no-cross-section-ef-joins.md).
-
         builder.HasMany(a => a.StateHistory)
             .WithOne(sh => sh.Application)
             .HasForeignKey(sh => sh.ApplicationId)
@@ -61,7 +58,6 @@ internal sealed class ApplicationConfiguration : IEntityTypeConfiguration<Member
         builder.HasIndex(a => new { a.UserId, a.Status });
         builder.HasIndex(a => a.MembershipTier);
 
-        // Ignore the state machine property
         builder.Ignore(a => a.StateMachine);
     }
 }

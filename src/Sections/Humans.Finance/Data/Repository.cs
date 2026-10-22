@@ -9,8 +9,6 @@ namespace Humans.Finance.Data;
 internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
     : IHoldedRepository
 {
-    // ── Category map ─────────────────────────────────────────────────────────
-
     public async Task<IReadOnlyList<HoldedCategoryMap>> GetCategoryMapAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -23,8 +21,6 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         ctx.HoldedCategoryMap.Add(row);
         await ctx.SaveChangesAsync(ct);
     }
-
-    // ── Managed accounts ──────────────────────────────────────────────────────
 
     public async Task<IReadOnlyList<HoldedManagedAccount>> GetManagedAccountsAsync(CancellationToken ct = default)
     {
@@ -50,8 +46,6 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         }
         await ctx.SaveChangesAsync(ct);
     }
-
-    // ── Docs ─────────────────────────────────────────────────────────────────
 
     public async Task ReplaceDocsAsync(IReadOnlyList<HoldedExpenseDoc> docs, Instant now, CancellationToken ct = default)
     {
@@ -113,8 +107,6 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
             .Where(d => d.MatchStatus == HoldedMatchStatus.Matched && d.Date.Year == calendarYear)
             .ToListAsync(ct);
     }
-
-    // ── Creditor contact bindings ─────────────────────────────────────────────
 
     public async Task<HoldedCreditorContact?> GetCreditorContactByUserAsync(
         Guid userId, CancellationToken ct = default)
@@ -196,8 +188,6 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         await ctx.SaveChangesAsync(ct);
         return existing;
     }
-
-    // ── SEPA payouts ──────────────────────────────────────────────────────────
 
     public async Task AddSepaPayoutAsync(
         SepaPayoutFile file, IReadOnlyList<SepaPayoutTransfer> transfers, CancellationToken ct = default)
@@ -297,8 +287,6 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         existing.ReconciledAt = reconciledAt;
         await ctx.SaveChangesAsync(ct);
     }
-
-    // ── Purchase-doc sync state (singleton, persisted on explicit save) ─────────────────────
 
     public async Task<HoldedDocSyncState> GetOrCreateDocSyncStateAsync(CancellationToken ct = default)
     {

@@ -3,9 +3,6 @@ using Humans.Governance.Domain;
 
 namespace Humans.Governance.Data;
 
-/// <summary>
-/// The only non-test reader and writer of <c>governance_membership_tiers</c>.
-/// </summary>
 internal interface IMembershipTierRepository : IRepository
 {
     Task<MembershipTierRecord?> GetAsync(Guid userId, CancellationToken ct = default);

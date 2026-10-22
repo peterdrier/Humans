@@ -3,16 +3,13 @@ using Humans.Budget.Contracts;
 
 namespace Humans.Budget.Domain;
 
-/// <summary>
-/// Top-level budget container for a fiscal year.
-/// </summary>
 internal sealed class BudgetYear
 {
     public Guid Id { get; init; }
     public string Year { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
 
-    /// <summary>Ticket vendor event whose orders count toward this year; null = the current event.</summary>
+    /// <summary>Whose orders count toward this year; null means the current event.</summary>
     public string? VendorEventId { get; set; }
 
     public BudgetYearStatus Status { get; set; } = BudgetYearStatus.Draft;

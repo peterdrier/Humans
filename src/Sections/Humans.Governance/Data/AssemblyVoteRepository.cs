@@ -5,19 +5,9 @@ using NodaTime;
 
 namespace Humans.Governance.Data;
 
-/// <summary>
-/// EF-backed implementation of <see cref="IAssemblyVoteRepository"/>. The only non-test file
-/// that touches <c>DbContext.AssemblyVotes</c>, <c>AssemblyVoteOptions</c>,
-/// <c>AssemblyVoteRosterEntries</c>, <c>AssemblyBallots</c>, <c>AssemblyBallotHistories</c>,
-/// or <c>AssemblyVotePeeks</c>.
-/// </summary>
 internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbContext> factory)
     : IAssemblyVoteRepository
 {
-    // ==========================================================================
-    // Votes
-    // ==========================================================================
-
     public Task<AssemblyVote?> GetByIdAsync(Guid voteId, CancellationToken ct = default) =>
         WithContextAsync(ctx => ctx.AssemblyVotes
             .Include(v => v.Options)
@@ -59,19 +49,14 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
         // every authored field, so a newer edit would be overwritten.
         if (expectedUpdatedAt is { } since && persisted.UpdatedAt != since) return false;
 
-        // Every lifecycle write arrives as a snapshot the caller read earlier, with every
-        // property marked modified, so a write built before somebody else's transition would
-        // silently undo it. The caller says which state it read; if the row has moved on —
-        // including from Open to the very state this write is trying to set, which is how two
-        // Stops or a Stop racing the lapse both think they closed the vote — the write does
-        // not happen and the caller is told so.
+        // Every lifecycle write is a snapshot read earlier, so a write built before somebody
+        // else's transition would silently undo it. If the row has moved on — including to the
+        // very state this write sets, as when two Stops race — nothing is written.
         if (persisted.Status != expectedStatus) return false;
 
-        // The deadline of an open vote only ever moves later. Two admins extending at once
-        // both validate against the deadline they read, so the shorter extension can arrive
-        // second and take the electorate's deadline back — the one guarantee Extend makes
-        // (shortening is Stop's job) broken by ordering alone. Checked here because here is
-        // where the row is locked and the persisted deadline is known.
+        // The deadline of an open vote only ever moves later. Two concurrent Extends both
+        // validate against the deadline they read, so the shorter could arrive second and pull
+        // the deadline back; checked here, where the row is locked.
         if (persisted.Status == AssemblyVoteStatus.Open
             && vote.Status == AssemblyVoteStatus.Open
             && vote.ClosesAt < persisted.ClosesAt)
@@ -89,11 +74,9 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
             return false;
         }
 
-        // An admin Stop or Cancel built its snapshot before an Extend committed, so it carries
-        // the pre-extension deadline on a write every other field of which is correct. The two
-        // guards above cover Open->Open and the automatic close only. The announced deadline is
-        // part of the legal record and the extension is the newer fact, so the locked row's
-        // deadline is kept rather than a legitimate terminal write being refused.
+        // A Stop or Cancel built before an Extend committed carries the pre-extension deadline.
+        // The extension is the newer fact and the deadline is part of the legal record, so the
+        // locked row's deadline is kept rather than the terminal write being refused.
         if (persisted.Status == AssemblyVoteStatus.Open && vote.ClosesAt < persisted.ClosesAt)
         {
             vote.ClosesAt = persisted.ClosesAt;
@@ -106,11 +89,9 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
     }
 
     /// <summary>
-    /// Opens the transaction every write path to a vote row runs in, and takes that row's
-    /// lock for its duration, so the state the write re-reads afterwards cannot change under
-    /// it. Relational only: the in-memory provider this section's tests run on supports
-    /// neither transactions nor raw SQL, and a single-process store has nothing to serialize
-    /// against — there the write proceeds on the state check alone.
+    /// Opens the write transaction and holds the vote row's lock for it. Relational only: the
+    /// in-memory test provider supports neither transactions nor raw SQL, so there the write
+    /// proceeds on the state check alone.
     /// </summary>
     private static async Task<IDbContextTransaction?> BeginLockedWriteAsync(
         GovernanceDbContext ctx, Guid voteId, CancellationToken ct)
@@ -191,10 +172,6 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
             .Where(v => v.Status == AssemblyVoteStatus.Open && v.ClosesAt > from && v.ClosesAt <= to)
             .ToListAsync(ct), ct);
 
-    // ==========================================================================
-    // Roster
-    // ==========================================================================
-
     public async Task<bool> OpenWithRosterAsync(
         AssemblyVote vote, IReadOnlyList<AssemblyVoteRoster> roster, CancellationToken ct = default)
     {
@@ -206,12 +183,9 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
         var persisted = await ctx.AssemblyVotes.FirstOrDefaultAsync(v => v.Id == vote.Id, ct);
         if (persisted is null || persisted.Status != AssemblyVoteStatus.Draft) return false;
 
-        // The roster was built from the caller's snapshot, and which members are on it comes
-        // out of the draft — IndicativeAudience above all. A Board edit that committed while
-        // those cross-section reads were running would open the vote with the new content and
-        // the old electorate, which is the one mismatch a frozen roster can never be corrected
-        // for. UpdatedAt moving means exactly that, so the open is refused and the caller
-        // rebuilds the roster from the draft as it now stands.
+        // The roster was built from the caller's snapshot of the draft. A Board edit committed
+        // meanwhile would open the vote with new content and the old electorate, which a frozen
+        // roster can never correct — so the open is refused and the caller rebuilds.
         if (persisted.UpdatedAt != vote.UpdatedAt) return false;
 
         // Only the lifecycle fields are written, onto the row as it stands: the content is
@@ -252,21 +226,10 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
         StampAsync(rosterIds, announcedClosesAt, (row, stampedAt) => row.ReminderSentAt = stampedAt, at, ct);
 
     /// <summary>
-    /// Writes one "this member was told" stamp, but only while the vote still closes at the
-    /// deadline the message actually named.
-    /// <para>
-    /// Both stamps go through here rather than each owning its own write, because every one
-    /// of them is an idempotency anchor for a send that announces a deadline: a stamped row
-    /// is not sent to again, so a stamp standing for a deadline the recipient was never told
-    /// silently disenfranchises them. The reminder stamp learned that one round and the
-    /// opening stamp the next; a third stamp column added later inherits the guard instead
-    /// of repeating the lesson.
-    /// </para>
-    /// <para>
-    /// The deadline is re-read under the write, not taken from the caller's earlier read: an
-    /// Extend can commit between the send and this write, and its stamp-clearing runs on the
-    /// timestamps that existed then, so a stamp written afterwards would survive that clear.
-    /// </para>
+    /// Writes a "this member was told" stamp only while the vote still closes at the deadline the
+    /// message named: each stamp is an idempotency anchor, so one standing for a deadline the
+    /// recipient was never told silently disenfranchises them. The deadline is re-read under the
+    /// write, because an Extend between send and stamp clears only the stamps that existed then.
     /// </summary>
     private async Task StampAsync(
         IReadOnlyCollection<Guid> rosterIds,
@@ -318,21 +281,14 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
             .ToListAsync(ct);
     }
 
-    // ==========================================================================
-    // Ballots
-    // ==========================================================================
-
     /// <summary>
     /// Writes a member's ballot and its history row. Returns null when the vote is no longer
     /// accepting ballots.
     /// </summary>
     /// <remarks>
-    /// The vote's state is re-read here under the row's lock, not taken from whatever the
-    /// caller saw at the top of the request: a Stop or an automatic close can land in between,
-    /// and a ballot accepted after the tally was taken would be told "recorded" while never
-    /// appearing in the stored result. Closure persists the closed status before it reads any
-    /// ballots, so that write contends for this same lock, and an accepted ballot is always
-    /// one the count saw.
+    /// The vote's state is re-read under the row's lock: a Stop or automatic close can land
+    /// mid-request, and closure persists Closed before reading ballots, so an accepted ballot is
+    /// always one the count saw.
     /// </remarks>
     public async Task<AssemblyBallot?> UpsertBallotAsync(
         Guid voteId,
@@ -344,12 +300,7 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        // Lock the vote row before deciding, and hold it until the ballot is committed.
-        // Closure persists the closed status first, and that UPDATE needs this same lock:
-        // either it commits before this transaction — and the read below sees Closed and
-        // refuses — or it waits behind this ballot, which is then already in the table when
-        // counting reads it. Checking without the lock leaves the two free to interleave,
-        // and a vote can be counted without a ballot it told the member it had recorded.
+        // Hold the vote row's lock until the ballot commits; closure's status UPDATE waits on it.
         await using var tx = await BeginLockedWriteAsync(ctx, voteId, ct);
 
         var vote = await ctx.AssemblyVotes.AsNoTracking()
@@ -447,10 +398,6 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
             lastBallotAt);
     }
 
-    // ==========================================================================
-    // Peeks
-    // ==========================================================================
-
     public async Task<bool> AddPeekAsync(AssemblyVotePeek peek, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(peek);
@@ -458,13 +405,9 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
         await using var ctx = await factory.CreateDbContextAsync(ct);
         await using var tx = await BeginLockedWriteAsync(ctx, peek.VoteId, ct);
 
-        // Under the same lock as every other write to this vote: a peek row is published on
-        // the results page as an early look at the tally, so it may only be written while
-        // there is still something to look at early. Status alone is not that test — a vote
-        // whose deadline has passed is stored Open until something settles it, and a peek
-        // after the deadline is an ordinary results read, not an early look. The deadline is
-        // compared against the peek's own instant, the same AcceptsBallotsAt test a ballot
-        // write takes under this lock.
+        // A peek is published as an early look, so it is written only while there is still
+        // something to look at early: the deadline is compared against the peek's own instant,
+        // the same AcceptsBallotsAt test a ballot write takes under this lock.
         var vote = await ctx.AssemblyVotes.AsNoTracking()
             .FirstOrDefaultAsync(v => v.Id == peek.VoteId, ct);
         if (vote is null || !vote.AcceptsBallotsAt(peek.PeekedAt)) return false;
@@ -482,10 +425,6 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
             .Where(p => p.VoteId == voteId)
             .OrderBy(p => p.PeekedAt) // arch:db-sort-ok chronological peek list
             .ToListAsync(ct), ct);
-
-    // ==========================================================================
-    // GDPR and account merge
-    // ==========================================================================
 
     public async Task<IReadOnlyList<(AssemblyVoteRoster Roster, AssemblyVote Vote, AssemblyBallot? Ballot)>>
         GetVotingRecordForUserAsync(Guid userId, CancellationToken ct = default)
@@ -562,30 +501,17 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        // Roster rows and ballots are deliberately NOT re-pointed at the surviving account.
-        // A roster is the legal record of who was entitled to vote at the instant the vote
-        // opened, and a ballot is what that entitlement produced — both are frozen evidence,
-        // not account state. Two accounts on one roster means one human was enrolled twice,
-        // and if both cast a ballot they voted twice, which is a defect in the vote itself.
-        // Tidying it away in the merge would destroy the only record that it happened.
-        //
-        // Nothing is lost by leaving them: `UserInfo.MergedUserIds` carries the merge chain
-        // transitively, so the surviving account still resolves to every id folded into it —
-        // which is how GDPR erasure already reaches these rows.
+        // Roster rows and ballots are deliberately NOT re-pointed: they are frozen evidence of
+        // who was entitled and what they cast. Two accounts on one roster is a defect in the
+        // vote that the merge must not hide; MergedUserIds still reaches these rows for erasure.
         var rostered = await ctx.AssemblyVoteRosterEntries
             .Where(r => r.UserId == sourceUserId)
             .Select(r => r.VoteId)
             .ToListAsync(ct);
 
-        // The merged account may also have drafted, opened, stopped or peeked at votes.
-        // Those columns are this section's own and point at an account Users is about to
-        // tombstone, so they move too — otherwise the acta loses the closer's name, the
-        // published peek list credits "Merged User" instead of the surviving human, and the
-        // GDPR export stops finding the votes this person drafted.
-        // All three actor columns in one pass. A fourth joins the predicate and the loop
-        // together; ReassignAsync_MovesEachActorColumn_WhenItIsTheOnlyOneOnTheVote is what
-        // catches the two drifting apart, because a vote with one actor column set has only
-        // that one way into the result set.
+        // Actor columns move, or the acta and peek list name a tombstone. A new actor column
+        // joins both the predicate and the loop; a test
+        // (ReassignAsync_MovesEachActorColumn_WhenItIsTheOnlyOneOnTheVote) catches them drifting.
         var acted = await ctx.AssemblyVotes
             .Where(v => v.CreatedByUserId == sourceUserId
                 || v.ClosedByUserId == sourceUserId

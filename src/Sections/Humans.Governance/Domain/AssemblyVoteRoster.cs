@@ -15,22 +15,16 @@ namespace Humans.Governance.Domain;
 /// </remarks>
 internal sealed class AssemblyVoteRoster
 {
-    /// <summary>Unique identifier for the roster row.</summary>
     public Guid Id { get; init; }
 
-    /// <summary>Owning vote.</summary>
     public Guid VoteId { get; init; }
 
-    /// <summary>Navigation to the owning vote.</summary>
     public AssemblyVote Vote { get; set; } = null!;
 
-    /// <summary>
-    /// The member. Bare cross-section reference — no nav, no FK constraint. Null after
-    /// Art. 17 erasure, which keeps the row as an anonymous tombstone.
-    /// </summary>
+    /// <summary>Null after Art. 17 erasure, which keeps the row as an anonymous tombstone.</summary>
     public Guid? UserId { get; set; }
 
-    /// <summary>The member's profile tier at open.</summary>
+    /// <summary>The member's tier at open.</summary>
     public MembershipTier Tier { get; init; }
 
     /// <summary>Whether the member held the Board role at open.</summary>
