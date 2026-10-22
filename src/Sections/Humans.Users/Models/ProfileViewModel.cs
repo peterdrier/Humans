@@ -274,9 +274,9 @@ internal sealed class ContactFieldViewModel
     /// </summary>
     public string? VisibilityBadgeKey => Visibility switch
     {
-        ContactFieldVisibility.BoardOnly => "Emails_Visibility_BoardOnly",
-        ContactFieldVisibility.CoordinatorsAndBoard => "Emails_Visibility_CoordinatorsBoard",
-        ContactFieldVisibility.MyTeams => "Emails_Visibility_MyTeams",
+        ContactFieldVisibility.BoardOnly => "Users_Emails_Visibility_BoardOnly",
+        ContactFieldVisibility.CoordinatorsAndBoard => "Users_Emails_Visibility_CoordinatorsBoard",
+        ContactFieldVisibility.MyTeams => "Users_Emails_Visibility_MyTeams",
         _ => null
     };
 }
@@ -382,9 +382,9 @@ internal sealed class UserEmailDisplayViewModel
     /// </summary>
     public string? VisibilityBadgeKey => Visibility switch
     {
-        ContactFieldVisibility.BoardOnly => "Emails_Visibility_BoardOnly",
-        ContactFieldVisibility.CoordinatorsAndBoard => "Emails_Visibility_CoordinatorsBoard",
-        ContactFieldVisibility.MyTeams => "Emails_Visibility_MyTeams",
+        ContactFieldVisibility.BoardOnly => "Users_Emails_Visibility_BoardOnly",
+        ContactFieldVisibility.CoordinatorsAndBoard => "Users_Emails_Visibility_CoordinatorsBoard",
+        ContactFieldVisibility.MyTeams => "Users_Emails_Visibility_MyTeams",
         _ => null
     };
 }

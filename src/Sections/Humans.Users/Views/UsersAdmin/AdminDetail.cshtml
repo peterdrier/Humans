@@ -1,7 +1,7 @@
 @inject IAuthorizationService AuthService
 @model Humans.Users.Models.AdminHumanDetailViewModel
 @{
-    ViewData["Title"] = string.Format(Localizer["AdminHumanDetail_Title"].Value, Model.DisplayName);
+    ViewData["Title"] = string.Format(Localizer["Users_AdminHumanDetail_Title"].Value, Model.DisplayName);
     var isAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
     var stateLabel = Model.State == UserState.DeletePending ? "Delete Pending" : Model.State.ToString();
     var stateBadgeClass = StatusBadgeExtensions.GetMembershipStatusBadgeClass(stateLabel);
@@ -17,7 +17,7 @@
 <div class="row">
     <div class="col-md-8">
         <div class="card mb-4">
-            <div class="card-header">@Localizer["AdminHuman_Information"]</div>
+            <div class="card-header">@Localizer["Users_AdminHuman_Information"]</div>
             <div class="card-body">
                 <div class="row mb-3">
                     <div class="col-md-2">
@@ -44,7 +44,7 @@
 
                     @if (Model.Languages.Count > 0)
                     {
-                        <dt class="col-sm-3">@Localizer["Profile_Languages"]</dt>
+                        <dt class="col-sm-3">@Localizer["Users_Profile_Languages"]</dt>
                         <dd class="col-sm-9">
                             <div class="d-flex flex-wrap gap-1">
                                 @foreach (var lang in Model.Languages)
@@ -58,7 +58,7 @@
                         </dd>
                     }
 
-                    <dt class="col-sm-3">@Localizer["AdminHuman_UserId"]</dt>
+                    <dt class="col-sm-3">@Localizer["Users_AdminHuman_UserId"]</dt>
                     <dd class="col-sm-9"><code>@Model.UserId</code></dd>
 
                     <dt class="col-sm-3">@SharedLocalizer["Admin_Joined"]</dt>
@@ -82,10 +82,10 @@
         @if (!string.IsNullOrEmpty(Model.AdminNotes))
         {
             <div class="card mb-4">
-                <div class="card-header">@Localizer["AdminHuman_AdminNotes"]</div>
+                <div class="card-header">@Localizer["Users_AdminHuman_AdminNotes"]</div>
                 <div class="card-body">
                     <p class="mb-0" style="white-space: pre-wrap;">@Model.AdminNotes</p>
-                    <small class="text-muted mt-2 d-block">@Localizer["AdminHuman_AdminNotesGdprHint"]</small>
+                    <small class="text-muted mt-2 d-block">@Localizer["Users_AdminHuman_AdminNotesGdprHint"]</small>
                 </div>
             </div>
         }
@@ -93,7 +93,7 @@
         @if (Model.Applications.Count > 0)
         {
             <div class="card mb-4">
-                <div class="card-header">@Localizer["AdminHuman_RecentApplications"]</div>
+                <div class="card-header">@Localizer["Users_AdminHuman_RecentApplications"]</div>
                 <div class="list-group list-group-flush">
                     @foreach (var app in Model.Applications)
                     {
@@ -111,7 +111,7 @@
         @* Section-contributed parts (IUserPart) — UserCalendar (Calendar), Role Assignments (Auth), Email Outbox and Communication Preferences (Email), each auto-hides when empty *@
         <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.AdminDetail" user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Admin" />
 
-        <vc:audit-log user-id="@Model.UserId" limit="50" title="@Localizer["AdminHuman_AuditHistory"].Value" />
+        <vc:audit-log user-id="@Model.UserId" limit="50" title="@Localizer["Users_AdminHuman_AuditHistory"].Value" />
 
     </div>
 
@@ -120,12 +120,12 @@
         <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.AdminDetailSidebar" user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Admin" />
 
         <div class="card mb-4">
-            <div class="card-header">@Localizer["AdminHuman_Statistics"]</div>
+            <div class="card-header">@Localizer["Users_AdminHuman_Statistics"]</div>
             <div class="card-body">
                 <dl class="row mb-0">
-                    <dt class="col-8">@Localizer["AdminHuman_ApplicationCount"]</dt>
+                    <dt class="col-8">@Localizer["Users_AdminHuman_ApplicationCount"]</dt>
                     <dd class="col-4 text-end">@Model.ApplicationCount</dd>
-                    <dt class="col-8">@Localizer["AdminHuman_ConsentCount"]</dt>
+                    <dt class="col-8">@Localizer["Users_AdminHuman_ConsentCount"]</dt>
                     <dd class="col-4 text-end">@Model.ConsentCount</dd>
                 </dl>
             </div>
@@ -139,7 +139,7 @@
                 {
                     <a asp-controller="ProfileEmails" asp-action="AdminEmails" asp-route-id="@Model.UserId"
                        class="btn btn-sm btn-outline-secondary">
-                        @Localizer["AdminDetail_ManageEmails"]
+                        @Localizer["Users_AdminDetail_ManageEmails"]
                     </a>
                 }
             </div>
@@ -167,7 +167,7 @@
                                         }
                                         @if (email.IsPrimary)
                                         {
-                                            <span class="badge bg-primary" title="@Localizer["EmailGrid_Primary"]">
+                                            <span class="badge bg-primary" title="@Localizer["Users_EmailGrid_Primary"]">
                                                 <i class="fa-solid fa-bell"></i>
                                             </span>
                                         }
@@ -197,19 +197,19 @@
                 {
                     <form asp-action="UnsuspendHuman" asp-route-id="@Model.UserId" method="post">
                         @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-success w-100 mb-2">@Localizer["AdminHuman_UnsuspendMember"]</button>
+                        <button type="submit" class="btn btn-success w-100 mb-2">@Localizer["Users_AdminHuman_UnsuspendMember"]</button>
                     </form>
                 }
                 else
                 {
                     <form asp-action="SuspendHuman" asp-route-id="@Model.UserId" method="post"
-                          data-confirm="@Localizer["AdminHuman_SuspendConfirm"].Value">
+                          data-confirm="@Localizer["Users_AdminHuman_SuspendConfirm"].Value">
                         @Html.AntiForgeryToken()
                         <div class="mb-2">
-                            <textarea name="notes" class="form-control" rows="2" placeholder="@Localizer["AdminHuman_SuspendReasonPlaceholder"].Value"></textarea>
-                            <small class="form-text text-muted">@Localizer["AdminHuman_AdminNotesGdprHint"]</small>
+                            <textarea name="notes" class="form-control" rows="2" placeholder="@Localizer["Users_AdminHuman_SuspendReasonPlaceholder"].Value"></textarea>
+                            <small class="form-text text-muted">@Localizer["Users_AdminHuman_AdminNotesGdprHint"]</small>
                         </div>
-                        <button type="submit" class="btn btn-danger w-100">@Localizer["AdminHuman_SuspendMember"]</button>
+                        <button type="submit" class="btn btn-danger w-100">@Localizer["Users_AdminHuman_SuspendMember"]</button>
                     </form>
                 }
                 @if (Model.State is not UserState.Rejected and not UserState.Deleted and not UserState.Merged)

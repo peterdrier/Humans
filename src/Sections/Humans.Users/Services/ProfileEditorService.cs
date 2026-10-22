@@ -8,7 +8,7 @@ internal sealed class ProfileEditorService(
     ILogger<ProfileEditorService> logger) : IProfileEditorService
 {
     /// <summary>Refusal key for a CV payload with no entries and no "no prior experience" tick.</summary>
-    internal const string BurnerCvRequiredErrorKey = "Profile_BurnerCVRequired";
+    internal const string BurnerCvRequiredErrorKey = "Users_Profile_BurnerCVRequired";
 
     // Serialize full save orchestration so DB picture metadata and file writes stay ordered per user.
     private static readonly TrackedLock[] UserLocks = CreateUserLocks(32);

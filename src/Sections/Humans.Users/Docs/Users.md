@@ -170,7 +170,7 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 
 **Served by Email and Gdpr since Users decomposition commit 14:** `/Email/Unsubscribe/*`, `/Email/Guest/CommunicationPreferences*` and `/Email/CommunicationPreferences*` (Email); `POST /Gdpr/Guest/RequestDeletion` and `/Gdpr/Guest/CancelDeletion` (Gdpr's `GuestDataController`, still calling this section's `IAccountDeletionService`). Each took its new owner's URLs.
 - Member profile, email, search and messaging pages localize their breadcrumb navigation landmark in all six cultures. The profile’s application contribution prompt uses the shared six-culture Elsewhere wording.
-- The `/Consent/MyData` page (Consent's) is not served by this section; its `ProfilePrivacy_Title` key stays here only for the profile-hub link.
+- The `/Consent/MyData` page (Consent's) is not served by this section; its `Users_ProfilePrivacy_Title` key stays here only for the profile-hub link.
 
 ## Actors & Roles
 
@@ -183,6 +183,8 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 | Admin | Trigger account merge flows on the unified **Account Merges** page (`/Users/Admin/AccountMerges`, `UsersAdminAccountMergesController`); `AccountMergeService` + `DuplicateAccountService` are Users-section services. Outside Production only: purge a human via `UsersAdminController.PurgeHuman` (`POST /Users/Admin/{id}/Purge`). |
 
 ## Invariants
+
+- Section-owned UI resource keys use `Users_` in all six cultures, including dynamically selected phone labels; reflection-resolved `Enum_` keys retain their type-based names.
 
 - GDPR-erased accounts cannot use current or legacy unsubscribe tokens, or a lingering Guest session, to read or recreate communication preferences. Live merge survivors remain eligible.
 

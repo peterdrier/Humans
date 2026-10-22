@@ -205,7 +205,7 @@ public class UserEmailServiceTests
             var row = await _repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct);
             if (row is null) return new UpdateEmailResult(false, "Users_EmailUpdate_NotFound");
             if (row.IsVerified || row.Provider is not null)
-                return new UpdateEmailResult(false, "Profile_InvalidVerificationLink");
+                return new UpdateEmailResult(false, "Users_Profile_InvalidVerificationLink");
 
             row.IsVerified = true;
             row.UpdatedAt = _clock.GetCurrentInstant();
@@ -463,7 +463,7 @@ public class UserEmailServiceTests
         var result = await _service.DeleteEmailAsync(userId, providerRowId, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.ErrorKey.Should().Be("EmailGrid_DeleteRejectedHasProvider");
+        result.ErrorKey.Should().Be("Users_EmailGrid_DeleteRejectedHasProvider");
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         await _userInfoRefresher.DidNotReceive().RefreshAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
@@ -587,7 +587,7 @@ public class UserEmailServiceTests
         var result = await _service.DeleteEmailAsync(userId, primaryId, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.ErrorKey.Should().Be("EmailGrid_DeletePrimaryBlocked");
+        result.ErrorKey.Should().Be("Users_EmailGrid_DeletePrimaryBlocked");
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 
@@ -685,7 +685,7 @@ public class UserEmailServiceTests
         var result = await _service.DeleteEmailAsync(userId, ticketEmailId, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.ErrorKey.Should().Be("EmailGrid_DeleteTicketLinkedBlocked");
+        result.ErrorKey.Should().Be("Users_EmailGrid_DeleteTicketLinkedBlocked");
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 
@@ -991,7 +991,7 @@ public class UserEmailServiceTests
 
         var result = await _service.UnlinkAsync(userId, rowId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().Be(new UnlinkEmailResult(false, "LinkedAccounts_UnlinkBlockedLastSignInMethod"));
+        result.Should().Be(new UnlinkEmailResult(false, "Users_LinkedAccounts_UnlinkBlockedLastSignInMethod"));
         await _userManager.DidNotReceive().RemoveLoginAsync(
             Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
@@ -1023,7 +1023,7 @@ public class UserEmailServiceTests
 
         var result = await _service.UnlinkAsync(userId, rowId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().Be(new UnlinkEmailResult(false, "LinkedAccounts_UnlinkBlockedLastSignInMethod"));
+        result.Should().Be(new UnlinkEmailResult(false, "Users_LinkedAccounts_UnlinkBlockedLastSignInMethod"));
         await _userManager.DidNotReceive().RemoveLoginAsync(
             Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
@@ -1449,7 +1449,7 @@ public class UserEmailServiceTests
         var result = await _service.VerifyEmailAsync(
             userId, rowBId, "token-issued-for-A", Xunit.TestContext.Current.CancellationToken);
 
-        result.ErrorKey.Should().Be("Profile_InvalidVerificationLink");
+        result.ErrorKey.Should().Be("Users_Profile_InvalidVerificationLink");
         await _userService.DidNotReceiveWithAnyArgs().UpdateUserEmailAsync(default, default, default!);
         rowB.IsVerified.Should().BeFalse();
     }
@@ -1475,7 +1475,7 @@ public class UserEmailServiceTests
 
         var result = await _service.VerifyEmailAsync(userId, rowId, "any-token", Xunit.TestContext.Current.CancellationToken);
 
-        result.ErrorKey.Should().Be("Profile_InvalidVerificationLink");
+        result.ErrorKey.Should().Be("Users_Profile_InvalidVerificationLink");
         await _userService.DidNotReceiveWithAnyArgs().UpdateUserEmailAsync(default, default, default!);
     }
 
@@ -1503,7 +1503,7 @@ public class UserEmailServiceTests
 
         var result = await _service.VerifyEmailAsync(userId, rowId, "any-token", Xunit.TestContext.Current.CancellationToken);
 
-        result.ErrorKey.Should().Be("Profile_InvalidVerificationLink");
+        result.ErrorKey.Should().Be("Users_Profile_InvalidVerificationLink");
         await _userService.DidNotReceiveWithAnyArgs().UpdateUserEmailAsync(default, default, default!);
     }
 
@@ -1523,14 +1523,14 @@ public class UserEmailServiceTests
         _repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<UserEmail>());
         _userService.UpdateUserEmailAsync(userId, rowId, Arg.Any<UserEmailUpdateCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new UpdateEmailResult(false, "Profile_InvalidVerificationLink"));
+            .Returns(new UpdateEmailResult(false, "Users_Profile_InvalidVerificationLink"));
         var ct = Xunit.TestContext.Current.CancellationToken;
 
         var result = admin
             ? await _service.AdminMarkVerifiedAsync(userId, rowId, Guid.NewGuid(), ct)
             : await _service.VerifyEmailAsync(userId, rowId, "token", ct);
 
-        result.ErrorKey.Should().Be("Profile_InvalidVerificationLink");
+        result.ErrorKey.Should().Be("Users_Profile_InvalidVerificationLink");
         result.Email.Should().BeEmpty();
         row.IsVerified.Should().BeFalse();
         _auditLogService.ReceivedCalls().Should().BeEmpty();

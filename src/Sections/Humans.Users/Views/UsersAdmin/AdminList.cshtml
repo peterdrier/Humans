@@ -1,11 +1,11 @@
 @model Humans.Users.Models.AdminHumanListViewModel
 @{
-    ViewData["Title"] = Localizer["AdminHumans_Title"].Value;
+    ViewData["Title"] = Localizer["Users_AdminHumans_Title"].Value;
     string ToggleDir(string col) => Model.SortBy == col && Model.SortDir == "asc" ? "desc" : "asc";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>@Localizer["AdminHumans_Title"]</h1>
+    <h1>@Localizer["Users_AdminHumans_Title"]</h1>
     <div class="d-flex align-items-center gap-3">
         <span class="text-muted">@string.Format(SharedLocalizer["Admin_TotalCount"].Value, Model.TotalCount)</span>
     </div>
@@ -35,35 +35,35 @@
         <div class="btn-group flex-wrap" role="group">
             <a asp-action="AdminList" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
                class="btn @(string.IsNullOrEmpty(Model.StatusFilter) ? "btn-primary" : "btn-outline-primary")">
-                @Localizer["AdminHumans_AllStatuses"]
+                @Localizer["Users_AdminHumans_AllStatuses"]
             </a>
             <a asp-action="AdminList" asp-route-filter="active" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
                class="btn @(Model.StatusFilter == "active" ? "btn-primary" : "btn-outline-primary")">
-                @Localizer["AdminHumans_Active"]
+                @Localizer["Users_AdminHumans_Active"]
             </a>
             <a asp-action="AdminList" asp-route-filter="bare" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
                class="btn @(Model.StatusFilter == "bare" ? "btn-primary" : "btn-outline-primary")">
-                @Localizer["AdminHumans_Bare"]
+                @Localizer["Users_AdminHumans_Bare"]
             </a>
             <a asp-action="AdminList" asp-route-filter="suspended" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
                class="btn @(Model.StatusFilter == "suspended" ? "btn-primary" : "btn-outline-primary")">
-                @Localizer["AdminHumans_Suspended"]
+                @Localizer["Users_AdminHumans_Suspended"]
             </a>
             <a asp-action="AdminList" asp-route-filter="rejected" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
                class="btn @(Model.StatusFilter == "rejected" ? "btn-primary" : "btn-outline-primary")">
-                @Localizer["AdminHumans_Rejected"]
+                @Localizer["Users_AdminHumans_Rejected"]
             </a>
             <a asp-action="AdminList" asp-route-filter="deleting" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
                class="btn @(Model.StatusFilter == "deleting" ? "btn-primary" : "btn-outline-primary")">
-                @Localizer["AdminHumans_Deleting"]
+                @Localizer["Users_AdminHumans_Deleting"]
             </a>
             <a asp-action="AdminList" asp-route-filter="merged" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
                class="btn @(Model.StatusFilter == "merged" ? "btn-primary" : "btn-outline-primary")">
-                @Localizer["AdminHumans_Merged"]
+                @Localizer["Users_AdminHumans_Merged"]
             </a>
             <a asp-action="AdminList" asp-route-filter="deleted" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
                class="btn @(Model.StatusFilter == "deleted" ? "btn-primary" : "btn-outline-primary")">
-                @Localizer["AdminHumans_Deleted"]
+                @Localizer["Users_AdminHumans_Deleted"]
             </a>
             <a asp-action="AdminList" asp-route-filter="googlerejected" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
                class="btn @(Model.StatusFilter == "googlerejected" ? "btn-danger" : "btn-outline-danger")">

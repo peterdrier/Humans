@@ -12,6 +12,6 @@ namespace Humans.Gdpr;
 /// <c>AccountDeletion_*</c>) and the flash messages of the deletion request/cancel actions
 /// (<c>Profile_Deletion*</c>, <c>Profile_NoDeletionPending</c>). Users keeps its own copy of
 /// the keys it still reads: the guest-dashboard deletion flashes and the suspension
-/// notification text (<c>AccountStatus_HeadingSuspended</c> and friends).
+/// notification text (<c>Users_AccountStatus_HeadingSuspended</c> and friends).
 /// </remarks>
 public class GdprResource;

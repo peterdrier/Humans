@@ -5,7 +5,7 @@
 @* Card 1: Public Profile *@
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span>@Localizer["Profile_Information"]</span>
+        <span>@Localizer["Users_Profile_Information"]</span>
         @if (Model.IsOwnProfile)
         {
             <a asp-controller="Profile" asp-action="Edit" class="btn btn-sm btn-outline-primary">@SharedLocalizer["Common_Edit"]</a>
@@ -83,7 +83,7 @@
 
             @if (!string.IsNullOrEmpty(Model.FormattedBirthday))
             {
-                <dt class="col-3">@Localizer["Profile_DateOfBirth"]</dt>
+                <dt class="col-3">@Localizer["Users_Profile_DateOfBirth"]</dt>
                 <dd class="col-9">@Model.FormattedBirthday</dd>
             }
         </dl>
@@ -92,19 +92,19 @@
         @if (Model.PublicUserEmails.Count > 0 || Model.ContactFields.Count > 0)
         {
             <hr />
-            <h6 class="text-muted mb-2">@Localizer["Profile_ContactInformation"]</h6>
+            <h6 class="text-muted mb-2">@Localizer["Users_Profile_ContactInformation"]</h6>
             <dl class="row mb-0">
                 @foreach (var email in Model.PublicUserEmails)
                 {
                     <dt class="col-3">
                         <i class="fa-solid fa-envelope me-1"></i>
-                        @Localizer["CommPrefs_Email"]
+                        @Localizer["Users_CommPrefs_Email"]
                     </dt>
                     <dd class="col-9">
                         <a href="mailto:@email.Email">@email.Email</a>
                         @if (email.IsPrimary)
                         {
-                            <span class="badge bg-primary ms-1" title="@Localizer["Profile_NotificationTarget"]" data-bs-toggle="tooltip"><i class="fa-solid fa-bell"></i> @Localizer["Profile_NotificationTargetShort"]</span>
+                            <span class="badge bg-primary ms-1" title="@Localizer["Users_Profile_NotificationTarget"]" data-bs-toggle="tooltip"><i class="fa-solid fa-bell"></i> @Localizer["Users_Profile_NotificationTargetShort"]</span>
                         }
                         @if (email.VisibilityBadgeKey is not null)
                         {
@@ -139,7 +139,7 @@
         {
             <hr />
             <p class="text-muted mb-0">
-                @Localizer["Profile_NoContactInfo"] <a asp-controller="Profile" asp-action="Edit">@Localizer["Profile_AddSome"]</a>
+                @Localizer["Users_Profile_NoContactInfo"] <a asp-controller="Profile" asp-action="Edit">@Localizer["Users_Profile_AddSome"]</a>
             </p>
         }
 
@@ -149,28 +149,28 @@
             <a asp-controller="FacilitatedMessage" asp-action="SendMessage" asp-route-id="@Model.UserId"
                class="btn btn-outline-primary">
                 <i class="fa-solid fa-envelope me-1"></i>
-                @string.Format(Localizer["SendMessage_Button"].Value, Model.DisplayName)
+                @string.Format(Localizer["Users_SendMessage_Button"].Value, Model.DisplayName)
             </a>
         }
 
         @if (!string.IsNullOrEmpty(Model.Bio))
         {
             <hr />
-            <h6 class="text-muted mb-2">@Localizer["Profile_Bio"]</h6>
+            <h6 class="text-muted mb-2">@Localizer["Users_Profile_Bio"]</h6>
             <div class="mb-0">@Html.SanitizedMarkdown(Model.Bio)</div>
         }
 
         @if (!string.IsNullOrEmpty(Model.ContributionInterests))
         {
             <hr />
-            <h6 class="text-muted mb-2">@Localizer["Profile_ContributionInterests"]</h6>
+            <h6 class="text-muted mb-2">@Localizer["Users_Profile_ContributionInterests"]</h6>
             <p class="mb-0" style="white-space: pre-line">@Model.ContributionInterests</p>
         }
 
         @if (Model.VolunteerHistory.Count > 0)
         {
             <hr />
-            <h6 class="text-muted mb-2">@Localizer["Profile_BurnerCV"]</h6>
+            <h6 class="text-muted mb-2">@Localizer["Users_Profile_BurnerCV"]</h6>
             @foreach (var entry in Model.VolunteerHistory)
             {
                 <div class="d-flex align-items-center py-1">
@@ -189,7 +189,7 @@
         {
             <hr />
             <p class="text-muted mb-0">
-                @Localizer["Profile_NoCVEntries"] <a asp-controller="Profile" asp-action="Edit">@Localizer["Profile_AddFirstEntry"]</a>
+                @Localizer["Users_Profile_NoCVEntries"] <a asp-controller="Profile" asp-action="Edit">@Localizer["Users_Profile_AddFirstEntry"]</a>
             </p>
         }
     </div>
@@ -202,7 +202,7 @@
         <div class="card-header d-flex justify-content-between align-items-center">
             <span>
                 <i class="fa-solid fa-lock me-1"></i>
-                @Localizer["Profile_BoardInformation"]
+                @Localizer["Users_Profile_BoardInformation"]
             </span>
             @if (Model.IsOwnProfile)
             {
@@ -210,10 +210,10 @@
             }
         </div>
         <div class="card-body">
-            <small class="text-muted d-block mb-3">@Localizer["Profile_OnlyVisibleToYouAndBoard"]</small>
+            <small class="text-muted d-block mb-3">@Localizer["Users_Profile_OnlyVisibleToYouAndBoard"]</small>
 
             <dl class="row mb-0">
-                <dt class="col-3">@Localizer["Profile_LegalName"]</dt>
+                <dt class="col-3">@Localizer["Users_Profile_LegalName"]</dt>
                 <dd class="col-9">
                     @if (!string.IsNullOrEmpty(Model.FirstName) || !string.IsNullOrEmpty(Model.LastName))
                     {
@@ -227,7 +227,7 @@
 
                 @if (!string.IsNullOrEmpty(Model.EmergencyContactName) || !string.IsNullOrEmpty(Model.EmergencyContactPhone))
                 {
-                    <dt class="col-3">@Localizer["Profile_EmergencyContact"]</dt>
+                    <dt class="col-3">@Localizer["Users_Profile_EmergencyContact"]</dt>
                     <dd class="col-9">
                         @if (!string.IsNullOrEmpty(Model.EmergencyContactName))
                         {
@@ -248,13 +248,13 @@
                 {
                     <dt class="col-3">
                         <i class="fa-solid fa-envelope me-1"></i>
-                        @Localizer["CommPrefs_Email"]
+                        @Localizer["Users_CommPrefs_Email"]
                     </dt>
                     <dd class="col-9">
                         <a href="mailto:@email.Email">@email.Email</a>
                         @if (email.IsPrimary)
                         {
-                            <span class="badge bg-primary ms-1" title="@Localizer["Profile_NotificationTarget"]" data-bs-toggle="tooltip"><i class="fa-solid fa-bell"></i> @Localizer["Profile_NotificationTargetShort"]</span>
+                            <span class="badge bg-primary ms-1" title="@Localizer["Users_Profile_NotificationTarget"]" data-bs-toggle="tooltip"><i class="fa-solid fa-bell"></i> @Localizer["Users_Profile_NotificationTargetShort"]</span>
                         }
                         @if (email.VisibilityBadgeKey is not null)
                         {
@@ -265,7 +265,7 @@
 
                 @if (!string.IsNullOrEmpty(Model.BoardNotes))
                 {
-                    <dt class="col-3">@Localizer["Profile_BoardNotes"]</dt>
+                    <dt class="col-3">@Localizer["Users_Profile_BoardNotes"]</dt>
                     <dd class="col-9" style="white-space: pre-line">@Model.BoardNotes</dd>
                 }
             </dl>

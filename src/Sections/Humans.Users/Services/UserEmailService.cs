@@ -188,7 +188,7 @@ internal sealed class UserEmailService(
         {
             logger.LogWarning("Email verification rejected for user {UserId}, email row {EmailId}: {Reason}",
                 userId, emailId, reason);
-            return new VerifyEmailResult(string.Empty, false, "Profile_InvalidVerificationLink");
+            return new VerifyEmailResult(string.Empty, false, "Users_Profile_InvalidVerificationLink");
         }
     }
 
@@ -254,7 +254,7 @@ internal sealed class UserEmailService(
         if (!string.IsNullOrEmpty(email.Provider))
         {
             // Provider-attached rows must go through UnlinkAsync; this guards non-UI callers.
-            return new DeleteEmailResult(false, "EmailGrid_DeleteRejectedHasProvider");
+            return new DeleteEmailResult(false, "Users_EmailGrid_DeleteRejectedHasProvider");
         }
 
         // see nobodies-collective/Humans#758 — block removal of the primary email.
@@ -262,7 +262,7 @@ internal sealed class UserEmailService(
         // can accidentally delete their sign-in/notification target (the original incident).
         if (email.IsPrimary)
         {
-            return new DeleteEmailResult(false, "EmailGrid_DeletePrimaryBlocked");
+            return new DeleteEmailResult(false, "Users_EmailGrid_DeletePrimaryBlocked");
         }
 
         // Block deletion of the last verified row — post email-decoupling, base.Email is null and the user would silently lose all notifications.
@@ -282,7 +282,7 @@ internal sealed class UserEmailService(
         // un-matching the user's event ticket on the next vendor re-sync.
         if (await IsAddressTicketLinkedAsync(userId, email.Email, cancellationToken))
         {
-            return new DeleteEmailResult(false, "EmailGrid_DeleteTicketLinkedBlocked");
+            return new DeleteEmailResult(false, "Users_EmailGrid_DeleteTicketLinkedBlocked");
         }
 
         var removed = await userService.RemoveUserEmailAsync(
@@ -643,7 +643,7 @@ internal sealed class UserEmailService(
             logger.LogWarning(
                 "Refused unlink of email {EmailId} for user {UserId}: no other verified sign-in method remains",
                 userEmailId, userId);
-            return new(false, "LinkedAccounts_UnlinkBlockedLastSignInMethod");
+            return new(false, "Users_LinkedAccounts_UnlinkBlockedLastSignInMethod");
         }
 
         var user = await userManager.FindByIdAsync(userId.ToString());

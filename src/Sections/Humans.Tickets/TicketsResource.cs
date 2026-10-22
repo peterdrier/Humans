@@ -16,7 +16,7 @@ namespace Humans.Tickets;
 /// Keys that look like this section's and are <em>not</em> here stayed behind because their
 /// renderer is Shell's: <c>Dashboard_Ticket*</c>, <c>Guest_Tickets*</c>, <c>Home_Tickets*</c>,
 /// <c>TeamAdmin_TicketLabel</c>, <c>ShiftDash_*Ticket*</c>, <c>GateLogin_Description</c> and
-/// <c>EmailGrid_DeleteTicketLinkedBlocked</c> (§15 step 3b, carve by renderer).
+/// <c>Users_EmailGrid_DeleteTicketLinkedBlocked</c> (§15 step 3b, carve by renderer).
 /// </para>
 /// </remarks>
 public class TicketsResource;

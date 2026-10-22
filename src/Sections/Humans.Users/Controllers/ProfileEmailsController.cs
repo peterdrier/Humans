@@ -73,7 +73,7 @@ internal sealed class ProfileEmailsController(
         if (string.IsNullOrWhiteSpace(model.NewEmail) || !ModelState.IsValid)
         {
             if (string.IsNullOrWhiteSpace(model.NewEmail))
-                ModelState.AddModelError(nameof(model.NewEmail), localizer["Profile_EnterEmail"].Value);
+                ModelState.AddModelError(nameof(model.NewEmail), localizer["Users_Profile_EnterEmail"].Value);
             return View(nameof(Emails), await BuildEmailsViewModelAsync(user));
         }
 
@@ -123,7 +123,7 @@ internal sealed class ProfileEmailsController(
             return;
         }
 
-        SetSuccess(string.Format(CultureInfo.CurrentCulture, localizer["Profile_VerificationSent"].Value, email.Trim()));
+        SetSuccess(string.Format(CultureInfo.CurrentCulture, localizer["Users_Profile_VerificationSent"].Value, email.Trim()));
     }
 
     [HttpGet("Me/Emails/Verify")]
@@ -132,7 +132,7 @@ internal sealed class ProfileEmailsController(
     {
         if (string.IsNullOrEmpty(token) || emailId == Guid.Empty)
         {
-            return VerifyEmailError(localizer["Profile_InvalidVerificationLink"].Value);
+            return VerifyEmailError(localizer["Users_Profile_InvalidVerificationLink"].Value);
         }
 
         var decodedToken = HttpUtility.UrlDecode(token);
@@ -163,7 +163,7 @@ internal sealed class ProfileEmailsController(
             userId, result.Email);
 
         ViewData["Success"] = true;
-        ViewData["Message"] = string.Format(localizer["Profile_EmailVerified"].Value, result.Email);
+        ViewData["Message"] = string.Format(localizer["Users_Profile_EmailVerified"].Value, result.Email);
         return View("VerifyEmailResult");
     }
     private IActionResult VerifyEmailError(string message)
@@ -200,7 +200,7 @@ internal sealed class ProfileEmailsController(
                 $"Set primary email row {emailId}",
                 user.Id,
                 relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
-            SetSuccess(localizer["Profile_NotificationTargetUpdated"].Value);
+            SetSuccess(localizer["Users_Profile_NotificationTargetUpdated"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
@@ -234,7 +234,7 @@ internal sealed class ProfileEmailsController(
                 return RedirectToAction(nameof(Emails));
             }
             await LogSelfEmailVisibilityChangedAsync(user.Id, emailId, parsedVisibility);
-            SetSuccess(localizer["Profile_EmailVisibilityUpdated"].Value);
+            SetSuccess(localizer["Users_Profile_EmailVisibilityUpdated"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
@@ -280,11 +280,11 @@ internal sealed class ProfileEmailsController(
             if (deleted.Succeeded)
             {
                 await LogSelfEmailDeletedAsync(user.Id, emailId);
-                SetSuccess(localizer["Profile_EmailDeleted"].Value);
+                SetSuccess(localizer["Users_Profile_EmailDeleted"].Value);
             }
             else
             {
-                SetError(LocalizeEmailRefusal(deleted.ErrorKey ?? "EmailGrid_DeleteRejectedHasProvider"));
+                SetError(LocalizeEmailRefusal(deleted.ErrorKey ?? "Users_EmailGrid_DeleteRejectedHasProvider"));
             }
         }
         catch (InvalidOperationException ex)
@@ -334,11 +334,11 @@ internal sealed class ProfileEmailsController(
     {
         if (ok)
         {
-            SetSuccess(localizer["EmailGrid_PrimaryFlagCleared"].Value);
+            SetSuccess(localizer["Users_EmailGrid_PrimaryFlagCleared"].Value);
             return;
         }
 
-        SetError(localizer["EmailGrid_ClearPrimaryRejected"].Value);
+        SetError(localizer["Users_EmailGrid_ClearPrimaryRejected"].Value);
     }
 
     [HttpPost("Me/Emails/Link/{provider}")]
@@ -403,11 +403,11 @@ internal sealed class ProfileEmailsController(
 
         if (result.Succeeded)
         {
-            SetSuccess(localizer["EmailGrid_UnlinkSuccess"].Value);
+            SetSuccess(localizer["Users_EmailGrid_UnlinkSuccess"].Value);
             return;
         }
 
-        SetError(localizer["EmailGrid_UnlinkRejected"].Value);
+        SetError(localizer["Users_EmailGrid_UnlinkRejected"].Value);
     }
 
     // User-facing Unlink (see nobodies-collective/Humans#731) — keyed by (Provider, ProviderKey); enforces auth-method invariant server-side.
@@ -417,7 +417,7 @@ internal sealed class ProfileEmailsController(
     {
         if (string.IsNullOrWhiteSpace(provider) || string.IsNullOrWhiteSpace(providerKey))
         {
-            SetError(localizer["EmailGrid_UnlinkRejected"].Value);
+            SetError(localizer["Users_EmailGrid_UnlinkRejected"].Value);
             return RedirectToAction(nameof(Emails));
         }
 
@@ -436,7 +436,7 @@ internal sealed class ProfileEmailsController(
             && string.Equals(l.ProviderKey, providerKey, StringComparison.Ordinal));
         if (!hasLogin)
         {
-            SetError(localizer["EmailGrid_UnlinkRejected"].Value);
+            SetError(localizer["Users_EmailGrid_UnlinkRejected"].Value);
             return RedirectToAction(nameof(Emails));
         }
 
@@ -461,7 +461,7 @@ internal sealed class ProfileEmailsController(
                 // verified emails this login may be the user's only sign-in path.
                 if (rawRows.Count(r => r.IsVerified) < 1)
                 {
-                    SetError(localizer["LinkedAccounts_UnlinkBlockedLastSignInMethod"].Value);
+                    SetError(localizer["Users_LinkedAccounts_UnlinkBlockedLastSignInMethod"].Value);
                     return RedirectToAction(nameof(Emails));
                 }
 
@@ -473,7 +473,7 @@ internal sealed class ProfileEmailsController(
                         nameof(User), user.Id,
                         $"Unlinked orphan {provider} login (no matching UserEmail row)",
                         user.Id);
-                    SetSuccess(localizer["EmailGrid_UnlinkSuccess"].Value);
+                    SetSuccess(localizer["Users_EmailGrid_UnlinkSuccess"].Value);
                 }
                 else
                 {
@@ -481,7 +481,7 @@ internal sealed class ProfileEmailsController(
                         "UnlinkLinkedAccount: RemoveLoginAsync failed for user {UserId} provider {Provider}: {Errors}",
                         user.Id, provider,
                         string.Join("; ", removeLogin.Errors.Select(e => $"{e.Code}:{e.Description}")));
-                    SetError(localizer["EmailGrid_UnlinkRejected"].Value);
+                    SetError(localizer["Users_EmailGrid_UnlinkRejected"].Value);
                 }
             }
         }
@@ -547,7 +547,7 @@ internal sealed class ProfileEmailsController(
                 $"Admin set primary email row {emailId}",
                 actor.Id,
                 relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
-            SetSuccess(localizer["Profile_NotificationTargetUpdated"].Value);
+            SetSuccess(localizer["Users_Profile_NotificationTargetUpdated"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
@@ -594,7 +594,7 @@ internal sealed class ProfileEmailsController(
 
         if (string.IsNullOrWhiteSpace(email))
         {
-            SetError(localizer["Profile_EnterEmail"].Value);
+            SetError(localizer["Users_Profile_EnterEmail"].Value);
             return RedirectToAction(nameof(AdminEmails), new { id });
         }
 
@@ -648,7 +648,7 @@ internal sealed class ProfileEmailsController(
             "Admin sent email verification to {Email} for user {UserId} (conflict: {IsConflict})",
             trimmedEmail, userId, result.IsConflict);
 
-        SetSuccess(localizer["EmailGrid_AdminAddSentVerification"].Value);
+        SetSuccess(localizer["Users_EmailGrid_AdminAddSentVerification"].Value);
     }
     // Admin recovery: insert a verified UserEmail without verification email.
     [HttpPost("{id:guid}/Admin/Emails/AddVerified")]
@@ -658,7 +658,7 @@ internal sealed class ProfileEmailsController(
     {
         if (string.IsNullOrWhiteSpace(email))
         {
-            SetError(localizer["Profile_EnterEmail"].Value);
+            SetError(localizer["Users_Profile_EnterEmail"].Value);
             return RedirectToAction(nameof(AdminEmails), new { id });
         }
 
@@ -736,11 +736,11 @@ internal sealed class ProfileEmailsController(
             }
             else if (result.MergeRequestCreated)
             {
-                SetSuccess(localizer["EmailGrid_AdminVerifyMergeRequested"].Value);
+                SetSuccess(localizer["Users_EmailGrid_AdminVerifyMergeRequested"].Value);
             }
             else
             {
-                SetSuccess(localizer["EmailGrid_AdminVerifySuccess"].Value);
+                SetSuccess(localizer["Users_EmailGrid_AdminVerifySuccess"].Value);
             }
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
@@ -810,7 +810,7 @@ internal sealed class ProfileEmailsController(
     {
         if (!deleted.Succeeded)
         {
-            SetError(LocalizeEmailRefusal(deleted.ErrorKey ?? "EmailGrid_DeleteRejectedHasProvider"));
+            SetError(LocalizeEmailRefusal(deleted.ErrorKey ?? "Users_EmailGrid_DeleteRejectedHasProvider"));
             return;
         }
 
@@ -821,7 +821,7 @@ internal sealed class ProfileEmailsController(
             actorId,
             relatedEntityId: emailId,
             relatedEntityType: nameof(UserEmail));
-        SetSuccess(localizer["Profile_EmailDeleted"].Value);
+        SetSuccess(localizer["Users_Profile_EmailDeleted"].Value);
     }
     [HttpPost("{id:guid}/Admin/Emails/SetVisibility")]
     [ValidateAntiForgeryToken]
@@ -868,7 +868,7 @@ internal sealed class ProfileEmailsController(
             actorId,
             relatedEntityId: emailId,
             relatedEntityType: nameof(UserEmail));
-        SetSuccess(localizer["Profile_EmailVisibilityUpdated"].Value);
+        SetSuccess(localizer["Users_Profile_EmailVisibilityUpdated"].Value);
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────

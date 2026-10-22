@@ -139,7 +139,7 @@ public class OnboardingWidgetControllerNamesTests
     {
         var userId = Guid.NewGuid();
         _profileEditor.SaveProfileAsync(userId, Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
-            .Returns(new ProfileEditResult(false, ErrorKey: "Profile_BurnerCVRequired"));
+            .Returns(new ProfileEditResult(false, ErrorKey: "Users_Profile_BurnerCVRequired"));
         var ctrl = BuildSut(userId);
 
         var result = await ctrl.Names(new NamesViewModel

@@ -26,7 +26,7 @@
         }
         else if (Model.IsSuspended)
         {
-            <span class="badge bg-danger" style="font-size: 0.7rem;">@Localizer["ProfileCard_Suspended"]</span>
+            <span class="badge bg-danger" style="font-size: 0.7rem;">@Localizer["Users_ProfileCard_Suspended"]</span>
         }
         else if (!string.IsNullOrEmpty(Model.MembershipTier)
             && !string.Equals(Model.MembershipTier, "Volunteer", StringComparison.OrdinalIgnoreCase))

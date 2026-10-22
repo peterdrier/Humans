@@ -79,7 +79,7 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
         var body = await resp.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Localized string "Merge pending" is registered in SharedResource.resx
-        // under EmailGrid_StatusMergePending; the row also carries the
+        // under Users_EmailGrid_StatusMergePending; the row also carries the
         // fa-code-merge icon class. Either is a stable signal that the pill
         // rendered for the pending row.
         body.Should().ContainAny("Merge pending", "fa-code-merge");

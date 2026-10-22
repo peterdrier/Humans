@@ -3,7 +3,7 @@
    from the section's own set. *@
 @inject IStringLocalizer<ShiftsResource> ShiftsLocalizer
 @{
-    ViewData["Title"] = Localizer["ProfileEdit_Title"].Value;
+    ViewData["Title"] = Localizer["Users_ProfileEdit_Title"].Value;
 }
 
 <div class="row">
@@ -11,11 +11,11 @@
         <nav aria-label="@Localizer["Users_BreadcrumbNavigation"]">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a></li>
-                <li class="breadcrumb-item active" aria-current="page">@Localizer["ProfileEdit_Title"]</li>
+                <li class="breadcrumb-item active" aria-current="page">@Localizer["Users_ProfileEdit_Title"]</li>
             </ol>
         </nav>
 
-        <h1>@Localizer["ProfileEdit_Title"]</h1>
+        <h1>@Localizer["Users_ProfileEdit_Title"]</h1>
 
         <form asp-action="Edit" method="post" enctype="multipart/form-data">
             @if (ViewData.ModelState.ErrorCount > 0)
@@ -34,9 +34,9 @@
             @* --- Section 1: General --- *@
             <div class="card mb-4">
                 <div class="card-body">
-                    <h3>@Localizer["ProfileEdit_SectionGeneral"]</h3>
+                    <h3>@Localizer["Users_ProfileEdit_SectionGeneral"]</h3>
 
-                    <h6>@Localizer["Profile_ProfilePicture"]</h6>
+                    <h6>@Localizer["Users_Profile_ProfilePicture"]</h6>
                     <div class="mb-3">
                         <div class="d-flex align-items-center gap-3 mb-2">
                             <vc:human user-id="@Model.UserId"
@@ -46,12 +46,12 @@
                         </div>
                         <input type="file" asp-for="ProfilePictureUpload" class="form-control" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif,.heic,.heif,.avif" />
                         <span asp-validation-for="ProfilePictureUpload" class="text-danger"></span>
-                        <div class="form-text">@Localizer["ProfileEdit_PictureHelp"]</div>
+                        <div class="form-text">@Localizer["Users_ProfileEdit_PictureHelp"]</div>
                         @if (Model.HasCustomProfilePicture)
                         {
                             <div class="form-check mt-2">
                                 <input type="checkbox" asp-for="RemoveProfilePicture" class="form-check-input" />
-                                <label asp-for="RemoveProfilePicture" class="form-check-label">@Localizer["ProfileEdit_RemovePicture"]</label>
+                                <label asp-for="RemoveProfilePicture" class="form-check-label">@Localizer["Users_ProfileEdit_RemovePicture"]</label>
                             </div>
                         }
                     </div>
@@ -59,24 +59,24 @@
 
                     <div class="mb-3">
                         <label asp-for="BurnerName" class="form-label"></label>
-                        <input asp-for="BurnerName" class="form-control" placeholder="@Localizer["ProfileEdit_BurnerNamePlaceholder"].Value" />
+                        <input asp-for="BurnerName" class="form-control" placeholder="@Localizer["Users_ProfileEdit_BurnerNamePlaceholder"].Value" />
                         <span asp-validation-for="BurnerName" class="text-danger"></span>
                         <div id="burnerNameWarning" class="alert alert-danger mt-2 d-none" role="alert">
                             <i class="fa-solid fa-triangle-exclamation me-1"></i>
-                            @Localizer["ProfileEdit_BurnerNameMatchesLegalName"]
+                            @Localizer["Users_ProfileEdit_BurnerNameMatchesLegalName"]
                         </div>
                         <div id="burnerNameCollisionWarning" class="alert alert-warning mt-2 d-none" role="alert"
-                             data-msg-one="@Localizer["ProfileEdit_BurnerNameCollisionOne"]"
-                             data-msg-many="@Localizer["ProfileEdit_BurnerNameCollisionMany"]">
+                             data-msg-one="@Localizer["Users_ProfileEdit_BurnerNameCollisionOne"]"
+                             data-msg-many="@Localizer["Users_ProfileEdit_BurnerNameCollisionMany"]">
                             <i class="fa-solid fa-triangle-exclamation me-1"></i>
                             <span class="burner-collision-text"></span>
                         </div>
-                        <div class="form-text">@Localizer["ProfileEdit_BurnerNameHelp"]</div>
+                        <div class="form-text">@Localizer["Users_ProfileEdit_BurnerNameHelp"]</div>
                     </div>
 
                     <div class="mb-3">
                         <label asp-for="Pronouns" class="form-label"></label>
-                        <input asp-for="Pronouns" class="form-control" placeholder="@Localizer["ProfileEdit_PronounsPlaceholder"].Value" />
+                        <input asp-for="Pronouns" class="form-control" placeholder="@Localizer["Users_ProfileEdit_PronounsPlaceholder"].Value" />
                         <span asp-validation-for="Pronouns" class="text-danger"></span>
                     </div>
 
@@ -84,12 +84,12 @@
                     <h6>@SharedLocalizer["Profile_Location"]</h6>
 
                     <div class="mb-3">
-                        <label for="locationSearch" class="form-label">@Localizer["ProfileEdit_City"]</label>
+                        <label for="locationSearch" class="form-label">@Localizer["Users_ProfileEdit_City"]</label>
                         <gmp-place-autocomplete id="locationSearch"
-                                                placeholder="@Localizer["ProfileEdit_CityPlaceholder"].Value"
+                                                placeholder="@Localizer["Users_ProfileEdit_CityPlaceholder"].Value"
                                                 style="width: 100%;">
                         </gmp-place-autocomplete>
-                        <div class="form-text">@Localizer["ProfileEdit_CityHelp"]</div>
+                        <div class="form-text">@Localizer["Users_ProfileEdit_CityHelp"]</div>
 
                         <input type="hidden" asp-for="City" id="City" />
                         <input type="hidden" asp-for="CountryCode" id="CountryCode" />
@@ -102,7 +102,7 @@
                     {
                         <div class="mb-3">
                             <small class="text-muted">
-                                @Localizer["ProfileEdit_CurrentLocation"] <strong>@Model.City, @Model.CountryCode</strong>
+                                @Localizer["Users_ProfileEdit_CurrentLocation"] <strong>@Model.City, @Model.CountryCode</strong>
                                 @if (Model.Latitude.HasValue && Model.Longitude.HasValue)
                                 {
                                     <text> (@Model.Latitude.Value.ToString("F4", System.Globalization.CultureInfo.CurrentUICulture), @Model.Longitude.Value.ToString("F4", System.Globalization.CultureInfo.CurrentUICulture))</text>
@@ -112,10 +112,10 @@
                     }
 
                     <hr />
-                    <h6>@Localizer["Profile_DateOfBirth"]</h6>
+                    <h6>@Localizer["Users_Profile_DateOfBirth"]</h6>
                     <div class="row mb-3">
                         <div class="col-md-3">
-                            <label asp-for="BirthdayMonth" class="form-label">@Localizer["Profile_Month"]</label>
+                            <label asp-for="BirthdayMonth" class="form-label">@Localizer["Users_Profile_Month"]</label>
                             <select asp-for="BirthdayMonth" class="form-select">
                                 <option value="">—</option>
                                 @for (var m = 1; m <= 12; m++)
@@ -125,7 +125,7 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label asp-for="BirthdayDay" class="form-label">@Localizer["Profile_Day"]</label>
+                            <label asp-for="BirthdayDay" class="form-label">@Localizer["Users_Profile_Day"]</label>
                             <select asp-for="BirthdayDay" class="form-select">
                                 <option value="">—</option>
                                 @for (var d = 1; d <= 31; d++)
@@ -137,17 +137,17 @@
                     </div>
 
                     <hr />
-                    <h6>@Localizer["Profile_ContactInformation"]</h6>
+                    <h6>@Localizer["Users_Profile_ContactInformation"]</h6>
                     <p class="text-muted small mb-3">
-                        @Localizer["ProfileEdit_ContactInfoHelp"]
+                        @Localizer["Users_ProfileEdit_ContactInfoHelp"]
                     </p>
 
                     @if (Model.EditableContactFields.Count > 0)
                     {
                         <div class="row g-2 mb-1 text-muted small d-none d-md-flex">
-                            <div class="col-md-2">@Localizer["ProfileEdit_ContactType"]</div>
-                            <div class="col-md-3">@Localizer["ProfileEdit_ContactValue"]</div>
-                            <div class="col-md-3">@Localizer["ProfileEdit_ContactVisibility"]</div>
+                            <div class="col-md-2">@Localizer["Users_ProfileEdit_ContactType"]</div>
+                            <div class="col-md-3">@Localizer["Users_ProfileEdit_ContactValue"]</div>
+                            <div class="col-md-3">@Localizer["Users_ProfileEdit_ContactVisibility"]</div>
                         </div>
                     }
                     @foreach (var legacy in Model.ContactFields)
@@ -156,7 +156,7 @@
                             <div class="card-body py-2 d-flex flex-wrap gap-2 align-items-center">
                                 <span>@Localizer.EnumDisplay(legacy.FieldType): @legacy.Value</span>
                                 <span class="text-muted small">@Localizer.EnumDisplay(legacy.Visibility)</span>
-                                <label class="form-check ms-auto" title="@Localizer["ProfileEdit_RemoveContactField"].Value">
+                                <label class="form-check ms-auto" title="@Localizer["Users_ProfileEdit_RemoveContactField"].Value">
                                     <input type="checkbox" class="form-check-input" name="RemovedLegacyContactFieldIds" value="@legacy.Id"
                                            checked="@Model.RemovedLegacyContactFieldIds.Contains(legacy.Id)" />
                                     <span class="form-check-label">@SharedLocalizer["Common_Remove"]</span>
@@ -189,11 +189,11 @@
                                         </div>
 
                                         <div class="col-md-2 custom-label-col" style="display: @(Model.EditableContactFields[i].FieldType == ContactFieldType.Other ? "block" : "none");">
-                                            <input type="text" name="EditableContactFields[@i].CustomLabel" id="EditableContactFields_@(i)__CustomLabel" value="@Model.EditableContactFields[i].CustomLabel" class="form-control form-control-sm custom-label-input" placeholder="@Localizer["ProfileEdit_CustomLabelPlaceholder"].Value" />
+                                            <input type="text" name="EditableContactFields[@i].CustomLabel" id="EditableContactFields_@(i)__CustomLabel" value="@Model.EditableContactFields[i].CustomLabel" class="form-control form-control-sm custom-label-input" placeholder="@Localizer["Users_ProfileEdit_CustomLabelPlaceholder"].Value" />
                                         </div>
 
                                         <div class="col-md-3">
-                                            <input type="text" name="EditableContactFields[@i].Value" id="EditableContactFields_@(i)__Value" value="@Model.EditableContactFields[i].Value" class="form-control form-control-sm contact-value-input" required placeholder="@Localizer["ProfileEdit_ContactValuePlaceholder"].Value" />
+                                            <input type="text" name="EditableContactFields[@i].Value" id="EditableContactFields_@(i)__Value" value="@Model.EditableContactFields[i].Value" class="form-control form-control-sm contact-value-input" required placeholder="@Localizer["Users_ProfileEdit_ContactValuePlaceholder"].Value" />
                                             @{
                                                 var fieldKey = $"EditableContactFields[{i}].Value";
                                                 var fieldErrors = ViewData.ModelState[fieldKey]?.Errors;
@@ -222,7 +222,7 @@
                                         </div>
 
                                         <div class="col-md-2 text-end">
-                                            <button type="button" class="btn btn-outline-danger btn-sm remove-contact-field" title="@Localizer["ProfileEdit_RemoveContactField"].Value">
+                                            <button type="button" class="btn btn-outline-danger btn-sm remove-contact-field" title="@Localizer["Users_ProfileEdit_RemoveContactField"].Value">
                                                 <i class="fa-solid fa-trash me-1"></i> @SharedLocalizer["Common_Remove"]
                                             </button>
                                         </div>
@@ -233,7 +233,7 @@
                     </div>
 
                     <button type="button" id="addContactField" class="btn btn-outline-secondary btn-sm mb-3">
-                        <i class="fa-solid fa-plus me-1"></i> @Localizer["ProfileEdit_AddContactField"]
+                        <i class="fa-solid fa-plus me-1"></i> @Localizer["Users_ProfileEdit_AddContactField"]
                     </button>
 
                     <div class="mb-3">
@@ -241,16 +241,16 @@
                         {
                             <p class="text-muted small mb-0">
                                 <i class="fa-solid fa-envelope me-1"></i>
-                                @Localizer["Emails_ManageLater"]
+                                @Localizer["Users_Emails_ManageLater"]
                             </p>
                         }
                         else
                         {
                             <a asp-controller="ProfileEmails" asp-action="Emails" class="btn btn-outline-secondary">
                                 <i class="fa-solid fa-envelope me-1"></i>
-                                @Localizer["Emails_ManageEmails"]
+                                @Localizer["Users_Emails_ManageEmails"]
                             </a>
-                            <div class="form-text">@Localizer["Emails_ManageEmailsHelp"]</div>
+                            <div class="form-text">@Localizer["Users_Emails_ManageEmailsHelp"]</div>
                         }
                     </div>
 
@@ -260,13 +260,13 @@
                         <label asp-for="Bio" class="form-label"></label>
                         <markdown-editor asp-for="Bio" rows="4" />
                         <span asp-validation-for="Bio" class="text-danger"></span>
-                        <div class="form-text">@Localizer["ProfileEdit_BioHelp"]</div>
+                        <div class="form-text">@Localizer["Users_ProfileEdit_BioHelp"]</div>
                     </div>
 
                     <hr />
-                    <h6>@Localizer["Profile_Languages"]</h6>
+                    <h6>@Localizer["Users_Profile_Languages"]</h6>
                     <p class="text-muted small mb-3">
-                        @Localizer["ProfileEdit_LanguagesHelp"]
+                        @Localizer["Users_ProfileEdit_LanguagesHelp"]
                     </p>
 
                     <div id="languagesContainer">
@@ -278,9 +278,9 @@
                                         <input type="hidden" name="EditableLanguages[@i].Id" value="@Model.EditableLanguages[i].Id" />
 
                                         <div class="col-md-5">
-                                            <label class="form-label small" for="EditableLanguages_@(i)__LanguageCode">@Localizer["ProfileEdit_LanguageLabel"]</label>
+                                            <label class="form-label small" for="EditableLanguages_@(i)__LanguageCode">@Localizer["Users_ProfileEdit_LanguageLabel"]</label>
                                             <select name="EditableLanguages[@i].LanguageCode" id="EditableLanguages_@(i)__LanguageCode" class="form-select form-select-sm language-code-select" required>
-                                                <option value="">@Localizer["ProfileEdit_SelectLanguage"]</option>
+                                                <option value="">@Localizer["Users_ProfileEdit_SelectLanguage"]</option>
                                                 @foreach (var lang in LanguageCatalog.Languages)
                                                 {
                                                     <option value="@lang.Key" selected="@(Model.EditableLanguages[i].LanguageCode == lang.Key ? "selected" : null)">@lang.Value (@lang.Key)</option>
@@ -292,7 +292,7 @@
                                             @{
                                                 var proficiency = Model.EditableLanguages[i].Proficiency;
                                             }
-                                            <label class="form-label small" for="EditableLanguages_@(i)__Proficiency">@Localizer["ProfileEdit_ProficiencyLabel"]</label>
+                                            <label class="form-label small" for="EditableLanguages_@(i)__Proficiency">@Localizer["Users_ProfileEdit_ProficiencyLabel"]</label>
                                             <select name="EditableLanguages[@i].Proficiency" id="EditableLanguages_@(i)__Proficiency" class="form-select form-select-sm" required>
                                                 <option value="Basic" selected="@(proficiency == LanguageProficiency.Basic ? "selected" : null)">@Localizer.EnumDisplay(LanguageProficiency.Basic)</option>
                                                 <option value="Conversational" selected="@(proficiency == LanguageProficiency.Conversational ? "selected" : null)">@Localizer.EnumDisplay(LanguageProficiency.Conversational)</option>
@@ -302,7 +302,7 @@
                                         </div>
 
                                         <div class="col-md-3 text-end">
-                                            <button type="button" class="btn btn-outline-danger btn-sm remove-language" title="@Localizer["ProfileEdit_RemoveLanguage"].Value">
+                                            <button type="button" class="btn btn-outline-danger btn-sm remove-language" title="@Localizer["Users_ProfileEdit_RemoveLanguage"].Value">
                                                 <i class="fa-solid fa-trash me-1"></i> @SharedLocalizer["Common_Remove"]
                                             </button>
                                         </div>
@@ -313,7 +313,7 @@
                     </div>
 
                     <button type="button" id="addLanguage" class="btn btn-outline-secondary btn-sm mb-3">
-                        <i class="fa-solid fa-plus me-1"></i> @Localizer["ProfileEdit_AddLanguage"]
+                        <i class="fa-solid fa-plus me-1"></i> @Localizer["Users_ProfileEdit_AddLanguage"]
                     </button>
 
                     <hr />
@@ -329,11 +329,11 @@
             @* --- Section 2: Contributor --- *@
             <div class="card mb-4">
                 <div class="card-body">
-                    <h3>@Localizer["ProfileEdit_SectionContributor"]</h3>
+                    <h3>@Localizer["Users_ProfileEdit_SectionContributor"]</h3>
 
-                    <h6>@Localizer["Profile_BurnerCV"]</h6>
+                    <h6>@Localizer["Users_Profile_BurnerCV"]</h6>
                     <p class="text-muted small mb-3">
-                        @Localizer["ProfileEdit_BurnerCVHelp"]
+                        @Localizer["Users_ProfileEdit_BurnerCVHelp"]
                     </p>
 
                     <div id="volunteerHistoryContainer">
@@ -349,17 +349,17 @@
                                         </div>
 
                                         <div class="col-md-4">
-                                            <label class="form-label small" for="EditableVolunteerHistory_@(i)__EventName">@Localizer["ProfileEdit_EventName"]</label>
-                                            <input type="text" name="EditableVolunteerHistory[@i].EventName" id="EditableVolunteerHistory_@(i)__EventName" value="@Model.EditableVolunteerHistory[i].EventName" class="form-control form-control-sm" required placeholder="@Localizer["ProfileEdit_EventNamePlaceholder"].Value" maxlength="256" />
+                                            <label class="form-label small" for="EditableVolunteerHistory_@(i)__EventName">@Localizer["Users_ProfileEdit_EventName"]</label>
+                                            <input type="text" name="EditableVolunteerHistory[@i].EventName" id="EditableVolunteerHistory_@(i)__EventName" value="@Model.EditableVolunteerHistory[i].EventName" class="form-control form-control-sm" required placeholder="@Localizer["Users_ProfileEdit_EventNamePlaceholder"].Value" maxlength="256" />
                                         </div>
 
                                         <div class="col-md-4">
-                                            <label class="form-label small" for="EditableVolunteerHistory_@(i)__Description">@Localizer["ProfileEdit_Description"]</label>
-                                            <input type="text" name="EditableVolunteerHistory[@i].Description" id="EditableVolunteerHistory_@(i)__Description" value="@Model.EditableVolunteerHistory[i].Description" class="form-control form-control-sm" placeholder="@Localizer["ProfileEdit_DescriptionPlaceholder"].Value" maxlength="2000" />
+                                            <label class="form-label small" for="EditableVolunteerHistory_@(i)__Description">@Localizer["Users_ProfileEdit_Description"]</label>
+                                            <input type="text" name="EditableVolunteerHistory[@i].Description" id="EditableVolunteerHistory_@(i)__Description" value="@Model.EditableVolunteerHistory[i].Description" class="form-control form-control-sm" placeholder="@Localizer["Users_ProfileEdit_DescriptionPlaceholder"].Value" maxlength="2000" />
                                         </div>
 
                                         <div class="col-md-2 text-end" style="padding-top: 1.5rem;">
-                                            <button type="button" class="btn btn-outline-danger btn-sm remove-volunteer-history" title="@Localizer["ProfileEdit_RemoveEntry"].Value">
+                                            <button type="button" class="btn btn-outline-danger btn-sm remove-volunteer-history" title="@Localizer["Users_ProfileEdit_RemoveEntry"].Value">
                                                 <i class="fa-solid fa-trash me-1"></i> @SharedLocalizer["Common_Remove"]
                                             </button>
                                         </div>
@@ -370,32 +370,32 @@
                     </div>
 
                     <button type="button" id="addVolunteerHistory" class="btn btn-outline-secondary btn-sm mb-3">
-                        <i class="fa-solid fa-plus me-1"></i> @Localizer["ProfileEdit_AddEntry"]
+                        <i class="fa-solid fa-plus me-1"></i> @Localizer["Users_ProfileEdit_AddEntry"]
                     </button>
 
                     <div class="form-check mb-3" id="noPriorBurnContainer">
                         <input type="checkbox" asp-for="NoPriorBurnExperience" class="form-check-input" id="noPriorBurnCheckbox" />
-                        <label asp-for="NoPriorBurnExperience" class="form-check-label">@Localizer["Profile_NoPriorBurnExperience"]</label>
+                        <label asp-for="NoPriorBurnExperience" class="form-check-label">@Localizer["Users_Profile_NoPriorBurnExperience"]</label>
                         <span asp-validation-for="NoPriorBurnExperience" class="text-danger d-block"></span>
                     </div>
                     <div id="cvRequiredAlert" class="alert alert-danger d-none">
-                        @Localizer["Profile_BurnerCVRequired"]
+                        @Localizer["Users_Profile_BurnerCVRequired"]
                     </div>
 
                     <hr />
 
                     <div class="mb-3">
-                        <label asp-for="ContributionInterests" class="form-label">@Localizer["Profile_ContributionInterests"]</label>
+                        <label asp-for="ContributionInterests" class="form-label">@Localizer["Users_Profile_ContributionInterests"]</label>
                         <textarea asp-for="ContributionInterests" class="form-control" rows="3"></textarea>
                         <span asp-validation-for="ContributionInterests" class="text-danger"></span>
-                        <div class="form-text">@Localizer["ProfileEdit_ContributionInterestsHelp"]</div>
+                        <div class="form-text">@Localizer["Users_ProfileEdit_ContributionInterestsHelp"]</div>
                     </div>
 
                     <hr />
                     <div class="mb-3">
                         <h6>@ShiftsLocalizer["Shifts_EditPreferences"]</h6>
                         <p class="text-muted small mb-2">@ShiftsLocalizer["Shifts_PreferencesHelp"] <i class="fa-solid fa-star text-warning"></i></p>
-                        <a asp-controller="ShiftProfile" asp-action="ShiftInfo" class="btn btn-outline-primary btn-sm">@Localizer["Profile_ShiftInfo"]</a>
+                        <a asp-controller="ShiftProfile" asp-action="ShiftInfo" class="btn btn-outline-primary btn-sm">@Localizer["Users_Profile_ShiftInfo"]</a>
                     </div>
                 </div>
             </div>
@@ -410,18 +410,18 @@
                     <div class="card-body">
                         <h3>@SharedLocalizer["Profile_MembershipTier"]</h3>
                         <ul class="list-unstyled mb-3">
-                            <li class="mb-2"><strong>Volunteer</strong> — <span class="text-muted">@Localizer["ProfileEdit_TierVolunteerDesc"]</span></li>
+                            <li class="mb-2"><strong>Volunteer</strong> — <span class="text-muted">@Localizer["Users_ProfileEdit_TierVolunteerDesc"]</span></li>
                             <li class="mb-2"><strong>Colaborador</strong> — <span class="text-muted">@SharedLocalizer["ProfileEdit_TierColaboradorDesc"]</span></li>
                             <li class="mb-2"><strong>Asociado</strong> <span class="text-muted">(@SharedLocalizer["ProfileEdit_TierAsociadoSubtitle"])</span> — <span class="text-muted">@SharedLocalizer["ProfileEdit_TierAsociadoDesc"]</span></li>
                         </ul>
-                        <p class="text-muted small"><em>@Localizer["ProfileEdit_TierChangeNote"]</em></p>
+                        <p class="text-muted small"><em>@Localizer["Users_ProfileEdit_TierChangeNote"]</em></p>
                         @if (Model.IsTierLocked)
                         {
-                            <div class="form-text text-warning">@Localizer["ProfileEdit_TierLocked"]</div>
+                            <div class="form-text text-warning">@Localizer["Users_ProfileEdit_TierLocked"]</div>
                         }
                         else
                         {
-                            <a asp-controller="GovernanceApplications" asp-action="Create" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">@Localizer["ProfileEdit_TierApplyLink"]</a>
+                            <a asp-controller="GovernanceApplications" asp-action="Create" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">@Localizer["Users_ProfileEdit_TierApplyLink"]</a>
                         }
                     </div>
                 </div>
@@ -583,10 +583,10 @@
                 visMyTeams: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer.EnumDisplay(ContactFieldVisibility.MyTeams))),
                 visCoordBoard: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer.EnumDisplay(ContactFieldVisibility.CoordinatorsAndBoard))),
                 visBoardOnly: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer.EnumDisplay(ContactFieldVisibility.BoardOnly))),
-                chooseVisibility: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Profile_ChooseVisibility"].Value)),
-                customLabelPlaceholder: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["ProfileEdit_CustomLabelPlaceholder"].Value)),
-                contactValuePlaceholder: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["ProfileEdit_ContactValuePlaceholder"].Value)),
-                removeTitle: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["ProfileEdit_RemoveContactField"].Value)),
+                chooseVisibility: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Users_Profile_ChooseVisibility"].Value)),
+                customLabelPlaceholder: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Users_ProfileEdit_CustomLabelPlaceholder"].Value)),
+                contactValuePlaceholder: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Users_ProfileEdit_ContactValuePlaceholder"].Value)),
+                removeTitle: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Users_ProfileEdit_RemoveContactField"].Value)),
                 removeLabel: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(SharedLocalizer["Common_Remove"].Value))
             };
 
@@ -720,11 +720,11 @@
 
             const _vhLabels = {
                 date: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(SharedLocalizer["Common_Date"].Value)),
-                eventName: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["ProfileEdit_EventName"].Value)),
-                eventNamePlaceholder: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["ProfileEdit_EventNamePlaceholder"].Value)),
-                description: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["ProfileEdit_Description"].Value)),
-                descriptionPlaceholder: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["ProfileEdit_DescriptionPlaceholder"].Value)),
-                removeTitle: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["ProfileEdit_RemoveEntry"].Value)),
+                eventName: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Users_ProfileEdit_EventName"].Value)),
+                eventNamePlaceholder: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Users_ProfileEdit_EventNamePlaceholder"].Value)),
+                description: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Users_ProfileEdit_Description"].Value)),
+                descriptionPlaceholder: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Users_ProfileEdit_DescriptionPlaceholder"].Value)),
+                removeTitle: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Users_ProfileEdit_RemoveEntry"].Value)),
                 removeLabel: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(SharedLocalizer["Common_Remove"].Value))
             };
 
@@ -817,14 +817,14 @@
             const languageOptions = `@Html.Raw(string.Join("", LanguageCatalog.Languages.Select(l => $"<option value=\"{l.Key}\">{l.Value} ({l.Key})</option>")))`;
 
             const _langLabels = {
-                languageLabel: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["ProfileEdit_LanguageLabel"].Value)),
-                selectLanguage: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["ProfileEdit_SelectLanguage"].Value)),
-                proficiencyLabel: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["ProfileEdit_ProficiencyLabel"].Value)),
+                languageLabel: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Users_ProfileEdit_LanguageLabel"].Value)),
+                selectLanguage: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Users_ProfileEdit_SelectLanguage"].Value)),
+                proficiencyLabel: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Users_ProfileEdit_ProficiencyLabel"].Value)),
                 basic: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer.EnumDisplay(LanguageProficiency.Basic))),
                 conversational: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer.EnumDisplay(LanguageProficiency.Conversational))),
                 fluent: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer.EnumDisplay(LanguageProficiency.Fluent))),
                 native: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer.EnumDisplay(LanguageProficiency.Native))),
-                removeTitle: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["ProfileEdit_RemoveLanguage"].Value)),
+                removeTitle: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Users_ProfileEdit_RemoveLanguage"].Value)),
                 removeLabel: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(SharedLocalizer["Common_Remove"].Value))
             };
 
